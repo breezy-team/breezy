@@ -1,0 +1,15 @@
+version
+=======
+
+:Purpose: Show version of brz.
+:Usage:   brz version
+
+:Options:
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --short        Print just the version number.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+
+

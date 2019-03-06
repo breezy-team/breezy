@@ -1,0 +1,434 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Conflict Types &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Current Storage Formats" href="current-formats-help.html" />
+    <link rel="prev" title="Configuration Settings" href="configuration-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="configuration-help.html" title="Configuration Settings"
+             accesskey="P">previous</a> |
+          <a href="current-formats-help.html" title="Current Storage Formats"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="conflict-types">
+<h1>Conflict Types<a class="headerlink" href="#conflict-types" title="Permalink to this headline">¶</a></h1>
+<p>Some operations, like merge, revert and pull, modify the contents of your
+working tree.  These modifications are programmatically generated, and so they
+may conflict with the current state of your working tree.</p>
+<p>When conflicts are present in your working tree (as shown by <code class="docutils literal notranslate"><span class="pre">brz</span>
+<span class="pre">conflicts</span></code>), you should resolve them and then inform brz that the conflicts
+have been resolved.</p>
+<p>Resolving conflicts is sometimes not obvious. Either because the user that
+should resolve them is not the one responsible for their occurrence, as is the
+case when merging other people’s work or because some conflicts are presented
+in a way that is not easy to understand.</p>
+<p>Bazaar tries to avoid conflicts ; its aim is to ask you to resolve the
+conflict if and only if there’s an actual conceptual conflict in the source
+tree.  Because Bazaar doesn’t understand the real meaning of the files being
+versioned, it can, when faced with ambiguities, fall short in either direction
+trying to resolve the conflict itself. Many kinds of changes can be combined
+programmatically, but sometimes only a human can determine the right thing to
+do.</p>
+<p>When Bazaar generates a conflict, it adds information into the working tree to
+present the conflicting versions, and it’s up to you to find the correct
+resolution.</p>
+<p>Whatever the conflict is, resolving it is roughly done in two steps:</p>
+<ol class="arabic simple">
+<li>Modify the working tree content so that the conflicted item is now in the
+state you want to keep, then</li>
+<li>Inform Bazaar that the conflict is now solved and ask to cleanup any
+remaining generated information (<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span> <span class="pre">&lt;item&gt;</span></code>).</li>
+</ol>
+<p>For most conflict types, there are some obvious ways to modify the working
+tree and put it into the desired state. For some types of conflicts, Bazaar
+itself already made a choice, when possible.</p>
+<p>Yet, whether Bazaar makes a choice or not, there are some other simple but
+different ways to resolve the conflict.</p>
+<p>Each type of conflict is explained below, and the action which must be done to
+resolve the conflict is outlined.</p>
+<p>Various actions are available depending on the kind of conflict, for some of
+these actions, Bazaar can provide some help. In the end you should at least
+inform Bazaar that you’re done with the conflict with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>``brz resolve FILE --action=done&#39;
+</pre></div>
+</div>
+<p>Note that this is the default action when a single file is involved so you can
+simply use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>``brz resolve FILE``
+</pre></div>
+</div>
+<p>See <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">help</span> <span class="pre">resolve</span></code> for more details.</p>
+<div class="section" id="text-conflicts">
+<h2>Text conflicts<a class="headerlink" href="#text-conflicts" title="Permalink to this headline">¶</a></h2>
+<p>Typical message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Text</span> <span class="n">conflict</span> <span class="ow">in</span> <span class="n">FILE</span>
+</pre></div>
+</div>
+<p>These are produced when a text merge cannot completely reconcile two sets of
+text changes.  Bazaar will emit files for each version with the extensions
+THIS, OTHER, and BASE.  THIS is the version of the file from the target tree,
+i.e. the tree that you are merging changes into.  OTHER is the version that you
+are merging into the target.  BASE is an older version that is used as a basis
+for comparison.</p>
+<p>In the main copy of the file, Bazaar will include all the changes that it
+could reconcile, and any un-reconciled conflicts are surrounded by
+“herringbone” markers like <code class="docutils literal notranslate"><span class="pre">&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span></code>.</p>
+<p>Say the initial text is “The project leader released it.”, and THIS modifies it
+to “Martin Pool released it.”, while OTHER modifies it to “The project leader
+released Bazaar.”  A conflict would look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span> <span class="n">TREE</span>
+<span class="n">Martin</span> <span class="n">Pool</span> <span class="n">released</span> <span class="n">it</span><span class="o">.</span>
+<span class="o">=======</span>
+<span class="n">The</span> <span class="n">project</span> <span class="n">leader</span> <span class="n">released</span> <span class="n">Bazaar</span><span class="o">.</span>
+<span class="o">&gt;&gt;&gt;&gt;&gt;&gt;&gt;</span> <span class="n">MERGE</span><span class="o">-</span><span class="n">SOURCE</span>
+</pre></div>
+</div>
+<p>The correct resolution would be “Martin Pool released Bazaar.”</p>
+<p>You can handle text conflicts either by editing the main copy of the file,
+or by invoking external tools on the THIS, OTHER and BASE versions.  It’s
+worth mentioning that resolving text conflicts rarely involves picking one
+set of changes over the other (but see below when you encounter these
+cases).  More often, the two sets of changes must be intelligently combined.</p>
+<p>If you edit the main copy, be sure to remove the herringbone markers.  When
+you are done editing, the file should look like it never had a conflict, and be
+ready to commit.</p>
+<p>When you have resolved text conflicts, just run <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span> <span class="pre">--auto</span></code>, and
+Bazaar will auto-detect which conflicts you have resolved.</p>
+<p>When the conflict is resolved, Bazaar deletes the previously generated
+<code class="docutils literal notranslate"><span class="pre">.BASE</span></code>, <code class="docutils literal notranslate"><span class="pre">.THIS</span></code> and <code class="docutils literal notranslate"><span class="pre">.OTHER</span></code> files if they are still present in the
+working tree.</p>
+<p>When you want to pick one set of changes over the other, you can use <code class="docutils literal notranslate"><span class="pre">brz</span>
+<span class="pre">resolve</span></code> with one of the following actions:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">mv</span> <span class="pre">FILE.THIS</span> <span class="pre">FILE</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">mv</span> <span class="pre">FILE.OTHER</span> <span class="pre">FILE</span></code>.</li>
+</ul>
+<p>Note that if you have modified <code class="docutils literal notranslate"><span class="pre">FILE.THIS</span></code> or <code class="docutils literal notranslate"><span class="pre">FILE.OTHER</span></code>, these
+modifications will be taken into account.</p>
+</div>
+<div class="section" id="content-conflicts">
+<h2>Content conflicts<a class="headerlink" href="#content-conflicts" title="Permalink to this headline">¶</a></h2>
+<p>Typical message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Contents</span> <span class="n">conflict</span> <span class="ow">in</span> <span class="n">FILE</span>
+</pre></div>
+</div>
+<p>This conflict happens when there are conflicting changes in the working tree
+and the merge source, but the conflicted items are not text files.  They may
+be binary files, or symlinks, or directories.  It can even happen with files
+that are deleted on one side, and modified on the other.</p>
+<p>Like text conflicts, Bazaar will emit THIS, OTHER and BASE files.  (They may be
+regular files, symlinks or directories).  But it will not include a “main copy”
+of the file with herringbone conflict markers.  It will appear that the “main
+copy” has been renamed to THIS or OTHER.</p>
+<p>To resolve that kind of conflict, you should rebuild FILE from either version
+or a combination of both.</p>
+<p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">FILE.THIS</span> <span class="pre">FILE</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">FILE.OTHER</span> <span class="pre">FILE</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+</ul>
+<p>Any action will also delete the previously generated <code class="docutils literal notranslate"><span class="pre">.BASE</span></code>, <code class="docutils literal notranslate"><span class="pre">.THIS</span></code> and
+<code class="docutils literal notranslate"><span class="pre">.OTHER</span></code> files if they are still present in the working tree.</p>
+<p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
+</div>
+<div class="section" id="tag-conflicts">
+<h2>Tag conflicts<a class="headerlink" href="#tag-conflicts" title="Permalink to this headline">¶</a></h2>
+<p>Typical message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Conflicting</span> <span class="n">tags</span><span class="p">:</span>
+    <span class="n">version</span><span class="o">-</span><span class="mf">0.1</span>
+</pre></div>
+</div>
+<p>When pulling from or pushing to another branch, Bazaar informs you about tags
+that conflict between the two branches; that is the same tag points to two
+different revisions.  You need not resolve these conflicts, but subsequent
+uses of pull or push will result in the same message.</p>
+<p>To resolve the conflict, you must apply the correct tags to either the target
+branch or the source branch as appropriate.  Use “brz tags –show-ids -d
+SOURCE_URL” to see the tags in the source branch.  If you want to make the
+target branch’s tags match the source branch, then in the target branch do
+<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">tag</span> <span class="pre">--force</span> <span class="pre">-r</span> <span class="pre">revid:REVISION_ID</span> <span class="pre">CONFLICTING_TAG</span></code> for each of the
+CONFLICTING_TAGs, where REVISION_ID comes from the list of tags in the source
+branch.  You need not call “brz resolve” after doing this.  To resolve in
+favor of the target branch, you need to similarly use <code class="docutils literal notranslate"><span class="pre">tag</span> <span class="pre">--force</span></code> in the
+source branch.  (Note that pulling or pushing using –overwrite will overwrite
+all tags as well.)</p>
+</div>
+<div class="section" id="duplicate-paths">
+<h2>Duplicate paths<a class="headerlink" href="#duplicate-paths" title="Permalink to this headline">¶</a></h2>
+<p>Typical message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Conflict</span> <span class="n">adding</span> <span class="n">file</span> <span class="n">FILE</span><span class="o">.</span>  <span class="n">Moved</span> <span class="n">existing</span> <span class="n">file</span> <span class="n">to</span> <span class="n">FILE</span><span class="o">.</span><span class="n">moved</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>Sometimes Bazaar will attempt to create a file using a pathname that has
+already been used.  The existing file will be renamed to “FILE.moved”.</p>
+<p>To resolve that kind of conflict, you should rebuild FILE from either version
+or a combination of both.</p>
+<p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">FILE</span> <span class="pre">;</span> <span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">FILE.moved</span> <span class="pre">FILE</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">FILE.moved</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+</ul>
+<p>Note that you must get rid of FILE.moved before using <code class="docutils literal notranslate"><span class="pre">--action=done</span></code>.</p>
+<p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
+</div>
+<div class="section" id="unversioned-parent">
+<h2>Unversioned parent<a class="headerlink" href="#unversioned-parent" title="Permalink to this headline">¶</a></h2>
+<p>Typical message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Conflict</span> <span class="n">because</span> <span class="n">FILE</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">versioned</span><span class="p">,</span> <span class="n">but</span> <span class="n">has</span> <span class="n">versioned</span> <span class="n">children</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>Sometimes Bazaar will attempt to create a file whose parent directory is not
+versioned.  This happens when the directory has been deleted in the target,
+but has a new child in the source, or vice versa.  In this situation, Bazaar
+will version the parent directory as well.  Resolving this issue depends
+very much on the particular scenario.  You may wish to rename or delete either
+the file or the directory.  When you are satisfied, you can run “brz resolve
+FILE” to mark the conflict as resolved.</p>
+</div>
+<div class="section" id="missing-parent">
+<h2>Missing parent<a class="headerlink" href="#missing-parent" title="Permalink to this headline">¶</a></h2>
+<p>Typical message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Conflict</span> <span class="n">adding</span> <span class="n">files</span> <span class="n">to</span> <span class="n">FILE</span><span class="o">.</span>  <span class="n">Created</span> <span class="n">directory</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>This happens when a directory has been deleted in the target, but has new
+children in the source.  This is similar to the “unversioned parent” conflict,
+except that the parent directory does not <em>exist</em>, instead of just being
+unversioned.  In this situation, Bazaar will create the missing parent.
+Resolving this issue depends very much on the particular scenario.</p>
+<p>To resolve that kind of conflict, you should either remove or rename the
+children or the directory or a combination of both.</p>
+<p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">directory</span></code> including the
+children,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will acknowledge Bazaar choice to keep the children
+and restoring the directory,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+</ul>
+<p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
+</div>
+<div class="section" id="deleting-parent">
+<h2>Deleting parent<a class="headerlink" href="#deleting-parent" title="Permalink to this headline">¶</a></h2>
+<p>Typical message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Conflict</span><span class="p">:</span> <span class="n">can</span><span class="s1">&#39;t delete DIR because it is not empty.  Not deleting.</span>
+</pre></div>
+</div>
+<p>This is the opposite of “missing parent”.  A directory is deleted in the
+source, but has new children in the target (either because a directory
+deletion is merged or because the merge introduce new children).  Bazaar
+will retain the directory.  Resolving this issue depends very much on the
+particular scenario.</p>
+<p>To resolve that kind of conflict, you should either remove or rename the
+children or the directory or a combination of both.</p>
+<p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will acknowledge Bazaar choice to keep the directory,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">directory</span></code> including the
+children,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+</ul>
+<p>Note that when merging a directory deletion, if unversioned files are
+present, they become potential orphans has they don’t have a directory
+parent anymore.</p>
+<p>Handling such orphans, <em>before</em> the conflict is created, is controlled by
+setting the <code class="docutils literal notranslate"><span class="pre">brz.transform.orphan_policy</span></code> configuration option.</p>
+<p>There are two possible values for this option:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">conflict</span></code> (the default): will leave the orphans in place and
+generate a conflicts,</li>
+<li><code class="docutils literal notranslate"><span class="pre">move</span></code>: will move the orphans to a <code class="docutils literal notranslate"><span class="pre">brz-orphans</span></code> directory at the root
+of the working tree with names like <code class="docutils literal notranslate"><span class="pre">&lt;file&gt;.~#~</span></code>.</li>
+</ul>
+<p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
+</div>
+<div class="section" id="path-conflict">
+<h2>Path conflict<a class="headerlink" href="#path-conflict" title="Permalink to this headline">¶</a></h2>
+<p>Typical message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Path</span> <span class="n">conflict</span><span class="p">:</span> <span class="n">PATH1</span> <span class="o">/</span> <span class="n">PATH2</span>
+</pre></div>
+</div>
+<p>This happens when the source and target have each modified the name or parent
+directory of a file.  Bazaar will use the path elements from the source.</p>
+<p>To resolve that kind of conflict, you just have to decide what name should be
+retained for the file involved.</p>
+<p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will revert Bazaar choice and keep <code class="docutils literal notranslate"><span class="pre">PATH1</span></code> by
+issuing <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">PATH2</span> <span class="pre">PATH1</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will acknowledge Bazaar choice of keeping <code class="docutils literal notranslate"><span class="pre">PATH2</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+</ul>
+<p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
+</div>
+<div class="section" id="parent-loop">
+<h2>Parent loop<a class="headerlink" href="#parent-loop" title="Permalink to this headline">¶</a></h2>
+<p>Typical message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Conflict</span> <span class="n">moving</span> <span class="n">FILE</span> <span class="n">into</span> <span class="n">DIRECTORY</span><span class="o">.</span>  <span class="n">Cancelled</span> <span class="n">move</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>This happens when the source and the target have each moved directories, so
+that, if the change could be applied, a directory would be contained by itself.
+For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz init
+$ brz mkdir white
+$ brz mkdir black
+$ brz commit -m &quot;BASE&quot;
+$ brz branch . ../other
+$ brz mv white black
+$ brz commit -m &quot;THIS&quot;
+$ brz mv ../other/black ../other/white
+$ brz commit ../other -m &quot;OTHER&quot;
+$ brz merge ../other
+</pre></div>
+</div>
+<p>In this situation, Bazaar will cancel the move, and leave <code class="docutils literal notranslate"><span class="pre">white</span></code> in
+<code class="docutils literal notranslate"><span class="pre">black</span></code>.  To resolve that kind of conflict, you just have to decide what
+name should be retained for the directories involved.</p>
+<p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will acknowledge Bazaar choice of leaving <code class="docutils literal notranslate"><span class="pre">white</span></code>
+in <code class="docutils literal notranslate"><span class="pre">black</span></code>,</li>
+<li><dl class="first docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will revert Bazaar choice and move <code class="docutils literal notranslate"><span class="pre">black</span></code> in</dt>
+<dd><code class="docutils literal notranslate"><span class="pre">white</span></code> by issuing <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">black/white</span> <span class="pre">white</span> <span class="pre">;</span> <span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">black</span> <span class="pre">white</span></code>,</dd>
+</dl>
+</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+</ul>
+<p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
+</div>
+<div class="section" id="non-directory-parent">
+<h2>Non-directory parent<a class="headerlink" href="#non-directory-parent" title="Permalink to this headline">¶</a></h2>
+<p>Typical message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Conflict</span><span class="p">:</span> <span class="n">foo</span><span class="o">.</span><span class="n">new</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">a</span> <span class="n">directory</span><span class="p">,</span> <span class="n">but</span> <span class="n">has</span> <span class="n">files</span> <span class="ow">in</span> <span class="n">it</span><span class="o">.</span>
+<span class="n">Created</span> <span class="n">directory</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>This happens when one side has added files to a directory, and the other side
+has changed the directory into a file or symlink.  For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz init
+$ brz mkdir foo
+$ brz commit -m &quot;BASE&quot;
+$ brz branch . ../other
+$ rmdir foo
+$ touch foo
+$ brz commit -m &quot;THIS&quot;
+$ brz mkdir ../other/foo/bar
+$ brz commit ../other -m &quot;OTHER&quot;
+$ brz merge ../other
+</pre></div>
+</div>
+<p>To resolve that kind of conflict, you have to decide what name should be
+retained for the file, directory or symlink involved.</p>
+<p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">--force</span> <span class="pre">foo.new</span></code> and
+<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">add</span> <span class="pre">foo</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">--force</span> <span class="pre">foo</span></code> and
+<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">foo.new</span> <span class="pre">foo</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+</ul>
+<p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
+</div>
+<div class="section" id="malformedtransform">
+<h2>MalformedTransform<a class="headerlink" href="#malformedtransform" title="Permalink to this headline">¶</a></h2>
+<p>It is possible (though very rare) for Bazaar to raise a MalformedTransform
+exception.  This means that Bazaar encountered a filesystem conflict that it was
+unable to resolve.  This usually indicates a bug.  Please let us know if you
+encounter this.  Our bug tracker is at <a class="reference external" href="https://launchpad.net/bzr/+bugs">https://launchpad.net/bzr/+bugs</a></p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="configuration-help.html" title="Configuration Settings"
+              >previous</a> |
+            <a href="current-formats-help.html" title="Current Storage Formats"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/conflict-types-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

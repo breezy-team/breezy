@@ -1,0 +1,88 @@
+ignore
+======
+
+:Purpose: Ignore specified files or patterns.
+:Usage:   brz ignore [NAME_PATTERN...]
+
+:Options:
+  --default-rules       Display the default ignore rules that brz uses.
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  See ``brz help patterns`` for details on the syntax of patterns.
+  
+  If a .bzrignore file does not exist, the ignore command
+  will create one and add the specified files or patterns to the newly
+  created file. The ignore command will also automatically add the
+  .bzrignore file to be versioned. Creating a .bzrignore file without
+  the use of the ignore command will require an explicit add command.
+  
+  To remove patterns from the ignore list, edit the .bzrignore file.
+  After adding, editing or deleting that file either indirectly by
+  using this command or directly by using an editor, be sure to commit
+  it.
+  
+  Breezy also supports a global ignore file ~/.config/breezy/ignore. On
+  Windows the global ignore file can be found in the application data
+  directory as
+  C:\Documents and Settings\<user>\Application Data\Breezy\3.0\ignore.
+  Global ignores are not touched by this command. The global ignore file
+  can be edited directly using an editor.
+  
+  Patterns prefixed with '!' are exceptions to ignore patterns and take
+  precedence over regular ignores.  Such exceptions are used to specify
+  files that should be versioned which would otherwise be ignored.
+  
+  Patterns prefixed with '!!' act as regular ignore patterns, but have
+  precedence over the '!' exception patterns.
+  
+  * Ignore patterns containing shell wildcards must be quoted from
+    the shell on Unix.
+  
+  * Ignore patterns starting with "#" act as comments in the ignore file.
+    To ignore patterns that begin with that character, use the "RE:" prefix.
+
+:Examples:
+    Ignore the top level Makefile::
+
+        brz ignore ./Makefile
+
+    Ignore .class files in all directories...::
+
+        brz ignore "*.class"
+
+    ...but do not ignore "special.class"::
+
+        brz ignore "!special.class"
+
+    Ignore files whose name begins with the "#" character::
+
+        brz ignore "RE:^#"
+
+    Ignore .o files under the lib directory::
+
+        brz ignore "lib/**/*.o"
+
+    Ignore .o files under the lib directory::
+
+        brz ignore "RE:lib/.*\.o"
+
+    Ignore everything but the "debian" toplevel directory::
+
+        brz ignore "RE:(?!debian/).*"
+
+    Ignore everything except the "local" toplevel directory,
+    but always ignore autosave files ending in ~, even under local/::
+
+        brz ignore "*"
+        brz ignore "!./local"
+        brz ignore "!!*~"
+
+:See also: :doc:`ignored <ignored-help>`, :doc:`patterns <patterns-help>`, :doc:`status <status-help>`
+
+

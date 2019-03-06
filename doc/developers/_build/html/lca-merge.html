@@ -1,0 +1,321 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>LCA Merge &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Network Protocol" href="network-protocol.html" />
+    <link rel="prev" title="Inventories" href="inventory.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="inventory.html" title="Inventories"
+             accesskey="P">previous</a> |
+          <a href="network-protocol.html" title="Network Protocol"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="lca-merge">
+<h1>LCA Merge<a class="headerlink" href="#lca-merge" title="Permalink to this headline">¶</a></h1>
+<p>by Aaron Bentley</p>
+<div class="section" id="essential-characteristics">
+<h2>Essential characteristics<a class="headerlink" href="#essential-characteristics" title="Permalink to this headline">¶</a></h2>
+<p>In the general case (no criss-cross), it is a three-way merge.  When
+there is a criss-cross at the tree level, but not for the particular
+file, it is still a three-way merge.  When there’s a file-level
+criss-cross, it’s superior to a three-way merge.</p>
+</div>
+<div class="section" id="algorithm">
+<h2>Algorithm<a class="headerlink" href="#algorithm" title="Permalink to this headline">¶</a></h2>
+<p>First, we compare the files we are trying to merge, and find the lines
+that differ.  Next, we try to determine why they differ; this is
+essential to the merge operation, because it affects how we resolve the
+differences.  In this merger, there are three possible outcomes:</p>
+<ol class="arabic simple">
+<li>The line was added in this version: “new-this”</li>
+<li>The line was deleted in the other version: “killed-other”</li>
+<li>The line was preserved as part of merge resolution in this version,
+but deleted in the other version: “conflicted-this”</li>
+</ol>
+<p>Option 3 is new, but I believe it is essential.  When each side has made
+a conflicting merge resolution, we should let the user decide how to
+combine the two resolutions, i.e. we should emit a conflict.  We cannot
+silently drop the line, or silently keep the line, which can happen if
+we choose options 1 or 2.  If we choose options 1 or 2, there’s also a
+possibility that a conflict will be produced, but no guarantee.  We need
+a guarantee, which is why we need a new possible outcome.</p>
+<p>To decide whether a line is “new-this”, “killed-other” or
+“conflicted-this”, we compare this version against the versions from
+each “least common ancestor” (LCA), in graph terminology.  For each LCA
+version, if the line is not present in the LCA version, we add it to the
+“new” set.  If the line is present in the LCA version, we add it to the
+“killed” set.</p>
+<p>When we are done going through each LCA version, each unique line will
+be in at least one of the sets.  If it is only in the “new” set, it’s
+handled as “new-this”.  If it is only in the “killed” set, it’s handled
+as “killed-other”.  If it is in both sets, it’s handled as
+“conflicted-this”.</p>
+<p>The logic here is a bit tricky: first, we know that the line is present
+in some, but not all, LCAs.  We can assume that all LCAs were produced
+by merges of the same sets of revisions.  That means that in those LCAs,
+there were different merge resolutions.  Since THIS and OTHER disagree
+about whether the line is present, those differences have propagated
+into THIS and OTHER.  Therefore, we should declare that the lines are in
+conflict, and let the user handle the issue.</p>
+</div>
+<div class="section" id="lca-merge-and-three-way-merge">
+<h2>LCA merge and Three-way merge<a class="headerlink" href="#lca-merge-and-three-way-merge" title="Permalink to this headline">¶</a></h2>
+<p>Now, in the common case, there’s a single LCA, and LCA merge behaves as
+a three-way merge.  Since there’s only one LCA, we cannot get the
+“conflicted-this” outcome, only “new-this” or “killed-other.  Let’s look
+at the typical description of three-way merges:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="17%" />
+<col width="20%" />
+<col width="23%" />
+<col width="40%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>THIS</td>
+<td>BASE</td>
+<td>OTHER</td>
+<td>OUT</td>
+</tr>
+<tr class="row-even"><td>A</td>
+<td>A</td>
+<td>A</td>
+<td>A</td>
+</tr>
+<tr class="row-odd"><td>A</td>
+<td>B</td>
+<td>A</td>
+<td>A</td>
+</tr>
+<tr class="row-even"><td>A</td>
+<td>B</td>
+<td>B</td>
+<td>A</td>
+</tr>
+<tr class="row-odd"><td>A</td>
+<td>A</td>
+<td>B</td>
+<td>B</td>
+</tr>
+<tr class="row-even"><td>A</td>
+<td>B</td>
+<td>C</td>
+<td>*conflict*</td>
+</tr>
+</tbody>
+</table>
+<p>Now, let’s assume that BASE is a common ancestor, as is typically the
+case.  In fact, for best-case merges, BASE is the sole LCA.</p>
+<p>We always pick the version that represents a change from BASE, if there
+is one.  For the AAAA line, there is no change, so the output is
+rightfully BASE/THIS/OTHER.  For ABAA, the THIS and OTHER are changes
+from BASE, and they are the same change so they both win.  (This case is
+sometimes called convergence.)  For ABBA, THIS is a change from BASE, so
+THIS wins.  For AABB, OTHER is a change from BASE, so OTHER wins.  For
+ABC*, THIS and OTHER are both changes to BASE, but they are different
+changes, so they can’t both win cleanly.  Instead, we have a conflict.</p>
+<p>Now in three-way merging, we typically talk about regions of text.  In
+weave/knit/newness/lca merge, we also have regions.  Each contiguous
+group of “unchanged” lines is a region, and the areas between them are
+also regions.</p>
+<p>Let’s assign a to THIS and b to OTHER.  “unchanged” regions represent
+the AAAA or ABAA cases; it doesn’t matter which, because the outcome is
+the same regardless.  Regions which consist of only “new-a” or
+“killed-a” represent the ABBA case.  Regions which consist of only
+“new-b” or “killed-b” represent the AABB case.  Regions which have
+(new-a or killed-a) AND (new-b or killed-b) are the ABC* case– both
+sides have made changes, and they are different changes, so a conflict
+must be emitted.</p>
+<p>This is what I mean when I say that it is a three-way merge in the
+common case; if there is only one LCA, then it is merely an alternative
+implementation of three-way.  (One that happens to automatically do
+<code class="docutils literal notranslate"><span class="pre">--reprocess</span></code>, ftw).</p>
+</div>
+<div class="section" id="exception-to-three-way-behavior">
+<h2>Exception to three-way behavior<a class="headerlink" href="#exception-to-three-way-behavior" title="Permalink to this headline">¶</a></h2>
+<p>There is a special case of three-way merge which LCA merge handles differently
+from our default “merge3” algorithm:
+BASE has content X, THIS deletes the content, and OTHER changes X to Y.  In
+this case, LCA merge emits Y in its output and does not indicate a conflict.
+merge3 would output Y, but would also indicate a conflict.  (This is also the
+behavior in the inverse case where OTHER has nothing and THIS has Y.)</p>
+<p>This behavior is due the way LCA determines basic conflicts; they
+can only be emitted when THIS and OTHER each have unique lines between common
+lines.  If THIS does not have unique lines in this position, conflicts will not
+be emitted, even if its (lack of) content is unique.</p>
+<p>This behavior difference is shared with “weave” merge.  I hope that a future
+revision of LCA merge will handle this case as merge3 would.</p>
+</div>
+<div class="section" id="why-a-new-name">
+<h2>Why a new name<a class="headerlink" href="#why-a-new-name" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li>It was time.  Although knit / annotate merge and newness merge have
+tried to emulate the behavior of the original weave merge algorithm,
+<code class="docutils literal notranslate"><span class="pre">--merge-type=weave</span></code> hasn’t been based on weaves for a long time.</li>
+<li>Behavior differences.  This algorithm should behave like a three-way
+merge in the common case, while its predecessors did not.  It also has
+explicit support for handling conflicting merge resolutions, so it
+should behave better in criss-cross merge scenarios.</li>
+</ol>
+</div>
+<div class="section" id="performance">
+<h2>Performance<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h2>
+<p>Unlike the current “weave” merge implementation, lca merge does not
+perform any whole-history operations.  LCA selection should scale with
+the number of uncommon revisions.  Text comparison time should scale
+mO(n<sup>2</sup>), where m is the number of LCAs, and n is the number of lines
+in the file.  The current weave merge compares each uncommon ancestor,
+potentially several times, so it is &gt;= kO(n<sup>2</sup>), where k is the
+number of uncommon ancestors.  So “lca” should beat “weave” both in history
+analysis time and in text comparison time.</p>
+</div>
+</div>
+<div class="section" id="possible-flaws">
+<h1>Possible flaws<a class="headerlink" href="#possible-flaws" title="Permalink to this headline">¶</a></h1>
+<ol class="arabic simple">
+<li>Inaccurate LCA selection.  Our current LCA algorithm uses
+<code class="docutils literal notranslate"><span class="pre">Graph.heads()</span></code>, which is known to be flawed.  It may occasionally give
+bad results.  This risk is mitigated by the fact that the per-file graphs
+tend to be simpler than the revision graph.  And since we’re already using
+this LCA algorithm, this is not an additional risk.  I hope that John Meinel
+will soon have a fixed version of <code class="docutils literal notranslate"><span class="pre">Graph.heads</span></code> for us.</li>
+<li>False matches.  Weaves have a concept of line identity, but knits and
+later formats do not.  So a line may appear to be common to two files, when
+in fact it was introduced separately into each for entirely different
+reasons.  This risk is the same for three-way merging.  It is mitigated by
+using Patience sequence matching, which a longest-common-subsequence match.</li>
+</ol>
+</div>
+<div class="section" id="acknowledgements">
+<h1>Acknowledgements<a class="headerlink" href="#acknowledgements" title="Permalink to this headline">¶</a></h1>
+<p>I think this could be a great merge algorithm, and a candidate to make
+our default, but this work would not have been possible without the work
+of others, especially:</p>
+<ul class="simple">
+<li>Martin Pool’s weave merge and knit/annotate merge algorithms.</li>
+<li>Bram Cohen’s discussions of merge algorithms</li>
+<li>Andrew Tridgell’s dissection of BitKeeper merge</li>
+<li>Nathaniel Smith’s analysis of why criss-cross histories necessarily
+produce poor three-way merges.</li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="inventory.html" title="Inventories"
+              >previous</a> |
+            <a href="network-protocol.html" title="Network Protocol"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/lca-merge.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

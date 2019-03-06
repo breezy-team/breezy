@@ -1,0 +1,81 @@
+Recording changes
+=================
+
+brz commit
+----------
+
+When the working tree state is satisfactory, it can be **committed** to
+the branch, creating a new revision holding a snapshot of that state.
+
+The **commit** command takes a message describing the changes in the
+revision.  It also records your userid, the current time and timezone, and
+the inventory and contents of the tree.  The commit message is specified
+by the ``-m`` or ``--message`` option. You can enter a multi-line commit
+message; in most shells you can enter this just by leaving the quotes open
+at the end of the line.
+
+::
+
+    % brz commit -m "added my first file"
+
+You can also use the ``-F`` option to take the message from a file.  Some
+people like to make notes for a commit message while they work, then
+review the diff to make sure they did what they said they did.  (This file
+can also be useful when you pick up your work after a break.)
+
+Message from an editor
+----------------------
+
+If you use neither the ``-m`` nor the ``-F`` option then brz will open an
+editor for you to enter a message.  The editor to run is controlled by
+your ``$VISUAL`` or ``$EDITOR`` environment variable, which can be overridden
+by the ``editor`` setting in ``~/.config/breezy/breezy.conf``; ``$BZR_EDITOR``
+will override either of the above mentioned editor options.  If you quit the
+editor without making any changes, the commit will be cancelled.
+
+The file that is opened in the editor contains a horizontal line. The part
+of the file below this line is included for information only, and will not
+form part of the commit message. Below the separator is shown the list of
+files that are changed in the commit. You should write your message above
+the line, and then save the file and exit.
+
+If you would like to see the diff that will be committed as you edit the
+message you can use the ``--show-diff`` option to ``commit``. This will include
+the diff in the editor when it is opened, below the separator and the
+information about the files that will be committed. This means that you can
+read it as you write the message, but the diff itself wont be seen in the
+commit message when you have finished. If you would like parts to be
+included in the message you can copy and paste them above the separator.
+
+Selective commit
+----------------
+
+If you give file or directory names on the commit command line then only
+the changes to those files will be committed.  For example::
+
+    % brz commit -m "documentation fix" commit.py
+
+By default brz always commits all changes to the tree, even if run from a
+subdirectory.  To commit from only the current directory down, use::
+
+    % brz commit .
+
+Giving credit for a change
+--------------------------
+
+If you didn't actually write the changes that you are about to commit, for instance
+if you are applying a patch from someone else, you can use the ``--author`` commit
+option to give them credit for the change::
+
+    % brz commit --author "Jane Rey <jrey@example.com>"
+
+The person that you specify there will be recorded as the "author" of the revision,
+and you will be recorded as the "committer" of the revision.
+
+If more than one person works on the changes for a revision, for instance if you
+are pair-programming, then you can record this by specifying ``--author`` multiple
+times::
+
+    % brz commit --author "Jane Rey <jrey@example.com>" \
+        --author "John Doe <jdoe@example.com>"
+

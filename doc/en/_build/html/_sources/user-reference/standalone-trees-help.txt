@@ -1,0 +1,14 @@
+Standalone Trees
+================
+
+
+A standalone tree is a working tree with an associated repository. It
+is an independently usable branch, with no dependencies on any other.
+Creating a standalone tree (via brz init) is the quickest way to put
+an existing project under version control.
+
+Related Commands::
+
+  init    Make a directory into a versioned branch.
+
+

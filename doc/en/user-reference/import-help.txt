@@ -1,0 +1,25 @@
+import
+======
+
+:Purpose: Import sources from a directory, tarball or zip file
+:Usage:   brz import SOURCE [TREE]
+
+:Options:
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  This command will import a directory, tarball or zip file into a bzr
+  tree, replacing any versioned files already present.  If a directory is
+  specified, it is used as the target.  If the directory does not exist, or
+  is not versioned, it is created.
+  
+  Tarballs may be gzip or bzip2 compressed.  This is autodetected.
+  
+  If the tarball or zip has a single root directory, that directory is
+  stripped when extracting the tarball.  This is not done for directories.
+
+
+

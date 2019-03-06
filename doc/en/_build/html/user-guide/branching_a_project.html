@@ -1,0 +1,247 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Branching a project &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Merging changes" href="merging_changes.html" />
+    <link rel="prev" title="Working with another" href="partner_intro.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="partner_intro.html" title="Working with another"
+             accesskey="P">previous</a> |
+          <a href="merging_changes.html" title="Merging changes"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="branching-a-project">
+<h1>Branching a project<a class="headerlink" href="#branching-a-project" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="branch-urls">
+<h2>Branch URLs<a class="headerlink" href="#branch-urls" title="Permalink to this headline">¶</a></h2>
+<p>Before someone else can get a copy of your work, you need to
+agree on a transfer technology.
+You may decide to make the top level directory of your branch
+a network share, an approach familiar to Windows users.
+Unix users might prefer access to be
+via SSH, a secure protocol built-in to most SSH servers.
+Breezy is <em>very</em> flexible in this regard with support for
+lots of protocols some of which are given below.</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="17%" />
+<col width="83%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Prefix</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>file://</td>
+<td>Access using the standard filesystem (default).</td>
+</tr>
+<tr class="row-odd"><td>bzr+ssh:/</td>
+<td>Access over SSH (best remote option).</td>
+</tr>
+<tr class="row-even"><td>sftp://</td>
+<td>Access using SFTP (most SSH servers provide SFTP).</td>
+</tr>
+<tr class="row-odd"><td>bzr://</td>
+<td>Fast access using the Breezy smart server.</td>
+</tr>
+<tr class="row-even"><td>ftp://</td>
+<td>Access using passive FTP.</td>
+</tr>
+<tr class="row-odd"><td>http://</td>
+<td>Access to branches exported by a web server.</td>
+</tr>
+<tr class="row-even"><td>https://</td>
+<td>Encrypted access to branches exported by a web server.</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>As indicated above, branches are identified using URLs with the
+prefix indicating the transfer technology. If no prefix is given,
+normal filenames are assumed. For a complete list of supported
+protocols, see the <code class="docutils literal notranslate"><span class="pre">urlspec</span></code> online help topic or the
+<a class="reference external" href="../user-reference/index.html#url-identifiers">URL Identifiers</a>
+section of the Breezy User Reference.</p>
+<p>URLs are normally resolved relative to the root directory of the server,
+so <code class="docutils literal notranslate"><span class="pre">ftp://example.com/repo/foo</span></code> means the <code class="docutils literal notranslate"><span class="pre">/repo/foo</span></code> directory of
+that host.  (We say ‘normally’ because some server software like Apache
+can be configured to remap URLs arbitrarily, in which case you’ll need to
+look at the server configuration to find out which URL corresponds to
+which directory.)</p>
+<p>To address a path relative to your home directory on the server, use a
+tilde like so: <code class="docutils literal notranslate"><span class="pre">bzr+ssh://example.com/~/public_html</span></code> should map to
+<code class="docutils literal notranslate"><span class="pre">public_html</span></code> within your home directory.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Access over HTTP or HTTPS is read-only by default.
+See <a class="reference external" href="http_smart_server.html#pushing-over-the-http-smart-server">Pushing over the HTTP smart server</a> for
+details on configuring read-write access.</p>
+</div>
+</div>
+<div class="section" id="a-reminder-about-shared-repositories">
+<h2>A reminder about shared repositories<a class="headerlink" href="#a-reminder-about-shared-repositories" title="Permalink to this headline">¶</a></h2>
+<p>Before getting a copy of a branch, have a quick think about
+where to put it on your filesystem. For maximum storage
+efficiency down the track, it is recommended that branches
+be created somewhere under a directory that has been set up
+as a shared repository. (See <a class="reference external" href="organizing_your_workspace.html#feature-branches">Feature branches</a> in
+<a class="reference external" href="organizing_your_workspace.html">Organizing your workspace</a>
+for a commonly used layout.) For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">init</span><span class="o">-</span><span class="n">repo</span> <span class="n">my</span><span class="o">-</span><span class="n">repo</span>
+<span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">repo</span>
+</pre></div>
+</div>
+<p>You are now ready to grab a branch from someone else and
+hack away.</p>
+</div>
+<div class="section" id="the-branch-command">
+<h2>The branch command<a class="headerlink" href="#the-branch-command" title="Permalink to this headline">¶</a></h2>
+<p>To get a branch based on an existing branch, use the <code class="docutils literal notranslate"><span class="pre">branch</span></code> command.
+The syntax is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">URL</span> <span class="p">[</span><span class="n">directory</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>If a directory is not given, one is created based on the last part of
+the URL. Here are some examples showing a drive qualified path (M:/) and an
+SFTP URL respectively:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">M</span><span class="p">:</span><span class="o">/</span><span class="n">cool</span><span class="o">-</span><span class="n">trunk</span>
+<span class="n">brz</span> <span class="n">branch</span> <span class="n">sftp</span><span class="p">:</span><span class="o">//</span><span class="n">bill</span><span class="nd">@mary</span><span class="o">-</span><span class="n">laptop</span><span class="o">/</span><span class="n">cool</span><span class="o">-</span><span class="n">repo</span><span class="o">/</span><span class="n">cool</span><span class="o">-</span><span class="n">trunk</span>
+</pre></div>
+</div>
+<p>This example shows explicitly giving the directory name to use for the
+new branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">mary</span><span class="o">/</span><span class="n">cool</span><span class="o">-</span><span class="n">repo</span><span class="o">/</span><span class="n">cool</span><span class="o">-</span><span class="n">trunk</span> <span class="n">cool</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="time-and-space-considerations">
+<h2>Time and space considerations<a class="headerlink" href="#time-and-space-considerations" title="Permalink to this headline">¶</a></h2>
+<p>Depending on the size of the branch being transferred and the
+speed and latency of the network between your computer and the
+source branch, this initial transfer might take some time.
+Subsequent updates should be much faster as only the
+changes are transferred then.</p>
+<p>Keep in mind that Breezy is transferring the
+complete history of the branch, not just the latest snapshot.
+As a consequence, you can be off the network (or disconnected
+from the network share) after <code class="docutils literal notranslate"><span class="pre">branch</span></code> completes but you’ll
+still be able to <code class="docutils literal notranslate"><span class="pre">log</span></code> and <code class="docutils literal notranslate"><span class="pre">diff</span></code> the history of the
+branch as much as you want. Furthermore, these operations
+are quick as the history is stored locally.</p>
+<p>Note that Breezy uses smart compression technology to
+minimize the amount of disk space required to store version
+history. In many cases, the complete history of a project
+will take up less disk space than the working copy of
+the latest version.</p>
+<p>As explained in later chapters, Breezy also has support for
+<a class="reference external" href="using_checkouts.html#getting-a-lightweight-checkout">lightweight checkouts</a>
+of a branch, i.e. working trees with
+no local storage of history. Of course, disconnected usage
+is not available then but that’s a tradeoff you can decide
+to make if local disk space is really tight for you. Support for
+limited lookback into history - <em>history horizons</em> - is
+currently under development as well.</p>
+</div>
+<div class="section" id="viewing-branch-information">
+<h2>Viewing branch information<a class="headerlink" href="#viewing-branch-information" title="Permalink to this headline">¶</a></h2>
+<p>If you wish to see information about a branch including where it came from,
+use the <code class="docutils literal notranslate"><span class="pre">info</span></code> command. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">info</span> <span class="n">cool</span>
+</pre></div>
+</div>
+<p>If no branch is given, information on the current branch is displayed.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="partner_intro.html" title="Working with another"
+              >previous</a> |
+            <a href="merging_changes.html" title="Merging changes"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/branching_a_project.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

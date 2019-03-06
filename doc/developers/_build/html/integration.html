@@ -1,0 +1,444 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Integrating with Breezy &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Breezy Design Principles" href="principles.html" />
+    <link rel="prev" title="Breezy Architectural Overview" href="overview.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="overview.html" title="Breezy Architectural Overview"
+             accesskey="P">previous</a> |
+          <a href="principles.html" title="Breezy Design Principles"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="integrating-with-breezy">
+<h1>Integrating with Breezy<a class="headerlink" href="#integrating-with-breezy" title="Permalink to this headline">¶</a></h1>
+<p>This document provides some general observations on integrating with
+Breezy and some recipes for typical tasks.  It is intended to be useful to
+someone developing either a plugin or some other piece of software that
+integrates with bzr.  If you want to know about a topic that’s not covered
+here, just ask us.</p>
+<div class="section" id="starting-with-breezy">
+<h2>Starting with breezy<a class="headerlink" href="#starting-with-breezy" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="within-bzr">
+<h3>Within bzr<a class="headerlink" href="#within-bzr" title="Permalink to this headline">¶</a></h3>
+<p>When using breezy within the <code class="docutils literal notranslate"><span class="pre">bzr</span></code> program (for instance as a bzr
+plugin), breezy’s global state is already available for use.</p>
+</div>
+<div class="section" id="from-outside-bzr">
+<h3>From outside bzr<a class="headerlink" href="#from-outside-bzr" title="Permalink to this headline">¶</a></h3>
+<p>To use breezy outside of <code class="docutils literal notranslate"><span class="pre">bzr</span></code> some global state needs to be setup.
+breezy needs ways to handle user input, passwords, a place to emit
+progress bars, logging setup appropriately for your program. The easiest
+way to set all this up in the same fashion <code class="docutils literal notranslate"><span class="pre">bzr</span></code> does is to call
+<code class="docutils literal notranslate"><span class="pre">breezy.initialize</span></code>.</p>
+<p>This returns a context manager within which breezy functions will work
+correctly. See the pydoc for <code class="docutils literal notranslate"><span class="pre">breezy.initialize</span></code> for more information.
+(You can get away without entering the context manager, because the setup
+work happens directly from <code class="docutils literal notranslate"><span class="pre">initialize</span></code>.)</p>
+<p>In Python 2.4 the <code class="docutils literal notranslate"><span class="pre">with</span></code> keyword is not supported and
+so you need to use the context manager manually:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># This sets up your ~/.bzr.log, ui factory and so on and so forth. It is</span>
+<span class="c1"># not safe to use as a doctest.</span>
+<span class="n">library_state</span> <span class="o">=</span> <span class="n">breezy</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+<span class="n">library_state</span><span class="o">.</span><span class="fm">__enter__</span><span class="p">()</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="k">pass</span>
+    <span class="c1"># do stuff here</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">library_state</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="running-bzr-commands">
+<h2>Running bzr commands<a class="headerlink" href="#running-bzr-commands" title="Permalink to this headline">¶</a></h2>
+<p>To run command-line commands in-process:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy.commands</span> <span class="k">import</span> <span class="n">get_command</span>
+
+<span class="n">cmd</span> <span class="o">=</span> <span class="n">get_command</span><span class="p">(</span><span class="s1">&#39;version&#39;</span><span class="p">)</span>
+<span class="n">cmd</span><span class="o">.</span><span class="n">run</span><span class="p">([])</span>
+</pre></div>
+</div>
+<p>This will send output through the current UIFactory; you can redirect this
+elsewhere through the parameters to <cite>breezy.initialize</cite>.</p>
+</div>
+<div class="section" id="manipulating-the-working-tree">
+<h2>Manipulating the Working Tree<a class="headerlink" href="#manipulating-the-working-tree" title="Permalink to this headline">¶</a></h2>
+<p>Most objects in Breezy are in files, named after the class they contain.
+To manipulate the Working Tree we need a valid WorkingTree object, which
+is loaded from the workingtree.py file, eg:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy</span> <span class="k">import</span> <span class="n">workingtree</span>
+<span class="n">wt</span> <span class="o">=</span> <span class="n">workingtree</span><span class="o">.</span><span class="n">WorkingTree</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;/home/jebw/bzrtest&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This gives us a WorkingTree object, which has various methods spread over
+itself, and its parent classes MutableTree and Tree - it’s worth having a
+look through these three files (workingtree.py, mutabletree.py and tree.py)
+to see which methods are available.</p>
+<div class="section" id="compare-trees">
+<h3>Compare trees<a class="headerlink" href="#compare-trees" title="Permalink to this headline">¶</a></h3>
+<p>There are two methods for comparing trees: <code class="docutils literal notranslate"><span class="pre">changes_from</span></code> and
+<code class="docutils literal notranslate"><span class="pre">iter_changes</span></code>.  <code class="docutils literal notranslate"><span class="pre">iter_changes</span></code> is more regular and precise, but it is
+somewhat harder to work with.  See the API documentation for more details.</p>
+<p><code class="docutils literal notranslate"><span class="pre">changes_from</span></code> creates a Delta object showing changes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy</span> <span class="k">import</span> <span class="n">delta</span>
+<span class="n">changes</span> <span class="o">=</span> <span class="n">wt</span><span class="o">.</span><span class="n">changes_from</span><span class="p">(</span><span class="n">wt</span><span class="o">.</span><span class="n">basis_tree</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>This gives us a Delta object, which has several lists of files for each type of
+change, eg changes.added is a list of added files, changes.removed is list
+of removed files, changes.modified is a list of modified files. The contents
+of the lists aren’t just filenames, but include other information as well.
+To grab just the filename we want the first value, eg:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;list of newly added files&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">changes</span><span class="o">.</span><span class="n">added</span><span class="p">:</span>
+  <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> has been added&quot;</span> <span class="o">%</span> <span class="n">filename</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The exception to this is changes.renamed, where the list returned for each
+renamed files contains both the old and new names – one or both may interest
+you, depending on what you’re doing.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;list of renamed files&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">changes</span><span class="o">.</span><span class="n">renamed</span><span class="p">:</span>
+  <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> has been renamed to </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">filename</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="adding-files">
+<h3>Adding Files<a class="headerlink" href="#adding-files" title="Permalink to this headline">¶</a></h3>
+<p>If you want to add files the same way <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">add</span></code> does, you can use
+MutableTree.smart_add.  By default, this is recursive. Paths can either be
+absolute or relative to the workingtree:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wt</span><span class="o">.</span><span class="n">smart_add</span><span class="p">([</span><span class="s1">&#39;dir1/filea.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;fileb.txt&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;/home/jebw/bzrtesttree/filec.txt&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>For more precise control over which files to add, use MutableTree.add:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wt</span><span class="o">.</span><span class="n">add</span><span class="p">([</span><span class="s1">&#39;dir1/filea.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;fileb.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;/home/jebw/bzrtesttree/filec.txt&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="removing-files">
+<h3>Removing Files<a class="headerlink" href="#removing-files" title="Permalink to this headline">¶</a></h3>
+<p>You can remove multiple files at once.  The file paths need to be relative
+to the workingtree:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wt</span><span class="o">.</span><span class="n">remove</span><span class="p">([</span><span class="s1">&#39;filea.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;fileb.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;dir1&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>By default, the files are not deleted, just removed from the inventory.
+To delete them from the filesystem as well:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wt</span><span class="o">.</span><span class="n">remove</span><span class="p">([</span><span class="s1">&#39;filea.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;fileb.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;dir1&#39;</span><span class="p">],</span> <span class="n">keep_files</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="renaming-a-file">
+<h3>Renaming a File<a class="headerlink" href="#renaming-a-file" title="Permalink to this headline">¶</a></h3>
+<p>You can rename one file to a different name using WorkingTree.rename_one.
+You just provide the old and new names, eg:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wt</span><span class="o">.</span><span class="n">rename_one</span><span class="p">(</span><span class="s1">&#39;oldfile.txt&#39;</span><span class="p">,</span><span class="s1">&#39;newfile.txt&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="moving-files">
+<h3>Moving Files<a class="headerlink" href="#moving-files" title="Permalink to this headline">¶</a></h3>
+<p>You can move multiple files from one directory into another using
+WorkingTree.move:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wt</span><span class="o">.</span><span class="n">move</span><span class="p">([</span><span class="s1">&#39;olddir/file.txt&#39;</span><span class="p">],</span> <span class="s1">&#39;newdir&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>More complicated renames/moves can be done with transform.TreeTransform,
+which is outside the scope of this document.</p>
+</div>
+<div class="section" id="committing-changes">
+<h3>Committing Changes<a class="headerlink" href="#committing-changes" title="Permalink to this headline">¶</a></h3>
+<p>To commit _all_ the changes to our working tree we can just call the
+WorkingTree’s commit method, giving it a commit message, eg:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wt</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s1">&#39;this is my commit message&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To commit only certain files, we need to provide a list of filenames which we
+want committing, eg:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wt</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="n">message</span><span class="o">=</span><span class="s1">&#39;this is my commit message&#39;</span><span class="p">,</span> <span class="n">specific_files</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;fileA.txt&#39;</span><span class="p">,</span>
+          <span class="s1">&#39;dir2/fileB.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;fileD.txt&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="generating-a-log-for-a-file">
+<h2>Generating a Log for a File<a class="headerlink" href="#generating-a-log-for-a-file" title="Permalink to this headline">¶</a></h2>
+<p>Generating a log is, in itself, simple.  Grab a branch (see below) and pass
+it to show_log together with a log formatter, eg:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy</span> <span class="k">import</span> <span class="n">log</span>
+<span class="kn">from</span> <span class="nn">breezy</span> <span class="k">import</span> <span class="n">branch</span>
+
+<span class="n">b</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">Branch</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;/path/to/bazaar/branch&#39;</span><span class="p">)</span>
+<span class="n">lf</span> <span class="o">=</span> <span class="n">log</span><span class="o">.</span><span class="n">LongLogFormatter</span><span class="p">(</span><span class="n">to_file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+<span class="n">log</span><span class="o">.</span><span class="n">show_log</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">lf</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Three log formatters are included with breezy: LongLogFormatter,
+ShortLogFormatter and LineLogFormatter.  These provide long, short and
+single-line log output formats. It’s also possible to write your own in
+very little code.</p>
+</div>
+<div class="section" id="annotating-a-file">
+<h2>Annotating a File<a class="headerlink" href="#annotating-a-file" title="Permalink to this headline">¶</a></h2>
+<p>To annotate a file, we want to walk every line of a file, retrieving the
+revision which last modified/created that line and then retrieving the
+information for that revision.</p>
+<p>First we get an annotation iterator for the file we are interested in:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tree</span><span class="p">,</span> <span class="n">relpath</span> <span class="o">=</span> <span class="n">workingtree</span><span class="o">.</span><span class="n">WorkingTree</span><span class="o">.</span><span class="n">open_containing</span><span class="p">(</span><span class="s1">&#39;/path/to/file.txt&#39;</span><span class="p">)</span>
+<span class="n">fileid</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">path2id</span><span class="p">(</span><span class="n">relpath</span><span class="p">)</span>
+<span class="n">annotation</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">annotate_iter</span><span class="p">(</span><span class="n">fileid</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>To avoid repeatedly retrieving the same revisions we grab all revisions
+associated with the file at once and build up a map of id to revision
+information. We also build an map of revision numbers, again indexed
+by the revision id:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">revision_ids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">revision_id</span> <span class="k">for</span> <span class="n">revision_id</span><span class="p">,</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">annotation</span><span class="p">)</span>
+<span class="n">revisions</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">branch</span><span class="o">.</span><span class="n">repository</span><span class="o">.</span><span class="n">get_revisions</span><span class="p">(</span><span class="n">revision_ids</span><span class="p">)</span>
+<span class="n">revision_map</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">izip</span><span class="p">(</span><span class="n">revision_ids</span><span class="p">,</span> <span class="n">revisions</span><span class="p">))</span>
+<span class="n">revno_map</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">branch</span><span class="o">.</span><span class="n">get_revision_id_to_revno_map</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Finally, we use our annotation iterator to walk the lines of the file,
+displaying the information from our revision maps as we go:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">revision_id</span><span class="p">,</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">annotation</span> <span class="p">:</span>
+    <span class="n">rev</span> <span class="o">=</span> <span class="n">revision_map</span><span class="p">[</span><span class="n">revision_id</span><span class="p">]</span>
+    <span class="n">revno</span> <span class="o">=</span> <span class="n">revno_map</span><span class="p">[</span><span class="n">revision_id</span><span class="p">]</span>
+    <span class="n">revno_string</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">revno</span><span class="p">)</span>
+    <span class="nb">print</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">revno_string</span><span class="p">,</span> <span class="n">rev</span><span class="o">.</span><span class="n">committer</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="working-with-branches">
+<h2>Working with branches<a class="headerlink" href="#working-with-branches" title="Permalink to this headline">¶</a></h2>
+<p>To work with a branch you need a branch object, created from your branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy</span> <span class="k">import</span> <span class="n">branch</span>
+
+<span class="n">b</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">Branch</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;/home/jebw/bzrtest&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="branching-from-an-existing-branch">
+<h3>Branching from an existing branch<a class="headerlink" href="#branching-from-an-existing-branch" title="Permalink to this headline">¶</a></h3>
+<p>To branch you create a branch object representing the branch you are
+branching from, and supply a path/url to the new branch location.
+The following code clones the bzr.dev branch (the latest copy of the Breezy
+source code) - be warned it has to download 60meg so takes a while to run
+with no feedback:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy</span> <span class="k">import</span> <span class="n">branch</span>
+
+<span class="n">b</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">Branch</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev&#39;</span><span class="p">)</span>
+<span class="n">nb</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">controldir</span><span class="o">.</span><span class="n">sprout</span><span class="p">(</span><span class="s1">&#39;/tmp/newBzrBranch&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">open_branch</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This provides no feedback, since Breezy automatically uses the ‘silent’ UI.</p>
+</div>
+<div class="section" id="pushing-and-pulling-branches">
+<h3>Pushing and pulling branches<a class="headerlink" href="#pushing-and-pulling-branches" title="Permalink to this headline">¶</a></h3>
+<p>To push a branch you need to open the source and destination branches, then
+just call push with the other branch as a parameter:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy</span> <span class="k">import</span> <span class="n">branch</span>
+
+<span class="n">b1</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">Branch</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;file:///home/user/mybranch&#39;</span><span class="p">)</span>
+<span class="n">b2</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">Branch</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev&#39;</span><span class="p">)</span>
+<span class="n">b1</span><span class="o">.</span><span class="n">push</span><span class="p">(</span><span class="n">b2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Pulling is much the same:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">b1</span><span class="o">.</span><span class="n">pull</span><span class="p">(</span><span class="n">b2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you have a working tree, as well as a branch, you should use
+WorkingTree.pull, not Branch.pull.</p>
+<p>This won’t handle conflicts automatically though, so any conflicts will be
+left in the working tree for the user to resolve.</p>
+</div>
+</div>
+<div class="section" id="checkout-from-an-existing-branch">
+<h2>Checkout from an existing branch<a class="headerlink" href="#checkout-from-an-existing-branch" title="Permalink to this headline">¶</a></h2>
+<p>This performs a Lightweight checkout from an existing Branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy</span> <span class="k">import</span> <span class="n">bzrdir</span>
+
+<span class="n">accelerator_tree</span><span class="p">,</span> <span class="n">source</span> <span class="o">=</span> <span class="n">bzrdir</span><span class="o">.</span><span class="n">BzrDir</span><span class="o">.</span><span class="n">open_tree_or_branch</span><span class="p">(</span><span class="s1">&#39;http:URL&#39;</span><span class="p">)</span>
+<span class="n">source</span><span class="o">.</span><span class="n">create_checkout</span><span class="p">(</span><span class="s1">&#39;/tmp/newBzrCheckout&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">accelerator_tree</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To make a heavyweight checkout, change the last line to:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="o">.</span><span class="n">create_checkout</span><span class="p">(</span><span class="s1">&#39;/tmp/newBzrCheckout&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">accelerator_tree</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="history-operations">
+<h2>History Operations<a class="headerlink" href="#history-operations" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="finding-the-last-revision-number-or-id">
+<h3>Finding the last revision number or id<a class="headerlink" href="#finding-the-last-revision-number-or-id" title="Permalink to this headline">¶</a></h3>
+<p>To get the last revision number and id of a branch use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">revision_number</span><span class="p">,</span> <span class="n">revision_id</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">last_revision_info</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>If all you care about is the revision_id there is also the
+method:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">revision_id</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">last_revision</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="getting-the-list-of-revision-ids-that-make-up-a-branch">
+<h3>Getting the list of revision ids that make up a branch<a class="headerlink" href="#getting-the-list-of-revision-ids-that-make-up-a-branch" title="Permalink to this headline">¶</a></h3>
+<p>IMPORTANT: This should be avoided wherever possible, as it scales with the
+length of history:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">revisions</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">revision_history</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>now revisions[0] is the revision id of the first commit, and revs[-1] is the
+revision id of the most recent. Note that if all you want is the last
+revision then you should use branch.last_revision() as described above, as
+it is vastly more efficient.</p>
+</div>
+<div class="section" id="getting-a-revision-object-from-a-revision-id">
+<h3>Getting a Revision object from a revision id<a class="headerlink" href="#getting-a-revision-object-from-a-revision-id" title="Permalink to this headline">¶</a></h3>
+<p>The Revision object has attributes like “message” to get the information
+about the revision:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">repo</span> <span class="o">=</span> <span class="n">branch</span><span class="o">.</span><span class="n">repository</span>
+<span class="n">revision</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">get_revision</span><span class="p">(</span><span class="n">rev_id</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="accessing-the-files-from-a-revision">
+<h3>Accessing the files from a revision<a class="headerlink" href="#accessing-the-files-from-a-revision" title="Permalink to this headline">¶</a></h3>
+<p>To get the file contents and tree shape for a specific revision you need
+a RevisionTree. These are supplied by the repository for a specific
+revision id:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">revtree</span> <span class="o">=</span> <span class="n">repo</span><span class="o">.</span><span class="n">revision_tree</span><span class="p">(</span><span class="n">rev_id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>RevisionTrees, like all trees, can be compared as described in “Comparing
+Trees” above.</p>
+<p>The most common way to list files in a tree is <code class="docutils literal notranslate"><span class="pre">Tree.iter_entries()</span></code>.
+The simplest way to get file content is <code class="docutils literal notranslate"><span class="pre">Tree.get_file()</span></code>.  The best way
+to retrieve file content for large numbers of files <cite>Tree.iter_files_bytes()`</cite></p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="overview.html" title="Breezy Architectural Overview"
+              >previous</a> |
+            <a href="principles.html" title="Breezy Design Principles"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/integration.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

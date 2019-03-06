@@ -1,0 +1,493 @@
+***********************
+Breezy Code Style Guide
+***********************
+
+Code layout
+===========
+
+Please write PEP-8__ compliant code.
+
+__ http://www.python.org/peps/pep-0008.html
+
+One often-missed requirement is that the first line of docstrings
+should be a self-contained one-sentence summary.
+
+We use 4 space indents for blocks, and never use tab characters.  (In vim,
+``set expandtab``.)
+
+Trailing white space should be avoided, but is allowed.
+You should however not make lots of unrelated white space changes.
+
+Unix style newlines (LF) are used.
+
+Each file must have a newline at the end of it.
+
+Lines should be no more than 79 characters if at all possible.
+Lines that continue a long statement may be indented in either of
+two ways:
+
+within the parenthesis or other character that opens the block, e.g.::
+
+    my_long_method(arg1,
+                   arg2,
+                   arg3)
+
+or indented by four spaces::
+
+    my_long_method(arg1,
+        arg2,
+        arg3)
+
+The first is considered clearer by some people; however it can be a bit
+harder to maintain (e.g. when the method name changes), and it does not
+work well if the relevant parenthesis is already far to the right.  Avoid
+this::
+
+     self.legbone.kneebone.shinbone.toebone.shake_it(one,
+                                                     two,
+                                                     three)
+
+but rather ::
+
+     self.legbone.kneebone.shinbone.toebone.shake_it(one,
+         two,
+         three)
+
+or ::
+
+     self.legbone.kneebone.shinbone.toebone.shake_it(
+         one, two, three)
+
+For long lists, we like to add a trailing comma and put the closing
+character on the following line.  This makes it easier to add new items in
+future::
+
+    from breezy.goo import (
+        jam,
+        jelly,
+        marmalade,
+        )
+
+There should be spaces between function parameters, but not between the
+keyword name and the value::
+
+    call(1, 3, cheese=quark)
+
+
+Python versions
+===============
+
+Breezy supports Python 2.7 and Python 3.5 or later.
+
+hasattr and getattr
+===================
+
+``hasattr`` should not be used because it swallows exceptions including
+``KeyboardInterrupt``.  Instead, say something like ::
+
+  if getattr(thing, 'name', None) is None
+
+
+kwargs
+======
+
+``**kwargs`` in the prototype of a function should be used sparingly.
+It can be good on higher-order functions that decorate other functions,
+such as ``addCleanup`` or ``assertRaises``, or on functions that take only
+(or almost only) kwargs, where any kwargs can be passed. 
+
+Otherwise, be careful: if the parameters to a function are a bit complex
+and might vary over time (e.g.  the ``commit`` API) then we prefer to pass an
+object rather than a bag of positional and/or keyword args.  If you have
+an arbitrary set of keys and values that are different with each use (e.g.
+string interpolation inputs) then again that should not be mixed in with
+the regular positional/keyword args, it seems like a different category of
+thing.
+
+
+Imitating standard objects
+==========================
+
+Don't provide methods that imitate built-in classes (eg ``__in__``,
+``__call__``, ``__int__``, ``__getitem__``) unless the class you're
+implementing really does act like the builtin class, in semantics and
+performance.
+
+For example, old code lets you say ``file_id in inv`` but we no longer
+consider this good style.  Instead, say more explicitly
+``inv.has_id(file_id)``.
+
+``__repr__``, ``__cmp__``, ``__str__`` are usually fine.
+
+
+Module Imports
+==============
+
+* Imports should be done at the top-level of the file, unless there is
+  a strong reason to have them lazily loaded when a particular
+  function runs.  Import statements have a cost, so try to make sure
+  they don't run inside hot functions.
+
+* Module names should always be given fully-qualified,
+  i.e. ``breezy.hashcache`` not just ``hashcache``.
+
+
+Naming
+======
+
+Functions, methods or members that are relatively private are given
+a leading underscore prefix.  Names without a leading underscore are
+public not just across modules but to programmers using breezy as an
+API.
+
+We prefer class names to be concatenated capital words (``TestCase``)
+and variables, methods and functions to be lowercase words joined by
+underscores (``revision_id``, ``get_revision``).
+
+For the purposes of naming some names are treated as single compound
+words: "filename", "revno".
+
+Consider naming classes as nouns and functions/methods as verbs.
+
+Try to avoid using abbreviations in names, because there can be
+inconsistency if other people use the full name.
+
+
+Standard Names
+==============
+
+``revision_id`` not ``rev_id`` or ``revid``
+
+Functions that transform one thing to another should be named ``x_to_y``
+(not ``x2y`` as occurs in some old code.)
+
+
+Destructors
+===========
+
+Python destructors (``__del__``) work differently to those of other
+languages.  In particular, bear in mind that destructors may be called
+immediately when the object apparently becomes unreferenced, or at some
+later time, or possibly never at all.  Therefore we have restrictions on
+what can be done inside them.
+
+0. If you think you need to use a ``__del__`` method ask another
+   developer for alternatives.  If you do need to use one, explain
+   why in a comment.
+
+1. Never rely on a ``__del__`` method running.  If there is code that
+   must run, instead have a ``finally`` block or an ``addCleanup`` call an
+   explicit ``close`` method.
+
+2. Never ``import`` from inside a ``__del__`` method, or you may crash the
+   interpreter!!
+
+3. Prior to bzr 2.4, we sometimes used to raise warnings from del methods
+   that the object was not cleaned up or closed.  We no longer do this:
+   failure to close the object doesn't cause a test failure; the warning
+   appears an arbitrary long time after the problem occurred (the object
+   being leaked); merely having a del method inhibits Python gc; the
+   warnings appear to users and upset them; they can also break tests that
+   are checking what appears on stderr.
+
+In short, just don't use ``__del__``.
+
+Cleanup methods
+===============
+
+Often when something has failed later code will fail too, including
+cleanups invoked from ``finally`` blocks.  These secondary failures are
+generally uninteresting compared to the original exception.  ``breezy``
+has some facilities you can use to mitigate this.
+
+* In ``Command`` subclasses, prefer the ``add_cleanup`` method to using
+  ``try``/``finally`` blocks.  E.g. to acquire a lock and ensure it will
+  always be released when the command is done::
+
+    self.add_cleanup(branch.lock_read().unlock)
+
+  This also avoids heavily indented code. It also makes it easier to notice
+  mismatched lock/unlock pairs (and other kinds of resource
+  acquire/release) because there isn't a large block of code separating
+  them.
+
+* Use the ``only_raises`` decorator (from ``breezy.decorators``) when
+  defining methods that are typically called in ``finally`` blocks, such
+  as ``unlock`` methods.  For example, ``@only_raises(LockNotHeld,
+  LockBroken)``.  All errors that are unlikely to be a knock-on failure
+  from a previous failure should be allowed.
+
+* Consider using the ``OperationWithCleanups`` helper from
+  ``breezy.cleanup`` anywhere else you have a ``finally`` block that
+  might fail.
+
+
+Factories
+=========
+
+In some places we have variables which point to callables that construct
+new instances.  That is to say, they can be used a lot like class objects,
+but they shouldn't be *named* like classes.  Things called ``FooBar`` should
+create an instance of ``FooBar``.  A factory method that might create a
+``FooBar`` or might make something else should be called ``foo_factory``.
+
+
+Registries
+==========
+
+Several places in Breezy use (or will use) a registry, which is a
+mapping from names to objects or classes.  The registry allows for
+loading in registered code only when it's needed, and keeping
+associated information such as a help string or description.
+
+
+InterObject and multiple dispatch
+=================================
+
+The ``InterObject`` provides for two-way `multiple dispatch`__: matching
+up for example a source and destination repository to find the right way
+to transfer data between them.
+
+.. __: http://en.wikipedia.org/wiki/Multiple_dispatch
+
+There is a subclass ``InterObject`` classes for each type of object that is
+dispatched this way, e.g. ``InterRepository``.  Calling ``.get()`` on this
+class will return an ``InterObject`` instance providing the best match for
+those parameters, and this instance then has methods for operations
+between the objects.
+
+::
+
+  inter = InterRepository.get(source_repo, target_repo)
+  inter.fetch(revision_id)
+
+``InterRepository`` also acts as a registry-like object for its
+subclasses, and they can be added through ``.register_optimizer``.  The
+right one to run is selected by asking each class, in reverse order of
+registration, whether it ``.is_compatible`` with the relevant objects.
+
+Lazy Imports
+============
+
+To make startup time faster, we use the ``breezy.lazy_import`` module to
+delay importing modules until they are actually used. ``lazy_import`` uses
+the same syntax as regular python imports. So to import a few modules in a
+lazy fashion do::
+
+  from breezy.lazy_import import lazy_import
+  lazy_import(globals(), """
+  import os
+  import subprocess
+  import sys
+  import time
+
+  from breezy import (
+     errors,
+     transport,
+     revision as _mod_revision,
+     )
+  import breezy.transport
+  import breezy.xml5
+  """)
+
+At this point, all of these exist as a ``ImportReplacer`` object, ready to
+be imported once a member is accessed. Also, when importing a module into
+the local namespace, which is likely to clash with variable names, it is
+recommended to prefix it as ``_mod_<module>``. This makes it clearer that
+the variable is a module, and these object should be hidden anyway, since
+they shouldn't be imported into other namespaces.
+
+While it is possible for ``lazy_import()`` to import members of a module
+when using the ``from module import member`` syntax, it is recommended to
+only use that syntax to load sub modules ``from module import submodule``.
+This is because variables and classes can frequently be used without
+needing a sub-member for example::
+
+  lazy_import(globals(), """
+  from module import MyClass
+  """)
+
+  def test(x):
+      return isinstance(x, MyClass)
+
+This will incorrectly fail, because ``MyClass`` is a ``ImportReplacer``
+object, rather than the real class.
+
+It also is incorrect to assign ``ImportReplacer`` objects to other variables.
+Because the replacer only knows about the original name, it is unable to
+replace other variables. The ``ImportReplacer`` class will raise an
+``IllegalUseOfScopeReplacer`` exception if it can figure out that this
+happened. But it requires accessing a member more than once from the new
+variable, so some bugs are not detected right away.
+
+
+The Null revision
+=================
+
+The null revision is the ancestor of all revisions.  Its revno is 0, its
+revision-id is ``null:``, and its tree is the empty tree.  When referring
+to the null revision, please use ``breezy.revision.NULL_REVISION``.  Old
+code sometimes uses ``None`` for the null revision, but this practice is
+being phased out.
+
+
+Object string representations
+=============================
+
+Python prints objects using their ``__repr__`` method when they are
+written to logs, exception tracebacks, or the debugger.  We want
+objects to have useful representations to help in determining what went
+wrong.
+
+If you add a new class you should generally add a ``__repr__`` method
+unless there is an adequate method in a parent class.  There should be a
+test for the repr.
+
+Representations should typically look like Python constructor syntax, but
+they don't need to include every value in the object and they don't need
+to be able to actually execute.  They're to be read by humans, not
+machines.  Don't hardcode the classname in the format, so that we get the
+correct value if the method is inherited by a subclass.  If you're
+printing attributes of the object, including strings, you should normally
+use ``%r`` syntax (to call their repr in turn).
+
+Try to avoid the representation becoming more than one or two lines long.
+(But balance this against including useful information, and simplicity of
+implementation.)
+
+Because repr methods are often called when something has already gone
+wrong, they should be written somewhat more defensively than most code.
+They shouldn't have side effects like doing network or disk
+IO.
+The object may be half-initialized or in some other way in an illegal
+state.  The repr method shouldn't raise an exception, or it may hide the
+(probably more useful) underlying exception.
+
+Example::
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__,
+                           self._transport)
+
+
+Exception handling
+==================
+
+A bare ``except`` statement will catch all exceptions, including ones that
+really should terminate the program such as ``MemoryError`` and
+``KeyboardInterrupt``.  They should rarely be used unless the exception is
+later re-raised.  Even then, think about whether catching just
+``Exception`` (which excludes system errors in Python2.5 and later) would
+be better.
+
+The ``__str__`` method on exceptions should be small and have no side
+effects, following the rules given for `Object string representations`_.
+In particular it should not do any network IO, or complicated
+introspection of other objects.  All the state needed to present the
+exception to the user should be gathered before the error is raised.
+In other words, exceptions should basically be value objects.
+
+
+Test coverage
+=============
+
+All code should be exercised by the test suite.  See the `Breezy Testing
+Guide <http://www.breezy-vcs.org/developers/testing.html>`_ for detailed
+information about writing tests.
+
+
+Assertions
+==========
+
+Do not use the Python ``assert`` statement, either in tests or elsewhere.
+A source test checks that it is not used.  It is ok to explicitly raise
+AssertionError.
+
+Rationale:
+
+* It makes the behaviour vary depending on whether brz is run with -O
+  or not, therefore giving a chance for bugs that occur in one case or
+  the other, several of which have already occurred: assertions with
+  side effects, code which can't continue unless the assertion passes,
+  cases where we should give the user a proper message rather than an
+  assertion failure.
+* It's not that much shorter than an explicit if/raise.
+* It tends to lead to fuzzy thinking about whether the check is
+  actually needed or not, and whether it's an internal error or not
+* It tends to cause look-before-you-leap patterns.
+* It's unsafe if the check is needed to protect the integrity of the
+  user's data.
+* It tends to give poor messages since the developer can get by with
+  no explanatory text at all.
+* We can't rely on people always running with -O in normal use, so we
+  can't use it for tests that are actually expensive.
+* Expensive checks that help developers are better turned on from the
+  test suite or a -D flag.
+* If used instead of ``self.assert*()`` in tests it makes them falsely
+  pass with -O.
+
+emacs setup
+===========
+
+In emacs::
+
+    ;(defface my-invalid-face
+    ;  '((t (:background "Red" :underline t)))
+    ;  "Face used to highlight invalid constructs or other uglyties"
+    ;  )
+
+    (defun my-python-mode-hook ()
+     ;; setup preferred indentation style.
+     (setq fill-column 79)
+     (setq indent-tabs-mode nil) ; no tabs, never, I will not repeat
+    ;  (font-lock-add-keywords 'python-mode
+    ;                         '(("^\\s *\t" . 'my-invalid-face) ; Leading tabs
+    ;                            ("[ \t]+$" . 'my-invalid-face)  ; Trailing spaces
+    ;                            ("^[ \t]+$" . 'my-invalid-face)); Spaces only
+    ;                          )
+     )
+
+    (add-hook 'python-mode-hook 'my-python-mode-hook)
+
+The lines beginning with ';' are comments. They can be activated
+if one want to have a strong notice of some tab/space usage
+violations.
+
+Portability Tips
+================
+
+The ``breezy.osutils`` module has many useful helper functions, including
+some more portable variants of functions in the standard library.
+
+In particular, don't use ``shutil.rmtree`` unless it's acceptable for it
+to fail on Windows if some files are readonly or still open elsewhere.
+Use ``breezy.osutils.rmtree`` instead.
+
+Using the ``open(..).read(..)`` or ``open(..).write(..)`` style chaining
+of methods for reading or writing file content relies on garbage collection
+to close the file which may keep the file open for an undefined period of
+time. This may break some follow up operations like rename on Windows.
+Use ``try/finally`` to explictly close the file. E.g.::
+
+    f = open('foo.txt', 'w')
+    try:
+        f.write(s)
+    finally:
+        f.close()
+
+
+Dynamic imports
+===============
+
+If you need to import a module (or attribute of a module) named in a
+variable:
+
+ * If importing a module, not an attribute, and the module is a top-level
+   module (i.e. has no dots in the name), then it's ok to use the builtin
+   ``__import__``, e.g. ``__import__(module_name)``.
+ * In all other cases, prefer ``breezy.pyutils.get_named_object`` to the
+   built-in ``__import__``.  ``__import__`` has some subtleties and
+   unintuitive behaviours that make it hard to use correctly.
+
+..
+   vim: ft=rst tw=74 ai

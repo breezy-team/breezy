@@ -1,0 +1,32 @@
+Criss-Cross
+===========
+
+
+A criss-cross in the branch history can cause the default merge technique
+to emit more conflicts than would normally be expected.
+
+In complex merge cases, ``brz merge --lca`` or ``brz merge --weave`` may give
+better results.  You may wish to ``brz revert`` the working tree and merge
+again.  Alternatively, use ``brz remerge`` on particular conflicted files.
+
+Criss-crosses occur in a branch's history if two branches merge the same thing
+and then merge one another, or if two branches merge one another at the same
+time.  They can be avoided by having each branch only merge from or into a
+designated central branch (a "star topology").
+
+Criss-crosses cause problems because of the way merge works.  Breezy's default
+merge is a three-way merger; in order to merge OTHER into THIS, it must
+find a basis for comparison, BASE.  Using BASE, it can determine whether
+differences between THIS and OTHER are due to one side adding lines, or
+from another side removing lines.
+
+Criss-crosses mean there is no good choice for a base.  Selecting the recent
+merge points could cause one side's changes to be silently discarded.
+Selecting older merge points (which Breezy does) mean that extra conflicts
+are emitted.
+
+The ``weave`` merge type is not affected by this problem because it uses
+line-origin detection instead of a basis revision to determine the cause of
+differences.
+
+

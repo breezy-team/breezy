@@ -1,0 +1,208 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Reviewing proposed changes to Breezy &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Breezy Code Style Guide" href="code-style.html" />
+    <link rel="prev" title="Breezy Testing Guide" href="testing.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="testing.html" title="Breezy Testing Guide"
+             accesskey="P">previous</a> |
+          <a href="code-style.html" title="Breezy Code Style Guide"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="reviewing-proposed-changes-to-breezy">
+<h1>Reviewing proposed changes to Breezy<a class="headerlink" href="#reviewing-proposed-changes-to-breezy" title="Permalink to this headline">¶</a></h1>
+<p>All non-trivial code changes coming in to Breezy are reviewed by someone else.</p>
+<p>Anyone is welcome to review any patch.  You don’t need to have a full
+understanding of the codebase to find problems in the code, the documentation,
+or the concept of the patch.</p>
+<p>Normally changes by core contributors are reviewed by one other core
+developer, and changes from other people are reviewed by two core
+developers.  Use intelligent discretion about whether the patch is trivial.</p>
+<p>No one likes their merge requests sitting in a queue going nowhere: this
+is pure waste.  We prioritize reviewing existing proposals.</p>
+<p>We do all our code reviews through Launchpad’s merge proposal interface.</p>
+<div class="section" id="reviewing-proposed-changes">
+<h2>Reviewing proposed changes<a class="headerlink" href="#reviewing-proposed-changes" title="Permalink to this headline">¶</a></h2>
+<p>There are three main requirements for code to get in:</p>
+<ul class="simple">
+<li>Doesn’t reduce test coverage: if it adds new methods or commands,
+there should be tests for them.  There is a good test framework
+and plenty of examples to crib from, but if you are having trouble
+working out how to test something feel free to post a draft patch
+and ask for help.</li>
+<li>Doesn’t reduce design clarity, such as by entangling objects
+we’re trying to separate.  This is mostly something the more
+experienced reviewers need to help check.</li>
+<li>Improves bugs, features, speed, or code simplicity.</li>
+</ul>
+<p>Code that goes in should not degrade any of these aspects.  Patches are
+welcome that only cleanup the code without changing the external
+behaviour.  The core developers take care to keep the code quality high
+and understandable while recognising that perfect is sometimes the enemy
+of good.</p>
+<p>It is easy for reviews to make people notice other things which should be
+fixed but those things should not hold up the original fix being accepted.
+New things can easily be recorded in the bug tracker instead.</p>
+<p>It’s normally much easier to review several smaller patches than one large
+one.  You might want to submit a preparatory patch that will make your “real”
+change easier.</p>
+</div>
+<div class="section" id="checklist-for-reviewers">
+<h2>Checklist for reviewers<a class="headerlink" href="#checklist-for-reviewers" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Do you understand what the code’s doing and why?</li>
+<li>Will it perform reasonably for large inputs, both in memory size and
+run time?  Are there some scenarios where performance should be
+measured?</li>
+<li>Is it tested, and are the tests at the right level?  Are there both
+blackbox (command-line level) and API-oriented tests?</li>
+<li>If this change will be visible to end users or API users, is it
+appropriately documented in release notes and/or in whats-new ?</li>
+<li>Does it meet the <a class="reference external" href="code-style.html">coding standards</a>?</li>
+<li>If it changes the user-visible behaviour, does it update the help
+strings and user documentation?</li>
+<li>If it adds a new major concept or standard practice, does it update the
+developer documentation?</li>
+<li>(your ideas here…)</li>
+</ul>
+</div>
+<div class="section" id="reviews-on-launchpad">
+<h2>Reviews on Launchpad<a class="headerlink" href="#reviews-on-launchpad" title="Permalink to this headline">¶</a></h2>
+<p>Anyone can propose or comment on a merge proposal just by creating a
+Launchpad account.</p>
+<p>From &lt;<a class="reference external" href="https://code.launchpad.net/brz/+activereviews">https://code.launchpad.net/brz/+activereviews</a>&gt; you can see all
+currently active reviews, and choose one to comment on.  This page also
+shows proposals that are now approved and should be merged by someone with
+PQM access.</p>
+<p>&lt;<a class="reference external" href="https://help.launchpad.net/Code/Review">https://help.launchpad.net/Code/Review</a>&gt; explains the various merge proposal
+states.  Note that we don’t use state <em>Approved</em> until the patch is completely
+ready to merge.</p>
+</div>
+<div class="section" id="landing-approved-changes">
+<h2>Landing approved changes<a class="headerlink" href="#landing-approved-changes" title="Permalink to this headline">¶</a></h2>
+<p>Once a merge proposal is approved and finished, it’s marked as
+Approved and picked up by the CI (<a class="reference external" href="https://ci.breezy-vcs.org/">https://ci.breezy-vcs.org/</a>),
+which will automatically test and integrate it.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="testing.html" title="Breezy Testing Guide"
+              >previous</a> |
+            <a href="code-style.html" title="Breezy Code Style Guide"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/code-review.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

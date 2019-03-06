@@ -1,0 +1,111 @@
+=======
+Indices
+=======
+
+Status
+======
+
+:Date: 2007-07-14
+
+This document describes the indexing facilities within breezy.
+
+
+.. contents::
+
+
+Motivation
+==========
+
+To provide a clean concept of index that can be reused by different
+components within the codebase rather than being rewritten every time
+by different components.
+
+
+Terminology
+===========
+
+An **index** is a dictionary mapping opaque keys to opaque values.
+Different index types may allow some of the value data to be interpreted
+by the index. For example the ``GraphIndex`` index stores a graph between
+keys as part of the index.
+
+
+Overview
+========
+
+Breezy is moving to a write-once model for repository storage in order to
+achieve lock-free repositories eventually. In order to support this, we are
+making our new index classes **immutable**. That is, one creates a new
+index in a single operation, and after that it is read only. To combine
+two indices a ``Combined*`` index may be used, or an **index merge** may
+be performed by reading the entire value of two (or more) indices and
+writing them into a new index.
+
+General Index API
+=================
+
+We may end up with multiple different Index types (e.g. GraphIndex,
+Index, WhackyIndex). Even though these may require different method
+signatures to operate would strive to keep the signatures and return
+values as similar as possible. e.g.::
+
+    GraphIndexBuilder - add_node(key, value, references)
+    IndexBuilder - add_node(key, value)
+    WhackyIndexBuilder - add_node(key, value, whackiness)
+
+as opposed to something quite different like::
+
+    node = IncrementalBuilder.get_node()
+    node.key = 'foo'
+    node.value = 'bar'
+
+Services
+--------
+
+An initial implementation of indexing can probably get away with a small
+number of primitives. Assuming we have write once index files:
+
+Build index
+~~~~~~~~~~~
+
+This should be done by creating an ``IndexBuilder`` and then calling
+``insert(key, value)`` many times. (Indices that support sorting,
+topological sorting etc, will want specialised insert methods).
+
+When the keys have all been added, a ``finish`` method should be called,
+which will return a file stream to read the index data from.
+
+Retrieve entries from the index
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This should allow random access to the index using readv, so we probably
+want to open the index on a ``Transport``, then use ``iter_entries(keys)``,
+which can return an iterator that yields ``(key, value)`` pairs in
+whatever order makes sense for the index.
+
+Merging of indices
+~~~~~~~~~~~~~~~~~~
+
+Merging of N indices requires a concordance of the keys of the index. So
+we should offer a ``iter_all_entries`` call that has the same return type
+as the ``iter_entries`` call.
+
+Index implementations
+=====================
+
+GraphIndex
+----------
+
+``GraphIndex`` supports graph based lookups. While currently unoptimised
+for reading, the index is quite space efficient at storing the revision
+graph index for Breezy. The ``GraphIndexBuilder`` may be used to create one
+of these indices by calling ``add_node`` until all nodes are added, then
+``finish`` to obtain a file stream containing the index data. Multiple
+indices may be queried using the ``CombinedGraphIndex`` class.
+
+
+
+
+..
+   vim: ft=rst tw=74 ai
+

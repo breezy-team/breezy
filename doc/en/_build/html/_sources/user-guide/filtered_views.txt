@@ -1,0 +1,167 @@
+Filtered views
+==============
+
+Introducing filtered views
+--------------------------
+
+Views provide a mask over the tree so that users can focus on a subset
+of a tree when doing their work. There are several cases where this
+masking can be helpful. For example, technical writers and testers on
+many large projects may prefer to deal with just the directories/files
+in the project of interest to them.
+
+Developers may also wish to break a large set of changes into multiple
+commits by using views. While ``shelve`` and ``unshelve`` let developers
+put some changes aside for a later commit, views let developers specify
+what to include in (instead of exclude from) the next commit.
+
+After creating a view, commands that support a list of files - status,
+diff, commit, etc - effectively have that list of files implicitly
+given each time. An explicit list of files can still be given to these
+commands but the nominated files must be within the current view. In
+contrast, tree-centric commands - pull, merge, update, etc. - continue
+to operate on the whole tree but only report changes relevant to the
+current view. In both cases, Breezy notifies the user each time it uses
+a view implicitly so that it is clear that the operation or output is
+being masked accordingly.
+
+Note: Filtered views are only supported in format 2a, the default in
+Breezy 2.0, or later.
+
+
+Creating a view
+---------------
+
+This is done by specifying the files and directories using the ``view``
+command like this::
+
+  brz view file1 file2 dir1 ...
+
+The output is::
+
+  Using 'my' view: file1, file2, dir1
+
+
+Listing the current view
+------------------------
+
+To see the current view, use the ``view`` command without arguments::
+
+  brz view
+
+If no view is current, a message will be output saying ``No current view.``.
+Otherwise the name and content of the current view will be displayed
+like this::
+
+  'my' view is: a, b, c
+
+
+Switching between views
+-----------------------
+
+In most cases, a view has a short life-span: it is created to make a
+selected change and is deleted once that change is committed. At other
+times, you may wish to create one or more named views and switch
+between them.
+
+To define a named view and switch to it::
+
+    brz view --name view-name file1 dir1 ...
+
+For example::
+
+  brz view --name doc NEWS doc/
+  Using doc view: NEWS, doc/
+
+To list a named view::
+
+  brz view --name view-name
+
+To switch to a named view::
+
+  brz view --switch view-name
+
+To list all views defined::
+
+  brz view --all
+
+
+Temporarily disabling a view
+----------------------------
+
+To disable the current view without deleting it, you can switch to the
+pseudo view called ``off``. This can be useful when you need to see the
+whole tree for an operation or two (e.g. merge) but want to switch back
+to your view after that.
+
+To disable the current view without deleting it::
+
+  brz view --switch off
+
+After doing the operations you need to, you can switch back to the
+view you were using by name. For example, if the previous view used
+the default name::
+
+  brz view --switch my
+
+
+Deleting views
+--------------
+
+To delete the current view::
+
+  brz view --delete
+
+To delete a named view::
+
+  brz view --name view-name --delete
+
+To delete all views::
+
+  brz view --delete --all
+
+
+Things to be aware of
+---------------------
+
+Defining a view does not delete the other files in the working
+tree - it merely provides a "lens" over the working tree.
+
+Views are stored as working tree metadata. They are not
+propagated by branch commands like pull, push and update.
+
+Views are defined in terms of file paths. If you move a
+file in a view to a location outside of the view, the view
+will no longer track that path. For example, if a view is
+defined as ``doc/`` and ``doc/NEWS`` gets moved to ``NEWS``,
+the views stays defined as ``doc/`` and does not get changed
+to ``doc/ NEWS``. Likewise, deleting a file in a view does
+not remove the file from that view.
+
+The commands that use the current view are:
+
+* status
+* diff
+* commit
+* add
+* remove
+* revert
+* mv
+* ls.
+
+Commands that operate on the full tree but only report changes
+inside the current view are:
+
+* pull
+* update
+* merge.
+
+Many commands currently ignore the current view. Over time,
+some of these commands may be added to the lists above as
+the need arises. By design, some commands will most likely
+always ignore the current view because showing the whole
+picture is the better thing to do. Commands in this group
+include:
+
+* log
+* info.

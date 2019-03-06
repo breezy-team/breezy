@@ -1,0 +1,771 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Configuration Settings &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Conflict Types" href="conflict-types-help.html" />
+    <link rel="prev" title="Bug Tracker Settings" href="bugs-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="bugs-help.html" title="Bug Tracker Settings"
+             accesskey="P">previous</a> |
+          <a href="conflict-types-help.html" title="Conflict Types"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="configuration-settings">
+<h1>Configuration Settings<a class="headerlink" href="#configuration-settings" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="environment-settings">
+<h2>Environment settings<a class="headerlink" href="#environment-settings" title="Permalink to this headline">¶</a></h2>
+<p>While most configuration is handled by configuration files, some options
+which may be semi-permanent can also be controlled through the environment.</p>
+<div class="section" id="brz-email">
+<h3>BRZ_EMAIL<a class="headerlink" href="#brz-email" title="Permalink to this headline">¶</a></h3>
+<p>Override the email id used by Breezy.  Typical format:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;John Doe &lt;jdoe@example.com&gt;&quot;</span>
+</pre></div>
+</div>
+<p>See also the <code class="docutils literal notranslate"><span class="pre">email</span></code> configuration option.</p>
+</div>
+<div class="section" id="brz-progress-bar">
+<h3>BRZ_PROGRESS_BAR<a class="headerlink" href="#brz-progress-bar" title="Permalink to this headline">¶</a></h3>
+<p>Override the progress display.  Possible values are “none” or “text”.  If
+the value is “none” then no progress bar is displayed.  The value “text” draws
+the ordinary command line progress bar.</p>
+</div>
+<div class="section" id="brz-sigquit-pdb">
+<h3>BRZ_SIGQUIT_PDB<a class="headerlink" href="#brz-sigquit-pdb" title="Permalink to this headline">¶</a></h3>
+<p>Control whether SIGQUIT behaves normally or invokes a breakin debugger.</p>
+<ul class="simple">
+<li>0 = Standard SIGQUIT behavior (normally, exit with a core dump)</li>
+<li>1 = Invoke breakin debugger (default)</li>
+</ul>
+</div>
+<div class="section" id="brz-home">
+<h3>BRZ_HOME<a class="headerlink" href="#brz-home" title="Permalink to this headline">¶</a></h3>
+<p>Override the home directory used by Breezy.</p>
+</div>
+<div class="section" id="brz-ssh">
+<h3>BRZ_SSH<a class="headerlink" href="#brz-ssh" title="Permalink to this headline">¶</a></h3>
+<p>Select a different SSH implementation.</p>
+</div>
+<div class="section" id="brz-pdb">
+<h3>BRZ_PDB<a class="headerlink" href="#brz-pdb" title="Permalink to this headline">¶</a></h3>
+<p>Control whether to launch a debugger on error.</p>
+<ul class="simple">
+<li>0 = Standard behavior</li>
+<li>1 = Launch debugger</li>
+</ul>
+</div>
+<div class="section" id="bzr-remote-path">
+<h3>BZR_REMOTE_PATH<a class="headerlink" href="#bzr-remote-path" title="Permalink to this headline">¶</a></h3>
+<p>Path to the Bazaar or Breezy executable to use when using the bzr+ssh protocol.</p>
+<p>See also the <code class="docutils literal notranslate"><span class="pre">bzr_remote_path</span></code> configuration option.</p>
+</div>
+<div class="section" id="brz-editor">
+<h3>BRZ_EDITOR<a class="headerlink" href="#brz-editor" title="Permalink to this headline">¶</a></h3>
+<p>Path to the editor Breezy should use for commit messages, etc.</p>
+</div>
+<div class="section" id="brz-log">
+<h3>BRZ_LOG<a class="headerlink" href="#brz-log" title="Permalink to this headline">¶</a></h3>
+<p>Location of the Breezy log file. You can check the current location by
+running <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">version</span></code>.</p>
+<p>The log file contains debug information that is useful for diagnosing or
+reporting problems with Breezy.</p>
+<p>Setting this to <code class="docutils literal notranslate"><span class="pre">NUL</span></code> on Windows or <code class="docutils literal notranslate"><span class="pre">/dev/null</span></code> on other platforms
+will disable logging.</p>
+</div>
+<div class="section" id="brz-plugin-path">
+<h3>BRZ_PLUGIN_PATH<a class="headerlink" href="#brz-plugin-path" title="Permalink to this headline">¶</a></h3>
+<p>The path to the plugins directory that Breezy should use.
+If not set, Breezy will search for plugins in:</p>
+<ul class="simple">
+<li>the user specific plugin directory (containing the <code class="docutils literal notranslate"><span class="pre">user</span></code> plugins),</li>
+<li>the breezy directory (containing the <code class="docutils literal notranslate"><span class="pre">core</span></code> plugins),</li>
+<li>the site specific plugin directory if applicable (containing
+the <code class="docutils literal notranslate"><span class="pre">site</span></code> plugins).</li>
+</ul>
+<p>If <code class="docutils literal notranslate"><span class="pre">BZR_PLUGIN_PATH</span></code> is set in any fashion, it will change the
+the way the plugin are searched.</p>
+<p>As for the <code class="docutils literal notranslate"><span class="pre">PATH</span></code> variables, if multiple directories are
+specified in <code class="docutils literal notranslate"><span class="pre">BZR_PLUGIN_PATH</span></code> they should be separated by the
+platform specific appropriate character (‘:’ on Unix,
+‘;’ on windows)</p>
+<p>By default if <code class="docutils literal notranslate"><span class="pre">BZR_PLUGIN_PATH</span></code> is set, it replaces searching
+in <code class="docutils literal notranslate"><span class="pre">user</span></code>.  However it will continue to search in <code class="docutils literal notranslate"><span class="pre">core</span></code> and
+<code class="docutils literal notranslate"><span class="pre">site</span></code> unless they are explicitly removed.</p>
+<p>If you need to change the order or remove one of these
+directories, you should use special values:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">-user</span></code>, <code class="docutils literal notranslate"><span class="pre">-core</span></code>, <code class="docutils literal notranslate"><span class="pre">-site</span></code> will remove the corresponding
+path from the default values,</li>
+<li><code class="docutils literal notranslate"><span class="pre">+user</span></code>, <code class="docutils literal notranslate"><span class="pre">+core</span></code>, <code class="docutils literal notranslate"><span class="pre">+site</span></code> will add the corresponding path
+before the remaining default values (and also remove it from
+the default values).</li>
+</ul>
+<p>Note that the special values ‘user’, ‘core’ and ‘site’ should be
+used literally, they will be substituted by the corresponding,
+platform specific, values.</p>
+<p>The examples below use ‘:’ as the separator, windows users
+should use ‘;’.</p>
+<p>Overriding the default user plugin directory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">BZR_PLUGIN_PATH</span><span class="o">=</span><span class="s1">&#39;/path/to/my/other/plugins&#39;</span>
+</pre></div>
+</div>
+<p>Disabling the site directory while retaining the user directory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">BZR_PLUGIN_PATH</span><span class="o">=</span><span class="s1">&#39;-site:+user&#39;</span>
+</pre></div>
+</div>
+<p>Disabling all plugins (better achieved with –no-plugins):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">BZR_PLUGIN_PATH</span><span class="o">=</span><span class="s1">&#39;-user:-core:-site&#39;</span>
+</pre></div>
+</div>
+<p>Overriding the default site plugin directory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">BZR_PLUGIN_PATH</span><span class="o">=</span><span class="s1">&#39;/path/to/my/site/plugins:-site&#39;</span><span class="p">:</span><span class="o">+</span><span class="n">user</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="brz-disable-plugins">
+<h3>BRZ_DISABLE_PLUGINS<a class="headerlink" href="#brz-disable-plugins" title="Permalink to this headline">¶</a></h3>
+<p>Under special circumstances (mostly when trying to diagnose a
+bug), it’s better to disable a plugin (or several) rather than
+uninstalling them completely. Such plugins can be specified in
+the <code class="docutils literal notranslate"><span class="pre">BZR_DISABLE_PLUGINS</span></code> environment variable.</p>
+<p>In that case, <code class="docutils literal notranslate"><span class="pre">bzr</span></code> will stop loading the specified plugins and
+will raise an import error if they are explicitly imported (by
+another plugin that depends on them for example).</p>
+<p>Disabling <code class="docutils literal notranslate"><span class="pre">myplugin</span></code> and <code class="docutils literal notranslate"><span class="pre">yourplugin</span></code> is achieved by:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">BZR_DISABLE_PLUGINS</span><span class="o">=</span><span class="s1">&#39;myplugin:yourplugin&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="brz-plugins-at">
+<h3>BRZ_PLUGINS_AT<a class="headerlink" href="#brz-plugins-at" title="Permalink to this headline">¶</a></h3>
+<p>When adding a new feature or working on a bug in a plugin,
+developers often need to use a specific version of a given
+plugin. Since python requires that the directory containing the
+code is named like the plugin itself this make it impossible to
+use arbitrary directory names (using a two-level directory scheme
+is inconvenient). <code class="docutils literal notranslate"><span class="pre">BZR_PLUGINS_AT</span></code> allows such directories even
+if they don’t appear in <code class="docutils literal notranslate"><span class="pre">BZR_PLUGIN_PATH</span></code> .</p>
+<p>Plugins specified in this environment variable takes precedence
+over the ones in <code class="docutils literal notranslate"><span class="pre">BZR_PLUGIN_PATH</span></code>.</p>
+<p>The variable specified a list of <code class="docutils literal notranslate"><span class="pre">plugin_name&#64;plugin</span> <span class="pre">path</span></code>,
+<code class="docutils literal notranslate"><span class="pre">plugin_name</span></code> being the name of the plugin as it appears in
+python module paths, <code class="docutils literal notranslate"><span class="pre">plugin_path</span></code> being the path to the
+directory containing the plugin code itself
+(i.e. <code class="docutils literal notranslate"><span class="pre">plugins/myplugin</span></code> not <code class="docutils literal notranslate"><span class="pre">plugins</span></code>).  Use ‘:’ as the list
+separator, use ‘;’ on windows.</p>
+</div>
+<div class="section" id="example">
+<h3>Example:<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h3>
+<p>Using a specific version of <code class="docutils literal notranslate"><span class="pre">myplugin</span></code>:
+<code class="docutils literal notranslate"><span class="pre">BZR_PLUGINS_AT='myplugin&#64;/home/me/bugfixes/123456-myplugin</span></code></p>
+</div>
+<div class="section" id="brzpath">
+<h3>BRZPATH<a class="headerlink" href="#brzpath" title="Permalink to this headline">¶</a></h3>
+<p>The path where Breezy should look for shell plugin external commands.</p>
+</div>
+<div class="section" id="http-proxy-https-proxy">
+<h3>http_proxy, https_proxy<a class="headerlink" href="#http-proxy-https-proxy" title="Permalink to this headline">¶</a></h3>
+<p>Specifies the network proxy for outgoing connections, for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">http_proxy</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">proxy</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">3128</span><span class="o">/</span>
+<span class="n">https_proxy</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">proxy</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">3128</span><span class="o">/</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="configuration-files">
+<h2>Configuration files<a class="headerlink" href="#configuration-files" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="location">
+<h3>Location<a class="headerlink" href="#location" title="Permalink to this headline">¶</a></h3>
+<p>Configuration files are located in <code class="docutils literal notranslate"><span class="pre">$HOME/.bazaar</span></code> on Unix and
+<code class="docutils literal notranslate"><span class="pre">C:\Documents</span> <span class="pre">and</span> <span class="pre">Settings\&lt;username&gt;\Application</span> <span class="pre">Data\Breezy\2.0</span></code> on
+Windows. (You can check the location for your system by using
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">version</span></code>.)</p>
+<p>There are three primary configuration files in this location:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> describes default configuration options,</li>
+<li><code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> describes configuration information for
+specific branch locations,</li>
+<li><code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> describes credential information for
+remote servers.</li>
+</ul>
+<p>Each branch can also contain a configuration file that sets values specific
+to that branch. This file is found at <code class="docutils literal notranslate"><span class="pre">.bzr/branch/branch.conf</span></code> within the
+branch. This file is visible to all users of a branch, if you wish to override
+one of the values for a branch with a setting that is specific to you then you
+can do so in <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>.</p>
+</div>
+<div class="section" id="general-format">
+<h3>General format<a class="headerlink" href="#general-format" title="Permalink to this headline">¶</a></h3>
+<p>An ini file has three types of contructs: section headers, section
+options and comments.</p>
+<div class="section" id="comments">
+<h4>Comments<a class="headerlink" href="#comments" title="Permalink to this headline">¶</a></h4>
+<p>A comment is any line that starts with a “#” (sometimes called a “hash
+mark”, “pound sign” or “number sign”). Comment lines are ignored by
+Breezy when parsing ini files.</p>
+</div>
+<div class="section" id="section-headers">
+<h4>Section headers<a class="headerlink" href="#section-headers" title="Permalink to this headline">¶</a></h4>
+<p>A section header is a word enclosed in brackets that starts at the begining
+of a line.  A typical section header looks like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The only valid section headers for breezy.conf currently are [DEFAULT] and
+[ALIASES].  Section headers are case sensitive. The default section provides for
+setting options which can be overridden with the branch config file.</p>
+<p>For <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>, the options from the section with the
+longest matching section header are used to the exclusion of other
+potentially valid section headers. A section header uses the path for
+the branch as the section header. Some examples include:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">mybranches</span><span class="o">.</span><span class="n">isp</span><span class="o">.</span><span class="n">com</span><span class="o">/~</span><span class="n">jdoe</span><span class="o">/</span><span class="n">branchdir</span><span class="p">]</span>
+<span class="p">[</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">jdoe</span><span class="o">/</span><span class="n">branches</span><span class="o">/</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="section-options">
+<h4>Section options<a class="headerlink" href="#section-options" title="Permalink to this headline">¶</a></h4>
+<p>A section option resides within a section. A section option contains an
+option name, an equals sign and a value.  For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">email</span>            <span class="o">=</span> <span class="n">John</span> <span class="n">Doe</span> <span class="o">&lt;</span><span class="n">jdoe</span><span class="nd">@isp</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
+<span class="n">gpg_signing_key</span>  <span class="o">=</span> <span class="n">Amy</span> <span class="n">Pond</span> <span class="o">&lt;</span><span class="n">amy</span><span class="nd">@example</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>A option can reference other options by enclosing them in curly brackets:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">my_branch_name</span> <span class="o">=</span> <span class="n">feature_x</span>
+<span class="n">my_server</span>      <span class="o">=</span> <span class="n">bzr</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">example</span><span class="o">.</span><span class="n">com</span>
+<span class="n">push_location</span>   <span class="o">=</span> <span class="p">{</span><span class="n">my_server</span><span class="p">}</span><span class="o">/</span><span class="n">project</span><span class="o">/</span><span class="p">{</span><span class="n">my_branch_name</span><span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="option-policies">
+<h4>Option policies<a class="headerlink" href="#option-policies" title="Permalink to this headline">¶</a></h4>
+<p>Options defined in a section affect the named directory or URL plus
+any locations they contain.  Policies can be used to change how an
+option value is interpreted for contained locations.  Currently
+there are three policies available:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>none:</dt>
+<dd>the value is interpreted the same for contained locations.  This is
+the default behaviour.</dd>
+<dt>norecurse:</dt>
+<dd>the value is only used for the exact location specified by the
+section name.</dd>
+<dt>appendpath:</dt>
+<dd>for contained locations, any additional path components are
+appended to the value.</dd>
+</dl>
+</div></blockquote>
+<p>Policies are specified by keys with names of the form “&lt;option_name&gt;:policy”.
+For example, to define the push location for a tree of branches, the
+following could be used:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="o">/</span><span class="n">top</span><span class="o">/</span><span class="n">location</span><span class="p">]</span>
+<span class="n">push_location</span> <span class="o">=</span> <span class="n">sftp</span><span class="p">:</span><span class="o">//</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">location</span>
+<span class="n">push_location</span><span class="p">:</span><span class="n">policy</span> <span class="o">=</span> <span class="n">appendpath</span>
+</pre></div>
+</div>
+<p>With this configuration, the push location for <code class="docutils literal notranslate"><span class="pre">/top/location/branch1</span></code>
+would be <code class="docutils literal notranslate"><span class="pre">sftp://example.com/location/branch1</span></code>.</p>
+</div>
+<div class="section" id="section-local-options">
+<h4>Section local options<a class="headerlink" href="#section-local-options" title="Permalink to this headline">¶</a></h4>
+<p>Some options are defined automatically inside a given section and can be
+refered to in this section only.</p>
+<p>For example, the <code class="docutils literal notranslate"><span class="pre">appendpath</span></code> policy can be used like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">vila</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">bzr</span><span class="o">/</span><span class="n">bugs</span><span class="p">]</span>
+<span class="n">mypush</span> <span class="o">=</span> <span class="n">lp</span><span class="p">:</span><span class="o">~</span><span class="n">vila</span><span class="o">/</span><span class="n">bzr</span>
+<span class="n">mypush</span><span class="p">:</span><span class="n">policy</span><span class="o">=</span><span class="n">appendpath</span>
+</pre></div>
+</div>
+<p>Using <code class="docutils literal notranslate"><span class="pre">relpath</span></code> to achieve the same result is done like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">vila</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">bzr</span><span class="o">/</span><span class="n">bugs</span><span class="p">]</span>
+<span class="n">mypush</span> <span class="o">=</span> <span class="n">lp</span><span class="p">:</span><span class="o">~</span><span class="n">vila</span><span class="o">/</span><span class="n">bzr</span><span class="o">/</span><span class="p">{</span><span class="n">relpath</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>In both cases, when used in a directory like
+<code class="docutils literal notranslate"><span class="pre">/home/vila/src/bzr/bugs/832013-expand-in-stack</span></code> we’ll get:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr config mypush
+lp:~vila/bzr/832013-expand-in-stack
+</pre></div>
+</div>
+<p>Another such option is <code class="docutils literal notranslate"><span class="pre">basename</span></code> which can be used like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">vila</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">bzr</span><span class="p">]</span>
+<span class="n">mypush</span> <span class="o">=</span> <span class="n">lp</span><span class="p">:</span><span class="o">~</span><span class="n">vila</span><span class="o">/</span><span class="n">bzr</span><span class="o">/</span><span class="p">{</span><span class="n">basename</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>When used in a directory like
+<code class="docutils literal notranslate"><span class="pre">/home/vila/src/bzr/bugs/832013-expand-in-stack</span></code> we’ll get:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr config mypush
+lp:~vila/bzr/832013-expand-in-stack
+</pre></div>
+</div>
+<p>Note that <code class="docutils literal notranslate"><span class="pre">basename</span></code> here refers to the base name of <code class="docutils literal notranslate"><span class="pre">relpath</span></code> which
+itself is defined as the relative path between the section name and the
+location it matches.</p>
+<p>Another such option is <code class="docutils literal notranslate"><span class="pre">branchname</span></code>, which refers to the name of a colocated
+branch.  For non-colocated branches, it behaves like basename.  It can be used
+like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">vila</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">bzr</span><span class="o">/</span><span class="n">bugs</span><span class="p">]</span>
+<span class="n">mypush</span> <span class="o">=</span> <span class="n">lp</span><span class="p">:</span><span class="o">~</span><span class="n">vila</span><span class="o">/</span><span class="n">bzr</span><span class="o">/</span><span class="p">{</span><span class="n">branchname</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>When used with a colocated branch named <code class="docutils literal notranslate"><span class="pre">832013-expand-in-stack</span></code>, we’ll get:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">config</span> <span class="n">mypush</span>
+<span class="n">lp</span><span class="p">:</span><span class="o">~</span><span class="n">vila</span><span class="o">/</span><span class="n">bzr</span><span class="o">/</span><span class="mi">832013</span><span class="o">-</span><span class="n">expand</span><span class="o">-</span><span class="ow">in</span><span class="o">-</span><span class="n">stack</span>
+</pre></div>
+</div>
+<p>When an option is local to a Section, it cannot be referred to from option
+values in any other section from the same <code class="docutils literal notranslate"><span class="pre">Store</span></code> nor from any other
+<code class="docutils literal notranslate"><span class="pre">Store</span></code>.</p>
+</div>
+</div>
+<div class="section" id="the-main-configuration-file-breezy-conf">
+<h3>The main configuration file, breezy.conf<a class="headerlink" href="#the-main-configuration-file-breezy-conf" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> allows two sections: <code class="docutils literal notranslate"><span class="pre">[DEFAULT]</span></code> and <code class="docutils literal notranslate"><span class="pre">[ALIASES]</span></code>.
+The default section contains the default
+configuration options for all branches. The default section can be
+overriden by providing a branch-specific section in <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>.</p>
+<p>A typical <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> section often looks like the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">email</span>             <span class="o">=</span> <span class="n">John</span> <span class="n">Doe</span> <span class="o">&lt;</span><span class="n">jdoe</span><span class="nd">@isp</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
+<span class="n">editor</span>            <span class="o">=</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">vim</span>
+<span class="n">create_signatures</span> <span class="o">=</span> <span class="n">when</span><span class="o">-</span><span class="n">required</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-branch-location-configuration-file-locations-conf">
+<h3>The branch location configuration file, locations.conf<a class="headerlink" href="#the-branch-location-configuration-file-locations-conf" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> allows one to specify overriding settings for
+a specific branch. The format is almost identical to the default section in
+breezy.conf with one significant change: The section header, instead of saying
+default, will be the path to a branch that you wish to override a value
+for. The ‘?’ and ‘*’ wildcards are supported:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">jdoe</span><span class="o">/</span><span class="n">branches</span><span class="o">/</span><span class="n">nethack</span><span class="p">]</span>
+<span class="n">email</span> <span class="o">=</span> <span class="n">Nethack</span> <span class="n">Admin</span> <span class="o">&lt;</span><span class="n">nethack</span><span class="nd">@nethack</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
+
+<span class="p">[</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">hypothetical</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">branches</span><span class="o">/</span><span class="n">devel</span><span class="o">-</span><span class="n">branch</span><span class="p">]</span>
+<span class="n">create_signatures</span> <span class="o">=</span> <span class="n">always</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-authentication-configuration-file-authentication-conf">
+<h3>The authentication configuration file, authentication.conf<a class="headerlink" href="#the-authentication-configuration-file-authentication-conf" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> allows one to specify credentials for
+remote servers. This can be used for all the supported transports and any part
+of bzr that requires authentication (smtp for example).</p>
+<p>The syntax of the file obeys the same rules as the others except for the
+option policies which don’t apply.</p>
+<p>For more information on the possible uses of the authentication configuration
+file see <a class="reference internal" href="authentication-help.html"><span class="doc">Authentication Settings</span></a>.</p>
+</div>
+</div>
+<div class="section" id="common-options">
+<h2>Common options<a class="headerlink" href="#common-options" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="debug-flags">
+<h3>debug_flags<a class="headerlink" href="#debug-flags" title="Permalink to this headline">¶</a></h3>
+<p>A comma-separated list of debugging options to turn on.  The same values
+can be used as with the -D command-line option (see <cite>help global-options</cite>).
+For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">debug_flags</span> <span class="o">=</span> <span class="n">hpss</span>
+</pre></div>
+</div>
+<p>or:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">debug_flags</span> <span class="o">=</span> <span class="n">hpss</span><span class="p">,</span><span class="n">evil</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="email">
+<h3>email<a class="headerlink" href="#email" title="Permalink to this headline">¶</a></h3>
+<p>The email address to use when committing a branch. Typically takes the form
+of:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">email</span> <span class="o">=</span> <span class="n">Full</span> <span class="n">Name</span> <span class="o">&lt;</span><span class="n">account</span><span class="nd">@hostname</span><span class="o">.</span><span class="n">tld</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="editor">
+<h3>editor<a class="headerlink" href="#editor" title="Permalink to this headline">¶</a></h3>
+<p>The path of the editor that you wish to use if <em>bzr commit</em> is run without
+a commit message. This setting is trumped by the environment variable
+<code class="docutils literal notranslate"><span class="pre">BZR_EDITOR</span></code>, and overrides the <code class="docutils literal notranslate"><span class="pre">VISUAL</span></code> and <code class="docutils literal notranslate"><span class="pre">EDITOR</span></code> environment
+variables.</p>
+</div>
+<div class="section" id="log-format">
+<h3>log_format<a class="headerlink" href="#log-format" title="Permalink to this headline">¶</a></h3>
+<p>The default log format to use. Standard log formats are <code class="docutils literal notranslate"><span class="pre">long</span></code>, <code class="docutils literal notranslate"><span class="pre">short</span></code>
+and <code class="docutils literal notranslate"><span class="pre">line</span></code>. Additional formats may be provided by plugins. The default
+value is <code class="docutils literal notranslate"><span class="pre">long</span></code>.</p>
+</div>
+<div class="section" id="check-signatures">
+<h3>check_signatures<a class="headerlink" href="#check-signatures" title="Permalink to this headline">¶</a></h3>
+<p>Reserved for future use.  These options will allow a policy for branches to
+require signatures.</p>
+<dl class="docutils">
+<dt>require</dt>
+<dd>The gnupg signature for revisions must be present and must be valid.</dd>
+<dt>ignore</dt>
+<dd>Do not check gnupg signatures of revisions.</dd>
+<dt>check-available</dt>
+<dd>(default) If gnupg signatures for revisions are present, check them.
+Breezy will fail if it finds a bad signature, but will not fail if
+no signature is present.</dd>
+</dl>
+</div>
+<div class="section" id="create-signatures">
+<h3>create_signatures<a class="headerlink" href="#create-signatures" title="Permalink to this headline">¶</a></h3>
+<p>Defines the behaviour of signing revisions on commits.  By default bzr will not
+sign new commits.</p>
+<dl class="docutils">
+<dt>always</dt>
+<dd>Sign every new revision that is committed.  If the signing fails then the
+commit will not be made.</dd>
+<dt>when-required</dt>
+<dd>Reserved for future use.</dd>
+<dt>never</dt>
+<dd>Reserved for future use.</dd>
+</dl>
+<p>In future it is planned that <code class="docutils literal notranslate"><span class="pre">when-required</span></code> will sign newly
+committed revisions only when the branch requires them.  <code class="docutils literal notranslate"><span class="pre">never</span></code> will refuse
+to sign newly committed revisions, even if the branch requires signatures.</p>
+</div>
+<div class="section" id="dirstate-fdatasync">
+<h3>dirstate.fdatasync<a class="headerlink" href="#dirstate-fdatasync" title="Permalink to this headline">¶</a></h3>
+<p>If true (default), working tree metadata changes are flushed through the
+OS buffers to physical disk.  This is somewhat slower, but means data
+should not be lost if the machine crashes.  See also repository.fdatasync.</p>
+</div>
+<div class="section" id="gpg-signing-key">
+<h3>gpg_signing_key<a class="headerlink" href="#gpg-signing-key" title="Permalink to this headline">¶</a></h3>
+<p>The GnuPG user identity to use when signing commits.  Can be an e-mail
+address, key fingerprint or full key ID.  When unset or when set to
+“default” Breezy will use the user e-mail set with <code class="docutils literal notranslate"><span class="pre">whoami</span></code>.</p>
+</div>
+<div class="section" id="recurse">
+<h3>recurse<a class="headerlink" href="#recurse" title="Permalink to this headline">¶</a></h3>
+<p>Only useful in <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>. Defines whether or not the
+configuration for this section applies to subdirectories:</p>
+<dl class="docutils">
+<dt>true</dt>
+<dd>(default) This section applies to subdirectories as well.</dd>
+<dt>false</dt>
+<dd>This section only applies to the branch at this directory and not
+branches below it.</dd>
+</dl>
+</div>
+<div class="section" id="id1">
+<h3>bzr_remote_path<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>(Default: “bzr”).  The path to the command that should be used to run the smart
+server for bzr.  This value may only be specified in locations.conf, because:</p>
+<ul class="simple">
+<li>it’s needed before branch.conf is accessible</li>
+<li>allowing remote branch.conf files to specify commands would be a security
+risk</li>
+</ul>
+<p>It is overridden by the BZR_REMOTE_PATH environment variable.</p>
+</div>
+<div class="section" id="smtp-server">
+<h3>smtp_server<a class="headerlink" href="#smtp-server" title="Permalink to this headline">¶</a></h3>
+<p>(Default: “localhost”). SMTP server to use when Breezy needs to send
+email, eg. with <code class="docutils literal notranslate"><span class="pre">merge-directive</span> <span class="pre">--mail-to</span></code>, or the bzr-email plugin.</p>
+</div>
+<div class="section" id="smtp-username-smtp-password">
+<h3>smtp_username, smtp_password<a class="headerlink" href="#smtp-username-smtp-password" title="Permalink to this headline">¶</a></h3>
+<p>User and password to authenticate to the SMTP server. If smtp_username
+is set, and smtp_password is not, Breezy will prompt for a password.
+These settings are only needed if the SMTP server requires authentication
+to send mail.</p>
+</div>
+<div class="section" id="locks-steal-dead">
+<h3>locks.steal_dead<a class="headerlink" href="#locks-steal-dead" title="Permalink to this headline">¶</a></h3>
+<p>If set to true, bzr will automatically break locks held by processes from
+the same machine and user that are no longer alive.  Otherwise, it will
+print a message and you can break the lock manually, if you are satisfied
+the object is no longer in use.</p>
+</div>
+<div class="section" id="mail-client">
+<h3>mail_client<a class="headerlink" href="#mail-client" title="Permalink to this headline">¶</a></h3>
+<p>A mail client to use for sending merge requests.
+By default, bzr will try to use <code class="docutils literal notranslate"><span class="pre">mapi</span></code> on Windows.  On other platforms, it
+will try <code class="docutils literal notranslate"><span class="pre">xdg-email</span></code>. If either of these fails, it will fall back to
+<code class="docutils literal notranslate"><span class="pre">editor</span></code>.</p>
+<p>Supported values for specific clients:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">claws:</th><td class="field-body">Use Claws.  This skips a dialog for attaching files.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">evolution:</th><td class="field-body">Use Evolution.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">kmail:</th><td class="field-body">Use KMail.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">mutt:</th><td class="field-body">Use Mutt.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">thunderbird:</th><td class="field-body">Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
+this works around some bugs that xdg-email doesn’t handle.</td>
+</tr>
+</tbody>
+</table>
+<p>Supported generic values are:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">default:</th><td class="field-body">See above.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">editor:</th><td class="field-body">Use your editor to compose the merge request.  This also uses
+your commit id, (see <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">whoami</span></code>), smtp_server and (optionally)
+smtp_username and smtp_password.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">mapi:</th><td class="field-body">Use your preferred e-mail client on Windows.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">xdg-email:</th><td class="field-body">Use xdg-email to run your preferred mail program</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="repository-fdatasync">
+<h3>repository.fdatasync<a class="headerlink" href="#repository-fdatasync" title="Permalink to this headline">¶</a></h3>
+<p>If true (default), repository changes are flushed through the OS buffers
+to physical disk.  This is somewhat slower, but means data should not be
+lost if the machine crashes.  See also dirstate.fdatasync.</p>
+</div>
+<div class="section" id="submit-branch">
+<h3>submit_branch<a class="headerlink" href="#submit-branch" title="Permalink to this headline">¶</a></h3>
+<p>The branch you intend to submit your current work to.  This is automatically
+set by <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">send</span></code>, and is also used by the <code class="docutils literal notranslate"><span class="pre">submit:</span></code> revision spec.  This
+should usually be set on a per-branch or per-location basis.</p>
+</div>
+<div class="section" id="public-branch">
+<h3>public_branch<a class="headerlink" href="#public-branch" title="Permalink to this headline">¶</a></h3>
+<p>A publically-accessible version of this branch (implying that this version is
+not publically-accessible).  Used (and set) by <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">send</span></code>.</p>
+</div>
+<div class="section" id="suppress-warnings">
+<h3>suppress_warnings<a class="headerlink" href="#suppress-warnings" title="Permalink to this headline">¶</a></h3>
+<p>A list of strings, each string represent a warning that can be emitted by
+bzr. Mentioning a warning in this list tells bzr to not emit it.</p>
+<p>Valid values:</p>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">format_deprecation</span></code>:</dt>
+<dd>whether the format deprecation warning is shown on repositories that are
+using deprecated formats.</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">insecure_permissions</span></code>:</dt>
+<dd>whether a warning is shown if <code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> can be read
+by other users.</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="default-format">
+<h3>default_format<a class="headerlink" href="#default-format" title="Permalink to this headline">¶</a></h3>
+<p>A format name for the default format used when creating branches.  See <code class="docutils literal notranslate"><span class="pre">bzr</span>
+<span class="pre">help</span> <span class="pre">formats</span></code> for possible values.</p>
+</div>
+</div>
+<div class="section" id="unicode-options">
+<h2>Unicode options<a class="headerlink" href="#unicode-options" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="output-encoding">
+<h3>output_encoding<a class="headerlink" href="#output-encoding" title="Permalink to this headline">¶</a></h3>
+<p>A Python unicode encoding name for text output from bzr, such as log
+information.  Values include: utf8, cp850, ascii, iso-8859-1.  The default
+is the terminal encoding prefered by the operating system.</p>
+</div>
+</div>
+<div class="section" id="branch-type-specific-options">
+<h2>Branch type specific options<a class="headerlink" href="#branch-type-specific-options" title="Permalink to this headline">¶</a></h2>
+<p>These options apply only to branches that use the <code class="docutils literal notranslate"><span class="pre">dirstate-tags</span></code> or
+later format.  They
+are usually set in <code class="docutils literal notranslate"><span class="pre">.bzr/branch/branch.conf</span></code> automatically, but may be
+manually set in <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> or <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code>.</p>
+<div class="section" id="append-revisions-only">
+<h3>append_revisions_only<a class="headerlink" href="#append-revisions-only" title="Permalink to this headline">¶</a></h3>
+<p>If set to “True” then revisions can only be appended to the log, not
+removed.  A branch with this setting enabled can only pull from another
+branch if the other branch’s log is a longer version of its own.  This is
+normally set by <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">init</span> <span class="pre">--append-revisions-only</span></code>. If you set it
+manually, use either ‘True’ or ‘False’ (case-sensitive) to maintain
+compatibility with previous bzr versions (older than 2.2).</p>
+</div>
+<div class="section" id="parent-location">
+<h3>parent_location<a class="headerlink" href="#parent-location" title="Permalink to this headline">¶</a></h3>
+<p>If present, the location of the default branch for pull or merge.  This option
+is normally set when creating a branch, the first <code class="docutils literal notranslate"><span class="pre">pull</span></code> or by <code class="docutils literal notranslate"><span class="pre">pull</span>
+<span class="pre">--remember</span></code>.</p>
+</div>
+<div class="section" id="push-location">
+<h3>push_location<a class="headerlink" href="#push-location" title="Permalink to this headline">¶</a></h3>
+<p>If present, the location of the default branch for push.  This option
+is normally set by the first <code class="docutils literal notranslate"><span class="pre">push</span></code> or <code class="docutils literal notranslate"><span class="pre">push</span> <span class="pre">--remember</span></code>.</p>
+</div>
+<div class="section" id="push-strict">
+<h3>push_strict<a class="headerlink" href="#push-strict" title="Permalink to this headline">¶</a></h3>
+<p>If present, defines the <code class="docutils literal notranslate"><span class="pre">--strict</span></code> option default value for checking
+uncommitted changes before pushing.</p>
+</div>
+<div class="section" id="bound-location">
+<h3>bound_location<a class="headerlink" href="#bound-location" title="Permalink to this headline">¶</a></h3>
+<p>The location that commits should go to when acting as a checkout.
+This option is normally set by <code class="docutils literal notranslate"><span class="pre">bind</span></code>.</p>
+</div>
+<div class="section" id="bound">
+<h3>bound<a class="headerlink" href="#bound" title="Permalink to this headline">¶</a></h3>
+<p>If set to “True”, the branch should act as a checkout, and push each commit to
+the bound_location.  This option is normally set by <code class="docutils literal notranslate"><span class="pre">bind</span></code>/<code class="docutils literal notranslate"><span class="pre">unbind</span></code>.</p>
+</div>
+<div class="section" id="send-strict">
+<h3>send_strict<a class="headerlink" href="#send-strict" title="Permalink to this headline">¶</a></h3>
+<p>If present, defines the <code class="docutils literal notranslate"><span class="pre">--strict</span></code> option default value for checking
+uncommitted changes before sending a merge directive.</p>
+</div>
+<div class="section" id="add-maximum-file-size">
+<h3>add.maximum_file_size<a class="headerlink" href="#add-maximum-file-size" title="Permalink to this headline">¶</a></h3>
+<p>Defines the maximum file size the command line “add” operation will allow
+in recursive mode, with files larger than this value being skipped. You may
+specify this value as an integer (in which case it is interpreted as bytes),
+or you may specify the value using SI units, i.e. 10KB, 20MB, 1G. A value of 0
+will disable skipping.</p>
+</div>
+</div>
+<div class="section" id="external-merge-tools">
+<h2>External Merge Tools<a class="headerlink" href="#external-merge-tools" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="bzr-mergetool-name">
+<h3>bzr.mergetool.&lt;name&gt;<a class="headerlink" href="#bzr-mergetool-name" title="Permalink to this headline">¶</a></h3>
+<p>Defines an external merge tool called &lt;name&gt; with the given command-line.
+Arguments containing spaces should be quoted using single or double quotes. The
+executable may omit its path if it can be found on the PATH.</p>
+<p>The following markers can be used in the command-line to substitute filenames
+involved in the merge conflict:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="n">base</span><span class="p">}</span>      <span class="n">file</span><span class="o">.</span><span class="n">BASE</span>
+<span class="p">{</span><span class="n">this</span><span class="p">}</span>      <span class="n">file</span><span class="o">.</span><span class="n">THIS</span>
+<span class="p">{</span><span class="n">other</span><span class="p">}</span>     <span class="n">file</span><span class="o">.</span><span class="n">OTHER</span>
+<span class="p">{</span><span class="n">result</span><span class="p">}</span>    <span class="n">output</span> <span class="n">file</span>
+<span class="p">{</span><span class="n">this_temp</span><span class="p">}</span> <span class="n">temp</span> <span class="n">copy</span> <span class="n">of</span> <span class="n">file</span><span class="o">.</span><span class="n">THIS</span><span class="p">,</span> <span class="n">used</span> <span class="n">to</span> <span class="n">overwrite</span> <span class="n">output</span> <span class="n">file</span> <span class="k">if</span> <span class="n">merge</span>
+            <span class="n">succeeds</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span><span class="o">.</span><span class="n">mergetool</span><span class="o">.</span><span class="n">kdiff3</span> <span class="o">=</span> <span class="n">kdiff3</span> <span class="p">{</span><span class="n">base</span><span class="p">}</span> <span class="p">{</span><span class="n">this</span><span class="p">}</span> <span class="p">{</span><span class="n">other</span><span class="p">}</span> <span class="o">-</span><span class="n">o</span> <span class="p">{</span><span class="n">result</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>Because <code class="docutils literal notranslate"><span class="pre">mergetool</span></code> and <code class="docutils literal notranslate"><span class="pre">config</span></code> itself both use curly braces as
+interpolation markers, trying to display the mergetool line results in the
+following problem:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr config bzr.mergetool.kdiff3=&#39;kdiff3 {base} {this} {other} -o {result}&#39;
+$ bzr config bzr.mergetool.kdiff3
+bzr: ERROR: Option base is not defined while expanding &quot;kdiff3 {base} {this} {other} -o {result}&quot;.
+</pre></div>
+</div>
+<p>To avoid this, <code class="docutils literal notranslate"><span class="pre">config</span></code> can be instructed not to try expanding variables:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr config --all bzr.mergetool.kdiff3
+branch:
+  bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}
+</pre></div>
+</div>
+</div>
+<div class="section" id="bzr-default-mergetool">
+<h3>bzr.default_mergetool<a class="headerlink" href="#bzr-default-mergetool" title="Permalink to this headline">¶</a></h3>
+<p>Specifies which external merge tool (as defined above) should be selected by
+default in tools such as <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">qconflicts</span></code>.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span><span class="o">.</span><span class="n">default_mergetool</span> <span class="o">=</span> <span class="n">kdiff3</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="bugs-help.html" title="Bug Tracker Settings"
+              >previous</a> |
+            <a href="conflict-types-help.html" title="Conflict Types"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/configuration-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,33 @@
+pack
+====
+
+:Purpose: Compress the data within a repository.
+:Usage:   brz pack [BRANCH_OR_REPO]
+
+:Options:
+  --clean-obsolete-packs
+                        Delete obsolete packs to save disk space.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  This operation compresses the data within a bazaar repository. As
+  bazaar supports automatic packing of repository, this operation is
+  normally not required to be done manually.
+  
+  During the pack operation, bazaar takes a backup of existing repository
+  data, i.e. pack files. This backup is eventually removed by bazaar
+  automatically when it is safe to do so. To save disk space by removing
+  the backed up pack files, the --clean-obsolete-packs option may be
+  used.
+  
+  Warning: If you use --clean-obsolete-packs and your machine crashes
+  during or immediately after repacking, you may be left with a state
+  where the deletion has been written to disk but the new packs have not
+  been. In this case the repository may be unusable.
+
+:See also: :doc:`repositories <repositories-help>`
+
+

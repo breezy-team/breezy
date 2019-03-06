@@ -1,0 +1,139 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Annotating changes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Centralized development" href="central_intro.html" />
+    <link rel="prev" title="Resolving conflicts" href="resolving_conflicts.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="resolving_conflicts.html" title="Resolving conflicts"
+             accesskey="P">previous</a> |
+          <a href="central_intro.html" title="Centralized development"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="annotating-changes">
+<h1>Annotating changes<a class="headerlink" href="#annotating-changes" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="seeing-the-origin-of-content">
+<h2>Seeing the origin of content<a class="headerlink" href="#seeing-the-origin-of-content" title="Permalink to this headline">¶</a></h2>
+<p>When two or more people are working on files, it can be highly
+useful at times to see who created or last changed certain content.
+To do this, using the annotate command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">annotate</span> <span class="n">readme</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p>If you are a pessimist or an optimist, you might prefer to use
+one of built-in aliases for <code class="docutils literal notranslate"><span class="pre">annotate</span></code>: <code class="docutils literal notranslate"><span class="pre">blame</span></code> or <code class="docutils literal notranslate"><span class="pre">praise</span></code>.
+Either way, this displays each line of the file together with
+information such as:</p>
+<blockquote>
+<div><ul class="simple">
+<li>who changed it last</li>
+<li>when it was last changed</li>
+<li>the commit message.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="gui-tools">
+<h2>GUI tools<a class="headerlink" href="#gui-tools" title="Permalink to this headline">¶</a></h2>
+<p>The various GUI plugins for Breezy provide graphical tools for
+viewing annotation information. For example, the brz-gtk plugin
+provides a GUI tool for this that can be launched using the
+<code class="docutils literal notranslate"><span class="pre">gannotate</span></code> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">gannotate</span> <span class="n">readme</span><span class="o">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+<p>The GUI tools typically provide a much richer display of
+interesting information (e.g. all the changes in each commit)
+so you may prefer them over the text-based command.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="resolving_conflicts.html" title="Resolving conflicts"
+              >previous</a> |
+            <a href="central_intro.html" title="Centralized development"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/annotating_changes.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

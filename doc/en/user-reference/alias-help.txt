@@ -1,0 +1,32 @@
+alias
+=====
+
+:Purpose: Set/unset and display aliases.
+:Usage:   brz alias [NAME]
+
+:Options:
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --remove       Remove the alias.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Examples:
+    Show the current aliases::
+
+        brz alias
+
+    Show the alias specified for 'll'::
+
+        brz alias ll
+
+    Set an alias for 'll'::
+
+        brz alias ll="log --line -r-10..-1"
+
+    To remove an alias for 'll'::
+
+        brz alias --remove ll
+
+
+

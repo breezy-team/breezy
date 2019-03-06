@@ -1,0 +1,197 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Exporting version information &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="GnuPG Signatures" href="gpg_signatures.html" />
+    <link rel="prev" title="Using hooks" href="hooks.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="hooks.html" title="Using hooks"
+             accesskey="P">previous</a> |
+          <a href="gpg_signatures.html" title="GnuPG Signatures"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="exporting-version-information">
+<h1>Exporting version information<a class="headerlink" href="#exporting-version-information" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="getting-the-last-revision-number">
+<h2>Getting the last revision number<a class="headerlink" href="#getting-the-last-revision-number" title="Permalink to this headline">¶</a></h2>
+<p>If you only need the last revision number in your build scripts, you can
+use the <code class="docutils literal notranslate"><span class="pre">revno</span></code> command to get that value like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz revno
+3104
+</pre></div>
+</div>
+</div>
+<div class="section" id="getting-more-version-information">
+<h2>Getting more version information<a class="headerlink" href="#getting-more-version-information" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">version-info</span></code> command can be used to output more information
+about the latest version like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz version-info
+revision-id: pqm@pqm.ubuntu.com-20071211175118-s94sizduj201hrs5
+date: 2007-12-11 17:51:18 +0000
+build-date: 2007-12-13 13:14:51 +1000
+revno: 3104
+branch-nick: brz.dev
+</pre></div>
+</div>
+<p>You can easily filter that output using operating system tools or
+scripts. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz version-info | grep ^date
+date: 2007-12-11 17:51:18 +0000
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">--all</span></code> option will actually dump version information about
+every revision if you need that information for more advanced
+post-processing.</p>
+</div>
+<div class="section" id="python-projects">
+<h2>Python projects<a class="headerlink" href="#python-projects" title="Permalink to this headline">¶</a></h2>
+<p>If using a Makefile to build your project, you can generate the version
+information file as simply as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">library</span><span class="o">/</span><span class="n">_version</span><span class="o">.</span><span class="n">py</span><span class="p">:</span>
+      <span class="n">brz</span> <span class="n">version</span><span class="o">-</span><span class="n">info</span> <span class="o">--</span><span class="nb">format</span> <span class="n">python</span> <span class="o">&gt;</span> <span class="n">library</span><span class="o">/</span><span class="n">_version</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>This generates a file which contains 3 dictionaries:</p>
+<blockquote>
+<div><ul class="simple">
+<li><cite>version_info</cite>: A dictionary containing the basic information about the
+current state.</li>
+<li><cite>revisions</cite>: A dictionary listing all of the revisions in the
+history of the tree, along with the commit times and commit
+message.  This defaults to being empty unless <code class="docutils literal notranslate"><span class="pre">--all</span></code> or
+<code class="docutils literal notranslate"><span class="pre">--include-history</span></code> is supplied. This is useful if you want to
+track what bug fixes, etc, might be included in the released
+version. But for many projects it is more information than needed.</li>
+<li><cite>file_revisions</cite>: A dictionary listing the last-modified revision
+for all files in the project. This can be used similarly to how
+<code class="docutils literal notranslate"><span class="pre">$Id$</span></code> keywords are used in CVS-controlled files. The last
+modified date can be determined by looking in the <code class="docutils literal notranslate"><span class="pre">revisions</span></code>
+map. This is also empty by default, and enabled only by <code class="docutils literal notranslate"><span class="pre">--all</span></code>
+or <code class="docutils literal notranslate"><span class="pre">--include-file-revisions</span></code>.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="getting-version-info-in-other-formats">
+<h2>Getting version info in other formats<a class="headerlink" href="#getting-version-info-in-other-formats" title="Permalink to this headline">¶</a></h2>
+<p>Breezy supports a template-based method for getting version information in
+arbitrary formats.  The <code class="docutils literal notranslate"><span class="pre">--custom</span></code> option to <code class="docutils literal notranslate"><span class="pre">version-info</span></code> can be
+used by providing a <code class="docutils literal notranslate"><span class="pre">--template</span></code> argument that contains variables that
+will be expanded based on the status of the working tree.  For example, to
+generate a C header file with a formatted string containing the current
+revision number:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">version</span><span class="o">-</span><span class="n">info</span> <span class="o">--</span><span class="n">custom</span> \
+     <span class="o">--</span><span class="n">template</span><span class="o">=</span><span class="s2">&quot;#define VERSION_INFO </span><span class="se">\&quot;</span><span class="s2">Project 1.2.3 (r</span><span class="si">{revno}</span><span class="s2">)</span><span class="se">\&quot;\n</span><span class="s2">&quot;</span> \
+     <span class="o">&gt;</span> <span class="n">version_info</span><span class="o">.</span><span class="n">h</span>
+</pre></div>
+</div>
+<p>where the <code class="docutils literal notranslate"><span class="pre">{revno}</span></code> will be replaced by the revision number of the
+working tree.  (If the example above doesn’t work on your OS, try
+entering the command all on one line.) For more information on the
+variables that can be used in templates, see <a class="reference external" href="../user-reference/index.html#version-info">Version Info</a> in the
+Breezy User Reference.</p>
+<p>Predefined formats for dumping version information in specific languages
+are currently in development. Please contact us on the mailing list about
+your requirements in this area.</p>
+</div>
+<div class="section" id="check-clean">
+<h2>Check clean<a class="headerlink" href="#check-clean" title="Permalink to this headline">¶</a></h2>
+<p>Most information about the contents of the project can be cheaply
+determined by just reading the revision entry. However, it can be useful
+to know if the working tree was completely up-to-date when it was
+packaged, or if there was a local modification. By supplying either
+<code class="docutils literal notranslate"><span class="pre">--all</span></code> or <code class="docutils literal notranslate"><span class="pre">--check-clean</span></code>, <code class="docutils literal notranslate"><span class="pre">brz</span></code> will inspect the working tree, and
+set the <code class="docutils literal notranslate"><span class="pre">clean</span></code> flag in <code class="docutils literal notranslate"><span class="pre">version_info</span></code>, as well as set entries in
+<code class="docutils literal notranslate"><span class="pre">file_revisions</span></code> as <code class="docutils literal notranslate"><span class="pre">modified</span></code> where appropriate.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="hooks.html" title="Using hooks"
+              >previous</a> |
+            <a href="gpg_signatures.html" title="GnuPG Signatures"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/version_info.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

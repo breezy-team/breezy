@@ -1,0 +1,274 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>diff &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="export" href="export-help.html" />
+    <link rel="prev" title="deleted" href="deleted-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="deleted-help.html" title="deleted"
+             accesskey="P">previous</a> |
+          <a href="export-help.html" title="export"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="diff">
+<h1>diff<a class="headerlink" href="#diff" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Show differences in the working tree, between revisions or branches.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz diff [FILE…]</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-c <var>ARG</var></span>, <span class="option">--change=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Select changes introduced by the specified revision.
+See also “help revisionspec”.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--context=<var>ARG</var></span></kbd></td>
+<td><p class="first last">How many lines of context to show.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">--diff-options=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Pass these options to the external diff program.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-F <var>ARG</var></span>, <span class="option">--format=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Diff format to use.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
+<td><p class="first last">Show help message.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--new=<var>ARG</var></span></kbd></td>
+<td><p class="first last">Branch/tree to compare to.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--old=<var>ARG</var></span></kbd></td>
+<td><p class="first last">Branch/tree to compare from.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-p <var>ARG</var></span>, <span class="option">--prefix=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Set prefixes added to old and new filenames, as two
+values separated by a colon. (eg “old/:new/”).</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
+<td><p class="first last">Only display errors and warnings.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-r <var>ARG</var></span>, <span class="option">--revision=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">See “help revisionspec” for details.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--usage</span></kbd></td>
+<td><p class="first last">Show usage message and options.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--using=<var>ARG</var></span></kbd></td>
+<td><p class="first last">Use this command to compare files.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
+<td><p class="first last">Display more information.</p>
+</td></tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">If no arguments are given, all changes for the current tree are listed.
+If files are given, only the changes in those files are listed.
+Remote and multiple branches can be compared by using the –old and
+–new options. If not provided, the default for both is derived from
+the first argument, if any, or the current tree if no arguments are
+given.</p>
+<p>“brz diff -p1” is equivalent to “brz diff –prefix old/:new/”, and
+produces patches suitable for “patch -p1”.</p>
+<p>Note that when using the -r argument with a range of revisions, the
+differences are computed between the two specified revisions.  That
+is, the command does not show the changes introduced by the first
+revision in the range.  This differs from the interpretation of
+revision ranges used by “brz log” which includes the first revision
+in the range.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Exit values:</th><td class="field-body"><p class="first">1 - changed
+2 - unrepresentable changes
+3 - error
+0 - no change</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Examples:</th><td class="field-body"><p class="first">Shows the difference in the working tree versus the last commit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span>
+</pre></div>
+</div>
+<p>Difference between the working tree and revision 1:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="o">-</span><span class="n">r1</span>
+</pre></div>
+</div>
+<p>Difference between revision 3 and revision 1:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="o">-</span><span class="n">r1</span><span class="o">..</span><span class="mi">3</span>
+</pre></div>
+</div>
+<p>Difference between revision 3 and revision 1 for branch xxx:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="o">-</span><span class="n">r1</span><span class="o">..</span><span class="mi">3</span> <span class="n">xxx</span>
+</pre></div>
+</div>
+<p>The changes introduced by revision 2 (equivalent to -r1..2):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="o">-</span><span class="n">c2</span>
+</pre></div>
+</div>
+<p>To see the changes introduced by revision X:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="o">-</span><span class="n">cX</span>
+</pre></div>
+</div>
+<p>Note that in the case of a merge, the -c option shows the changes
+compared to the left hand parent. To see the changes against
+another parent, use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="o">-</span><span class="n">r</span><span class="o">&lt;</span><span class="n">chosen_parent</span><span class="o">&gt;..</span><span class="n">X</span>
+</pre></div>
+</div>
+<p>The changes between the current revision and the previous revision
+(equivalent to -c-1 and -r-2..-1)</p>
+<blockquote>
+<div><p>brz diff -r-2..</p>
+</div></blockquote>
+<p>Show just the differences for file NEWS:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="n">NEWS</span>
+</pre></div>
+</div>
+<p>Show the differences in working tree xxx for file NEWS:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="n">xxx</span><span class="o">/</span><span class="n">NEWS</span>
+</pre></div>
+</div>
+<p>Show the differences from branch xxx to this working tree:</p>
+<blockquote>
+<div><p>brz diff –old xxx</p>
+</div></blockquote>
+<p>Show the differences between two branches for file NEWS:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="o">--</span><span class="n">old</span> <span class="n">xxx</span> <span class="o">--</span><span class="n">new</span> <span class="n">yyy</span> <span class="n">NEWS</span>
+</pre></div>
+</div>
+<p>Same as ‘brz diff’ but prefix paths with old/ and new/:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="o">--</span><span class="n">prefix</span> <span class="n">old</span><span class="o">/</span><span class="p">:</span><span class="n">new</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>Show the differences using a custom diff program with options:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="o">--</span><span class="n">using</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">diff</span> <span class="o">--</span><span class="n">diff</span><span class="o">-</span><span class="n">options</span> <span class="o">-</span><span class="n">wu</span>
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Aliases:</th><td class="field-body"><p class="first">di, dif</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">See also:</th><td class="field-body"><p class="first last"><a class="reference internal" href="status-help.html"><span class="doc">status</span></a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="deleted-help.html" title="deleted"
+              >previous</a> |
+            <a href="export-help.html" title="export"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/diff-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

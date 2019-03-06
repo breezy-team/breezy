@@ -1,0 +1,23 @@
+Distributed development
+=======================
+
+Motivation
+----------
+
+Distributed VCS tools offer new ways of working together,
+ways that better reflect the modern world we live in and
+ways that enable higher quality outcomes.
+
+The decentralized with shared mainline workflow
+-----------------------------------------------
+
+In this workflow, each developer has their own branch or branches, plus
+a checkout of the main branch. They do their work in their personal
+branch, then merge it into the mainline when it is ready.
+
+.. image:: images/workflows_shared.png
+
+Other distributed workflows are explored later in this chapter.
+
+..
+   vim: tw=74 ft=rst

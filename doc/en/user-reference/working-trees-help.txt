@@ -1,0 +1,42 @@
+Working Trees
+=============
+
+
+A working tree is the contents of a branch placed on disk so that you can
+see the files and edit them. The working tree is where you make changes to a
+branch, and when you commit the current state of the working tree is the
+snapshot that is recorded in the commit.
+
+When you push a branch to a remote system, a working tree will not be
+created. If one is already present the files will not be updated. The
+branch information will be updated and the working tree will be marked
+as out-of-date. Updating a working tree remotely is difficult, as there
+may be uncommitted changes or the update may cause content conflicts that are
+difficult to deal with remotely.
+
+If you have a branch with no working tree you can use the 'checkout' command
+to create a working tree. If you run 'brz checkout .' from the branch it will
+create the working tree. If the branch is updated remotely, you can update the
+working tree by running 'brz update' in that directory.
+
+If you have a branch with a working tree that you do not want the 'remove-tree'
+command will remove the tree if it is safe. This can be done to avoid the
+warning about the remote working tree not being updated when pushing to the
+branch. It can also be useful when working with a '--no-trees' repository
+(see 'brz help repositories').
+
+If you want to have a working tree on a remote machine that you push to you
+can either run 'brz update' in the remote branch after each push, or use some
+other method to update the tree during the push. There is an 'rspush' plugin
+that will update the working tree using rsync as well as doing a push. There
+is also a 'push-and-update' plugin that automates running 'brz update' via SSH
+after each push.
+
+Useful commands::
+
+  checkout     Create a working tree when a branch does not have one.
+  remove-tree  Removes the working tree from a branch when it is safe to do so.
+  update       When a working tree is out of sync with its associated branch
+               this will update the tree to match the branch.
+
+

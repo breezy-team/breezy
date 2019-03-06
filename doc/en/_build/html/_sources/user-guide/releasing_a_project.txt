@@ -1,0 +1,48 @@
+Releasing a project
+===================
+
+Packaging a release
+-------------------
+
+The ``export`` command is used to package a release, i.e. to
+take a copy of the files and directories in a branch and
+package them into a fresh directory or archive. For example,
+this command will package the last committed version into
+a ``tar.gz`` archive file::
+
+  brz export ../releases/my-stuff-1.5.tar.gz
+
+The ``export`` command uses the suffix of the archive file
+to work out the type of archive to create as shown below.
+
+      =================       =========================
+      Supported formats       Autodetected by extension
+      =================       =========================
+         dir                         (none)
+         tar                          .tar
+         tbz2                    .tar.bz2, .tbz2
+         tgz                      .tar.gz, .tgz
+         zip                          .zip
+      =================       =========================
+
+If you wish to package a revision other than the last one, use
+the ``-r`` option. If you wish to tune the root directory inside
+the archive, use the ``--root`` option. See the online help or
+User Reference for further details on the options supported by
+``export``.
+
+Tagging a release
+-----------------
+
+Rather than remembering which version was used to package a release,
+it's useful to define a symbolic name for a version using the ``tag``
+command like this::
+
+  brz tag version-1-5
+
+That tag can be used later whenever a revision identifier is
+required, e.g.::
+
+  brz diff -r tag:version-1-5
+
+To see the list of tags defined in a branch, use the ``tags`` command.

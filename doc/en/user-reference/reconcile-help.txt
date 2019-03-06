@@ -1,0 +1,31 @@
+reconcile
+=========
+
+:Purpose: Reconcile brz metadata in a branch.
+:Usage:   brz reconcile [BRANCH]
+
+:Options:
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  This can correct data mismatches that may have been caused by
+  previous ghost operations or brz upgrades. You should only
+  need to run this command if 'brz check' or a brz developer
+  advises you to run it.
+  
+  If a second branch is provided, cross-branch reconciliation is
+  also attempted, which will check that data like the tree root
+  id which was not present in very early brz versions is represented
+  correctly in both branches.
+  
+  At the same time it is run it may recompress data resulting in
+  a potential saving in disk space or performance gain.
+  
+  The branch *MUST* be on a listable system such as local disk or sftp.
+
+:See also: :doc:`check <check-help>`
+
+

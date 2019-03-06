@@ -1,0 +1,316 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-0-9-0">
+<h2>bzr 0.9.0<a class="headerlink" href="#bzr-0-9-0" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2006-08-11</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="surprises">
+<h3>Surprises<a class="headerlink" href="#surprises" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>The hard-coded built-in ignore rules have been removed. There are
+now two rulesets which are enforced. A user global one in
+<code class="docutils literal notranslate"><span class="pre">~/.bazaar/ignore</span></code> which will apply to every tree, and the tree
+specific one ‘.bzrignore’.
+<code class="docutils literal notranslate"><span class="pre">~/.bazaar/ignore</span></code> will be created if it does not exist, but with
+a more conservative list than the old default.
+This fixes bugs with default rules being enforced no matter what.
+The old list of ignore rules from bzr is available by
+running ‘bzr ignore –old-default-rules’.
+(Robert Collins, Martin Pool, John Arbash Meinel)</li>
+<li>‘branches.conf’ has been changed to ‘locations.conf’, since it can apply
+to more locations than just branch locations.
+(Aaron Bentley)</li>
+</ul>
+</div>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>The revision specifier “revno:” is extended to accept the syntax
+revno:N:branch. For example,
+revno:42:http://bazaar-vcs.org/bzr/bzr.dev/ means revision 42 in
+bzr.dev.  (Matthieu Moy)</li>
+<li>Tests updates to ensure proper URL handling, UNICODE support, and
+proper printing when the user’s terminal encoding cannot display
+the path of a file that has been versioned.
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span></code> can take a target URL rather than only a local directory.
+<code class="docutils literal notranslate"><span class="pre">Branch.get_parent()/set_parent()</span></code> now save a relative path if possible,
+and normalize the parent based on root, allowing access across
+different transports. (John Arbash Meinel, Wouter van Heyst, Martin Pool)
+(Malone #48906, #42699, #40675, #5281, #3980, #36363, #43689,
+#42517, #42514)</li>
+<li>On Unix, detect terminal width using an ioctl not just $COLUMNS.
+Use terminal width for single-line logs from <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span> <span class="pre">--line</span></code> and
+pending-merge display.  (Robert Widhopf-Fenk, Gustavo Niemeyer)
+(Malone #3507)</li>
+<li>On Windows, detect terminal width using GetConsoleScreenBufferInfo.
+(Alexander Belchenko)</li>
+<li>Speedup improvement for ‘date:’-revision search. (Guillaume Pinot).</li>
+<li>Show the correct number of revisions pushed when pushing a new branch.
+(Robert Collins).</li>
+<li>‘bzr selftest’ now shows a progress bar with the number of tests, and
+progress made. ‘make check’ shows tests in -v mode, to be more useful
+for the PQM status window. (Robert Collins).
+When using a progress bar, failed tests are printed out, rather than
+being overwritten by the progress bar until the suite finishes.
+(John Arbash Meinel)</li>
+<li>‘bzr selftest –benchmark’ will run a new benchmarking selftest.
+‘bzr selftest –benchmark –lsprof-timed’ will use lsprofile to generate
+profile data for the individual profiled calls, allowing for fine
+grained analysis of performance.
+(Robert Collins, Martin Pool).</li>
+<li>‘bzr commit’ shows a progress bar. This is useful for commits over SFTP
+where commit can take an appreciable time. (Robert Collins)</li>
+<li>‘bzr add’ is now less verbose in telling you what ignore globs were
+matched by files being ignored. Instead it just tells you how many
+were ignored (because you might reasonably be expecting none to be
+ignored). ‘bzr add -v’ is unchanged and will report every ignored
+file. (Robert Collins).</li>
+<li>FTP now has a test server if medusa is installed. As part of testing,
+FTP support has been improved, including support for supplying a
+non-standard port. (John Arbash Meinel).</li>
+<li>‘bzr log –line’ shows the revision number, and uses only the
+first line of the log message (#5162, Alexander Belchenko;
+Matthieu Moy)</li>
+<li>‘bzr status’ has had the –all option removed. The ‘bzr ls’ command
+should be used to retrieve all versioned files. (Robert Collins)</li>
+<li>‘bzr bundle OTHER/BRANCH’ will create a bundle which can be sent
+over email, and applied on the other end, while maintaining ancestry.
+This bundle can be applied with either ‘bzr merge’ or ‘bzr pull’,
+the same way you would apply another branch.
+(John Arbash Meinel, Aaron Bentley)</li>
+<li>‘bzr whoami’ can now be used to set your identity from the command line,
+for a branch or globally.  (Robey Pointer)</li>
+<li>‘bzr checkout’ now aliased to ‘bzr co’, and ‘bzr annotate’ to ‘bzr ann’.
+(Michael Ellerman)</li>
+<li>‘bzr revert DIRECTORY’ now reverts the contents of the directory as well.
+(Aaron Bentley)</li>
+<li>‘bzr get sftp://foo’ gives a better error when paramiko is not present.
+Also updates things like ‘http+pycurl://’ if pycurl is not present.
+(John Arbash Meinel) (Malone #47821, #52204)</li>
+<li>New env variable <code class="docutils literal notranslate"><span class="pre">BZR_PROGRESS_BAR</span></code>, sets the default progress bar type.
+Can be set to ‘none’ or ‘dummy’ to disable the progress bar, ‘dots’ or
+‘tty’ to create the respective type. (John Arbash Meinel, #42197, #51107)</li>
+<li>Improve the help text for ‘bzr diff’ to explain what various options do.
+(John Arbash Meinel, #6391)</li>
+<li>‘bzr uncommit -r 10’ now uncommits revisions 11.. rather than uncommitting
+revision 10. This makes -r10 more in line with what other commands do.
+‘bzr uncommit’ also now saves the pending merges of the revisions that
+were removed. So it is safe to uncommit after a merge, fix something,
+and commit again. (John Arbash Meinel, #32526, #31426)</li>
+<li>‘bzr init’ now also works on remote locations.
+(Wouter van Heyst, #48904)</li>
+<li>HTTP support has been updated. When using pycurl we now support
+connection keep-alive, which reduces dns requests and round trips.
+And for both urllib and pycurl we support multi-range requests,
+which decreases the number of round-trips. Performance results for
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span> <span class="pre">http://bazaar-vcs.org/bzr/bzr.dev/</span></code> indicate
+HTTP branching is now 2-3x faster, and <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pull</span></code> in an existing
+branch is as much as 4x faster.
+(Michael Ellerman, Johan Rydberg, John Arbash Meinel, #46768)</li>
+<li>Performance improvements for SFTP. Branching and pulling are now up to
+2x faster. Utilize paramiko.readv() support for async requests if it
+is available (paramiko &gt; 1.6) (John Arbash Meinel)</li>
+</ul>
+</div>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix shadowed definition of TestLocationConfig that caused some
+tests not to run.
+(Erik Bågfors, Michael Ellerman, Martin Pool, #32587)</li>
+<li>Fix unnecessary requirement of sign-my-commits that it be run from
+a working directory.  (Martin Pool, Robert Collins)</li>
+<li>‘bzr push location’ will only remember the push location if it succeeds
+in connecting to the remote location. (John Arbash Meinel, #49742)</li>
+<li>‘bzr revert’ no longer toggles the executable bit on win32
+(John Arbash Meinel, #45010)</li>
+<li>Handle broken pipe under win32 correctly. (John Arbash Meinel)</li>
+<li>SFTP tests now work correctly on win32 if you have a newer paramiko
+(John Arbash Meinel)</li>
+<li>Cleanup win32 test suite, and general cleanup of places where
+file handles were being held open. (John Arbash Meinel)</li>
+<li>When specifying filenames for ‘diff -r x..y’, the name of the file in the
+working directory can be used, even if its name is different in both x
+and y.</li>
+<li>File-ids containing single- or double-quotes are handled correctly by
+push. (Aaron Bentley, #52227)</li>
+<li>Normalize unicode filenames to ensure cross-platform consistency.
+(John Arbash Meinel, #43689)</li>
+<li>The argument parser can now handle ‘-‘ as an argument. Currently
+no code interprets it specially (it is mostly handled as a file named
+‘-‘). But plugins, and future operations can use it.
+(John Arbash meinel, #50984)</li>
+<li>Bundles can properly read binary files with a plain ‘r’ in them.
+(John Arbash Meinel, #51927)</li>
+<li>Tuning <code class="docutils literal notranslate"><span class="pre">iter_entries()</span></code> to be more efficient (John Arbash Meinel, #5444)</li>
+<li>Lots of win32 fixes (the test suite passes again).
+(John Arbash Meinel, #50155)</li>
+<li>Handle openbsd returning None for sys.getfilesystemencoding() (#41183)</li>
+<li>Support FTP APPE (append) to allow Knits to be used over FTP (#42592)</li>
+<li>Removals are only committed if they match the filespec (or if there is
+no filespec).  (#46635, Aaron Bentley)</li>
+<li>smart-add recurses through all supplied directories
+(John Arbash Meinel, #52578)</li>
+<li>Make the bundle reader extra lines before and after the bundle text.
+This allows you to parse an email with the bundle inline.
+(John Arbash Meinel, #49182)</li>
+<li>Change the file id generator to squash a little bit more. Helps when
+working with long filenames on windows. (Also helps for unicode filenames
+not generating hidden files). (John Arbash Meinel, #43801)</li>
+<li>Restore terminal mode on C-c while reading SFTP password.  (#48923,
+Nicholas Allen, Martin Pool)</li>
+<li>Timestamps are rounded to 1ms, and revision entries can be recreated
+exactly. (John Arbash Meinel, Jamie Wilkinson, #40693)</li>
+<li>Branch.base has changed to a URL, but ~/.bazaar/locations.conf should
+use local paths, since it is user visible (John Arbash Meinel, #53653)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">status</span> <span class="pre">foo</span></code> when foo was unversioned used to cause a full delta
+to be generated (John Arbash Meinel, #53638)</li>
+<li>When reading revision properties, an empty value should be considered
+the empty string, not None (John Arbash Meinel, #47782)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">diff</span> <span class="pre">--diff-options</span></code> can now handle binary files being changed.
+Also, the output is consistent when –diff-options is not supplied.
+(John Arbash Meinel, #54651, #52930)</li>
+<li>Use the right suffixes for loading plugins (John Arbash Meinel, #51810)</li>
+<li>Fix <code class="docutils literal notranslate"><span class="pre">Branch.get_parent()</span></code> to handle the case when the parent is not
+accessible (John Arbash Meinel, #52976)</li>
+</ul>
+</div>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Combine the ignore rules into a single regex rather than looping over
+them to reduce the threshold where  N^2 behaviour occurs in operations
+like status. (Jan Hudec, Robert Collins).</li>
+<li>Appending to <code class="docutils literal notranslate"><span class="pre">bzrlib.DEFAULT_IGNORE</span></code> is now deprecated. Instead, use
+one of the add functions in bzrlib.ignores. (John Arbash Meinel)</li>
+<li>‘bzr push’ should only push the ancestry of the current revision, not
+all of the history in the repository. This is especially important for
+shared repositories. (John Arbash Meinel)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.delta.compare_trees</span></code> now iterates in alphabetically sorted order,
+rather than randomly walking the inventories. (John Arbash Meinel)</li>
+<li>Doctests are now run in temporary directories which are cleaned up when
+they finish, rather than using special ScratchDir/ScratchBranch objects.
+(Martin Pool)</li>
+<li>Split <code class="docutils literal notranslate"><span class="pre">check</span></code> into separate methods on the branch and on the repository,
+so that it can be specialized in ways that are useful or efficient for
+different formats.  (Martin Pool, Robert Collins)</li>
+<li>Deprecate <code class="docutils literal notranslate"><span class="pre">Repository.all_revision_ids</span></code>; most methods don’t really need
+the global revision graph but only that part leading up to a particular
+revision.  (Martin Pool, Robert Collins)</li>
+<li>Add a BzrDirFormat <code class="docutils literal notranslate"><span class="pre">control_formats</span></code> list which allows for control formats
+that do not use ‘.bzr’ to store their data - i.e. ‘.svn’, ‘.hg’ etc.
+(Robert Collins, Jelmer Vernooij).</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.diff.external_diff</span></code> can be redirected to any file-like object.
+Uses subprocess instead of spawnvp.
+(James Henstridge, John Arbash Meinel, #4047, #48914)</li>
+<li>New command line option ‘–profile-imports’, which will install a custom
+importer to log time to import modules and regex compilation time to
+sys.stderr (John Arbash Meinel)</li>
+<li>‘EmptyTree’ is now deprecated, please use <code class="docutils literal notranslate"><span class="pre">repository.revision_tree(None)</span></code>
+instead. (Robert Collins)</li>
+<li>“RevisionTree” is now in bzrlib/revisiontree.py. (Robert Collins)</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-0.9.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

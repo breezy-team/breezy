@@ -1,0 +1,20 @@
+Location aliases
+================
+
+Bazaar defines several aliases for locations associated with a branch.  These
+can be used with most commands that expect a location, such as `brz push`.
+
+The aliases are::
+
+  :bound     The branch this branch is bound to, for bound branches.
+  :parent    The parent of this branch.
+  :public    The public location of this branch.
+  :push      The saved location used for `brz push` with no arguments.
+  :submit    The submit branch for this branch.
+  :this      This branch.
+
+For example, to push to the parent location::
+
+    brz push :parent
+
+

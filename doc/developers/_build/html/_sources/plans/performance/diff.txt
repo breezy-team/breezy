@@ -1,0 +1,110 @@
+diff Performance Analysis
+=========================
+
+.. contents:: :local:
+
+Minimal Work
+------------
+
+Reuse of historical comparisons
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A significant part of the work done by diff is sequence matching.  This
+scales O(n^2) with the number of lines in the file.  Therefore, it
+is worthwile to avoid content comparisons as much as possible.
+
+Our current knit format contains content comparisons, and this data can
+be converted into lists of matching blocks.  Other future formats such as
+mpdiff may also support such conversion.  So it is possible to reuse past
+comparisons.
+
+It is also possible to combine sequential comparisons.  So given a comparison
+of "foo" to "bar", and "bar" to "baz", it is possible to derive a comparison of
+"foo" to "baz".
+
+Reuse of historical comparisons will scale with the number of uncommon
+build-parents between the two historical revisions.  This will typically be
+proportional to the amount of change that the file has undergone.  Therefore,
+in the common case, reuse of historical comparisons will scale with the
+amount of change.
+
+The downside of such reuse is that it ties the comparison to the historical
+data.  But given the performance improvement, it seems to be worth
+consideration.  Fresh comparisons can be performed if the user requests them.
+
+It may also be possible to accelerate comparisons by including annotation data,
+thus increasing the number of unique lines.
+
+Historical Tree Against Historical Tree
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This operation should be strictly proportional to the amount of change, because
+a comparison has already been done at commit time.  Achieving that performance
+requires the committed data to be properly structured, so that the comparison
+can be extracted and combined with other comparisons.  This comparision
+extraction should be possible at the inventory and file-content levels.
+
+Minimum work:
+
+1. Extract and combine inventory comparisons
+2. Extract and combine text comparisions for modified texts
+
+Basis Against Historical Tree
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This is another case of Historical Tree Against Historical Tree.
+
+Basis Against Basis
+~~~~~~~~~~~~~~~~~~~
+This is another case of Historical Tree Against Historical Tree.
+
+Working Tree Against Basis
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+This must scale with the number of versioned files, unless the user indicates
+that only certain files should be compared.
+
+Performance can be further improved by caching comparisons to avoid repeating
+them.  Caching could potentially be performed by ``diff`` and perhaps by
+``merge``.  Merge is aware of the relationship of a text merge's result to
+the THIS value, and the THIS value is generally the basis value.  So the
+comparison is latent, but present.  The only issue is extracting it.
+
+The cache could be indexed by sha1sum pairs.  It could also be indexed by
+file-id, to facilitate removal of stale data.
+
+Minimum work:
+
+1. Scan working tree for modified files
+2. Retrieve cached comparisons
+3. Perform comparisons on files with no cached comparisons
+4. Cache comparisons for files with no cached comparisons
+
+Working Tree Against Historical Tree
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This can be structured as a comparison of working tree against basis tree,
+followed by basis tree against historical tree.  Therefore, it combines the
+performance characteristics of "Working Tree Against Basis" with "Basis Against
+Historical Tree".
+
+Working Tree Against Working Tree
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This can be structured as two comparisons against basis, and one comparison
+of basis against basis.  Its performance is therefore similar to Working Tree
+Against Historical Tree.
+
+API Changes
+-----------
+
+Desired API:
+
+ - Tree.get_comparision(file_id, tree)
+
+This probably entails:
+
+ - WorkingTree.store_comparison(file_id, revision_id, sha1, comparison)
+ - WorkingTree.get_comparison(file_id, revision_id, sha1)
+ - Repository.get_comparision(file_id, revision_id, revision_id)
+ - merge_comparisions(comparison, comparision)
+
+Storage considerations
+----------------------
+It must be cheap (e.g. scale with number of intermediate revisions) to perform
+comparison of two historical texts.  It must be cheap to perform comparison of
+the inventories of two historical trees.

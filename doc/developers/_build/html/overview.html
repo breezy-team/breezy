@@ -1,0 +1,518 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Breezy Architectural Overview &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Integrating with Breezy" href="integration.html" />
+    <link rel="prev" title="Breezy Windows EC2 Server" href="ec2.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="ec2.html" title="Breezy Windows EC2 Server"
+             accesskey="P">previous</a> |
+          <a href="integration.html" title="Integrating with Breezy"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="breezy-architectural-overview">
+<h1>Breezy Architectural Overview<a class="headerlink" href="#breezy-architectural-overview" title="Permalink to this headline">¶</a></h1>
+<p>This document describes the key classes and concepts within Breezy.  It is
+intended to be useful to people working on the Breezy codebase, or to
+people writing plugins.  People writing plugins may also like to read the
+guide to <a class="reference external" href="integration.html">Integrating with Breezy</a> for some specific recipes.</p>
+<p>There’s some overlap between this and the <a class="reference external" href="https://www.breezy-vcs.org/doc/en/user-guide/core_concepts.html">Core Concepts</a> section of the
+user guide, but this document is targetted to people interested in the
+internals.  In particular the user guide doesn’t go any deeper than
+“revision”, because regular users don’t care about lower-level details
+like inventories, but this guide does.</p>
+<p>If you have any questions, or if something seems to be incorrect, unclear
+or missing, please talk to us in <code class="docutils literal notranslate"><span class="pre">irc://irc.freenode.net/#bzr</span></code>, write to
+the Breezy mailing list, or simply file a bug report.</p>
+<div class="section" id="ids-and-keys">
+<h2>IDs and keys<a class="headerlink" href="#ids-and-keys" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="ids">
+<h3>IDs<a class="headerlink" href="#ids" title="Permalink to this headline">¶</a></h3>
+<p>All IDs are globally unique identifiers.  Inside breezy they are almost
+always represented as UTF-8 encoded bytestrings (i.e. <code class="docutils literal notranslate"><span class="pre">str</span></code> objects).</p>
+<p>The main two IDs are:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Revision IDs:</th><td class="field-body">The unique identifier of a single revision, such as
+<code class="docutils literal notranslate"><span class="pre">pqm&#64;pqm.ubuntu.com-20110201161347-ao76mv267gc1b5v2</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">File IDs:</th><td class="field-body">The unique identifier of a single file.</td>
+</tr>
+</tbody>
+</table>
+<p>By convention, in the breezy API, parameters of methods that are expected
+to be IDs (as opposed to keys, revision numbers, or some other handle)
+will end in <code class="docutils literal notranslate"><span class="pre">id</span></code>, e.g.  <code class="docutils literal notranslate"><span class="pre">revid</span></code> or <code class="docutils literal notranslate"><span class="pre">file_id</span></code>.</p>
+<p>Ids may be stored directly or they can be inferred from other
+data. Native Breezy formats store ids directly; foreign VCS
+support usually generates them somehow. For example, the
+Git commit with SHA <code class="docutils literal notranslate"><span class="pre">fb235a3be6372e40ff7f7ebbcd7905a08cb04444</span></code>
+is referred to with the revision ID
+<code class="docutils literal notranslate"><span class="pre">git-v1:fb235a3be6372e40ff7f7ebbcd7905a08cb04444</span></code>. IDs are expected
+to be persistent</p>
+<div class="section" id="file-ids">
+<h4>File ids<a class="headerlink" href="#file-ids" title="Permalink to this headline">¶</a></h4>
+<p>File ids are unique identifiers for files. There are three slightly different
+categories of file ids.</p>
+<div class="section" id="tree-file-ids">
+<h5>Tree file ids<a class="headerlink" href="#tree-file-ids" title="Permalink to this headline">¶</a></h5>
+<p>Tree file ids are used in the <code class="docutils literal notranslate"><span class="pre">Tree</span></code> API and can either be UTF-8 encoded
+bytestrings or tuples of UTF-8 encoded bytestrings. Plain bytestrings
+are considered to be the equivalent of a 1-tuple containing that
+bytestring.</p>
+<p>Tree file ids should be considered valid only for a specific tree context.
+Note that this is a stricter interpretation than what the current bzr
+format implementation provides - its file ids are persistent across runs
+and across revisions.</p>
+<p>For some formats (most notably bzr’s own formats) it’s possible for the
+implementation to specify the file id to use. In other case the tree
+mandates a specific file id.</p>
+</div>
+<div class="section" id="inventory-file-ids">
+<h5>Inventory file ids<a class="headerlink" href="#inventory-file-ids" title="Permalink to this headline">¶</a></h5>
+<p>Inventories are specific to the bzr native format and are the main layer
+below the <code class="docutils literal notranslate"><span class="pre">Tree</span></code> implementation of bzr. File ids in inventories can
+only be UTF-8 encoded bytestrings. A single Tree object can be associated
+with multiple inventories if there are nested trees.</p>
+<p>Tree file ids for bzr formats are a tuple of inventory file ids for the file
+in question. Each non-last item in the tuple refers to the tree
+reference of an inner tree. The last item in the tuple refers to the
+actual file. This means that lookups of file ids doesn’t scale with
+the number of nested trees.</p>
+<p>Inventory file ids are only relevant for native Breezy formats; foreign
+formats don’t use inventories.</p>
+</div>
+<div class="section" id="transform-ids">
+<h5>Transform ids<a class="headerlink" href="#transform-ids" title="Permalink to this headline">¶</a></h5>
+<p>Transform ids are used during tree transform operations (used by e.g. merge).
+The same transform id is expected to be used for two instances of the
+same file. At the moment transform ids are directly derived from file
+ids, but in the future they could be based on other data too (e.g.
+automatic rename detection or format-specific rules).</p>
+</div>
+</div>
+</div>
+<div class="section" id="keys">
+<h3>Keys<a class="headerlink" href="#keys" title="Permalink to this headline">¶</a></h3>
+<p>A composite of one or more ID elements.  E.g. a (file-id, revision-id)
+pair is the key to the “texts” store, but a single element key of
+(revision-id) is the key to the “revisions” store.</p>
+</div>
+</div>
+<div class="section" id="core-classes">
+<h2>Core classes<a class="headerlink" href="#core-classes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="transport">
+<h3>Transport<a class="headerlink" href="#transport" title="Permalink to this headline">¶</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">Transport</span></code> layer handles access to local or remote directories.
+Each Transport object acts as a logical connection to a particular
+directory, and it allows various operations on files within it.  You can
+<em>clone</em> a transport to get a new Transport connected to a subdirectory or
+parent directory.</p>
+<p>Transports are not used for access to the working tree.  At present
+working trees are always local and they are accessed through the regular
+Python file I/O mechanisms.</p>
+<div class="section" id="filenames-vs-urls">
+<h4>Filenames vs URLs<a class="headerlink" href="#filenames-vs-urls" title="Permalink to this headline">¶</a></h4>
+<p>Transports work in terms of URLs.  Take note that URLs are by definition
+only ASCII - the decision of how to encode a Unicode string into a URL
+must be taken at a higher level, typically in the Store.  (Note that
+Stores also escape filenames which cannot be safely stored on all
+filesystems, but this is a different level.)</p>
+<p>The main reason for this is that it’s not possible to safely roundtrip a
+URL into Unicode and then back into the same URL.  The URL standard
+gives a way to represent non-ASCII bytes in ASCII (as %-escapes), but
+doesn’t say how those bytes represent non-ASCII characters.  (They’re not
+guaranteed to be UTF-8 – that is common but doesn’t happen everywhere.)</p>
+<p>For example, if the user enters the URL <code class="docutils literal notranslate"><span class="pre">http://example/%e0</span></code>, there’s no
+way to tell whether that character represents “latin small letter a with
+grave” in iso-8859-1, or “latin small letter r with acute” in iso-8859-2,
+or malformed UTF-8.  So we can’t convert the URL to Unicode reliably.</p>
+<p>Equally problematic is if we’re given a URL-like string containing
+(unescaped) non-ASCII characters (such as the accented a).  We can’t be
+sure how to convert that to a valid (i.e. ASCII-only) URL, because we
+don’t know what encoding the server expects for those characters.
+(Although it is not totally reliable, we might still accept these and
+assume that they should be put into UTF-8.)</p>
+<p>A similar edge case is that the URL <code class="docutils literal notranslate"><span class="pre">http://foo/sweet%2Fsour</span></code> contains
+one directory component whose name is “sweet/sour”.  The escaped slash is
+not a directory separator, but if we try to convert the URL to a regular
+Unicode path, this information will be lost.</p>
+<p>This implies that Transports must natively deal with URLs.  For simplicity
+they <em>only</em> deal with URLs; conversion of other strings to URLs is done
+elsewhere.  Information that Transports return, such as from <code class="docutils literal notranslate"><span class="pre">list_dir</span></code>,
+is also in the form of URL components.</p>
+</div>
+<div class="section" id="more-information">
+<h4>More information<a class="headerlink" href="#more-information" title="Permalink to this headline">¶</a></h4>
+<p>See also:</p>
+<ul class="simple">
+<li><a class="reference external" href="transports.html">Developer guide to breezy transports</a></li>
+<li>API docs for <code class="docutils literal notranslate"><span class="pre">breezy.transport.Transport</span></code></li>
+</ul>
+</div>
+</div>
+<div class="section" id="control-directory">
+<h3>Control directory<a class="headerlink" href="#control-directory" title="Permalink to this headline">¶</a></h3>
+<p>Each control directory (such as “.bzr/”) can contain zero or one
+repositories, zero or one working trees and zero or more branches.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">BzrDir</span></code> class is the <code class="docutils literal notranslate"><span class="pre">ControlDir</span></code> implementation that is
+responsible for the “.bzr/” directory and its implementation. Plugins
+that provide support for other version control systems can provide
+other subclasses of <code class="docutils literal notranslate"><span class="pre">ControlDir</span></code>.</p>
+</div>
+<div class="section" id="tree">
+<h3>Tree<a class="headerlink" href="#tree" title="Permalink to this headline">¶</a></h3>
+<p>A representation of a directory of files (and other directories and
+symlinks etc).  The most important kinds of Tree are:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">WorkingTree:</th><td class="field-body">the files on disk editable by the user</td>
+</tr>
+<tr class="field-even field"><th class="field-name">RevisionTree:</th><td class="field-body">a tree as recorded at some point in the past</td>
+</tr>
+</tbody>
+</table>
+<p>Trees can map file paths to file-ids and vice versa (although trees such
+as WorkingTree may have unversioned files not described in that mapping).
+Trees have an inventory and parents (an ordered list of zero or more
+revision IDs).</p>
+<p>The implementation of <code class="docutils literal notranslate"><span class="pre">Tree</span></code> for Breezy’s own formats is based around
+<code class="docutils literal notranslate"><span class="pre">Inventory</span></code> objects which describe the shape of the tree. Each tree has
+at least one inventory associated with it, which is available as the
+<code class="docutils literal notranslate"><span class="pre">root_inventory</span></code> attribute on tree. The tree can have more inventories
+associated with it if there are references to other trees in it. These
+references are indicated with <code class="docutils literal notranslate"><span class="pre">tree-reference</span></code> inventory entry at the
+point where the other tree is nested. The tree reference entry contains
+sufficient information for looking up the inventory associated with the
+nested tree. There can be multiple layers of nesting.</p>
+<p>Not each <code class="docutils literal notranslate"><span class="pre">Tree</span></code> implementation will necessarily have an associated
+<code class="docutils literal notranslate"><span class="pre">root_inventory</span></code>, as not all implementations of <code class="docutils literal notranslate"><span class="pre">Tree</span></code> are based
+around inventories (most notably, implementations of foreign VCS file
+formats).</p>
+</div>
+<div class="section" id="workingtree">
+<h3>WorkingTree<a class="headerlink" href="#workingtree" title="Permalink to this headline">¶</a></h3>
+<p>A workingtree is a special type of Tree that’s associated with a working
+directory on disk, where the user can directly modify the files.</p>
+<p>Responsibilities:</p>
+<ul class="simple">
+<li>Maintaining a WorkingTree on disk at a file path.</li>
+<li>Maintaining the basis inventory (the inventory of the last commit done)</li>
+<li>Maintaining the working inventory.</li>
+<li>Maintaining the pending merges list.</li>
+<li>Maintaining the stat cache.</li>
+<li>Maintaining the last revision the working tree was updated to.</li>
+<li>Knows where its Branch is located.</li>
+</ul>
+<p>Dependencies:</p>
+<ul class="simple">
+<li>a Branch</li>
+<li>local access to the working tree</li>
+</ul>
+</div>
+<div class="section" id="branch">
+<h3>Branch<a class="headerlink" href="#branch" title="Permalink to this headline">¶</a></h3>
+<p>A Branch is a key user concept - its a single line of history that one or
+more people have been committing to.</p>
+<p>A Branch is responsible for:</p>
+<ul class="simple">
+<li>Holding user preferences that are set in a Branch.</li>
+<li>Holding the ‘tip’: the last revision to be committed to this Branch.
+(And the revno of that revision.)</li>
+<li>Knowing how to open the Repository that holds its history.</li>
+<li>Allowing write locks to be taken out to prevent concurrent alterations to the branch.</li>
+</ul>
+<p>Depends on:</p>
+<ul class="simple">
+<li>URL access to its base directory.</li>
+<li>A Transport to access its files.</li>
+<li>A Repository to hold its history.</li>
+</ul>
+</div>
+<div class="section" id="repository">
+<h3>Repository<a class="headerlink" href="#repository" title="Permalink to this headline">¶</a></h3>
+<p>Repositories store committed history: file texts, revisions, inventories,
+and graph relationships between them.  A repository holds a bag of
+revision data that can be pointed to by various branches:</p>
+<ul class="simple">
+<li>Maintains storage of various history data at a URL:<ul>
+<li>Revisions (Must have a matching inventory)</li>
+<li>Digital Signatures</li>
+<li>Inventories for each Revision. (Must have all the file texts available).</li>
+<li>File texts</li>
+</ul>
+</li>
+<li>Synchronizes concurrent access to the repository by different
+processes.  (Most repository implementations use a physical mutex only
+for a short period, and effectively support multiple readers and
+writers.)</li>
+</ul>
+<div class="section" id="stacked-repositories">
+<h4>Stacked Repositories<a class="headerlink" href="#stacked-repositories" title="Permalink to this headline">¶</a></h4>
+<p>A repository can be configured to refer to a list of “fallback”
+repositories.  If a particular revision is not present in the original
+repository, it refers the query to the fallbacks.</p>
+<p>Compression deltas don’t span physical repository boundaries.  So the
+first commit to a new, empty repository with fallback repositories will
+store a full text of the inventory, and of every new file text.</p>
+<p>At runtime, repository stacking is actually configured by the branch, not
+the repository.  So doing <code class="docutils literal notranslate"><span class="pre">a_bzrdir.open_repository()</span></code>
+gets you just the single physical repository, while
+<code class="docutils literal notranslate"><span class="pre">a_bzrdir.open_branch().repository</span></code> gets one configured with a stacking.
+Therefore, to permanently change the fallback repository stored on disk,
+you must use <code class="docutils literal notranslate"><span class="pre">Branch.set_stacked_on_url</span></code>.</p>
+<p>Changing away from an existing stacked-on URL will copy across any
+necessary history so that the repository remains usable.</p>
+<p>A repository opened from an HPSS server is never stacked on the server
+side, because this could cause complexity or security problems with the
+server acting as a proxy for the client.  Instead, the branch on the
+server exposes the stacked-on URL and the client can open that.</p>
+</div>
+</div>
+</div>
+<div class="section" id="storage-model">
+<h2>Storage model<a class="headerlink" href="#storage-model" title="Permalink to this headline">¶</a></h2>
+<p>This section describes the model for how bzr stores its data.  The
+representation of that data on disk varies considerable depending on the
+format of the repository (and to a lesser extent the format of the branch
+and working tree), but ultimately the set of objects being represented is
+the same.</p>
+<div class="section" id="id1">
+<h3>Branch<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>A branch directly contains:</p>
+<ul class="simple">
+<li>the ID of the current revision that branch (a.k.a. the “tip”)</li>
+<li>some settings for that branch (the values in “branch.conf”)</li>
+<li>the set of tags for that branch (not supported in all formats)</li>
+</ul>
+<p>A branch implicitly references:</p>
+<ul class="simple">
+<li>A repository.  The repository might be colocated in the same directory
+as the branch, or it might be somewhere else entirely.</li>
+</ul>
+</div>
+<div class="section" id="id2">
+<h3>Repository<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>A repository contains:</p>
+<ul class="simple">
+<li>a revision store</li>
+<li>an inventory store</li>
+<li>a text store</li>
+<li>a signature store</li>
+</ul>
+<p>A store is a key-value mapping.  This says nothing about the layout on
+disk, just that conceptually there are distinct stores, each with a
+separate namespace for the keys.  Internally the repository may serialize
+stores in the same file, and/or e.g. apply compression algorithms that
+combine records from separate stores in one block, etc.</p>
+<p>You can consider the repository as a single key space, with keys that look
+like <em>(store-name, …)</em>.  For example, <em>(‘revisions’,
+revision-id)</em> or <em>(‘texts’, revision-id, file-id)</em>.</p>
+<div class="section" id="revision-store">
+<h4>Revision store<a class="headerlink" href="#revision-store" title="Permalink to this headline">¶</a></h4>
+<p>Stores revision objects.  The keys are GUIDs.  The value is a revision
+object (the exact representation on disk depends on the repository
+format).</p>
+<p>As described in <a class="reference external" href="https://www.breezy-vcs.org/doc/en/user-guide/core_concepts.html">Core Concepts</a> a revision describes a snapshot of the
+tree of files and some metadata about them.</p>
+<ul class="simple">
+<li>metadata:<ul>
+<li>parent revisions (an ordered sequence of zero or more revision IDs)</li>
+<li>commit message</li>
+<li>author(s)</li>
+<li>timestamp</li>
+<li>(and all other revision properties)</li>
+</ul>
+</li>
+<li>an inventory ID (that inventory describes the tree contents).  Is often
+the same as the revision ID, but doesn’t have to be (e.g. if no files
+were changed between two revisions then both revisions will refer to
+the same inventory).</li>
+</ul>
+</div>
+<div class="section" id="inventory-store">
+<h4>Inventory store<a class="headerlink" href="#inventory-store" title="Permalink to this headline">¶</a></h4>
+<p>Stores inventory objects.  The keys are GUIDs.  (Footnote: there will
+usually be a revision with the same key in the revision store, but there
+are rare cases where this is not true.)</p>
+<p>An inventory object contains:</p>
+<ul class="simple">
+<li>a set of inventory entries</li>
+</ul>
+<p>An inventory entry has the following attributes</p>
+<ul class="simple">
+<li>a file-id (a GUID, or the special value TREE_ROOT for the root entry of
+inventories created by older versions of bzr)</li>
+<li>a revision-id, a GUID (generally corresponding to the ID of a
+revision).  The combination of (file-id, revision-id) is a key into the
+texts store.</li>
+<li>a kind: one of file, directory, symlink, tree-reference (tree-reference
+is only supported in unsupported developer formats)</li>
+<li>parent-id: the file-id of the directory that contains this entry (this
+value is unset for the root of the tree).</li>
+<li>name: the name of the file/directory/etc in that parent directory</li>
+<li>executable: a flag indicating if the executable bit is set for that
+file.</li>
+</ul>
+<p>An inventory entry will have other attributes, depending on the kind:</p>
+<ul class="simple">
+<li>file:<ul>
+<li>SHA1</li>
+<li>size</li>
+</ul>
+</li>
+<li>directory<ul>
+<li>children</li>
+</ul>
+</li>
+<li>symlink<ul>
+<li>symlink_target</li>
+</ul>
+</li>
+<li>tree-reference<ul>
+<li>reference_revision</li>
+</ul>
+</li>
+</ul>
+<p>For some more details see <a class="reference external" href="inventory.html">Inventories</a>.</p>
+</div>
+<div class="section" id="texts-store">
+<h4>Texts store<a class="headerlink" href="#texts-store" title="Permalink to this headline">¶</a></h4>
+<p>Stores the contents of individual versions of files.  The keys are pairs
+of (file-id, revision-id), and the values are the full content (or
+“text”) of a version of a file.</p>
+<p>For consistency/simplicity text records exist for all inventory entries,
+but in general only entries with of kind “file” have interesting records.</p>
+</div>
+<div class="section" id="signature-store">
+<h4>Signature store<a class="headerlink" href="#signature-store" title="Permalink to this headline">¶</a></h4>
+<p>Stores cryptographic signatures of revision contents.  The keys match
+those of the revision store.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="ec2.html" title="Breezy Windows EC2 Server"
+              >previous</a> |
+            <a href="integration.html" title="Integrating with Breezy"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/overview.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

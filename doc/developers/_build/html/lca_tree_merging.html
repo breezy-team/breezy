@@ -1,0 +1,241 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>LCA Tree Merging &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Miscellaneous notes" href="miscellaneous-notes.html" />
+    <link rel="prev" title="Content Filtering" href="content-filtering.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="content-filtering.html" title="Content Filtering"
+             accesskey="P">previous</a> |
+          <a href="miscellaneous-notes.html" title="Miscellaneous notes"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="lca-tree-merging">
+<h1>LCA Tree Merging<a class="headerlink" href="#lca-tree-merging" title="Permalink to this headline">¶</a></h1>
+<p>There are 2 ways that you get LCA merge resolution in bzr. First, if you use
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">merge</span> <span class="pre">--lca</span></code>, the <em>content</em> of files will be resolved using a Least Common
+Ancestors algorithm. That is described in &lt;lca-merge.html&gt; not here.</p>
+<p>This document describes how we handle merging tree-shape when there is not
+a single unique ancestor (criss-cross merge). With a single LCA, we use
+simple 3-way-merge logic.</p>
+<p>When there are multiple possible LCAs, we use a different algorithm for
+handling tree-shape merging. Described here.</p>
+<p>As a simple example, here is a revision graph which we will refer to often:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">.</span>    <span class="n">BASE</span>
+<span class="o">.</span>  <span class="o">/</span>      \
+<span class="o">.</span> <span class="n">LCA1</span>   <span class="n">LCA2</span>
+<span class="o">.</span> <span class="o">|</span>   \ <span class="o">/</span>   <span class="o">|</span>
+<span class="o">.</span> <span class="o">|</span>    <span class="n">X</span>    <span class="o">|</span>
+<span class="o">.</span> <span class="o">|</span>   <span class="o">/</span> \   <span class="o">|</span>
+<span class="o">.</span> <span class="n">THIS</span>  <span class="n">OTHER</span>
+</pre></div>
+</div>
+<p>In this graph, <code class="docutils literal notranslate"><span class="pre">THIS</span></code> and <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> both have <code class="docutils literal notranslate"><span class="pre">LCA1</span></code> and <code class="docutils literal notranslate"><span class="pre">LCA2</span></code> in their
+ancestry but neither is an ancestor of the other, so we have 2 least common
+ancestors. The unique common ancestor is <code class="docutils literal notranslate"><span class="pre">BASE</span></code>. (It should be noted that in
+this text we will talk directly about <code class="docutils literal notranslate"><span class="pre">LCA1</span></code> and <code class="docutils literal notranslate"><span class="pre">LCA2</span></code>, but the algorithms
+are designed to cope with more than 2 LCAs.)</p>
+<div class="section" id="scalars">
+<h2>Scalars<a class="headerlink" href="#scalars" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="definition">
+<h3>Definition<a class="headerlink" href="#definition" title="Permalink to this headline">¶</a></h3>
+<p>I’m defining scalar values as ones that cannot be ‘merged’ on their own. For
+example, the name of a file is “scalar”. If one person changes “foo.txt” to
+“foo.c” and someone else changes “foo.txt” to “bar.txt” we don’t merge the
+changes to be “bar.c”, we simply conflict and expect the user to sort it out.</p>
+<p>We use a slightly different algorithm for scalars.</p>
+</div>
+<div class="section" id="resolution-algorithm">
+<h3>Resolution Algorithm<a class="headerlink" href="#resolution-algorithm" title="Permalink to this headline">¶</a></h3>
+<p>(This can be seen as <code class="docutils literal notranslate"><span class="pre">breezy.merge.Merge3Merger._lca_multi_way`</span></code></p>
+<ol class="arabic">
+<li><p class="first">If <code class="docutils literal notranslate"><span class="pre">THIS</span></code> and <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> have the same value, use it. There is no need to
+inspect any other values in this case. Either nothing was changed (all
+interesting nodes would have the same value), or we have “accidental
+convergence” (both sides made the same change.).</p>
+</li>
+<li><p class="first">Find the values from <code class="docutils literal notranslate"><span class="pre">LCA1</span></code> and <code class="docutils literal notranslate"><span class="pre">LCA2</span></code> which are not the same as
+<code class="docutils literal notranslate"><span class="pre">BASE</span></code>. The idea here is to provide a rudimentary “heads” comparison.
+Often, the whole tree graph will have a criss-cross, but the per-file
+(per-scalar) graph would be linear, and the value in one LCA strictly
+dominates the other. It is possible to construct a scenario where one side
+dominates the other, but the dominated value is not <code class="docutils literal notranslate"><span class="pre">BASE</span></code>, but a second
+intermediate value. Most scalars are rarely changed, so this is unlikely to
+be an issue. The trade-off is having to generate and inspect the
+per-scalar graph.</p>
+<p>If there are no LCA values that are different from <code class="docutils literal notranslate"><span class="pre">BASE</span></code>, we use a simple
+3-way merge with <code class="docutils literal notranslate"><span class="pre">BASE</span></code> as the base value.</p>
+</li>
+<li><p class="first">Find the unique set of LCA values that do not include the <code class="docutils literal notranslate"><span class="pre">BASE</span></code> value.
+If there is only one unique LCA value, we again use three-way merge logic
+using that unique value as the base.</p>
+</li>
+<li><p class="first">At this point, we have determined that we have at least 2 unique values in
+our LCAs which means that <code class="docutils literal notranslate"><span class="pre">THIS</span></code> and <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> would both have to resolve
+the conflict. If they resolved it in the same way, we would have caught that
+in step 1. So they either both picked a different LCA value, or one (or
+both) chose a new value to use.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> and <code class="docutils literal notranslate"><span class="pre">THIS</span></code> both picked a different LCA value, we conflict.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> and <code class="docutils literal notranslate"><span class="pre">THIS</span></code> both have values that are not LCA values, we also
+conflict. (Same as 3-way, both sides modified a value in different ways.)</p>
+</li>
+<li><p class="first">(optional) The only tricky part is this: if <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> has a LCA value, but
+<code class="docutils literal notranslate"><span class="pre">THIS</span></code> does not, then we go with <code class="docutils literal notranslate"><span class="pre">THIS</span></code>, and conversely if <code class="docutils literal notranslate"><span class="pre">THIS</span></code> has
+an LCA value, but <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> does not, then we go with <code class="docutils literal notranslate"><span class="pre">OTHER</span></code>. The idea is
+that <code class="docutils literal notranslate"><span class="pre">THIS</span></code> and <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> may have resolved things in the same way, and
+then later changed the value to something newer. (They could have also
+resolved it differently, and then one side updated again.)</p>
+</li>
+</ol>
+</div>
+<div class="section" id="inventoryentry-revision">
+<h3><code class="docutils literal notranslate"><span class="pre">InventoryEntry.revision</span></code><a class="headerlink" href="#inventoryentry-revision" title="Permalink to this headline">¶</a></h3>
+<p>The last-modified revision for an entry gets treated differently. This is
+because how it is generated allows us to infer more information. Specifically,
+any time there is a change to an entry (rename, or content change) the last
+modified revision is updated. Further, if we are merging, and both sides
+updated the entry, then we update the last-modified revision at the merge
+point.</p>
+<p>For a picture example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">.</span>   <span class="n">A</span>
+<span class="o">.</span>  <span class="o">/</span> \
+<span class="o">.</span> <span class="n">B</span>   <span class="n">C</span>
+<span class="o">.</span>  \ <span class="o">/</span>
+<span class="o">.</span>   <span class="n">D</span>
+</pre></div>
+</div>
+<p>For a single entry, the last modified revision in <code class="docutils literal notranslate"><span class="pre">D</span></code> is:</p>
+<ol class="arabic simple">
+<li><code class="docutils literal notranslate"><span class="pre">A</span></code> if neither <code class="docutils literal notranslate"><span class="pre">B</span></code> or <code class="docutils literal notranslate"><span class="pre">C</span></code> modified it</li>
+<li><code class="docutils literal notranslate"><span class="pre">B</span></code> if <code class="docutils literal notranslate"><span class="pre">B</span></code> modified and <code class="docutils literal notranslate"><span class="pre">C</span></code> did not</li>
+<li><code class="docutils literal notranslate"><span class="pre">C</span></code> if <code class="docutils literal notranslate"><span class="pre">C</span></code> modified and <code class="docutils literal notranslate"><span class="pre">B</span></code> did not</li>
+<li><code class="docutils literal notranslate"><span class="pre">D</span></code> if <code class="docutils literal notranslate"><span class="pre">B</span></code> and <code class="docutils literal notranslate"><span class="pre">C</span></code> modified it</li>
+</ol>
+<p>This means that if the last modified revision is the same, there have been no
+changes in the intermediate time. If <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> also has the same last modified
+revision as <em>any</em> LCA, then we know that all other LCAs’ last-modified
+revisions are in the ancestry of that value. (Otherwise, when <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> would
+need to create a new last modified revision as part of the merge.)</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="content-filtering.html" title="Content Filtering"
+              >previous</a> |
+            <a href="miscellaneous-notes.html" title="Miscellaneous notes"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/lca_tree_merging.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

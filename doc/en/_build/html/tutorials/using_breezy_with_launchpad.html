@@ -1,0 +1,451 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Using Breezy with Launchpad &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Centralized Workflow Tutorial" href="centralized_workflow.html" />
+    <link rel="prev" title="Using Breezy with GitHub" href="using_breezy_with_github.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="using_breezy_with_github.html" title="Using Breezy with GitHub"
+             accesskey="P">previous</a> |
+          <a href="centralized_workflow.html" title="Centralized Workflow Tutorial"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="using-breezy-with-launchpad">
+<h1>Using Breezy with Launchpad<a class="headerlink" href="#using-breezy-with-launchpad" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="communities-are-different-to-teams">
+<h3>Communities are different to teams<a class="headerlink" href="#communities-are-different-to-teams" title="Permalink to this headline">¶</a></h3>
+<p>The team of people required to create the initial release
+of a piece of software may vary in size from one person
+to several thousand people. Depending on the requirements,
+the challenges involved, both technical and managerial,
+can be immense. As explained in the Breezy User Guide, selecting
+“just right” processes and using tools like Breezy to support
+matching workflows can greatly help.</p>
+<p>Success with software though requires more than a great team - it
+requires a healthy, active <em>community</em>. This group is typically
+far larger than the team as it includes everyone interested in
+the software: the team, users, training partners, support partners,
+third-party developers and so on.</p>
+<p>Great communities are well understood in the free software community.
+Their applicability extends well beyond that though: most
+successful commercial software vendors are well skilled at
+building and managing the communities that grow up around
+their flagship products.</p>
+<p>Like great teams, great communities don’t just happen.
+Good policies and guidelines are essential for
+fostering the right sort of behaviour and healthy
+relationships between participants. For a deeper look at
+this topic, see Karl Fogel’s landmark book:
+<a class="reference external" href="http://www.producingoss.com/">Producing Open Source Software</a>.</p>
+</div>
+<div class="section" id="the-need-for-collaborative-development-environments">
+<h3>The need for Collaborative Development Environments<a class="headerlink" href="#the-need-for-collaborative-development-environments" title="Permalink to this headline">¶</a></h3>
+<p>An intelligent toolset is also important for tracking and managing
+community information and workflows. These tools are called
+Collaborative Development Environments (CDEs). These toolsets are
+typically web-based and manage things such as announcements,
+issues/bugs, questions and answers, downloads, documents and
+source code. Some examples of CDEs include
+<a class="reference external" href="https://launchpad.net">Launchpad</a>,
+<a class="reference external" href="http://sourceforge.net">SourceForge</a>,
+<a class="reference external" href="http://java.net">java.net</a> and
+<a class="reference external" href="https://www.sdn.sap.com/irj/sdn">SAP Community Network</a>.</p>
+</div>
+<div class="section" id="helping-communities-work-with-related-communities">
+<h3>Helping communities work with related communities<a class="headerlink" href="#helping-communities-work-with-related-communities" title="Permalink to this headline">¶</a></h3>
+<p>Many successful products have a huge number of downstream dependencies.
+In other words, a new challenge arises with success: dealing with other
+communities and understanding how your changes will impact them. This is
+most obvious for projects like:</p>
+<ul class="simple">
+<li>software languages, e.g. Python, PHP, Ruby, Java, Perl, etc.</li>
+<li>compilers, e.g. gcc, JDK, etc.</li>
+<li>libraries, e.g. zlib, openssl, etc.</li>
+<li>frameworks, e.g. Zope, Ruby on Rails, Spring, etc.</li>
+</ul>
+<p>However it applies equally for popular applications on which add-ons are
+built, e.g. Firefox, Thunderbird, OpenOffice.org, Drupal, Wordpress, Joomla,
+etc.</p>
+<p>Tools that assist communities work together to track and manage
+issues and fixes across community boundaries are required. These
+tools help people at both ends of the spectrum:</p>
+<ul class="simple">
+<li>users can report problems in their terms, e.g. rendering of image
+type X is broken in application Y on operating system Z</li>
+<li>developers can better appreciate the downstream impact of making a
+change or fix, e.g. fixing this bug in a graphics library will
+make the users of these 5 applications on these 10 operating
+systems happy.</li>
+</ul>
+<p>People in the middle play the essential role of <em>joining the dots</em> and
+communicating up and down the line. In many cases, they may also fix the
+problem for end users, releasing a patch and pushing a suggested fix
+to the upstream development team. Keeping track of all that over time
+in a sustainable way is no easy task.</p>
+</div>
+</div>
+<div class="section" id="finding-and-browsing-branches-using-launchpad">
+<h2>Finding and browsing branches using Launchpad<a class="headerlink" href="#finding-and-browsing-branches-using-launchpad" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="finding-available-branches">
+<h3>Finding available branches<a class="headerlink" href="#finding-available-branches" title="Permalink to this headline">¶</a></h3>
+<p>While there are many advantages in adopting distributed version
+control, one of the things that disappears is the all-knowing
+central server with knowledge about all available branches. Indeed
+in a distributed environment, interesting branches can literally
+exist in 100s of locations across the Internet (or within an
+Intranet for that matter).</p>
+<p>Launchpad fills this gap by providing a registry of branches.</p>
+</div>
+<div class="section" id="registering-branches">
+<h3>Registering branches<a class="headerlink" href="#registering-branches" title="Permalink to this headline">¶</a></h3>
+<p>Branches can be uploaded to Launchpad or simply registered
+as being available in an external location. Branches can also
+be given a Status such as <em>New</em>, <em>Development</em>, <em>Mature</em> or
+<em>Abandoned</em>.</p>
+<p>Note: External branches can even be hosted in legacy version control
+tools, i.e. CVS and Subversion. Code in these systems will be
+scanned and converted to Breezy branches on a periodic basis.
+For maximum fidelity of course, it is preferable for external
+branches to be hosted in Breezy.</p>
+</div>
+<div class="section" id="browsing-branches">
+<h3>Browsing branches<a class="headerlink" href="#browsing-branches" title="Permalink to this headline">¶</a></h3>
+<p>Branches can be listed, filtered and sorted by numerous
+attributes including Name, Registrant, Author, Status, Age and
+time of last commit. Browsing of branches is also provided making
+it easy to see things such as:</p>
+<ul class="simple">
+<li>where the branch can be downloaded from</li>
+<li>how to upload changes</li>
+<li>recent commits and the changes made by each</li>
+<li>the source code of individual files for a given version.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="accessing-code-in-launchpad-using-breezy">
+<h2>Accessing code in Launchpad using Breezy<a class="headerlink" href="#accessing-code-in-launchpad-using-breezy" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="getting-the-code-for-a-project">
+<h3>Getting the code for a project<a class="headerlink" href="#getting-the-code-for-a-project" title="Permalink to this headline">¶</a></h3>
+<p>As Launchpad keeps track of thousands of projects
+and their latest code whether it be managed by Breezy, CVS or Subversion,
+Breezy users can grab that code as easily as this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">lp</span><span class="p">:</span><span class="n">project</span><span class="o">-</span><span class="n">name</span>
+</pre></div>
+</div>
+<p>where <cite>project-name</cite> is the Launchpad project ID. Here are some examples:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">lp</span><span class="p">:</span><span class="n">inkscape</span>
+<span class="n">brz</span> <span class="n">branch</span> <span class="n">lp</span><span class="p">:</span><span class="n">amarok</span>
+<span class="n">brz</span> <span class="n">branch</span> <span class="n">lp</span><span class="p">:</span><span class="n">python</span>
+<span class="n">brz</span> <span class="n">branch</span> <span class="n">lp</span><span class="p">:</span><span class="n">rails</span>
+<span class="n">brz</span> <span class="n">branch</span> <span class="n">lp</span><span class="p">:</span><span class="n">java</span><span class="o">-</span><span class="n">gnome</span>
+</pre></div>
+</div>
+<p>You can then browse the code locally using your favorite editor or IDE and
+change the code if you wish.</p>
+<p>If a project has multiple series registered (e.g. a development series and a
+maintenance series), the latest code for a given series can be fetched using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">lp</span><span class="p">:</span><span class="n">project</span><span class="o">-</span><span class="n">name</span><span class="o">/</span><span class="n">series</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="publishing-your-changes">
+<h3>Publishing your changes<a class="headerlink" href="#publishing-your-changes" title="Permalink to this headline">¶</a></h3>
+<p>Having fixed that annoying bug or added that cool feature you’ve always
+wanted, it’s time to impress your friends and make the world a better
+place by making your code available to others. As explained earlier,
+Launchpad is a free Breezy code hosting service so you can push your
+branch to it and others can access your code from there. For example,
+assuming you are a member of the relevant team, login to launchpad like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">launchpad</span><span class="o">-</span><span class="n">login</span> <span class="n">userid</span>
+</pre></div>
+</div>
+<p>where <cite>userid</cite> is your Launchpad user ID.
+You can then push your changes to a team branch like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">push</span> <span class="n">lp</span><span class="p">:</span><span class="o">~</span><span class="n">team</span><span class="o">-</span><span class="n">name</span><span class="o">/</span><span class="n">project</span><span class="o">-</span><span class="n">name</span><span class="o">/</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span>
+</pre></div>
+</div>
+<p>Others can then download your code like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">lp</span><span class="p">:</span><span class="o">~</span><span class="n">team</span><span class="o">-</span><span class="n">name</span><span class="o">/</span><span class="n">project</span><span class="o">-</span><span class="n">name</span><span class="o">/</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="personal-branches">
+<h3>Personal branches<a class="headerlink" href="#personal-branches" title="Permalink to this headline">¶</a></h3>
+<p>Even if you are not a member of a team, Launchpad can be used to publish
+your changes. In this case, simply create a personal branch like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">push</span> <span class="n">lp</span><span class="p">:</span><span class="o">~</span><span class="n">userid</span><span class="o">/</span><span class="n">project</span><span class="o">-</span><span class="n">name</span><span class="o">/</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span>
+</pre></div>
+</div>
+<p>Others can then download your code like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">lp</span><span class="p">:</span><span class="o">~</span><span class="n">userid</span><span class="o">/</span><span class="n">project</span><span class="o">-</span><span class="n">name</span><span class="o">/</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span>
+</pre></div>
+</div>
+<p>Note: Even when publishing to a personal branch, it is polite to notify the
+upstream developers about your branch so they can pull your changes from
+it if they are generally applicable to all users and meet the project’s
+quality standards.</p>
+</div>
+<div class="section" id="package-source-branches">
+<h3>Package source branches<a class="headerlink" href="#package-source-branches" title="Permalink to this headline">¶</a></h3>
+<p>When <a class="reference external" href="https://wiki.ubuntu.com/DistributedDevelopment">maintaining packages for Ubuntu using Breezy</a> you can easily access the
+package’s source branch on Launchpad.  The package’s source branch in the
+current (default) series can be downloaded like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">ubuntu</span><span class="p">:</span><span class="n">package</span>
+</pre></div>
+</div>
+<p>where <em>package</em> is the name of the Ubuntu package you want to access.  To
+download the package branch for a specific series in Ubuntu (e.g. Maverick or
+Lucid), use this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">ubuntu</span><span class="p">:</span><span class="n">maverick</span><span class="o">/</span><span class="n">package</span>
+</pre></div>
+</div>
+<p>Ubuntu distroseries can also be abbreviated to just their first letter.  For
+example, the above could also be written:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">ubuntu</span><span class="p">:</span><span class="n">m</span><span class="o">/</span><span class="n">package</span>
+</pre></div>
+</div>
+<p>You can also download the package source branch from Launchpad for several
+Debian series.  The default series can be downloaded like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">debianlp</span><span class="p">:</span><span class="n">package</span>
+</pre></div>
+</div>
+<p>and a specific series can be downloaded like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">debianlp</span><span class="p">:</span><span class="n">lenny</span><span class="o">/</span><span class="n">package</span>
+</pre></div>
+</div>
+<p>Note that the <code class="docutils literal notranslate"><span class="pre">debianlp:</span></code> scheme access the Debian source branch for a
+package from Launchpad only.</p>
+</div>
+</div>
+<div class="section" id="linking-branches-using-launchpad">
+<h2>Linking branches using Launchpad<a class="headerlink" href="#linking-branches-using-launchpad" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="associating-a-branch-with-a-bug">
+<h3>Associating a branch with a bug<a class="headerlink" href="#associating-a-branch-with-a-bug" title="Permalink to this headline">¶</a></h3>
+<p>After registering a branch, you can associate it to a bug so that
+people interested in that bug can track and download the fix as
+it becomes available.</p>
+<p>To do this, the steps are:</p>
+<ol class="arabic simple">
+<li>Navigate to the bug in question.</li>
+<li>Select <cite>Add branch</cite> under <cite>Actions</cite>.</li>
+<li>Select the branch.</li>
+<li>Optionally set the State of the relationship. This is
+<em>Fix In Progress</em> by default but you may wish to set it
+to another state such as <em>Fix Available</em> if the branch already
+addresses the issue.</li>
+</ol>
+<p>If you wish, you can also provide some arbitrary comments about
+the relationship between the bug and the branch.</p>
+</div>
+<div class="section" id="changing-the-state-in-launchpad-while-committing-in-breezy">
+<h3>Changing the state in Launchpad while committing in Breezy<a class="headerlink" href="#changing-the-state-in-launchpad-while-committing-in-breezy" title="Permalink to this headline">¶</a></h3>
+<p>Breezy and Launchpad can work together to reduce some of
+the status housekeeping for you. When you commit using Breezy,
+use the –fixes option like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">commit</span> <span class="o">--</span><span class="n">fixes</span> <span class="n">lp</span><span class="p">:</span><span class="mi">1234</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;...&quot;</span>
+</pre></div>
+</div>
+<p>where 1234 is the bug ID. This will changes the State of the
+bug-branch relationship to <em>Fix Available</em>. If the one commit
+fixes multiple issues, the –fixes option can be specified multiple
+times.</p>
+<p>One of the cool things about this feature is that Launchpad does
+not need to be accessible when making the commit. The <code class="docutils literal notranslate"><span class="pre">--fixes</span></code>
+option works by storing metadata which Launchpad will detect next
+time the branch is pushed to it or scanned once online again.</p>
+<p>Note: Launchpad will not implicitly close a bug just because a
+branch is available that fixes it. There are several reasons for this.
+Firstly, the branch usually needs to be merged into the trunk
+(main development branch) before most teams consider it fixed.
+Secondly, many teams have a separate process for confirming
+bugs are fixed over and above a developer saying so.</p>
+<p>As explained later, merge control features are currently under
+development in Launchpad and automatically changing the status of
+bugs to <em>Fix Committed</em> will be more appropriate once those features
+are in place.</p>
+</div>
+<div class="section" id="associating-a-branch-with-a-blueprint">
+<h3>Associating a branch with a blueprint<a class="headerlink" href="#associating-a-branch-with-a-blueprint" title="Permalink to this headline">¶</a></h3>
+<p>After registering a branch, you can associate it to a blueprint so that
+people interested in that blueprint can track and test the feature as
+it develops.</p>
+<p>To do this, the steps are:</p>
+<ol class="arabic simple">
+<li>Navigate to the blueprint in question.</li>
+<li>Select <cite>Link branch</cite> under <cite>Actions</cite>.</li>
+<li>Select the branch.</li>
+</ol>
+<p>If you wish, you can also provide some arbitrary comments about
+the relationship between the blueprint and the branch.</p>
+</div>
+</div>
+<div class="section" id="managing-releases-using-launchpad">
+<h2>Managing releases using Launchpad<a class="headerlink" href="#managing-releases-using-launchpad" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="integrating-changes">
+<h3>Integrating changes<a class="headerlink" href="#integrating-changes" title="Permalink to this headline">¶</a></h3>
+<p>Once a branch has been developed and published, communities
+typically go through a rigorous process before those changes
+are integrated into the core product and rolled out to end users.
+Some of the steps involved may include:</p>
+<ul class="simple">
+<li>peer review of the changes</li>
+<li>deciding which releases to include the changes in, e.g. the
+next maintenance release, the next major release, or both</li>
+<li>running functional regression tests</li>
+<li>benchmarking to ensure performance remains acceptable</li>
+<li>packaging into early access releases for end user testing</li>
+<li>documentation updates, e.g. Release Notes for the targeted
+releases</li>
+<li>translation of the user interface and documentation into
+multiple languages.</li>
+</ul>
+<p>This section briefly looks at some of the features in Launchpad that
+help get good quality code into production. Strong integration with
+Breezy is core to making this happen smoothly.</p>
+<p>Note: Where indicated, some of the features below are still under
+development. If one or more of these features interest you, please
+consider joining the Launchpad beta test team at this link:
+<a class="reference external" href="https://help.launchpad.net/JoiningLaunchpadBetaTesters">https://help.launchpad.net/JoiningLaunchpadBetaTesters</a>. You can
+then get early access to features and provide feedback to the
+developers before wider roll-out.</p>
+</div>
+<div class="section" id="branch-merge-proposals">
+<h3>Branch merge proposals<a class="headerlink" href="#branch-merge-proposals" title="Permalink to this headline">¶</a></h3>
+<p>After navigating to a branch in Launchpad, one of the available actions
+is <em>Propose for merging</em>. This lets you nominate which branch this code
+ought to be merged into.</p>
+<p>Tracking the knowledge about which branches are proposed to be merged
+into a codeline helps Release Managers keep on top of what still needs
+to be completed, or can be completed, before a ship date. Using this
+information, they can ensure branches are merged after completing any
+necessary reviews. In the simple case, the Release Manager may manually
+merge branches. In more advanced cases, the merging could be automatically
+done by a robot (like <a class="reference external" href="https://launchpad.net/pqm">PQM</a>) when the branch reaches the right state
+(e.g. <em>Review completed</em>).</p>
+</div>
+<div class="section" id="code-review-tracking">
+<h3>Code review tracking<a class="headerlink" href="#code-review-tracking" title="Permalink to this headline">¶</a></h3>
+<p>A number of features are under development in Launchpad to track the
+states, conversations and outcomes of code reviews. These features are
+expected to be integrated with branch merge proposals and branch
+browsing features.</p>
+</div>
+<div class="section" id="personal-package-archives-ppas">
+<h3>Personal Package Archives (PPAs)<a class="headerlink" href="#personal-package-archives-ppas" title="Permalink to this headline">¶</a></h3>
+<p>PPAs help developers and development teams get custom builds into the
+hands of users for early testing and feedback. In other words, a PPA
+allows a developer to form a community of testers who are interested
+in their changes. The testing community can install the packages,
+run them for the test period and then remove them cleanly from their
+system.</p>
+<p>See <a class="reference external" href="https://help.launchpad.net/PPAQuickStart">https://help.launchpad.net/PPAQuickStart</a> for further details.</p>
+</div>
+<div class="section" id="translations">
+<h3>Translations<a class="headerlink" href="#translations" title="Permalink to this headline">¶</a></h3>
+<p>The Translations module in Launchpad is designed to make it easy for
+anyone to get involved translating applications to languages they know.
+Translators are shielded from the low level details.</p>
+<p>Launchpad keeps track of the translations for each major version of a
+project separately, allowing translators to continue to improve the
+translations of your stable releases while others start work on newer
+versions that are still in development. Translation speed in reduced
+by sharing resources across projects. Automatic suggestions, from a
+library of 750,000 translated strings, and a community of 19,000
+registered translators can radically cut the time required to
+localise your project into many languages.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="using_breezy_with_github.html" title="Using Breezy with GitHub"
+              >previous</a> |
+            <a href="centralized_workflow.html" title="Centralized Workflow Tutorial"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/tutorials/using_breezy_with_launchpad.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

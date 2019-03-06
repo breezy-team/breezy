@@ -1,0 +1,22 @@
+verify-signatures
+=================
+
+:Purpose: Verify all commit signatures.
+:Usage:   brz verify-signatures [LOCATION]
+
+:Options:
+  -k ARG, --acceptable-keys=ARG
+                        Comma separated list of GPG key patterns which are
+                        acceptable for verification.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  Verifies that all commits in the branch are signed by known GnuPG keys.
+
+
+

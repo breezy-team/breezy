@@ -1,0 +1,9 @@
+####################
+Breezy Release Notes
+####################
+
+
+.. toctree::
+   :maxdepth: 2
+
+   brz 3.0 <brz-3.0>

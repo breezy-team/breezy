@@ -1,0 +1,235 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Simple Setups &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Other Setups" href="other-setups.html" />
+    <link rel="prev" title="Introduction" href="introduction.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="introduction.html" title="Introduction"
+             accesskey="P">previous</a> |
+          <a href="other-setups.html" title="Other Setups"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="simple-setups">
+<h1>Simple Setups<a class="headerlink" href="#simple-setups" title="Permalink to this headline">¶</a></h1>
+<p>Consider the following simple scenario where we will be serving Bazaar branches
+that live on a single server.  Those branches are in the subdirectories of
+<code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code> (or <code class="docutils literal notranslate"><span class="pre">C:\bzr</span></code>) and they will all be related to a single project
+called “ProjectX”.  ProjectX will have a trunk branch and at least one feature
+branch.  As we get further, we will consider other scenarios, but this will be
+a sufficiently motivating example.</p>
+<div class="section" id="smart-server">
+<h2>Smart server<a class="headerlink" href="#smart-server" title="Permalink to this headline">¶</a></h2>
+<p>The simplest possible setup for providing outside access to the branches on
+the server uses Bazaar’s built-in smart server tunneled over <a class="reference external" href="http://www.openssh.org/">SSH</a> so
+that people who can access your server using SSH can have read and write
+access to branches on the server.  This setup uses the authentication
+mechanisms of SSH including private keys, and the access control mechanisms of
+the server’s operating system.  In particular, using groups on the server, it
+is possible to provide different access privileges to different groups of
+developers.</p>
+<div class="section" id="setup">
+<h3>Setup<a class="headerlink" href="#setup" title="Permalink to this headline">¶</a></h3>
+<p>There is no setup required for this on the server, apart from having Bazaar
+installed and SSH access available to your developers.  Using SSH
+configuration options it is possible to restrict developers from using
+anything <em>but</em> Bazaar on the server via SSH, and to limit what part of the
+file system they can access.</p>
+</div>
+<div class="section" id="client">
+<h3>Client<a class="headerlink" href="#client" title="Permalink to this headline">¶</a></h3>
+<p>Clients can access the branches using URLs with the <code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code> prefix.  For
+example, to get a local copy of the ProjectX trunk, a developer could do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz branch bzr+ssh://server.example.com/srv/bzr/projectx/trunk projectx
+</pre></div>
+</div>
+<p>If the developers have write access to the <code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx</span></code> directory, then
+they can create new branches themselves using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz branch bzr+ssh://server.example.com/srv/bzr/projectx/trunk \
+bzr+ssh://server.example.com/srv/bzr/projectx/feature-gui
+</pre></div>
+</div>
+<p>Of course, if this isn’t desired, then developers should not have write access
+to the <code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx</span></code> directory.</p>
+</div>
+<div class="section" id="further-configuration">
+<h3>Further Configuration<a class="headerlink" href="#further-configuration" title="Permalink to this headline">¶</a></h3>
+<p>For a project with multiple branches that are all related, it is best to use a
+shared repository to hold all of the branches.  To set this up, do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /srv/bzr
+$ brz init-repo --no-trees projectx
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">--no-trees</span></code> option saves space by not creating a copy of the working
+files on the server’s filesystem.  Then, any branch created under
+<code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx</span></code> (see <a class="reference external" href="migration.html">Migration</a> for some ways to do
+this) will share storage space, which is particularly helpful for branches that
+have many revisions in common, such as a project trunk and its feature
+branches.</p>
+<p>If Bazaar is not installed on the user’s path or not specified in the SSH
+configuration, then a path can be specified from the client with the
+<code class="docutils literal notranslate"><span class="pre">BZR_REMOTE_PATH</span></code> environment variable.  For example, if the Bazaar executable
+is installed in <code class="docutils literal notranslate"><span class="pre">/usr/local/bzr-2.0/bin/bzr</span></code>, then a developer could use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz_REMOTE_PATH=/usr/local/bzr-2.0/bin/bzr bzr info \
+bzr+ssh://server.example.com/srv/bzr/proectx/trunk
+</pre></div>
+</div>
+<p>to get information about the trunk branch.  The remote path can also be
+specified in Bazaar’s configuration files for a particular location.  See
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">configuration</span></code> for more details.</p>
+<p>If developers have home directories on the server, they can use <code class="docutils literal notranslate"><span class="pre">/~/</span></code> in
+URLs to refer to their home directory.  They can also use <code class="docutils literal notranslate"><span class="pre">/~username/</span></code> to
+refer to the home directory of user <code class="docutils literal notranslate"><span class="pre">username</span></code>.  For example, if there are two
+developers <code class="docutils literal notranslate"><span class="pre">alice</span></code> and <code class="docutils literal notranslate"><span class="pre">bob</span></code>, then Bob could use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log bzr+ssh://server.example.com/~/fix-1023
+</pre></div>
+</div>
+<p>to refer to one of his bug fix branches and:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log bzr+ssh://server.example.com/~alice/fix-2047
+</pre></div>
+</div>
+<p>to refer to one of Alice’s branches. <a class="footnote-reference" href="#id2" id="id1">[1]</a></p>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>The version of Bazaar installed on the server must be at least 2.1.0b1
+or newer to support <code class="docutils literal notranslate"><span class="pre">/~/</span></code> in bzr+ssh URLs.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="using-a-restricted-ssh-account-to-host-multiple-users-and-repositories">
+<h3>Using a restricted SSH account to host multiple users and repositories<a class="headerlink" href="#using-a-restricted-ssh-account-to-host-multiple-users-and-repositories" title="Permalink to this headline">¶</a></h3>
+<p>Once you have a bzr+ssh setup using a shared repository you may want to share
+that repository among a small set of developers.  Using shared SSH access enables
+you to complete this task without any complicated setup or ongoing management.</p>
+<p>To allow multiple users to access Bazaar over ssh we can allow ssh access to a common
+account that only allows users to run a specific command.  Using a single account
+simplifies deployment as no permissions management issues exist for the filesystem.
+All users are the same user at the server level.  Bazaar labels the commits with
+each users details so seperate server accounts are not required.</p>
+<p>To enable this configuration we update the <code class="docutils literal notranslate"><span class="pre">~/.ssh/authorized_keys</span></code> to include
+command restrictions for connecting users.</p>
+<p>In these examples the user will be called <code class="docutils literal notranslate"><span class="pre">bzruser</span></code>.</p>
+<p>The following example shows how a single line is configured:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">command</span><span class="o">=</span><span class="s2">&quot;bzr serve --inet --allow-writes --directory=/srv/bzr&quot;</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">agent</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">port</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">pty</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">user</span><span class="o">-</span><span class="n">rc</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">X11</span><span class="o">-</span><span class="n">forwarding</span> <span class="n">ssh</span><span class="o">-</span><span class="n">rsa</span> <span class="n">AAA</span><span class="o">...=</span> <span class="n">my</span> <span class="n">bzr</span> <span class="n">key</span>
+</pre></div>
+</div>
+<p>This command allows the user to access only bzr and disables other SSH use.  Write
+access to each repository in the directory <code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code> has been granted with <code class="docutils literal notranslate"><span class="pre">--allow-writes</span></code>
+and can be removed for individual users that should only require read access.  The root of
+the directory structure can be altered for each user to allow them to see only a subet
+of the repositories available.  The example below assumes two seperate repositories
+for Alice and Bob.  This method will not allow you to restrict access to part
+of a repository, you may only restrict access to a single part of the directory structure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">command</span><span class="o">=</span><span class="s2">&quot;bzr serve --inet --allow-writes --directory=/srv/bzr/alice/&quot;</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">agent</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">port</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">pty</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">user</span><span class="o">-</span><span class="n">rc</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">X11</span><span class="o">-</span><span class="n">forwarding</span> <span class="n">ssh</span><span class="o">-</span><span class="n">rsa</span> <span class="n">AAA</span><span class="o">...=</span> <span class="n">Alice</span><span class="s1">&#39;s SSH Key</span>
+<span class="n">command</span><span class="o">=</span><span class="s2">&quot;bzr serve --inet --allow-writes --directory=/srv/bzr/bob/&quot;</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">agent</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">port</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">pty</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">user</span><span class="o">-</span><span class="n">rc</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">X11</span><span class="o">-</span><span class="n">forwarding</span> <span class="n">ssh</span><span class="o">-</span><span class="n">rsa</span> <span class="n">AAA</span><span class="o">...=</span> <span class="n">Bob</span><span class="s1">&#39;s SSH Key</span>
+<span class="n">command</span><span class="o">=</span><span class="s2">&quot;bzr serve --inet --allow-writes --directory=/srv/bzr/&quot;</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">agent</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">port</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">pty</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">user</span><span class="o">-</span><span class="n">rc</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">X11</span><span class="o">-</span><span class="n">forwarding</span> <span class="n">ssh</span><span class="o">-</span><span class="n">rsa</span> <span class="n">AAA</span><span class="o">...=</span> <span class="n">Repo</span> <span class="n">Manager</span> <span class="n">SSH</span> <span class="n">Key</span>
+</pre></div>
+</div>
+<p>Alice and Bob have access to their own repository and Repo Manager
+has access to the each of their repositories.  Users are not allowed access to any part of
+the system except the directory specified. The bzr+ssh urls are simplified by
+serving using <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">serve</span></code> and the <code class="docutils literal notranslate"><span class="pre">--directory</span></code> option.</p>
+<p>If Alice logs in she uses the following command for her fix-1023 branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log bzr+ssh://bzruser@server.example.com/fix-1023
+</pre></div>
+</div>
+<p>If Repo Manager logs in he uses the following command to access Alice’s
+fix-1023:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log bzr+ssh://bzruser@server.example.com/alice/fix-1023
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="introduction.html" title="Introduction"
+              >previous</a> |
+            <a href="other-setups.html" title="Other Setups"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/admin-guide/simple-setups.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

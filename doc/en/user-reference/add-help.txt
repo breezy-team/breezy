@@ -1,0 +1,61 @@
+add
+===
+
+:Purpose: Add specified files or directories.
+:Usage:   brz add [FILE...]
+
+:Options:
+  --dry-run            Show what would be done, but don't actually do
+                       anything.
+  --file-ids-from=ARG  Lookup file ids from this tree.
+  -h, --help           Show help message.
+  -N, --no-recurse     Don't recursively add the contents of directories.
+  -q, --quiet          Only display errors and warnings.
+  --usage              Show usage message and options.
+  -v, --verbose        Display more information.
+
+:Description:
+  In non-recursive mode, all the named items are added, regardless
+  of whether they were previously ignored.  A warning is given if
+  any of the named files are already versioned.
+  
+  In recursive mode (the default), files are treated the same way
+  but the behaviour for directories is different.  Directories that
+  are already versioned do not give a warning.  All directories,
+  whether already versioned or not, are searched for files or
+  subdirectories that are neither versioned or ignored, and these
+  are added.  This search proceeds recursively into versioned
+  directories.  If no names are given '.' is assumed.
+  
+  A warning will be printed when nested trees are encountered,
+  unless they are explicitly ignored.
+  
+  Therefore simply saying 'brz add' will version all files that
+  are currently unknown.
+  
+  Adding a file whose parent directory is not versioned will
+  implicitly add the parent, and so on up to the root. This means
+  you should never need to explicitly add a directory, they'll just
+  get added when you add a file in the directory.
+  
+  --dry-run will show which files would be added, but not actually
+  add them.
+  
+  --file-ids-from will try to use the file ids from the supplied path.
+  It looks up ids trying to find a matching parent directory with the
+  same filename, and then by pure path. This option is rarely needed
+  but can be useful when adding the same logical file into two
+  branches that will be merged later (without showing the two different
+  adds as a conflict). It is also useful when merging another project
+  into a subdirectory of this one.
+  
+  Any files matching patterns in the ignore list will not be added
+  unless they are explicitly mentioned.
+  
+  In recursive mode, files larger than the configuration option
+  add.maximum_file_size will be skipped. Named items are never skipped due
+  to file size.
+
+:See also: :doc:`ignore <ignore-help>`, :doc:`remove <remove-help>`
+
+

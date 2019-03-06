@@ -1,0 +1,224 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Merging changes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Resolving conflicts" href="resolving_conflicts.html" />
+    <link rel="prev" title="Branching a project" href="branching_a_project.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="branching_a_project.html" title="Branching a project"
+             accesskey="P">previous</a> |
+          <a href="resolving_conflicts.html" title="Resolving conflicts"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="merging-changes">
+<h1>Merging changes<a class="headerlink" href="#merging-changes" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="parallel-development">
+<h2>Parallel development<a class="headerlink" href="#parallel-development" title="Permalink to this headline">¶</a></h2>
+<p>Once someone has their own branch of a project, they can make
+and commit changes in parallel to any development proceeding
+on the original branch. Pretty soon though, these independent
+lines of development will need to be combined again. This
+process is known as <em>merging</em>.</p>
+</div>
+<div class="section" id="the-merge-command">
+<h2>The merge command<a class="headerlink" href="#the-merge-command" title="Permalink to this headline">¶</a></h2>
+<p>To incorporate changes from another branch, use the <code class="docutils literal notranslate"><span class="pre">merge</span></code> command.
+Its syntax is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span> <span class="p">[</span><span class="n">URL</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>If no URL is given, a default is used, initially the branch this branch
+originated from.
+For example, if Bill made a branch from Mary’s work, he can merge her
+subsequent changes by simply typing this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span>
+</pre></div>
+</div>
+<p>On the other hand, Mary might want to merge into her branch the work Bill
+has done in his. In this case, she needs to explicitly give the URL the
+first time, e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span> <span class="n">bzr</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">mary</span><span class="nd">@bill</span><span class="o">-</span><span class="n">laptop</span><span class="o">/</span><span class="n">cool</span><span class="o">-</span><span class="n">repo</span><span class="o">/</span><span class="n">cool</span><span class="o">-</span><span class="n">trunk</span>
+</pre></div>
+</div>
+<p>This sets the default merge branch if one is not already set.  Use
+<code class="docutils literal notranslate"><span class="pre">--no-remember</span></code> to avoid setting it. To change the default after it is set,
+use the <code class="docutils literal notranslate"><span class="pre">--remember</span></code> option.</p>
+</div>
+<div class="section" id="how-does-merging-work">
+<h2>How does merging work?<a class="headerlink" href="#how-does-merging-work" title="Permalink to this headline">¶</a></h2>
+<p>A variety of algorithms exist for merging changes. Breezy’s
+default algorithm is a variation of <em>3-way merging</em> which
+works as follows. Given an ancestor A and two branches B and C,
+the following table provides the rules used.</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="9%" />
+<col width="9%" />
+<col width="9%" />
+<col width="19%" />
+<col width="53%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">A</th>
+<th class="head">B</th>
+<th class="head">C</th>
+<th class="head">Result</th>
+<th class="head">Comment</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>x</td>
+<td>x</td>
+<td>x</td>
+<td>x</td>
+<td>unchanged</td>
+</tr>
+<tr class="row-odd"><td>x</td>
+<td>x</td>
+<td>y</td>
+<td>y</td>
+<td>line from C</td>
+</tr>
+<tr class="row-even"><td>x</td>
+<td>y</td>
+<td>x</td>
+<td>y</td>
+<td>line from B</td>
+</tr>
+<tr class="row-odd"><td>x</td>
+<td>y</td>
+<td>z</td>
+<td>?</td>
+<td>conflict</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>Note that some merges can only be completed with the assistance
+of a human. Details on how to resolve these are given in
+<a class="reference external" href="resolving_conflicts.html">Resolving conflicts</a>.</p>
+</div>
+<div class="section" id="recording-a-merge">
+<h2>Recording a merge<a class="headerlink" href="#recording-a-merge" title="Permalink to this headline">¶</a></h2>
+<p>After any conflicts are resolved, the merge needs to be committed.
+For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;Merged Mary&#39;s changes&quot;</span>
+</pre></div>
+</div>
+<p>Even if there are no conflicts, an explicit commit is still required.
+Unlike some other tools, this is considered a feature in Breezy.
+A clean merge is not necessarily a good merge so making the commit
+a separate explicit step allows you to run your test suite first to
+verify all is good. If problems are found, you should correct them
+before committing the merge or throw the merge away using <code class="docutils literal notranslate"><span class="pre">revert</span></code>.</p>
+</div>
+<div class="section" id="merge-tracking">
+<h2>Merge tracking<a class="headerlink" href="#merge-tracking" title="Permalink to this headline">¶</a></h2>
+<p>One of the most important features of Breezy is distributed,
+high quality <em>merge tracking</em>.
+In other words, Breezy remembers what has been merged already and
+uses that information to intelligently choose the best ancestor for
+a merge, minimizing the number and size of conflicts.</p>
+<p>If you are a refugee from many other VCS tools, it can be really
+hard to “unlearn” the <em>please-let-me-avoid-merging-at-any-cost</em> habit.
+Breezy lets you safely merge as often as you like with other people.
+By working in a peer-to-peer manner when it makes sense to do so, you
+also avoid using a central branch as an “integration swamp”, keeping
+its quality higher. When the change you’re collaborating on is
+truly ready for wider sharing, that’s the time to merge and commit
+it to a central branch, not before.</p>
+<p>Merging that Just Works truly can change how developers work together.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="branching_a_project.html" title="Branching a project"
+              >previous</a> |
+            <a href="resolving_conflicts.html" title="Resolving conflicts"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/merging_changes.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

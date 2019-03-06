@@ -1,0 +1,180 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Environment Variables &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Files" href="files-help.html" />
+    <link rel="prev" title="Debug Flags" href="debug-flags-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="debug-flags-help.html" title="Debug Flags"
+             accesskey="P">previous</a> |
+          <a href="files-help.html" title="Files"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="environment-variables">
+<h1>Environment Variables<a class="headerlink" href="#environment-variables" title="Permalink to this headline">¶</a></h1>
+<p>See brz help configuration for more details.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="24%" />
+<col width="76%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>BRZPATH</td>
+<td>Path where brz is to look for shell plugin external
+commands.</td>
+</tr>
+<tr class="row-even"><td>BRZ_EMAIL</td>
+<td>E-Mail address of the user. Overrides EMAIL.</td>
+</tr>
+<tr class="row-odd"><td>EMAIL</td>
+<td>E-Mail address of the user.</td>
+</tr>
+<tr class="row-even"><td>BRZ_EDITOR</td>
+<td>Editor for editing commit messages. Overrides EDITOR.</td>
+</tr>
+<tr class="row-odd"><td>EDITOR</td>
+<td>Editor for editing commit messages.</td>
+</tr>
+<tr class="row-even"><td>BRZ_PLUGIN_PATH</td>
+<td>Paths where brz should look for plugins.</td>
+</tr>
+<tr class="row-odd"><td>BRZ_DISABLE_PLUGINS</td>
+<td>Plugins that brz should not load.</td>
+</tr>
+<tr class="row-even"><td>BRZ_PLUGINS_AT</td>
+<td>Plugins to load from a directory not in BRZ_PLUGIN_PATH.</td>
+</tr>
+<tr class="row-odd"><td>BRZ_HOME</td>
+<td>Directory holding breezy config dir. Overrides HOME.</td>
+</tr>
+<tr class="row-even"><td>BRZ_HOME (Win32)</td>
+<td>Directory holding breezy config dir. Overrides APPDATA and
+HOME.</td>
+</tr>
+<tr class="row-odd"><td>BZR_REMOTE_PATH</td>
+<td>Full name of remote ‘brz’ command (for brz+ssh:// URLs).</td>
+</tr>
+<tr class="row-even"><td>BRZ_SSH</td>
+<td>Path to SSH client, or one of paramiko, openssh, sshcorp,
+plink or lsh.</td>
+</tr>
+<tr class="row-odd"><td>BRZ_LOG</td>
+<td>Location of .brz.log (use ‘/dev/null’ to suppress log).</td>
+</tr>
+<tr class="row-even"><td>BRZ_LOG (Win32)</td>
+<td>Location of .brz.log (use ‘NUL’ to suppress log).</td>
+</tr>
+<tr class="row-odd"><td>BRZ_COLUMNS</td>
+<td>Override implicit terminal width.</td>
+</tr>
+<tr class="row-even"><td>BRZ_CONCURRENCY</td>
+<td>Number of processes that can be run concurrently (selftest)</td>
+</tr>
+<tr class="row-odd"><td>BRZ_PROGRESS_BAR</td>
+<td>Override the progress display. Values are ‘none’ or ‘text’.</td>
+</tr>
+<tr class="row-even"><td>BRZ_PDB</td>
+<td>Control whether to launch a debugger on error.</td>
+</tr>
+<tr class="row-odd"><td>BRZ_SIGQUIT_PDB</td>
+<td>Control whether SIGQUIT behaves normally or invokes a
+breakin debugger.</td>
+</tr>
+<tr class="row-even"><td>BRZ_TEXTUI_INPUT</td>
+<td>Force console input mode for prompts to line-based (instead
+of char-based).</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="debug-flags-help.html" title="Debug Flags"
+              >previous</a> |
+            <a href="files-help.html" title="Files"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/env-variables-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

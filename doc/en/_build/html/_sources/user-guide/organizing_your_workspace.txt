@@ -1,0 +1,176 @@
+Organizing your workspace
+=========================
+
+Common workspace layouts
+------------------------
+
+The best way for a Breezy user to organize their workspace for a project
+depends on numerous factors including:
+
+* user role: project owner vs core developer vs casual contributor
+
+* workflows: particularly the workflow the project encourages/mandates
+  for making contributions
+
+* size: large projects have different resource requirements to small ones.
+
+There are at least 4 common ways of organizing one's workspace:
+
+* lightweight checkout
+* standalone tree
+* feature branches
+* switchable sandbox.
+
+A brief description of each layout follows.
+
+
+Lightweight checkout
+--------------------
+
+In this layout, the working tree is local and the branch is remote.
+This is the standard layout used by CVS and Subversion: it's simple
+and well understood.
+
+To set up::
+
+  brz checkout --lightweight URL project
+  cd project
+
+To work::
+
+  (make changes)
+  brz commit
+  (make changes)
+  brz commit
+
+Note that each commit implicitly publishes the change to everyone else
+working from that branch. However, you need to be up to date with changes
+in the remote branch for the commit to succeed. To grab the latest code
+and merge it with your changes, if any::
+
+  brz update
+
+
+Standalone tree
+---------------
+
+In this layout, the working tree & branch are in the one place. Unless
+a shared repository exists in a higher level directory, the repository
+is located in that same place as well. This is the default layout in
+Breezy and it's great for small to moderately sized projects.
+
+To set up::
+
+  brz branch URL project
+  cd project
+
+To work::
+
+  (make changes)
+  brz commit
+  (make changes)
+  brz commit
+
+To publish changes to a central location::
+
+  brz push [URL]
+
+The URL for push is only required the first time.
+
+If the central location has, in the meantime, received changes from
+other users, then you'll need to merge those changes into your local
+branch before you try to push again::
+
+  brz merge
+  (resolve conflicts)
+  brz commit
+
+As an alternative, a checkout can be used. Like a branch, a checkout
+has a full copy of the history stored locally but the local branch
+is bound to the remote location so that commits are published to
+both locations at once.
+
+Note: A checkout is actually smarter than a local commit followed by
+a push. In particular, a checkout wil commit to the remote location
+first and only commit locally if the remote commit succeeds.
+
+
+Feature branches
+----------------
+
+In this layout, there are multiple branches/trees, typically sharing
+a repository. One branch is kept as a mirror of "trunk" and each
+unit-of-work (i.e. bug-fix or enhancement) gets its own "feature branch".
+This layout is ideal for most projects, particularly moderately sized ones.
+
+To set up::
+
+  brz init-repo project
+  cd project
+  brz branch URL trunk
+
+To start a feature branch::
+
+  brz branch trunk featureX
+  cd featureX
+
+To work::
+
+  (make changes)
+  brz commit
+  (make changes)
+  brz commit
+
+To publish changes to a mailing list for review & approval::
+
+  brz send
+
+To publish changes to a public branch (that can then be registered as
+a Launchpad merge request, say)::
+
+  brz push [URL]
+
+As a variation, the trunk can be created as a checkout. If you have
+commit privileges on trunk, that lets you merge into trunk and the
+commit of the merge will implicitly publish your change. Alternatively,
+if the trunk URL is read-only (e.g. an HTTP address), that prevents
+accidental submission this way - ideal if the project workflow uses
+an automated gatekeeper like PQM, say.
+
+
+Local sandbox
+-------------
+
+This layout is very similar to the feature branches layout except that
+the feature branches share a single working tree rather than having one
+each. This is similar to git's default layout and it's useful for projects
+with really large trees (> 10000 files say) or for projects with lots of
+build artifacts (like .o or .class files).
+
+To set up::
+
+  brz init-repo --no-trees project
+  cd project
+  brz branch URL trunk
+  brz checkout --lightweight trunk sandbox
+  cd sandbox
+
+While you *could* start making changes in sandbox now, committing while
+the sandbox is pointing to the trunk would mean that trunk is no longer
+a mirror of the upstream URL (well unless the trunk is a checkout).
+Therefore, you usually want to immediately create a feature branch and
+switch your sandbox to it like this::
+
+  brz branch ../trunk ../featureX
+  brz switch ../featureX
+
+The processes for making changes and submitting them are otherwise
+pretty much the same as those used for feature branches.
+
+
+Advanced layouts
+----------------
+
+If you wish, you can put together your own layout based on how **you** like
+things organized. See `Advanced shared repository layouts
+<shared_repository_layouts.html>`_ for examples and inspiration.

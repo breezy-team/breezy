@@ -1,0 +1,144 @@
+#################
+Breezy User Guide
+#################
+
+.. Please mark sections in included files as following:
+..   level 1 ========
+..   level 2 --------
+..   level 3 ~~~~~~~~
+..   level 4 ^^^^^^^^ (it is better not to use nesting deeper than 3 levels)
+
+
+Introduction
+############
+
+.. toctree::
+   :maxdepth: 1
+
+   introducing_breezy
+   core_concepts
+   breezy_workflows
+
+
+Getting started
+###############
+
+.. toctree::
+   :maxdepth: 1
+
+   installing_breezy
+   entering_commands
+   getting_help
+   configuring_breezy
+   using_aliases
+   plugins
+   zen
+
+
+Personal version control
+########################
+
+.. toctree::
+   :maxdepth: 1
+
+   solo_intro
+   starting_a_project
+   controlling_registration
+   reviewing_changes
+   recording_changes
+   browsing_history
+   releasing_a_project
+   undoing_mistakes
+
+
+Sharing with peers
+##################
+
+.. toctree::
+   :maxdepth: 1
+
+   partner_intro
+   branching_a_project
+   merging_changes
+   resolving_conflicts
+   annotating_changes
+
+
+Team collaboration, central style
+#################################
+
+.. toctree::
+   :maxdepth: 1
+
+   central_intro
+   publishing_a_branch
+   using_checkouts
+   working_offline_central
+   reusing_a_checkout
+
+
+Team collaboration, distributed style
+#####################################
+
+.. toctree::
+   :maxdepth: 1
+
+   distributed_intro
+   organizing_branches
+   using_gatekeepers
+   sending_changes
+
+
+Miscellaneous topics
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+   part2_intro
+   adv_merging
+   switch_store
+   shelving_changes
+   filtered_views
+   stacked
+   server
+   hooks
+   version_info
+   gpg_signatures
+
+
+A brief tour of some popular plugins
+####################################
+
+.. toctree::
+   :maxdepth: 1
+
+   brztools_plugin
+   svn_plugin
+
+
+Integrating Breezy into your environment
+########################################
+
+.. toctree::
+   :maxdepth: 1
+
+   web_browsing
+   bug_trackers
+
+
+Appendices
+##########
+
+.. toctree::
+   :maxdepth: 1
+
+   specifying_revisions
+   organizing_your_workspace
+   shared_repository_layouts
+   setting_up_email
+   http_smart_server
+   writing_a_plugin
+   licence
+
+.. |--| unicode:: U+2014

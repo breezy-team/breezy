@@ -1,0 +1,99 @@
+Reviewing proposed changes to Breezy
+####################################
+
+All non-trivial code changes coming in to Breezy are reviewed by someone else.
+
+Anyone is welcome to review any patch.  You don't need to have a full
+understanding of the codebase to find problems in the code, the documentation,
+or the concept of the patch.
+
+Normally changes by core contributors are reviewed by one other core
+developer, and changes from other people are reviewed by two core
+developers.  Use intelligent discretion about whether the patch is trivial.
+
+No one likes their merge requests sitting in a queue going nowhere: this
+is pure waste.  We prioritize reviewing existing proposals.
+
+We do all our code reviews through Launchpad's merge proposal interface.
+
+
+Reviewing proposed changes
+==========================
+
+There are three main requirements for code to get in:
+
+* Doesn't reduce test coverage: if it adds new methods or commands,
+  there should be tests for them.  There is a good test framework
+  and plenty of examples to crib from, but if you are having trouble
+  working out how to test something feel free to post a draft patch
+  and ask for help.
+
+* Doesn't reduce design clarity, such as by entangling objects
+  we're trying to separate.  This is mostly something the more
+  experienced reviewers need to help check.
+
+* Improves bugs, features, speed, or code simplicity.
+
+Code that goes in should not degrade any of these aspects.  Patches are
+welcome that only cleanup the code without changing the external
+behaviour.  The core developers take care to keep the code quality high
+and understandable while recognising that perfect is sometimes the enemy
+of good.
+
+It is easy for reviews to make people notice other things which should be
+fixed but those things should not hold up the original fix being accepted.
+New things can easily be recorded in the bug tracker instead.
+
+It's normally much easier to review several smaller patches than one large
+one.  You might want to submit a preparatory patch that will make your "real"
+change easier.
+
+
+Checklist for reviewers
+=======================
+
+* Do you understand what the code's doing and why?
+
+* Will it perform reasonably for large inputs, both in memory size and
+  run time?  Are there some scenarios where performance should be
+  measured?
+
+* Is it tested, and are the tests at the right level?  Are there both
+  blackbox (command-line level) and API-oriented tests?
+
+* If this change will be visible to end users or API users, is it
+  appropriately documented in release notes and/or in whats-new ?
+
+* Does it meet the `coding standards <code-style.html>`_?
+
+* If it changes the user-visible behaviour, does it update the help
+  strings and user documentation?
+
+* If it adds a new major concept or standard practice, does it update the
+  developer documentation?
+
+* (your ideas here...)
+
+
+Reviews on Launchpad
+====================
+
+Anyone can propose or comment on a merge proposal just by creating a
+Launchpad account.
+
+From <https://code.launchpad.net/brz/+activereviews> you can see all
+currently active reviews, and choose one to comment on.  This page also
+shows proposals that are now approved and should be merged by someone with
+PQM access.
+
+<https://help.launchpad.net/Code/Review> explains the various merge proposal
+states.  Note that we don't use state *Approved* until the patch is completely
+ready to merge.
+
+
+Landing approved changes
+========================
+
+Once a merge proposal is approved and finished, it's marked as
+Approved and picked up by the CI (https://ci.breezy-vcs.org/),
+which will automatically test and integrate it.

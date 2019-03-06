@@ -1,0 +1,127 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Criss-Cross &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Diverged Branches" href="diverged-branches-help.html" />
+    <link rel="prev" title="Content Filters" href="content-filters-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="content-filters-help.html" title="Content Filters"
+             accesskey="P">previous</a> |
+          <a href="diverged-branches-help.html" title="Diverged Branches"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="criss-cross">
+<h1>Criss-Cross<a class="headerlink" href="#criss-cross" title="Permalink to this headline">¶</a></h1>
+<p>A criss-cross in the branch history can cause the default merge technique
+to emit more conflicts than would normally be expected.</p>
+<p>In complex merge cases, <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">merge</span> <span class="pre">--lca</span></code> or <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">merge</span> <span class="pre">--weave</span></code> may give
+better results.  You may wish to <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">revert</span></code> the working tree and merge
+again.  Alternatively, use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">remerge</span></code> on particular conflicted files.</p>
+<p>Criss-crosses occur in a branch’s history if two branches merge the same thing
+and then merge one another, or if two branches merge one another at the same
+time.  They can be avoided by having each branch only merge from or into a
+designated central branch (a “star topology”).</p>
+<p>Criss-crosses cause problems because of the way merge works.  Breezy’s default
+merge is a three-way merger; in order to merge OTHER into THIS, it must
+find a basis for comparison, BASE.  Using BASE, it can determine whether
+differences between THIS and OTHER are due to one side adding lines, or
+from another side removing lines.</p>
+<p>Criss-crosses mean there is no good choice for a base.  Selecting the recent
+merge points could cause one side’s changes to be silently discarded.
+Selecting older merge points (which Breezy does) mean that extra conflicts
+are emitted.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">weave</span></code> merge type is not affected by this problem because it uses
+line-origin detection instead of a basis revision to determine the cause of
+differences.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="content-filters-help.html" title="Content Filters"
+              >previous</a> |
+            <a href="diverged-branches-help.html" title="Diverged Branches"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/criss-cross-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,49 @@
+init
+====
+
+:Purpose: Make a directory into a versioned branch.
+:Usage:   brz init [LOCATION]
+
+:Options:
+  --append-revisions-only
+                        Never change revnos or the existing log.  Append
+                        revisions to it only.
+  --create-prefix       Create the path leading up to the branch if it does
+                        not already exist.
+  -h, --help            Show help message.
+  --no-tree             Create a branch without a working tree.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+  Branch format:
+    --format=ARG        Specify a format for this branch. See "help formats"
+                        for a full list.
+    --2a, --default, --bzr
+                        Format for the bzr 2.0 series.
+    --git               GIT repository.
+    --git-bare          Bare GIT repository (no working tree).
+
+:Description:
+  Use this to create an empty branch, or before importing an
+  existing project.
+  
+  If there is a repository in a parent directory of the location, then
+  the history of the branch will be stored in the repository.  Otherwise
+  init creates a standalone branch which carries its own history
+  in the .bzr directory.
+  
+  If there is already a branch at the location but it has no working tree,
+  the tree can be populated with 'brz checkout'.
+  
+  Recipe for importing a tree of files::
+  
+      cd ~/project
+      brz init
+      brz add .
+      brz status
+      brz commit -m "imported project"
+
+:See also: :doc:`branch <branch-help>`, :doc:`checkout <checkout-help>`, :doc:`init-repository <init-repository-help>`
+
+

@@ -1,0 +1,1141 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>1   Nested Trees &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="../search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="nested-trees">
+<h1><a class="toc-backref" href="#id2">1&nbsp;&nbsp;&nbsp;Nested Trees</a><a class="headerlink" href="#nested-trees" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">status:</th><td class="field-body">2012-03-17: Draft spec</td>
+</tr>
+</tbody>
+</table>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="auto-toc simple">
+<li><a class="reference internal" href="#nested-trees" id="id2">1&nbsp;&nbsp;&nbsp;Nested Trees</a><ul class="auto-toc">
+<li><a class="reference internal" href="#principles" id="id3">1.1&nbsp;&nbsp;&nbsp;Principles</a></li>
+<li><a class="reference internal" href="#core-concepts" id="id4">1.2&nbsp;&nbsp;&nbsp;Core Concepts</a></li>
+<li><a class="reference internal" href="#basic-design-approach" id="id5">1.3&nbsp;&nbsp;&nbsp;Basic design approach</a><ul class="auto-toc">
+<li><a class="reference internal" href="#downwards-recursion" id="id6">1.3.1&nbsp;&nbsp;&nbsp;Downwards recursion</a></li>
+<li><a class="reference internal" href="#no-upwards-recursion-by-default" id="id7">1.3.2&nbsp;&nbsp;&nbsp;No upwards recursion by default</a></li>
+<li><a class="reference internal" href="#modelling-nested-trees-as-a-composite-tree" id="id8">1.3.3&nbsp;&nbsp;&nbsp;Modelling nested trees as a composite tree</a></li>
+<li><a class="reference internal" href="#using-root-file-ids-for-tree-references" id="id9">1.3.4&nbsp;&nbsp;&nbsp;Using root file-ids for tree-references</a></li>
+<li><a class="reference internal" href="#sub-branches" id="id10">1.3.5&nbsp;&nbsp;&nbsp;Sub-branches</a><ul class="auto-toc">
+<li><a class="reference internal" href="#rationale" id="id11">1.3.5.1&nbsp;&nbsp;&nbsp;Rationale</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#pull-and-non-initial-push" id="id12">1.3.6&nbsp;&nbsp;&nbsp;Pull and non-initial push</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#implementation-strategies" id="id13">1.4&nbsp;&nbsp;&nbsp;Implementation strategies</a></li>
+<li><a class="reference internal" href="#data-storage" id="id14">1.5&nbsp;&nbsp;&nbsp;Data storage</a><ul class="auto-toc">
+<li><a class="reference internal" href="#trees" id="id15">1.5.1&nbsp;&nbsp;&nbsp;Trees</a></li>
+<li><a class="reference internal" href="#branches" id="id16">1.5.2&nbsp;&nbsp;&nbsp;Branches</a></li>
+<li><a class="reference internal" href="#repositories" id="id17">1.5.3&nbsp;&nbsp;&nbsp;Repositories</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#commands" id="id18">1.6&nbsp;&nbsp;&nbsp;Commands</a></li>
+<li><a class="reference internal" href="#api-changes" id="id19">1.7&nbsp;&nbsp;&nbsp;API Changes</a><ul class="auto-toc">
+<li><a class="reference internal" href="#tree-file-ids-as-tuples" id="id20">1.7.1&nbsp;&nbsp;&nbsp;Tree file ids as tuples</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#implementation-changes" id="id21">1.8&nbsp;&nbsp;&nbsp;Implementation Changes</a><ul class="auto-toc">
+<li><a class="reference internal" href="#branch-changes" id="id22">1.8.1&nbsp;&nbsp;&nbsp;Branch changes</a></li>
+<li><a class="reference internal" href="#repository-changes" id="id23">1.8.2&nbsp;&nbsp;&nbsp;Repository changes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#use-cases" id="id24">1.9&nbsp;&nbsp;&nbsp;Use Cases</a><ul class="auto-toc">
+<li><a class="reference internal" href="#case-1" id="id25">1.9.1&nbsp;&nbsp;&nbsp;Case 1</a></li>
+<li><a class="reference internal" href="#case-2" id="id26">1.9.2&nbsp;&nbsp;&nbsp;Case 2</a></li>
+<li><a class="reference internal" href="#case-3" id="id27">1.9.3&nbsp;&nbsp;&nbsp;Case 3</a></li>
+<li><a class="reference internal" href="#case-4" id="id28">1.9.4&nbsp;&nbsp;&nbsp;Case 4</a></li>
+<li><a class="reference internal" href="#case-5" id="id29">1.9.5&nbsp;&nbsp;&nbsp;Case 5</a></li>
+<li><a class="reference internal" href="#case-6" id="id30">1.9.6&nbsp;&nbsp;&nbsp;Case 6</a></li>
+<li><a class="reference internal" href="#case-7" id="id31">1.9.7&nbsp;&nbsp;&nbsp;Case 7</a></li>
+<li><a class="reference internal" href="#case-8" id="id32">1.9.8&nbsp;&nbsp;&nbsp;Case 8</a></li>
+<li><a class="reference internal" href="#case-9" id="id33">1.9.9&nbsp;&nbsp;&nbsp;Case 9</a></li>
+<li><a class="reference internal" href="#case-10" id="id34">1.9.10&nbsp;&nbsp;&nbsp;Case 10</a></li>
+<li><a class="reference internal" href="#case-11" id="id35">1.9.11&nbsp;&nbsp;&nbsp;Case 11</a></li>
+<li><a class="reference internal" href="#case-12" id="id36">1.9.12&nbsp;&nbsp;&nbsp;Case 12</a></li>
+<li><a class="reference internal" href="#case-13" id="id37">1.9.13&nbsp;&nbsp;&nbsp;Case 13</a></li>
+<li><a class="reference internal" href="#case-14" id="id38">1.9.14&nbsp;&nbsp;&nbsp;Case 14</a></li>
+<li><a class="reference internal" href="#case-15" id="id39">1.9.15&nbsp;&nbsp;&nbsp;Case 15</a></li>
+<li><a class="reference internal" href="#case-16" id="id40">1.9.16&nbsp;&nbsp;&nbsp;Case 16</a></li>
+<li><a class="reference internal" href="#case-17" id="id41">1.9.17&nbsp;&nbsp;&nbsp;Case 17</a></li>
+<li><a class="reference internal" href="#case-18" id="id42">1.9.18&nbsp;&nbsp;&nbsp;Case 18</a></li>
+<li><a class="reference internal" href="#case-19" id="id43">1.9.19&nbsp;&nbsp;&nbsp;Case 19</a></li>
+<li><a class="reference internal" href="#case-20" id="id44">1.9.20&nbsp;&nbsp;&nbsp;Case 20</a></li>
+<li><a class="reference internal" href="#case-21" id="id45">1.9.21&nbsp;&nbsp;&nbsp;Case 21</a></li>
+<li><a class="reference internal" href="#id1" id="id46">1.9.22&nbsp;&nbsp;&nbsp;Case 21</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#user-documentation" id="id47">1.10&nbsp;&nbsp;&nbsp;User documentation</a><ul class="auto-toc">
+<li><a class="reference internal" href="#nesting-an-external-project" id="id48">1.10.1&nbsp;&nbsp;&nbsp;Nesting an external project</a></li>
+<li><a class="reference internal" href="#refreshing-a-nested-branch" id="id49">1.10.2&nbsp;&nbsp;&nbsp;Refreshing a nested branch</a></li>
+<li><a class="reference internal" href="#changing-a-nested-tree" id="id50">1.10.3&nbsp;&nbsp;&nbsp;Changing a nested tree</a></li>
+<li><a class="reference internal" href="#reviewing-nested-tree-changes" id="id51">1.10.4&nbsp;&nbsp;&nbsp;Reviewing nested tree changes</a></li>
+<li><a class="reference internal" href="#browsing-nested-tree-history" id="id52">1.10.5&nbsp;&nbsp;&nbsp;Browsing nested tree history</a></li>
+<li><a class="reference internal" href="#splitting-out-a-project" id="id53">1.10.6&nbsp;&nbsp;&nbsp;Splitting out a project</a></li>
+<li><a class="reference internal" href="#virtual-projects" id="id54">1.10.7&nbsp;&nbsp;&nbsp;Virtual projects</a></li>
+<li><a class="reference internal" href="#nested-branch-tips-tricks" id="id55">1.10.8&nbsp;&nbsp;&nbsp;Nested branch tips &amp; tricks</a></li>
+<li><a class="reference internal" href="#things-to-be-aware-of" id="id56">1.10.9&nbsp;&nbsp;&nbsp;Things to be aware of</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#design-decisions" id="id57">1.11&nbsp;&nbsp;&nbsp;Design decisions</a><ul class="auto-toc">
+<li><a class="reference internal" href="#shall-commands-recurse-downwards-by-default" id="id58">1.11.1&nbsp;&nbsp;&nbsp;Shall commands recurse downwards by default?</a></li>
+<li><a class="reference internal" href="#shall-commands-recurse-upwards-by-default" id="id59">1.11.2&nbsp;&nbsp;&nbsp;Shall commands recurse upwards by default?</a></li>
+<li><a class="reference internal" href="#shall-subtree-branches-be-addressable" id="id60">1.11.3&nbsp;&nbsp;&nbsp;Shall subtree branches be addressable?</a></li>
+<li><a class="reference internal" href="#shall-we-model-nested-trees-as-a-composite-tree" id="id61">1.11.4&nbsp;&nbsp;&nbsp;Shall we model nested trees as a composite tree?</a></li>
+<li><a class="reference internal" href="#shall-we-use-root-ids-for-tree-references" id="id62">1.11.5&nbsp;&nbsp;&nbsp;Shall we use root-ids for tree references?</a></li>
+<li><a class="reference internal" href="#what-about-locking" id="id63">1.11.6&nbsp;&nbsp;&nbsp;What about locking?</a></li>
+<li><a class="reference internal" href="#how-do-we-handle-merge-when-the-subtree-hasn-t-diverged" id="id64">1.11.7&nbsp;&nbsp;&nbsp;How do we handle merge when the subtree hasn’t diverged?</a></li>
+<li><a class="reference internal" href="#what-should-uncommit-do" id="id65">1.11.8&nbsp;&nbsp;&nbsp;What should uncommit do?</a></li>
+<li><a class="reference internal" href="#some-subtrees-should-have-commits-and-some-should-not-how" id="id66">1.11.9&nbsp;&nbsp;&nbsp;Some subtrees should have commits and some should not.  How?</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#comparison-with-other-systems" id="id67">1.12&nbsp;&nbsp;&nbsp;Comparison with other systems</a><ul class="auto-toc">
+<li><a class="reference internal" href="#git-submodules" id="id68">1.12.1&nbsp;&nbsp;&nbsp;Git submodules</a></li>
+<li><a class="reference internal" href="#mercurial-forests" id="id69">1.12.2&nbsp;&nbsp;&nbsp;Mercurial Forests</a></li>
+<li><a class="reference internal" href="#mercurial-nested-repositories" id="id70">1.12.3&nbsp;&nbsp;&nbsp;Mercurial Nested Repositories</a></li>
+<li><a class="reference internal" href="#subversion-svn-externals" id="id71">1.12.4&nbsp;&nbsp;&nbsp;Subversion “svn:externals”</a></li>
+<li><a class="reference internal" href="#comments-on-differences" id="id72">1.12.5&nbsp;&nbsp;&nbsp;Comments on differences</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="principles">
+<h2><a class="toc-backref" href="#id3">1.1&nbsp;&nbsp;&nbsp;Principles</a><a class="headerlink" href="#principles" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Never store a location in versioned data.</li>
+<li>Implementation of nested trees shall not make operations observably slower
+for those not using nested trees.</li>
+<li>A repository that holds a revision R should be able to reconstruct the
+whole contents of that revision, including any nested trees.  Corolary:
+if I fetch that revision, even into a branch that has no working tree, it
+should bring across any referenced revisions, or (implicitly) add fallback
+repositories.</li>
+<li>The introduction or possible support for nested trees should not
+have an impact on performance.</li>
+</ul>
+</div>
+<div class="section" id="core-concepts">
+<h2><a class="toc-backref" href="#id4">1.2&nbsp;&nbsp;&nbsp;Core Concepts</a><a class="headerlink" href="#core-concepts" title="Permalink to this headline">¶</a></h2>
+<p><strong>Subtree</strong> A tree which is inside another tree, which bzr has been asked to
+treat as part of the outer tree.</p>
+<p><strong>Subbranch</strong> The branch associated with a subtree.</p>
+<p><strong>Containing tree</strong> A tree which has another tree inside it</p>
+<p><strong>Tree reference</strong> A directory in a containing tree which contains a subtree.</p>
+</div>
+<div class="section" id="basic-design-approach">
+<h2><a class="toc-backref" href="#id5">1.3&nbsp;&nbsp;&nbsp;Basic design approach</a><a class="headerlink" href="#basic-design-approach" title="Permalink to this headline">¶</a></h2>
+<p>(see “Design decisions” for extended rationale)
+By default, APIs and commands for containing trees should behave as though the
+subtrees were plain directories.  By default, commands in subtrees should not
+affect the containing trees.</p>
+<div class="section" id="downwards-recursion">
+<h3><a class="toc-backref" href="#id6">1.3.1&nbsp;&nbsp;&nbsp;Downwards recursion</a><a class="headerlink" href="#downwards-recursion" title="Permalink to this headline">¶</a></h3>
+<p>One of the objectives of nested trees is to provide ways of reproducing
+historical combinations of different codebases.  The dependency chain points
+downwards, such that trees are affected by the revision of their subtrees, but
+subtrees are oblivious to their containing trees.  Just as bazaar doesn’t
+entice people to commit inconsistent trees, it should not entice people to
+commit inconsistent combinations of containing tree and subtree.  Therefore,
+commit should recurse downwards by default.</p>
+<p>Status and diff should reflect what will happen when commit is used, so they
+should also recurse downward by default.  Add almost does this already.  With
+status, diff, commit and add recursing downwards, it would be confusing to
+users if other operations did not.  Therefore, all operations should recurse
+downwards by default.</p>
+</div>
+<div class="section" id="no-upwards-recursion-by-default">
+<h3><a class="toc-backref" href="#id7">1.3.2&nbsp;&nbsp;&nbsp;No upwards recursion by default</a><a class="headerlink" href="#no-upwards-recursion-by-default" title="Permalink to this headline">¶</a></h3>
+<p>One of the reasons for using nested trees is to gain performance by only
+committing in a subtree.  Therefore, operations should not recurse upwards by
+default.  However, some users do want to have upwards recursion, so it should
+be provided as an option.</p>
+</div>
+<div class="section" id="modelling-nested-trees-as-a-composite-tree">
+<h3><a class="toc-backref" href="#id8">1.3.3&nbsp;&nbsp;&nbsp;Modelling nested trees as a composite tree</a><a class="headerlink" href="#modelling-nested-trees-as-a-composite-tree" title="Permalink to this headline">¶</a></h3>
+<p>The idea that a set of nested trees behaves like a single, larger tree seems
+relatively easy to grasp.  Both for users and for developers, it provides a
+clear expectation for the behaviour of nested trees.  There are no obvious
+drawbacks in terms of code clarity or performance.  Therefore, it seems like a
+good model to start with.</p>
+</div>
+<div class="section" id="using-root-file-ids-for-tree-references">
+<h3><a class="toc-backref" href="#id9">1.3.4&nbsp;&nbsp;&nbsp;Using root file-ids for tree-references</a><a class="headerlink" href="#using-root-file-ids-for-tree-references" title="Permalink to this headline">¶</a></h3>
+<p>The idea that tree-reference file-ids are the same as the file-ids of the
+corresponding root directories has a nice symmetry.  It is one way of ensuring
+that “bzr split” is deterministic, and “bzr join” is deterministic.  When
+performing operations involving a tree and a split version of that tree, using
+the same file-id makes it easy to ensure that operations such as moves and
+renames are applied appropriately to the tree-reference.  Providing mechanisms
+whereby a tree-reference can be treated as it would if it had its old file-id
+encroaches on the territory of path tokens or file-id aliases.  Having “split”
+cause file-id changes means that in comparing these revisions, it would be seen
+as a deleting a directory and creating a new tree-reference with the same name.
+Handling this correctly in operations such as merge and revert would be more
+complicated than if it were treated as a kind change, especially when
+unversioned files are present in the subtree.</p>
+</div>
+<div class="section" id="sub-branches">
+<h3><a class="toc-backref" href="#id10">1.3.5&nbsp;&nbsp;&nbsp;Sub-branches</a><a class="headerlink" href="#sub-branches" title="Permalink to this headline">¶</a></h3>
+<p>The branches associated with subtrees shall be called “subbranches”.</p>
+<p>The branch for the top tree will be in a special format, whose last_revision
+file lists all the last_revision info for all of the branches associated with
+the nested tree.  The .bzr directories of subtrees will have a “branch” that
+simply indicates that the top tree’s branch should be used.</p>
+<p>In the top tree’s last_revision file, the revision id and revno will be
+provided, indexed by the tree-reference file-id.</p>
+<p>The repository used by the top-tree’s branch must be a shared repository, and
+will be used by the sub-branches.</p>
+<p>Only the top branch will have a branch.conf.  When an operation on a subbranch
+would normally use values from branch.conf it will look them up in the top
+branch’s branch.conf and adjust for the sub-location if appropriate.  e.g. “bzr
+push” in a subtree will push just that subbranch to the corresponding subbranch
+in the configured push location of the top branch.</p>
+<div class="section" id="rationale">
+<h4><a class="toc-backref" href="#id11">1.3.5.1&nbsp;&nbsp;&nbsp;Rationale</a><a class="headerlink" href="#rationale" title="Permalink to this headline">¶</a></h4>
+<p>If the branches were not local, the local subtrees might not be committable,
+and commits to the remote branch would make the local subtree out of date.
+They should not be in a separate location from the containing branch, because
+they might share history with the tree-reference’s branch.  However, those
+local branches should not be at the same location as their tree, because the
+tree might be deleted or moved.  Indeed, they should not be anywhere within a
+working tree.</p>
+<p>subtree branches should not be above or beside their containing branch, because
+it could cause terrible confusion if subtrees from two different trees were
+updating the same branches with every push, pull, commit and uncommit.</p>
+<p>Subtree branches could be plain branches stored somewhere in the top tree’s
+branch, but then a lookup mechanism would be needed to translate from file_id
+to location, and performance with large numbers of subbranches would be poor.</p>
+</div>
+</div>
+<div class="section" id="pull-and-non-initial-push">
+<h3><a class="toc-backref" href="#id12">1.3.6&nbsp;&nbsp;&nbsp;Pull and non-initial push</a><a class="headerlink" href="#pull-and-non-initial-push" title="Permalink to this headline">¶</a></h3>
+<p>When a pull involves updates to tree references, pull will always pull into the
+reference branch.  For all new revisions in the upper branch, it will determine
+the revision values of tree references, and fetch them into the repository.</p>
+<p>When new tree references are encountered, pull should create a corresponding
+subbranch in the top branch.</p>
+<p>Pulls will update the subtrees whose tree-references change, including creating
+trees for new sub-branches.</p>
+</div>
+</div>
+<div class="section" id="implementation-strategies">
+<h2><a class="toc-backref" href="#id13">1.4&nbsp;&nbsp;&nbsp;Implementation strategies</a><a class="headerlink" href="#implementation-strategies" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="data-storage">
+<h2><a class="toc-backref" href="#id14">1.5&nbsp;&nbsp;&nbsp;Data storage</a><a class="headerlink" href="#data-storage" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="trees">
+<h3><a class="toc-backref" href="#id15">1.5.1&nbsp;&nbsp;&nbsp;Trees</a><a class="headerlink" href="#trees" title="Permalink to this headline">¶</a></h3>
+<p>The root-ids of trees must be unique, so that the same file-id can be used in
+both the containing tree and the subtree, to simplify access within trees.
+Tree references are an inventory type that is distinct from a directory, and
+has a revision-id associated with it.
+All modern working trees support tree references.  Indices may be provided to
+ensure fast access to the list of subtrees.</p>
+<p>The various methods on <code class="docutils literal notranslate"><span class="pre">Tree</span></code> need to be updated to handle nested trees.</p>
+<p>Tree file ids are tuples containing inventory file ids, describing a path
+to the file. This means that if a file is in a nested tree with the root
+fileid <code class="docutils literal notranslate"><span class="pre">file_id_a</span></code> and the file itself has the inventory file id <code class="docutils literal notranslate"><span class="pre">file_id_b</span></code>
+then the tree file id is (file_id_a, file_id_b). This makes it easy to look up file ids
+without having to load and scan all nested trees for <code class="docutils literal notranslate"><span class="pre">file_id_b</span></code>.</p>
+</div>
+<div class="section" id="branches">
+<h3><a class="toc-backref" href="#id16">1.5.2&nbsp;&nbsp;&nbsp;Branches</a><a class="headerlink" href="#branches" title="Permalink to this headline">¶</a></h3>
+<p>A new branch format, “subbranches”, is introduced which provides multiple
+sub-branches, with their data referenced by file-id.  A new branch refrerence
+format, “subbranch-reference”, is introduced which refers to sub-branches in a
+“subbranches” branch.</p>
+</div>
+<div class="section" id="repositories">
+<h3><a class="toc-backref" href="#id17">1.5.3&nbsp;&nbsp;&nbsp;Repositories</a><a class="headerlink" href="#repositories" title="Permalink to this headline">¶</a></h3>
+<p>Some repository formats have ‘subtree’ variants, e.g. pack-0.92-subtree,
+development-subtree.  These are hidden, experimental formats that support
+storing tree-references in their inventory formats.</p>
+<p>Repository indexing might be extended to provide fast access to
+tree-references.</p>
+</div>
+</div>
+<div class="section" id="commands">
+<h2><a class="toc-backref" href="#id18">1.6&nbsp;&nbsp;&nbsp;Commands</a><a class="headerlink" href="#commands" title="Permalink to this headline">¶</a></h2>
+<p>The following new options are introduced:</p>
+<p><code class="docutils literal notranslate"><span class="pre">join</span> <span class="pre">--reference</span></code> Cause an inner tree to be treated as a subtree.  The outer
+tree’s branch must be in the new “subbranches” format.  The inner tree’s branch
+will be cloned into the “subbranches” branch, and the local branch will be
+replaced with a “subbranch-reference”.  Finally, a tree-reference will be
+added to the containing tree.</p>
+<p>(this is already implemented)</p>
+</div>
+<div class="section" id="api-changes">
+<h2><a class="toc-backref" href="#id19">1.7&nbsp;&nbsp;&nbsp;API Changes</a><a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="tree-file-ids-as-tuples">
+<h3><a class="toc-backref" href="#id20">1.7.1&nbsp;&nbsp;&nbsp;Tree file ids as tuples</a><a class="headerlink" href="#tree-file-ids-as-tuples" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="implementation-changes">
+<h2><a class="toc-backref" href="#id21">1.8&nbsp;&nbsp;&nbsp;Implementation Changes</a><a class="headerlink" href="#implementation-changes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="branch-changes">
+<h3><a class="toc-backref" href="#id22">1.8.1&nbsp;&nbsp;&nbsp;Branch changes</a><a class="headerlink" href="#branch-changes" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div>pull recurses into reference branches, and pulls <em>from</em> the source’s reference
+branches.</div></blockquote>
+</div>
+<div class="section" id="repository-changes">
+<h3><a class="toc-backref" href="#id23">1.8.2&nbsp;&nbsp;&nbsp;Repository changes</a><a class="headerlink" href="#repository-changes" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div>fetch provides a list of tree-reference revision ids/file-id pairs for the
+revisions that were fetched.  Fetch automatically fetches all revisions
+associted with tree-references that were fetched.</div></blockquote>
+</div>
+</div>
+<div class="section" id="use-cases">
+<h2><a class="toc-backref" href="#id24">1.9&nbsp;&nbsp;&nbsp;Use Cases</a><a class="headerlink" href="#use-cases" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="case-1">
+<h3><a class="toc-backref" href="#id25">1.9.1&nbsp;&nbsp;&nbsp;Case 1</a><a class="headerlink" href="#case-1" title="Permalink to this headline">¶</a></h3>
+<p>Barry works on a project with three libraries.  He wants to keep up to date
+with the tip of those libraries, but he doesn’t want them to be part of his
+source tree.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Set up the tree:
+$ bzr branch --nested http://library1 project
+$ bzr branch --nested http://library2 project
+$ bzr branch --nested http://library3 project
+$ bzr commit project -m &quot;Added three libraries&quot;
+
+Update a library to tip:
+$ bzr pull -d project/library1 http://library1
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-2">
+<h3><a class="toc-backref" href="#id26">1.9.2&nbsp;&nbsp;&nbsp;Case 2</a><a class="headerlink" href="#case-2" title="Permalink to this headline">¶</a></h3>
+<p>Now, Barry wants to add a fourth library.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr branch --nested http://library4 project
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-3">
+<h3><a class="toc-backref" href="#id27">1.9.3&nbsp;&nbsp;&nbsp;Case 3</a><a class="headerlink" href="#case-3" title="Permalink to this headline">¶</a></h3>
+<p>Barry wants to publish his project.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr push -d project bzr+ssh://project/trunk
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-4">
+<h3><a class="toc-backref" href="#id28">1.9.4&nbsp;&nbsp;&nbsp;Case 4</a><a class="headerlink" href="#case-4" title="Permalink to this headline">¶</a></h3>
+<p>Barry decides to make part of his project into another library</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr split --nested project/newlibrary
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-5">
+<h3><a class="toc-backref" href="#id29">1.9.5&nbsp;&nbsp;&nbsp;Case 5</a><a class="headerlink" href="#case-5" title="Permalink to this headline">¶</a></h3>
+<p>Curtis wants to hack on Barry’s project</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr branch http://project/trunk
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-6">
+<h3><a class="toc-backref" href="#id30">1.9.6&nbsp;&nbsp;&nbsp;Case 6</a><a class="headerlink" href="#case-6" title="Permalink to this headline">¶</a></h3>
+<p>Barry wants to drop one of the libraries he was using</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ rm project/library1
+$ bzr commit project -m &quot;Removed library1&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-7">
+<h3><a class="toc-backref" href="#id31">1.9.7&nbsp;&nbsp;&nbsp;Case 7</a><a class="headerlink" href="#case-7" title="Permalink to this headline">¶</a></h3>
+<p>Curtis has made changes to one of the libraries.  Barry wants to merge Curtis’
+changes into his copy.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr merge -d project http://curtis.org/trunk/library2
+
+Or alternatively:
+$ bzr merge -d project/library2 http://curtis.org/trunk/library2
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-8">
+<h3><a class="toc-backref" href="#id32">1.9.8&nbsp;&nbsp;&nbsp;Case 8</a><a class="headerlink" href="#case-8" title="Permalink to this headline">¶</a></h3>
+<p>Curtis has made changes to Barry’s main project.  Barry wants to merge Curtis’
+changes into his copy.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr merge -d project http://curtis.org/trunk
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-9">
+<h3><a class="toc-backref" href="#id33">1.9.9&nbsp;&nbsp;&nbsp;Case 9</a><a class="headerlink" href="#case-9" title="Permalink to this headline">¶</a></h3>
+<p>Barry makes changes in his project and in a library, and he runs status</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ echo bar &gt; project/foo
+$ echo qux &gt; project/library2/baz
+$ bzr status project
+ M foo
+ M library2/baz
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-10">
+<h3><a class="toc-backref" href="#id34">1.9.10&nbsp;&nbsp;&nbsp;Case 10</a><a class="headerlink" href="#case-10" title="Permalink to this headline">¶</a></h3>
+<p>Barry wants to upgrade the bazaar format of his project</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr upgrade project
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-11">
+<h3><a class="toc-backref" href="#id35">1.9.11&nbsp;&nbsp;&nbsp;Case 11</a><a class="headerlink" href="#case-11" title="Permalink to this headline">¶</a></h3>
+<p>Curtis wants to apply Barry’s latest changes.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr merge -d project http://project/trunk
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-12">
+<h3><a class="toc-backref" href="#id36">1.9.12&nbsp;&nbsp;&nbsp;Case 12</a><a class="headerlink" href="#case-12" title="Permalink to this headline">¶</a></h3>
+<p>Danilo wants to start a project with two libraries using nested trees from
+scratch.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr init project
+$ bzr branch --nested http://library4 project
+$ bzr branch --nested http://library5 project
+$ bzr commit project -m &quot;Created new project.&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-13">
+<h3><a class="toc-backref" href="#id37">1.9.13&nbsp;&nbsp;&nbsp;Case 13</a><a class="headerlink" href="#case-13" title="Permalink to this headline">¶</a></h3>
+<p>Edwin has a project that doesn’t use nested trees and he wants to start using
+nested trees.</p>
+<dl class="docutils">
+<dt>Example commands::</dt>
+<dd>$ bzr split –nested project/subdir</dd>
+</dl>
+</div>
+<div class="section" id="case-14">
+<h3><a class="toc-backref" href="#id38">1.9.14&nbsp;&nbsp;&nbsp;Case 14</a><a class="headerlink" href="#case-14" title="Permalink to this headline">¶</a></h3>
+<p>Françis has a project with nested trees where the containing tree uses one
+Bazaar format and the subtree uses a different Bazaar format.</p>
+<p>Not supported.</p>
+</div>
+<div class="section" id="case-15">
+<h3><a class="toc-backref" href="#id39">1.9.15&nbsp;&nbsp;&nbsp;Case 15</a><a class="headerlink" href="#case-15" title="Permalink to this headline">¶</a></h3>
+<p>Barry commits some changes to a library and to the main project, and then
+discovers the changes are not appropriate.  He has not yet pushed his changes
+anywhere.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr merge -d project http://library2
+$ bzr commit project -m &quot;Updated library2&quot;
+$ bzr uncommit project --force
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-16">
+<h3><a class="toc-backref" href="#id40">1.9.16&nbsp;&nbsp;&nbsp;Case 16</a><a class="headerlink" href="#case-16" title="Permalink to this headline">¶</a></h3>
+<p>Barry commits some changes to a library and to the main project, publishes his
+branch, and then discovers the changes are not appropriate.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr merge -d project http://library2
+$ bzr commit project -m &quot;Updated library2&quot;
+$ bzr push -d project
+$ bzr revert -r-2 project
+$ bzr commit project -m &quot;Reverted inappropriate changes.&quot;
+$ bzr push -d project
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-17">
+<h3><a class="toc-backref" href="#id41">1.9.17&nbsp;&nbsp;&nbsp;Case 17</a><a class="headerlink" href="#case-17" title="Permalink to this headline">¶</a></h3>
+<p>Gary is writing a project.  Henninge wants to split a library out of it.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr branch project
+$ bzr split project/library6
+$ mv project/library6 .
+$ rm project
+$ bzr commit -m &quot;split library6 into its own library.&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-18">
+<h3><a class="toc-backref" href="#id42">1.9.18&nbsp;&nbsp;&nbsp;Case 18</a><a class="headerlink" href="#case-18" title="Permalink to this headline">¶</a></h3>
+<p>Henning wants to update to receive Gary’s latest changes.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr merge -d library6
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-19">
+<h3><a class="toc-backref" href="#id43">1.9.19&nbsp;&nbsp;&nbsp;Case 19</a><a class="headerlink" href="#case-19" title="Permalink to this headline">¶</a></h3>
+<p>Gary wants to update to receive Henninge’s changes, including splitting a
+library out.</p>
+<p>Example commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr split --nested project/library6
+$ bzr commit project -m &quot;Turned library6 into a library&quot;
+$ bzr merge -d project/library6 http://library6
+$ bzr commit project -m &quot;Merge Henninge&#39;s changes.&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="case-20">
+<h3><a class="toc-backref" href="#id44">1.9.20&nbsp;&nbsp;&nbsp;Case 20</a><a class="headerlink" href="#case-20" title="Permalink to this headline">¶</a></h3>
+<p>Gary wants to update to receive Henninge’s changes, without splitting a library
+out.</p>
+<blockquote>
+<div>$ bzr split –nested project/library6
+$ bzr commit project -m “Turned library6 into a library”
+# i.e. a cherrypick that skips the revision where library6 became a library.
+$ bzr merge -d project/library6 <a class="reference external" href="http://library6">http://library6</a> -r 5..-1
+$ bzr commit project -m “Merge Henninge’s changes.”</div></blockquote>
+</div>
+<div class="section" id="case-21">
+<h3><a class="toc-backref" href="#id45">1.9.21&nbsp;&nbsp;&nbsp;Case 21</a><a class="headerlink" href="#case-21" title="Permalink to this headline">¶</a></h3>
+<p>John works on a project called FooBar, but has decided that it would be better
+structured as two projects, where Bar is a library that may be of general use
+outside of Foo.  As it happens, bar already has its own subdirectory.</p>
+<p>He runs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># Convert into two trees: foobar and foobar/bar.
+# In each tree, files will be removed and deleted.  In foobar/bar, &quot;bar&quot;
+# will have been moved to become the tree root.
+# These changes will be committed later.
+$ bzr upgrade foobar --format=subbranches
+$ bzr split foobar/bar
+
+# Add a tree-reference from foobar to foobar/bar, change bar&#39;s branch
+# to a reference to subbranch in foobar&#39;s branch.
+$ bzr join --nested foobar/bar
+
+# This recurses into foobar/bar and commits the deletion of the containing
+# tree.  In foobar, it commits a kind change for &#39;bar&#39; from directory to
+# tree-reference, and the deletion of the contents of bar.
+$ bzr commit foobar
+</pre></div>
+</div>
+<p>This commits new revisions to foobar and bar, and foobar’s tree-reference bar
+refers to the revision-id of bar.</p>
+<p>Next, he adds two new files: foobar/baz and foobar/bar/qux:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ vi foobar/baz
+$ vi foobar/bar/qux
+# This adds qux to foobar/bar and adds baz to foobar.
+$ bzr add foobar
+</pre></div>
+</div>
+<p>Since foobar/bar/qux is in a commitable state and foobar/baz is not, he invokes</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr commit foobar/bar
+</pre></div>
+</div>
+<p>This commits foobar/bar/baz/qux to the subtree and commits foobar/bar to the
+containing tree.</p>
+<p>(Had he wanted to commit to just the subtree, or just the containing tree, he
+could have specified an option.)</p>
+</div>
+<div class="section" id="id1">
+<h3><a class="toc-backref" href="#id46">1.9.22&nbsp;&nbsp;&nbsp;Case 21</a><a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>Robert wants to hack on a project, Baz, that is structured as a nested tree,
+which uses the library “quxlib”, from quxlib.org.</p>
+<p>He runs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr branch http://baz.org/dev baz
+</pre></div>
+</div>
+<p>This creates a “subbranches” branch and working tree for baz, as normal.  Since
+tree-references were encountered, it adds subbranches for them to the baz
+branch.  All data is retrieved from baz.org, not quxlib.org.</p>
+<p>It creates a working tree for quxlib with a subbranch-reference.  It uses the
+revision-id from the tree-reference in the containing tree, not the head
+revision at baz.org.  This allows Robert to get a known-good nested tree.</p>
+<p>Later, Robert decides to update the version of quxlib being used to the latest
+from quxlib.org.  He runs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr pull -d http://quxlib.org
+</pre></div>
+</div>
+<p>This updates the version of quxlib in the working tree, which mean that baz is
+now out-of-date with its last-committed tree.  Unfortunately, the new rev on
+quxlib is not completely compatible with the old one, and Robert must tweak a
+few files before Baz runs properly.  Once he has done so, he runs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr commit baz
+</pre></div>
+</div>
+<p>Now he has committed a known-good nested tree, and the baz working tree is once
+again up-to-date.</p>
+</div>
+</div>
+<div class="section" id="user-documentation">
+<h2><a class="toc-backref" href="#id47">1.10&nbsp;&nbsp;&nbsp;User documentation</a><a class="headerlink" href="#user-documentation" title="Permalink to this headline">¶</a></h2>
+<p>For many large projects, it is often useful to incorporate libraries
+maintained elsewhere or to construct them from multiple subprojects.
+While it is easy for a single user to set up a particular layout of
+multiple branches by hand, the different branches really need to be
+linked together if others are to reproduce the desired layout, and
+if the relationships are going to be managed over time.</p>
+<p>Bazaar has good support for building and managing external libraries
+and subprojects via a feature known as <em>nested trees</em>. In particular,
+nearly all of Bazaar’s commonly used commands understand nested trees
+and Do The Right Thing as explained below. The relationship is hierarchical:
+the containing tree knows about its nested trees, but nested trees are unaware
+of the tree (or trees) containing them.</p>
+<p>At the moment, <em>nested trees</em> are the only type of nested item
+supported though <em>nested files</em> may be supported in the future.
+Nested trees may contain other nested trees as required.</p>
+<p>Note: This feature requires a recent branch format such as <code class="docutils literal notranslate"><span class="pre">2.0</span></code>
+or later.</p>
+<div class="section" id="nesting-an-external-project">
+<h3><a class="toc-backref" href="#id48">1.10.1&nbsp;&nbsp;&nbsp;Nesting an external project</a><a class="headerlink" href="#nesting-an-external-project" title="Permalink to this headline">¶</a></h3>
+<p>To link an external project into a branch, use the <code class="docutils literal notranslate"><span class="pre">branch</span></code> command
+with the <code class="docutils literal notranslate"><span class="pre">--nested</span></code> option like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">branch</span> <span class="o">--</span><span class="n">nested</span> <span class="n">SOURCE</span><span class="o">-</span><span class="n">URL</span> <span class="n">TARGET</span><span class="o">-</span><span class="n">DIR</span>
+</pre></div>
+</div>
+<p>For example, assuming you already have a <code class="docutils literal notranslate"><span class="pre">src/lib</span></code> directory where
+libraries are kept:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">branch</span> <span class="o">--</span><span class="n">nested</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">xmlsaxlib</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span>
+</pre></div>
+</div>
+<p>This will create a nested branch in the <code class="docutils literal notranslate"><span class="pre">src/lib/sax</span></code> directory,
+join it into the containing branch and save the source location.</p>
+<p>If you now run <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">status</span></code>, it will show the nested branch as
+uncommitted changes like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">+</span>  <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span>
+<span class="o">+</span>  <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span><span class="o">/</span><span class="n">README</span>
+<span class="o">+</span>  <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span><span class="o">/</span><span class="n">parser</span><span class="o">.</span><span class="n">py</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>To record this change, use the <code class="docutils literal notranslate"><span class="pre">commit</span></code> command as you normally would:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;added SAX parsing library&quot;</span>
+</pre></div>
+</div>
+<p>Note that Bazaar stores the tip revision of each nested branch. This
+is an important feature in that it’s then easy to reproduce the exact
+combination of libraries used for historical revisions. It also means
+that other developers pulling or merging your changes will get nested
+branches created for them at the right revisions of each.</p>
+</div>
+<div class="section" id="refreshing-a-nested-branch">
+<h3><a class="toc-backref" href="#id49">1.10.2&nbsp;&nbsp;&nbsp;Refreshing a nested branch</a><a class="headerlink" href="#refreshing-a-nested-branch" title="Permalink to this headline">¶</a></h3>
+<p>As bugs are fixed and enhancements are made to nested projects, you
+will want to update the version being used. To do this, <code class="docutils literal notranslate"><span class="pre">pull</span></code> the
+latest version of the nested branch. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">pull</span> <span class="o">-</span><span class="n">d</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span>
+</pre></div>
+</div>
+<p>If the latest revision is too unstable, you can always use the <code class="docutils literal notranslate"><span class="pre">-r</span></code>
+option on the <code class="docutils literal notranslate"><span class="pre">pull</span></code> command to nominate a particular revision or tag.</p>
+<p>Now that you have the required version of the code, you can make
+any required adjustments (e.g. API changes), run your automated tests
+and commit something like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">view</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span><span class="o">/</span><span class="n">README</span>
+<span class="p">(</span><span class="n">hack</span><span class="p">,</span> <span class="n">hack</span><span class="p">,</span> <span class="n">hack</span><span class="p">)</span>
+<span class="n">make</span> <span class="n">test</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;upgraded SAX library to version 2.1.3&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="changing-a-nested-tree">
+<h3><a class="toc-backref" href="#id50">1.10.3&nbsp;&nbsp;&nbsp;Changing a nested tree</a><a class="headerlink" href="#changing-a-nested-tree" title="Permalink to this headline">¶</a></h3>
+<p>As well as keeping track of which revisions of external libraries
+are used over time, one of the reasons for nesting projects is to
+make minor changes. You may want to do this in order to fix and
+track particular bugs you need addressed. In other cases, you may want
+to make various local enhancements that aren’t valuable outside
+the context of your project.</p>
+<p>As support for nested branches is integrated into most commonly
+used commands, this is actually quite easy to do: simply make
+the change to the required files as you normally would! For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edit</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span><span class="o">/</span><span class="n">parser</span><span class="o">.</span><span class="n">py</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;fix bug #42 in sax parser&quot;</span>
+</pre></div>
+</div>
+<p>Note that Bazaar is smart enough to recurse by default into nested
+branches, commit changes there, and commit the new nested branch tips
+in the current branch. Both commits get the same commit message.</p>
+<p>If you want to only commit the change to a nested branch for now, you
+can change into the nested branch before running commit like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;fix bug #42 in sax parser&quot;</span>
+</pre></div>
+</div>
+<p>Alternatively, you can use a selective commit like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;fix bug #42 in sax parser&quot;</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="reviewing-nested-tree-changes">
+<h3><a class="toc-backref" href="#id51">1.10.4&nbsp;&nbsp;&nbsp;Reviewing nested tree changes</a><a class="headerlink" href="#reviewing-nested-tree-changes" title="Permalink to this headline">¶</a></h3>
+<p>Just like <code class="docutils literal notranslate"><span class="pre">commit</span></code>, the <code class="docutils literal notranslate"><span class="pre">status</span></code> and <code class="docutils literal notranslate"><span class="pre">diff</span></code> commands implicitly
+recurse into nested trees. In the case of <code class="docutils literal notranslate"><span class="pre">status</span></code>, it shows both the
+nested tree as having a pending change as well as the items within it that have
+changed. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">M</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span>
+<span class="n">M</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span><span class="o">/</span><span class="n">parser</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>Once again, if you change into a nested tree though, <code class="docutils literal notranslate"><span class="pre">status</span></code> and
+<code class="docutils literal notranslate"><span class="pre">diff</span></code> will operate just on that tree and not recurse upwards by
+default.</p>
+</div>
+<div class="section" id="browsing-nested-tree-history">
+<h3><a class="toc-backref" href="#id52">1.10.5&nbsp;&nbsp;&nbsp;Browsing nested tree history</a><a class="headerlink" href="#browsing-nested-tree-history" title="Permalink to this headline">¶</a></h3>
+<p>As the branches of nested trees have their own history, the <code class="docutils literal notranslate"><span class="pre">log</span></code> command
+shows just the history of the containing branch. To see the history for
+a nested branch, nominate the branch explicitly like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">log</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">sax</span>
+</pre></div>
+</div>
+<p>Note however that <code class="docutils literal notranslate"><span class="pre">log</span> <span class="pre">-v</span></code> and <code class="docutils literal notranslate"><span class="pre">log</span> <span class="pre">-p</span></code> on the containing branch
+will show what files in nested branches were changed in each revision.</p>
+</div>
+<div class="section" id="splitting-out-a-project">
+<h3><a class="toc-backref" href="#id53">1.10.6&nbsp;&nbsp;&nbsp;Splitting out a project</a><a class="headerlink" href="#splitting-out-a-project" title="Permalink to this headline">¶</a></h3>
+<p>If you already have a large project and wish to partition it into
+reusable subprojects, use the <code class="docutils literal notranslate"><span class="pre">split</span></code> command. This takes an existing
+directory and makes it a separate branch. For example, imagine you have
+a directory holding UI widgets that another project would like to
+leverage. You can make it a separate branch like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">split</span> <span class="n">src</span><span class="o">/</span><span class="n">uiwidgets</span>
+</pre></div>
+</div>
+<p>To make the new project available to others, push it to a shared location
+like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">src</span><span class="o">/</span><span class="n">uiwidgets</span>
+<span class="n">bzr</span> <span class="n">push</span> <span class="n">bzr</span><span class="p">:</span><span class="o">//</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">uiwidgets</span>
+</pre></div>
+</div>
+<p>You also need to link it back into the original project as a nested branch
+using the <code class="docutils literal notranslate"><span class="pre">join</span></code> command like this (assuming the current directory is
+<code class="docutils literal notranslate"><span class="pre">src/uiwidgets</span></code>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">join</span> <span class="o">--</span><span class="n">nested</span> <span class="o">.</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;uiwidgets is now a nested project&quot;</span>
+</pre></div>
+</div>
+<p>Similar to <code class="docutils literal notranslate"><span class="pre">branch</span> <span class="pre">--nested</span></code>, <code class="docutils literal notranslate"><span class="pre">join</span> <span class="pre">--nested</span></code> joins the nominated directory
+(which must hold a branch) into the containing tree.  In order to make sure
+that all versions of a tree can be reproduced, the branches of nested trees
+share a repository with their containing tree.</p>
+</div>
+<div class="section" id="virtual-projects">
+<h3><a class="toc-backref" href="#id54">1.10.7&nbsp;&nbsp;&nbsp;Virtual projects</a><a class="headerlink" href="#virtual-projects" title="Permalink to this headline">¶</a></h3>
+<p>By design, Bazaar is strict about tracking the actual revisions used of
+nested branches over time. Without this, projects cannot accurately
+reproduce exactly what was used to make a given build. There are
+isolated use cases though where is advantageous to say “give me the
+latest tip of these loosely coupled branches”. To do this, create a
+small ‘virtual project’ which is just a bunch of <em>unpegged</em> nested
+branches. To mark nested branches as unpegged, use the <code class="docutils literal notranslate"><span class="pre">--no-pegged</span></code>
+option of the <code class="docutils literal notranslate"><span class="pre">join</span></code> command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">join</span> <span class="o">--</span><span class="n">nested</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">pegged</span> <span class="p">[</span><span class="n">DIR</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>To stop the nested branch tips from floating and to begin recording
+the tip revisions again, use the <code class="docutils literal notranslate"><span class="pre">pegged</span></code> option:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">join</span> <span class="o">--</span><span class="n">nested</span> <span class="o">--</span><span class="n">pegged</span> <span class="p">[</span><span class="n">DIR</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>After changing whether one or more nested branches are pegged or not, you
+need to <code class="docutils literal notranslate"><span class="pre">commit</span></code> the branch to record that metadata. (The pegged state
+is recorded over time.)</p>
+<p>For example, you may be managing a company intranet site as a project
+which is nothing more than a list of unrelated departmental websites
+bundled together. You can set this up like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">init</span> <span class="n">intranet</span><span class="o">-</span><span class="n">site</span>
+<span class="n">cd</span> <span class="n">intranet</span><span class="o">-</span><span class="n">site</span>
+<span class="n">bzr</span> <span class="n">branch</span> <span class="n">bzr</span><span class="p">:</span><span class="o">//</span><span class="n">ourserver</span><span class="o">/</span><span class="n">websites</span><span class="o">/</span><span class="n">research</span>
+<span class="n">bzr</span> <span class="n">branch</span> <span class="n">bzr</span><span class="p">:</span><span class="o">//</span><span class="n">ourserver</span><span class="o">/</span><span class="n">websites</span><span class="o">/</span><span class="n">development</span>
+<span class="n">bzr</span> <span class="n">branch</span> <span class="n">bzr</span><span class="p">:</span><span class="o">//</span><span class="n">ourserver</span><span class="o">/</span><span class="n">websites</span><span class="o">/</span><span class="n">support</span>
+<span class="n">bzr</span> <span class="n">branch</span> <span class="n">bzr</span><span class="p">:</span><span class="o">//</span><span class="n">ourserver</span><span class="o">/</span><span class="n">websites</span><span class="o">/</span><span class="n">hr</span>
+<span class="n">bzr</span> <span class="n">join</span> <span class="o">--</span><span class="n">nested</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">pegged</span> <span class="n">research</span>
+<span class="n">bzr</span> <span class="n">join</span> <span class="o">--</span><span class="n">nested</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">pegged</span> <span class="n">development</span>
+<span class="n">bzr</span> <span class="n">join</span> <span class="o">--</span><span class="n">nested</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">pegged</span> <span class="n">support</span>
+<span class="n">bzr</span> <span class="n">join</span> <span class="o">--</span><span class="n">nested</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">pegged</span> <span class="n">hr</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;initial configuration of intranet-site&quot;</span>
+</pre></div>
+</div>
+<p>Publishing the overall site is then as easy as going to the server
+hosting your intranet and running something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">branch</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">mymachine</span><span class="o">//</span><span class="n">projects</span><span class="o">/</span><span class="n">intranet</span><span class="o">-</span><span class="n">site</span>
+</pre></div>
+</div>
+<p>Refreshing the overall site is as easy as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">pull</span>
+</pre></div>
+</div>
+<p>Virtual projects are also useful for providing a partial ‘view’ over
+a large project containing a large number of subprojects. For example,
+you may be working on an office suite and have a bunch of developers
+that only care about the word processor. You can create a virtual
+project for them like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">init</span> <span class="n">wp</span><span class="o">-</span><span class="n">modules</span>
+<span class="n">cd</span> <span class="n">wp</span><span class="o">-</span><span class="n">modules</span>
+<span class="n">bzr</span> <span class="n">branch</span> <span class="o">../</span><span class="n">common</span>
+<span class="n">bzr</span> <span class="n">branch</span> <span class="o">../</span><span class="n">printing</span>
+<span class="n">bzr</span> <span class="n">branch</span> <span class="o">../</span><span class="n">spellchecker</span>
+<span class="n">bzr</span> <span class="n">branch</span> <span class="o">../</span><span class="n">wordprocessor</span>
+<span class="n">bzr</span> <span class="n">join</span> <span class="o">--</span><span class="n">nested</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">pegged</span> <span class="n">common</span>
+<span class="n">bzr</span> <span class="n">join</span> <span class="o">--</span><span class="n">nested</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">pegged</span> <span class="n">printing</span>
+<span class="n">bzr</span> <span class="n">join</span> <span class="o">--</span><span class="n">nested</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">pegged</span> <span class="n">spellchecker</span>
+<span class="n">bzr</span> <span class="n">join</span> <span class="o">--</span><span class="n">nested</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">pegged</span> <span class="n">wordprocessor</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;initial configuration of wp-modules&quot;</span>
+</pre></div>
+</div>
+<p>Those developers can then get bootstrapped faster and have <em>just</em> the
+subprojects they care about by branching from <code class="docutils literal notranslate"><span class="pre">wp-modules</span></code>.</p>
+</div>
+<div class="section" id="nested-branch-tips-tricks">
+<h3><a class="toc-backref" href="#id55">1.10.8&nbsp;&nbsp;&nbsp;Nested branch tips &amp; tricks</a><a class="headerlink" href="#nested-branch-tips-tricks" title="Permalink to this headline">¶</a></h3>
+<p>As explained above, most of Bazaar’s commonly used commands recurse
+downwards into nested branches by default. To prevent this recursion,
+use the <code class="docutils literal notranslate"><span class="pre">--no-recurse-nested</span></code> option on various commands (including
+<code class="docutils literal notranslate"><span class="pre">commit</span></code>, <code class="docutils literal notranslate"><span class="pre">status</span></code> and <code class="docutils literal notranslate"><span class="pre">diff</span></code>) that support it.</p>
+<p>Thanks to plugins like bzr-svn and bzr-git, Bazaar has strong support
+for transparently accessing branches managed by foreign VCS tools. This
+means that Bazaar can support projects where nested branches are hosted
+in supported foreign systems. For example, to nest a library maintained
+in Subversion:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">branch</span> <span class="o">--</span><span class="n">nested</span> <span class="n">svn</span><span class="p">:</span><span class="o">//</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">xmlhelpers</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">xmlhelpers</span>
+</pre></div>
+</div>
+<p>If you want revisions to be committed both to a remote location and a
+local location, make the top-level branch a bound branch.  (Nested branches
+have no configuration of their own.)</p>
+<p>Most likely, you will have some branches that are identical to their upstream
+version and can be pulled, and some that have local changes and must be merged.
+You can update all of them at once using <code class="docutils literal notranslate"><span class="pre">merge</span> <span class="pre">--pull</span></code>.  This will pull
+into the trees with no local changes, and merge into the ones with local
+changes.  Afterward, you should commit, which will commit only into the
+trees that were merged into.</p>
+<p>As you’d expect, a nested branch can be moved or deleted using the
+normal commands. For example, after splitting out a subproject, you
+may want to change its location like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">mv</span> <span class="n">src</span><span class="o">/</span><span class="n">uiwidgets</span> <span class="n">src</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">uiwidgets</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;move uiwidgets into src/lib&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="things-to-be-aware-of">
+<h3><a class="toc-backref" href="#id56">1.10.9&nbsp;&nbsp;&nbsp;Things to be aware of</a><a class="headerlink" href="#things-to-be-aware-of" title="Permalink to this headline">¶</a></h3>
+<p>Commands like <code class="docutils literal notranslate"><span class="pre">commit</span></code> and <code class="docutils literal notranslate"><span class="pre">push</span></code> need online access to the locations
+for nested branches which have updated their tip. In particular, <code class="docutils literal notranslate"><span class="pre">commit</span></code>
+will update any changed nested branches first and only commit to the
+containing branch if all nested branch commits succeed. If you are working
+offline, you may want to ensure you have a local mirror location defined
+for nested branches you are likely to tweak. Alternatively, the
+<code class="docutils literal notranslate"><span class="pre">no-recurse-nested</span></code> option to the <code class="docutils literal notranslate"><span class="pre">commit</span></code> command might to useful to
+commit some changes, leaving the nested branch commits until you are back
+online.</p>
+<p>At the moment, nested trees need to be incorporated as a whole.
+Filtered views can be used to restrict the set of files and directories
+logically seen. Currently though, filtered views are a lens onto a tree:
+they do not delete other files and the exposed files/directories must
+have the same paths as they do in the original branch. In the future,
+we may add support for nesting and moving selected files from a
+(read-only) nested branch something like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">nested</span> <span class="n">DIR</span> <span class="o">--</span><span class="n">file</span> <span class="n">LICENSE</span> <span class="o">--</span><span class="n">file</span> <span class="n">doc</span><span class="o">/</span><span class="n">README</span><span class="p">::</span><span class="n">README</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;change which files are nested from project DIR&quot;</span>
+</pre></div>
+</div>
+<p>If you require this feature, please contact us with your needs.</p>
+</div>
+</div>
+<div class="section" id="design-decisions">
+<h2><a class="toc-backref" href="#id57">1.11&nbsp;&nbsp;&nbsp;Design decisions</a><a class="headerlink" href="#design-decisions" title="Permalink to this headline">¶</a></h2>
+<p>The branches of subtrees shall either share a repository with the containing tree,
+or the containing tree’s repository will be (implicitly) added as a fallback
+repository.</p>
+<p>The branches of subtrees shall be in a special format that shares a single
+last_revision file that is stored in the containing branch.</p>
+<p>The subtree branches shall be referenced in the last_revision file by file-id.</p>
+<p>Subtree branches shall not support individual configuration.</p>
+<p>Fetch shall automatically fetch the revisions mentioned by tree-references,
+recursively.</p>
+<p>The reserved revision-id “head:” shall be used in tree-references to refer to
+the tip revision of a branch.</p>
+<p>bzr-svn repositories with externals shall behave as though the multiple
+repositories were a single Bazaar repository with multiple branches.</p>
+<div class="section" id="shall-commands-recurse-downwards-by-default">
+<h3><a class="toc-backref" href="#id58">1.11.1&nbsp;&nbsp;&nbsp;Shall commands recurse downwards by default?</a><a class="headerlink" href="#shall-commands-recurse-downwards-by-default" title="Permalink to this headline">¶</a></h3>
+<p>Yes.</p>
+<p>Pros:</p>
+<blockquote>
+<div><ul class="simple">
+<li>It is hard to accidentally produce inconsistent trees</li>
+<li>Inconsistent trees are hard for remote users to handle</li>
+<li>Accidentally committing too many things at once is easy to resolve</li>
+<li>It is hard to accidentally commit too many things at once</li>
+</ul>
+</div></blockquote>
+<p>Cons:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Accidentally committing nuclear launch codes is easier to do</li>
+<li>A commit message that makes sense for the top may not make sense lower down.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="shall-commands-recurse-upwards-by-default">
+<h3><a class="toc-backref" href="#id59">1.11.2&nbsp;&nbsp;&nbsp;Shall commands recurse upwards by default?</a><a class="headerlink" href="#shall-commands-recurse-upwards-by-default" title="Permalink to this headline">¶</a></h3>
+<p>No.</p>
+</div>
+<div class="section" id="shall-subtree-branches-be-addressable">
+<h3><a class="toc-backref" href="#id60">1.11.3&nbsp;&nbsp;&nbsp;Shall subtree branches be addressable?</a><a class="headerlink" href="#shall-subtree-branches-be-addressable" title="Permalink to this headline">¶</a></h3>
+<p>Ideally, yes. We might want to use the path segment parameters syntax here too.</p>
+</div>
+<div class="section" id="shall-we-model-nested-trees-as-a-composite-tree">
+<h3><a class="toc-backref" href="#id61">1.11.4&nbsp;&nbsp;&nbsp;Shall we model nested trees as a composite tree?</a><a class="headerlink" href="#shall-we-model-nested-trees-as-a-composite-tree" title="Permalink to this headline">¶</a></h3>
+<p>Yes.  Users will see recurse-downwards behaviour that allows operations that
+cross subtree boundaries, e.g. a merge in the top tree can move a file between
+subtrees.</p>
+<p>The downside is that we can’t have cheap support for subtrees that are copies
+of one another, because we wouldn’t know which copy to apply sets of changes
+to.</p>
+</div>
+<div class="section" id="shall-we-use-root-ids-for-tree-references">
+<h3><a class="toc-backref" href="#id62">1.11.5&nbsp;&nbsp;&nbsp;Shall we use root-ids for tree references?</a><a class="headerlink" href="#shall-we-use-root-ids-for-tree-references" title="Permalink to this headline">¶</a></h3>
+<p>Yes.  This fits well with our current lack of support of file copies.  If we do
+support file copies in future it will be possible to change this in a future
+format, and perform deterministic upgrades to that format.</p>
+</div>
+<div class="section" id="what-about-locking">
+<h3><a class="toc-backref" href="#id63">1.11.6&nbsp;&nbsp;&nbsp;What about locking?</a><a class="headerlink" href="#what-about-locking" title="Permalink to this headline">¶</a></h3>
+<p>We should lock recursively.  It matches existing behaviour by failing earlier,
+and the extra cost does not seem onerous.  (To be fully efficient this requires
+an index of the subtrees, otherwise we need to scan the fully
+inventory/dirstate.)</p>
+<p>(Also, this decision can be changed later with no compatibility concerns.)</p>
+</div>
+<div class="section" id="how-do-we-handle-merge-when-the-subtree-hasn-t-diverged">
+<h3><a class="toc-backref" href="#id64">1.11.7&nbsp;&nbsp;&nbsp;How do we handle merge when the subtree hasn’t diverged?</a><a class="headerlink" href="#how-do-we-handle-merge-when-the-subtree-hasn-t-diverged" title="Permalink to this headline">¶</a></h3>
+<p>“bzr merge –pull” will be changed so that it will merge (not pull) when the
+local last revision’s revno would change (i.e. is a non-lhs parent in the merge
+source).  This is expected to be the most common way to update nested trees.</p>
+<p>The existing “bzr merge –pull” behaviour will be renamed to “bzr merge
+–pull-renumber”.</p>
+<p>“bzr merge” (with no “–pull”) will do a merge in all trees.  “bzr pull” will
+do a pull in all trees.</p>
+<p>The rationale is that a very common use-case is that the top tree is a project
+the user is actively committing to, and the subtrees are mainly libraries that
+are being mirrored.  So a behaviour that forced every update to be a merge
+would be undesirable for the mirrored subtrees, but an update that is a pull
+wouldn’t suit the changing top tree.  And the existing “merge –pull” (that can
+renumber revisions) isn’t desireable for either the top tree or subtrees in
+this case.</p>
+</div>
+<div class="section" id="what-should-uncommit-do">
+<h3><a class="toc-backref" href="#id65">1.11.8&nbsp;&nbsp;&nbsp;What should uncommit do?</a><a class="headerlink" href="#what-should-uncommit-do" title="Permalink to this headline">¶</a></h3>
+<p>It will recurse, and subtrees will be uncommitted back to the revision recorded
+by the revision the top tree is uncommitting to.</p>
+<p>This means that operations like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ echo foo &gt; versioned-file-in-top-tree.txt
+$ bzr ci -m &quot;Change file&quot;
+$ bzr uncommit
+</pre></div>
+</div>
+<p>will not cause a change in subtrees, since the top-level commit did not affect
+them.  But on the other hand:</p>
+<blockquote>
+<div>$ echo foo &gt; subtree/versioned-file-in-subtree.txt
+$ bzr ci -m “Change file”
+$ bzr uncommit</div></blockquote>
+<p>will first uncommit to the subtree, then to the top tree.  The uncommit will
+restore both trees to their previous state.</p>
+</div>
+<div class="section" id="some-subtrees-should-have-commits-and-some-should-not-how">
+<h3><a class="toc-backref" href="#id66">1.11.9&nbsp;&nbsp;&nbsp;Some subtrees should have commits and some should not.  How?</a><a class="headerlink" href="#some-subtrees-should-have-commits-and-some-should-not-how" title="Permalink to this headline">¶</a></h3>
+<p>We will not provide special support for this initially.  We might later support
+flagging some sub-trees as mirror-only or something similar, but this seems like
+it could be a general feature not specific to nesting.  (and it may only require
+a working tree format bump to add).</p>
+</div>
+</div>
+<div class="section" id="comparison-with-other-systems">
+<h2><a class="toc-backref" href="#id67">1.12&nbsp;&nbsp;&nbsp;Comparison with other systems</a><a class="headerlink" href="#comparison-with-other-systems" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="git-submodules">
+<h3><a class="toc-backref" href="#id68">1.12.1&nbsp;&nbsp;&nbsp;Git submodules</a><a class="headerlink" href="#git-submodules" title="Permalink to this headline">¶</a></h3>
+<p>This allows separate repositories to be used for submodules.</p>
+</div>
+<div class="section" id="mercurial-forests">
+<h3><a class="toc-backref" href="#id69">1.12.2&nbsp;&nbsp;&nbsp;Mercurial Forests</a><a class="headerlink" href="#mercurial-forests" title="Permalink to this headline">¶</a></h3>
+<p>The wiki page does not give confidence that this is a well-maintained project.
+It seems similar to config-manager– its ‘snapshot’ files are like
+config-manager’s config files, describing what branches to get and where to put
+them, optionally specifying a revision.  No metadata about nesting is stored in
+the tree.  Optionally, a ‘snapshot.txt’ file may be stored in the containing
+tree, but it can also be stored somewhere else.</p>
+<p>There is no attempt to integrate subtree support into the core commands.</p>
+</div>
+<div class="section" id="mercurial-nested-repositories">
+<h3><a class="toc-backref" href="#id70">1.12.3&nbsp;&nbsp;&nbsp;Mercurial Nested Repositories</a><a class="headerlink" href="#mercurial-nested-repositories" title="Permalink to this headline">¶</a></h3>
+<p>This design was for an integrated feature, but there are apparently 4
+implementations as extensions.  While it does integrate subtree support into
+core commands, this may be off by default: “The alternative that I lean towards
+is to not recurse unless explicitly instructed to. Most probably, only a few
+commands should arguably even be aware of modules.”</p>
+<p>Command comparison:</p>
+<ul class="simple">
+<li>hg module add ~= bzr join –nested</li>
+<li>hg module remove ~= bzr remove –keep</li>
+<li>hg module record’s functionality is part of nested commits in nested trees.</li>
+</ul>
+<p>Like submodules, this stores location information in versioned data: a
+.hgmodules directory.
+Like submodules and nested trees, particular revisions are recorded.</p>
+</div>
+<div class="section" id="subversion-svn-externals">
+<h3><a class="toc-backref" href="#id71">1.12.4&nbsp;&nbsp;&nbsp;Subversion “svn:externals”</a><a class="headerlink" href="#subversion-svn-externals" title="Permalink to this headline">¶</a></h3>
+<p>Like bzr, uses per-file metadata.  Like submodules and nested repositories,
+locations are versioned data.  Like Forests, revisions are optional.  Like
+nested repositories, there is limited integration into core commands; checkout
+and update support externals, and commit may support them in the future.
+However, there is no UI specific to creating and updating svn:externals
+references.</p>
+<p>Unlike all other alternatives, supports partial checkouts.  This is because svn
+natively supports partial checkouts.  Also, supports checkouts of tags, because
+tags are merely a convention in svn.</p>
+<p>Supports pulling in “head” subtrees too, not just specific (“known-good”)
+revisions.  Nested trees supports this in order to provide high-fidelity
+imports.</p>
+<p>Some support for single-file svn:externals (see
+http://subversion.tigris.org/svn_1.6_releasenotes.html#externals), whereas bzr
+subtrees must be directories.</p>
+<p>Has a –ignore-externals option for checking out without pulling in the
+svn:externals items (svn checkout is more or less equivalent to bzr branch).
+You can also use that option on update (more or less like bzr merge).</p>
+</div>
+<div class="section" id="comments-on-differences">
+<h3><a class="toc-backref" href="#id72">1.12.5&nbsp;&nbsp;&nbsp;Comments on differences</a><a class="headerlink" href="#comments-on-differences" title="Permalink to this headline">¶</a></h3>
+<p>externals support partial checkouts.  Nested trees could gain support for this
+once Bazaar itself supports partial checkouts.  Supporting a single file as a
+“subtree” would also depend on native bzr support.  On platforms that support
+symlinks, using symlinks to portions of a subtree can be an effective
+substitute.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/plans/nested-trees.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,42 @@
+serve
+=====
+
+:Purpose: Run the brz server.
+:Usage:   brz serve
+
+:Options:
+  --allow-writes        By default the server is a readonly server.  Supplying
+                        --allow-writes enables write access to the contents of
+                        the served directory and below.  Note that ``brz
+                        serve`` does not perform authentication, so unless
+                        some form of external authentication is arranged
+                        supplying this option leads to global uncontrolled
+                        write access to your file system.
+  --client-timeout=ARG  Override the default idle client timeout (5min).
+  -d ARG, --directory=ARG
+                        Serve contents of this directory.
+  -h, --help            Show help message.
+  --inet                Serve on stdin/out for use from inetd or sshd.
+  --listen=ARG          Listen for connections on nominated address.
+  --port=ARG            Listen for connections on nominated port.  Passing 0
+                        as the port number will result in a dynamically
+                        allocated port.  The default port depends on the
+                        protocol.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+  protocol:
+    --protocol=ARG      Protocol to serve.
+    --bzr               The Bazaar smart server protocol over TCP. (default
+                        port: 4155)
+    --git               Git Smart server protocol over TCP. (default port:
+                        9418)
+    --git-receive-pack  Git Smart server receive pack command. (inetd mode
+                        only)
+    --git-upload-pack   Git Smart server upload pack command. (inetd mode
+                        only)
+
+:Aliases:  server
+
+

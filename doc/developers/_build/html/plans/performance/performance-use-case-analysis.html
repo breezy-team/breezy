@@ -1,0 +1,237 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Analysing a specific use case &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="../../search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="analysing-a-specific-use-case">
+<h1>Analysing a specific use case<a class="headerlink" href="#analysing-a-specific-use-case" title="Permalink to this headline">¶</a></h1>
+<dl class="docutils">
+<dt>The analysis of a use case needs to provide as outputs:</dt>
+<dd><ul class="first last simple">
+<li>The functional requirements that the use case has to satisfy.</li>
+<li>The file level operations and access patterns that will give the best
+performance.</li>
+<li>A low friction API which will allow the use case to be implemented.</li>
+<li>The release of bzr (and thus the supported features) for which the analysis
+was performed. The feature set of bzr defines the access patterns and data
+required to implement any use case. So when we add features, their design
+changes the requirements for the parts of the system they alter, so we need
+to re-analyse use cases when bzr’s feature set changes. If future plans are
+considered in the analysis with the intention of avoiding rework, these
+should also be mentioned.</li>
+</ul>
+</dd>
+</dl>
+</div>
+<div class="section" id="performing-the-analysis">
+<h1>Performing the analysis<a class="headerlink" href="#performing-the-analysis" title="Permalink to this headline">¶</a></h1>
+<p>The analysis needs to be able to define the characteristics of the
+involved disk storage and APIs. That means we need to examine the data
+required for the operation, in what order it is required, on both the
+read and write sides, and how that needs to be presented to be
+consistent with our layering.</p>
+<p>As a quick example: ‘annotation of a file requires the file id looked up
+from the tree, the basis revision id from the tree, and then the text of
+that fileid-revisionid pair along with the creating revision id
+allocated to each line, and the dotted revision number of each of those
+revision ids.’ All three of our key domain objects are involved here,
+but we haven’t defined any characteristics of the api or disk facilities
+yet. We could then do that by saying something like ‘the file-id lookup
+should degrade gracefully as trees become huge. The tree basis id should
+be constant time. Retrieval of the annotated text should be roughly
+constant for any text of the same size regardless of the number of
+revisions contributing to its content. Mapping of the revision ids to
+dotted revnos could be done as the text is retrieved, but it’s completely
+fine to post-process the annotated text to obtain dotted-revnos.’</p>
+</div>
+<div class="section" id="what-factors-should-be-considered">
+<h1>What factors should be considered?<a class="headerlink" href="#what-factors-should-be-considered" title="Permalink to this headline">¶</a></h1>
+<p>Obviously, those that will make for an extremely fast system :). There
+are many possible factors, but the ones I think are most interesting to
+design with are:</p>
+<ul>
+<li><p class="first">baseline overhead:</p>
+<blockquote>
+<div><ul class="simple">
+<li>The time to get bzr ready to begin the use case.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">scaling: how does performance change when any of the follow aspects
+of the system are ratcheted massively up or down:</p>
+<blockquote>
+<div><ul class="simple">
+<li>number of files/dirs/symlinks/subtrees in a tree (both working and
+revision trees)</li>
+<li>size of any particular file</li>
+<li>number of elements within a single directory</li>
+<li>length of symlinks</li>
+<li>number of changes to any file over time
+(subordinately also the number of merges of the file)</li>
+<li>number of commits in the ancestry of a branch
+(subordinately also the number of merges)</li>
+<li>number of revisions in a repository</li>
+<li>number of fileids in a repository</li>
+<li>number of ghosts in a given graph (revision or per-file)</li>
+<li>number of branches in a repository</li>
+<li>number of concurrent readers for a tree/branch/repository</li>
+<li>number of concurrent writers for objects that support that.</li>
+<li>latency to perform file operations (e.g. slow disks, network file systems,
+our VFS layer and FTP/SFTP/etc)</li>
+<li>bandwidth to the disk storage</li>
+<li>latency to perform semantic operations (hpss specific)</li>
+<li>bandwidth when performing semantic operations.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">locality of reference: If an operation requires data that is located
+within a small region at any point, we often get better performance
+than with an implementation of the same operation that requires the
+same amount of data but with a lower locality of reference. It’s
+fairly tricky to add locality of reference after the fact, so I think
+its worth considering up front.</p>
+</li>
+</ul>
+<p>Using these factors, to the annotate example we can add that its
+reasonable to do two ‘semantic’ round trips to the local tree, one to
+the branch object, and two to the repository. In file-operation level
+measurements, in an ideal world there would be no more than one round
+trip for each semantic operation. What there must not be is one round
+trip per revision involved in the revisionid-&gt;dotted number mapping, nor
+per each revision id attributed to a line in the text.</p>
+<p>Not all the items mentioned above are created equal. The analysis should
+include the parameters considered and the common case values for each - the
+optimisation should be around the common cases not around the exceptions.</p>
+<p>For instance, we have a smart server now; file level operations are relatively
+low latency and we should use that as the common case. At this point we intend
+to preserve the performance of the dumb protocol networking, but focus on
+improving network performance via the smart server and thus escape the
+file-level operation latency considerations.</p>
+<p>Many performance problems only become visible when changing the scaling knobs
+upwards to large trees. On small trees it’s our baseline performance that drives
+incremental improvements; on large trees it’s the amount of processing per item
+that drives performance. A significant goal therefore is to keep the amount of
+data to be processed under control. Ideally we can scale in a sublinear fashion
+for all operations, but we MUST NOT scale even linearly for operations that
+invoke a latency multiplier. For example, reading a file on disk requires
+finding the inode for the file, then the block with the data and returning the
+contents. Due to directory grouping logic we pay a massive price to read files
+if we do not group the reads of files within the same directory.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../../_sources/plans/performance/performance-use-case-analysis.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

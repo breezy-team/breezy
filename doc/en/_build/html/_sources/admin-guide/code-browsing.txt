@@ -1,0 +1,128 @@
+Web-based code browsing
+=======================
+
+Browsing the history of a project online is an important part of version
+control, since it allows people to easily see what happens in a branch
+without having to have a local, up-to-date copy of that branch.  There are a
+number of possible choices for browsing Bazaar branches on the web, but we
+will cover one of them in particular detail and briefly mention the other
+choices where they differ.
+
+Loggerhead
+----------
+
+Loggerhead_ is a code browsing interface for Bazaar branches (now used in
+Launchpad).  To see an example of Loggerhead in action, browse to
+http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/files which is the loggerhead
+view of Bazaar's trunk branch.  Loggerhead runs as a web application on the
+server which is accessed over HTTP via a RESTful interface.  It is possible to
+run this application on its own dedicated port as
+``http://www.example.com:8080`` or to proxy this location behind a separate web
+server, for example at ``http://www.example.com/loggerhead/``.  We will discuss
+both of these configurations below.
+
+.. _Loggerhead: http://launchpad.net/loggerhead
+
+Requirements
+~~~~~~~~~~~~
+
+Loggerhead depends on a number of other Python packages for the various Web
+technologies that it builds on.  Some of these must be installed to use
+loggerhead, although some of them are optional.  From the loggerhead `README`
+file, these are
+
+1) SimpleTAL for templating.
+   On Ubuntu, `sudo apt-get install python-simpletal`
+   or download from http://www.owlfish.com/software/simpleTAL/download.html
+2) simplejson for producing JSON data.
+   On Ubuntu, `sudo apt-get install python-simplejson`
+   or use `easy_install simplejson`.
+3) Paste for the server. (You need version 1.2 or newer of Paste.)
+   On Ubuntu, `sudo apt-get install python-paste`
+   or use `easy_install Paste`
+4) Paste Deploy  (optional, needed when proxying through Apache)
+   On Ubuntu, `sudo apt-get install python-pastedeploy`
+   or use `easy_install PasteDeploy`
+5) flup (optional, needed to use FastCGI, SCGI or AJP)
+   On Ubuntu, `sudo apt-get install python-flup`
+   or use `easy_install flup`
+
+Although directions for installing these on Ubuntu are given, most other
+GNU/Linux distributions should package these dependencies, making installation
+easy.  For Windows and Mac OS X, they should all be ``easy_install``-able or at
+worst installable from the Python sources.
+
+Built-in Web Server
+~~~~~~~~~~~~~~~~~~~
+
+Loggerhead has a built-in web server and when started with the
+``serve-branches`` command, that web server is started on a default port
+listening on the localhost.  If port 8080 (the default) is accessible on
+``www.example.com``, then running
+
+::
+
+  $ serve-branches --host=www.example.com --port=8080 /srv/bzr
+
+will list all of the available branches under that directory on
+``http://www.example.com:8080/``, so that the ProjectX trunk could be browsed
+at ``http://www.example.com:8080/projectx/trunk``.  Note that loggerhead
+provides HTTP access to the underlying Bazaar branches (similar to that
+described in `Smart server over HTTP(S)
+<other-setups.html#smart-server-over-http-s>`_), so this command should be run
+as a user without write privileges in ``/srv/bzr``.  By default, loggerhead
+only listens on the localhost, not any external ports, unless specified as
+above.
+
+Behind a Proxy
+~~~~~~~~~~~~~~
+
+A more common and more safe way to run loggerhead is behind another web server
+which will proxy certain requests to the loggerhead server on the localhost.
+To do this, you need to have PasteDeploy installed (see `Requirements`_).
+Assuming that your server has Apache running, you need to add configuration
+such as this to set up the proxy
+
+::
+
+    <Location "/loggerhead/">
+        ProxyPass http://127.0.0.1:8080/
+        ProxyPassReverse http://127.0.0.1:8080/
+    </Location>
+
+If your proxy runs at some path within the server, then the ``serve-branches``
+command must be started with the ``--prefix`` option.  For this example, we
+could start loggerhead with the command
+
+::
+
+  $ serve-branches --prefix=/loggerhead /srv/bzr
+
+This would allow the trunk branch of ProjectX to be browsed at
+``http://www.example.com/loggerhead/projectx/trunk``.
+
+Loggerhead comes with a script allowing it to run as a service on
+``init.d`` based Unix systems.  Contributions to do a similar thing on
+Windows servers would be welcomed at http://launchpad.net/loggerhead.
+  
+
+Other web interfaces
+--------------------
+
+There are a number of other web interfaces available for Bazaar branches (see
+the list at http://wiki.bazaar.canonical.com/WebInterfaces) and we will just
+mention a couple of them here for their advantages in particular situations.
+
+trac+bzr (http://launchpad.net/trac-bzr)
+  Trac is a popular web app that integrates a browser for branches, an issue
+  tracker and a wiki.  trac+bzr is a trac extension that allows for the
+  trac to be used with Bazaar.
+
+webbzr (http://thoughts.enseed.com/webbzr)
+  This is a notable solution because it is written in pure PHP for web hosts
+  that don't provide a way to run arbitrary Python applications such as Trac
+  or Loggerhead.
+
+Redmine (http://redmine.org/)
+  Like trac, Redmine is a full project management application using the Ruby
+  on Rails framework.  It includes support for Bazaar branches.

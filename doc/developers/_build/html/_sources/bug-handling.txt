@@ -1,0 +1,329 @@
+***********************
+Tracking Bugs in Breezy
+***********************
+
+This document describes the bug-tracking processes for developing Breezy
+itself.  Bugs in Breezy are recorded in Launchpad.
+
+
+See also:
+
+* `Breezy Developer Documents <index.html>`_.
+
+* `The Breezy Development Cycle <cycle.html>`_.
+
+* `The Breezy User Guide <../en/user-guide/index.html>`_ -- for
+  information on integrating Breezy with other bug trackers.
+
+
+Links
+*****
+
+* `Breezy bugs home page <https://bugs.launchpad.net/brz>`_.
+
+* `Critical bugs <https://bugs.launchpad.net/brz/+bugs?search=Search&field.importance=Critical&field.status=New&field.status=Incomplete&field.status=Confirmed&field.status=Triaged&field.status=In+Progress&field.status=Fix+Committed>`_.
+
+* `Open bugs by importance <https://bugs.launchpad.net/brz/+bugs>`_.
+
+* `Open bugs most recently changed first
+  <https://bugs.launchpad.net/brz/+bugs?field.searchtext=&orderby=-date_last_updated&search=Search&field.status%3Alist=NEW&field.status%3Alist=INCOMPLETE_WITH_RESPONSE&field.status%3Alist=INCOMPLETE_WITHOUT_RESPONSE&field.status%3Alist=CONFIRMED&field.status%3Alist=TRIAGED&field.status%3Alist=INPROGRESS&field.status%3Alist=FIXCOMMITTED&field.assignee=&field.bug_reporter=&field.omit_dupes=on&field.has_patch=&field.has_no_package=>`_.
+
+* `Most commonly duplicated bugs <http://tinyurl.com/brz-bugs-by-dupes>`_.
+
+
+Generalities
+************
+
+Anyone involved with Breezy is welcome to contribute to managing our bug
+reports.  **Edit boldly**: try to help users out, assess importance or improve
+the bug description or status.  Other people will see the bugs: it's
+better to have 20 of them processed and later change the status of a
+couple than to leave them lie.
+
+When you file a bug as a Breezy developer or active user, if you feel
+confident in doing so, make an assessment of status and importance at the
+time you file it, rather than leaving it for someone else.  It's more
+efficient to change the importance if someone else feels it's higher or
+lower, than to have someone else edit all bugs.
+
+It's more useful to actually ship bug fixes than to garden the bug
+database.  It's more useful to take one bug through to a shipped fix than
+to partially investigate ten bugs.  You don't get credit for a bug until
+the fix is shipped in a release.  Users like getting a response to their
+report, but they generally care more about getting bugs fixed.
+
+The aim of investigating bugs before starting concentrated work on them is
+therefore only to:
+
+* determine if they are critical or high priority (and
+  should displace existing work)
+
+* garden sufficiently to keep the database usable: meaningful summaries,
+  and duplicates removed
+
+It's OK to fix some bugs that just annoy you, even if they're not
+rationally high.
+
+You can use ``--fixes lp:12345678`` when committing to associate the
+commit with a particular bug.
+
+If there are multiple bugs with related fixes, putting "[master]" in the
+title of one of them helps find it
+
+It's often fastest to find bugs just using the regular Google search
+engine, rather than Launchpad's search.
+
+Martin Pitt says:
+
+ | One of the things you should not do often is to start asking
+ | questions/for more debug info and then forget about the bug. It's just
+ | a waste of the reporter's and your time, and will create frustration
+ | on the reporter side.
+
+
+Priorities
+**********
+
+The suggested priorities for bug work are:
+
+1. Fix critical bugs.
+
+2. Get existing fixes through review and landed.
+
+3. Fix bugs that are already in progress.
+
+4. Look at bugs already assigned to you, and either start them, or change
+   your mind and unassign them.
+
+5. Take new bugs from the top of the stack.
+
+6. Triage new bugs.
+
+It's not strict and of course there is personal discretion but our work
+should be biased to the top of this hierarchy.
+
+
+Clear Bugs
+**********
+
+Bugs should have clear edges, so that you can make a clear statement about
+whether a bug is fixed or not.  (Sometimes reality is complicated, but aim
+for each bug to be clear.)
+
+Bugs on documentation, performance, or UI are fine as long as they're
+clear bugs.
+
+Examples of good bugs:
+
+* "ValueError in frob_foo when committing changed symlink" - although
+  there may be many possible things that could cause a ValueError there,
+  you should at least know when you've fixed the problem described in this
+  bug.
+
+* "Unclear message about incompatible repositories" - even though the user
+  may not agree the new message is sufficiently clear, at least you know
+  when you've tried to fix it.
+
+Examples of bad bugs:
+
+* "Commit is too slow" - how fast is fast enough to close it?  "Commit
+  reads the working tree twice" is clearer.
+
+
+Bug Status
+**********
+
+New
+    The bug has just been filed and hasn't been examined by a developer
+    yet.
+Incomplete
+    The bug requires more information from the reporter to make progress.
+
+    Only set this state if it's impossible or uneconomical to make
+    progress on the bug without that information.  The bug will expire if
+    it remains in this state for two months.
+Confirmed
+    This bug has been confirmed by at least one other person (developer or otherwise).
+Triaged
+    The bug report has been seen by a developer and we agree it's a bug.
+    You don't have to reproduce the bug to mark it Triaged.  (Generally
+    it's not a good idea for a developer to spend time reproducing the bug
+    until they're going to work on it.)
+In Progress
+    Someone has started working on this.  We can deliver the value of the
+    work already done by finishing and shipping the fix.
+
+    The bug keeps this state from the time someone does non-trivial
+    analysis, until the fix is merged to a release or trunk branch (when
+    it is Fix Released), or until they give up on it (back to New or
+    Confirmed) or decide it is Invalid or Incomplete.
+Won't Fix
+    The behaviour complained about is intentional and we won't fix it.
+    Needless to say, be thoughtful before using this status, and consider if
+    the user experience can be improved in some other way.
+Invalid
+    The reporter was confused, and this is not actually a bug.
+    Again, be sensitive in explaining this to the user.
+Fix Committed
+    Don't use this.  If set on old bug, it probably means In Progress,
+    with the fix waiting for review.  See Launchpad `bug 163694`_.
+Fix Released
+    The fix for this bug is now in the Breezy branch that this task is for.
+    The branch for the default task on a bug is trunk.
+
+    We use this value even though the fix may not have been been included
+    in a release yet because all the developer activity around it is
+    complete and we want to both avoid bug spam when releases happen, and
+    keep the list of bugs that developers see when they look at the bug
+    tracker trimmed to those that require action.
+
+    When setting a bug task to fix released, the bug target milestone
+    should be set to the release the fix will be included in (or was
+    included in, if you are updating an old bug). Don't spend too much
+    time updating this if you don't immediately know: its not critical
+    that it be set.
+
+.. _`bug 163694`: https://bugs.launchpad.net/launchpad/+bug/163694
+
+
+Bug Importance
+**************
+
+Critical
+    This is a serious bug that could cause data loss, stop Breezy being
+    usable in an important case, or represents a regression in something
+    previously working.  We should fix critical bugs before doing other
+    work, or seriously consider whether the bug is really critical
+    or whether the other change is more urgent.
+High
+    This is a bug that can seriously interfere with people's use of
+    Breezy.  We should seriously consider fixing these bugs before
+    working on new features.
+Medium
+    A regular bug.  We'd like to fix them, but there may be a long delay.
+Low
+    Something suboptimal that may affect an unimportant case or have a
+    fairly easy workaround.
+Wishlist
+    These will basically never get done.
+
+Bugs rated Medium or lower are unlikely to get fixed unless they either
+pique the interest of a developer or are escalated due eg to many users
+being affected.
+
+Not every existing bug is correctly rated according to this scale, and we
+don't always follow this process, but we'd like to do it more.  But
+remember, fixing bugs is more helpful than gardening them.
+
+
+Assignment
+**********
+
+Assigning a bug to yourself, or someone else, indicates a real intention
+to work on that bug soon.
+
+
+Targetting Bugs
+***************
+
+It's possible to target a bug to a milestone, eg
+<https://bugs.launchpad.net/brz/+milestone/1.16>.  We use this to help the
+release manager know what **must** be merged to make the release.
+
+Therefore, we don't target bugs that we'd like to have fixed or that could
+be fixed in a particular release, we only target bugs that must be fixed
+and that will cause us to slip the release if they're not fixed.  At any time,
+very few if any of the bugs targeted to a release should be still open.  By
+definition, these bugs should normally be Critical priority.
+
+
+Backports
+*********
+
+Sometimes we'll want to make a special point-release update (eg 1.15.1)
+off an already-released branch including a fix for a particular bug.  To
+represent this, create a new bug task (ie link in the status table on the
+bug page) by clicking the `poorly-named
+<https://bugs.launchpad.net/bugs/132733>`_ "Target to Release" link.
+Target it to the appropriate series (ie 1.15). If the bug should also
+prevent any point releases of that series then you should also target the
+new task to the appropriate milestone within that release. (See Targeting Bugs
+above)
+
+This bug task then has a separate status and importance to indicate the
+separate work to get it into that release.
+
+
+Release Notes
+*************
+
+Most bugs that are fixed should be mentioned in the `Release Notes
+<../en/release-notes/>`_ for the forthcoming version,
+including the bug number.
+(Exceptions might be bugs that are not at all user visible.)
+
+
+Tags
+****
+
+Here are some bug tags we use.  In Launchpad Bugs tags are currently of limited use, so don't feel obliged to tag bugs unless you're finding it useful.
+
+
+authentication
+    authenticating to servers
+
+backport
+    candidate for backporting to an update of the previous release
+
+dirstate
+    WorkingTree4
+
+easy
+    should be possible to finish in an hour or two
+
+hpss
+    bugs about the High-Performance Smart Server, i.e. bzr+ssh://, etc.
+
+hpssvfs
+    bugs for causes of VFS methods of the smart server
+
+launchpad
+    bugs about interactions with launchpad (typically this means breezy.plugins.launchpad).
+
+locale
+    problems using locales other than English
+
+memory
+    problems where we use too much memory for some reason
+
+newformat
+    fixing this would need a new disk format
+
+performance
+    bugs about performance problems.
+
+regression
+    bugs which represent an aspect of Breezy becoming accidentally less good than it was.
+
+test
+    needs changes to the test framework
+
+transport
+    virtual filesystem for HTTP, SFTP, etc.
+
+trivial
+    should be very easy to fix (10-20 minutes) and easily landed: typically
+    just spelling errors and the like
+
+ui
+    bugs relating to the Breezy user interface, e.g. confusing error messages.
+
+win32
+    bugs that mainly affects Windows. Also there is cygwin and win98 tags for
+    marking specific bugs.
+
+You can see the full list of tags in use at
+<https://bugs.launchpad.net/brz/+bugs>.  As of September 2008 the
+list is on the right.
+
+.. vim: ft=rst

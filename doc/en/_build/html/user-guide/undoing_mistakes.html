@@ -1,0 +1,260 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Undoing mistakes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Working with another" href="partner_intro.html" />
+    <link rel="prev" title="Releasing a project" href="releasing_a_project.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="releasing_a_project.html" title="Releasing a project"
+             accesskey="P">previous</a> |
+          <a href="partner_intro.html" title="Working with another"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="undoing-mistakes">
+<h1>Undoing mistakes<a class="headerlink" href="#undoing-mistakes" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="mistakes-happen">
+<h2>Mistakes happen<a class="headerlink" href="#mistakes-happen" title="Permalink to this headline">¶</a></h2>
+<p>Breezy has been designed to make it easy to
+recover from mistakes as explained below.</p>
+</div>
+<div class="section" id="dropping-the-revision-history-for-a-project">
+<h2>Dropping the revision history for a project<a class="headerlink" href="#dropping-the-revision-history-for-a-project" title="Permalink to this headline">¶</a></h2>
+<p>If you accidentally put the wrong tree under version control, simply
+delete the <code class="docutils literal notranslate"><span class="pre">.brz</span></code> directory.</p>
+</div>
+<div class="section" id="deregistering-a-file-or-directory">
+<h2>Deregistering a file or directory<a class="headerlink" href="#deregistering-a-file-or-directory" title="Permalink to this headline">¶</a></h2>
+<p>If you accidentally register a file using <code class="docutils literal notranslate"><span class="pre">add</span></code> that you
+don’t want version controlled, you can use the <code class="docutils literal notranslate"><span class="pre">remove</span></code>
+command to tell Breezy to forget about it.</p>
+<p><code class="docutils literal notranslate"><span class="pre">remove</span></code> has been designed to <em>Do the Safe Thing</em> in
+that it will not delete a modified file. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">add</span> <span class="n">foo</span><span class="o">.</span><span class="n">html</span>
+<span class="p">(</span><span class="n">oops</span> <span class="o">-</span> <span class="n">didn</span><span class="s1">&#39;t mean that)</span>
+<span class="n">brz</span> <span class="n">remove</span> <span class="n">foo</span><span class="o">.</span><span class="n">html</span>
+</pre></div>
+</div>
+<p>This will complain about the file being modified or unknown.
+If you want to keep the file, use the <code class="docutils literal notranslate"><span class="pre">--keep</span></code> option.
+Alternatively, if you want to delete the file, use the <code class="docutils literal notranslate"><span class="pre">--force</span></code> option.
+For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">add</span> <span class="n">foo</span><span class="o">.</span><span class="n">html</span>
+<span class="p">(</span><span class="n">oops</span> <span class="o">-</span> <span class="n">didn</span><span class="s1">&#39;t mean that)</span>
+<span class="n">brz</span> <span class="n">remove</span> <span class="o">--</span><span class="n">keep</span> <span class="n">foo</span><span class="o">.</span><span class="n">html</span>
+<span class="p">(</span><span class="n">foo</span><span class="o">.</span><span class="n">html</span> <span class="n">left</span> <span class="n">on</span> <span class="n">disk</span><span class="p">,</span> <span class="n">but</span> <span class="n">deregistered</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>On the other hand, the unchanged <code class="docutils literal notranslate"><span class="pre">TODO</span></code> file is deregistered and
+removed from disk without complaint in this example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">add</span> <span class="n">TODO</span>
+<span class="n">brz</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;added TODO&quot;</span>
+<span class="p">(</span><span class="n">hack</span><span class="p">,</span> <span class="n">hack</span><span class="p">,</span> <span class="n">hack</span> <span class="o">-</span> <span class="n">but</span> <span class="n">don</span><span class="s1">&#39;t change TODO)</span>
+<span class="n">brz</span> <span class="n">remove</span> <span class="n">TODO</span>
+<span class="p">(</span><span class="n">TODO</span> <span class="n">file</span> <span class="n">deleted</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note: If you delete a file using your file manager, IDE or via an operating
+system command, the <code class="docutils literal notranslate"><span class="pre">commit</span></code> command will implicitly treat it as removed.</p>
+</div>
+<div class="section" id="undoing-changes-since-the-last-commit">
+<h2>Undoing changes since the last commit<a class="headerlink" href="#undoing-changes-since-the-last-commit" title="Permalink to this headline">¶</a></h2>
+<p>One of the reasons for using a version control tool is that it
+lets you easily checkpoint good tree states while working. If you
+decide that the changes you have made since the last <code class="docutils literal notranslate"><span class="pre">commit</span></code> ought
+to be thrown away, the command to use is <code class="docutils literal notranslate"><span class="pre">revert</span></code> like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">revert</span>
+</pre></div>
+</div>
+<p>As a precaution, it is good practice to use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">status</span></code> and
+<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span></code> first to check that everything being thrown away
+really ought to be.</p>
+</div>
+<div class="section" id="undoing-changes-to-a-file-since-the-last-commit">
+<h2>Undoing changes to a file since the last commit<a class="headerlink" href="#undoing-changes-to-a-file-since-the-last-commit" title="Permalink to this headline">¶</a></h2>
+<p>If you want to undo changes to a particular file since the last commit but
+keep all the other changes in the tree, pass the filename as an argument
+to <code class="docutils literal notranslate"><span class="pre">revert</span></code> like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">revert</span> <span class="n">foo</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="undoing-the-last-commit">
+<h2>Undoing the last commit<a class="headerlink" href="#undoing-the-last-commit" title="Permalink to this headline">¶</a></h2>
+<p>If you make a commit and really didn’t mean to, use the <code class="docutils literal notranslate"><span class="pre">uncommit</span></code> command
+to undo it like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">uncommit</span>
+</pre></div>
+</div>
+<p>Unlike <code class="docutils literal notranslate"><span class="pre">revert</span></code>, <code class="docutils literal notranslate"><span class="pre">uncommit</span></code> leaves the content of your working tree
+exactly as it is. That’s really handy if you make a commit and accidently
+provide the wrong error message. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;Fix bug #11&quot;</span>
+<span class="p">(</span><span class="n">damn</span> <span class="o">-</span> <span class="n">wrong</span> <span class="n">bug</span> <span class="n">number</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">uncommit</span>
+<span class="n">brz</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;Fix bug #1&quot;</span>
+</pre></div>
+</div>
+<p>Another common reason for undoing a commit is because you forgot to add
+one or more files. Some users like to alias <code class="docutils literal notranslate"><span class="pre">commit</span></code> to <code class="docutils literal notranslate"><span class="pre">commit</span> <span class="pre">--strict</span></code>
+so that commits fail if unknown files are found in the tree.</p>
+<p>Tags for uncommitted revisions are removed from the branch unless
+<code class="docutils literal notranslate"><span class="pre">--keep-tags</span></code> was specified.</p>
+<p>Note: While the <code class="docutils literal notranslate"><span class="pre">merge</span></code> command is not introduced until the next
+chapter, it is worth noting now that <code class="docutils literal notranslate"><span class="pre">uncommit</span></code> restores any pending
+merges. (Running <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">status</span></code> after <code class="docutils literal notranslate"><span class="pre">uncommit</span></code> will show these.)
+<code class="docutils literal notranslate"><span class="pre">merge</span></code> can also be used to effectively undo just a selected commit
+earlier in history. For more information on <code class="docutils literal notranslate"><span class="pre">merge</span></code>, see
+<a class="reference external" href="merging_changes.html">Merging changes</a> in the next chapter and the
+Breezy User Reference.</p>
+</div>
+<div class="section" id="undoing-multiple-commits">
+<h2>Undoing multiple commits<a class="headerlink" href="#undoing-multiple-commits" title="Permalink to this headline">¶</a></h2>
+<p>You can use the -r option to undo several commits like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">uncommit</span> <span class="o">-</span><span class="n">r</span> <span class="o">-</span><span class="mi">3</span>
+</pre></div>
+</div>
+<p>If your reason for doing this is that you really want to
+back out several changes, then be sure to remember that <code class="docutils literal notranslate"><span class="pre">uncommit</span></code>
+does not change your working tree: you’ll probably need to run the
+<code class="docutils literal notranslate"><span class="pre">revert</span></code> command as well to complete the task. In many cases though,
+it’s arguably better to leave your history alone and add a new
+revision reflecting the content of the last good state.</p>
+</div>
+<div class="section" id="reverting-to-the-state-of-an-earlier-version">
+<h2>Reverting to the state of an earlier version<a class="headerlink" href="#reverting-to-the-state-of-an-earlier-version" title="Permalink to this headline">¶</a></h2>
+<p>If you make an unwanted change but it doesn’t make sense to uncommit
+it (because that code has been released to users say), you can use
+<code class="docutils literal notranslate"><span class="pre">revert</span></code> to take your working tree back to the desired state.
+For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">commit</span> <span class="s2">&quot;Fix bug #5&quot;</span>
+<span class="n">Committed</span> <span class="n">revision</span> <span class="mf">20.</span>
+<span class="p">(</span><span class="n">release</span> <span class="n">the</span> <span class="n">code</span><span class="p">)</span>
+<span class="p">(</span><span class="n">hmm</span> <span class="o">-</span> <span class="n">bad</span> <span class="n">fix</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">revert</span> <span class="o">-</span><span class="n">r</span> <span class="mi">19</span>
+<span class="n">brz</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;Backout fix for bug #5&quot;</span>
+</pre></div>
+</div>
+<p>This will change your entire tree back to the state as of revision 19,
+which is probably only what you want if you haven’t made any new commits
+since then. If you have, the <code class="docutils literal notranslate"><span class="pre">revert</span></code> would wipe them out as well. In that
+case, you probably want to use <a class="reference external" href="adv_merging.html#reverse-cherrypicking">Reverse cherrypicking</a> instead to
+back out the bad fix.</p>
+<p>Note: As an alternative to using an absolute revision number (like 19), you can
+specify one relative to the tip (-1) using a negative number like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">revert</span> <span class="o">-</span><span class="n">r</span> <span class="o">-</span><span class="mi">2</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="correcting-a-tag">
+<h2>Correcting a tag<a class="headerlink" href="#correcting-a-tag" title="Permalink to this headline">¶</a></h2>
+<p>If you have defined a tag prematurely, use the <code class="docutils literal notranslate"><span class="pre">--force</span></code> option of
+the <code class="docutils literal notranslate"><span class="pre">tag</span></code> command to redefine it. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">tag</span> <span class="mf">2.0</span><span class="o">-</span><span class="n">beta</span><span class="o">-</span><span class="mi">1</span>
+<span class="p">(</span><span class="n">oops</span><span class="p">,</span> <span class="n">we</span><span class="s1">&#39;re not yet ready for that)</span>
+<span class="p">(</span><span class="n">make</span> <span class="n">more</span> <span class="n">commits</span> <span class="n">to</span> <span class="n">include</span> <span class="n">more</span> <span class="n">fixes</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">tag</span> <span class="mf">2.0</span><span class="o">-</span><span class="n">beta</span><span class="o">-</span><span class="mi">1</span> <span class="o">--</span><span class="n">force</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="clearing-a-tag">
+<h2>Clearing a tag<a class="headerlink" href="#clearing-a-tag" title="Permalink to this headline">¶</a></h2>
+<p>If you have defined a tag and no longer want it defined, use the
+<code class="docutils literal notranslate"><span class="pre">--delete</span></code> option of the <code class="docutils literal notranslate"><span class="pre">tag</span></code> command to remove it. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">tag</span> <span class="mf">2.0</span><span class="o">-</span><span class="n">beta</span><span class="o">-</span><span class="mi">4</span>
+<span class="p">(</span><span class="n">oops</span><span class="p">,</span> <span class="n">we</span><span class="s1">&#39;re not releasing a 4th beta)</span>
+<span class="n">brz</span> <span class="n">tag</span> <span class="mf">2.0</span><span class="o">-</span><span class="n">beta</span><span class="o">-</span><span class="mi">4</span> <span class="o">--</span><span class="n">delete</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="releasing_a_project.html" title="Releasing a project"
+              >previous</a> |
+            <a href="partner_intro.html" title="Working with another"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/undoing_mistakes.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

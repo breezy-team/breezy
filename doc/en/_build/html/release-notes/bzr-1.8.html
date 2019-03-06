@@ -1,0 +1,306 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-1-8">
+<h2>bzr 1.8<a class="headerlink" href="#bzr-1-8" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2008-10-16</td>
+</tr>
+</tbody>
+</table>
+<p>Bazaar 1.8 includes several fixes that improve working tree performance,
+display of revision logs, and merges.  The bzr testsuite now passes on OS
+X and Python 2.6, and almost completely passes on Windows.  The
+smartserver code has gained several bug fixes and performance
+improvements, and can now run server-side hooks within an HTTP server.</p>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix “Must end write group” error when another error occurs during
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">push</span></code>.  (Andrew Bennetts, #230902)</li>
+</ul>
+</div>
+<div class="section" id="portability">
+<h3>Portability<a class="headerlink" href="#portability" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Some Pyrex versions require the WIN32 macro defined to compile on
+that platform.  (Alexander Belchenko, Martin Pool, #277481)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-1-8rc1">
+<h2>bzr 1.8rc1<a class="headerlink" href="#bzr-1-8rc1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2008-10-07</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="changes">
+<h3>Changes<a class="headerlink" href="#changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span> <span class="pre">file</span></code> has been changed. It now uses a different method
+for determining which revisions to show as merging the changes to
+the file. It now only shows revisions which merged the change
+towards your mainline. This simplifies the output, makes it faster,
+and reduces memory consumption.  (John Arbash Meinel)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">merge</span></code> now defaults to having <code class="docutils literal notranslate"><span class="pre">--reprocess</span></code> set, whenever
+<code class="docutils literal notranslate"><span class="pre">--show-base</span></code> is not supplied.  (John Arbash Meinel)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr+http//</span></code> will now optionally load plugins and write logs on the
+server. (Marius Kruger)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib._dirstate_helpers_c.pyx</span></code> does not compile correctly with
+Pyrex 0.9.4.1 (it generates C code which causes segfaults). We
+explicitly blacklist that version of the compiler for that
+extension. Packaged versions will include .c files created with
+pyrex &gt;= 0.9.6 so it doesn’t effect releases, only users running
+from the source tree. (John Arbash Meinel, #276868)</li>
+</ul>
+</div>
+<div class="section" id="features">
+<h3>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>bzr is now compatible with python-2.6. python-2.6 is not yet officially
+supported (nor released, tests were conducted with the dev version of
+python-2.6rc2), but all known problems have been fixed.  Feedback
+welcome.
+(Vincent Ladeuil, #269535)</li>
+</ul>
+</div>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">annotate</span></code> will now include uncommitted changes from the local
+working tree by default. Such uncommitted changes are given the
+revision number they would get if a commit was done, followed with a
+? to indicate that its not actually known. (Robert Collins, #3439)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span></code> now accepts a <code class="docutils literal notranslate"><span class="pre">--standalone</span></code> option, which creates a
+standalone branch regardless of the presence of shared repositories.
+(Daniel Watkins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">push</span></code> is faster in the case there are no new revisions to
+push.  It is also faster if there are no tags in the local branch.
+(Andrew Bennetts)</li>
+<li>File changes during a commit will update the tree stat cache.
+(Robert Collins)</li>
+<li>Location aliases can now accept a trailing path.  (Micheal Hudson)</li>
+<li>New hooks <code class="docutils literal notranslate"><span class="pre">Lock.hooks</span></code> when LockDirs are acquired and released.
+(Robert Collins, MartinPool)</li>
+<li>Switching in heavyweight checkouts uses the master branch’s context, not
+the checkout’s context.  (Adrian Wilkins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">status</span></code> on large trees is now faster, due to optimisations in the
+walkdirs code. Of particular note, the walkdirs code now performs
+a temporary <code class="docutils literal notranslate"><span class="pre">chdir()</span></code> while reading a single directory; if your
+platform has non thread-local current working directories (and is
+not windows which has its own implementation), this may introduce a
+race condition during concurrent uses of bzrlib. The bzrlib CLI
+will not encounter this as it is single threaded for working tree
+operations. (Robert Collins)</li>
+<li>The C extensions now build on python 2.4 (Robert Collins, #271939)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">-Dhpss</span></code> debug flag now reports the number of smart server
+calls per medium to stderr.  This is in addition to the existing
+detailed logging to the .bzr.log trace file.  (Andrew Bennetts)</li>
+</ul>
+</div>
+<div class="section" id="id1">
+<h3>Bug Fixes<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Avoid random failures arising from misinterpreted <code class="docutils literal notranslate"><span class="pre">errno</span></code> values
+in <code class="docutils literal notranslate"><span class="pre">_readdir_pyx.read_dir</span></code>.
+(Martin Pool, #279381)</li>
+<li>Branching from a shared repository on a smart server into a new
+repository now preserves the repository format.
+(Andrew Bennetts, #269214)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span></code> now accepts a <code class="docutils literal notranslate"><span class="pre">--change</span></code> option.
+(Vincent Ladeuil, #248427)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">missing</span></code> now accepts an <code class="docutils literal notranslate"><span class="pre">--include-merges</span></code> option.
+(Vincent Ladeuil, #233817)</li>
+<li>Don’t try to filter (internally) ‘.bzr’ from the files to be deleted if
+it’s not there.
+(Vincent Ladeuil, #272648)</li>
+<li>Fix ‘_in_buffer’ AttributeError when using the -Dhpss debug flag.
+(Andrew Bennetts)</li>
+<li>Fix TooManyConcurrentRequests errors caused by a connection failure
+when doing <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pull</span></code> or <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">merge</span></code> from a <code class="docutils literal notranslate"><span class="pre">bzr+ssh</span></code> URL.
+(Andrew Bennetts, #246233)</li>
+<li>Fixed <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">st</span> <span class="pre">-r</span> <span class="pre">branch:PATH_TO_BRANCH</span></code> where the other branch
+is in a different repository than the current one.
+(Lukáš Lalinský, #144421)</li>
+<li>Make the first line of the manpage preamble a comment again.
+(David Futcher, #242106)</li>
+<li>Remove use of optional parameter in GSSAPI FTP support, since
+it breaks newer versions of Python-Kerberos. (Jelmer Vernooij)</li>
+<li>The autopacking logic will now always create a single new pack from
+all of the content which it deems is worth moving. This avoids the
+‘repack a single pack’ bug and should result in better packing
+overall.  (John Arbash Meinel, #242510, #172644)</li>
+<li>Trivial documentation fix.
+(John Arbash Meinel, #270471)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">switch</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">bind</span></code> will now update the branch nickname if
+it was previously set. All checkouts will now refer to the bound branch
+for a nickname if one was not explicitly set.
+(Marius Kruger, #230903)</li>
+</ul>
+</div>
+<div class="section" id="documentation">
+<h3>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Explain revision/range identifiers. (Daniel Clemente)</li>
+</ul>
+</div>
+<div class="section" id="api-changes">
+<h3>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">CommitBuilder.record_entry_contents</span></code> returns one more element in
+its result tuple - an optional file system hash for the hash cache
+to use. (Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">dirstate.DirState.update_entry</span></code> will now only calculate the sha1
+of a file if it is likely to be needed in determining the output
+of iter_changes. (Robert Collins)</li>
+<li>The PackRepository, RepositoryPackCollection, NewPack classes have a
+slightly changed interface to support different index types; as a
+result other users of these classes need to supply the index types
+they want. (Robert Collins)</li>
+</ul>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.tests.repository_implementations</span></code> has been renamed to
+<code class="docutils literal notranslate"><span class="pre">bzrlib.tests.per_repository</span></code> so that we have a common structure
+(and it is shorter). (John Arbash Meinel, #239343)</li>
+<li><code class="docutils literal notranslate"><span class="pre">LocalTransport.abspath()</span></code> now returns a drive letter if the
+transport has one, fixing numerous tests on Windows.
+(Mark Hammond)</li>
+<li>PreviewTree is now tested via intertree_implementations.
+(Aaron Bentley)</li>
+<li>The full test suite is passing again on OSX.
+(Guillermo Gonzalez, Vincent Ladeuil)</li>
+<li>The full test suite passes when run with <code class="docutils literal notranslate"><span class="pre">-Eallow_debug</span></code>.
+(Andrew Bennetts)</li>
+</ul>
+</div>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>A new hook, <code class="docutils literal notranslate"><span class="pre">Branch.open</span></code>, has been added, which is called when
+branch objects are opened. (Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.osutils._walkdirs_utf8</span></code> has been refactored into common
+tree walking, and modular directory listing code to aid future
+performance optimisations and refactoring. (Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.trace.debug_memory</span></code> can be used to get a quick memory dump
+in the middle of processing. It only reports memory if
+<code class="docutils literal notranslate"><span class="pre">/proc/PID/status</span></code> is available. (John Arbash Meinel)</li>
+<li>New method <code class="docutils literal notranslate"><span class="pre">RevisionSpec.as_tree</span></code> for representing the revision
+specifier as a revision tree object. (Lukáš Lalinský)</li>
+<li>New race-free method on MutableTree <code class="docutils literal notranslate"><span class="pre">get_file_with_stat</span></code> for use
+when generating stat cache results. (Robert Collins)</li>
+<li>New win32utils.get_local_appdata_location() provides access to a local
+directory for storing data.  (Mark Hammond)</li>
+<li>To be compatible with python-2.6 a few new rules should be
+observed. ‘message’ attribute can’t be used anymore in exception
+classes, ‘sha’ and ‘md5’ modules have been deprecated (use
+osutils.[md5|sha]), object__init__ and object.__new__ don’t accept
+parameters anymore.
+(Vincent Ladeuil)</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-1.8.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

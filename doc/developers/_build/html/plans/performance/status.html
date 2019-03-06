@@ -1,0 +1,225 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>The status command &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="../../search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-status-command">
+<h1>The status command<a class="headerlink" href="#the-status-command" title="Permalink to this headline">¶</a></h1>
+<p>The status command is used to provide a pithy listing of the changes between
+two trees. Its common case is between the working tree and the basis tree, but
+it can be used between any two arbitrary trees.</p>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#ui-overview" id="id1">UI Overview</a></li>
+<li><a class="reference internal" href="#ideal-work-for-working-tree-to-historical-status" id="id2">Ideal work for working tree to historical status</a></li>
+<li><a class="reference internal" href="#locality-of-reference" id="id3">Locality of reference</a></li>
+<li><a class="reference internal" href="#scaling-observations" id="id4">Scaling observations</a></li>
+</ul>
+</div>
+<div class="section" id="ui-overview">
+<h2><a class="toc-backref" href="#id1">UI Overview</a><a class="headerlink" href="#ui-overview" title="Permalink to this headline">¶</a></h2>
+<p>Status shows several things in parallel (for the paths the user supplied mapped
+across the from and to tree, and any pending merges in the to tree).</p>
+<ol class="arabic simple">
+<li>Single line summary of all new revisions - the pending merges and their
+parents recursively.</li>
+<li>Changes to the tree shape - adds/deletes/renames.</li>
+<li>Changes to versioned content - kind changes and content changes.</li>
+<li>Unknown files in the to tree.</li>
+<li>Files with conflicts in the to tree.</li>
+</ol>
+</div>
+<div class="section" id="ideal-work-for-working-tree-to-historical-status">
+<h2><a class="toc-backref" href="#id2">Ideal work for working tree to historical status</a><a class="headerlink" href="#ideal-work-for-working-tree-to-historical-status" title="Permalink to this headline">¶</a></h2>
+<p>We need to do the following things at a minimum:</p>
+<ol class="arabic simple">
+<li>Determine new revisions - the pending merges and history.</li>
+</ol>
+<ol class="arabic simple">
+<li>Retrieve the first line of the commit message for the new revisions.</li>
+</ol>
+<ol class="arabic simple">
+<li>Determine the tree differences between the two trees using the users paths
+to limit the scope, and resolving paths in the trees for any pending merges.
+We arguably don’t care about tracking metadata for this - only the value of
+the tree the user commited.</li>
+</ol>
+<ol class="arabic simple">
+<li>The entire contents of directories which are versioned when showing
+unknowns.</li>
+</ol>
+<ol class="arabic simple">
+<li>Whether a given unversioned path is unknown or ignored.</li>
+</ol>
+<ol class="arabic simple">
+<li>The list conflicted paths in the tree (which match the users path
+selection?)</li>
+</ol>
+<p>Expanding on the tree difference case we will need to:</p>
+<ol class="arabic simple">
+<li>Stat every path in working trees which is included by the users path
+selection to ascertain kind and execute bit.</li>
+</ol>
+<ol class="arabic simple">
+<li>For paths which have the same kind in both trees and have content, read
+that content or otherwise determine whether the content has changed. Using
+our hash cache from the dirstate allows us to avoid reading the file in the
+common case. There are alternative ways to achieve this - we could record
+a pointer to a revision which contained this fileid with the current content
+rather than storing the content’s hash; but this seems to be a pointless
+double-indirection unless we save enough storage in the working tree. A
+variation of this is to not record an explicit pointer but instead
+define an implicit pointer as being to the left-hand-parent tree.</li>
+</ol>
+</div>
+<div class="section" id="locality-of-reference">
+<h2><a class="toc-backref" href="#id3">Locality of reference</a><a class="headerlink" href="#locality-of-reference" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>We should stat files in the same directory without reading or statting
+files in other directories. That is we should do all the statting we
+intend to do within a given directory without doing any other IO, to
+minimise pressure on the drive heads to seek.</li>
+<li>We should read files in the same directory without reading or writing
+files in other directories - and note this is separate to statting (file
+data is usually physically disjoint to metadata).</li>
+</ul>
+</div>
+<div class="section" id="scaling-observations">
+<h2><a class="toc-backref" href="#id4">Scaling observations</a><a class="headerlink" href="#scaling-observations" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>The stat operation clearly involves every versioned path in the common case.</li>
+<li>Expanding out the users path selection in a naive manner involves reading the
+entire tree shape information for both trees and for all pending-merge trees.
+(Dirstate makes this tolerably cheap for now, but we’re still scaling
+extra-linearly.)</li>
+<li>The amount of effort required to generate tree differences between the
+working tree and the basis tree is interesting: with a tree-like structure
+and some generatable name for child nodes we use the working tree data to
+eliminate accessing or considering subtrees regardless of historival
+age. However, if we have had to access the historical tree shape to
+perform path selection this rather reduces the win we can obtain here.
+If we can cause path expansion to not require historical shape access
+(perhaps by performing the expansion after calculating the tree
+difference for the top level of the selected path) then we can gain a
+larger win. This strongly suggests that path expansion and tree
+difference generation should be linked in terms of API.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../../_sources/plans/performance/status.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

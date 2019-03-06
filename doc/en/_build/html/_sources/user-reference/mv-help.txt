@@ -1,0 +1,36 @@
+mv
+==
+
+:Purpose: Move or rename a file.
+:Usage:
+    brz mv OLDNAME NEWNAME
+
+    brz mv SOURCE... DESTINATION
+
+
+:Options:
+  --after        Move only the brz identifier of the file, because the file
+                 has already been moved.
+  --auto         Automatically guess renames.
+  --dry-run      Avoid making changes when guessing renames.
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  If the last argument is a versioned directory, all the other names
+  are moved into it.  Otherwise, there must be exactly two arguments
+  and the file is changed to a new name.
+  
+  If OLDNAME does not exist on the filesystem but is versioned and
+  NEWNAME does exist on the filesystem but is not versioned, mv
+  assumes that the file has been manually moved and only updates
+  its internal inventory to reflect that change.
+  The same is valid when moving many SOURCE files to a DESTINATION.
+  
+  Files cannot be moved between branches.
+
+:Aliases:  move, rename
+
+

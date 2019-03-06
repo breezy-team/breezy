@@ -1,0 +1,13 @@
+Standard Options
+================
+
+
+Standard options are legal for all commands.
+
+--help, -h     Show help message.
+--verbose, -v  Display more information.
+--quiet, -q    Only display errors and warnings.
+
+Unlike global options, standard options can be used in aliases.
+
+

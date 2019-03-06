@@ -1,0 +1,142 @@
+Introducing Breezy
+==================
+
+What is Breezy?
+---------------
+
+Breezy is a tool for helping people collaborate. It tracks the changes
+that you and other people make to a group of files - such as software
+source code - to give you snapshots of each stage of their evolution.
+Using that information, Breezy can effortlessly merge your work with
+other people's.
+
+Tools like Breezy are called version control systems (VCS) and have
+long been popular with software developers. Breezy's ease of use,
+flexibility and simple setup make it ideal not only for software
+developers but also for other groups who work together on files and
+documents, such as technical writers, web designers and translators.
+
+This guide takes you through installing Breezy and how to use it,
+whether on your own or with a team of other people. If you're already
+familiar with distributed version control and want to dive straight in,
+you may wish to skim this section and jump straight to
+`Learning more`_.
+
+A brief history of version control systems
+------------------------------------------
+
+Version control tools have been evolving for several decades now. In
+simple terms, there have been 4 generations of tools:
+
+ 1. file versioning tools, e.g. SCCS, RCS
+ 2. tree versioning tools - central style, e.g. CVS
+ 3. tree versioning tools - central style, take two, e.g. Subversion
+ 4. tree versioning tools - distributed style, e.g. Breezy.
+
+The design and implementation of Breezy builds on the lessons learned
+from all the previous generations of tools. In particular, Breezy
+cleanly supports both the central and the distributed version
+control models so you can change models as it makes sense, without
+needing to change tools.
+
+Central vs distributed VCS
+--------------------------
+
+Many traditional VCS tools require a central server which provides the
+change history or *repository* for a tree of files. To work on the files,
+users need to connect to the server and *checkout* the files. This gives
+them a directory or *working tree* in which a person can make changes.
+To record or *commit* these changes, the user needs access to the central
+server and they need to ensure they have merged their work with the latest
+version stored before trying to commit. This approach is known as the
+centralized model.
+
+The centralized model has proven useful over time but it can have some notable
+drawbacks. Firstly, a centralized VCS requires that one is able to connect
+to the server whenever one wants to do version control work. Secondly, the
+centralized model tightly links the act of **snapshotting** changes with the act
+of **publishing** those changes. This can be good in some circumstances but
+it has a negative influence on quality in others.
+
+Distributed VCS tools let users and teams have multiple repositories
+rather than just a single central one. In Breezy's case, the history is
+normally kept in the same place as the code that is being version controlled.
+This allows the user to commit their changes whenever it makes sense, even
+when offline. Network access is only required when publishing changes or
+when accessing changes in another location.
+
+In fact, using distributed VCS tools wisely can have advantages well
+beyond the obvious one of disconnected operations for developers.
+Other advantages include:
+
+ * easier for developers to create experimental branches
+ * easier ad-hoc collaboration with peers
+ * less time required on mechanical tasks - more time for creativity
+
+ * increased release management flexibility through the use of
+   "feature-wide" commits
+
+ * trunk quality and stability can be kept higher, making everyone's
+   job less stressful
+
+ * in open communities:
+
+   * easier for non-core developers to create and maintain changes
+
+   * easier for core developers to work with non-core developers and
+     move them into the core
+
+ * in companies, easier to work with distributed and outsourced teams.
+
+For a detailed look at the advantages of distributed VCS tools over
+centralized VCS tools, see http://wiki.bazaar.canonical.com/BzrWhy.
+
+
+Key features of Breezy
+----------------------
+
+While Breezy is not the only distributed VCS tool around, it does have some
+notable features that make it an excellent choice for many teams and
+communities. A summary of these and comparisons with other VCS tools
+can be found on the Bazaar Wiki, http://wiki.bazaar.canonical.com.
+
+Of the many features, one in particular is worth highlighting:
+Breezy is completely free software written in Python. As a result,
+it is easy to contribute improvements. If you wish to get involved,
+please see https://www.breezy-vcs.org/pages/support.html.
+
+
+Learning more
+-------------
+
+This manual provides an easy to read introduction to Breezy and how to use
+it effectively.  It is recommended that all users read at least the rest of
+this chapter as it:
+
+ * explains the core concepts users need to know
+ * introduces some popular ways of using Breezy to collaborate.
+
+Chapters 2-6 provide a closer look at how to use Breezy to complete
+various tasks. It is recommended that most users read these in first-to-last
+order shortly after starting to use Breezy. Chapter 7 and beyond provide
+additional information that helps you make the most of Breezy once the core
+functionality is understood. This material can be read when required and in
+any order.
+
+If you are already familiar with other version control tools,
+you may wish to get started quickly by reading the following documents:
+
+ * `Breezy in five minutes`_ - a mini-tutorial
+
+ * `Breezy Quick Start Card`_ - a one page summary of commonly used commands.
+
+In addition, the online help and `Breezy User Reference`_ provide all the
+details on the commands and options available.
+
+.. _Breezy in five minutes: ../mini-tutorial/index.html
+.. _Breezy Quick Start Card: ../quick-reference/index.html
+.. _Breezy User Reference: ../user-reference/index.html
+
+We hope you find this manual useful. If you have suggestions on how it
+or the rest of Breezy's documentation can be improved, please contact
+us on the mailing list, bazaar@lists.canonical.com.

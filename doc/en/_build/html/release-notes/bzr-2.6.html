@@ -1,0 +1,430 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-2-6-0">
+<h2>bzr 2.6.0<a class="headerlink" href="#bzr-2-6-0" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Codename:</th><td class="field-body">Surprise</td>
+</tr>
+<tr class="field-even field"><th class="field-name">2.6.0:</th><td class="field-body">2013-07-27</td>
+</tr>
+</tbody>
+</table>
+<p>This release marks the start of a new long-term-stable series. From here, we
+will only make bugfix releases on the 2.6 series (2.6.1, etc), while 2.7
+will become our new development series.</p>
+<p>This is a bugfix and polish release over the 2.5 series, with a large number
+of bugs fixed (~50 for the 2.6 series alone).</p>
+<p>All known fixed bugs are included here.</p>
+<p>Users are encouraged to upgrade from the other stable series.</p>
+<div class="section" id="external-compatibility-breaks">
+<h3>External Compatibility Breaks<a class="headerlink" href="#external-compatibility-breaks" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">lp-propose</span> <span class="pre">--approve</span></code> now also adds an “Approve” vote to the merge
+proposal.  (Jonathan Lange)</li>
+</ul>
+</div>
+<div class="section" id="new-features">
+<h3>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">switch</span> <span class="pre">--store</span></code> now stores uncommitted changes in the branch, and
+restores them when switching back to the branch. (Aaron Bentley)</li>
+<li>New option ‘–context’ for ‘bzr diff’ command, to configure the amount of
+context (i.e. showing lines that have not changed).  Also available as the
+named parameter ‘context_lines’ to bzrlib.diff.internal_diff(). (Paul Nixon)</li>
+<li>The ‘grep’ plugin is now shipped with bzr. (Jelmer Vernooij)</li>
+<li>The ‘ping’ plugin is now shipped with bzr. (Jelmer Vernooij)</li>
+</ul>
+</div>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">env-variables</span></code> now points users at <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">configuration</span></code>
+which has much more detailed information on the same stuff.
+(Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">lp-find-proposal</span></code> now only cares about the revision-id that is
+specified, not the branch you use.  This was enabled by a new API call in
+Launchpad’s web service.  (Aaron Bentley)</li>
+<li>Implement authentication.conf password obfuscation, the password_encoding
+option can now be set to base64. (Florian Dorn)</li>
+<li>Local configurations files (i.e. accessed on the local file system like
+<code class="docutils literal notranslate"><span class="pre">bazaar.conf</span></code> and <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>) are now shared, reducing the
+number of IOs when querying a configuation option. (Vincent Ladeuil,
+#832042)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">lp-propose</span> <span class="pre">--approve</span></code> now correctly specifies the approved revision
+and provides an “Approve” vote from the proposer, allowing for smoother
+interaction with downstream merge tools.  (Jonathan Lange)</li>
+</ul>
+</div>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Add a <code class="docutils literal notranslate"><span class="pre">progress_bar</span></code> configuration option defaulting to
+<code class="docutils literal notranslate"><span class="pre">BZR_PROGRESS_BAR</span></code>. This can be set in <code class="docutils literal notranslate"><span class="pre">bazaar.conf</span></code> or specified from
+the command line with <code class="docutils literal notranslate"><span class="pre">-Oprogress_bar=text</span></code>. (Vincent Ladeuil, #388275)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Authentication.Config</span></code> now always returns unicode user names and passwords.
+(Vincent Ladeuil, #514301)</li>
+<li>Fixed a bug where the entire contents of <code class="docutils literal notranslate"><span class="pre">/etc/mailname</span></code> is read in.
+We only want to read in the first line so that comments could be added
+and would be ignored.
+(Haw Loeung, #932515)</li>
+<li>Fixed a syntax error in <code class="docutils literal notranslate"><span class="pre">doc/ja/user-guide/http_smart_server.txt</span></code> that
+causes breakage with docutils 0.9.1.
+(Vincent Ladeuil, Jelmer Vernooij, #1066307)</li>
+<li>Support utf8 characters in platform names even without looking inside the
+box (Fedora’s Schrödinger’s Cat).
+(Toshio Kuratomi, Vincent Ladeuil, #1195783)</li>
+<li>Warn when <code class="docutils literal notranslate"><span class="pre">--show-base</span></code> is used for <code class="docutils literal notranslate"><span class="pre">pull</span></code> in a treeless branch
+instead of failing. It’s useless but harmless. (Vincent Ladeuil, #1022160)</li>
+<li>When a missing referenced chk root error is encountered, bzr now suggests
+running <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">reconcile</span> <span class="pre">--canonicalize-chks</span></code>. (Jelmer Vernooij)</li>
+<li>When pushing a specific revision, create the new working tree at
+that revision. (#484516, Neil Martinsen-Burrell)</li>
+</ul>
+</div>
+<div class="section" id="documentation">
+<h3>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Clarify <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">config</span></code> usages especially around other option references
+expansion. (Vincent Ladeuil, #996401)</li>
+</ul>
+</div>
+<div class="section" id="api-changes">
+<h3>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>None.</li>
+</ul>
+</div>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Add __iter__ to http ResponseFile. (Jelmer Vernooij, #1184021)</li>
+<li>The launchpad plugin now requires API 1.6.0 or later.  This version shipped
+with Ubuntu 9.10.  (Aaron Bentley)</li>
+<li>Better align with upstream gzip.py in tuned_gzip.py. We may lose a bit of
+performance but that’s for knit and weave formats and already partly
+deprecated, better keep compatibility than failing fast ;)
+(Vincent Ladeuil, #1116079)</li>
+</ul>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix test failures occurring only with LC_ALL=C, when prompting a user,
+<code class="docutils literal notranslate"><span class="pre">stderr</span></code> encoding should be preferred over terminal encoding if
+available. (Vincent Ladeuil, #1086209)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-2-6b2">
+<h2>bzr 2.6b2<a class="headerlink" href="#bzr-2-6b2" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">2.6b2:</th><td class="field-body">2012-09-10</td>
+</tr>
+</tbody>
+</table>
+<p>This is the second beta for the 2.6 series, leading up to a 2.6.0 release in
+August 2012.</p>
+<p>This release includes minor bug fixes.</p>
+<p>This release includes all bugs fixed in previous series known at the time of
+this release.</p>
+<p>Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.  Some plugins may need small updates to work
+with 2.6b2.</p>
+<div class="section" id="id1">
+<h3>External Compatibility Breaks<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>None.</p>
+</div>
+<div class="section" id="id2">
+<h3>New Features<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>New option <code class="docutils literal notranslate"><span class="pre">--overwrite-tags</span></code> for <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pull</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">push</span></code>.
+(Jelmer Vernooij, #681792)</li>
+</ul>
+</div>
+<div class="section" id="id3">
+<h3>Improvements<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Colocated branches can now be addressed using the ‘co:NAME’ rather than
+the more complex ‘file://.,branch=NAME’. (Jelmer Vernooij, #833665)</li>
+</ul>
+</div>
+<div class="section" id="id4">
+<h3>Bug Fixes<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>“bzr missing” now shows tag names when displaying revision information.
+(#559072, Neil Martinsen-Burrell)</li>
+<li>Fix <code class="docutils literal notranslate"><span class="pre">branch.conf</span></code> saving when unlocking the branch for BranchFormat4.
+(Vincent Ladeuil, #1020007)</li>
+<li>Implement <code class="docutils literal notranslate"><span class="pre">ResponseFile.readline</span></code> and <code class="docutils literal notranslate"><span class="pre">ReponseFile.tell</span></code>,
+fixing some clones over HTTP. (Jelmer Vernooij, #963769)</li>
+<li>Option values set on locked branches should be saved only when the branch
+is finally unlocked. (Vincent Ladeuil, #948339)</li>
+</ul>
+</div>
+<div class="section" id="id5">
+<h3>Documentation<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Document “bzr lp-propose”, “bzr register-branch” and
+the other Launchpad plugin commands in bzr(1).
+(Jelmer Vernooij, #843801, #163995)</li>
+<li>Force format registration to avoid generate_docs.py traceback when the
+registry is empty. (Vincent Ladeuil, #956860)</li>
+<li>Generate <code class="docutils literal notranslate"><span class="pre">ENVIRONMENT</span></code> section in bzr(1) from known environment variable
+list rather than hardcoding. (Jelmer Vernooij, #197618)</li>
+</ul>
+</div>
+<div class="section" id="id6">
+<h3>API Changes<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">register_filter_stack_map</span></code> and <code class="docutils literal notranslate"><span class="pre">lazy_register_filter_stack_map</span></code>
+are noew deprecated. Instead, use <code class="docutils literal notranslate"><span class="pre">filter_stacks_registry.register</span></code>
+and <code class="docutils literal notranslate"><span class="pre">filter_stacks_registry.register_lazy</span></code>.
+(Jelmer Vernooij)</li>
+<li>Remove deprecated Branch.import_last_revision(). (Jelmer Vernooij)</li>
+<li>Remove deprecated <code class="docutils literal notranslate"><span class="pre">RepositoryFormat.register_format</span></code>.
+(Jelmer Vernooij)</li>
+<li>Remove deprecated Repository.get_ancestry(). (Jelmer Vernooij)</li>
+<li>Remove deprecated Repository.iter_reverse_revision_history().
+(Jelmer Vernooij)</li>
+<li>The previously deprecated <code class="docutils literal notranslate"><span class="pre">bzrlib.annotate.annotate_file</span></code> function
+has been removed. (Jelmer Vernooij)</li>
+</ul>
+</div>
+<div class="section" id="id7">
+<h3>Internals<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>None.</p>
+</div>
+<div class="section" id="id8">
+<h3>Testing<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix test failures by removing a remaining reference to <code class="docutils literal notranslate"><span class="pre">features.sphinx</span></code>
+which isn’t needed anymore since we don’t test the texinfo sphinx builder
+anymore either. (Vincent Ladeuil)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-2-6b1">
+<h2>bzr 2.6b1<a class="headerlink" href="#bzr-2-6b1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">2.6b1:</th><td class="field-body">2012-03-15</td>
+</tr>
+</tbody>
+</table>
+<p>This is the first beta for the 2.6 series, leading up to a 2.6.0 release in
+August 2012.</p>
+<p>This release includes ssl certificates verification from the urllib-based
+http implementation turned on by default, fixes some UI issues around
+colocated branches, documentation fixes and more.</p>
+<p>This release includes all bugs fixed in previous series known at the time of
+this release.</p>
+<p>Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.  Some plugins may need small updates to work
+with 2.6b1.</p>
+<div class="section" id="id9">
+<h3>External Compatibility Breaks<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<p>None.</p>
+</div>
+<div class="section" id="id10">
+<h3>Improvements<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Access to HTTPS URLs now uses the urrllib implementation by default.
+For the old pycurl-based implementation, specify <code class="docutils literal notranslate"><span class="pre">https+pycurl://</span></code> as
+the URL scheme when accessing a HTTPS location.
+(Jelmer Vernooij, #125055)</li>
+<li>Add short option alias <code class="docutils literal notranslate"><span class="pre">-N</span></code> for <code class="docutils literal notranslate"><span class="pre">--no-recurse</span></code>.
+(Jelmer Vernooij, #945904)</li>
+<li>Avoid ‘Invalid range access’ errors when whole files are retrieved with
+transport.http.get() . (Vincent Ladeuil, #924746)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">rmbranch</span></code> now supports removing colocated branches.
+(Jelmer Vernooij, #920653)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">rmbranch</span></code> no longer removes active branches unless <code class="docutils literal notranslate"><span class="pre">--force</span></code>
+is specified. (Jelmer Vernooij, #922953)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">verify-signatures</span></code> now shows a progress bar.
+(Jelmer Vernooij)</li>
+<li>Two new command hooks, <code class="docutils literal notranslate"><span class="pre">pre_command</span></code> and <code class="docutils literal notranslate"><span class="pre">post_command</span></code>,
+provide notification before and after a command has been run.
+(Brian de Alwis, Jelmer Vernooij)</li>
+</ul>
+</div>
+<div class="section" id="id11">
+<h3>Bug Fixes<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">config</span></code> display for <code class="docutils literal notranslate"><span class="pre">RegistryOption</span></code> values.
+(Vincent Ladeuil, #930182)</li>
+</ul>
+</div>
+<div class="section" id="id12">
+<h3>Documentation<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Prevent lines of command descriptions starting with a dot to
+accidentally be interpreted as a roff macro in bzr(1).
+(Jelmer Vernooij, #711079)</li>
+<li>Properly format apostrophes in manual page. (Jelmer Vernooij, #234771)</li>
+</ul>
+</div>
+<div class="section" id="id13">
+<h3>API Changes<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">GPGStrategy.do_verifications</span></code> has been deprecated.
+(Jelmer Vernooij)</li>
+<li>File ids in the <code class="docutils literal notranslate"><span class="pre">Tree</span></code> API can now be bytestring as previously,
+or tuples of bytestrings.
+(Jelmer Vernooij)</li>
+<li><code class="docutils literal notranslate"><span class="pre">mail_client</span></code> now accepts a configuration stack object rather than
+an old style Config object. (Jelmer Vernooij)</li>
+<li>New method <code class="docutils literal notranslate"><span class="pre">Repository.verify_revision_signatures</span></code>.
+(Jelmer Vernooij)</li>
+<li>New configuration option class <code class="docutils literal notranslate"><span class="pre">RegistryOption</span></code> which is backed
+onto a registry. (Jelmer Vernooij)</li>
+<li>New convenience API method <code class="docutils literal notranslate"><span class="pre">WorkingTree.get_config_stack</span></code>.
+(Jelmer Vernooij)</li>
+<li>Remove
+<code class="docutils literal notranslate"><span class="pre">branch.PullResult.__int__</span></code> deprecated in 2.3.0,
+<code class="docutils literal notranslate"><span class="pre">branch.PushResult.__int__</span></code> deprecated in 2.3.0,
+<code class="docutils literal notranslate"><span class="pre">branch.BranchFormat.get_default_format</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">branch.BranchFormat.get_formats</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">branch.BranchFormat.set_default_format</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">branch.BranchFormat.register_format</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">branch.BranchFormat.unregister_format</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">bzrdir.BzrDir.generate_backup_name</span></code> deprecated in 2.3.0,
+<code class="docutils literal notranslate"><span class="pre">bzrdir.BzrProber.register_bzrdir_format</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">bzrdir.BzrProber.unregister_bzrdir_format</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">config.Config.get_editor</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">hooks.known_hooks_key_to_parent_and_attribute</span></code> deprecated in 2.3,
+<code class="docutils literal notranslate"><span class="pre">hooks.Hooks.create_hook</span></code> deprecated in 2.4,
+<code class="docutils literal notranslate"><span class="pre">inventory.Inventory.__contains__</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">merge.Merge3Merger.scalar_three_way</span></code> deprecated in 2.2.0,
+<code class="docutils literal notranslate"><span class="pre">merge.Merge3Merger.fix_root</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">transform.TreeTransformBase.has_named_child</span></code> deprecated in 2.3.0,
+<code class="docutils literal notranslate"><span class="pre">transform.get_backup_name</span></code> deprecated in 2.3.0,
+<code class="docutils literal notranslate"><span class="pre">transform._get_backup_name</span></code> deprecated in 2.3.0,
+<code class="docutils literal notranslate"><span class="pre">workingtree.WorkingTreeFormat.get_default_format</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">workingtree.WorkingTreeFormat.register_format</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">workingtree.WorkingTreeFormat.register_extra_format</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">workingtree.WorkingTreeFormat.unregister_extra_format</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">workingtree.WorkingTreeFormat.get_formats</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">workingtree.WorkingTreeFormat.set_default_format</span></code> deprecated in 2.4.0,
+<code class="docutils literal notranslate"><span class="pre">workingtree.WorkingTreeFormat.unregister_format</span></code> deprecated in 2.4.0,
+(Vincent Ladeuil)</li>
+<li>Remove deprecated <code class="docutils literal notranslate"><span class="pre">Branch.set_revision_history</span></code> and
+<code class="docutils literal notranslate"><span class="pre">Branch.revision_history</span></code> methods and the <code class="docutils literal notranslate"><span class="pre">set_rh</span></code>
+hook on <code class="docutils literal notranslate"><span class="pre">Branch</span></code>. (Jelmer Vernooij)</li>
+</ul>
+</div>
+<div class="section" id="id14">
+<h3>Internals<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">Tree.path2id</span></code> now once again accepts a list of path elements
+in addition to a path. (Jelmer Vernooij)</li>
+<li>Turn config option expansion on by default. The only options for which
+this should be disabled are templates which should already have used
+conf.get(option, expand=False) or conf.get_user_option(option,
+expand=False). (Vincent Ladeuil)</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-2.6.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,330 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Setting Up A Windows Build Host &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="setting-up-a-windows-build-host">
+<h1>Setting Up A Windows Build Host<a class="headerlink" href="#setting-up-a-windows-build-host" title="Permalink to this headline">¶</a></h1>
+<p>This document describes the steps taken to set up a Windows build host. It is
+intended to be step-by-step instructions of what packages need to be installed,
+where they can be gotten from, and how they are configured.</p>
+<div class="section" id="baseline">
+<h2>Baseline<a class="headerlink" href="#baseline" title="Permalink to this headline">¶</a></h2>
+<p>This was written as a step-by-step as I set up the Amazon EC2 ‘desolation’
+instance. This was based on an Amazon Windows 2003 instance. Also note that for
+Amazon EC2, all programs were installed into the “C:” drive, as the “D:” drive
+is essentially <code class="docutils literal notranslate"><span class="pre">/tmp</span></code> and is not preserved between launched instances.</p>
+</div>
+<div class="section" id="install-packages">
+<h2>Install Packages<a class="headerlink" href="#install-packages" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic">
+<li><p class="first">Download cygwin’s setup.exe from <a class="reference external" href="http://www.cygwin.com">http://www.cygwin.com</a>
+At present the current version is 1.5.25-15. This is used primarily to
+install the build scripts and gcc-mingw. Note that we explicitly <em>don’t</em>
+install cygwin’s python or Breezy package. As we are only interested in
+running the native version of bzr. For information on running the cygwin
+port of bzr, look elsewhere.</p>
+<p>Probably not all of these packages are necessary, but they make life easier.</p>
+<ol class="loweralpha simple">
+<li>gcc-mingw32</li>
+<li>make</li>
+<li>openssh</li>
+<li>rsync</li>
+<li>vim</li>
+<li>wget</li>
+<li>zip</li>
+<li>unzip</li>
+<li>patch</li>
+<li>gettext-devel # brings ‘msgfmt’</li>
+</ol>
+</li>
+<li><p class="first">Download the supported versions of python from <a class="reference external" href="http://www.python.org">http://www.python.org</a></p>
+<ol class="loweralpha simple">
+<li>python 2.6.4</li>
+<li>python 2.5.4 <a class="reference external" href="http://www.python.org/ftp/python/2.5.4/python-2.5.4.msi">http://www.python.org/ftp/python/2.5.4/python-2.5.4.msi</a></li>
+<li>python 2.4.4 (there is no Windows installer for 2.4.5 or 2.4.6)
+<a class="reference external" href="http://www.python.org/ftp/python/2.4.4/python-2.4.4.msi">http://www.python.org/ftp/python/2.4.4/python-2.4.4.msi</a></li>
+</ol>
+<p>Note that for Amazon EC2, all of these were installed int</p>
+</li>
+<li><p class="first">Configure ‘distutils’ for the compiler that you will be using. For python
+2.4 and 2.5 we use gcc-mingw32, for 2.6 we use Visual Studio 2008.</p>
+<p>Edit <code class="docutils literal notranslate"><span class="pre">D:\Python25\Lib\disutils\distutils.cfg</span></code> (you have to create the
+file). You want to add a section like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">build</span><span class="p">]</span>
+<span class="n">compiler</span> <span class="o">=</span> <span class="n">mingw32</span>
+</pre></div>
+</div>
+<p>This also requires ‘fixing’ the cygwin gcc installation so that distutils
+can find it. Specifically, it knows to look for <code class="docutils literal notranslate"><span class="pre">gcc.exe</span></code> however, the
+latest versions of cygwin start using “alternatives” and making <code class="docutils literal notranslate"><span class="pre">gcc</span></code> just
+a symlink.</p>
+<p>You also need to add <code class="docutils literal notranslate"><span class="pre">C:\cygwin\bin</span></code> and <code class="docutils literal notranslate"><span class="pre">C:\cygwin\lib</span></code> into your
+environment path. This is generally done with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Right</span> <span class="n">Click</span> <span class="n">My</span> <span class="n">Computer</span> <span class="o">/</span> <span class="n">Properties</span> <span class="o">/</span> <span class="n">Advanced</span> <span class="o">/</span> <span class="n">Environment</span> <span class="n">Variables</span>
+<span class="n">System</span> <span class="n">Variables</span> <span class="o">/</span> <span class="n">Select</span> <span class="s1">&#39;PATH&#39;</span> <span class="o">/</span> <span class="n">Edit</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Download important python libraries. At the moment, the official Windows
+all-in-one installer is built using python 2.5. We will likely soon switch
+to python 2.6.</p>
+<ol class="loweralpha">
+<li><p class="first"><a class="reference external" href="http://pypi.python.org/pypi/setuptools">http://pypi.python.org/pypi/setuptools</a></p>
+<p>Installing this first should make it easier to install some of the other
+tools. To install something using easy install, it is generally best to
+open up a <code class="docutils literal notranslate"><span class="pre">cmd.exe</span></code> shell (<em>not</em> a cygwin shell) and do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">C</span><span class="p">:</span>\<span class="n">Python25</span>
+<span class="n">python</span><span class="o">.</span><span class="n">exe</span> <span class="n">Scripts</span>\<span class="n">easy_install</span><span class="o">-</span><span class="n">script</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="n">Z</span> <span class="o">-</span><span class="n">O1</span> <span class="n">PACKAGE</span>
+</pre></div>
+</div>
+<p>The ‘-Z’ tells it to install as a regular directory. This generally works
+better with py2exe.</p>
+</li>
+<li><p class="first">pywin32 <a class="reference external" href="http://sourceforge.net/projects/pywin32/files/">http://sourceforge.net/projects/pywin32/files/</a></p>
+</li>
+<li><p class="first">easy_install paramiko
+This will also bring in PyCrypto and compile it, so it is important to
+have configured step (3) correctly.</p>
+</li>
+<li><p class="first">easy_install Pyrex    (or Cython)
+Note, you should probably install pyrex for all versions of python. All
+of them need to run ‘setup.py bdist_wininst’ and so it is good to have it
+build automatically, rather than setting up an explicit build order based
+on which one has pyrex.</p>
+</li>
+<li><p class="first">easy_install cogapp</p>
+</li>
+<li><p class="first">install py2exe (easy_install failed)
+<a class="reference external" href="http://sourceforge.net/projects/py2exe/files/">http://sourceforge.net/projects/py2exe/files/</a></p>
+</li>
+<li><p class="first">easy_install docutils</p>
+</li>
+<li><p class="first">Install PyQt
+<a class="reference external" href="http://www.riverbankcomputing.co.uk/software/pyqt/download">http://www.riverbankcomputing.co.uk/software/pyqt/download</a></p>
+<p>Currently they only seem to offer PyQt 4.4.3 for python 2.5 and PyQt
+4.6.1 for python 2.6. They generally don’t make it easy to install old
+versions of PyQt.</p>
+</li>
+<li><p class="first">Install pyreadline
+<a class="reference external" href="https://launchpad.net/pyreadline/+download">https://launchpad.net/pyreadline/+download</a></p>
+</li>
+<li><p class="first">easy_install pygments</p>
+</li>
+<li><p class="first">Patch pycrypto, so that it supports older Windows installs. (see bugs
+#248522, #272791, #497733). The direct link to the patch is:
+<a class="reference external" href="http://launchpadlibrarian.net/16133025/win32_clock.patch">http://launchpadlibrarian.net/16133025/win32_clock.patch</a>
+This may not end up necessary w/ pycrypto 2.1, especially if paramiko can
+be taught to use the new functionality (avoiding the warning).</p>
+</li>
+<li><p class="first">easy_install testtools</p>
+</li>
+</ol>
+</li>
+<li><p class="first">Get Pageant, not strictly necessary, but it is a pretty good ssh-agent for
+Windows, and paramiko knows how to use keys from Pageant.</p>
+<p><a class="reference external" href="http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html">http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html</a></p>
+<p>Note that you probably want to set the environment variable
+<code class="docutils literal notranslate"><span class="pre">BZR_SSH=paramiko</span></code> at this time. Otherwise it will try to use the
+<code class="docutils literal notranslate"><span class="pre">ssh.exe</span></code> that it finds on your PATH (as configured in step 3), and
+cygwin’s openssh does <em>not</em> know how to access Pageant.</p>
+<p>I usually get the ‘all-in-one’ installer, but only because it is easier. You
+only really need <code class="docutils literal notranslate"><span class="pre">pageant.exe</span></code> and possibly <code class="docutils literal notranslate"><span class="pre">puttygen.exe</span></code>.</p>
+<p>If you do this, you’ll probably also want to install a shortcut to
+<code class="docutils literal notranslate"><span class="pre">pageant.exe</span></code> in Start / Programs / Startup so that it always starts when
+you log in (though you still have to manually add your SSH keys.)</p>
+<p>Note that on the Amazon EC2 machine, I’m having problems with temp files
+being created without the permission for the current user to actually read
+them. They seem to be owned by <code class="docutils literal notranslate"><span class="pre">Administrator</span></code> rather than by
+<code class="docutils literal notranslate"><span class="pre">Administrators</span></code>.</p>
+</li>
+<li><p class="first">Install bzr. Usually it is easiest to just get the latest all-in-one
+installer from <a class="reference external" href="https://launchpad.net/bzr/+download">https://launchpad.net/bzr/+download</a></p>
+</li>
+<li><p class="first">Install INNOSetup from:
+<a class="reference external" href="http://www.jrsoftware.org/isdl.php">http://www.jrsoftware.org/isdl.php</a></p>
+<p>After installing, you’ll want to add <code class="docutils literal notranslate"><span class="pre">C:\Program</span> <span class="pre">Files\Inno</span> <span class="pre">Setup</span> <span class="pre">5</span></code> to
+your PATH.</p>
+</li>
+<li><p class="first">Fix distutils for the specific version of gcc. Distutils in python2.4.4 has
+a bug where it assumes version strings have only 3 digits. The fix is to
+just change one ‘?’ in the regex into a ‘*’:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">---</span> <span class="n">version</span><span class="o">.</span><span class="n">py</span>  <span class="mi">2009</span><span class="o">-</span><span class="mi">11</span><span class="o">-</span><span class="mi">05</span> <span class="mi">14</span><span class="p">:</span><span class="mi">41</span><span class="p">:</span><span class="mf">47.497212900</span> <span class="o">-</span><span class="mi">0800</span>
+<span class="o">+++</span> <span class="n">version</span><span class="o">.</span><span class="n">py</span>  <span class="mi">2009</span><span class="o">-</span><span class="mi">11</span><span class="o">-</span><span class="mi">05</span> <span class="mi">14</span><span class="p">:</span><span class="mi">39</span><span class="p">:</span><span class="mf">57.684712900</span> <span class="o">-</span><span class="mi">0800</span>
+<span class="o">@@</span> <span class="o">-</span><span class="mi">97</span><span class="p">,</span><span class="mi">7</span> <span class="o">+</span><span class="mi">97</span><span class="p">,</span><span class="mi">7</span> <span class="o">@@</span>
+     <span class="ow">in</span> <span class="n">the</span> <span class="n">distutils</span> <span class="n">documentation</span><span class="o">.</span>
+     <span class="s2">&quot;&quot;&quot;</span>
+
+<span class="s2">-    version_re = re.compile(r&#39;^(\d+) \. (\d+) (\. (\d+))? ([ab](\d+))?$&#39;,</span>
+<span class="s2">+    version_re = re.compile(r&#39;^(\d+) \. (\d+) (\. (\d+))* ([ab](\d+))?$&#39;,</span>
+<span class="s2">                             re.VERBOSE)</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">If you want to build in the source tree, you need the zlib dll and
+associated libraries, put somewhere on your path. The buildout routines grab
+this directly and add it to the build path, but that doesn’t work for
+<code class="docutils literal notranslate"><span class="pre">setup.py</span></code>.
+<a class="reference external" href="http://www.zlib.net/zlib123-dll.zip">http://www.zlib.net/zlib123-dll.zip</a></p>
+<p>I usually download and extract this to something like <code class="docutils literal notranslate"><span class="pre">C:\local\</span></code> so that
+I end up with a <code class="docutils literal notranslate"><span class="pre">C:\local\lib</span></code> and <code class="docutils literal notranslate"><span class="pre">C:\local\include</span></code> directory. I then
+modify the <code class="docutils literal notranslate"><span class="pre">distutils.cfg</span></code> file to tell the compiler where to find these
+headers and libraries:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">build_ext</span><span class="p">]</span>
+<span class="n">include</span><span class="o">-</span><span class="n">dirs</span> <span class="o">=</span> <span class="n">C</span><span class="p">:</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">include</span>
+<span class="n">library</span><span class="o">-</span><span class="n">dirs</span> <span class="o">=</span> <span class="n">C</span><span class="p">:</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">lib</span>
+</pre></div>
+</div>
+<p>Note that you’ll probably want to put the <code class="docutils literal notranslate"><span class="pre">zlib1.dll</span></code> into your path. You
+can:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Add <code class="docutils literal notranslate"><span class="pre">C:\local</span></code> to your PATH variable in
+“My Computer/Properties/Advanced/Environment Variables”</li>
+<li>More logically, move <code class="docutils literal notranslate"><span class="pre">zlib1.dll</span></code> to either ‘lib’ or ‘bin’
+subdirectories and add that.</li>
+<li>Copy it to <code class="docutils literal notranslate"><span class="pre">C:\Windows\</span></code>.</li>
+</ol>
+</div></blockquote>
+<p>I recommend 3, mostly because lots of apps will want to use zlib1.dll in the
+long run. (You may already have it.)</p>
+</li>
+<li><p class="first">Install Visual Studio 2008 Professional
+<a class="reference external" href="http://www.microsoft.com/downloads/details.aspx?FamilyId=83C3A1EC-ED72-4A79-8961-25635DB0192B&amp;displaylang=en">http://www.microsoft.com/downloads/details.aspx?FamilyId=83C3A1EC-ED72-4A79-8961-25635DB0192B&amp;displaylang=en</a></p>
+<p>This is a 3GB DVD iso image. You can mount it directly with Microsofts
+iso mounting utility:
+<a class="reference external" href="http://download.microsoft.com/download/7/b/6/7b6abd84-7841-4978-96f5-bd58df02efa2/winxpvirtualcdcontrolpanel_21.exe">http://download.microsoft.com/download/7/b/6/7b6abd84-7841-4978-96f5-bd58df02efa2/winxpvirtualcdcontrolpanel_21.exe</a></p>
+<p>You need at least Windows XP (which introduced direct iso support, I
+believe.)</p>
+<p>Note that there is a Service Pack 1 for Visual Studio. The ISO can be
+downloaded here:
+<a class="reference external" href="http://www.microsoft.com/downloads/thankyou.aspx?familyId=27673c47-b3b5-4c67-bd99-84e525b5ce61&amp;displayLang=en">http://www.microsoft.com/downloads/thankyou.aspx?familyId=27673c47-b3b5-4c67-bd99-84e525b5ce61&amp;displayLang=en</a></p>
+<p>However, on EC2, there isn’t enough room on C: to actually run the
+installer. You need approx 6GB of free disk space. And EC2 only gives your
+10GB and Windows itself takes up about 5GB. So we are currently running
+stock VS 2008 with no service packs. (Even installing VS 2008 to a
+different drive doesn’t leave enough room on C: to run the upgrader.)</p>
+<p>When installing on EC2, it seems their 2003 Server comes with a Visual
+Studio key already supplied. There is also the possibility of using Visual
+Studio Express Edition, but it is currently unable to compile TortoiseBzr.</p>
+</li>
+</ol>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/win32_build_setup.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

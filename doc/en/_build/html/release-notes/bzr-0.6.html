@@ -1,0 +1,274 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-0-6">
+<h2>bzr 0.6<a class="headerlink" href="#bzr-0-6" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-10-28</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>pull now takes –verbose to show you what revisions are added or removed
+(John A Meinel)</li>
+<li>merge now takes a –show-base option to include the base text in
+conflicts.
+(Aaron Bentley)</li>
+<li>The config files are now read using ConfigObj, so ‘=’ should be used as
+a separator, not ‘:’.
+(Aaron Bentley)</li>
+<li>New ‘bzr commit –strict’ option refuses to commit if there are
+any unknown files in the tree.  To commit, make sure all files are
+either ignored, added, or deleted.  (Michael Ellerman)</li>
+<li>The config directory is now ~/.bazaar, and there is a single file
+~/.bazaar/bazaar.conf storing email, editor and other preferences.
+(Robert Collins)</li>
+<li>‘bzr add’ no longer takes a –verbose option, and a –quiet option
+has been added that suppresses all output.</li>
+<li>Improved zsh completion support in contrib/zsh, from Clint
+Adams.</li>
+<li>Builtin ‘bzr annotate’ command, by Martin Pool with improvements from
+Goffredo Baroncelli.</li>
+<li>‘bzr check’ now accepts -v for verbose reporting, and checks for
+ghosts in the branch. (Robert Collins)</li>
+<li>New command ‘re-sign’ which will regenerate the gpg signature for
+a revision. (Robert Collins)</li>
+<li>If you set <code class="docutils literal notranslate"><span class="pre">check_signatures=require</span></code> for a path in
+<code class="docutils literal notranslate"><span class="pre">~/.bazaar/branches.conf</span></code> then bzr will invoke your
+<code class="docutils literal notranslate"><span class="pre">gpg_signing_command</span></code> (defaults to gpg) and record a digital signature
+of your commit. (Robert Collins)</li>
+<li>New SFTP transport, based on Paramiko.  (Robey Pointer)</li>
+<li>‘bzr pull’ now accepts ‘–clobber’ which will discard local changes
+and make this branch identical to the source branch. (Robert Collins)</li>
+<li>Just give a quieter warning if a plugin can’t be loaded, and
+put the details in .bzr.log.  (Martin Pool)</li>
+<li>‘bzr branch’ will now set the branch-name to the last component of the
+output directory, if one was supplied.</li>
+<li>If the option <code class="docutils literal notranslate"><span class="pre">post_commit</span></code> is set to one (or more) python function
+names (must be in the bzrlib namespace), then they will be invoked
+after the commit has completed, with the branch and <code class="docutils literal notranslate"><span class="pre">revision_id</span></code> as
+parameters. (Robert Collins)</li>
+<li>Merge now has a retcode of 1 when conflicts occur. (Robert Collins)</li>
+<li>–merge-type weave is now supported for file contents.  Tree-shape
+changes are still three-way based.  (Martin Pool, Aaron Bentley)</li>
+<li>‘bzr check’ allows the first revision on revision-history to have
+parents - something that is expected for cheap checkouts, and occurs
+when conversions from baz do not have all history.  (Robert Collins).</li>
+<li>‘bzr merge’ can now graft unrelated trees together, if your specify
+0 as a base. (Aaron Bentley)</li>
+<li>‘bzr commit branch’ and ‘bzr commit branch/file1 branch/file2’ now work
+(Aaron Bentley)</li>
+<li>Add ‘.sconsign*’ to default ignore list.  (Alexander Belchenko)</li>
+<li>‘bzr merge –reprocess’ minimizes conflicts</li>
+</ul>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>The ‘bzr selftest –pattern’ option for has been removed, now
+test specifiers on the command line can be simple strings, or
+regexps, or both. (Robert Collins)</li>
+<li>Passing -v to selftest will now show the time each test took to
+complete, which will aid in analysing performance regressions and
+related questions. (Robert Collins)</li>
+<li>‘bzr selftest’ runs all tests, even if one fails, unless ‘–one’
+is given. (Martin Pool)</li>
+<li>There is a new method for TestCaseInTempDir, assertFileEqual, which
+will check that a given content is equal to the content of the named
+file. (Robert Collins)</li>
+<li>Fix test suite’s habit of leaving many temporary log files in $TMPDIR.
+(Martin Pool)</li>
+</ul>
+</div>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>New ‘testament’ command and concept for making gpg-signatures
+of revisions that are not tied to a particular internal
+representation.  (Martin Pool).</li>
+<li>Per-revision properties (‘revprops’) as key-value associated
+strings on each revision created when the revision is committed.
+Intended mainly for the use of external tools.  (Martin Pool).</li>
+<li>Config options have moved from bzrlib.osutils to bzrlib.config.
+(Robert Collins)</li>
+<li>Improved command line option definitions allowing explanations
+for individual options, among other things.  Contributed by
+Magnus Therning.</li>
+<li>Config options have moved from bzrlib.osutils to bzrlib.config.
+Configuration is now done via the config.Config interface:
+Depending on whether you have a Branch, a Location or no information
+available, construct a <code class="docutils literal notranslate"><span class="pre">*Config</span></code>, and use its <code class="docutils literal notranslate"><span class="pre">signature_checking</span></code>,
+<code class="docutils literal notranslate"><span class="pre">username</span></code> and <code class="docutils literal notranslate"><span class="pre">user_email</span></code> methods. (Robert Collins)</li>
+<li>Plugins are now loaded under bzrlib.plugins, not bzrlib.plugin, and
+they are made available for other plugins to use. You should not
+import other plugins during the <code class="docutils literal notranslate"><span class="pre">__init__</span></code> of your plugin though, as
+no ordering is guaranteed, and the plugins directory is not on the
+python path. (Robert Collins)</li>
+<li>Branch.relpath has been moved to WorkingTree.relpath. WorkingTree no
+no longer takes an inventory, rather it takes an option branch
+parameter, and if None is given will open the branch at basedir
+implicitly. (Robert Collins)</li>
+<li>Cleaner exception structure and error reporting.  Suggested by
+Scott James Remnant.  (Martin Pool)</li>
+<li>Branch.remove has been moved to WorkingTree, which has also gained
+<code class="docutils literal notranslate"><span class="pre">lock_read</span></code>, <code class="docutils literal notranslate"><span class="pre">lock_write</span></code> and <code class="docutils literal notranslate"><span class="pre">unlock</span></code> methods for convenience.
+(Robert Collins)</li>
+<li>Two decorators, <code class="docutils literal notranslate"><span class="pre">needs_read_lock</span></code> and <code class="docutils literal notranslate"><span class="pre">needs_write_lock</span></code> have been
+added to the branch module. Use these to cause a function to run in a
+read or write lock respectively. (Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Branch.open_containing</span></code> now returns a tuple (Branch, relative-path),
+which allows direct access to the common case of ‘get me this file
+from its branch’. (Robert Collins)</li>
+<li>Transports can register using <code class="docutils literal notranslate"><span class="pre">register_lazy_transport</span></code>, and they
+will be loaded when first used.  (Martin Pool)</li>
+<li>‘pull’ has been factored out of the command as <code class="docutils literal notranslate"><span class="pre">WorkingTree.pull()</span></code>.
+A new option to WorkingTree.pull has been added, clobber, which will
+ignore diverged history and pull anyway.
+(Robert Collins)</li>
+<li>config.Config has a <code class="docutils literal notranslate"><span class="pre">get_user_option</span></code> call that accepts an option name.
+This will be looked up in branches.conf and bazaar.conf as normal.
+It is intended that this be used by plugins to support options -
+options of built in programs should have specific methods on the config.
+(Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">merge.merge_inner</span></code> now has tempdir as an optional parameter.
+(Robert Collins)</li>
+<li>Tree.kind is not recorded at the top level of the hierarchy, as it was
+missing on EmptyTree, leading to a bug with merge on EmptyTrees.
+(Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">WorkingTree.__del__</span></code> has been removed, it was non deterministic and not
+doing what it was intended to. See <code class="docutils literal notranslate"><span class="pre">WorkingTree.__init__</span></code> for a comment
+about future directions. (Robert Collins/Martin Pool)</li>
+<li>bzrlib.transport.http has been modified so that only 404 urllib errors
+are returned as NoSuchFile. Other exceptions will propagate as normal.
+This allows debuging of actual errors. (Robert Collins)</li>
+<li>bzrlib.transport.Transport now accepts <em>ONLY</em> URL-escaped relative paths
+to apis like ‘put’, ‘get’ and ‘has’. This is to provide consistent
+behaviour - it operates on URLs only. (Robert Collins)</li>
+<li>Transports can register using <code class="docutils literal notranslate"><span class="pre">register_lazy_transport</span></code>, and they
+will be loaded when first used.  (Martin Pool)</li>
+<li><code class="docutils literal notranslate"><span class="pre">merge_flex</span></code> no longer calls <code class="docutils literal notranslate"><span class="pre">conflict_handler.finalize()</span></code>, instead that
+is called by <code class="docutils literal notranslate"><span class="pre">merge_inner</span></code>. This is so that the conflict count can be
+retrieved (and potentially manipulated) before returning to the caller
+of <code class="docutils literal notranslate"><span class="pre">merge_inner</span></code>. Likewise ‘merge’ now returns the conflict count to the
+caller. (Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">revision.revision_graph</span></code> can handle having only partial history for
+a revision - that is no revisions in the graph with no parents.
+(Robert Collins).</li>
+<li>New <code class="docutils literal notranslate"><span class="pre">builtins.branch_files</span></code> uses the standard <code class="docutils literal notranslate"><span class="pre">file_list</span></code> rules to
+produce a branch and a list of paths, relative to that branch
+(Aaron Bentley)</li>
+<li>New TestCase.addCleanup facility.</li>
+<li>New <code class="docutils literal notranslate"><span class="pre">bzrlib.version_info</span></code> tuple (similar to <code class="docutils literal notranslate"><span class="pre">sys.version_info</span></code>),
+which can be used by programs importing bzrlib.</li>
+</ul>
+</div>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Better handling of branches in directories with non-ascii names.
+(Joel Rosdahl, Panagiotis Papadakos)</li>
+<li>Upgrades of trees with no commits will not fail due to accessing
+[-1] in the revision-history. (Andres Salomon)</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-0.6.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

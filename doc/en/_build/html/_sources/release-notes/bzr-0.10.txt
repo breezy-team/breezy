@@ -1,0 +1,90 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.10
+########
+
+:Released:  2006-08-29
+
+Improvements
+************
+* 'merge' now takes --uncommitted, to apply uncommitted changes from a
+  tree.  (Aaron Bentley)
+
+* 'bzr add --file-ids-from' can be used to specify another path to use
+  for creating file ids, rather than generating all new ones. Internally,
+  the 'action' passed to ``smart_add_tree()`` can return ``file_ids`` that
+  will be used, rather than having bzrlib generate new ones.
+  (John Arbash Meinel, #55781)
+
+* ``bzr selftest --benchmark`` now allows a ``--cache-dir`` parameter.
+  This will cache some of the intermediate trees, and decrease the
+  setup time for benchmark tests. (John Arbash Meinel)
+
+* Inverse forms are provided for all boolean options.  For example,
+  --strict has --no-strict, --no-recurse has --recurse (Aaron Bentley)
+
+* Serialize out Inventories directly, rather than using ElementTree.
+  Writing out a kernel sized inventory drops from 2s down to ~350ms.
+  (Robert Collins, John Arbash Meinel)
+
+Bug Fixes
+*********
+
+* Help diffutils 2.8.4 get along with binary tests (Marien Zwart: #57614)
+
+* Change LockDir so that if the lock directory doesn't exist when
+  ``lock_write()`` is called, an attempt will be made to create it.
+  (John Arbash Meinel, #56974)
+
+* ``bzr uncommit`` preserves pending merges. (John Arbash Meinel, #57660)
+
+* Active FTP transport now works as intended. (ghozzy, #56472)
+
+* Really fix mutter() so that it won't ever raise a UnicodeError.
+  It means it is possible for ~/.bzr.log to contain non UTF-8 characters.
+  But it is a debugging log, not a real user file.
+  (John Arbash Meinel, #56947, #53880)
+
+* Change Command handle to allow Unicode command and options.
+  At present we cannot register Unicode command names, so we will get
+  BzrCommandError('unknown command'), or BzrCommandError('unknown option')
+  But that is better than a UnicodeError + a traceback.
+  (John Arbash Meinel, #57123)
+
+* Handle TZ=UTC properly when reading/writing revisions.
+  (John Arbash Meinel, #55783, #56290)
+
+* Use ``GPG_TTY`` to allow gpg --cl to work with gpg-agent in a pipeline,
+  (passing text to sign in on stdin). (John Arbash Meinel, #54468)
+
+* External diff does the right thing for binaries even in foreign
+  languages. (John Arbash Meinel, #56307)
+
+* Testament handles more cases when content is unicode. Specific bug was
+  in handling of revision properties.
+  (John Arbash Meinel, Holger Krekel, #54723)
+
+* The bzr selftest was failing on installed versions due to a bug in a new
+  test helper. (John Arbash Meinel, Robert Collins, #58057)
+
+Internals
+*********
+
+* ``bzrlib.cache_utf8`` contains ``encode()`` and ``decode()`` functions
+  which can be used to cache the conversion between utf8 and Unicode.
+  Especially helpful for some of the knit annotation code, which has to
+  convert revision ids to utf8 to annotate lines in storage.
+  (John Arbash Meinel)
+
+* ``setup.py`` now searches the filesystem to find all packages which
+  need to be installed. This should help make the life of packagers
+  easier. (John Arbash Meinel)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

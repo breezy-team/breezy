@@ -1,0 +1,356 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Centralized Workflow Tutorial &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Licence" href="licence.html" />
+    <link rel="prev" title="Using Breezy with Launchpad" href="using_breezy_with_launchpad.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="using_breezy_with_launchpad.html" title="Using Breezy with Launchpad"
+             accesskey="P">previous</a> |
+          <a href="licence.html" title="Licence"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="centralized-workflow-tutorial">
+<h1>Centralized Workflow Tutorial<a class="headerlink" href="#centralized-workflow-tutorial" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>This document describes a possible workflow for using <a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a>. That of
+using <a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a>, the distributed version control system, in a centralized
+manner. <a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a> is designed to be very flexible and allows several
+different workflows, from fully decentralized to mostly centralized.  The
+workflow used here is meant to ease a new user into more advanced usage of
+<a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a>, and allow them to work in a mix of centralized and decentralized
+operations.</p>
+<p>In general, this document is meant for users coming from a background of
+centralized version control systems such as CVS or subversion. It is
+common in work settings to have a single central server hosting the
+codebase, with several people working on this codebase, keeping their work
+in sync.  This workflow is also applicable to a single developer working
+on several different machines.</p>
+</div>
+<div class="section" id="initial-setup">
+<h2>Initial Setup<a class="headerlink" href="#initial-setup" title="Permalink to this headline">¶</a></h2>
+<p>These are some reasonably simple steps to setup <a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a> so that it works
+well for you.</p>
+<div class="section" id="setting-user-email">
+<h3>Setting User Email<a class="headerlink" href="#setting-user-email" title="Permalink to this headline">¶</a></h3>
+<p>Your user identity is stored with each commit. While this doesn’t have to
+be accurate or unique, it will be used in log messages and
+annotations, so it is better to have something real.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">whoami</span> <span class="s2">&quot;John Doe &lt;jdoe@organization.com&gt;&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="setting-up-a-local-repository">
+<h3>Setting up a local Repository<a class="headerlink" href="#setting-up-a-local-repository" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a> branches generally copy the history information around with them,
+which is part of how you can work in a fully decentralized manner. As an
+optimization, it is possible for related branches to combine their storage
+needs so that you do not need to copy around all of this history
+information whenever you create a new branch.</p>
+<p>The best way to do this is to create a <a class="reference internal" href="#shared-repository">Shared Repository</a>. In
+general, branches will share their storage if they exist in a
+subdirectory of a <a class="reference internal" href="#shared-repository">Shared Repository</a>.  So let’s set up a <a class="reference internal" href="#shared-repository">Shared
+Repository</a> in our home directory, thus all branches we create
+underneath will share their history storage.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">init</span><span class="o">-</span><span class="n">repo</span> <span class="o">--</span><span class="n">trees</span> <span class="o">~</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="setting-up-a-remote-repository">
+<h3>Setting up a remote Repository<a class="headerlink" href="#setting-up-a-remote-repository" title="Permalink to this headline">¶</a></h3>
+<p>Many times you want a location where data is stored separately from where
+you do your work. This workflow is required by centralized systems
+(CVS/SVN).  Usually they are on separate machines, but not always. This is
+actually a pretty good setup, especially in a work environment. Since it
+ensures a central location where data can be backed up, and means that if
+something happens to a developer’s machine, no committed work has to be
+lost.</p>
+<p>So let’s set up a shared location for our project on a remote machine
+called <code class="docutils literal notranslate"><span class="pre">centralhost</span></code>. Again, we will use a
+<a class="reference internal" href="#shared-repository">Shared Repository</a> to optimize disk usage.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">init</span><span class="o">-</span><span class="n">repo</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">trees</span> <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>You can think of this step as similar to setting up a new cvsroot, or
+subversion repository.  The <code class="docutils literal notranslate"><span class="pre">--no-trees</span></code> option tells brz to not
+populate the directory with a working tree.  This is appropriate,
+since no one will be making changes directly in the branches within
+the central repository.</p>
+<p>Here we’re using a <code class="docutils literal notranslate"><span class="pre">brz+ssh</span></code> URL, which means to use Breezy’s own
+protocol on top of the SSH secure shell.  See the Administrator Guide for
+information about setting up a brz+ssh server.</p>
+</div>
+</div>
+<div class="section" id="migrating-an-existing-project-to-breezy">
+<h2>Migrating an existing project to Breezy<a class="headerlink" href="#migrating-an-existing-project-to-breezy" title="Permalink to this headline">¶</a></h2>
+<p>Now that we have a repository, let’s create a versioned project. Most of
+the time, you will already have some code that you are working with,
+that you now want to version using <a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a>. If the code was originally
+in source control, there are many ways to convert the project to <a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a>
+without losing any history. However, this is outside the scope of this
+document. See <a class="reference external" href="http://wiki.bazaar.canonical.com/TrackingUpstream">Tracking Upstream</a> for some possibilities (section
+“Converting and keeping history”).</p>
+<div class="section" id="developer-1-creating-the-first-revision">
+<h3>Developer 1: Creating the first revision<a class="headerlink" href="#developer-1-creating-the-first-revision" title="Permalink to this headline">¶</a></h3>
+<p>So first, we want to create a branch in our remote Repository, where we
+want to host the project.  Let’s assume we have a project named
+“sigil” that we want to put under version control.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">init</span> <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span>
+</pre></div>
+</div>
+<p>This can be thought of as the “HEAD” branch in CVS terms, or as the “trunk”
+in Subversion terms. We will call this the <code class="docutils literal notranslate"><span class="pre">dev</span></code> branch.</p>
+<p>I prefer working in a subdirectory of my home directory to avoid collisions with all
+the other files that end up there. Also, we will want a project
+directory where we can hold all of the different branches we end up
+working on.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">cd</span> <span class="o">~</span>
+<span class="o">%</span> <span class="n">mkdir</span> <span class="n">work</span>
+<span class="o">%</span> <span class="n">cd</span> <span class="n">work</span>
+<span class="o">%</span> <span class="n">mkdir</span> <span class="n">sigil</span>
+<span class="o">%</span> <span class="n">cd</span> <span class="n">sigil</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">checkout</span> <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span> <span class="n">dev</span>
+<span class="o">%</span> <span class="n">cd</span> <span class="n">dev</span>
+<span class="o">%</span> <span class="n">cp</span> <span class="o">-</span><span class="n">ar</span> <span class="o">~/</span><span class="n">sigil</span><span class="o">/*</span> <span class="o">.</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">add</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;Initial import of Sigil&quot;</span>
+</pre></div>
+</div>
+<p>In the previous section, we created an empty branch (the <code class="docutils literal notranslate"><span class="pre">/sigil</span></code>
+branch) on <code class="docutils literal notranslate"><span class="pre">centralhost</span></code>, and then checkout out this empty branch
+onto our workstation to add files from our existing project.  There
+are many ways to set up your working directory, but the steps above
+make it easy to handle working with feature/bugfix branches. And one
+of the strong points of <a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a> is how well it works with branches.</p>
+<p>At this point, because you have a ‘checkout’ of the remote branch, any
+commits you make in <code class="docutils literal notranslate"><span class="pre">~/work/sigil/dev/</span></code> will automatically be saved
+both locally, and on <code class="docutils literal notranslate"><span class="pre">centralhost</span></code>.</p>
+</div>
+<div class="section" id="developer-n-getting-a-working-copy-of-the-project">
+<h3>Developer N: Getting a working copy of the project<a class="headerlink" href="#developer-n-getting-a-working-copy-of-the-project" title="Permalink to this headline">¶</a></h3>
+<p>Since the first developer did all of the work of creating the project,
+all other developers would just checkout that branch. <strong>They should
+still follow</strong> <a class="reference internal" href="#setting-user-email">Setting User Email</a> and <a class="reference internal" href="#setting-up-a-local-repository">Setting up a local Repository</a>.</p>
+<p>To get a copy of the current development tree:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">cd</span> <span class="o">~/</span><span class="n">work</span><span class="o">/</span><span class="n">sigil</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">checkout</span> <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span> <span class="n">dev</span>
+</pre></div>
+</div>
+<p>Now that two people both have a checkout of
+<code class="docutils literal notranslate"><span class="pre">brz+ssh://centralhost/srv/brz/sigil</span></code>, there will be times when one of
+the checkouts will be out of date with the current version.
+At commit time, <a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a> will inform the user of this and prevent them from
+committing. To get up to date, use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">update</span></code> to update the
+tree with the remote changes. This may require resolving conflicts if the
+same files have been modified.</p>
+</div>
+</div>
+<div class="section" id="developing-on-separate-branches">
+<h2>Developing on separate branches<a class="headerlink" href="#developing-on-separate-branches" title="Permalink to this headline">¶</a></h2>
+<p>So far everyone is working and committing their changes into the same
+branch. This means that everyone needs to update fairly regularly and
+deal with other people’s changes. Also, if one person commits something
+that breaks the codebase, then upon syncing, everyone will get the
+problem.</p>
+<p>Usually, it is better to do development on different branches, and then
+integrate those back into the main branch, once they are stable. This is
+one of the biggest changes from working with CVS/SVN. They both allow you
+to work on separate branches, but their merging algorithms are fairly
+weak, so it is difficult to keep things synchronized. <a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a> tracks
+what has already been merged, and can even apply changes to files that
+have been renamed.</p>
+<div class="section" id="creating-and-working-on-a-new-branch">
+<h3>Creating and working on a new branch<a class="headerlink" href="#creating-and-working-on-a-new-branch" title="Permalink to this headline">¶</a></h3>
+<p>We want to keep our changes available for other people, even if they
+aren’t quite complete yet. So we will create a new public branch on
+<code class="docutils literal notranslate"><span class="pre">centralhost</span></code>, and track it locally.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">cd</span> <span class="o">~/</span><span class="n">work</span><span class="o">/</span><span class="n">sigil</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">branch</span> <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span> \
+             <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span><span class="o">/</span><span class="n">doodle</span><span class="o">-</span><span class="n">fixes</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">checkout</span> <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span><span class="o">/</span><span class="n">doodle</span><span class="o">-</span><span class="n">fixes</span> <span class="n">doodle</span><span class="o">-</span><span class="n">fixes</span>
+<span class="o">%</span> <span class="n">cd</span> <span class="n">doodle</span><span class="o">-</span><span class="n">fixes</span>
+</pre></div>
+</div>
+<p>We now have a place to make any fixes we need to <code class="docutils literal notranslate"><span class="pre">doodle</span></code>. And we would
+not interrupt people who are working on other parts of the code.  Because
+we have a checkout, any commits made in the <code class="docutils literal notranslate"><span class="pre">~/work/sigil/doodle-fixes/</span></code>
+will also show up on <code class="docutils literal notranslate"><span class="pre">centralhost</span></code>. <a class="footnote-reference" href="#nestedbranches" id="id1">[1]</a> It is also
+possible to have two developers collaborate on one of these branches, just
+like they would have collaborated on the <code class="docutils literal notranslate"><span class="pre">dev</span></code> branch.</p>
+<table class="docutils footnote" frame="void" id="nestedbranches" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>It may look odd to have a branch in a subdirectory of
+another branch. This is just fine, and you can think of it as a
+hierarchical namespace where the nested branch is derived from the
+outer branch.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="merging-changes-back">
+<h3>Merging changes back<a class="headerlink" href="#merging-changes-back" title="Permalink to this headline">¶</a></h3>
+<p>When it is decided that some of the changes in <code class="docutils literal notranslate"><span class="pre">doodle-fixes</span></code> are ready
+to be merged into the main branch, simply do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">cd</span> <span class="o">~/</span><span class="n">work</span><span class="o">/</span><span class="n">sigil</span><span class="o">/</span><span class="n">dev</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">merge</span> <span class="o">../</span><span class="n">doodle</span><span class="o">-</span><span class="n">fixes</span>
+</pre></div>
+</div>
+<p>Now the changes are available in the <code class="docutils literal notranslate"><span class="pre">dev</span></code> branch, but they have not
+been committed yet. This is the time when you want to review the final
+changes, and double check the code to make sure it compiles cleanly and
+passes the test suite. The commands <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">status</span></code> and <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span></code> are
+good tools to use here. Also, this is the time to resolve any conflicts.
+<a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a> will prevent you from committing until you have resolved these
+conflicts. That way you don’t accidentally commit the conflict markers.
+The command <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">status</span></code> will show the conflicts along with the other
+changes, or you can use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">conflicts</span></code> to just list conflicts. Use
+<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span> <span class="pre">file/name</span></code> or <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span> <span class="pre">--all</span></code> once conflicts have
+been handled. <a class="footnote-reference" href="#resolve" id="id2">[2]</a> If you have a conflict that is particularly
+difficult to solve you may want to use the <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">remerge</span></code> command. It
+will let you try different merge algorithms, as well as let you see the
+original source lines (<code class="docutils literal notranslate"><span class="pre">--show-base</span></code>).</p>
+<table class="docutils footnote" frame="void" id="resolve" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Some systems make you resolve conflicts as part of the merge
+process. We have found that it is usually easier to resolve conflicts
+when you have the view of the entire tree, rather than just a single
+file. It gives you much more context, and also lets you run tests as
+you resolve the problems.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="recommended-branching">
+<h3>Recommended Branching<a class="headerlink" href="#recommended-branching" title="Permalink to this headline">¶</a></h3>
+<p>One very common way to handle all of these branches is to give each
+developer their own branch, and their own place to work in the central
+location. This can be done with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">branch</span> <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span> \
+             <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span><span class="o">/</span><span class="n">user</span><span class="o">-</span><span class="n">a</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">branch</span> <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span> \
+             <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span><span class="o">/</span><span class="n">user</span><span class="o">-</span><span class="n">b</span>
+</pre></div>
+</div>
+<p>This gives each developer their own branch to work on. And, they can
+easily create a new feature branch for themselves:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">branch</span> <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span><span class="o">/</span><span class="n">user</span><span class="o">-</span><span class="n">a</span> \
+             <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span><span class="o">/</span><span class="n">user</span><span class="o">-</span><span class="n">a</span><span class="o">/</span><span class="n">feature</span>
+<span class="o">%</span> <span class="n">cd</span> <span class="o">~/</span><span class="n">work</span><span class="o">/</span><span class="n">sigil</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">checkout</span> <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">sigil</span><span class="o">/</span><span class="n">user</span><span class="o">-</span><span class="n">a</span><span class="o">/</span><span class="n">feature</span> <span class="n">myfeature</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="glossary">
+<h2>Glossary<a class="headerlink" href="#glossary" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="shared-repository">
+<h3>Shared Repository<a class="headerlink" href="#shared-repository" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a> has the concept of a “Shared Repository”. This is similar to
+the traditional concept of a repository in other VCSs like CVS and
+Subversion. For example, in Subversion you have a remote repository,
+which is where all of the history is stored, and locally you don’t
+have any history information, only a checkout of the working tree
+files. Note that “Shared” in this context means shared between
+branches. It <em>may</em> be shared between people, but standalone branches
+can also be shared between people.</p>
+<p>In <a class="reference external" href="https://www.breezy-vcs.org/">Breezy</a> terms, a “Shared Repository” is a location where multiple
+branches can <strong>share</strong> their revision history information. In order to
+support decentralized workflows, it is possible for every branch to
+store its own revision history information. But this is often
+inefficient, since related branches share history, and they might as
+well share the storage as well.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="using_breezy_with_launchpad.html" title="Using Breezy with Launchpad"
+              >previous</a> |
+            <a href="licence.html" title="Licence"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/tutorials/centralized_workflow.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

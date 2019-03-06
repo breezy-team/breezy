@@ -1,0 +1,62 @@
+========================
+Breezy Design Principles
+========================
+
+We have learned or adopted a few general principles for code in Breezy.
+Generally we will try to follow them in future, either for consistency or
+because they've been proven to work well, or both.  
+
+We may need to depart from these principles in particular special cases,
+or modify them as we learn more, or we might be diverging for them for no
+very good reason but just because of bugs.  If in doubt, ask.  
+
+See also: `Breezy Developer Document Catalog <index.html>`_.
+
+
+Testing
+-------
+
+Untested code is broken code.
+
+So if a function is removed from the normal flow of execution (perhaps
+because a new default format was introduced) we have to make sure we can
+still execute and test the old code -- or remove it altogether.
+
+
+
+Data formats
+------------
+
+Fixing code once it's released is easy; fixing a problematic data format
+once people have started using it is more difficult.  We should document
+and review formats separately from the code that implements them.
+
+Data formats should have clear format markers that allow us to support new
+formats in future.  It should be easy to read the format without reading
+the whole object.
+
+The format marker should be a string understandable by a user that names
+the format and gives the Breezy release that introduced it.  If the Breezy
+program doesn't understand that format, it can at least show that format
+marker to the user.
+
+Once we mark a format as supported, we'll continue supporting it for
+several future releases, and support upgrading from it
+forever.
+
+Once we've released a format, we normally don't change it.  Adding new
+optional elements can cause problems when older clients don't understand
+those changes, or don't propagate them properly.
+
+We clearly distinguish internal files from user files.  Files inside
+``.bzr/`` are only written to by Breezy and we discourage users from editing
+them.  Within Breezy, code addressing the abstract interface of the Branch,
+ControlDir, etc shouldn't know where or how the internal files are stored.  If
+anything else is written in there, it won't be propagated when pushing or
+pulling, and won't be converted when upgrading.  (This is not quite true
+though; there is a ``branch.conf``.)
+
+User files within the tree, by contrast, we always store and return
+verbatim.  It's OK for Breezy to read and act on these files (as we do
+with ``.bzrignore``), and to update them (as ``brz ignore`` does), but
+they remain clearly user files and can be directly edited.

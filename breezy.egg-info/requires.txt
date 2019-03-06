@@ -1,0 +1,11 @@
+configobj
+dulwich>=0.19.11
+fastimport>=0.9.8
+six>=1.9.0
+
+[fastimport]
+
+[git]
+
+[launchpad]
+launchpadlib>=1.6.3

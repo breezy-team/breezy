@@ -1,0 +1,35 @@
+Environment Variables
+=====================
+
+
+See brz help configuration for more details.
+
+=================== ===========================================================
+BRZPATH             Path where brz is to look for shell plugin external
+                    commands.
+BRZ_EMAIL           E-Mail address of the user. Overrides EMAIL.
+EMAIL               E-Mail address of the user.
+BRZ_EDITOR          Editor for editing commit messages. Overrides EDITOR.
+EDITOR              Editor for editing commit messages.
+BRZ_PLUGIN_PATH     Paths where brz should look for plugins.
+BRZ_DISABLE_PLUGINS Plugins that brz should not load.
+BRZ_PLUGINS_AT      Plugins to load from a directory not in BRZ_PLUGIN_PATH.
+BRZ_HOME            Directory holding breezy config dir. Overrides HOME.
+BRZ_HOME (Win32)    Directory holding breezy config dir. Overrides APPDATA and
+                    HOME.
+BZR_REMOTE_PATH     Full name of remote 'brz' command (for brz+ssh:// URLs).
+BRZ_SSH             Path to SSH client, or one of paramiko, openssh, sshcorp,
+                    plink or lsh.
+BRZ_LOG             Location of .brz.log (use '/dev/null' to suppress log).
+BRZ_LOG (Win32)     Location of .brz.log (use 'NUL' to suppress log).
+BRZ_COLUMNS         Override implicit terminal width.
+BRZ_CONCURRENCY     Number of processes that can be run concurrently (selftest)
+BRZ_PROGRESS_BAR    Override the progress display. Values are 'none' or 'text'.
+BRZ_PDB             Control whether to launch a debugger on error.
+BRZ_SIGQUIT_PDB     Control whether SIGQUIT behaves normally or invokes a
+                    breakin debugger.
+BRZ_TEXTUI_INPUT    Force console input mode for prompts to line-based (instead
+                    of char-based).
+=================== ===========================================================
+
+

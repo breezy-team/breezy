@@ -1,0 +1,40 @@
+tag
+===
+
+:Purpose: Create, remove or modify a tag naming a revision.
+:Usage:   brz tag [TAG_NAME]
+
+:Options:
+  --delete              Delete this tag rather than placing it.
+  -d ARG, --directory=ARG
+                        Branch in which to place the tag.
+  --force               Replace existing tags.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  Tags give human-meaningful names to revisions.  Commands that take a -r
+  (--revision) option can be given -rtag:X, where X is any previously
+  created tag.
+  
+  Tags are stored in the branch.  Tags are copied from one branch to another
+  along when you branch, push, pull or merge.
+  
+  It is an error to give a tag name that already exists unless you pass
+  --force, in which case the tag is moved to point to the new revision.
+  
+  To rename a tag (change the name but keep it on the same revsion), run ``brz
+  tag new-name -r tag:old-name`` and then ``brz tag --delete oldname``.
+  
+  If no tag name is specified it will be determined through the
+  'automatic_tag_name' hook. This can e.g. be used to automatically tag
+  upstream releases by reading configure.ac. See ``brz help hooks`` for
+  details.
+
+:See also: :doc:`commit <commit-help>`, :doc:`tags <tags-help>`
+
+

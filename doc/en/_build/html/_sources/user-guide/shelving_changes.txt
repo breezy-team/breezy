@@ -1,0 +1,110 @@
+Shelving Changes
+================
+
+Sometimes you will want to temporarily remove changes from your working
+tree and restore them later, For instance to commit a small bug-fix you
+found while working on something. Breezy allows you to put changes on
+a ``shelf`` to achieve this. When you want to restore the changes later
+you can use ``unshelve`` to apply them to your working tree again.
+
+For example, consider a working tree with one or more changes made ... ::
+
+  $ brz diff
+  === modified file 'description.txt'
+  --- description.txt
+  +++ description.txt
+  @@ -2,7 +2,7 @@
+   ===============
+
+   These plugins
+  -by Michael Ellerman
+  +written by Michael Ellerman
+   provide a very
+   fine-grained 'undo'
+   facility
+  @@ -11,6 +11,6 @@
+   This allows you to
+   undo some of
+   your changes,
+  -commit, and get
+  +perform a commit, and get
+   back to where you
+   were before.
+
+The ``shelve`` command interactively asks which changes
+you want to retain in the working tree::
+
+  $ brz shelve
+  --- description.txt
+  +++ description.txt
+  @@ -2,7 +2,7 @@
+   ===============
+
+   These plugins
+  -by Michael Ellerman
+  +written by Michael Ellerman
+   provide a very
+   fine-grained 'undo'
+   facility
+
+  Shelve? [yNfrq?]: y
+  --- description.txt
+  +++ description.txt
+  @@ -11,6 +11,6 @@
+   This allows you to
+   undo some of
+   your changes,
+  -commit, and get
+  +perform a commit, and get
+   back to where you
+   were before.
+
+  Shelve? [yNfrq?]: n
+  Shelve 2 change(s)? [yNfrq?]', 'y'
+  Selected changes:
+   M  description.txt
+  Changes shelved with id "1".
+
+If there are lots of changes in the working tree, you
+can provide the ``shelve`` command with a list of files
+and you will only be asked about changes in those files.
+After shelving changes, it's a good idea to use ``diff``
+to confirm the tree has just the changes you expect::
+
+  $ brz diff
+  === modified file 'description.txt'
+  --- description.txt
+  +++ description.txt
+  @@ -2,7 +2,7 @@
+   ===============
+
+   These plugins
+  -by Michael Ellerman
+  +written by Michael Ellerman
+   provide a very
+   fine-grained 'undo'
+   facility
+
+Great - you're ready to commit::
+
+  $ brz commit -m "improve first sentence"
+
+At some later time, you can bring the shelved changes back into the
+working tree using ``unshelve``::
+
+  $ brz unshelve
+  Unshelving changes with id "1".
+   M  description.txt
+  All changes applied successfully.
+
+If you want to, you can put multiple items on the shelf.
+Normally each time you run ``unshelve`` the most recently
+shelved changes will be reinstated. However, you can also
+unshelve changes in a different order by explicitly
+specifying which changes to unshelve.
+
+Breezy merges the changes in to your working tree, so they
+will apply even if you have edited the files since you shelved
+them, though they may conflict, in which case you will have to
+resolve the conflicts in the same way you do after a conflicted
+merge.

@@ -1,0 +1,140 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Using gatekeepers &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Sending changes" href="sending_changes.html" />
+    <link rel="prev" title="Organizing branches" href="organizing_branches.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="organizing_branches.html" title="Organizing branches"
+             accesskey="P">previous</a> |
+          <a href="sending_changes.html" title="Sending changes"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="using-gatekeepers">
+<h1>Using gatekeepers<a class="headerlink" href="#using-gatekeepers" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="the-decentralized-with-human-gatekeeper-workflow">
+<h2>The decentralized with human gatekeeper workflow<a class="headerlink" href="#the-decentralized-with-human-gatekeeper-workflow" title="Permalink to this headline">¶</a></h2>
+<p>In this workflow, one developer (the gatekeeper) has commit rights
+to the main branch while other developers have read-only access.
+All developers make their changes in task branches.</p>
+<img alt="../_images/workflows_gatekeeper.png" src="../_images/workflows_gatekeeper.png" />
+<p>When a developer wants their work merged, they ask the gatekeeper
+to review their change and merge it if acceptable. If a change fails
+review, further development proceeds in the relevant task branch
+until it is good to go.</p>
+<p>Note that a key aspect of this approach is the inversion of control
+that is implied: developers no longer decide when to “commit/push”
+changes into the central branch: the code base evolves by gatekeepers
+“merging/pulling” changes in a controlled manner. It’s perfectly
+acceptable, indeed common, to have multiple central branches with
+different gatekeepers, e.g. one branch for the current production
+release and another for the next release. In this case, a task branch
+holding a bug fix will most likely be advertised to both gatekeepers.</p>
+<p>One of the great things about this workflow is that it is hugely
+scalable. Large projects can be broken into teams and each
+team can have a <em>local master branch</em> managed by a gatekeeper.
+Someone can be appointed as the primary gatekeeper to merge
+changes from the team master branches into the primary master
+branch when team leaders request it.</p>
+</div>
+<div class="section" id="the-decentralized-with-automatic-gatekeeper-workflow">
+<h2>The decentralized with automatic gatekeeper workflow<a class="headerlink" href="#the-decentralized-with-automatic-gatekeeper-workflow" title="Permalink to this headline">¶</a></h2>
+<p>To obtain even higher quality, all developers can be required to
+submit changes to an automated gatekeeper that only merges and
+commits a change if it passes a regression test suite. One
+such gatekeeper is a software tool called PQM.</p>
+<img alt="../_images/workflows_pqm.png" src="../_images/workflows_pqm.png" />
+<p>For further information on PQM, see <a class="reference external" href="https://launchpad.net/pqm">https://launchpad.net/pqm</a>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="organizing_branches.html" title="Organizing branches"
+              >previous</a> |
+            <a href="sending_changes.html" title="Sending changes"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/using_gatekeepers.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

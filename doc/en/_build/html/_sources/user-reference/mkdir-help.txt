@@ -1,0 +1,18 @@
+mkdir
+=====
+
+:Purpose: Create a new versioned directory.
+:Usage:   brz mkdir DIR...
+
+:Options:
+  -h, --help     Show help message.
+  -p, --parents  No error if existing, make parent directories as needed.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  This is equivalent to creating the directory and then adding it.
+
+
+

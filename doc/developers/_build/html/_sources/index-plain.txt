@@ -1,0 +1,156 @@
+=================================
+Breezy Developer Document Catalog
+=================================
+
+
+Overall developer documentation
+===============================
+
+* `Developer Guide <HACKING.html>`_
+
+* `Architectural Overview <overview.html>`_ |--| describes some of the
+  most important classes and concepts.
+
+* `breezy API reference <https://www.breezy-vcs.org/developers/api/>`_
+  (external link)
+  |--| automatically generated API reference information
+
+* `Integrating with Breezy <http://wiki.bazaar.canonical.com/Integrating_with_Bazaar>`_
+  (wiki) |--| a guide for writing Python programs that work with Breezy.
+
+* `Revision Properties <revision-properties.html>`_ |--| An application
+  can set arbitrary per-revision key/value pairs to store app-specific
+  data.
+
+* `Testing <testing.html>`_ |--| Guide to writing tests for Breezy.
+
+* `Code Review <code-review.html>`_.
+
+* `Breezy Code Style Guide <code-style.html>`_.
+
+* `Writing plugins <plugin-development.html>`_
+  |--| specific advice on writing Breezy plugins.
+
+* `Documenting changes <documenting-changes.html>`_.
+
+Process
+=======
+
+* `Releasing Breezy <releasing.html>`_ |--|
+  Checklist to make a release of Breezy.
+
+* `Managing the Breezy PPA <ppa.html>`_ |--| Packaging Breezy for Ubuntu.
+
+* `Giving back <http://wiki.bazaar.canonical.com/BzrGivingBack>`_ (wiki) |--| How to get
+  your changes to Breezy integrated into a release.
+
+* `Profiling notes <profiling.html>`_ |--| Instructions on how to profile
+  brz code and visualize the results.
+
+* `EC2 resources <ec2.html>`_ |--| A team resource for
+  Windows packaging and testing, and Ubuntu testing.
+
+* `Tracking Bugs in Breezy <bug-handling.html>`_ |--| How we use the bug
+  tracker.
+
+Architecture overviews
+======================
+
+* `Transports <transports.html>`_ |--| Transport virtual filesystem
+  abstraction.
+
+Plans
+=====
+
+* `Performance roadmap <performance-roadmap.html>`_ |--| The roadmap
+  for fixing performance in brz over the next few releases.
+
+* `Co-located branches <colocated-branches.html>`_ |--| Planned(?) support
+  for storing multiple branches in one file-system directory.
+
+* `Breezy Windows Shell Extension Options <tortoise-strategy.html>`_ |--|
+  Implementation strategy for Breezy Windows Shell Extensions, aka
+  TortoiseBzr.
+
+* `CHK Optimized index <improved_chk_index.html>`_
+
+Specifications
+==============
+
+* `API versioning <api-versioning.html>`_ |--| breezy API versioning.
+
+* `Apport error reporting <apport.html>`_ |--| Capture data to report
+  bugs.
+
+* `Authentication ring <authentication-ring.html>`_ |--| Configuring
+  authentication.
+
+* `Bundles <bundles.html>`_ |--| All about brz bundles.
+
+* `Container format <container-format.html>`_ |--| Notes on a container format
+  for streaming and storing Breezy data.
+
+* `Groupcompress <groupcompress-design.html>`_ |--| Notes on the compression
+  technology used in CHK repositories.
+
+* `Indices <indices.html>`_ |--| The index facilities available within
+  breezy.
+
+* `Inventories <inventory.html>`_ |--| Tree shape abstraction.
+
+* `LCA merge <lca-merge.html>`_ |--| A nice new merge algorithm.
+
+* `Network protocol <network-protocol.html>`_ |--| Custom network protocol.
+
+* `Plugin APIs <plugin-api.html>`_ |--| APIs plugins should use.
+
+* `Repositories <repository.html>`_ |--| What repositories do and are used for.
+
+* `Repository stream <repository-stream.html>`_ |--| Notes on streaming data
+  for repositories (a layer above the container format).
+
+* `Integration Guide <integration.html>`_ |--| A guide to integrate breezy into
+  any python application.
+
+* `Breezy and case-insensitive file systems <case-insensitive-file-systems.html>`_
+  |--| How Breezy operates on case-insensitive file systems such as commonly
+  found on Windows, USB sticks, etc.
+
+* `Development repository formats <development-repo.html>`_ |--| How to
+  work with repository formats that are still under development.
+  Contains instructions for those implementing new formats, of course,
+  but also for (bleeding-edge) end users of those formats.
+
+Data formats
+============
+
+* `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories
+  (new in Bazaar 0.92).
+
+Implementation notes
+====================
+
+* `BTree Index Prefetch <btree_index_prefetch.html>`_ |--| How brz decides
+  to pre-read extra nodes in the btree index.
+
+* `Computing last_modified values <last-modified.html>`_ for inventory
+  entries
+
+* `Content filtering <content-filtering.html>`_
+
+* `LCA Tree Merging <lca_tree_merging.html>`_ |--| Merging tree-shape when
+  there is not a single unique ancestor (criss-cross merge).
+
+Miscellaneous
+=============
+
+* `dirstate <dirstate.html>`_ |--| An observation re. the dirstate file
+
+* `"brz update" performance analysis <update.html>`_ |--| "brz update"
+  performance analysis
+
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

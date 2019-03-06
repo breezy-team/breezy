@@ -1,0 +1,97 @@
+Using checkouts
+===============
+
+Turning a branch into a checkout
+--------------------------------
+
+If you have a local branch and wish to make it a checkout, use the
+``bind`` command like this::
+
+  brz bind bzr+ssh://centralhost/srv/brz/PROJECT/trunk
+
+This is necessary, for example, after creating a central branch using
+``push`` as illustrated in the previous section.
+
+After this, commits will be applied to the bound branch before
+being applied locally.
+
+Turning a checkout into a branch
+--------------------------------
+
+If you have a checkout and wish to make it a normal branch, use the
+``unbind`` command like this::
+
+  brz unbind
+
+After this, commits will only be applied locally.
+
+Getting a checkout
+------------------
+
+When working in a team using a central branch, one person needs
+to provide some initial content as shown in the previous section.
+After that, each person should use the ``checkout`` command to
+create their local checkout, i.e. the sandbox in which they
+will make their changes.
+
+Unlike Subversion and CVS, in Breezy the ``checkout`` command creates a
+local full copy of history in addition to creating a working tree holding
+the latest content. This means that operations such as ``diff`` and ``log``
+are fast and can still be used when disconnected from the central location.
+
+Getting a lightweight checkout
+------------------------------
+
+While Breezy does its best to efficiently store version history, there
+are occasions when the history is simply not wanted. For example, if your
+team is managing the content of a web site using Breezy with a
+central repository, then your release process might be as simple as
+updating a checkout of the content on the public web server. In this
+case, you probably don't want the history downloaded to that location
+as doing so:
+
+ * wastes disk space holding history that isn't needed there
+ * exposes a Breezy branch that you may want kept private.
+
+To get a history-less checkout in Breezy, use the ``--lightweight``
+option like this::
+
+  brz checkout --lightweight bzr+ssh://centralhost/srv/brz/PROJECT/trunk
+
+Of course, many of the benefits of a normal checkout are lost by doing
+this but that's a tradeoff you can make if and when it makes sense.
+
+The ``--lightweight`` option only applies to checkouts, not to all branches.
+
+Note: If your code base is really large and disk space on your computer
+is limited, lightweight checkouts may be the right choice for you.
+Be sure to consider all your options though including
+`shared repositories <branching_a_project.html#a-reminder-about-shared-repositories>`_,
+`stacked branches <stacked.html>`_, and
+`reusing a checkout <reusing_a_checkout.html>`_.
+
+Updating to the latest content
+------------------------------
+
+One of the important aspects of working in lockstep with others is
+keeping your checkout up to date with the latest changes made to
+the central branch. Just as you would in Subversion or CVS, you do
+this in Breezy by using the ``update`` command like this::
+
+  brz update
+
+This gets any new revisions available in the bound branch and
+merges your local changes, if any.
+
+Handling commit failures
+------------------------
+
+Note that your checkout *must* be up to date with the bound branch
+before running ``commit``. Breezy is actually stricter about this
+than Subversion or CVS - you need to be up to date with the full
+tree, not just for the files you've changed. Breezy will ask you
+to run ``update`` if it detects that a revision has been added to
+the central location since you last updated.
+
+If the network connection to the bound branch is lost, the commit will
+fail. Some alternative ways of working around that are outlined next.

@@ -1,0 +1,79 @@
+Overview
+########
+
+High level upgrade process
+--------------------------
+
+In broad terms, there are 3 steps involved in upgrading a new format:
+
+1. Upgrade the core software
+
+2. Upgrade required plugins
+
+3. Migrate data to the new default format.
+
+Breezy supports branches in earlier formats so the third step is strictly not
+required. However, when new default formats are introduced, they are more
+space efficient, faster on large projects and/or provide new features. So it
+is recommended that most projects migrate to it at a convenient time.
+
+For most users, upgrading and migrating to the new format is straight
+forward. For projects with a large community of developers though, things
+become more complex. In these cases, careful planning and good communications
+become essential. This document provides general advice which aims to assist
+in this regard. If in doubt, please contact us on our mailing list or IRC
+channel with any questions or concerns you have.
+
+
+Upgrading the core software
+---------------------------
+
+The steps required to upgrade the core software vary from operating system to
+operating system.  A brief outline of the steps is given below.
+
+To upgrade Breezy on Ubuntu:
+
+1. Ensure your package manager is configured with the required software
+   sources, e.g. the official stable release PPA for Ubuntu:
+   https://launchpad.net/~brz/+archive
+
+2. Use your package manager to upgrade to the latest version.
+
+To upgrade Breezy on Windows:
+
+1. Uninstall the existing version using Add/Remove Programs.
+
+2. Install the new version using the relevant installer.
+
+To upgrade Breezy on OS X (via the installer):
+
+1. Install the new version using the relevant installer.
+
+To upgrade Breezy on OS X (via MacPorts):
+
+1. Refresh the package metadata using **sudo port selfupdate**
+
+2. Upgrade to the latest version using **sudo port upgrade brz**
+
+For further information on installing and upgrading, see
+https://www.breezy-vcs.org/pages/download.html
+
+
+Upgrading required plugins
+--------------------------
+
+Many plugins are not dependent on a particular Breezy version so
+upgrading them is optional. Other plugins, notably bzr-svn, are more tightly
+associated with Breezy's APIs so these typically need to be upgraded in
+lockstep with the core software.
+
+
+Migrating data to the new default format
+----------------------------------------
+
+As mentioned earlier, the complexity of migrating to a new format
+depends on several factors, particularly project community size.
+It also depends on how data is currently stored, e.g. in a
+standalone branch, multiple branches in a shared repository,
+stacked branches on Launchpad, etc. These various scenarios are
+covered in the next chapter.

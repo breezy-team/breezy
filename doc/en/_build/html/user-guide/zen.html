@@ -1,0 +1,308 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Breezy Zen &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Going solo" href="solo_intro.html" />
+    <link rel="prev" title="Using plugins" href="plugins.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="plugins.html" title="Using plugins"
+             accesskey="P">previous</a> |
+          <a href="solo_intro.html" title="Going solo"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="breezy-zen">
+<h1>Breezy Zen<a class="headerlink" href="#breezy-zen" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="grokking-breezy">
+<h2>Grokking Breezy<a class="headerlink" href="#grokking-breezy" title="Permalink to this headline">¶</a></h2>
+<p>While Breezy is similar to other VCS tools in many ways, there are
+some important differences that are not necessarily obvious at first
+glance.  This section attempts
+to explain some of the things users need to know in order to “grok” Breezy,
+i.e. to deeply understand it.</p>
+<p>Note: It isn’t necessary to fully understand this section to use Breezy.
+You may wish to skim this section now and come back to it at a later time.</p>
+</div>
+<div class="section" id="understanding-revision-numbers">
+<h2>Understanding revision numbers<a class="headerlink" href="#understanding-revision-numbers" title="Permalink to this headline">¶</a></h2>
+<p>All revisions in the mainline of a branch have a simple increasing
+integer. (First commit gets 1, 10th commit gets 10, etc.) This makes them
+fairly natural to use when you want to say “grab the 10th revision from my
+branch”, or “fixed in revision 3050”.</p>
+<p>For revisions which have been merged into a branch, a dotted notation is used
+(e.g., 3112.1.5). Dotted revision numbers have three numbers <a class="footnote-reference" href="#id2" id="id1">[1]</a>. The first
+number indicates what mainline revision change is derived from. The second
+number is the branch counter. There can be many branches derived from the
+same revision, so they all get a unique number. The third number is the
+number of revisions since the branch started. For example, 3112.1.5 is the
+first branch from revision 3112, the fifth revision on that branch.</p>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Versions prior to brz 1.2 used a slightly different algorithm.
+Some nested branches would get extra numbers (such as 1.1.1.1.1)
+rather than the simpler 3-number system.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="hierarchical-history-is-good">
+<h2>Hierarchical history is good<a class="headerlink" href="#hierarchical-history-is-good" title="Permalink to this headline">¶</a></h2>
+<p>Imagine a project with multiple developers contributing changes where
+many changes consist of a series of commits. To give a concrete example,
+consider the case where:</p>
+<blockquote>
+<div><ul class="simple">
+<li>The tip of the project’s trunk is revision 100.</li>
+<li>Mary makes 3 changes to deliver feature X.</li>
+<li>Bill makes 4 changes to deliver feature Y.</li>
+</ul>
+</div></blockquote>
+<p>If the developers are working in parallel and using a traditional
+centralized VCS approach, the project history will most likely be linear
+with Mary’s changes and Bill’s changes interleaved. It might look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">107</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span> <span class="k">for</span> <span class="n">Y</span>
+<span class="mi">106</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span> <span class="n">found</span> <span class="ow">in</span> <span class="n">testing</span> <span class="n">Y</span>
+<span class="mi">105</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span> <span class="n">found</span> <span class="ow">in</span> <span class="n">testing</span> <span class="n">X</span>
+<span class="mi">104</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span> <span class="k">for</span> <span class="n">Y</span>
+<span class="mi">103</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span> <span class="k">for</span> <span class="n">X</span>
+<span class="mi">102</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span> <span class="ow">and</span> <span class="n">tests</span> <span class="k">for</span> <span class="n">X</span>
+<span class="mi">101</span><span class="p">:</span> <span class="n">Add</span> <span class="n">tests</span> <span class="k">for</span> <span class="n">Y</span>
+<span class="mi">100</span><span class="p">:</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>Many teams use this approach because their tools make branching and merging
+difficult. As a consequence, developers update from and commit to the trunk
+frequently, minimizing integration pain by spreading it over every commit.
+If you wish, you can use Breezy exactly like this. Breezy does offer other
+ways though that you ought to consider.</p>
+<p>An alternative approach encouraged by distributed VCS tools is to create
+feature branches and to integrate those when they are ready. In this case,
+Mary’s feature branch would look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">103</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span> <span class="n">found</span> <span class="ow">in</span> <span class="n">testing</span> <span class="n">X</span>
+<span class="mi">102</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span> <span class="k">for</span> <span class="n">X</span>
+<span class="mi">101</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span> <span class="ow">and</span> <span class="n">tests</span> <span class="k">for</span> <span class="n">X</span>
+<span class="mi">100</span><span class="p">:</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>And Bill’s would look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">104</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span> <span class="k">for</span> <span class="n">Y</span>
+<span class="mi">103</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span> <span class="n">found</span> <span class="ow">in</span> <span class="n">testing</span> <span class="n">Y</span>
+<span class="mi">102</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span> <span class="k">for</span> <span class="n">Y</span>
+<span class="mi">101</span><span class="p">:</span> <span class="n">Add</span> <span class="n">tests</span> <span class="k">for</span> <span class="n">Y</span>
+<span class="mi">100</span><span class="p">:</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>If the features were independent and you wanted to keep linear history,
+the changes could be pushed back into the trunk in batches. (Technically,
+there are several ways of doing that but that’s beyond the scope of
+this discussion.) The resulting history might look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">107</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span> <span class="n">found</span> <span class="ow">in</span> <span class="n">testing</span> <span class="n">X</span>
+<span class="mi">106</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span> <span class="k">for</span> <span class="n">X</span>
+<span class="mi">105</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span> <span class="ow">and</span> <span class="n">tests</span> <span class="k">for</span> <span class="n">X</span>
+<span class="mi">104</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span> <span class="k">for</span> <span class="n">Y</span>
+<span class="mi">103</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span> <span class="n">found</span> <span class="ow">in</span> <span class="n">testing</span> <span class="n">Y</span>
+<span class="mi">102</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span> <span class="k">for</span> <span class="n">Y</span>
+<span class="mi">101</span><span class="p">:</span> <span class="n">Add</span> <span class="n">tests</span> <span class="k">for</span> <span class="n">Y</span>
+<span class="mi">100</span><span class="p">:</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>While this takes a bit more effort to achieve, it has some advantages over
+having revisions randomly intermixed. Better still though, branches can
+be merged together forming a non-linear history. The result might look
+like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">102</span><span class="p">:</span> <span class="n">Merge</span> <span class="n">feature</span> <span class="n">X</span>
+     <span class="mf">100.2</span><span class="o">.</span><span class="mi">3</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span> <span class="n">found</span> <span class="ow">in</span> <span class="n">testing</span> <span class="n">X</span>
+     <span class="mf">100.2</span><span class="o">.</span><span class="mi">2</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span> <span class="k">for</span> <span class="n">X</span>
+     <span class="mf">100.2</span><span class="o">.</span><span class="mi">1</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span> <span class="ow">and</span> <span class="n">tests</span> <span class="k">for</span> <span class="n">X</span>
+<span class="mi">101</span><span class="p">:</span> <span class="n">Merge</span> <span class="n">feature</span> <span class="n">Y</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">4</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span> <span class="k">for</span> <span class="n">Y</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">3</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span> <span class="n">found</span> <span class="ow">in</span> <span class="n">testing</span> <span class="n">Y</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">2</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span> <span class="k">for</span> <span class="n">Y</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">1</span><span class="p">:</span> <span class="n">Add</span> <span class="n">tests</span> <span class="k">for</span> <span class="n">Y</span>
+<span class="mi">100</span><span class="p">:</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>Or more likely this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">102</span><span class="p">:</span> <span class="n">Merge</span> <span class="n">feature</span> <span class="n">X</span>
+     <span class="mf">100.2</span><span class="o">.</span><span class="mi">3</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span>
+     <span class="mf">100.2</span><span class="o">.</span><span class="mi">2</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span>
+     <span class="mf">100.2</span><span class="o">.</span><span class="mi">1</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span> <span class="ow">and</span> <span class="n">tests</span>
+<span class="mi">101</span><span class="p">:</span> <span class="n">Merge</span> <span class="n">feature</span> <span class="n">Y</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">4</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">3</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span> <span class="n">found</span> <span class="ow">in</span> <span class="n">testing</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">2</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">1</span><span class="p">:</span> <span class="n">Add</span> <span class="n">tests</span>
+<span class="mi">100</span><span class="p">:</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>This is considered good for many reasons:</p>
+<blockquote>
+<div><ul class="simple">
+<li>It makes it easier to understand the history of a project.
+Related changes are clustered together and clearly partitioned.</li>
+<li>You can easily collapse history to see just the commits on the mainline
+of a branch. When viewing the trunk history like this, you only see
+high level commits (instead of a large number of commits uninteresting
+at this level).</li>
+<li>If required, it makes backing out a feature much easier.</li>
+<li>Continuous integration tools can be used to ensure that
+all tests still pass before committing a merge to the mainline.
+(In many cases, it isn’t appropriate to trigger CI tools after
+every single commit as some tests will fail during development.
+In fact, adding the tests first - TDD style - will guarantee it!)</li>
+</ul>
+</div></blockquote>
+<p>In summary, the important points are:</p>
+<blockquote>
+<div><p><em>Organize your work using branches.</em></p>
+<p><em>Integrate changes using merge.</em></p>
+<p><em>Ordered revision numbers and hierarchy make history easier to follow.</em></p>
+</div></blockquote>
+</div>
+<div class="section" id="each-branch-has-its-own-view-of-history">
+<h2>Each branch has its own view of history<a class="headerlink" href="#each-branch-has-its-own-view-of-history" title="Permalink to this headline">¶</a></h2>
+<p>As explained above, Breezy makes the distinction between:</p>
+<blockquote>
+<div><ul class="simple">
+<li>mainline revisions, i.e. ones you committed in your branch, and</li>
+<li>merged revisions, i.e. ones added as ancestors by committing a merge.</li>
+</ul>
+</div></blockquote>
+<p>Each branch effectively has its own view of history, i.e. different
+branches can give the same revision a different “local” revision number.
+Mainline revisions always get allocated single number revision numbers
+while merged revisions always get allocated dotted revision numbers.</p>
+<p>To extend the example above, here’s what the revision history of
+Mary’s branch would look like had she decided to merge the project
+trunk into her branch after completing her changes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">104</span><span class="p">:</span> <span class="n">Merge</span> <span class="n">mainline</span>
+     <span class="mf">100.2</span><span class="o">.</span><span class="mi">1</span><span class="p">:</span> <span class="n">Merge</span> <span class="n">feature</span> <span class="n">Y</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">4</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">3</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span> <span class="n">found</span> <span class="ow">in</span> <span class="n">testing</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">2</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span>
+     <span class="mf">100.1</span><span class="o">.</span><span class="mi">1</span><span class="p">:</span> <span class="n">Add</span> <span class="n">tests</span>
+<span class="mi">103</span><span class="p">:</span> <span class="n">Fix</span> <span class="n">bug</span> <span class="n">found</span> <span class="ow">in</span> <span class="n">testing</span> <span class="n">X</span>
+<span class="mi">102</span><span class="p">:</span> <span class="n">Add</span> <span class="n">documentation</span> <span class="k">for</span> <span class="n">X</span>
+<span class="mi">101</span><span class="p">:</span> <span class="n">Add</span> <span class="n">code</span> <span class="ow">and</span> <span class="n">tests</span> <span class="k">for</span> <span class="n">X</span>
+<span class="mi">100</span><span class="p">:</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>Once again, it’s easy for Mary to look at just <em>her</em> top level of history
+to see the steps she has taken to develop this change. In this context,
+merging the trunk (and resolving any conflicts caused by doing that) is
+just one step as far as the history of this branch is concerned.</p>
+<p>It’s important to remember that Breezy is not changing history here, nor
+is it changing the global revision identifiers. You can always use the
+latter if you really want to. In fact, you can use the branch specific
+revision numbers when communicating <em>as long as</em> you provide the branch
+URL as context. (In many Breezy projects, developers imply the central
+trunk branch if they exchange a revision number without a branch URL.)</p>
+<p>Merges do not change revision numbers in a branch, though they do
+allocate local revision numbers to newly merged revisions. The only time
+Breezy will change revision numbers in a branch is when you explicitly
+ask it to mirror another branch.</p>
+<p>Note: Revisions are numbered in a stable way: if two branches have
+the same revision in their mainline, all revisions in the ancestry of that
+revision will have the same revision numbers. For example, if Alice and Bob’s
+branches agree on revision 10, they will agree on all revisions before
+that.</p>
+</div>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p>In general, if you follow the advice given earlier - organise
+your work in branches and use merge to collaborate - you’ll find Breezy
+generally does what you expect.</p>
+<p>In coming chapters, we examine various ways of using Breezy beginning with
+the simplest: using Breezy for personal projects.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="plugins.html" title="Using plugins"
+              >previous</a> |
+            <a href="solo_intro.html" title="Going solo"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/zen.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

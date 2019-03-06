@@ -1,0 +1,202 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Core concepts &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Workflows" href="breezy_workflows.html" />
+    <link rel="prev" title="Introducing Breezy" href="introducing_breezy.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="introducing_breezy.html" title="Introducing Breezy"
+             accesskey="P">previous</a> |
+          <a href="breezy_workflows.html" title="Workflows"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="core-concepts">
+<h1>Core concepts<a class="headerlink" href="#core-concepts" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="a-simple-user-model">
+<h2>A simple user model<a class="headerlink" href="#a-simple-user-model" title="Permalink to this headline">¶</a></h2>
+<p>To use Breezy you need to understand four core concepts:</p>
+<ul class="simple">
+<li><strong>Revision</strong> - a snapshot of the files you’re working with.</li>
+<li><strong>Working tree</strong> - the directory containing your version-controlled
+files and sub-directories.</li>
+<li><strong>Branch</strong> - an ordered set of revisions that describe the history of a
+set of files.</li>
+<li><strong>Repository</strong> - a store of revisions.</li>
+</ul>
+<p>Let’s look at each in more detail.</p>
+</div>
+<div class="section" id="revision">
+<h2>Revision<a class="headerlink" href="#revision" title="Permalink to this headline">¶</a></h2>
+<p>A revision is a <em>snapshot</em> of the state of a tree of files and directories,
+including their content and shape. A revision also has some metadata
+associated with it, including:</p>
+<ul class="simple">
+<li>Who committed it</li>
+<li>When it was committed</li>
+<li>A commit message</li>
+<li>Parent revisions from which it was derived</li>
+</ul>
+<p>Revisions are immutable and can be globally, uniquely identified
+by a <em>revision-id</em>. An example revision-id is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pqm</span><span class="nd">@pqm</span><span class="o">.</span><span class="n">ubuntu</span><span class="o">.</span><span class="n">com</span><span class="o">-</span><span class="mi">20071129184101</span><span class="o">-</span><span class="n">u9506rihe4zbzyyz</span>
+</pre></div>
+</div>
+<p>Revision-ids are generated at commit time or, for imports from other
+systems, at the time of import. While revision-ids are necessary
+for internal use and external tool integration, branch-specific
+<em>revision numbers</em> are the preferred interface for humans.</p>
+<p>Revision numbers are dotted decimal identifiers like 1, 42 and 2977.1.59
+that trace a path through the revision number graph for a branch.
+Revision numbers are generally shorter than revision-ids and,
+within a single branch, can be compared with each other to get a sense
+of their relationship. For example, revision 10 is the mainline (see below)
+revision immediately after revision 9. Revision numbers
+are generated on the fly when commands are executing, because they
+depend on which revision is the tip (i.e. most recent revision)
+in the branch.</p>
+<p>See <a class="reference external" href="specifying_revisions.html">Specifying revisions</a> in the appendices
+for a closer look at the numerous ways that revisions and ranges of
+revisions can be specified in Breezy, and <a class="reference external" href="zen.html#understanding-revision-numbers">Understanding Revision Numbers</a> for a more detailed
+description of revision numbering.</p>
+</div>
+<div class="section" id="working-tree">
+<h2>Working Tree<a class="headerlink" href="#working-tree" title="Permalink to this headline">¶</a></h2>
+<p>A working tree is a <em>version-controlled directory</em> holding files the user
+can edit. A working tree is associated with a <em>branch</em>.</p>
+<p>Many commands use the working tree as their context, e.g. <code class="docutils literal notranslate"><span class="pre">commit</span></code> makes
+a new revision using the current content of files in the working tree.</p>
+</div>
+<div class="section" id="branch">
+<h2>Branch<a class="headerlink" href="#branch" title="Permalink to this headline">¶</a></h2>
+<p>In the simplest case, a branch is an <em>ordered series of revisions</em>.
+The last revision is known as the <em>tip</em>.</p>
+<p>Branches may split apart and be <em>merged</em> back together, forming a
+<em>graph</em> of revisions. Technically, the graph shows directed relationships
+(between parent and child revisions) and there are no loops, so
+you may hear some people refer to it as a <em>directed acyclic graph</em> or DAG.</p>
+<p>If this name sounds scary, don’t worry. The important things
+to remember are:</p>
+<ul class="simple">
+<li>The primary line of development within the DAG is called
+the <em>mainline</em>, <em>trunk</em>, or simply the <em>left hand side</em> (LHS).</li>
+<li>A branch might have other lines of development and if it does,
+these other lines of development begin at some point and end at
+another point.</li>
+</ul>
+</div>
+<div class="section" id="repository">
+<h2>Repository<a class="headerlink" href="#repository" title="Permalink to this headline">¶</a></h2>
+<p>A repository is simply a <em>store of revisions</em>. In the simplest case,
+each branch has its own repository. In other cases, it makes sense for
+branches to share a repository in order to optimize disk usage.</p>
+</div>
+<div class="section" id="putting-the-concepts-together">
+<h2>Putting the concepts together<a class="headerlink" href="#putting-the-concepts-together" title="Permalink to this headline">¶</a></h2>
+<p>Once you have grasped the concepts above, the various ways of using Breezy
+should become easier to understand. The simplest way of using Breezy is
+to use a <em>standalone tree</em>, which has a working tree, branch, and repository
+all in a single location. Other common scenarios include:</p>
+<ul class="simple">
+<li><a class="reference external" href="branching_a_project.html#a-reminder-about-shared-repositories">Shared repositories</a>
+- working tree and branch are colocated, but the repository is in a higher level
+directory.</li>
+<li><a class="reference external" href="stacked.html">Stacked branches</a> - branch stores just its
+unique revisions, using its parent’s repository for common revisions.</li>
+<li><a class="reference external" href="using_checkouts.html#getting-a-lightweight-checkout">Lightweight checkouts</a>
+- branch is stored in a different location to the working tree.</li>
+</ul>
+<p>The best way to use Breezy, however, depends on your needs. Let’s take a
+look at some common workflows next.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="introducing_breezy.html" title="Introducing Breezy"
+              >previous</a> |
+            <a href="breezy_workflows.html" title="Workflows"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/core_concepts.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

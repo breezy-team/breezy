@@ -1,0 +1,35 @@
+uncommit
+========
+
+:Purpose: Remove the last committed revision.
+:Usage:   brz uncommit [LOCATION]
+
+:Options:
+  --dry-run             Don't actually make changes.
+  --force               Say yes to all questions.
+  -h, --help            Show help message.
+  --keep-tags           Keep tags that point to removed revisions.
+  --local               Only remove the commits from the local branch when in
+                        a checkout.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  --verbose will print out what is being removed.
+  --dry-run will go through all the motions, but not actually
+  remove anything.
+  
+  If --revision is specified, uncommit revisions to leave the branch at the
+  specified revision.  For example, "brz uncommit -r 15" will leave the
+  branch at revision 15.
+  
+  Uncommit leaves the working tree ready for a new commit.  The only change
+  it may make is to restore any pending merges that were present before
+  the commit.
+
+:See also: :doc:`commit <commit-help>`
+
+

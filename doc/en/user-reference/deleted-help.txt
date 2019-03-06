@@ -1,0 +1,18 @@
+deleted
+=======
+
+:Purpose: List files deleted in the working tree.
+:Usage:   brz deleted
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --show-ids            Show internal object ids.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:See also: :doc:`ls <ls-help>`, :doc:`status <status-help>`
+
+

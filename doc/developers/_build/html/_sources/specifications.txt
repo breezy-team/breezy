@@ -1,0 +1,82 @@
+Specifications
+==============
+
+.. toctree::
+   :hidden:
+
+   revision-properties
+   api-versioning
+   apport
+   authentication-ring
+   bundles
+   container-format
+   groupcompress-design
+   indices
+   inventory
+   lca-merge
+   network-protocol
+   plugin-api
+   repository
+   repository-stream
+   case-insensitive-file-systems
+   development-repo
+   packrepo
+   feature-flags
+
+
+* `Revision Properties <revision-properties.html>`_ |--| An application
+  can set arbitrary per-revision key/value pairs to store app-specific
+  data.
+
+* `API versioning <api-versioning.html>`_ |--| breezy API versioning.
+
+* `Apport error reporting <apport.html>`_ |--| Capture data to report
+  bugs.
+
+* `Authentication ring <authentication-ring.html>`_ |--| Configuring
+  authentication.
+
+* `Bundles <bundles.html>`_ |--| All about bzr bundles.
+
+* `Container format <container-format.html>`_ |--| Notes on a container format
+  for streaming and storing Bazaar data.
+
+* `Groupcompress <groupcompress-design.html>`_ |--| Notes on the compression
+  technology used in CHK repositories.
+
+* `Indices <indices.html>`_ |--| The index facilities available within breezy.
+
+* `Inventories <inventory.html>`_ |--| Tree shape abstraction.
+
+* `LCA merge <lca-merge.html>`_ |--| A nice new merge algorithm.
+
+* `Network protocol <network-protocol.html>`_ |--| Custom network protocol.
+
+* `Plugin APIs <plugin-api.html>`_ |--| APIs plugins should use.
+
+* `Repositories <repository.html>`_ |--| What repositories do and are used for.
+
+* `Repository stream <repository-stream.html>`_ |--| Notes on streaming data
+  for repositories (a layer above the container format).
+
+* `Bazaar and case-insensitive file systems <case-insensitive-file-systems.html>`_
+  |--| How Bazaar operates on case-insensitive file systems such as commonly
+  found on Windows, USB sticks, etc.
+
+* `Development repository formats <development-repo.html>`_ |--| How to
+  work with repository formats that are still under development.
+  Contains instructions for those implementing new formats, of course,
+  but also for (bleeding-edge) end users of those formats.
+
+* `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories
+  (new in Bazaar 0.92).
+
+* `Format feature flags <feature-flags.html>`_ |--| Allow extending
+  formats with optional features.  (new in Bazaar 2.5).
+
+
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

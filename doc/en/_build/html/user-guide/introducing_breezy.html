@@ -1,0 +1,230 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Introducing Breezy &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Core concepts" href="core_concepts.html" />
+    <link rel="prev" title="Breezy User Guide" href="index.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="index.html" title="Breezy User Guide"
+             accesskey="P">previous</a> |
+          <a href="core_concepts.html" title="Core concepts"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="introducing-breezy">
+<h1>Introducing Breezy<a class="headerlink" href="#introducing-breezy" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="what-is-breezy">
+<h2>What is Breezy?<a class="headerlink" href="#what-is-breezy" title="Permalink to this headline">¶</a></h2>
+<p>Breezy is a tool for helping people collaborate. It tracks the changes
+that you and other people make to a group of files - such as software
+source code - to give you snapshots of each stage of their evolution.
+Using that information, Breezy can effortlessly merge your work with
+other people’s.</p>
+<p>Tools like Breezy are called version control systems (VCS) and have
+long been popular with software developers. Breezy’s ease of use,
+flexibility and simple setup make it ideal not only for software
+developers but also for other groups who work together on files and
+documents, such as technical writers, web designers and translators.</p>
+<p>This guide takes you through installing Breezy and how to use it,
+whether on your own or with a team of other people. If you’re already
+familiar with distributed version control and want to dive straight in,
+you may wish to skim this section and jump straight to
+<a class="reference internal" href="#learning-more">Learning more</a>.</p>
+</div>
+<div class="section" id="a-brief-history-of-version-control-systems">
+<h2>A brief history of version control systems<a class="headerlink" href="#a-brief-history-of-version-control-systems" title="Permalink to this headline">¶</a></h2>
+<p>Version control tools have been evolving for several decades now. In
+simple terms, there have been 4 generations of tools:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>file versioning tools, e.g. SCCS, RCS</li>
+<li>tree versioning tools - central style, e.g. CVS</li>
+<li>tree versioning tools - central style, take two, e.g. Subversion</li>
+<li>tree versioning tools - distributed style, e.g. Breezy.</li>
+</ol>
+</div></blockquote>
+<p>The design and implementation of Breezy builds on the lessons learned
+from all the previous generations of tools. In particular, Breezy
+cleanly supports both the central and the distributed version
+control models so you can change models as it makes sense, without
+needing to change tools.</p>
+</div>
+<div class="section" id="central-vs-distributed-vcs">
+<h2>Central vs distributed VCS<a class="headerlink" href="#central-vs-distributed-vcs" title="Permalink to this headline">¶</a></h2>
+<p>Many traditional VCS tools require a central server which provides the
+change history or <em>repository</em> for a tree of files. To work on the files,
+users need to connect to the server and <em>checkout</em> the files. This gives
+them a directory or <em>working tree</em> in which a person can make changes.
+To record or <em>commit</em> these changes, the user needs access to the central
+server and they need to ensure they have merged their work with the latest
+version stored before trying to commit. This approach is known as the
+centralized model.</p>
+<p>The centralized model has proven useful over time but it can have some notable
+drawbacks. Firstly, a centralized VCS requires that one is able to connect
+to the server whenever one wants to do version control work. Secondly, the
+centralized model tightly links the act of <strong>snapshotting</strong> changes with the act
+of <strong>publishing</strong> those changes. This can be good in some circumstances but
+it has a negative influence on quality in others.</p>
+<p>Distributed VCS tools let users and teams have multiple repositories
+rather than just a single central one. In Breezy’s case, the history is
+normally kept in the same place as the code that is being version controlled.
+This allows the user to commit their changes whenever it makes sense, even
+when offline. Network access is only required when publishing changes or
+when accessing changes in another location.</p>
+<p>In fact, using distributed VCS tools wisely can have advantages well
+beyond the obvious one of disconnected operations for developers.
+Other advantages include:</p>
+<blockquote>
+<div><ul class="simple">
+<li>easier for developers to create experimental branches</li>
+<li>easier ad-hoc collaboration with peers</li>
+<li>less time required on mechanical tasks - more time for creativity</li>
+<li>increased release management flexibility through the use of
+“feature-wide” commits</li>
+<li>trunk quality and stability can be kept higher, making everyone’s
+job less stressful</li>
+<li>in open communities:<ul>
+<li>easier for non-core developers to create and maintain changes</li>
+<li>easier for core developers to work with non-core developers and
+move them into the core</li>
+</ul>
+</li>
+<li>in companies, easier to work with distributed and outsourced teams.</li>
+</ul>
+</div></blockquote>
+<p>For a detailed look at the advantages of distributed VCS tools over
+centralized VCS tools, see <a class="reference external" href="http://wiki.bazaar.canonical.com/BzrWhy">http://wiki.bazaar.canonical.com/BzrWhy</a>.</p>
+</div>
+<div class="section" id="key-features-of-breezy">
+<h2>Key features of Breezy<a class="headerlink" href="#key-features-of-breezy" title="Permalink to this headline">¶</a></h2>
+<p>While Breezy is not the only distributed VCS tool around, it does have some
+notable features that make it an excellent choice for many teams and
+communities. A summary of these and comparisons with other VCS tools
+can be found on the Bazaar Wiki, <a class="reference external" href="http://wiki.bazaar.canonical.com">http://wiki.bazaar.canonical.com</a>.</p>
+<p>Of the many features, one in particular is worth highlighting:
+Breezy is completely free software written in Python. As a result,
+it is easy to contribute improvements. If you wish to get involved,
+please see <a class="reference external" href="https://www.breezy-vcs.org/pages/support.html">https://www.breezy-vcs.org/pages/support.html</a>.</p>
+</div>
+<div class="section" id="learning-more">
+<h2>Learning more<a class="headerlink" href="#learning-more" title="Permalink to this headline">¶</a></h2>
+<p>This manual provides an easy to read introduction to Breezy and how to use
+it effectively.  It is recommended that all users read at least the rest of
+this chapter as it:</p>
+<blockquote>
+<div><ul class="simple">
+<li>explains the core concepts users need to know</li>
+<li>introduces some popular ways of using Breezy to collaborate.</li>
+</ul>
+</div></blockquote>
+<p>Chapters 2-6 provide a closer look at how to use Breezy to complete
+various tasks. It is recommended that most users read these in first-to-last
+order shortly after starting to use Breezy. Chapter 7 and beyond provide
+additional information that helps you make the most of Breezy once the core
+functionality is understood. This material can be read when required and in
+any order.</p>
+<p>If you are already familiar with other version control tools,
+you may wish to get started quickly by reading the following documents:</p>
+<blockquote>
+<div><ul class="simple">
+<li><a class="reference external" href="../mini-tutorial/index.html">Breezy in five minutes</a> - a mini-tutorial</li>
+<li><a class="reference external" href="../quick-reference/index.html">Breezy Quick Start Card</a> - a one page summary of commonly used commands.</li>
+</ul>
+</div></blockquote>
+<p>In addition, the online help and <a class="reference external" href="../user-reference/index.html">Breezy User Reference</a> provide all the
+details on the commands and options available.</p>
+<p>We hope you find this manual useful. If you have suggestions on how it
+or the rest of Breezy’s documentation can be improved, please contact
+us on the mailing list, <a class="reference external" href="mailto:bazaar&#37;&#52;&#48;lists&#46;canonical&#46;com">bazaar<span>&#64;</span>lists<span>&#46;</span>canonical<span>&#46;</span>com</a>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="index.html" title="Breezy User Guide"
+              >previous</a> |
+            <a href="core_concepts.html" title="Core concepts"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/introducing_breezy.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

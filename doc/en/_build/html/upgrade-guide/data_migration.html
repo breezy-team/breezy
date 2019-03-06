@@ -1,0 +1,270 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Data migration &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="data-migration">
+<h1>Data migration<a class="headerlink" href="#data-migration" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="preparing-for-data-migration">
+<h2>Preparing for data migration<a class="headerlink" href="#preparing-for-data-migration" title="Permalink to this headline">¶</a></h2>
+<p>Before starting a migration, there are a few important things to do
+first:</p>
+<ol class="arabic simple">
+<li>Take a complete backup.</li>
+<li>Take some time to purge obsolete branches.</li>
+</ol>
+<p>A complete backup gives you a safety net in case anything goes wrong.</p>
+<p>Purging obsolete branches reduces the amount of data that needs to
+be migrated. See <a href="#id1"><span class="problematic" id="id2">`Finding obsolete branches`_</span></a> later for some tips
+on doing this.</p>
+</div>
+<div class="section" id="introducing-the-upgrade-related-commands">
+<h2>Introducing the upgrade-related commands<a class="headerlink" href="#introducing-the-upgrade-related-commands" title="Permalink to this headline">¶</a></h2>
+<p>There are 3 important commands to be aware of when migrating data.</p>
+<ul class="simple">
+<li><strong>check</strong> - check a repository, branch or tree for data integrity errors</li>
+<li><strong>reconcile</strong> - fix data integrity errors</li>
+<li><strong>upgrade</strong> - migrate data to a different format.</li>
+</ul>
+<p><strong>reconcile</strong> is rarely needed but it’s good practice to run <strong>check</strong>
+before and after running <strong>upgrade</strong>.</p>
+<p>For detailed help on these commands, see the <a class="reference external" href="../user-reference/index.html">Breezy User Reference</a>.</p>
+</div>
+<div class="section" id="communicating-with-your-community">
+<h2>Communicating with your community<a class="headerlink" href="#communicating-with-your-community" title="Permalink to this headline">¶</a></h2>
+<p>To enable a smooth transition to the new format, you should:</p>
+<ol class="arabic simple">
+<li>Make one person responsible for migrating the trunk.</li>
+<li>Test the migration of trunk works successfully.</li>
+<li>Schedule a time for the trunk migration and notify your community
+in advance.</li>
+</ol>
+<p>This advance warning should be long enough for users to have time
+to upgrade Breezy and any required plugins before the migration date.</p>
+<p>For larger projects, allow some time for the migration itself.
+You should have a good idea of how long the migration will take
+after doing the test migration. It may make sense to do the migration
+on a weekend or a Friday, giving yourself some breathing space if
+things go wrong.</p>
+<p>After the trunk is migrated, you’ll need to notify your community
+accordingly, giving them instructions as to how to migrate their
+local branches. Sample instructions are provided later in this
+document.</p>
+</div>
+<div class="section" id="migrating-a-standalone-branch">
+<h2>Migrating a standalone branch<a class="headerlink" href="#migrating-a-standalone-branch" title="Permalink to this headline">¶</a></h2>
+<p>The steps are:</p>
+<ol class="arabic simple">
+<li>Run <strong>brz check</strong>.</li>
+<li>If there are errors, try using <strong>brz reconcile</strong> to fix them.
+If that fails, file a bug so we can help you resolve the issue
+and get your trunk clean. If it works, take a backup copy of
+your now clean trunk.</li>
+</ol>
+<ol class="arabic simple" start="2">
+<li>Run <strong>brz upgrade –format</strong> where <em>format</em> is 2a or later.</li>
+<li>Run <strong>brz check</strong> to confirm the final result is good.</li>
+</ol>
+</div>
+<div class="section" id="migrating-branches-in-a-shared-repository">
+<h2>Migrating branches in a shared repository<a class="headerlink" href="#migrating-branches-in-a-shared-repository" title="Permalink to this headline">¶</a></h2>
+<p>Upgrade things in the following order:</p>
+<ol class="arabic simple">
+<li>Upgrade the shared repository.</li>
+<li>Upgrade the branches.</li>
+<li>Upgrade any lightweight checkouts.</li>
+</ol>
+<p>As in the standalone branch case, be sure to run <strong>check</strong> before
+and after the upgrade to check for any existing or introduced issues.</p>
+</div>
+<div class="section" id="migrating-branches-on-launchpad">
+<h2>Migrating branches on Launchpad<a class="headerlink" href="#migrating-branches-on-launchpad" title="Permalink to this headline">¶</a></h2>
+<p>You have two options for upgrading your Launchpad branches.  You can either
+upgrade them remotely or you can upgrade them locally and push the migrated
+branch to Launchpad.  We recommend the latter.  Upgrading remotely currently
+requires a fast, rock solid network connection to the Launchpad servers, and
+any interruption in that connection can leave you with a partially upgraded
+branch.  The instructions below are the safest and often fastest way to
+upgrade your Launchpad branches.</p>
+<p>To allow isolation between public and private branches, Launchpad
+uses stacked branches rather than shared repositories as the core
+technology for efficient branch storage. The process for migrating
+to a new format for projects using Launchpad code hosting is therefore
+different to migrating a personal or in-house project.</p>
+<p>In Launchpad, a project can define a <em>development series</em> and associate a
+branch with that series.  The branch then becomes the <em>focus of development</em>
+and gets special treatment and a shortcut URL.  By default, if anybody
+branches your project’s focus of development and pushes changes back to
+Launchpad, their branch will be stacked on your development focus branch.
+Also, branches can be associated with other Launchpad artifacts such as bugs
+and merge proposals.  All of these things mean that upgrading your focus of
+development branch is trickier.</p>
+<p>Here are the steps to follow:</p>
+<ol class="arabic simple">
+<li>The nominated person grabs a copy of trunk and does the migration locally.</li>
+<li>On Launchpad, unset the current trunk from being the development focus.
+(This <em>must</em> be done or the following step won’t work as expected.)<ol class="arabic">
+<li>Go to your project’s home page on Launchpad</li>
+<li>Look for “XXX is the current focus of development”</li>
+<li>Click on the edit (pencil) icon</li>
+<li>Click on “Change details” in the portlet on the right</li>
+<li>Scroll down to where it says “Branch: (Optional)”</li>
+<li>Blank out this input field and click “Change”</li>
+</ol>
+</li>
+<li>Push the migrated trunk to Launchpad.  See below if you want your
+new migrated development focus branch to have the same name as your old
+pre-migration development focus branch.</li>
+<li>Set it as the development focus.  Follow the instructions above but at step
+5, enter the name of the newly migrated branch you just pushed.</li>
+<li>Ask users subscribed to the old trunk to subscribe to the new one.</li>
+</ol>
+<p>In summary, these steps mean that the old trunk is still available and
+existing branches stacked on it will continue to be so. However, the
+development focus has switched to the migrated trunk and any new branches
+pushed to Launchpad for your project will now stack on it.</p>
+<p>You are now ready to tell your community that the new trunk is available
+and to give them instructions on migrating any local branches they have.</p>
+<p>If you want your new migrated development focus branch to have the same name
+as your old pre-migration branch, you need to do a few extra things before you
+establish the new development focus.</p>
+<ol class="arabic simple">
+<li>Rename your old pre-migration branch; use something like
+<strong>foo-obsolete-do-not-use</strong>.  You will really not want to delete this
+because there will be artifacts (bugs, merge proposals, etc.) associated
+with it.</li>
+<li>Rename the new migrated branch to the pre-migration branch’s old name.</li>
+<li>Re-establish the development focus branch using the new migrated branch’s
+new name (i.e. the old pre-migration branch’s original name).</li>
+</ol>
+</div>
+<div class="section" id="migrating-local-branches-after-a-central-trunk-has-migrated">
+<h2>Migrating local branches after a central trunk has migrated<a class="headerlink" href="#migrating-local-branches-after-a-central-trunk-has-migrated" title="Permalink to this headline">¶</a></h2>
+<p>To migrate a standalone branch:</p>
+<ol class="arabic simple">
+<li>Grab the latest branch from the central location into a
+new directory.</li>
+<li>Pull or merge any changes you’ve made in your existing branch
+into the new branch.</li>
+</ol>
+<p>To migrate branches in a shared repository:</p>
+<ol class="arabic simple">
+<li>Create a fresh shared repository in the new format (2a or later).</li>
+<li>Grab the latest branch from the central location into a
+new directory inside the shared repository.</li>
+<li>Decide which of your local branches you want to migrate. (If you
+haven’t already, now’s a good time for <a href="#id3"><span class="problematic" id="id4">`Finding obsolete branches`_</span></a>
+and purging them, after backing up first of course.)</li>
+<li>To migrate each local branch of interest, there are 2 options:</li>
+</ol>
+<blockquote>
+<div><ul class="simple">
+<li><strong>init</strong> an empty branch in the new repository and <strong>pull</strong> the
+revisions from the branch in the old repository across.</li>
+<li>In the new repository, <strong>branch</strong> from trunk to the new branch
+name then <strong>merge</strong> your changes from the matching branch in the
+old repository.</li>
+</ul>
+</div></blockquote>
+<p>The first method will give you a branch which is identical (in terms of
+revision history) to the old branch, but it’s parent branch will be set to the
+old branch, not your new trunk. If you use this method, you’ll probably update
+the <code class="docutils literal notranslate"><span class="pre">parent_location</span></code> configuration variable in the <code class="docutils literal notranslate"><span class="pre">branch.conf</span></code> file
+with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">config</span> <span class="n">parent_location</span><span class="o">=</span><span class="n">XXX</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">XXX</span></code> being the URL to your new trunk.</p>
+<p>In contrast, the second approach sets up the parent branch correctly.
+However, it isn’t ideal if you’re not ready to include all the latest
+revisions from trunk into that branch yet.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/upgrade-guide/data_migration.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

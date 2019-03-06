@@ -1,0 +1,286 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Planned changes to the bzr core &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="../../search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="planned-changes-to-the-bzr-core">
+<h1>Planned changes to the bzr core<a class="headerlink" href="#planned-changes-to-the-bzr-core" title="Permalink to this headline">¶</a></h1>
+<p>Delivering the best possible performance requires changing the bzr core design
+from that present in 0.16. Some of these changes are incremental and can be
+done with no impact on disk format. Many of them however do require changes to
+the disk format, and these can be broken into two sets of changes, those which
+are sufficiently close to the model bzr uses today to interoperate with the
+0.16 disk formats, and those that are not able to interoperate with the 0.16
+disk formats - specifically some planned changes may result in data which
+cannot be exported to bzr 0.16’s disk formats and then imported back to the new
+format without losing critical information. If/when this takes place it will be
+essentially a migration for users to switch from their bzr 0.16 repository to a
+bzr that supports them. We plan to batch all such changes into one large
+‘experimental’ repository format, which will be complete stable and usable
+before we migrate it to become a supported format. Getting new versions of bzr
+in widespread use at that time will be very important, otherwise the user base
+may be split in two - users that have upgraded and users that have not.</p>
+<p>The following changes are grouped according to their compatibility impact:
+library only, disk format but interoperable, disk format interoperability
+unknown, and disk format, not interoperable.</p>
+<div class="section" id="library-changes">
+<h2>Library changes<a class="headerlink" href="#library-changes" title="Permalink to this headline">¶</a></h2>
+<p>These changes will change bzrlib’s API but will not affect the disk format and
+thus do not pose a significant migration issue.</p>
+<blockquote>
+<div><ul class="simple">
+<li>For our 20 core use cases, we plan to add targeted API’s to bzrlib that are
+repository-representation agnostic. These will instead reflect the shape of
+data access most optimal for that case.</li>
+<li>Deprecate ‘versioned files’ as a library concept. Instead of asking for
+information about a file-over-time as a special case, we will move to an API
+that assumes less coupling between the historical information and the
+ability to obtain texts/deltas etc. Specifically, we need to remove all
+API’s that act in terms of on disk representation except those within a
+given repository implementation.</li>
+<li>Create a validator for revisions that is more amenable to use by other parts
+of the code base than just the gpg signing facility. This can be done today
+without changing disk, possibly with a performance hit until the disk
+formats match the validatory logic. It will be hard to tell if we have the
+right routine for that until all the disk changes are complete, so while
+this is a library only change, it’s likely one that will be delayed to near
+the end of the process.</li>
+<li>Add an explicit API for managing cached annotations. While annotations are
+considered a cache this is not exposed in such a way that cache operations
+like ‘drop the cache’ can be performed. On current disk formats the cache is
+mandatory, but an API to manage would allow refreshing of the cache (e.g.
+after ghosts are filled in during baz conversions).</li>
+<li>Use the _iter_changes API to perform merges. This is a small change that may
+remove the need to use inventories in merge, making a dramatic difference to
+merge performance once the tree shape comparison optimisations are
+implemented.</li>
+<li>Create a network-efficient revision graph API. This is the logic at the
+start of push and pull operations, which currently scales O(graph size).
+Fixing the scaling can be done, but there are tradeoffs to latency and
+performance to consider, making it a little tricky to get right.</li>
+<li>Working tree disk operation ordering. We plan to change the order in which
+some operations are done (specifically TreeTransform ones) to improve
+performance. There is already a 66% performance boost in that area going
+through review.</li>
+<li>Stop requiring full memory copies of files. Currently bzr requires that it
+can hold 3 copies of any file it’s versioning in memory. Solving this is
+tricky, particularly without performance regressions on small files, but
+without solving it versioning of .iso and other large objects will continue
+to be extremely painful.</li>
+<li>Add an API for per-file graph access that alllows incremental access and is
+suitable for on-demand generation if desired.</li>
+<li>Repository stacking API. Allowing multiple databases to be stacked to give a
+single ‘repository’ will allow implementation of some long desired features
+like history horizons, and bundle usage where the bundle is not added to the
+local repository just to examine its contents.</li>
+<li>Revision data manipulation API. We need a single streaming API for adding
+data to or getting it from a repository. This will need to allow hints such
+as ‘optimise for size’, or ‘optimise for fast-addition’ to meet the various
+users planned, but it is a core part of the library today, and it’s not
+sufficiently clean to let us simplify/remove a lot of related code today.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="interoperable-disk-changes">
+<h2>Interoperable disk changes<a class="headerlink" href="#interoperable-disk-changes" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><ul class="simple">
+<li>New container format to allow single-file description of multiple named
+objects. This will provide the basis for transmission of revisions over the
+network, the new bundle format, and possibly a new repository format as
+well. [Core implemented]</li>
+<li>Separate the annotation cache from the storage of actual file texts and make
+the annotation style, and when to do it, configurable. This will reduce data
+sent over the wire when repositories have had ‘needs-annotations’ turned
+off, which very large trees may choose to do - generating just-in-time
+annotations may be desirable for those trees (even when performing
+annotation based merges).</li>
+<li>Repository disk operation ordering. The order that tasks access data within
+the repository and the layout of the data should be harmonised. This will
+require disk format changes but does not inherently alter the model, so it’s
+straight forward to export from a repository that has been optimised in this
+way to a 0.16 based repository.</li>
+<li>Inventory representation. An inventory is a logical description of the shape
+of a version controlled tree. Currently we operate on the whole inventory as
+a tree broken down per directory, but we store it as a flat file. This scale
+very poorly as even a minor change between inventories requires us to scan
+the entire file, and in large trees this is many megabytes of data to
+consider. We are investigating the exact form, but the intent is to change
+the serialisation of inventories so that comparing two inventories can be
+done in some smaller time - e.g. O(log N) scaling. Whatever form this takes,
+a repository that can export it directly will be able to perform operations
+between two historical trees much more efficiently than the current
+repositories.</li>
+<li>Greatest distance from origin cache. This is a possible change to introduce,
+but it may be unnecessary - listed here for completeness till it has been
+established as [un]needed.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="possibly-non-interoperable-disk-changes">
+<h2>Possibly non-interoperable disk changes<a class="headerlink" href="#possibly-non-interoperable-disk-changes" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><ul>
+<li><p class="first">Removing of derivable data from the core of bzr. Much of the data that bzr
+stores is derivable from the users source files. For instance the
+annotations that record who introduced a line. Given the full history for a
+repository we can recreate that at any time. We want to remove the
+dependence of the core of bzr on any data that is derivable, because doing
+this will give us the freedom to:</p>
+<ul class="simple">
+<li>Improve the derivation algorithm over time.</li>
+<li>Deal with bugs in the derivation algorithms without having ‘corrupt
+repositories’ or such things.</li>
+</ul>
+<p>However, some of the data that is technically derived, like the per-file
+merge graph, is both considered core, and can be generated differently when
+certain circumstances arive, by bzr 0.16. Any change to the ‘core’ status of
+that data will discard data that cannot be recreated and thus lead to the
+inability to export from a format where that is derived data to bzr 0.16’s
+formats without errors occuring in those circumstances. Some of the data
+that may be considered for this includes:</p>
+<ul class="simple">
+<li>Per file merge graphs</li>
+<li>Annotations</li>
+</ul>
+</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="non-interoperable-disk-changes">
+<h2>Non-interoperable disk changes<a class="headerlink" href="#non-interoperable-disk-changes" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><ul class="simple">
+<li>Drop the per-file merge graph ‘cache’ currently held in the FILE-ID.kndx
+files. A specific case of removing derivable data, this may allow smaller
+inventory metadata and also make it easier to allow two different trees (in
+terms of last-change made, e.g. if one is a working tree) to be compared
+using a hash-tree style approach.</li>
+<li>Use hash based names for some objects in the bzr database. Because it would force
+total-knowledge-of-history on the graph revision objects will not be namable
+via hash’s and neither will revisio signatures. Other than that though we
+can in principle use hash’s e.g. SHA1 for everything else. There are many
+unanswered questions about hash based naming related to locality of
+reference impacts, which need to be answered before this becomes a definite
+item.</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../../_sources/plans/performance/planned-performance-changes.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

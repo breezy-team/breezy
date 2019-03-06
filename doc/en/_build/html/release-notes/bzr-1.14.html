@@ -1,0 +1,480 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-1-14">
+<h2>bzr 1.14<a class="headerlink" href="#bzr-1-14" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Codename:</th><td class="field-body">brisbane-core</td>
+</tr>
+<tr class="field-even field"><th class="field-name">1.14rc1:</th><td class="field-body">2009-04-06</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">1.14rc2:</th><td class="field-body">2009-04-19</td>
+</tr>
+<tr class="field-even field"><th class="field-name">1.14:</th><td class="field-body">2009-04-28</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">1.14.1:</th><td class="field-body">2009-05-01</td>
+</tr>
+</tbody>
+</table>
+<p>New formats 1.14 and 1.14-rich-root supporting End-Of-Line (EOL) conversions,
+keyword templating (via the bzr-keywords plugin) and generic content filtering.
+End-of-line conversion is now supported for formats supporting content
+filtering.</p>
+<div class="section" id="changes-from-1-14final-to-1-14-1">
+<h3>Changes from 1.14final to 1.14.1<a class="headerlink" href="#changes-from-1-14final-to-1-14-1" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Change api_minimum_version back to api_minimum_version = (1, 13, 0)</li>
+</ul>
+</div>
+<div class="section" id="changes-from-1-14rc2-to-1-14final">
+<h3>Changes from 1.14rc2 to 1.14final<a class="headerlink" href="#changes-from-1-14rc2-to-1-14final" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix a bug in the pure-python <code class="docutils literal notranslate"><span class="pre">GroupCompress</span></code> code when handling copies
+longer than 64KiB. (John Arbash Meinel, #364900)</li>
+</ul>
+</div>
+<div class="section" id="changes-from-1-14rc1-to-1-14rc2">
+<h3>Changes from 1.14rc1 to 1.14rc2<a class="headerlink" href="#changes-from-1-14rc1-to-1-14rc2" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix for bug 358037 Revision not in
+bzrlib.groupcompress.GroupCompressVersionedFiles (Brian de Alwis,
+John A Meinel)</li>
+<li>Fix for bug 354036 ErrorFromSmartServer - AbsentContentFactory object has no
+attribute ‘get_bytes_as’ exception while pulling from Launchpad
+(Jean-Francois Roy, Andrew Bennetts, Robert Collins)</li>
+<li>Fix for bug 355280 eol content filters are never loaded and thus never
+applied (Brian de Alwis, Ian Clatworthy)</li>
+<li>bzr.dev -r4280  Change _fetch_uses_deltas = False for CHK repos until we can
+write a better fix. (John Arbash Meinel, Robert Collins)</li>
+<li>Fix for bug 361574 uncommit recommends undefined –levels and -n options
+(Marius Kruger, Ian Clatworthy)</li>
+<li>bzr.dev r4289 as cherrypicked at lp:~spiv/bzr/stacking-cherrypick-1.14
+(Andrew Bennetts, Robert Collins)</li>
+</ul>
+</div>
+<div class="section" id="compatibility-breaks">
+<h3>Compatibility Breaks<a class="headerlink" href="#compatibility-breaks" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>A previously disabled code path to accelerate getting configuration
+settings from a smart server has been reinstated. We think this <em>may</em>
+cause a incompatibility with servers older than bzr 0.15. We intend
+to issue a point release to address this if it turns out to be a
+problem. (Robert Collins, Andrew Bennetts)</li>
+<li>bzr no longer autodetects nested trees as ‘tree-references’.  They
+must now be explicitly added tree references.  At the commandline, use
+join –reference instead of add.  (Aaron Bentley)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">--long</span></code> log format (the default) no longer shows merged
+revisions implicitly, making it consistent with the <code class="docutils literal notranslate"><span class="pre">short</span></code> and
+<code class="docutils literal notranslate"><span class="pre">line</span></code> log formats.  To see merged revisions for just a given
+revision, use <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span> <span class="pre">-n0</span> <span class="pre">-rX</span></code>. To see every merged revision,
+use <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span> <span class="pre">-n0</span></code>.  (Ian Clatworthy)</li>
+</ul>
+</div>
+<div class="section" id="new-features">
+<h3>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>New formats <code class="docutils literal notranslate"><span class="pre">1.14</span></code> and <code class="docutils literal notranslate"><span class="pre">1.14-rich-root</span></code> supporting End-Of-Line
+(EOL) conversions, keyword templating (via the bzr-keywords plugin)
+and generic content filtering. These formats replace the experimental
+<code class="docutils literal notranslate"><span class="pre">development-wt5</span></code> and <code class="docutils literal notranslate"><span class="pre">development-wt5-rich-root</span></code> formats
+respectively, but have support for filtered views disabled.
+(Ian Clatworthy)</li>
+<li>New <code class="docutils literal notranslate"><span class="pre">mv</span> <span class="pre">--auto</span></code> option recognizes renames after they occur.
+(Aaron Bentley)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span></code> can now get passwords from stdin without requiring a controlling
+terminal (i.e. by redirecting stdin). (Vincent Ladeuil)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span></code> now supports filtering of multiple files and directories
+and will show changes that touch any of them. Furthermore,
+directory filtering now shows the changes to any children of that
+directory, not just the directory object itself.
+(Ian Clatworthy, #97715)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">shelve</span></code> can now apply changes without storing anything on the
+shelf, via the new –destroy option.  (Aaron Bentley)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">send</span></code> now accepts –body to specify an initial message body.
+(Aaron bentley)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">xxx</span> <span class="pre">--usage</span></code> where xxx is a command now shows a usage
+message and the options without the descriptive help sections
+(like Description and Examples). A message is also given
+explaining how to see the complete help, i.e. <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">xxx</span></code>.
+(Ian Clatworthy)</li>
+<li>Content filters can now be used to provide custom conversion
+between the canonical format of content (i.e. as stored) and
+the convenience format of content (i.e. as created in working
+trees). See <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">content-filters</span></code> for further details.
+(Ian Clatworthy, Alexander Belchenko)</li>
+<li>End-of-line conversion is now supported for formats supporting
+content filtering. See <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">eol</span></code> for details.
+(Ian Clatworthy)</li>
+<li>Newly-blessed <cite>join</cite> command allows combining two trees into one.
+(Aaron Bentley)</li>
+</ul>
+</div>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>A new format name alias <code class="docutils literal notranslate"><span class="pre">default-rich-root</span></code> has been added and
+points at the closest relative of the default format that supports
+rich roots. (Jelmer Vernooij, #338061)</li>
+<li>Branching from a stacked branch using <code class="docutils literal notranslate"><span class="pre">bzr*://</span></code> will now stream
+the data when the target repository does not need topological
+ordering, reducing round trips and network overhead. This uses the
+existing smart server methods added in 1.13, so will work on any
+1.13 or newer server. (Robert Collins, Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">cat</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">export</span></code> now supports a <code class="docutils literal notranslate"><span class="pre">--filters</span></code> option
+that displays/saves the content after content filters are applied.
+(Ian Clatworthy)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">ignore</span></code> gives a more informative message when existing
+version controlled files match the ignore pattern. (Neil
+Martinsen-Burrell, #248895)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span></code> now has <code class="docutils literal notranslate"><span class="pre">--include-merges</span></code> as an alias for <code class="docutils literal notranslate"><span class="pre">--levels</span> <span class="pre">0</span></code>.
+(Ian Clatworthy)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">send</span></code> is faster on repositories with deep histories.
+(Ian Clatworthy)</li>
+<li>IPv6 literals are accepted in URLs.
+(stlman, Martin Pool, Jelmer Vernooij, #165014)</li>
+<li>Progress bars now show the rate of network activity for
+<code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr://</span></code> connections.  (Andrew Bennetts)</li>
+<li>Prompt for user names if they are not in the configuration.
+(Jelmer Vernooij, #256612)</li>
+<li>Pushing to a stacked pack-format branch on a 1.12 or older smart server
+now takes many less round trips.  (Andrew Bennetts, Robert Collins,
+#294479)</li>
+<li>Streaming push can be done to older repository formats.  This is
+implemented using a new <code class="docutils literal notranslate"><span class="pre">Repository.insert_stream_locked</span></code> RPC.
+(Andrew Bennetts, Robert Collins)</li>
+<li>The “ignoring files outside view: ..” message has been re-worded
+to “Ignoring files outside view. View is ..” to reduce confusion
+about what was being considered and what was being ignored.
+(Ian Clatworthy)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">long</span></code> log formatter now shows [merge] indicators. If
+only one level of revisions is displayed and merges are found,
+the <code class="docutils literal notranslate"><span class="pre">long</span></code> and <code class="docutils literal notranslate"><span class="pre">short</span></code> log formatters now tell the user
+how to see the hidden merged revisions.  (Ian Clatworthy)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">brisbane-core</span></code> project has delivered its beta format
+<code class="docutils literal notranslate"><span class="pre">development6-rich-root</span></code>. This format is suitable for judicious
+testing by early adopters. In particular if you are benchmarking bzr
+performance please be sure to test using this format. At this stage
+more information is best obtained by contacting the Bazaar mailing list
+or IRC channel if you are interested in using this format. We will make
+end user documentation available closer to blessing the format as
+production ready. (Robert Collins, John Arbash Meinel, Ian Clatworthy,
+Vincent Ladeuil, Andrew Bennetts, Martin Pool)</li>
+<li>Tildes are no longer escaped. No more %7Euser/project/branch!
+(Jonathan Lange)</li>
+</ul>
+</div>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Pushing a new stacked branch will also push the parent inventories for
+revisions at the stacking boundary.  This makes sure that the stacked
+branch has enough data to calculate inventory deltas for all of its
+revisions (without requiring the fallback branch).  This avoids
+“‘AbsentContentFactory’ object has no attribute ‘get_bytes_as’” errors
+when fetching the stacked branch from a 1.13 (or later) smart server.
+This partially fixes #354036.  (Andrew Bennetts, Robert Collins)</li>
+<li>End-Of-Line content filters are now loaded correctly.
+(Ian Clatworthy, Brian de Alwis, #355280)</li>
+<li>Authentication plugins now receive all the parameters from the request
+itself (aka host, port, realm, path, etc). Previously, only the
+authentication section name, username and encoded password were
+provided. (Jean-Francois Roy)</li>
+<li>bzr gives a better message if an invalid regexp is passed to <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span>
+<span class="pre">-m</span></code>.  (Anne Mohsen, Martin Pool)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">split</span></code> now says “See also: join” (Aaron Bentley, #335015)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">version-info</span></code> now works in empty branches. (Jelmer Vernooij,
+#313028)</li>
+<li>Fix “is not a stackable format” error when pushing a
+stackable-format branch with an unstackable-format repository to a
+destination with a default stacking policy.  (Andrew Bennetts)</li>
+<li>Fixed incorrect “Source format does not support stacking” warning
+when pushing to a smart server.  (Andrew Bennetts, #334114)</li>
+<li>Fix ‘make check-dist-tarball’ failure by converting paths to unicode when
+needed. (Vincent Ladeuil, #355454)</li>
+<li>Fixed “Specified file ‘x/y/z’ is outside current view: ” occurring
+on <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">add</span> <span class="pre">x/y/z</span></code> in formats supporting views when no view is
+defined.  (Ian Clatworthy, #344708)</li>
+<li>It is no longer possible to fetch between repositories while the
+target repository is in a write group. This prevents race conditions
+that prevent the use of RPC’s to perform fetch, and thus allows
+optimising more operations. (Robert Collins, Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">merge</span> <span class="pre">--force</span></code> works again. (Robert Collins, #342105)</li>
+<li>No more warnings are issued about <code class="docutils literal notranslate"><span class="pre">sha</span></code> being deprecated under python-2.6.
+(Vincent Ladeuil, #346593)</li>
+<li>Pushing a new branch to a server that has a stacking policy will now
+upgrade from the local branch format when the stacking policy points at
+a branch which is itself stackable, because we know the client can read
+both branches, we know that the trunk for the project can be read too,
+so the upgrade will not inconvenience users. (Robert Collins, #345169)</li>
+<li>Pushing a new stacked branch will also push the parent inventories for
+revisions at the stacking boundary.  This makes sure that the stacked
+branch has enough data to calculate inventory deltas for all of its
+revisions (without requiring the fallback branch).  This avoids
+“‘AbsentContentFactory’ object has no attribute ‘get_bytes_as’” errors
+when fetching the stacked branch from a 1.13 (or later) smart server.
+This partially fixes #354036.  (Andrew Bennetts, Robert Collins)</li>
+<li>The full test suite is passing again on OSX. Several minor issues (mostly
+test related) have been fixed. (Vincent Ladeuil, #355273).</li>
+<li>The GNU Changelog formatter is slightly improved in the case where
+the delta is empty, and now correctly claims not to support tags.
+(Andrea Bolognani)</li>
+<li>Shelve can now shelve changes to a symlink target.
+(James Westby, #341558)</li>
+<li>The help for the <code class="docutils literal notranslate"><span class="pre">info</span></code> command has been corrected.
+(Ian Clatworthy, #351931)</li>
+<li>Upgrade will now use a sensible default format if the source repository
+uses rich roots.  (Jelmer Vernooij, #252908)</li>
+</ul>
+</div>
+<div class="section" id="documentation">
+<h3>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Expanded the index of the developer documentation. (Eric Siegerman)</li>
+<li>New topic <cite>bzr help debug-flags</cite>.  (Martin Pool)</li>
+<li>The generated manpage now explicitly lists aliases as commands.
+(James Westby, #336998)</li>
+</ul>
+</div>
+<div class="section" id="api-changes">
+<h3>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>APIs deprecated in 1.6 and previous versions of bzr are now removed.
+(Martin Pool)</li>
+<li><code class="docutils literal notranslate"><span class="pre">CommitReporter</span></code> is no longer called with <code class="docutils literal notranslate"><span class="pre">unchanged</span></code> status during
+commit - this was a full-tree overhead that bzr no longer performs.
+(Robert Collins)</li>
+<li>New abstract <code class="docutils literal notranslate"><span class="pre">UIFactory</span></code> method <code class="docutils literal notranslate"><span class="pre">get_username</span></code> which will be called to
+obtain the username to use when connecting to remote machines.
+(Jelmer Vernooij)</li>
+<li>New API <code class="docutils literal notranslate"><span class="pre">Inventory.filter()</span></code> added that filters an inventory by
+a set of file-ids so that only those fileids, their parents and
+their children are included.  (Ian Clatworthy)</li>
+<li>New sort order for <code class="docutils literal notranslate"><span class="pre">get_record_stream</span></code> <code class="docutils literal notranslate"><span class="pre">groupcompress</span></code> which
+sorts optimally for use with groupcompress compressors. (John Arbash
+Meinel, Robert Collins)</li>
+<li>Repository APIs <code class="docutils literal notranslate"><span class="pre">get_deltas_for_revisions()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">get_revision_delta()</span></code> now support an optional <code class="docutils literal notranslate"><span class="pre">specific_fileids</span></code>
+parameter. If provided, the deltas are filtered so that only those
+file-ids, their parents and their children are included.
+(Ian Clatworthy)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">get_credentials</span></code> and <code class="docutils literal notranslate"><span class="pre">set_credentials</span></code> methods of
+<code class="docutils literal notranslate"><span class="pre">AuthenticationConfig</span></code> now accept an optional realm argument.
+(Jean-Francois Roy)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">pb</span></code> argument to <code class="docutils literal notranslate"><span class="pre">fetch()</span></code> is deprecated.
+(Martin Pool)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">Serializer</span></code> class and the serializer <code class="docutils literal notranslate"><span class="pre">format</span> <span class="pre">registry</span></code> have moved
+from <code class="docutils literal notranslate"><span class="pre">bzrlib.xml_serializer</span></code> to <code class="docutils literal notranslate"><span class="pre">bzrlib.serializer</span></code>. (Jelmer Vernooij)</li>
+<li>The smart server jail now hooks into BzrDir.open to prevent any BzrDir
+that is not inside the backing transport from being opened.  See the
+module documentation for <code class="docutils literal notranslate"><span class="pre">bzrlib.smart.request</span></code> for details.
+(Andrew Bennetts, Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Tree.get_symlink_target</span></code> now always returns a unicode string result
+or None. Previously it would return the bytes from reading the link
+which could be in any arbitrary encoding. (Robert Collins)</li>
+</ul>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.tests.TestCase</span></code> now fails the test if its own <code class="docutils literal notranslate"><span class="pre">setUp</span></code>
+and <code class="docutils literal notranslate"><span class="pre">tearDown</span></code> weren’t called.  This catches faulty tests that
+forget to upcall when overriding <code class="docutils literal notranslate"><span class="pre">setUp</span></code> and <code class="docutils literal notranslate"><span class="pre">tearDown</span></code>.  Those
+faulty tests were not properly isolated.
+(Andrew Bennetts, Robert Collins)</li>
+<li>Fix test_msgeditor.MsgEditorTest test isolation.
+(Vincent Ladeuil, #347130)</li>
+<li><code class="docutils literal notranslate"><span class="pre">medusa</span></code> is not used anymore as an FTP test server starting with
+python2.6. A new FTP test server based on <code class="docutils literal notranslate"><span class="pre">pyftplib</span></code> can be used
+instead. This new server is a soft dependency as medusa which is still
+preferred if both are available (modulo python version).
+(Vincent Ladeuil)</li>
+</ul>
+</div>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Added <code class="docutils literal notranslate"><span class="pre">chk_map</span></code> for fast, trie-based storage of tuple to string maps.
+(Robert Collins, John Arbash Meinel, Vincent Ladeuil)</li>
+<li>Added <code class="docutils literal notranslate"><span class="pre">bzrlib.chk_map</span></code> for fast, trie-based storage of tuple to string
+maps.  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)</li>
+<li>Added <code class="docutils literal notranslate"><span class="pre">bzrlib.inventory_delta</span></code> module.  This will be used for
+serializing and deserializing inventory deltas for more efficient
+streaming on the network.  (Robert Collins, Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Branch._get_config</span></code> has been added, which splits out access to the
+specific config file from the branch. This is used to let RemoteBranch
+avoid constructing real branch objects to access configuration settings.
+(Robert Collins, Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Branch</span></code> now implements <code class="docutils literal notranslate"><span class="pre">set_stacked_on_url</span></code> in the base class as
+the implementation is generic and should impact foreign formats. This
+helps performance for <code class="docutils literal notranslate"><span class="pre">RemoteBranch</span></code> push operations to new stacked
+branches. (Robert Collins, Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">BtreeIndex._spill_mem_keys_to_disk()</span></code> now generates disk index with
+optmizations turned off. This only has effect when processing &gt; 100,000
+keys during something like <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pack</span></code>. (John Arbash Meinel)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">selftest</span></code> now accepts <code class="docutils literal notranslate"><span class="pre">--subunit</span></code> to run in subunit output
+mode. Requires <code class="docutils literal notranslate"><span class="pre">lp:subunit</span></code> installed to work, but is not a hard
+dependency. (Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">BzrDir.open_branch</span></code> now takes an optional <code class="docutils literal notranslate"><span class="pre">ignore_fallbacks</span></code>
+parameter for controlling opening of stacked branches.
+(Andrew Bennetts, Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">CommitBuilder</span></code> has a new method, <code class="docutils literal notranslate"><span class="pre">record_iter_changes</span></code> which works
+in terms of an iter_changes iterator rather than full tree scanning.
+(Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">DirState</span></code> can now be passed a custom <code class="docutils literal notranslate"><span class="pre">SHA1Provider</span></code> object
+enabling it to store the SHA1 and stat of the canonical (post
+content filtered) form. (Ian Clatworthy)</li>
+<li>New <code class="docutils literal notranslate"><span class="pre">assertLength</span></code> method based on one Martin has squirreled away
+somewhere. (Robert Collins, Martin Pool)</li>
+<li>New hook <code class="docutils literal notranslate"><span class="pre">BzrDir.pre_open</span></code> which runs before opening <code class="docutils literal notranslate"><span class="pre">BzrDir</span></code>
+objects, allowing better enforcement of the smart server jail when
+dealing with stacked branches. (Robert Collins, Andrew Bennetts)</li>
+<li>New hook <code class="docutils literal notranslate"><span class="pre">RioVersionInfoBuilder.revision</span></code>, allowing extra entries
+to be added to the stanza that is printed for a particular revision.
+(Jelmer Vernooij)</li>
+<li>New repository method <code class="docutils literal notranslate"><span class="pre">refresh_data</span></code> to cause any repository to
+make visible data inserted into the repository by a smart server
+fetch operation. (Robert Collins, Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">register_filter_stack_map</span></code> now takes an optional fallback parameter,
+a callable to invoke if a preference has a value not in the map
+of filter stacks. This enhancement allows, for example,  bzr-svn to
+handle existing svn properties that define a list of keywords to be
+expanded.  (Ian Clatworthy)</li>
+<li><code class="docutils literal notranslate"><span class="pre">RemoteBranchConfig</span></code> will use a new verb <code class="docutils literal notranslate"><span class="pre">Branch.set_config_option</span></code>
+to write config settings to smart servers that support this, saving
+5 round trips on the stacked streaming acceptance test.
+(Robert Collins, Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">RemoteBranch</span></code> now provides <code class="docutils literal notranslate"><span class="pre">_get_config</span></code> for access to just the
+branch specific configuration from a remote server, which uses the
+already existing <code class="docutils literal notranslate"><span class="pre">Branch.get_config_file</span></code> smart verb.
+(Robert Collins, Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">RemoteRepository</span></code> will now negatively cache missing revisions during
+<code class="docutils literal notranslate"><span class="pre">get_parent_map</span></code> while read-locked. Write-locks are unaffected.
+(Robert Collins, Andrew Bennetts)</li>
+<li>Removed <code class="docutils literal notranslate"><span class="pre">InterRemoteToOther</span></code>, <code class="docutils literal notranslate"><span class="pre">InterOtherToRemote</span></code> and
+<code class="docutils literal notranslate"><span class="pre">InterPackToRemotePack</span></code> classes, as they are now unnecessary.
+(Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">RepositoryFormat</span></code> as a new attribute <code class="docutils literal notranslate"><span class="pre">fast_deltas</span></code> to indicate
+whether the repository can efficiently generate deltas between trees
+regardless of tree size. (Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Repository.iter_files_bytes()</span></code> now properly returns an “iterable of
+byte strings” (aka ‘chunked’) for the content. It previously was
+returning a plain string, which worked, but performed very poorly when
+building a working tree (file.writelines(str) is very inefficient). This
+can have a large effect on <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">checkout</span></code> times. (John Arbash Meinel)</li>
+<li>selftest now supports a –parallel option, with values of ‘fork’ or
+‘subprocess’ to run the test suite in parallel. Currently only Linux
+machines work, other platforms need patches submitted. (Robert Collins,
+Vincent Ladeuil)</li>
+<li><code class="docutils literal notranslate"><span class="pre">tests.run_suite</span></code> has a new parameter <code class="docutils literal notranslate"><span class="pre">suite_decorators</span></code>, a list of
+callables to use to decorate the test suite. Such decorators can add or
+remove tests, or even remote the test suite to another machine if
+desired. (Robert Collins)</li>
+<li>The smart server verb <code class="docutils literal notranslate"><span class="pre">Repository.get_parent_map</span></code> can now include
+information about ghosts when the special revision <code class="docutils literal notranslate"><span class="pre">include-missing:</span></code>
+is in the requested parents map list. With this flag, ghosts are
+included as <code class="docutils literal notranslate"><span class="pre">missing:REVISION_ID</span></code>. (Robert Collins, Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">_walk_to_common_revisions</span></code> will now batch up at least 50
+revisions before calling <code class="docutils literal notranslate"><span class="pre">get_parent_map</span></code> on the target,
+regardless of <code class="docutils literal notranslate"><span class="pre">InterRepository</span></code>.
+(Andrew Bennetts, Robert Collins)</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-1.14.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

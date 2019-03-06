@@ -1,0 +1,53 @@
+reconfigure
+===========
+
+:Purpose: Reconfigure the type of a brz directory.
+:Usage:   brz reconfigure [LOCATION]
+
+:Options:
+  --bind-to=ARG         Branch to bind checkout to.
+  --force               Perform reconfiguration even if local changes will be
+                        lost.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --stacked-on=ARG      Reconfigure a branch to be stacked on another branch.
+  --unstacked           Reconfigure a branch to be unstacked.  This may
+                        require copying substantial data into it.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+  Trees in Repository:
+    --with-no-trees     Reconfigure repository to not create working trees on
+                        branches by default.
+    --with-trees        Reconfigure repository to create working trees on
+                        branches by default.
+
+  Repository type:
+    --standalone        Reconfigure to be a standalone branch (i.e. stop using
+                        shared repository).
+    --use-shared        Reconfigure to use a shared repository.
+
+  Tree type:
+    --branch            Reconfigure to be an unbound branch with no working
+                        tree.
+    --checkout          Reconfigure to be a bound branch with a working tree.
+    --lightweight-checkout
+                        Reconfigure to be a lightweight checkout (with no
+                        local history).
+    --tree              Reconfigure to be an unbound branch with a working
+                        tree.
+
+:Description:
+  A target configuration must be specified.
+  
+  For checkouts, the bind-to location will be auto-detected if not specified.
+  The order of preference is
+  1. For a lightweight checkout, the current bound location.
+  2. For branches that used to be checkouts, the previously-bound location.
+  3. The push location.
+  4. The parent location.
+  If none of these is available, --bind-to must be specified.
+
+:See also: :doc:`branches <branches-help>`, :doc:`checkouts <checkouts-help>`, :doc:`standalone-trees <standalone-trees-help>`, :doc:`working-trees <working-trees-help>`
+
+

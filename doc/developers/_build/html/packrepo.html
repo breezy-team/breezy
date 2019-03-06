@@ -1,0 +1,450 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>KnitPack repository format &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Format feature flags" href="feature-flags.html" />
+    <link rel="prev" title="Development repository formats" href="development-repo.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="development-repo.html" title="Development repository formats"
+             accesskey="P">previous</a> |
+          <a href="feature-flags.html" title="Format feature flags"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="knitpack-repository-format">
+<h1><a class="toc-backref" href="#id1">KnitPack repository format</a><a class="headerlink" href="#knitpack-repository-format" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#knitpack-repository-format" id="id1">KnitPack repository format</a><ul>
+<li><a class="reference internal" href="#using-knitpack-repositories" id="id2">Using KnitPack repositories</a><ul>
+<li><a class="reference internal" href="#motivation" id="id3">Motivation</a></li>
+<li><a class="reference internal" href="#preparation" id="id4">Preparation</a></li>
+<li><a class="reference internal" href="#creating-a-new-knitpack-branch" id="id5">Creating a new knitpack branch</a></li>
+<li><a class="reference internal" href="#creating-a-new-knitpack-repository" id="id6">Creating a new knitpack repository</a></li>
+<li><a class="reference internal" href="#upgrading-an-existing-branch-or-repository-to-knitpack-format" id="id7">Upgrading an existing branch or repository to knitpack format</a></li>
+<li><a class="reference internal" href="#starting-a-new-knitpack-branch-from-one-in-an-older-format" id="id8">Starting a new knitpack branch from one in an older format</a></li>
+<li><a class="reference internal" href="#testing-packs-for-bzr-svn-users" id="id9">Testing packs for bzr-svn users</a></li>
+<li><a class="reference internal" href="#reporting-problems" id="id10">Reporting problems</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#technical-notes" id="id11">Technical notes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="using-knitpack-repositories">
+<h2><a class="toc-backref" href="#id2">Using KnitPack repositories</a><a class="headerlink" href="#using-knitpack-repositories" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="motivation">
+<h3><a class="toc-backref" href="#id3">Motivation</a><a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h3>
+<p>KnitPack is a new repository format for Breezy, which is expected to be
+faster both locally and over the network, is usually more compact, and
+will work with more FTP servers.</p>
+<p>Our benchmarking results to date have been very promising. We fully expect
+to make a pack-based format the default in the near future.  We would
+therefore like as many people as possible using KnitPack repositories,
+benchmarking the results and telling us where improvements are still needed.</p>
+</div>
+<div class="section" id="preparation">
+<h3><a class="toc-backref" href="#id4">Preparation</a><a class="headerlink" href="#preparation" title="Permalink to this headline">¶</a></h3>
+<p>A small percentage of existing repositories may have some inconsistent
+data within them. It’s is a good idea to check the integrity of your
+repositories before migrating them to knitpack format. To do this, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">check</span>
+</pre></div>
+</div>
+<p>If that reports a problem, run this command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">reconcile</span>
+</pre></div>
+</div>
+<p>Note that this can take many hours for repositories with deep history
+so be sure to set aside some time for this if it is required.</p>
+</div>
+<div class="section" id="creating-a-new-knitpack-branch">
+<h3><a class="toc-backref" href="#id5">Creating a new knitpack branch</a><a class="headerlink" href="#creating-a-new-knitpack-branch" title="Permalink to this headline">¶</a></h3>
+<p>If you’re starting a project from scratch, it’s easy to make it a
+<code class="docutils literal notranslate"><span class="pre">knitpack</span></code> one. Here’s how:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">stuff</span>
+<span class="n">bzr</span> <span class="n">init</span> <span class="o">--</span><span class="n">pack</span><span class="o">-</span><span class="mf">0.92</span>
+<span class="n">bzr</span> <span class="n">add</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;initial import&quot;</span>
+</pre></div>
+</div>
+<p>In other words, use the normal sequence of commands but add the
+<code class="docutils literal notranslate"><span class="pre">--pack-0.92</span></code> option to the <code class="docutils literal notranslate"><span class="pre">init</span></code> command.</p>
+<p><strong>Note:</strong> In bzr 0.92, this format was called <code class="docutils literal notranslate"><span class="pre">knitpack-experimental</span></code>.</p>
+</div>
+<div class="section" id="creating-a-new-knitpack-repository">
+<h3><a class="toc-backref" href="#id6">Creating a new knitpack repository</a><a class="headerlink" href="#creating-a-new-knitpack-repository" title="Permalink to this headline">¶</a></h3>
+<p>If you’re starting a project from scratch and wish to use a shared repository
+for branches, you can make it a <code class="docutils literal notranslate"><span class="pre">knitpack</span></code> repository like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">repo</span>
+<span class="n">bzr</span> <span class="n">init</span><span class="o">-</span><span class="n">repo</span> <span class="o">--</span><span class="n">pack</span><span class="o">-</span><span class="mf">0.92</span> <span class="o">.</span>
+<span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">stuff</span>
+<span class="n">bzr</span> <span class="n">init</span>
+<span class="n">bzr</span> <span class="n">add</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;initial import&quot;</span>
+</pre></div>
+</div>
+<p>In other words, use the normal sequence of commands but add the
+<code class="docutils literal notranslate"><span class="pre">--pack-0.92</span></code> option to the <code class="docutils literal notranslate"><span class="pre">init-repo</span></code> command.</p>
+</div>
+<div class="section" id="upgrading-an-existing-branch-or-repository-to-knitpack-format">
+<h3><a class="toc-backref" href="#id7">Upgrading an existing branch or repository to knitpack format</a><a class="headerlink" href="#upgrading-an-existing-branch-or-repository-to-knitpack-format" title="Permalink to this headline">¶</a></h3>
+<p>If you have an existing branch and wish to migrate it to
+a <code class="docutils literal notranslate"><span class="pre">knitpack</span></code> format, use the <code class="docutils literal notranslate"><span class="pre">upgrade</span></code> command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">upgrade</span> <span class="o">--</span><span class="n">pack</span><span class="o">-</span><span class="mf">0.92</span> <span class="n">path</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="n">my</span><span class="o">-</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>If you are using a shared repository, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">upgrade</span> <span class="o">--</span><span class="n">pack</span><span class="o">-</span><span class="mf">0.92</span> <span class="n">ROOT_OF_REPOSITORY</span>
+</pre></div>
+</div>
+<p>to upgrade the history database. Note that this will not
+alter the branch format of each branch, so
+you will need to also upgrade each branch individually
+if you are upgrading from an old (e.g. &lt; 0.17) bzr.
+More modern bzr’s will already have the branch format at
+our latest branch format which adds support for tags.</p>
+</div>
+<div class="section" id="starting-a-new-knitpack-branch-from-one-in-an-older-format">
+<h3><a class="toc-backref" href="#id8">Starting a new knitpack branch from one in an older format</a><a class="headerlink" href="#starting-a-new-knitpack-branch-from-one-in-an-older-format" title="Permalink to this headline">¶</a></h3>
+<p>This can be done in one of several ways:</p>
+<ol class="arabic simple">
+<li>Create a new branch and pull into it</li>
+<li>Create a standalone branch and upgrade its format</li>
+<li>Create a knitpack shared repository and branch into it</li>
+</ol>
+<p>Here are the commands for using the <code class="docutils literal notranslate"><span class="pre">pull</span></code> approach:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">init</span> <span class="o">--</span><span class="n">pack</span><span class="o">-</span><span class="mf">0.92</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+<span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+<span class="n">bzr</span> <span class="n">pull</span> <span class="n">my</span><span class="o">-</span><span class="n">source</span><span class="o">-</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>Here are the commands for using the <code class="docutils literal notranslate"><span class="pre">upgrade</span></code> approach:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">branch</span> <span class="n">my</span><span class="o">-</span><span class="n">source</span><span class="o">-</span><span class="n">branch</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+<span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+<span class="n">bzr</span> <span class="n">upgrade</span> <span class="o">--</span><span class="n">pack</span><span class="o">-</span><span class="mf">0.92</span> <span class="o">.</span>
+</pre></div>
+</div>
+<p>Here are the commands for the shared repository approach:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">repo</span>
+<span class="n">bzr</span> <span class="n">init</span><span class="o">-</span><span class="n">repo</span> <span class="o">--</span><span class="n">pack</span><span class="o">-</span><span class="mf">0.92</span> <span class="o">.</span>
+<span class="n">bzr</span> <span class="n">branch</span> <span class="n">my</span><span class="o">-</span><span class="n">source</span><span class="o">-</span><span class="n">branch</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+<span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>As a reminder, any of the above approaches can fail if the source branch
+has inconsistent data within it and hasn’t been reconciled yet. Please
+be sure to check that before reporting problems.</p>
+</div>
+<div class="section" id="testing-packs-for-bzr-svn-users">
+<h3><a class="toc-backref" href="#id9">Testing packs for bzr-svn users</a><a class="headerlink" href="#testing-packs-for-bzr-svn-users" title="Permalink to this headline">¶</a></h3>
+<p>If you are using <code class="docutils literal notranslate"><span class="pre">bzr-svn</span></code> or are testing the prototype subtree support,
+you can still use and assist in testing KnitPacks. The commands to use
+are identical to the ones given above except that the name of the format
+to use is <code class="docutils literal notranslate"><span class="pre">knitpack-subtree-experimental</span></code>.</p>
+<p>WARNING: Note that the subtree formats, <code class="docutils literal notranslate"><span class="pre">dirstate-subtree</span></code> and
+<code class="docutils literal notranslate"><span class="pre">knitpack-subtree-experimental</span></code>, are <strong>not</strong> production strength yet and
+may cause unexpected problems. They are required for the bzr-svn
+plug-in but should otherwise only be used by people happy to live on the
+bleeding edge. If you are using bzr-svn, you’re on the bleeding edge anyway.
+:-)</p>
+</div>
+<div class="section" id="reporting-problems">
+<h3><a class="toc-backref" href="#id10">Reporting problems</a><a class="headerlink" href="#reporting-problems" title="Permalink to this headline">¶</a></h3>
+<p>If you need any help or encounter any problems, please contact the developers
+via the usual ways, i.e. chat to us on IRC or send a message to our mailing
+list. See <a class="reference external" href="https://www.breezy-vcs.org/pages/support.html">https://www.breezy-vcs.org/pages/support.html</a> for contact details.</p>
+</div>
+</div>
+<div class="section" id="technical-notes">
+<h2><a class="toc-backref" href="#id11">Technical notes</a><a class="headerlink" href="#technical-notes" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar 0.92 adds a new format (experimental at first) implemented in
+<code class="docutils literal notranslate"><span class="pre">breezy.repofmt.pack_repo.py</span></code>.</p>
+<p>This format provides a knit-like interface which is quite compatible
+with knit format repositories: you can get a VersionedFile for a
+particular file-id, or for revisions, or for the inventory, even though
+these do not correspond to single files on disk.</p>
+<p>The on-disk format is that the repository directory contains these
+files and subdirectories:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="31%" />
+<col width="69%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>packs/</td>
+<td>completed readonly packs</td>
+</tr>
+<tr class="row-even"><td>indices/</td>
+<td>indices for completed packs</td>
+</tr>
+<tr class="row-odd"><td>upload/</td>
+<td>temporary files for packs currently being
+written</td>
+</tr>
+<tr class="row-even"><td>obsolete_packs/</td>
+<td>packs that have been repacked and are no
+longer normally needed</td>
+</tr>
+<tr class="row-odd"><td>pack-names</td>
+<td>index of all live packs</td>
+</tr>
+<tr class="row-even"><td>lock/</td>
+<td>lockdir</td>
+</tr>
+</tbody>
+</table>
+<p>Note that for consistency we always write “indices” not “indexes”.</p>
+<p>This is implemented on top of pack files, which are written once from
+start to end, then left alone.  A pack consists of a body file, plus
+several index files.  There are four index files for each pack, which
+have the same basename and an extension indicating the purpose of the
+index:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="12%" />
+<col width="15%" />
+<col width="35%" />
+<col width="38%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">extn</th>
+<th class="head">Purpose</th>
+<th class="head">Key</th>
+<th class="head">References</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">.tix</span></code></td>
+<td>File texts</td>
+<td><code class="docutils literal notranslate"><span class="pre">file_id,</span> <span class="pre">revision_id</span></code></td>
+<td>per-file parents,
+compression basis
+per-file parents</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">.six</span></code></td>
+<td>Signatures</td>
+<td><code class="docutils literal notranslate"><span class="pre">revision_id,</span></code></td>
+<td><ul class="first last simple">
+<li></li>
+</ul>
+</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">.rix</span></code></td>
+<td>Revisions</td>
+<td><code class="docutils literal notranslate"><span class="pre">revision_id,</span></code></td>
+<td>revision parents</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">.iix</span></code></td>
+<td>Inventory</td>
+<td><code class="docutils literal notranslate"><span class="pre">revision_id,</span></code></td>
+<td>revision parents,
+compression base</td>
+</tr>
+</tbody>
+</table>
+<p>Indices are accessed through the <code class="docutils literal notranslate"><span class="pre">breezy.index.GraphIndex</span></code> class.
+Indices are stored as sorted files on disk.  Each line is one record,
+and contains:</p>
+<blockquote>
+<div><ul class="simple">
+<li>key fields</li>
+<li>a value string - for all these indices, this is an ascii decimal pair
+of “offset length” giving the position of the referenced data within
+the pack body file</li>
+<li>a list of zero or more reference lists</li>
+</ul>
+</div></blockquote>
+<p>The reference lists let a graph be stored within the index.  Each
+reference list entry points to another entry in the same index.  The
+references are represented as a byte offset for the target within the
+index file.</p>
+<p>When a compression base is given, it indicates that the body of the text
+or inventory is a forward delta from the referenced revision.  The
+compression base list must have length 0 or 1.</p>
+<p>Like packs, indexes are written only once and then unmodified.  A
+GraphIndex builder is a mutable in-memory graph that can be sorted,
+cross-referenced and written out when the write group completes.</p>
+<p>There can also be index entries with a value of ‘a’ for absent.  These
+records exist just to be pointed to in a graph.  This is used, for
+example, to give the revision-parent pointer when the parent revision is
+in a previous pack.</p>
+<p>The data content for each record is a knit data chunk.  The knits are
+always unannotated - the annotations must be generated when needed.
+(We’d like to cache/memoize the annotations.)  The data hunks can be
+moved between packs without needing to recompress them.</p>
+<p>It is not possible to regenerate an index from the body file, because it
+contains information stored in the knit index that’s not in the body.
+(In particular, the per-file graph is only stored in the index.)
+We would like to change this in a future format.</p>
+<p>The lock is a regular LockDir lock.  The lock is only held for a much
+reduced scope, while updating the pack-names file.  The bulk of the
+insertion can be done without the repository locked.  This is an
+implementation detail; the repository user should still call
+<code class="docutils literal notranslate"><span class="pre">repository.lock_write</span></code> at the regular time but be aware this does not
+correspond to a physical mutex.</p>
+<p>Read locks control caching but do not affect writers.</p>
+<p>The newly-added repository write group concept is very important to
+KnitPack repositories.  When <code class="docutils literal notranslate"><span class="pre">start_write_group</span></code> is called, a new
+temporary pack is created and all modifications to the repository will
+go into it until either <code class="docutils literal notranslate"><span class="pre">commit_write_group</span></code> or <code class="docutils literal notranslate"><span class="pre">abort_write_group</span></code>
+is called, at which time it is either finished and moved into place or
+discarded respectively.  Write groups cannot be nested, only one can be
+underway at a time on a Repository instance and they must occur within a
+write lock.</p>
+<p>Normally the data for each revision will be entirely within a single
+pack but this is not required.</p>
+<p>When a pack is finished, it gets a final name based on the md5 of all
+the data written into the pack body file.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">pack-names</span></code> file gives the list of all finished non-obsolete
+packs.  (This should always be the same as the list of files in the
+<code class="docutils literal notranslate"><span class="pre">packs/</span></code> directory, but the file is needed for read-only HTTP clients
+that can’t easily list directories, and it includes other information.)
+The constraint on the <code class="docutils literal notranslate"><span class="pre">pack-names</span></code> list is that every file mentioned
+must exist in the <code class="docutils literal notranslate"><span class="pre">packs/</span></code> directory.</p>
+<p>In rare cases, when a writer is interrupted, about-to-be-removed packs
+may still be present in the directory but removed from the list.</p>
+<p>As well as the list of names, the pack-names file also contains the
+size, in bytes, of each of the four indices.  This is used to bootstrap
+bisection search within the indices.</p>
+<p>In normal use, one pack will be created for each commit to a repository.
+This would build up to an inefficient number of files over time, so a
+<code class="docutils literal notranslate"><span class="pre">repack</span></code> operation is available to recombine them, by producing larger
+files containing data on multiple revisions.  This can be done manually
+by running <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pack</span></code>, and it also may happen automatically when a
+write group is committed.</p>
+<p>The repacking strategy used at the moment tries to balance not doing too
+much work during commit with not having too many small files left in the
+repository.  The algorithm is roughly this: the total number of
+revisions in the repository is expressed as a decimal number, e.g.
+“532”.  Then we’ll repack until we have five packs containing a hundred
+revisions each, three packs containing ten revisions each, and two packs
+with single revisions.  This means that each revision will normally
+initially be created in a single-revision pack, then moved to a
+ten-revision pack, then to a 100-pack, and so on.</p>
+<p>As with other repositories, in normal use data is only inserted.
+However, in some circumstances we may want to garbage-collect or prune
+existing data, or reconcile indexes.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="development-repo.html" title="Development repository formats"
+              >previous</a> |
+            <a href="feature-flags.html" title="Format feature flags"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/packrepo.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

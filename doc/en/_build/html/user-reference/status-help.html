@@ -1,0 +1,229 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>status &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="switch" href="switch-help.html" />
+    <link rel="prev" title="split" href="split-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="split-help.html" title="split"
+             accesskey="P">previous</a> |
+          <a href="switch-help.html" title="switch"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="status">
+<h1>status<a class="headerlink" href="#status" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Display status summary.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz status [FILE…]</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-c <var>ARG</var></span>, <span class="option">--change=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Select changes introduced by the specified revision.
+See also “help revisionspec”.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
+<td><p class="first last">Show help message.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--no-classify</span></kbd></td>
+<td><p class="first last">Do not mark object type using indicator.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--no-pending</span></kbd></td>
+<td><p class="first last">Don’t show pending merges.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
+<td><p class="first last">Only display errors and warnings.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-r <var>ARG</var></span>, <span class="option">--revision=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">See “help revisionspec” for details.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-S</span>, <span class="option">--short</span></kbd></td>
+<td><p class="first last">Use short status indicators.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--show-ids</span></kbd></td>
+<td><p class="first last">Show internal object ids.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--usage</span></kbd></td>
+<td><p class="first last">Show usage message and options.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
+<td><p class="first last">Display more information.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-V</span>, <span class="option">--versioned</span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Only show versioned files.</p>
+</td></tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">This reports on versioned and unknown files, reporting them
+grouped by state.  Possible states are:</p>
+<dl class="docutils">
+<dt>added</dt>
+<dd><p class="first last">Versioned in the working copy but not in the previous revision.</p>
+</dd>
+<dt>removed</dt>
+<dd><p class="first last">Versioned in the previous revision but removed or deleted
+in the working copy.</p>
+</dd>
+<dt>renamed</dt>
+<dd><p class="first last">Path of this file changed from the previous revision;
+the text may also have changed.  This includes files whose
+parent directory was renamed.</p>
+</dd>
+<dt>modified</dt>
+<dd><p class="first last">Text has changed since the previous revision.</p>
+</dd>
+<dt>kind changed</dt>
+<dd><p class="first last">File kind has been changed (e.g. from file to directory).</p>
+</dd>
+<dt>unknown</dt>
+<dd><p class="first last">Not versioned and not matching an ignore pattern.</p>
+</dd>
+</dl>
+<p>Additionally for directories, symlinks and files with a changed
+executable bit, Breezy indicates their type using a trailing
+character: ‘/’, ‘&#64;’ or ‘*’ respectively. These decorations can be
+disabled using the ‘–no-classify’ option.</p>
+<p>To see ignored files use ‘brz ignored’.  For details on the
+changes to file texts, use ‘brz diff’.</p>
+<p>Note that –short or -S gives status flags for each item, similar
+to Subversion’s status command. To get output similar to svn -q,
+use brz status -SV.</p>
+<p>If no arguments are specified, the status of the entire working
+directory is shown.  Otherwise, only the status of the specified
+files or directories is reported.  If a directory is given, status
+is reported for everything inside that directory.</p>
+<p>Before merges are committed, the pending merge tip revisions are
+shown. To see all pending merge revisions, use the -v option.
+To skip the display of pending merge information altogether, use
+the no-pending option or specify a file/directory.</p>
+<p>To compare the working directory to a specific revision, pass a
+single revision to the revision argument.</p>
+<p>To see which files have changed in a specific revision, or between
+two revisions, pass a revision range to the revision argument.
+This will produce the same results as calling ‘brz diff –summarize’.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Aliases:</th><td class="field-body"><p class="first">st, stat</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">See also:</th><td class="field-body"><p class="first last"><a class="reference internal" href="diff-help.html"><span class="doc">diff</span></a>, <a class="reference internal" href="revert-help.html"><span class="doc">revert</span></a>, <a class="reference internal" href="status-flags-help.html"><span class="doc">status-flags</span></a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="split-help.html" title="split"
+              >previous</a> |
+            <a href="switch-help.html" title="switch"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/status-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

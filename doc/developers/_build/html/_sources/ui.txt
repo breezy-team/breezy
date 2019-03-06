@@ -1,0 +1,235 @@
+=========================
+Interacting with the user
+=========================
+
+Getting Input
+=============
+
+Processing Command Lines
+------------------------
+
+breezy has a standard framework for parsing command lines and calling
+processing routines associated with various commands. See builtins.py
+for numerous examples.
+
+
+Standard Parameter Types
+------------------------
+
+There are some common requirements in the library: some parameters need to be
+unicode safe, some need byte strings, and so on. At the moment we have
+only codified one specific pattern: Parameters that need to be unicode
+should be checked via ``breezy.osutils.safe_unicode``. This will coerce the
+input into unicode in a consistent fashion, allowing trivial strings to be
+used for programmer convenience, but not performing unpredictably in the
+presence of different locales.
+
+Confirmation
+============
+
+There are some operations, such as uncommitting, or breaking a lock, where
+Breezy may want to get confirmation from the user before proceeding.
+However in some circumstances Breezy should just go ahead without asking: if
+it's being used from a noninteractive program, or if the user's asked to
+never be asked for this particular confirmation or for any confirmations
+at all.
+
+We provide a special UIFactory method `confirm_action` to do this.  It
+takes a `confirmation_id` parameter that acts as a symbolic name for the
+type of confirmation, so the user can configure them off.  (This is not
+implemented at present.)  GUIs can have a "don't ask me again" option
+keyed by the confirmation id.
+
+Confirmation ids look like Python paths to the logical code that should
+use them.  (Because code may move or the check may for implementation
+reasons be done elsewhere, they need not perfectly correspond to the place
+they're used, and they should stay stable even when the code moves.)
+
+``breezy.builtins.uncommit``
+    Before the ``uncommit`` command actually changes the branch.
+
+``breezy.lockdir.break``
+    Before breaking a lock.
+
+``breezy.msgeditor.unchanged``
+    Proceed even though the user made no changes to the template message.
+
+Interactive confirmations can be overridden by using a
+`ConfirmationUserInterfacePolicy` decorator as the default
+ui_factory.
+
+
+Writing Output
+==============
+
+(The strategy described here is what we want to get to, but it's not
+consistently followed in the code at the moment.)
+
+breezy is intended to be a generically reusable library.  It shouldn't
+write messages to stdout or stderr, because some programs that use it
+might want to display that information through a GUI or some other
+mechanism.
+
+We can distinguish two types of output from the library:
+
+ 1. Structured data representing the progress or result of an
+    operation.  For example, for a commit command this will be a list
+    of the modified files and the finally committed revision number
+    and id.
+
+    These should be exposed either through the return code or by calls
+    to a callback parameter.
+
+    A special case of this is progress indicators for long-lived
+    operations, where the caller should pass a ProgressBar object.
+
+ 2. Unstructured log/debug messages, mostly for the benefit of the
+    developers or users trying to debug problems.  This should always
+    be sent through ``breezy.trace`` and Python ``logging``, so that
+    it can be redirected by the client.
+
+The distinction between the two is a bit subjective, but in general if
+there is any chance that a library would want to see something as
+structured data, we should make it so.
+
+The policy about how output is presented in the text-mode client
+should be only in the command-line tool.
+
+
+Progress and Activity Indications
+---------------------------------
+
+breezy has a way for code to display to the user that stuff is happening
+during a long operation.  There are two particular types: *activity* which
+means that IO is happening on a Transport, and *progress* which means that
+higher-level application work is occurring.  Both are drawn together by
+the `ui_factory`.
+
+Transport objects are responsible for calling `report_transport_activity`
+when they do IO.
+
+Progress uses a model/view pattern: application code acts on a
+`ProgressTask` object, which notifies the UI when it needs to be
+displayed.  Progress tasks form a stack.  To create a new progress task on
+top of the stack, call `breezy.ui.ui_factory.nested_progress_bar()`, then
+call `update()` on the returned ProgressTask.  It can be updated with just
+a text description, with a numeric count, or with a numeric count and
+expected total count.  If an expected total count is provided the view
+can show the progress moving along towards the expected total.
+
+The user should call `finish` on the `ProgressTask` when the logical
+operation has finished, so it can be removed from the stack.
+
+Progress tasks have a complex relationship with generators: it's a very
+good place to use them, but because python2.4 does not allow ``finally``
+blocks in generators it's hard to clean them up properly.  In this case
+it's probably better to have the code calling the generator allocate a
+progress task for its use and then call `finalize` when it's done, which
+will close it if it was not already closed.  The generator should also
+finish the progress task when it exits, because it may otherwise be a long
+time until the finally block runs.
+
+
+Message guidelines
+------------------
+
+When filenames or similar variables are presented inline within a message,
+they should be enclosed in double quotes (ascii 0x22, not chiral unicode
+quotes)::
+
+  bzr: ERROR: No such file "asdf"
+
+When we print just a list of filenames there should not be any quoting:
+see `bug 544297`_.
+
+.. _bug 544297: https://bugs.launchpad.net/bugs/544297
+
+https://wiki.ubuntu.com/UnitsPolicy provides a good explanation about
+which unit should be used when. Roughly speaking, IEC standard applies
+for base-2 units and SI standard applies for base-10 units:
+
+* for network bandwidth and disk sizes, use base-10 (Mbits/s, kB/s, GB)
+
+* for RAM sizes, use base-2 (GiB, TiB)
+
+
+
+Displaying help
+===============
+
+Breezy has online help for various topics through ``brz help COMMAND`` or
+equivalently ``brz command -h``.  We also have help on command options,
+and on other help topics.  (See ``help_topics.py``.)
+
+As for python docstrings, the first paragraph should be a single-sentence
+synopsis of the command. These are user-visible and should be prefixed with
+``__doc__ =`` so help works under ``python -OO`` with docstrings stripped.
+
+The help for options should be one or more proper sentences, starting with
+a capital letter and finishing with a full stop (period).
+
+All help messages and documentation should have two spaces between
+sentences.
+
+
+Handling Errors and Exceptions
+==============================
+
+Commands should return non-zero when they encounter circumstances that
+the user should really pay attention to - which includes trivial shell
+pipelines.
+
+Recommended values are:
+
+    0. OK.
+    1. Conflicts in merge-like operations, or changes are present in
+       diff-like operations.
+    2. Unrepresentable diff changes (i.e. binary files that we cannot show
+       a diff of).
+    3. An error or exception has occurred.
+    4. An internal error occurred (one that shows a traceback.)
+
+Errors are handled through Python exceptions. Exceptions should be defined
+inside breezy.errors, so that we can see the whole tree at a glance.
+
+We broadly classify errors as either being either internal or not,
+depending on whether ``internal_error`` is set or not.  If we think it's our
+fault, we show a backtrace, an invitation to report the bug, and possibly
+other details.  This is the default for errors that aren't specifically
+recognized as being caused by a user error.  Otherwise we show a briefer
+message, unless -Derror was given.
+
+Many errors originate as "environmental errors" which are raised by Python
+or builtin libraries -- for example IOError.  These are treated as being
+our fault, unless they're caught in a particular tight scope where we know
+that they indicate a user errors.  For example if the repository format
+is not found, the user probably gave the wrong path or URL.  But if one of
+the files inside the repository is not found, then it's our fault --
+either there's a bug in bzr, or something complicated has gone wrong in
+the environment that means one internal file was deleted.
+
+Many errors are defined in ``breezy/errors.py`` but it's OK for new errors
+to be added near the place where they are used.
+
+Exceptions are formatted for the user by conversion to a string
+(eventually calling their ``__str__`` method.)  As a convenience the
+``._fmt`` member can be used as a template which will be mapped to the
+error's instance dict.
+
+New exception classes should be defined when callers might want to catch
+that exception specifically, or when it needs a substantially different
+format string.
+
+#. If it is something that a caller can recover from, a custom exception
+   is reasonable.
+
+#. If it is a data consistency issue, using a builtin like
+   ``ValueError``/``TypeError`` is reasonable.
+
+#. If it is a programmer error (using an api incorrectly)
+   ``AssertionError`` is reasonable.
+
+#. Otherwise, use ``BzrError`` or ``InternalBzrError``.
+
+Exception strings should start with a capital letter and should not have a
+final fullstop.  If long, they may contain newlines to break the text.

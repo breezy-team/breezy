@@ -1,0 +1,228 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>What should be in the roadmap? &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="what-should-be-in-the-roadmap">
+<h1>What should be in the roadmap?<a class="headerlink" href="#what-should-be-in-the-roadmap" title="Permalink to this headline">¶</a></h1>
+<p>A good roadmap provides a place for contributors to look for tasks, it
+provides users with a sense of when we will fix things that are
+affecting them, and it also allows us all to agree about where we are
+headed. So the roadmap should contain enough things to let all this
+happen.</p>
+<p>I think that it needs to contain the analysis work which is required, a
+list of the use cases to be optimised, the disk changes required, and
+the broad sense of the api changes required. It also needs to list the
+inter-dependencies between these things: we should aim for a large
+surface area of ‘ready to be worked on’ items, that makes it easy to
+improve performance without having to work in lockstep with other
+developers.</p>
+<p>Clearly the analysis step is an immediate bottleneck - we cannot tell if
+an optimisation for use case A is a pessimism for use case B until we
+have analysed both A and B. I propose that we complete the analysis of
+say a dozen core use cases end to end during the upcoming sprint in
+London. We should then be able to fork() for much of the detailed design
+work and regroup with disk and api changes shortly thereafter.</p>
+<p>I suspect that clarity of layering will make a big difference to
+developer parallelism, so another proposal I have is for us to look at
+the APIs for Branch and Repository in London in the light of what we
+have learnt over the last years.</p>
+</div>
+<div class="section" id="what-should-the-final-system-look-like-how-is-it-different-to-what-we-have-today">
+<h1>What should the final system look like, how is it different to what we have today?<a class="headerlink" href="#what-should-the-final-system-look-like-how-is-it-different-to-what-we-have-today" title="Permalink to this headline">¶</a></h1>
+<p>One of the things I like the most about bzr is its rich library API, and
+I’ve heard this from numerous other folk. So anything that will remove
+that should be considered a last resort.</p>
+<p>Similarly our relatively excellent cross platform support is critical
+for projects that are themselves cross platform, and thats a
+considerable number these days.</p>
+<p>And of course, our focus on doing the right thing is what differentiates
+us from some of the other VCS’s, so we should be focusing on doing the
+right thing quickly :).</p>
+<p>What we have today though has grown organically in response to us
+identifying bottlenecks over several iterations of back end storage,
+branch metadata and the local tree representation. I think we are
+largely past that and able to describe the ideal characteristics of the
+major actors in the system - primarily Tree, Branch, Repository - based
+on what we have learnt.</p>
+</div>
+<div class="section" id="what-use-cases-should-be-covered">
+<h1>What use cases should be covered?<a class="headerlink" href="#what-use-cases-should-be-covered" title="Permalink to this headline">¶</a></h1>
+<p>My list of use cases is probably not complete - its just the ones I
+happen to see a lot :). I think each should be analysed comprehensively
+so we dont need to say ‘push over the network’ - its implied in the
+scaling analysis that both semantic and file operation latency will be
+considered.</p>
+<p>These use cases are ordered by roughly the ease of benchmarking, and the
+frequency of use. This ordering is so that when people are comparing bzr
+they are going to get use cases we have optimised; and so that as we
+speed things up our existing users will have the things they do the most
+optimised.</p>
+<blockquote>
+<div><ul class="simple">
+<li>status tree</li>
+<li>status subtree</li>
+<li>commit</li>
+<li>commit to a bound branch</li>
+<li>incremental push/pull</li>
+<li>log</li>
+<li>log path</li>
+<li>add</li>
+<li>initial push or pull [both to a new repo and an existing repo with
+different data in it]</li>
+<li>diff tree</li>
+<li>diff subtree</li>
+<li>revert tree</li>
+<li>revert subtree</li>
+<li>merge from a branch</li>
+<li>merge from a bundle</li>
+<li>annotate</li>
+<li>create a bundle against a branch</li>
+<li>uncommit</li>
+<li>missing</li>
+<li>update</li>
+<li>cbranch</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="how-is-development-on-the-roadmap-coordinated">
+<h1>How is development on the roadmap coordinated?<a class="headerlink" href="#how-is-development-on-the-roadmap-coordinated" title="Permalink to this headline">¶</a></h1>
+<p>I think we should hold regular get-togethers (on IRC) to coordinate on
+our progress, because this is a big task and its a lot easier to start
+helping out some area which is having trouble if we have kept in contact
+about each areas progress. This might be weekly or fortnightly or some
+such.</p>
+<p>we need a shared space to record the results of the analysis and the
+roadmap as we go forward. Given that we’ll need to update these as new
+features are considered, I propose that we use doc/design as a working
+space, and as we analyse use cases we include them in there - including
+the normal review process for each patch. We also need documentation
+about doing performance tuning - not the minutiae, though that is
+needed, but about how to effective choose things to optimise which will
+give the best return on time spent - that is what the roadmap should
+help with, but this looks to be a large project and an overview will be
+of great assistance I think. We want to help everyone that wishes to
+contribute to performance to do so effectively.</p>
+<p>Finally, it’s important to note that coding is not the only contribution
+- testing, giving feedback on current performance, helping with the
+analysis are all extremely important tasks too and we probably want to
+have clear markers of where that should be done to encourage such
+contributions.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/performance-roadmap-rationale.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

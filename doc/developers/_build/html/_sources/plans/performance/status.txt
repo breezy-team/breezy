@@ -1,0 +1,100 @@
+The status command
+==================
+
+The status command is used to provide a pithy listing of the changes between
+two trees. Its common case is between the working tree and the basis tree, but
+it can be used between any two arbitrary trees.
+
+.. contents:: :local:
+
+UI Overview
+-----------
+
+Status shows several things in parallel (for the paths the user supplied mapped
+across the from and to tree, and any pending merges in the to tree).
+
+1. Single line summary of all new revisions - the pending merges and their
+   parents recursively.
+2. Changes to the tree shape - adds/deletes/renames.
+3. Changes to versioned content - kind changes and content changes.
+4. Unknown files in the to tree.
+5. Files with conflicts in the to tree.
+
+
+Ideal work for working tree to historical status
+------------------------------------------------
+
+We need to do the following things at a minimum:
+
+1. Determine new revisions - the pending merges and history.
+
+1. Retrieve the first line of the commit message for the new revisions.
+
+1. Determine the tree differences between the two trees using the users paths
+   to limit the scope, and resolving paths in the trees for any pending merges.
+   We arguably don't care about tracking metadata for this - only the value of
+   the tree the user commited.
+
+1. The entire contents of directories which are versioned when showing
+   unknowns.
+
+1. Whether a given unversioned path is unknown or ignored.
+
+1. The list conflicted paths in the tree (which match the users path
+   selection?)
+
+
+Expanding on the tree difference case we will need to:
+
+1. Stat every path in working trees which is included by the users path
+   selection to ascertain kind and execute bit.
+
+1. For paths which have the same kind in both trees and have content, read
+   that content or otherwise determine whether the content has changed. Using
+   our hash cache from the dirstate allows us to avoid reading the file in the
+   common case. There are alternative ways to achieve this - we could record
+   a pointer to a revision which contained this fileid with the current content
+   rather than storing the content's hash; but this seems to be a pointless
+   double-indirection unless we save enough storage in the working tree. A
+   variation of this is to not record an explicit pointer but instead
+   define an implicit pointer as being to the left-hand-parent tree.
+
+
+Locality of reference
+---------------------
+
+- We should stat files in the same directory without reading or statting
+  files in other directories. That is we should do all the statting we
+  intend to do within a given directory without doing any other IO, to
+  minimise pressure on the drive heads to seek.
+
+- We should read files in the same directory without reading or writing
+  files in other directories - and note this is separate to statting (file
+  data is usually physically disjoint to metadata).
+
+
+Scaling observations
+--------------------
+
+- The stat operation clearly involves every versioned path in the common case.
+- Expanding out the users path selection in a naive manner involves reading the
+  entire tree shape information for both trees and for all pending-merge trees.
+  (Dirstate makes this tolerably cheap for now, but we're still scaling
+  extra-linearly.)
+- The amount of effort required to generate tree differences between the
+  working tree and the basis tree is interesting: with a tree-like structure
+  and some generatable name for child nodes we use the working tree data to
+  eliminate accessing or considering subtrees regardless of historival
+  age. However, if we have had to access the historical tree shape to
+  perform path selection this rather reduces the win we can obtain here.
+  If we can cause path expansion to not require historical shape access
+  (perhaps by performing the expansion after calculating the tree
+  difference for the top level of the selected path) then we can gain a
+  larger win. This strongly suggests that path expansion and tree
+  difference generation should be linked in terms of API.
+
+
+
+..
+   vim: ft=rst tw=74 ai
+

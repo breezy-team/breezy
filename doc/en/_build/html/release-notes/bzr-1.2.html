@@ -1,0 +1,297 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-1-2">
+<h2>bzr 1.2<a class="headerlink" href="#bzr-1-2" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2008-02-15</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix failing test in Launchpad plugin. (Martin Pool)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-1-2rc1">
+<h2>bzr 1.2rc1<a class="headerlink" href="#bzr-1-2rc1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2008-02-13</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="notes-when-upgrading">
+<h3>Notes When Upgrading<a class="headerlink" href="#notes-when-upgrading" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fetching via the smart protocol may need to reconnect once during a fetch
+if the remote server is running Bazaar 1.1 or earlier, because the client
+attempts to use more efficient requests that confuse older servers.  You
+may be required to re-enter a password or passphrase when this happens.
+This won’t happen if the server is upgraded to Bazaar 1.2.
+(Andrew Bennetts)</li>
+</ul>
+</div>
+<div class="section" id="changes">
+<h3>Changes<a class="headerlink" href="#changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fetching via bzr+ssh will no longer fill ghosts by default (this is
+consistent with pack-0.92 fetching over SFTP). (Robert Collins)</li>
+<li>Formatting of <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">plugins</span></code> output is changed to be more human-
+friendly. Full path of plugins locations will be shown only with
+<code class="docutils literal notranslate"><span class="pre">--verbose</span></code> command-line option. (Alexander Belchenko)</li>
+<li><code class="docutils literal notranslate"><span class="pre">merge</span></code> now prefers to use the submit branch, but will fall back to
+parent branch.  For many users, this has no effect.  But some users who
+pull and merge on the same branch will notice a change.  This change
+makes it easier to work on a branch on two different machines, pulling
+between the machines, while merging from the upstream.
+<code class="docutils literal notranslate"><span class="pre">merge</span> <span class="pre">--remember</span></code> can now be used to set the submit_branch.
+(Aaron Bentley)</li>
+</ul>
+</div>
+<div class="section" id="features">
+<h3>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">merge</span> <span class="pre">--preview</span></code> produces a diff of the changes merge would make,
+but does not actually perform the merge.  (Aaron Bentley)</li>
+<li>New smart method <code class="docutils literal notranslate"><span class="pre">Repository.get_parent_map</span></code> for getting revision
+parent data. This returns additional parent information topologically
+adjacent to the requested data to reduce round trip latency impacts.
+(Robert Collins)</li>
+<li>New smart method, <code class="docutils literal notranslate"><span class="pre">Repository.stream_revisions_chunked</span></code>, for fetching
+revision data that streams revision data via a chunked encoding.  This
+avoids buffering large amounts of revision data on the server and on the
+client, and sends less data to the server to request the revisions.
+(Andrew Bennetts, Robert Collins, #178353)</li>
+<li>The launchpad plugin now handles lp URLs of the form
+<code class="docutils literal notranslate"><span class="pre">lp://staging/</span></code>, <code class="docutils literal notranslate"><span class="pre">lp://demo/</span></code>, <code class="docutils literal notranslate"><span class="pre">lp://dev/</span></code> to use the appropriate
+launchpad instance to do the resolution of the branch identities.
+This is primarily of use to Launchpad developers, but can also
+be used by other users who want to try out Launchpad as
+a branch location without messing up their public Launchpad
+account.  Branches that are pushed to the staging environment
+have an expected lifetime of one day. (Tim Penhey)</li>
+</ul>
+</div>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Creating a new branch no longer tries to read the entire revision-history
+unnecessarily over smart server operations. (Robert Collins)</li>
+<li>Fetching between different repository formats with compatible models now
+takes advantage of the smart method to stream revisions.  (Andrew Bennetts)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">--coverage</span></code> option is now global, rather specific to <code class="docutils literal notranslate"><span class="pre">bzr</span>
+<span class="pre">selftest</span></code>.  (Andrew Bennetts)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">register-branch</span></code> command will now use the public URL of the branch
+containing the current directory, if one has been set and no explicit
+branch is provided.  (Robert Collins)</li>
+<li>Tweak the <code class="docutils literal notranslate"><span class="pre">reannotate</span></code> code path to optimize the 2-parent case.
+Speeds up <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">annotate</span></code> with a pack repository by approx 3:2.
+(John Arbash Meinel)</li>
+</ul>
+</div>
+<div class="section" id="bugfixes">
+<h3>Bugfixes<a class="headerlink" href="#bugfixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Calculate remote path relative to the shared medium in _SmartClient.  This
+is related to the problem in bug #124089.  (Andrew Bennetts)</li>
+<li>Cleanly handle connection errors in smart protocol version two, the same
+way as they are handled by version one.  (Andrew Bennetts)</li>
+<li>Clearer error when <code class="docutils literal notranslate"><span class="pre">version-info</span> <span class="pre">--custom</span></code> is used without
+<code class="docutils literal notranslate"><span class="pre">--template</span></code> (Lukáš Lalinský)</li>
+<li>Don’t raise UnavailableFeature during test setup when medusa is not
+available or tearDown is never called leading to nasty side effects.
+(#137823, Vincent Ladeuil)</li>
+<li>If a plugin’s test suite cannot be loaded, for example because of a syntax
+error in the tests, then <code class="docutils literal notranslate"><span class="pre">selftest</span></code> fails, rather than just printing
+a warning.  (Martin Pool, #189771)</li>
+<li>List possible values for BZR_SSH environment variable in env-variables
+help topic. (Alexander Belchenko, #181842)</li>
+<li>New methods <code class="docutils literal notranslate"><span class="pre">push_log_file</span></code> and <code class="docutils literal notranslate"><span class="pre">pop_log_file</span></code> to intercept messages:
+popping the log redirection now precisely restores the previous state,
+which makes it easier to use bzr log output from other programs.
+TestCaseInTempDir no longer depends on a log redirection being established
+by the test framework, which lets bzr tests cleanly run from a normal
+unittest runner.
+(#124153, #124849, Martin Pool, Jonathan Lange)</li>
+<li><code class="docutils literal notranslate"><span class="pre">pull</span> <span class="pre">--quiet</span></code> is now more quiet, in particular a message is no longer
+printed when the remembered pull location is used. (James Westby,
+#185907)</li>
+<li><code class="docutils literal notranslate"><span class="pre">reconfigure</span></code> can safely be interrupted while fetching.
+(Aaron Bentley, #179316)</li>
+<li><code class="docutils literal notranslate"><span class="pre">reconfigure</span></code> preserves tags when converting to and from lightweight
+checkouts.  (Aaron Bentley, #182040)</li>
+<li>Stop polluting /tmp when running selftest.
+(Vincent Ladeuil, #123363)</li>
+<li>Switch from NFKC =&gt; NFC for normalization checks. NFC allows a few
+more characters which should be considered valid.
+(John Arbash Meinel, #185458)</li>
+<li>The launchpad plugin now uses the <code class="docutils literal notranslate"><span class="pre">edge</span></code> XML-RPC server to avoid
+interacting badly with a bug on the launchpad side. (Robert Collins)</li>
+<li>Unknown hostnames when connecting to a <code class="docutils literal notranslate"><span class="pre">bzr://</span></code> URL no longer cause
+tracebacks.  (Andrew Bennetts, #182849)</li>
+</ul>
+</div>
+<div class="section" id="api-breaks">
+<h3>API Breaks<a class="headerlink" href="#api-breaks" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Classes implementing Merge types like Merge3Merger must now accept (and
+honour) a do_merge flag in their constructor.  (Aaron Bentley)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Repository.add_inventory</span></code> and <code class="docutils literal notranslate"><span class="pre">add_revision</span></code> now require the caller
+to previously take a write lock (and start a write group.)
+(Martin Pool)</li>
+</ul>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>selftest now accepts –load-list &lt;file&gt; to load a test id list. This
+speeds up running the test suite on a limited set of tests.
+(Vincent Ladeuil)</li>
+</ul>
+</div>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Add a new method <code class="docutils literal notranslate"><span class="pre">get_result</span></code> to graph search objects. The resulting
+<code class="docutils literal notranslate"><span class="pre">SearchResult</span></code> can be used to recreate the search later, which will
+be useful in reducing network traffic. (Robert Collins)</li>
+<li>Use convenience function to check whether two repository handles
+are referring to the same repository in <code class="docutils literal notranslate"><span class="pre">Repository.get_graph</span></code>.
+(Jelmer Vernooij, #187162)</li>
+<li>Fetching now passes the find_ghosts flag through to the
+<code class="docutils literal notranslate"><span class="pre">InterRepository.missing_revision_ids</span></code> call consistently for all
+repository types. This will enable faster missing revision discovery with
+bzr+ssh. (Robert Collins)</li>
+<li>Fix error handling in Repository.insert_data_stream. (Lukas Lalinsky)</li>
+<li><code class="docutils literal notranslate"><span class="pre">InterRepository.missing_revision_ids</span></code> is now deprecated in favour of
+<code class="docutils literal notranslate"><span class="pre">InterRepository.search_missing_revision_ids</span></code> which returns a
+<code class="docutils literal notranslate"><span class="pre">bzrlib.graph.SearchResult</span></code> suitable for making requests from the smart
+server. (Robert Collins)</li>
+<li>New error <code class="docutils literal notranslate"><span class="pre">NoPublicBranch</span></code> for commands that need a public branch to
+operate. (Robert Collins)</li>
+<li>New method <code class="docutils literal notranslate"><span class="pre">iter_inventories</span></code> on Repository for access to many
+inventories. This is primarily used by the <code class="docutils literal notranslate"><span class="pre">revision_trees</span></code> method, as
+direct access to inventories is discouraged. (Robert Collins)</li>
+<li>New method <code class="docutils literal notranslate"><span class="pre">next_with_ghosts</span></code> on the Graph breadth-first-search objects
+which will split out ghosts and present parents into two separate sets,
+useful for code which needs to be aware of ghosts (e.g. fetching data
+cares about ghosts during revision selection). (Robert Collins)</li>
+<li>Record a timestamp against each mutter to the trace file, relative to the
+first import of bzrlib.  (Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Repository.get_data_stream</span></code> is now deprecated in favour of
+<code class="docutils literal notranslate"><span class="pre">Repository.get_data_stream_for_search</span></code> which allows less network
+traffic when requesting data streams over a smart server. (Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">RemoteBzrDir._get_tree_branch</span></code> no longer triggers <code class="docutils literal notranslate"><span class="pre">_ensure_real</span></code>,
+removing one round trip on many network operations. (Robert Collins)</li>
+<li>RemoteTransport’s <code class="docutils literal notranslate"><span class="pre">recommended_page_size</span></code> method now returns 64k, like
+SFTPTransport and HttpTransportBase.  (Andrew Bennetts)</li>
+<li>Repository has a new method <code class="docutils literal notranslate"><span class="pre">has_revisions</span></code> which signals the presence
+of many revisions by returning a set of the revisions listed which are
+present. This can be done by index queries without reading data for parent
+revision names etc. (Robert Collins)</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-1.2.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

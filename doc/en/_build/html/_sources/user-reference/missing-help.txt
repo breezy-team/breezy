@@ -1,0 +1,67 @@
+missing
+=======
+
+:Purpose: Show unmerged/unpulled revisions between two branches.
+:Usage:   brz missing [OTHER_BRANCH]
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  --include-merged      Show all revisions in addition to the mainline ones.
+  --mine-only           Display changes in the local branch only.
+  --my-revision=ARG     Filter on local branch revisions (inclusive). See
+                        "help revisionspec" for details.
+  --other               Same as --theirs-only.
+  -q, --quiet           Only display errors and warnings.
+  --reverse             Reverse the order of revisions.
+  -r ARG, --revision=ARG
+                        Filter on other branch revisions (inclusive). See
+                        "help revisionspec" for details.
+  --show-ids            Show internal object ids.
+  --theirs-only         Display changes in the remote branch only.
+  --this                Same as --mine-only.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+  Log format:
+    --log-format=ARG    Use specified log format.
+    --gnu-changelog     Format used by GNU ChangeLog files.
+    --line              Log format with one line per revision.
+    --long              Detailed log format.
+    -S, --short         Moderately short log format.
+
+:Description:
+  OTHER_BRANCH may be local or remote.
+  
+  To filter on a range of revisions, you can use the command -r begin..end
+  -r revision requests a specific revision, -r ..end or -r begin.. are
+  also valid.
+
+:Exit values:
+    1 - some missing revisions
+    0 - no missing revisions
+
+:Examples:
+    Determine the missing revisions between this and the branch at the
+    remembered pull location::
+
+        brz missing
+
+    Determine the missing revisions between this and another branch::
+
+        brz missing http://server/branch
+
+    Determine the missing revisions up to a specific revision on the other
+    branch::
+
+        brz missing -r ..-10
+
+    Determine the missing revisions up to a specific revision on this
+    branch::
+
+        brz missing --my-revision ..-10
+
+:See also: :doc:`merge <merge-help>`, :doc:`pull <pull-help>`
+
+

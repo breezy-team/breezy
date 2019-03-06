@@ -1,0 +1,205 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Apport Integration &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Authentication ring" href="authentication-ring.html" />
+    <link rel="prev" title="Revision Properties" href="revision-properties.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="revision-properties.html" title="Revision Properties"
+             accesskey="P">previous</a> |
+          <a href="authentication-ring.html" title="Authentication ring"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-apport-integration">
+<h1>Bazaar Apport Integration<a class="headerlink" href="#bazaar-apport-integration" title="Permalink to this headline">¶</a></h1>
+<p>Bazaar can use Apport &lt;<a class="reference external" href="http://launchpad.net/apport/">http://launchpad.net/apport/</a>&gt; to capture data about
+unexpected errors (probably, bugs in Bazaar) and report them to the
+developers.</p>
+<p>This is only active for errors that are believed to be internal errors (ie
+bugs) not user or environmental errors.  (See the Developer Guide.)</p>
+<div class="section" id="consequences-for-users">
+<h2>Consequences for users<a class="headerlink" href="#consequences-for-users" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>They shouldn’t normally need to see or copy&amp;paste a traceback.</li>
+<li>They will be able to inspect the files before sending them to be sure
+there’s no sensitive data included.</li>
+<li>As at present, they’ll need a Launchpad account to report bugs in the
+normal way.</li>
+</ul>
+</div>
+<div class="section" id="implementation-notes">
+<h2>Implementation notes<a class="headerlink" href="#implementation-notes" title="Permalink to this headline">¶</a></h2>
+<p>The use of apport by Bazaar is independent of the configuration in the OS.
+For example in Ubuntu, apport is normally inactive in release builds, and
+normally excludes software not installed from a package.  We’ll bypass
+both of them.</p>
+<p>Putting in this handler may mean that an OS-wide exception handler never
+sees the error, but that was true with our existing exception-printer.</p>
+<p>The user should have the option to: forget about the crash (and ignore the
+bug report), see the contents of the report, file a bug, or save the
+report to file later.  At the moment we just show them the filename and
+let them take it from there.</p>
+<p>The process is</p>
+<ol class="arabic simple">
+<li>An exception reaches the top-level handler.</li>
+<li>We log it in apport-format to a file in ~/.config/breezy/crash.</li>
+<li>We tell the user where that file is, and invite them to file a bug
+report.</li>
+</ol>
+<p>This won’t be active for bugs that cause the whole Python interpreter to
+crash.  This can be handled at the OS level.  The nice thing is that if
+apport is active system-wide, it will catch either exceptions in our
+in-process apport handler, or errors that crash the intrepreter.</p>
+</div>
+<div class="section" id="future-ideas">
+<h2>Future ideas<a class="headerlink" href="#future-ideas" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><p class="first">Capture apport data even for things not believed to be internal errors,
+because sometimes they are in fact bugs.  Then the user can attach the
+apport report later if they decide to file a bug.  There may be quite a
+lot of them so we might need to limit the number that are stored, or do
+this when a debug flag is set.  At the moment they go into .bzr.log and
+that’s probably ok to start with.</p>
+</li>
+<li><p class="first">Raising an error from the breakin debugger should cause this to fire.</p>
+</li>
+<li><p class="first">Developers looking at a crash on their own machine will probably in the
+first instance just want to see the traceback. Apport files may be more
+longwinded than our current output and might make the traceback scroll
+off the screen.</p>
+</li>
+<li><p class="first">Automatically trace messages (ie from .bzr.log) in the report.  We could
+just include the whole file, but it may be long, and including the whole
+thing has a greater risk of including sensitive data.</p>
+</li>
+<li><p class="first">Ask the user what they want to do with the report: automatically file
+it, look at it, see just the traceback, just be told where it is.  This
+could be done through the UIFactory so that it can be done through a
+graphical dialog.</p>
+<p>However, if we’ve already had an unhandled error in this process there
+may be problems in Bazaar that prevent us presenting a clean message…</p>
+<p>Possibly these bugs are better reported in the next time bzr runs.</p>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="revision-properties.html" title="Revision Properties"
+              >previous</a> |
+            <a href="authentication-ring.html" title="Authentication ring"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/apport.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

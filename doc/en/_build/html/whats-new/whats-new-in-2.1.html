@@ -1,0 +1,287 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>What’s New in Bazaar 2.1? &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="what-s-new-in-bazaar-2-1">
+<h1>What’s New in Bazaar 2.1?<a class="headerlink" href="#what-s-new-in-bazaar-2-1" title="Permalink to this headline">¶</a></h1>
+<p>This document outlines the major improvements in Bazaar 2.1
+vs Bazaar 2.0. As well as summarizing improvements made to
+the core product, it highlights enhancements within the broader
+Bazaar world of potential interest to those upgrading.</p>
+<p>Bazaar 2.1.0 marks the start of our second long-term-stable series.
+This series will be supported with bug fixes for the next 12 months.
+All users are encouraged to upgrade from the 2.0.x stable series.</p>
+<div class="section" id="better-efficiency">
+<h2>Better efficiency<a class="headerlink" href="#better-efficiency" title="Permalink to this headline">¶</a></h2>
+<p>Many operations now consume less memory. Several operations are
+also faster including branching, logging merged revisions and
+upgrading from pre-2a to 2a format.</p>
+</div>
+<div class="section" id="new-command-options">
+<h2>New command options<a class="headerlink" href="#new-command-options" title="Permalink to this headline">¶</a></h2>
+<p>Several commands have new options. These include:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="17%" />
+<col width="22%" />
+<col width="60%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Command</th>
+<th class="head">Option</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>branch</td>
+<td>bind</td>
+<td>Bind to the source location</td>
+</tr>
+<tr class="row-odd"><td>commit</td>
+<td>commit-time</td>
+<td>Give an explicit commit timestamp</td>
+</tr>
+<tr class="row-even"><td>switch</td>
+<td>revision</td>
+<td>Switch to a particular revision</td>
+</tr>
+<tr class="row-odd"><td>unshelve</td>
+<td>keep</td>
+<td>Apply changes but don’t delete them</td>
+</tr>
+<tr class="row-even"><td>unshelve</td>
+<td>preview</td>
+<td>Show the diff that would result from
+unshelving</td>
+</tr>
+<tr class="row-odd"><td>update</td>
+<td>revision</td>
+<td>Update to a particular revision</td>
+</tr>
+</tbody>
+</table>
+<p>Other command improvements include:</p>
+<ul class="simple">
+<li>A <a class="reference internal" href="../user-reference/shelve-help.html"><span class="doc">shelve</span></a> editor can be defined to provide shelf functionality at
+a granularity finer than per-patch hunk.</li>
+<li><a class="reference internal" href="../user-reference/send-help.html"><span class="doc">send</span></a> send now supports the OS X Mail application.</li>
+</ul>
+<p>See the help for the commands above for further details.</p>
+</div>
+<div class="section" id="per-file-merge-hooks">
+<h2>Per-file merge hooks<a class="headerlink" href="#per-file-merge-hooks" title="Permalink to this headline">¶</a></h2>
+<p>Hooks can now be defined for smart merging of selected file types.
+This enables easier merging of ChangeLogs, Release Notes and other
+file that frequently conflict.</p>
+</div>
+<div class="section" id="dwim-revision-identifiers">
+<h2>DWIM revision identifiers<a class="headerlink" href="#dwim-revision-identifiers" title="Permalink to this headline">¶</a></h2>
+<p>Revision identifiers can now be given in a <em>Do-What-I-Mean</em> style.
+For example, you can now just give a tag (instead of saying <code class="docutils literal notranslate"><span class="pre">tag:xxx</span></code>)
+or just say <code class="docutils literal notranslate"><span class="pre">today</span></code> (instead of saying <code class="docutils literal notranslate"><span class="pre">date:today</span></code>). Prefixes
+are now only required if the revision spec could be ambiguous.</p>
+</div>
+<div class="section" id="launchpad-compatibility">
+<h2>Launchpad compatibility<a class="headerlink" href="#launchpad-compatibility" title="Permalink to this headline">¶</a></h2>
+<p>Launchpad has <a class="reference external" href="http://blog.launchpad.net/general/edge-is-deprecated">announced</a> that the
+<code class="docutils literal notranslate"><span class="pre">edge.launchpad.net</span></code> instance is deprecated and may be shut down in the
+future . Bazaar has therefore been updated in this release to talk to the main
+(<code class="docutils literal notranslate"><span class="pre">launchpad.net</span></code>) servers, rather than the <code class="docutils literal notranslate"><span class="pre">edge</span></code> ones (the same code is
+running on both servers during the interim).</p>
+</div>
+<div class="section" id="new-ignore-patterns">
+<h2>New ignore patterns<a class="headerlink" href="#new-ignore-patterns" title="Permalink to this headline">¶</a></h2>
+<p>Patterns prefixed with <code class="docutils literal notranslate"><span class="pre">!</span></code> are exceptions to ignore patterns and
+take precedence over regular ignores. Such exceptions are used to
+specify files that should be versioned which would otherwise be
+ignored. Patterns prefixed with <code class="docutils literal notranslate"><span class="pre">!!</span></code> act as regular ignore patterns,
+but have highest precedence, even over the <code class="docutils literal notranslate"><span class="pre">!</span></code> exception patterns.</p>
+</div>
+<div class="section" id="smart-server-home-directory-support">
+<h2>Smart server home directory support<a class="headerlink" href="#smart-server-home-directory-support" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">bzr+ssh</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr</span></code> paths can now be relative to home directories
+specified in the URL.  Paths starting with a path segment of <code class="docutils literal notranslate"><span class="pre">~</span></code> are
+relative to the home directory of the user running the server, and paths
+starting with <code class="docutils literal notranslate"><span class="pre">~user</span></code> are relative to the home directory of the named
+user.  For example, for a user “bob” with a home directory of
+<code class="docutils literal notranslate"><span class="pre">/home/bob</span></code>, these URLs are all equivalent:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr+ssh://bob&#64;host/~/repo</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr+ssh://bob&#64;host/~bob/repo</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr+ssh://bob&#64;host/home/bob/repo</span></code></li>
+</ul>
+<p>If <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">serve</span></code> was invoked with a <code class="docutils literal notranslate"><span class="pre">--directory</span></code> argument, then no
+home directories outside that directory will be accessible via this
+method.</p>
+<p>This is a feature of <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">serve</span></code>, so pre-2.1 clients will
+automatically benefit from this feature when <code class="docutils literal notranslate"><span class="pre">bzr</span></code> on the server is
+upgraded.</p>
+</div>
+<div class="section" id="generalized-glob-support-on-windows">
+<h2>Generalized glob support on Windows<a class="headerlink" href="#generalized-glob-support-on-windows" title="Permalink to this headline">¶</a></h2>
+<p>On Windows, glob expansion is now handled in a universal way across
+all commands. In previous versions, it was explicitly handed by just
+a few commands, e.g. <code class="docutils literal notranslate"><span class="pre">add</span></code>. A side effect of this change is that
+patterns now need to be quoted when passed to the <code class="docutils literal notranslate"><span class="pre">ignore</span></code> command,
+e.g. <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">ignore</span> <span class="pre">*.foo</span></code> now needs to be given as <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">ignore</span> <span class="pre">&quot;*.foo&quot;</span></code>.</p>
+</div>
+<div class="section" id="improved-git-and-mercurial-interoperability">
+<h2>Improved Git and Mercurial interoperability<a class="headerlink" href="#improved-git-and-mercurial-interoperability" title="Permalink to this headline">¶</a></h2>
+<p>Many improvements have been made to the <a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/git-plugin.html">git</a> and <a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/hg-plugin.html">hg</a> plugins.
+With these plugins installed, most Git and Mercurial repositories
+can now be read by standard Bazaar clients. Changes can also
+be written back via the dpush command.</p>
+</div>
+<div class="section" id="metaprojects">
+<h2>Metaprojects<a class="headerlink" href="#metaprojects" title="Permalink to this headline">¶</a></h2>
+<p>New plugins are available for constructing larger projects
+from smaller ones. These include:</p>
+<ul class="simple">
+<li><a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/builder-plugin.html">builder</a> - construction of a branch using recipes</li>
+<li><a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/externals-plugin.html">externals</a> - Subversion-style external branches</li>
+</ul>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The builder plugin has been designed to complement the <a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/builddeb-plugin.html">builddeb</a>
+plugin to streamline Debian source package management. It may also
+be useful for building test images for a QA team or disk images
+for installers, say.</p>
+</div>
+</div>
+<div class="section" id="colocated-branch-workspaces">
+<h2>Colocated branch workspaces<a class="headerlink" href="#colocated-branch-workspaces" title="Permalink to this headline">¶</a></h2>
+<p>A colocated workspace is one where a single working tree is used
+across one or more branches managed at that same location. This
+is now supported by the new <a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/colo-plugin.html">colo</a> plugin and by Bazaar Explorer.</p>
+</div>
+<div class="section" id="better-documentation">
+<h2>Better documentation<a class="headerlink" href="#better-documentation" title="Permalink to this headline">¶</a></h2>
+<p>A <a class="reference internal" href="../admin-guide/index.html"><span class="doc">Breezy System Administrator’s Guide</span></a> covering topics such as setting up servers,
+security, backups and email integration has been added.</p>
+<p>A large number of documentation bugs have been fixed, clarifying
+numerous issues and filling in some missing holes.</p>
+<p>The <a class="reference internal" href="../user-reference/index.html"><span class="doc">Breezy User Reference</span></a>
+has been organized into topics making it easier to
+navigate through and print selected sections of.</p>
+<p>To assist users migrating from other tools, a
+<a class="reference external" href="http://doc.bazaar.canonical.com/migration/en/survival/index.html">Survival Guide</a>
+has been published explaining Bazaar to users of other tools in terms they
+already know. Sections are provided for existing users of
+CVS, Subversion, ClearCase, Perforce, Visual SourceSafe, Git, Mercurial,
+Darcs and Monotone.</p>
+<p>Selected documents have also been translated to Japanese.</p>
+</div>
+<div class="section" id="enhanced-gui-clients">
+<h2>Enhanced GUI clients<a class="headerlink" href="#enhanced-gui-clients" title="Permalink to this headline">¶</a></h2>
+<p>Numerous enhancements have been made to most of our GUIs including
+Bazaar Explorer, TortoiseBZR and the QBzr-Eclipse add-on. These
+applications all build on top of improvements made to QBzr. Bzr-gtk
+has also been improved.</p>
+<p>Bazaar Explorer has over a dozen new features including smart toolbars,
+support for all bzr commands (including those in plugins),
+a better working tree browser and a submit delta report showing the
+cumulative effect of a series of commits.
+See <a class="reference external" href="http://doc.bazaar.canonical.com/explorer/en/whats-new/whats-new-in-1.0.html">What’s New in Bazaar Explorer 1.0?</a>
+for more information.</p>
+</div>
+<div class="section" id="further-information">
+<h2>Further information<a class="headerlink" href="#further-information" title="Permalink to this headline">¶</a></h2>
+<p>For more detailed information on the changes made, be sure to check
+the <a class="reference internal" href="../release-notes/index.html"><span class="doc">Breezy Release Notes</span></a> for:</p>
+<ul class="simple">
+<li>the interim bzr <a class="reference external" href="https://launchpad.net/bzr/2.1">milestones</a></li>
+<li>the plugins you use.</li>
+</ul>
+<p>Enjoy,
+The Bazaar Development Team</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/whats-new/whats-new-in-2.1.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

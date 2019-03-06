@@ -1,0 +1,126 @@
+================
+LCA Tree Merging
+================
+
+There are 2 ways that you get LCA merge resolution in bzr. First, if you use
+``bzr merge --lca``, the *content* of files will be resolved using a Least Common
+Ancestors algorithm. That is described in <lca-merge.html> not here.
+
+This document describes how we handle merging tree-shape when there is not
+a single unique ancestor (criss-cross merge). With a single LCA, we use
+simple 3-way-merge logic.
+
+When there are multiple possible LCAs, we use a different algorithm for
+handling tree-shape merging. Described here.
+
+As a simple example, here is a revision graph which we will refer to often::
+
+  .    BASE
+  .  /      \
+  . LCA1   LCA2
+  . |   \ /   |
+  . |    X    |
+  . |   / \   |
+  . THIS  OTHER
+
+In this graph, ``THIS`` and ``OTHER`` both have ``LCA1`` and ``LCA2`` in their
+ancestry but neither is an ancestor of the other, so we have 2 least common
+ancestors. The unique common ancestor is ``BASE``. (It should be noted that in
+this text we will talk directly about ``LCA1`` and ``LCA2``, but the algorithms
+are designed to cope with more than 2 LCAs.)
+
+
+Scalars
+=======
+
+Definition
+----------
+
+I'm defining scalar values as ones that cannot be 'merged' on their own. For
+example, the name of a file is "scalar". If one person changes "foo.txt" to
+"foo.c" and someone else changes "foo.txt" to "bar.txt" we don't merge the
+changes to be "bar.c", we simply conflict and expect the user to sort it out.
+
+We use a slightly different algorithm for scalars.
+
+
+Resolution Algorithm
+--------------------
+
+(This can be seen as ``breezy.merge.Merge3Merger._lca_multi_way```
+
+1. If ``THIS`` and ``OTHER`` have the same value, use it. There is no need to
+   inspect any other values in this case. Either nothing was changed (all
+   interesting nodes would have the same value), or we have "accidental
+   convergence" (both sides made the same change.).
+
+2. Find the values from ``LCA1`` and ``LCA2`` which are not the same as
+   ``BASE``. The idea here is to provide a rudimentary "heads" comparison.
+   Often, the whole tree graph will have a criss-cross, but the per-file
+   (per-scalar) graph would be linear, and the value in one LCA strictly
+   dominates the other. It is possible to construct a scenario where one side
+   dominates the other, but the dominated value is not ``BASE``, but a second
+   intermediate value. Most scalars are rarely changed, so this is unlikely to
+   be an issue. The trade-off is having to generate and inspect the
+   per-scalar graph.
+
+   If there are no LCA values that are different from ``BASE``, we use a simple
+   3-way merge with ``BASE`` as the base value.
+
+3. Find the unique set of LCA values that do not include the ``BASE`` value.
+   If there is only one unique LCA value, we again use three-way merge logic
+   using that unique value as the base.
+
+4. At this point, we have determined that we have at least 2 unique values in
+   our LCAs which means that ``THIS`` and ``OTHER`` would both have to resolve
+   the conflict. If they resolved it in the same way, we would have caught that
+   in step 1. So they either both picked a different LCA value, or one (or
+   both) chose a new value to use.
+
+   If ``OTHER`` and ``THIS`` both picked a different LCA value, we conflict.
+
+   If ``OTHER`` and ``THIS`` both have values that are not LCA values, we also
+   conflict. (Same as 3-way, both sides modified a value in different ways.)
+
+5. (optional) The only tricky part is this: if ``OTHER`` has a LCA value, but
+   ``THIS`` does not, then we go with ``THIS``, and conversely if ``THIS`` has
+   an LCA value, but ``OTHER`` does not, then we go with ``OTHER``. The idea is
+   that ``THIS`` and ``OTHER`` may have resolved things in the same way, and
+   then later changed the value to something newer. (They could have also
+   resolved it differently, and then one side updated again.)
+
+
+``InventoryEntry.revision``
+---------------------------
+
+The last-modified revision for an entry gets treated differently. This is
+because how it is generated allows us to infer more information. Specifically,
+any time there is a change to an entry (rename, or content change) the last
+modified revision is updated. Further, if we are merging, and both sides
+updated the entry, then we update the last-modified revision at the merge
+point.
+
+For a picture example::
+
+    .   A
+    .  / \
+    . B   C
+    .  \ /
+    .   D
+
+
+For a single entry, the last modified revision in ``D`` is:
+
+1) ``A`` if neither ``B`` or ``C`` modified it
+2) ``B`` if ``B`` modified and ``C`` did not
+3) ``C`` if ``C`` modified and ``B`` did not
+4) ``D`` if ``B`` and ``C`` modified it
+
+This means that if the last modified revision is the same, there have been no
+changes in the intermediate time. If ``OTHER`` also has the same last modified
+revision as *any* LCA, then we know that all other LCAs' last-modified
+revisions are in the ancestry of that value. (Otherwise, when ``OTHER`` would
+need to create a new last modified revision as part of the merge.)
+
+..
+   vim: ft=rst tw=74 ai

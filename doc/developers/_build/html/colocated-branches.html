@@ -1,0 +1,231 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>co-located branches &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="co-located-branches">
+<h1>co-located branches<a class="headerlink" href="#co-located-branches" title="Permalink to this headline">¶</a></h1>
+<p>At the moment, each Bazaar branch has a separate directory in the file
+system. While this works well, and makes it very easy to discover
+branches there are several situations where it might be useful to also
+support multiple branches under the same file system directory.</p>
+<div class="section" id="rationale">
+<h2>Rationale<a class="headerlink" href="#rationale" title="Permalink to this headline">¶</a></h2>
+<p>Allowing multiple branches to live under the same directory in the file
+system means that it is possible to very easily share the same working
+tree and repository between those branches, without having a lot of fs
+infrastructure.</p>
+<p>Git and Mercurial (can) store multiple branches under a single directory
+in the file system - per repository, so to speak. In order for this to
+be accessible in Bazaar, Bazaar needs to have the right APIs and UI for
+accessing these branches.</p>
+</div>
+<div class="section" id="use-cases">
+<h2>Use Cases<a class="headerlink" href="#use-cases" title="Permalink to this headline">¶</a></h2>
+<p>Carla has a large C-based project with a large tree and a lot of .o
+files that get generated as part of her build process. She doesn’t want
+to create a new working tree for each new branch but simply uses “bzr
+switch” to switch between the different colocated branches that all use
+the same working tree.</p>
+<p>Brad has a single project with a lot of related branches. He works on
+them and occasionally pushes all of those branches to a remote host
+using a single push command.</p>
+<p>Joe follows one of his co-workers local branches in Mercurial by pulling
+into Bazaar.</p>
+</div>
+<div class="section" id="implementation">
+<h2>Implementation<a class="headerlink" href="#implementation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="ui-changes">
+<h3>UI Changes<a class="headerlink" href="#ui-changes" title="Permalink to this headline">¶</a></h3>
+<p>Bazaar URLs need to have some way to address colocated branches in
+directories that contain multiple branches.</p>
+<p>Per RFC3986 we have picked the comma (“,”) to allow the specification of
+colocated branch names. Comma’s in path names would have to be
+urlencoded at first to avoid ambiguity, though perhaps it would be
+possible to support heuristics later when interpreting user-specified URLs.</p>
+<p>An example URL would be:</p>
+<blockquote>
+<div>bzr://bazaar.launchpad.net/~jelmer/bzr/bzr.dev,colo-urls</div></blockquote>
+<p>The segment after the comma will initially be interpreted as a colocated
+branch name but we would like to keep the option to allow
+key=value style specifications in the future and DWIM for segments that
+do not contain an =. Following the RFC the comma would be interpreted within
+the scope of a path segment. In other words, in the URL:</p>
+<blockquote>
+<div>git://git.debian.org/pkg-python-debian/python-debian.git,unstable/README</div></blockquote>
+<p>unstable is interpreted as the colocated branch living in the python-debian.git
+control directory; README is a path inside of the branch.</p>
+<p>Control directories will also have the notion of an “active” branch. This is
+the branch that is being used by a working tree, if present and the branch
+that will be used if no explicit colocated branch is specified. The
+active branch support makes it easier to deal with existing bzrdirs and
+is useful when accessing foreign control directories that have the concept
+as well.</p>
+<p>A new command ‘bzr rmbranch’ needs to be added to make it possible to
+remove colocated branches, as this won’t be possible by simple
+directory removal, at least not of a user-visible directory.</p>
+</div>
+<div class="section" id="code-changes">
+<h3>Code Changes<a class="headerlink" href="#code-changes" title="Permalink to this headline">¶</a></h3>
+<p>BzrDirFormat will need a supports_colocated_branches property that
+indicates whether a format supports the creation, removal and accessing of
+colocated branches.</p>
+<p>Several methods on BzrDir will need to be updated to take an option branch_name
+parameter. If this parameter is not specified or None, the active branch
+will be used.</p>
+<p>The methods that will have to be extended are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>BzrDir.open_branch()</li>
+<li>BzrDir.create_branch()</li>
+<li>BzrDir.destroy_branch()</li>
+<li>BzrDir.get_branch_transport()</li>
+<li>BranchFormat.initialise()</li>
+<li>BranchFormat.open()</li>
+</ul>
+</div></blockquote>
+<p>A new BzrDir.list_branches() method will return all colocated branches
+present in a control directory.</p>
+<p>Any URL interpreting methods (e.g. Branch.open) will need to be updated
+to extract a colocated branch name and need to pass that into the
+relevant methods.</p>
+<p>Existing callers of BzrDir.{create,open,destroy}_branch() need to
+be updated to pass in branch names and optionally be changed to use
+BzrDir.list_branches().</p>
+</div>
+</div>
+<div class="section" id="schema-changes">
+<h2>Schema Changes<a class="headerlink" href="#schema-changes" title="Permalink to this headline">¶</a></h2>
+<p>No format changes are necessary at first; at least, even if Bazaar
+provides the right infrastructure it doesn’t have to support this
+feature in its own file formats.</p>
+<p>Eventually, Bazaar could easily support colocated branches by just
+creating a new branch transport for each colocated branch and have a
+“regular” branch live there. This would require something like
+BzrDirMeta2 though. An example of this is implemented in the
+lp:bzr-colocated plugin</p>
+</div>
+<div class="section" id="further-integration">
+<h2>Further integration<a class="headerlink" href="#further-integration" title="Permalink to this headline">¶</a></h2>
+<p>Loggerhead and Launchpad need to be updated to show colocated branches
+(perhaps in a similar way as they would show tags?).</p>
+<p>qbzr/bzr-gtk need to be updated to support colocated branches.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/colocated-branches.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

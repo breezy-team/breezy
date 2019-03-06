@@ -1,0 +1,60 @@
+==========================
+Breezy Performance Roadmap
+==========================
+
+.. Mark sections in included files as following:
+..   level 1 ========
+..   level 2 --------
+..   level 3 ~~~~~~~~
+..   level 4 ^^^^^^^^ (it is better not to use nesting deeper than 3 levels)
+
+.. contents::
+.. sectnum::
+
+About the performance roadmap
+#############################
+
+.. include:: performance-roadmap-rationale.txt
+
+.. include:: planned-performance-changes.txt
+
+.. include:: planned-change-integration.txt
+
+Analysis of use cases
+#####################
+
+.. include:: performance-use-case-analysis.txt
+
+Use cases
+#########
+
+.. include:: initial-push-pull.txt
+
+.. include:: incremental-push-pull.txt
+
+.. include:: add.txt
+
+.. include:: commit.txt
+
+.. include:: diff.txt
+
+.. include:: gc.txt
+
+.. include:: revert.txt
+
+.. include:: status.txt
+
+.. include:: annotate.txt
+
+.. include:: merge-scaling.txt
+
+.. include:: bundle-creation.txt
+
+.. include:: uncommit.txt
+
+.. include:: missing.txt
+
+Subsystem designs
+#################
+
+.. include:: directory-fingerprints.txt

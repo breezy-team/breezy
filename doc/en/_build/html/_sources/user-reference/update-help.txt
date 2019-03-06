@@ -1,0 +1,46 @@
+update
+======
+
+:Purpose: Update a working tree to a new revision.
+:Usage:   brz update [DIR]
+
+:Options:
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --show-base           Show base revision text in conflicts.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  This will perform a merge of the destination revision (the tip of the
+  branch, or the specified revision) into the working tree, and then make
+  that revision the basis revision for the working tree.
+  
+  You can use this to visit an older revision, or to update a working tree
+  that is out of date from its branch.
+  
+  If there are any uncommitted changes in the tree, they will be carried
+  across and remain as uncommitted changes after the update.  To discard
+  these changes, use 'brz revert'.  The uncommitted changes may conflict
+  with the changes brought in by the change in basis revision.
+  
+  If the tree's branch is bound to a master branch, brz will also update
+  the branch from the master.
+  
+  You cannot update just a single file or directory, because each Breezy
+  working tree has just a single basis revision.  If you want to restore a
+  file that has been removed locally, use 'brz revert' instead of 'brz
+  update'.  If you want to restore a file to its state in a previous
+  revision, use 'brz revert' with a '-r' option, or use 'brz cat' to write
+  out the old content of that file to a new location.
+  
+  The 'dir' argument, if given, must be the location of the root of a
+  working tree to update.  By default, the working tree that contains the
+  current working directory is used.
+
+:Aliases:  up
+:See also: :doc:`pull <pull-help>`, :doc:`status-flags <status-flags-help>`, :doc:`working-trees <working-trees-help>`
+
+

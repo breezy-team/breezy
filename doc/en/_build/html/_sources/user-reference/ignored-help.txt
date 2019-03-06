@@ -1,0 +1,25 @@
+ignored
+=======
+
+:Purpose: List ignored files and the patterns that matched them.
+:Usage:   brz ignored
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  List all the ignored files and the ignore pattern that caused the file to
+  be ignored.
+  
+  Alternatively, to list just the files::
+  
+      brz ls --ignored
+
+:See also: :doc:`ignore <ignore-help>`, :doc:`ls <ls-help>`
+
+

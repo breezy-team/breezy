@@ -1,0 +1,83 @@
+Resolving conflicts
+===================
+
+Workflow
+--------
+
+Unlike some other tools that force you to resolve each conflict during
+the merge process, Breezy merges as much as it can and then reports the
+conflicts. This can make conflict resolution easier because the contents
+of the whole post-merge tree are available to help you decide how things
+ought to be resolved. You may also wish to selectively run tests as you go
+to confirm each resolution or group or resolutions is good.
+
+Listing conflicts
+-----------------
+
+As well as being reported by the ``merge`` command, the list of outstanding
+conflicts may be displayed at any time by using the ``conflicts``
+command. It is also included as part of the output from the ``status``
+command.
+
+Resolving a conflict
+--------------------
+
+When a conflict is encountered, the ``merge`` command puts embedded
+markers in each file showing the areas it couldn't resolve. It also
+creates 3 files for each file with a conflict:
+
+ * foo.BASE
+ * foo.THIS
+ * foo.OTHER
+
+where ``foo`` is the name of the conflicted file.
+In many cases, you can resolve conflicts by simply manually editing
+each file in question, fixing the relevant areas and removing the
+conflict markers as you go.
+
+After fixing all the files in conflict, and removing the markers,
+ask Breezy to mark them as resolved using the ``resolve`` command like this::
+
+  brz resolve
+
+Alternatively, after fixing each file, you can mark it as resolved
+like this::
+
+  brz resolve foo
+
+Among other things, the ``resolve`` command cleans up the BASE,
+THIS and OTHER files from your working tree.
+
+Using the remerge command
+-------------------------
+
+In some cases, you may wish to try a different merge algorithm on a
+given file. To do this, use the ``remerge`` command nominating
+the file like this::
+
+  brz remerge --weave foo
+
+where ``foo`` is the file and ``weave`` is one of the available
+merge algorithms. This algorithm is particularly useful when a
+so-called ``criss-cross`` merge is detected, e.g. when two branches
+merge the same thing then merge each other. See the online help for
+``criss-cross`` and ``remerge`` for further details.
+
+Using external tools to resolve conflicts
+-----------------------------------------
+
+If you have a GUI tool you like using to resolve conflicts, be sure
+to install the *extmerge* plugin. Once installed, it can be used
+like this::
+
+  brz extmerge foo
+
+where ``foo`` is the conflicted file. Rather than provide a list of
+files to resolve, you can give the ``--all`` option to implicitly
+specify all conflicted files.
+
+The ``extmerge`` command uses the tool specified by the
+``external_merge`` setting in your ``breezy.conf`` file.
+If not set, it will look for some popular merge tools such
+as ``kdiff3`` or ``opendiff``, the latter being a command
+line interface to the FileMerge utility in OS X.

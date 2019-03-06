@@ -1,0 +1,77 @@
+view
+====
+
+:Purpose: Manage filtered views.
+:Usage:   brz view [FILE...]
+
+:Options:
+  --all          Apply list or delete action to all views.
+  --delete       Delete the view.
+  -h, --help     Show help message.
+  --name=ARG     Name of the view to define, list or delete.
+  -q, --quiet    Only display errors and warnings.
+  --switch=ARG   Name of the view to switch to.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  Views provide a mask over the tree so that users can focus on
+  a subset of a tree when doing their work. After creating a view,
+  commands that support a list of files - status, diff, commit, etc -
+  effectively have that list of files implicitly given each time.
+  An explicit list of files can still be given but those files
+  must be within the current view.
+  
+  In most cases, a view has a short life-span: it is created to make
+  a selected change and is deleted once that change is committed.
+  At other times, you may wish to create one or more named views
+  and switch between them.
+  
+  To disable the current view without deleting it, you can switch to
+  the pseudo view called ``off``. This can be useful when you need
+  to see the whole tree for an operation or two (e.g. merge) but
+  want to switch back to your view after that.
+
+:Examples:
+  To define the current view::
+
+    brz view file1 dir1 ...
+
+  To list the current view::
+
+    brz view
+
+  To delete the current view::
+
+    brz view --delete
+
+  To disable the current view without deleting it::
+
+    brz view --switch off
+
+  To define a named view and switch to it::
+
+    brz view --name view-name file1 dir1 ...
+
+  To list a named view::
+
+    brz view --name view-name
+
+  To delete a named view::
+
+    brz view --name view-name --delete
+
+  To switch to a named view::
+
+    brz view --switch view-name
+
+  To list all views defined::
+
+    brz view --all
+
+  To delete all views::
+
+    brz view --delete --all
+
+
+

@@ -1,0 +1,69 @@
+"bzr update" performance analysis
+=================================
+
+There are 5 different slightly different situations in which bzr update
+can be used:
+
+* local only (no-op)
+* lightweight checkout
+* heavy checkout
+* heavy checkout w/ local changes
+* bzr update could work on "bound branch" w/no wt
+
+No new revisions
+================
+Should be O(1) to determine
+Tree base is up to date
+wt.last-rev == wt.b.last-rev
+
+No local changes, only new revisions
+====================================
+1) Need to move wt.last_rev (O(1))
+2) apply delta from base to new rev (O(changes))
+   applying changes to files is approx (O(lines-in-files ^ 2))
+3) update meta-info (executable bits, etc) about modified files (O(changes))
+
+2/3 could be concurrent (but that may not necessarily be faster)
+
+potential issue w/ serialized is having 50k files in limbo/
+
+the limbo/ directory could be avoided in some cases, for example when
+adding new files in new directories.
+
+modifying in place: reduces fragmentation of fs, not atomic
+w/ local modification, potential of data loss
+w/o should be safe
+
+"local mod" is diff between disk and last commit, not merge base
+
+Detecting name conflicts should be O(siblings). Alternatively, conflicts
+with existing files can be detected using stat() and conflicts with new files
+can be detected by examining the pending transform. This changes
+complexity to O(changes).
+
+out of date heavyweight checkout, out of date w/master
+=======================================================
+1) open working tree, check latest revision
+2) open working tree branch, check latest revision
+3) mismatch => update wt => wt.b.lastrev
+   apply delta to tree O(changed file size)
+   ---- conflicts
+   stop on conflicts
+   stop always -> inform user they need to repeat (why not?, GFD)
+4) pull new revs M => L O(newrevs)
+5) apply delta to wt
+   local committed changes become a pending merge
+   local uncommitted stay uncommitted
+   local pending merges are retained (should be gc'd)
+
+offtopic:
+should bzr update report where the source is ?
+should bzr update handle both cases (local tree out-of-date w/local branch, checkout out-of-date w/master) ?
+
+if updating would diverge, give opportuniuty to branch/unbind instead
+local ahead, "push to master"
+
+ideas:
+1) can this be done as a single logical step?
+2) can this be done w/o modifying working tree until end? possible performance improvements
+3) if the pulling revision step could deliver full texts, that may help for the merge (same thing as "bzr pull")

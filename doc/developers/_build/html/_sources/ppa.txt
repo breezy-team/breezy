@@ -1,0 +1,367 @@
+Managing the Breezy PPA
+=======================
+
+See also: `Breezy Developer Document Catalog <index.html>`_.
+
+
+Background
+----------
+
+We build Ubuntu ``.deb`` packages for Breezy as an important part of the
+release process.  These packages are hosted in a few `Personal Package
+Archives (PPA)`__ on Launchpad.
+
+  __ https://help.launchpad.net/PPAQuickStart
+
+As of January 2011, there are the following PPAs:
+
+<https://launchpad.net/~bzr/+archive/ppa>
+    Final released versions and updates.
+    Most users who want updates to bzr should add this.
+
+<https://launchpad.net/~bzr/+archive/proposed>
+    Proposed uploads to move into ~bzr/ppa, awaiting testing.
+
+<https://launchpad.net/~bzr/+archive/obsolete>
+    A preserved copy of the final version of packages from ~bzr/ppa for
+    obsolete Ubuntu series.
+
+<https://launchpad.net/~bzr/+archive/beta>
+    Beta releases.
+
+<https://launchpad.net/~bzr/+archive/beta-obsolete>
+    A preserved copy of the final version of packages from
+    ~bzr/beta for obsolete Ubuntu series.
+
+<https://launchpad.net/~bzr/+archive/daily>
+    Automatic nightly builds from trunk.
+
+We build a distinct package for each distrorelease.
+If you upload a release-specific version, you should add a suffix to the
+package version, e.g. ``1.3-1~bazaar1~dapper1``.
+
+Dapper uses the ``python-support`` framework and later distributions use
+``python-central``.  This has little effect on everyday packaging but does
+mean that some of the control files are quite different.
+
+Beta releases of bzr and plugins are uploaded into the beta PPA.
+
+Final release versions are first uploaded into the proposed PPA, which
+serves as a staging area to allow for new packages to be tested, and also
+so that a complete set of Breezy core and plugin updated versions can be
+prepared together, when negotiating an API version transition.
+
+Once ready, packages can be copied from the proposed PPA to the main PPA
+using the lp-promote-ppa script found within the hydrazine project.  This
+procedure reduces the risk of broken packages or dependencies between
+packages in the main PPA from which many people get bzr updates.
+
+The packaging information is kept in branches of bzr on Launchpad, named
+like
+<https://code.launchpad.net/~bzr/ubuntu/hardy/bzr/bzr-ppa>.
+or
+<lp:~bzr/ubuntu/hardy/bzr/bzr-ppa>.  These branches are intended to be used
+with the ``bzr-builddeb`` plugin.
+
+The page <http://wiki.bazaar.canonical.com/PpaPackagingBranches> is a
+reference to where the PPA packaging branches for each of the source
+packages in the ``~bzr`` PPAs may be found.
+
+
+Supported releases
+------------------
+
+We build packages for every supported Ubuntu release
+<https://wiki.ubuntu.com/Releases>.  Packages need no longer be updated
+when the release passes end-of-life because all users should
+have upgraded by then.
+
+As of August 2010, the following releases are supported:
+
+* Maverick
+* Lucid LTS
+* Karmic
+* Jaunty (support ends October 2010)
+* Hardy LTS
+* Dapper LTS (supported but no longer updated for new releases)
+
+The ``rmadison bzr`` command will gives you an up-to-date summary
+of which bzr releases are current in each Ubuntu release.
+
+Preconditions
+-------------
+
+* You must have a Launchpad account and be a member of the team
+  that owns these PPAs (``~bzr``).
+
+* You must have a GPG key registered to your Launchpad account.
+
+On reasonably recent versions of Ubuntu you no longer need special dput
+configuration, because you can just say ::
+
+  dput ppa:bzr/proposed source.changes
+  
+
+However, you may still want to add these lines to ``~/.dput.cf`` prevent 
+inadvertently attempting to upload into Ubuntu or Debian, which will
+give a somewhat unclear error::
+
+    [DEFAULT]
+    default_host_main = notspecified
+
+* You need a Ubuntu (or probably Debian) machine, and ::
+
+    sudo apt-get install build-essential devscripts dput quilt patch libcrypt-ssleay-perl debhelper cdbs python-docutils
+
+  Please update this document if you encounter unmet dependencies or find a
+  shorter way to express them.
+
+* You will also want to have the `bzr-builddeb`_ plugin installed.
+
+.. _`bzr-builddeb`: http://launchpad.net/bzr-builddeb
+
+
+Packaging Breezy
+----------------
+
+Overview of packaging with builddeb
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* First update the oldest supported branch, using ``bzr merge-upstream``.
+
+* Run ``bzr builddeb -S -- -sa`` to build a source package, then put 
+  that into the ppa.  
+  
+  (``-S`` says to make a source-only upload, which is
+  required for Launchpad's builders.  ``-sa`` says to include the
+  ``.orig.tgz`` even if this doesn't seem to be the first upload for an
+  upstream release: this is often needed when rebuilding something that's
+  previously been uploaded to Debian or Ubuntu or into a different PPA.)
+
+* Now merge across that change into each supported branch with a 
+  simple ``bzr merge``.
+  
+Locally testing using pbuilder
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It may be useful to locally test builds inside pbuilder.  You may want to 
+use the script from <http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=255165> 
+to wrap it, and to give it sensible defaults for your local machine.
+
+Update all packages in proposed before copying to the main ppa
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If one updates bzr, and there are plugins that are not compatible with the
+new version of bzr, this can cause pain for users using the ppa. In order to
+avoid this, we first get all packages up to date in the proposed ppa, and then
+copy them to the main ppa.
+
+
+Short form
+~~~~~~~~~~
+
+For people who have already set up everything they need, building the
+release packages is as simple as::
+
+  cd ~/dev/bzr/releases/packaging
+  export VERSION="1.17~rc1-1~bazaar1"
+  export PACKAGE="bzr"
+  export UBUNTU_RELEASES="dapper hardy intrepid jaunty karmic"
+  ~/dev/bzr/bzr.dev/tools/packaging/update-packaging-branches.sh
+  * Optionaly merge debian unstable. 
+  ~/dev/bzr/bzr.dev/tools/packaging/update-changelogs.sh
+  ~/dev/bzr/bzr.dev/tools/packaging/update-control.sh 1.16 1.17 1.18
+  ~/dev/bzr/bzr.dev/tools/packaging/build-packages.sh
+  dput ppa:bzr/proposed ${PACKAGE}_$VERSION*.changes
+
+Rinse and repeat for all the plugins by changing VERSION and PACKAGE.
+
+Long Form
+~~~~~~~~~
+
+#. You will end up checking out a separate directory for each supported
+   release. Such as ``~/dev/bzr/releases/packaging/hardy``. In each of these
+   branches, you will produce the package for the release.
+
+   The scripts will also create the branches and produce packages for
+   bzr-svn.
+
+#. Decide on the final version number.  It should be of this form::
+
+     bzr-1.17~rc1-1~bazaar1~hardy1
+
+   **Note:** There are three hyphen-separated parts: the *package name*,
+   the *upstream version*, and the *packaging version*.
+
+   **Caution:** Upstream betas or release candidates must insert a tilde
+   to make them sort before the final release, like this:
+   ``bzr-1.17~rc1-1~bazaar1~hardy1``.
+
+   Final releases will use a release string of the form:
+   ``bzr-1.17-1~bazaar1~hardy1``
+
+   Set this base of this up as a usable environment variable::
+
+      export VERSION="1.17~rc1-1~bazaar1"
+
+#. Export the distroreleases that you will be packaging for::
+
+      export UBUNTU_RELEASES="dapper hardy intrepid jaunty karmic"
+
+#. Export the program you are packaging::
+
+      export PACKAGE="bzr"
+
+#. Checkout (or update) the packaging branch for each supported release::
+
+      bzr co lp:~bzr/ubuntu/hardy/bzr/bzr-ppa
+
+   There is a script available to help::
+
+      tools/packaging/update-packaging-branches.sh
+
+#. Optionaly, merge the Debian unstable branch into each of the packaging
+   branches. You can find the Debian unstable branch here:
+   http://bzr.debian.org/pkg-bazaar/
+
+#. The ``bzr-builddeb`` step will download the original tarball if you do
+   not already have it, putting it into a ``tarballs`` directory.
+
+#. For Breezy plugins, change the ``debian/control`` file to express a
+   dependency on the correct version of ``bzr``.
+
+   For bzrtools this is typically::
+
+      Build-Depends-Indep: bzr (>= 1.17~), rsync
+      Depends: ${python:Depends}, bzr (>= 1.17~), bzr (<< 1.18~), patch
+
+   There is a helper script which will update the control file and commit it
+   for all of your ``$UBUNTU_RELEASES``. It is available as::
+
+    tools/packaging/update-control.sh
+
+   You must supply the versions as arguments as follows
+   OLD_VERSION CURRENT_VERSION NEXT_VERSION, such as::
+
+    tools/packaging/update-control.sh 1.16 1.17 1.18
+
+#. Make a new ``debian/changelog`` entry for the new release,
+   either by using ``dch`` or just editing the file::
+
+      dch -v '1.17~rc1-1~bazaar1~hardy1' -D hardy
+
+   dch will default to the distro you're working in and this isn't checked
+   against the version number (which is just our convention), so make sure
+   to specify it.
+
+   Make sure you have the correct email address for yourself (you may need
+   export DEBEMAIL=`bzr whoami` if it isn't already set), version number, and
+   distribution.  It should look something like this::
+
+       bzr (1.17~rc1-1~bazaar1~hardy1) hardy; urgency=low
+
+        * New upstream release.
+
+       -- John Sample <sample@example.com>  Mon, 31 Mar 2008 12:36:27 +1100
+
+   If you need to upload the package again to fix a problem, normally you
+   should increment the last number in the version number, following the
+   distro name.  Make sure not to omit the initial ``-1``, and make sure
+   that the distro name in the version is consistent with the target name
+   outside the parenthesis.
+
+   You will also want to commit these changes into the packaging branch.
+
+   There is a helper script which will build all the packages
+   for all of your ``$UBUNTU_RELEASES``. It is available as::
+
+      tools/packaging/update-changelogs.sh
+
+#. Build the source packages::
+
+      cd bzr-$DISTRO; bzr builddeb -S
+
+   This will create a ``.changes`` file.  If you didn't configure builddeb
+   to automatically sign them, you can use ::
+
+      debsign -m$UID *.changes
+
+   where ``$UID`` is the gpg key you want to use to sign the changes.
+
+   There is a helper script which will build the package
+   for all of your ``$UBUNTU_RELEASES``. It is available as::
+
+      tools/packaging/build-packages.sh
+
+#. Upload into the PPA for each release::
+
+     dput dput ppa:bzr/proposed bzr*1.17-1*.changes
+
+#. You should soon get an "upload accepted" mail from Launchpad, which
+   means that your package is waiting to be built.  You can then track its
+   progress in <https://launchpad.net/~bzr/+archive/proposed> and
+   <https://launchpad.net/~bzr/+archive/proposed/+builds>.
+
+
+Packaging bzr-svn
+~~~~~~~~~~~~~~~~~
+
+bzr-svn uses a packaging branch that contains both the source
+(including any changes against upstream) and the ``debian/`` directory.
+
+To build bzr-svn:
+
+#. Get a checkout of ``lp:~bzr/bzr-svn/hardy-ppa/``
+
+#. Merge from ``http://bzr.debian.org/pkg-bazaar/bzr-svn/unstable/``
+
+   This should bring in both upstream and packaging changes for the new
+   release, and it's updated as part of the bzr-svn release process.
+
+   It's quite possible you will need to resolve some conflicts.
+
+#. Run ``dch -v 0.4.15-1~bazaar1-hardy1 -D hardy`` or similar
+
+#. Run ``bzr builddeb --source``
+
+   bzr-builddeb will automatically check out the appropriate tag from the
+   main branch of bzr-svn, build, and package it.
+
+#. ``dput ppa:bzr/proposed ../bzr-svn_0.4.15-1~bazaar1~hardy1_source.changes``
+
+
+Monitoring the contents of PPAs
+-------------------------------
+
+If you add all the bzr PPAs to your ``sources.list`` then you can see a
+summary of current package versions with::
+
+  apt-cache madison bzr
+  
+  
+Testing the contents of the PPA
+-------------------------------
+
+A somewhat crude but useful way to test the contents of the PPA is to
+install the relevant packages into an schroot::
+
+ schroot -c hardy-test -u root -- \
+   apt-get install -o 'APT::Install-Suggests="true"' \
+   -o 'APT::Install-Recommends="true"' \
+   bzr
+
+This should make sure everything can be installed; it won't guarantee that 
+  
+
+Packaging dependencies
+----------------------
+
+Some of our updates to bzr in previous releases require backports of our
+dependencies.  Specific branches holding these backports:
+
+ * ``lp:~bzr/ubuntu/dapper/configobj/dapper-backport``
+ * ``lp:~bzr/ubuntu/hardy/python-central-debhelper-sequence-addon/bzr-ppa``
+
+
+..
+   vim: filetype=rst textwidth=74 ai shiftwidth=4

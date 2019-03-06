@@ -1,0 +1,39 @@
+Working with another
+====================
+
+Peer-to-peer rocks
+------------------
+
+In many cases, two minds can be better than one. You may be the one
+who started a project and someone wishes to help, or perhaps it's you
+who wants to help another. Perhaps you are both members of a larger
+team that have been assigned a task together as pair programmers.
+Either way, two people need to agree on a process, a set of
+guidelines and a toolset in order to work together effectively.
+
+Imagine if you were not allowed to call someone on the phone directly
+and the only way to talk to them was by registering a conference call first?
+Companies and communities that only share code via a central VCS
+repository are living with a similar straitjacket to that every day.
+There are times when central control makes a lot of sense and times
+when peer-to-peer rocks. Either way, Breezy is designed to help.
+
+The partner workflow
+--------------------
+
+While it's certainly not the only way to do it, the *partner workflow*
+below is a good starting point for a pair of people who wish to
+collaborate using Breezy.
+
+.. image:: images/workflows_peer.png
+
+Over and above the tasks covered in the previous chapter, this
+chapter introduces two essential collaboration activities:
+
+ * getting a copy of a branch
+ * merging changes between branches.
+
+Even when it's just you working on a code base, it can be very useful
+to keep multiple branches around (for different releases say) and
+to merge changes between them as appropriate. Your "partner" may indeed
+be yourself.

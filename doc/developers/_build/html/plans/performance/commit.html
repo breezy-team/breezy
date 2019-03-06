@@ -1,0 +1,657 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Commit Performance Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="../../search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="commit-performance-notes">
+<h1>Commit Performance Notes<a class="headerlink" href="#commit-performance-notes" title="Permalink to this headline">¶</a></h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#changes-to-commit" id="id1">Changes to commit</a></li>
+<li><a class="reference internal" href="#commit-the-minimum-work-required" id="id2">Commit: The Minimum Work Required</a></li>
+<li><a class="reference internal" href="#commit-vs-status" id="id3">Commit vs Status</a></li>
+<li><a class="reference internal" href="#avoiding-work-smarter-change-detection" id="id4">Avoiding Work: Smarter Change Detection</a></li>
+<li><a class="reference internal" href="#avoiding-work-better-layering" id="id5">Avoiding Work: Better Layering</a></li>
+<li><a class="reference internal" href="#avoiding-work-avoiding-reading-parent-data" id="id6">Avoiding work: avoiding reading parent data</a></li>
+<li><a class="reference internal" href="#code-structure" id="id7">Code structure</a></li>
+<li><a class="reference internal" href="#complications-of-commit" id="id8">Complications of commit</a></li>
+<li><a class="reference internal" href="#interface-stack" id="id9">Interface stack</a></li>
+<li><a class="reference internal" href="#branch-tree-interface" id="id10">Branch-&gt;Tree interface</a></li>
+<li><a class="reference internal" href="#information-from-the-tree-to-repository" id="id11">Information from the tree to repository</a></li>
+<li><a class="reference internal" href="#information-from-the-repository-to-the-tree" id="id12">Information from the repository to the tree</a></li>
+<li><a class="reference internal" href="#selective-commit" id="id13">Selective commit</a></li>
+<li><a class="reference internal" href="#common-commit-code" id="id14">Common commit code</a></li>
+<li><a class="reference internal" href="#order-of-traversal" id="id15">Order of traversal</a></li>
+<li><a class="reference internal" href="#open-question-per-file-graphs" id="id16">Open question: per-file graphs</a></li>
+</ul>
+</div>
+<div class="section" id="changes-to-commit">
+<h2><a class="toc-backref" href="#id1">Changes to commit</a><a class="headerlink" href="#changes-to-commit" title="Permalink to this headline">¶</a></h2>
+<p>We want to improve the commit code in two phases.</p>
+<p>Phase one is to have a better separation from the format-specific logic,
+the user interface, and the general process of committing.</p>
+<p>Phase two is to have better interfaces by which a good workingtree format
+can efficiently pass data to a good storage format.  If we get phase one
+right, it will be relatively easy and non-disruptive to bring this in.</p>
+</div>
+<div class="section" id="commit-the-minimum-work-required">
+<h2><a class="toc-backref" href="#id2">Commit: The Minimum Work Required</a><a class="headerlink" href="#commit-the-minimum-work-required" title="Permalink to this headline">¶</a></h2>
+<p>Here is a description of the minimum work that commit must do.  We
+want to make sure that our design doesn’t cost too much more than this
+minimum.  I am trying to do this without making too many assumptions
+about the underlying storage, but am assuming that the ui and basic
+architecture (wt, branch, repo) stays about the same.</p>
+<p>The basic purpose of commit is to:</p>
+<ol class="arabic simple">
+<li>create and store a new revision based on the contents of the working tree</li>
+<li>make this the new basis revision for the working tree</li>
+</ol>
+<p>We can do a selected commit of only some files or subtrees.</p>
+<p>The best performance we could hope for is:
+- stat each versioned selected working file once
+- read from the workingtree and write into the repository any new file texts
+- in general, do work proportional to the size of the shape (eg
+inventory) of the old and new selected trees, and to the total size of
+the modified files</p>
+<p>In more detail:</p>
+<p>1.0 - Store new file texts: if a versioned file contains a new text
+there is no avoiding storing it.  To determine which ones have changed
+we must go over the workingtree and at least stat each file.  If the
+file is modified since it was last hashed, it must be read in.
+Ideally we would read it only once, and either notice that it has not
+changed, or store it at that point.</p>
+<p>On the other hand we want new code to be able to handle files that are
+larger than will fit in memory.  We may then need to read each file up
+to two times: once to determine if there is a new text and calculate
+its hash, and again to store it.</p>
+<p>1.1 - Store a tree-shape description (ie inventory or similar.)  This
+describes the non-file objects, and provides a reference from the
+Revision to the texts within it.</p>
+<p>1.2 - Generate and store a new revision object.</p>
+<p>1.3 - Do delta-compression on the stored objects.  (git notably does
+not do this at commit time, deferring this entirely until later.)
+This requires finding the appropriate basis for each modified file: in
+the current scheme we get the file id, last-revision from the
+dirstate, look into the knit for that text, extract that text in
+total, generate a delta, then store that into the knit.  Most delta
+operations are O(n**2) to O(n**3) in the size of the modified files.</p>
+<p>1.4 - Cache annotation information for the changes: at the moment this
+is done as part of the delta storage.  There are some flaws in that
+approach, such as that it is not updated when ghosts are filled, and
+the annotation can’t be re-run with new diff parameters.</p>
+<p>2.1 - Make the new revision the basis for the tree, and clear the list
+of parents.  Strictly this is all that’s logically necessary, unless
+the working tree format requires more work.</p>
+<p>The dirstate format does require more work, because it caches the
+parent tree data for each file within the working tree data.  In
+practice this means that every commit rewrites the entire dirstate
+file - we could try to avoid rewriting the whole file but this may be
+difficult because variable-length data (the last-changed revision id)
+is inserted into many rows.</p>
+<p>The current dirstate design then seems to mean that any commit of a
+single file imposes a cost proportional to the size of the current
+workingtree.  Maybe there are other benefits that outweigh this.
+Alternatively if it was fast enough for operations to always look at
+the original storage of the parent trees we could do without the
+cache.</p>
+<p>2.2 - Record the observed file hashes into the workingtree control
+files.  For the files that we just committed, we have the information
+to store a valid hash cache entry: we know their stat information and
+the sha1 of the file contents.  This is not strictly necessary to the
+speed of commit, but it will be useful later in avoiding reading those
+files, and the only cost of doing it now is writing it out.</p>
+<p>In fact there are some user interface niceties that complicate this:</p>
+<p>3 - Before starting the commit proper, we prompt for a commit message
+and in that commit message editor we show a list of the files that
+will be committed: basically the output of brz status.  This is
+basically the same as the list of changes we detect while storing the
+commit, but because the user will sometimes change the tree after
+opening the commit editor and expect the final state to be committed I
+think we do have to look for changes twice.  Since it takes the user a
+while to enter a message this is not a big problem as long as both the
+status summary and the commit are individually fast.</p>
+<p>4 - As the commit proceeds (or after?) we show another status-like
+summary.  Just printing the names of modified files as they’re stored
+would be easy.  Recording deleted and renamed files or directories is
+more work: this can only be done by reference to the primary parent
+tree and requires it be read in.  Worse, reporting renames requires
+searching by id across the entire parent tree.   Possibly full
+reporting should be a default-off verbose option because it does
+require more work beyond the commit itself.</p>
+<p>5 - Bazaar currently allows for missing files to be automatically
+marked as removed at the time of commit.  Leaving aside the ui
+consequences, this means that we have to update the working inventory
+to mark these files as removed.  Since as discussed above we always
+have to rewrite the dirstate on commit this is not substantial, though
+we should make sure we do this in one pass, not two.  I have
+previously proposed to make this behaviour a non-default option.</p>
+<p>We may need to run hooks or generate signatures during commit, but
+they don’t seem to have substantial performance consequences.</p>
+<p>If one wanted to optimize solely for the speed of commit I think
+hash-addressed  file-per-text storage like in git (or Breezy 0.1) is very
+good.  Remarkably, it does not need to read the inventory for the
+previous revision.  For each versioned file, we just need to get its
+hash, either by reading the file or validating its stat data.  If that
+hash is not already in the repository, the file is just copied in and
+compressed.  As directories are traversed, they’re turned into texts
+and stored as well, and then finally the revision is too.  This does
+depend on later doing some delta compression of these texts.</p>
+<p>Variations on this are possible.  Rather than writing a single file
+into the repository for each text, we could fold them into a single
+collation or pack file.  That would create a smaller number of files
+in the repository, but looking up a single text would require looking
+into their indexes rather than just asking the filesystem.</p>
+<p>Rather than using hashes we can use file-id/rev-id pairs as at
+present, which has several consequences pro and con.</p>
+</div>
+<div class="section" id="commit-vs-status">
+<h2><a class="toc-backref" href="#id3">Commit vs Status</a><a class="headerlink" href="#commit-vs-status" title="Permalink to this headline">¶</a></h2>
+<p>At first glance, commit simply stores the changes status reports. In fact,
+this isn’t technically correct: commit considers some files modified that
+status does not. The notes below were put together by John Arbash Meinel
+and Aaron Bentley in May 2007 to explain the finer details of commit to
+Ian Clatworthy. They are recorded here as they are likely to be useful to
+others new to Bazaar …</p>
+<ol class="arabic simple">
+<li><strong>Unknown files have a different effect.</strong> With –no-strict (the default)
+they have no effect and can be completely ignored. With –strict they
+should cause the commit to abort (so you don’t forget to add the two new
+test files that you just created).</li>
+<li><strong>Multiple parents.</strong> ‘status’ always compares 2 trees, typically the
+last-committed tree and the current working tree. ‘commit’ will compare
+more trees if there has been a merge.</li>
+</ol>
+<blockquote>
+<div><ol class="loweralpha simple">
+<li>The “last modified” property for files.
+A file may be marked as changed since the last commit, but that
+change may have come in from the merge, and the change could have
+happened several commits back. There are several edge cases to be
+handled here, like if both branches modified the same file, or if
+just one branch modified it.</li>
+<li>The trickier case is when a file appears unmodified since last
+commit, but it was modified versus one of the merged branches. I
+believe there are a few ways this can happen, like if a merged
+branch changes a file and then reverts it back (you still update
+the ‘last modified’ field).
+In general, if both sides disagree on the ‘last-modified’ flag,
+then you need to generate a new entry pointing ‘last-modified’ at
+this revision (because you are resolving the differences between
+the 2 parents).</li>
+</ol>
+</div></blockquote>
+<ol class="arabic" start="3">
+<li><p class="first"><strong>Automatic deletion of ‘missing’ files.</strong> This is a point that we go
+back and forth on. I think the basic idea is that ‘brz commit’ by
+default should abort if it finds a ‘missing’ file (in case that file was
+renamed rather than deleted), but ‘brz commit –auto’ can add unknown
+files and remove missing files automatically.</p>
+</li>
+<li><p class="first"><strong>sha1 for newly added files.</strong> status doesn’t really need this: it should
+only care that the file is not present in base, but is present now. In
+some ways commit doesn’t care either, since it needs to read and sha the
+file itself anyway.</p>
+</li>
+<li><p class="first"><strong>Nested trees.</strong> status doesn’t recurse into nested trees, but commit does.
+This is just because not all of the nested-trees work has been merged yet.</p>
+<p>A tree-reference is considered modified if the subtree has been
+committed since the last containing-tree commit.  But commit needs to
+recurse into every subtree, to ensure that a commit is done if the
+subtree has changed since its last commit.  _iter_changes only reports
+on tree-references that are modified, so it can’t be used for doing
+subtree commits.</p>
+</li>
+</ol>
+</div>
+<div class="section" id="avoiding-work-smarter-change-detection">
+<h2><a class="toc-backref" href="#id4">Avoiding Work: Smarter Change Detection</a><a class="headerlink" href="#avoiding-work-smarter-change-detection" title="Permalink to this headline">¶</a></h2>
+<p>Commit currently walks through every file building an inventory. Here is
+Aaron’s brain dump on a better way …</p>
+<p>_iter_changes won’t tell us about tree references that haven’t changed,
+even if those subtrees have changed.  (Unless we ask for unchanged
+files, which we don’t want to do, of course.)</p>
+<p>There is an iter_references method, but using it looks just as expensive
+as calling kind().</p>
+<p>I did some work on updating commit to use iter_changes, but found for
+multi-parent trees, I had to fall back to the slow inventory comparison
+approach.</p>
+<p>Really, I think we need a call akin to iter_changes that handles
+multiple parents, and knows to emit entries when InventoryEntry.revision
+is all that’s changed.</p>
+</div>
+<div class="section" id="avoiding-work-better-layering">
+<h2><a class="toc-backref" href="#id5">Avoiding Work: Better Layering</a><a class="headerlink" href="#avoiding-work-better-layering" title="Permalink to this headline">¶</a></h2>
+<p>For each file, commit is currently doing more work than it should. Here is
+John’s take on a better way …</p>
+<p>Note that “_iter_changes” <em>does</em> have to touch every path on disk, but
+it just can do it in a more efficient manner. (It doesn’t have to create
+an InventoryEntry for all the ones that haven’t changed).</p>
+<p>I agree with Aaron that we need something a little different than
+_iter_changes. Both because of handling multiple parents, as well as we
+don’t want it to actually read the files if we have a stat-cache miss.</p>
+<p>Specifically, the commit code <em>has</em> to read the files because it is
+going to add the text to the repository, and we want it to compute the
+sha1 at <em>that</em> time, so we are guaranteed to have the valid sha (rather
+than just whatever the last cached one was). So we want the code to
+return ‘None’ if it doesn’t have an up-to-date sha1, rather than reading
+the file and computing it, just before it returns it to the parent.</p>
+<p>The commit code (0.16) should really be restructured. It’s layering is
+pretty wrong.</p>
+<p>Specifically, calling “kind()” requires a stat of the file. But we have
+to do a stat to get the size/whether the record is up-to-date, etc. So
+we really need to have a “create_an_up_to_date_inventory()” function.
+But because we are accessing every object on disk, we want to be working
+in tuples rather than Inventory objects. And because DirState already
+has the parent records next to the current working inventory, it can do
+all the work to do really fast comparison and throw-away of unimportant
+records.</p>
+<p>The way I made “brz status” fast is by moving the ‘ignore this record’
+ability as deep into the stack as I could get. Status has the property
+that you don’t care about most of the records, just like commit. So the
+sooner you can stop evaluating the 99% that you don’t care about, the
+less work you do.</p>
+</div>
+<div class="section" id="avoiding-work-avoiding-reading-parent-data">
+<h2><a class="toc-backref" href="#id6">Avoiding work: avoiding reading parent data</a><a class="headerlink" href="#avoiding-work-avoiding-reading-parent-data" title="Permalink to this headline">¶</a></h2>
+<p>We would like to avoid the work of reading any data about the parent
+revisions.  We should at least try to avoid reading anything from the
+repository; we can also consider whether it is possible or useful to hold
+less parent information in the working tree.</p>
+<p>When a commit of selected files is requested, the committed snapshot is a
+composite of some directories from the parent revision and some from the
+working tree.  In this case it is logically necessary to have the parent
+inventory information.</p>
+<p>If file last-change information or per-file graph information is stored
+then it must be available from the parent trees.</p>
+<p>If the Branch’s storage method does delta compression at commit time it
+may need to retrieve file or inventory texts from the repository.</p>
+<p>It is desirable to avoid roundtrips to the Repository during commit,
+particularly because it may be remote.  If the WorkingTree can determine
+by itself that a text was in the parent and therefore should be in the
+Repository that avoids one roundtrip per file.</p>
+<p>There is a possibility here that the parent revision is not stored, or not
+correctly stored, in the repository the tree is being committed into, and
+so the committed tree would not be reconstructable.  We could check that
+the parent revision is present in the inventory and rely on the invariant
+that if a revision is present, everything to reconstruct it will be
+present too.</p>
+</div>
+<div class="section" id="code-structure">
+<h2><a class="toc-backref" href="#id7">Code structure</a><a class="headerlink" href="#code-structure" title="Permalink to this headline">¶</a></h2>
+<p>Caller starts a commit</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Branch</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="n">from_tree</span><span class="p">,</span> <span class="n">options</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This creates a CommitBuilder object matched to the Branch, Repository and
+Tree.  It can vary depending on model differences or by knowledge of what
+is efficient with the Repository and Tree.  Model differences might
+include whether no-text-change merges need to be reported, and whether the</p>
+<p>The basic CommitBuilder.commit structure can be</p>
+<ol class="arabic simple">
+<li>Ask the branch if it is ready to commit (up to date with master if
+any.)</li>
+<li>Ask the tree if it is ready to commit to the branch (up to date with
+branch?), no conflicts, etc</li>
+<li>Commit changed files; prototype implementation:<ol class="loweralpha">
+<li>Ask the working tree for all committable files; for each it should
+return the per-file parents, stat information, kind, etc.</li>
+<li>Ask the repository to store the new file text; the repository should
+return the stored sha1 and new revision id.</li>
+</ol>
+</li>
+<li>Commit changed inventory</li>
+<li>Commit revision object</li>
+</ol>
+</div>
+<div class="section" id="complications-of-commit">
+<h2><a class="toc-backref" href="#id8">Complications of commit</a><a class="headerlink" href="#complications-of-commit" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar (as of 0.17) does not support selective-file commit of a merge;
+this could be done if we decide how it should be recorded - is this to be
+stored as an overall merge revision; as a preliminary non-merge revisions;
+or will the per-file graph diverge from the revision graph.</p>
+<p>There are several checks that may cause the commit to be refused, which
+may be activated or deactivated by options.</p>
+<ul class="simple">
+<li>presence of conflicts in the tree</li>
+<li>presence of unknown files</li>
+<li>the working tree basis is up to date with the branch tip</li>
+<li>the local branch is up to date with the master branch, if there
+is one and –local is not specified</li>
+<li>an empty commit message is given,</li>
+<li>a hook flags an error</li>
+<li>a “pointless” commit, with no inventory changes</li>
+</ul>
+<p>Most of these require walking the tree and can be easily done while
+recording the tree shape.  This does require that it be possible to abort
+the commit after the tree changes have been recorded.  It could be ok to
+either leave the unreachable partly-committed records in the repository,
+or to roll back.</p>
+<p>Other complications:</p>
+<ul class="simple">
+<li>when automatically adding new files or deleting missing files during
+commit, they must be noted during commit and written into the working
+tree at some point</li>
+<li>refuse “pointless” commits with no file changes - should be easy by
+just refusing to do the final step of storing a new overall inventory
+and revision object</li>
+<li>heuristic detection of renames between add and delete (out of scope for
+this change)</li>
+<li>pushing changes to a master branch if any</li>
+<li>running hooks, pre and post commit</li>
+<li>prompting for a commit message if necessary, including a list of the
+changes that have already been observed</li>
+<li>if there are tree references and recursing into them is enabled, then
+do so</li>
+</ul>
+<p>Commit needs to protect against duplicated file ids</p>
+<p>Updates that need to be made in the working tree, either on conclusion
+of commit or during the scan, include</p>
+<ul class="simple">
+<li>Changes made to the tree shape, including automatic adds, renames or
+deletes</li>
+<li>For trees (eg dirstate) that cache parent inventories, the old parent
+information must be removed and the new one inserted</li>
+<li>The tree hashcache information should be updated to reflect the stat
+value at which the file was the same as the committed version, and the
+content hash it was observed to have.  This needs to be done carefully to
+prevent inconsistencies if the file is modified during or shortly after
+the commit.  Perhaps it would work to read the mtime of the file before we
+read its text to commit.</li>
+</ul>
+</div>
+<div class="section" id="interface-stack">
+<h2><a class="toc-backref" href="#id9">Interface stack</a><a class="headerlink" href="#interface-stack" title="Permalink to this headline">¶</a></h2>
+<p>The commit api is invoked by the command interface, and copies information
+from the tree into the branch and its repository, possibly updating the
+WorkingTree afterwards.</p>
+<p>The command interface passes:</p>
+<ul class="simple">
+<li>a commit message (from an option, if any),</li>
+<li>or an indication that it should be read interactively from the ui object;</li>
+<li>a list of files to commit</li>
+<li>an option for a dry-run commit</li>
+<li>verbose option, or callback to indicate</li>
+<li>timestamp, timezone, committer, chosen revision id</li>
+<li>config (for what?)</li>
+<li>option for local-only commit on a bound branch</li>
+<li>option for strict commits (fail if there are unknown or missing files)</li>
+<li>option to allow “pointless” commits (with no tree changes)</li>
+</ul>
+<p>(This is rather a lot of options to pass individually and just for code tidyness maybe some of them should be combine into objects.)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Branch</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="n">from_tree</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">files_to_commit</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>There will be different implementations of this for different Branch
+classes, whether for foreign branches or Bazaar repositories using
+different storage methods.</p>
+<p>Most of the commit should occur during a single lockstep iteration across
+the workingtree and parent trees.  The WorkingTree interface needs to
+provide methods that give commit all it needs.  Some of these methods
+(such as answering the file’s last change revision) may be deprecated in
+newer working trees and there we have a choice of either calculating the
+value from the data that is present, or refusing to support commit to
+newer repositories.</p>
+<p>For a dirstate tree the iteration of changes from the parent can easily be
+done within its own iter_changes.</p>
+<p>Dirstate inventories may be most easily updated in a single operation at
+the end; however it may be best to accumulate data as we proceed through
+the tree rather than revisiting it at the end.</p>
+<p>Showing a progress bar for commit may not be necessary if we report files
+as they are committed.  Alternatively we could transiently show a progress
+bar for each directory that’s scanned, even if no changes are observed.</p>
+<p>This needs to collect a list of added/changed/removed files, each of which
+must have its text stored (if any) and containing directory updated.  This
+can be done by calling Tree._iter_changes on the source tree, asking for
+changes</p>
+<p>In the 0.17 model the commit operation needs to know the per-file parents
+and per-file last-changed revision.</p>
+<p>(In this and other operations we must avoid having multiple layers walk
+over the tree separately.  For example, it is no good to have the Command
+layer walk the tree to generate a list of all file ids to commit, because
+the tree will also be walked later.  The layers that do need to operate
+per-file should probably be bound together in a per-dirblock iterator,
+rather than each iterating independently.)</p>
+</div>
+<div class="section" id="branch-tree-interface">
+<h2><a class="toc-backref" href="#id10">Branch-&gt;Tree interface</a><a class="headerlink" href="#branch-tree-interface" title="Permalink to this headline">¶</a></h2>
+<p>The Branch commit code needs to ask the Tree what should be committed, in
+terms of changes from the parent revisions.  If the Tree holds all the
+necessary parent tree information itself it can do it single handed;
+otherwise it may need to ask the Repository for parent information.</p>
+<p>This should be a streaming interface, probably like iter_changes returning
+information per directory block.</p>
+<p>The interface should not return a block for directories that are
+recursively unchanged.</p>
+<p>The tree’s idea of what is possibly changed may be more conservative than
+that of the branch.  For example the tree may report on merges of files
+where the text is identical to the parents: this must be recorded for
+Bazaar branches that record per-file ancestry but is not necessary for all
+branches.  If the tree is responsible for determining when directories
+have been recursively modified then it will report on all the parents of
+such files.  There are several implementation options:</p>
+<p>1. Return all files and directories the branch might want to commit, even
+if the branch ends up taking no action on them.</p>
+<p>2. When starting the iteration, the branch can specify what type of change
+is considered interesting.</p>
+<p>Since these types of changes are probably (??) rare compared to files that
+are either completely unmodified or substantially modified, the first may
+be the best and simplest option.</p>
+<p>The branch needs to build an inventory to commit, which must include
+unchanged files within changed directories.  This should be returned from
+the working tree too.  Repositories that store per-directory inventories
+will want to build and store these from the lowest directories up.
+For 0.17 format repositories with an all-in-one inventory it may be
+easiest to accumulate inventory entries in arbitrary order into an
+in-memory Inventory and then serialize it.</p>
+<p>It ought to be possible to commit any Tree into a Branch, without
+requiring a WorkingTree; the commit code should cope if the tree is not
+interested in updating hashcache information or does not have a
+<code class="docutils literal notranslate"><span class="pre">last_revision</span></code>.</p>
+</div>
+<div class="section" id="information-from-the-tree-to-repository">
+<h2><a class="toc-backref" href="#id11">Information from the tree to repository</a><a class="headerlink" href="#information-from-the-tree-to-repository" title="Permalink to this headline">¶</a></h2>
+<p>The main things the tree needs to tell the Branch about are:</p>
+<ul>
+<li><p class="first">A file is modified from its parent revision (in text, permissions,
+other), and so its text may need to be stored.</p>
+<p>Files should also be reported if they have more than one unique parent
+revision, for repositories that store per-file graphs or last-change
+revisions.  Perhaps this behaviour should be optional.</p>
+<p><strong>XXX:</strong> are renames/deletions reported here too?</p>
+</li>
+<li><p class="first">The complete contents of a modified directory, so that its inventory
+text may be stored.  This should be done after all the contained files
+and directories have been reported.  If there are unmodified files,
+or unselected files carried through from</p>
+<p>XXX: Actually perhaps not grouped by directory, but rather grouped
+appropriately for the shape of inventory storage in the repository.</p>
+<p>In a zoomed-in checkout the workingtree may not have all the shape data
+for the entire tree.</p>
+</li>
+<li><p class="first">A file is missing – could cause either automatic removal or an aborted
+commit.</p>
+</li>
+<li><p class="first">Any unknown files – can cause automatic addition, abortion of a strict
+commit, or just reporting.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="information-from-the-repository-to-the-tree">
+<h2><a class="toc-backref" href="#id12">Information from the repository to the tree</a><a class="headerlink" href="#information-from-the-repository-to-the-tree" title="Permalink to this headline">¶</a></h2>
+<p>After the commit the tree needs to be updated to the new revision.  Some
+information which was accumulated during the commit must be made available
+to the workingtree.  It’s probably reasonable to hold it all in memory and
+allow the workingtree to get it in whatever order it wants.</p>
+<ul>
+<li><p class="first">A list of modified entries, and for each one:</p>
+<ul class="simple">
+<li>The stat values observed when the file was first read.</li>
+<li>The hash of the committed file text.</li>
+<li>The file’s last-change revision, if appropriate.</li>
+</ul>
+<p>This should include any entries automatically added or removed.</p>
+</li>
+</ul>
+<p>This might be construed as an enhanced version of <code class="docutils literal notranslate"><span class="pre">set_parent_trees</span></code>.
+We can avoid a stat on each file by using the value that was observed when
+it was first read.</p>
+</div>
+<div class="section" id="selective-commit">
+<h2><a class="toc-backref" href="#id13">Selective commit</a><a class="headerlink" href="#selective-commit" title="Permalink to this headline">¶</a></h2>
+<p>For a partial commit the directory contents may need to contain a mix of
+entries from the working tree and parent trees.  This code probably
+shouldn’t live in a specific tree implementation; maybe there should be a
+general filter that selects paths from one tree into another?</p>
+<p>However, the tree walking code does probably need to know about selected
+paths to avoid examining unselected files or directories.</p>
+<p>We never refuse selective file commits (except of merges).</p>
+</div>
+<div class="section" id="common-commit-code">
+<h2><a class="toc-backref" href="#id14">Common commit code</a><a class="headerlink" href="#common-commit-code" title="Permalink to this headline">¶</a></h2>
+<p>What is common to all commit implementations, regardless of workingtree or
+repository format?</p>
+<ul class="simple">
+<li>Prompting for a commit message?</li>
+<li>Strictness/conflict checks?</li>
+<li>Auto add/remove?</li>
+</ul>
+<p>How should this be separated?</p>
+</div>
+<div class="section" id="order-of-traversal">
+<h2><a class="toc-backref" href="#id15">Order of traversal</a><a class="headerlink" href="#order-of-traversal" title="Permalink to this headline">¶</a></h2>
+<p>For current and contemplated Bazaar storage formats, we can only finally
+commit a directory after its contained files and directories have been
+committed.</p>
+<p>The dirstate workingtree format naturally iterates by directory in order
+by path, yielding directories before their contents.  This may also be the
+most efficient order in which to stat and read the files.</p>
+<p>One option would be to construe the interface as a visitor which reports
+when files are detected to be changed, and also when directories are
+finished.</p>
+</div>
+<div class="section" id="open-question-per-file-graphs">
+<h2><a class="toc-backref" href="#id16">Open question: per-file graphs</a><a class="headerlink" href="#open-question-per-file-graphs" title="Permalink to this headline">¶</a></h2>
+<p><strong>XXX:</strong> If we want to retain explicitly stored per-file graphs, it would
+seem that we do need to record per-file parents.  We have not yet finally
+settled that we do want to remove them or treat them as a cache.  This api
+stack is still ok whether we do or not, but the internals of it may
+change.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../../_sources/plans/performance/commit.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

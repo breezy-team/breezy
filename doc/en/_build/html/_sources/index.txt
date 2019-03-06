@@ -1,0 +1,20 @@
+.. Bazaar documentation master file, created by
+   sphinx-quickstart on Tue Jul 21 17:04:52 2009.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+
+Table of Contents
+=================
+
+.. toctree::
+   :maxdepth: 1
+
+   whats-new/whats-new-in-3.0
+   user-guide/index
+   tutorials/index
+   quick-reference/index
+   release-notes/index
+   upgrade-guide/index
+   user-reference/index
+   admin-guide/index

@@ -1,0 +1,146 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.12
+########
+
+:Released:  2006-10-30
+
+Internals
+*********
+
+* Clean up ``bzr selftest --benchmark bundle`` to correct an import,
+  and remove benchmarks that take longer than 10min to run.
+  (John Arbash Meinel)
+
+bzr 0.12rc1
+###########
+
+:Released:  2006-10-23
+
+Improvements
+************
+
+* ``bzr log`` now shows dotted-decimal revision numbers for all revisions,
+  rather than just showing a decimal revision number for revisions on the
+  mainline. These revision numbers are not yet accepted as input into bzr
+  commands such as log, diff etc. (Robert Collins)
+
+* revisions can now be specified using dotted-decimal revision numbers.
+  For instance, ``bzr diff -r 1.2.1..1.2.3``. (Robert Collins)
+
+* ``bzr help commands`` output is now shorter (Aaron Bentley)
+
+* ``bzr`` now uses lazy importing to reduce the startup time. This has
+  a moderate effect on lots of actions, especially ones that have
+  little to do. For example ``bzr rocks`` time is down to 116ms from
+  283ms. (John Arbash Meinel)
+
+* New Registry class to provide name-to-object registry-like support,
+  for example for schemes where plugins can register new classes to
+  do certain tasks (e.g. log formatters). Also provides lazy registration
+  to allow modules to be loaded on request.
+  (John Arbash Meinel, Adeodato Simó)
+
+API Incompatibility
+*******************
+
+* LogFormatter subclasses show now expect the 'revno' parameter to
+  show() to be a string rather than an int. (Robert Collins)
+
+Internals
+*********
+
+* ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
+  can take a ``working_dir='foo'`` parameter, which will change directory
+  for the command. (John Arbash Meinel)
+
+* ``bzrlib.lazy_regex.lazy_compile`` can be used to create a proxy
+  around a regex, which defers compilation until first use.
+  (John Arbash Meinel)
+
+* ``TestCase.run_bzr_subprocess`` defaults to supplying the
+  ``--no-plugins`` parameter to ensure test reproducability, and avoid
+  problems with system-wide installed plugins. (John Arbash Meinel)
+
+* Unique tree root ids are now supported. Newly created trees still
+  use the common root id for compatibility with bzr versions before 0.12.
+  (Aaron Bentley)
+
+* ``WorkingTree.set_root_id(None)`` is now deprecated. Please
+  pass in ``inventory.ROOT_ID`` if you want the default root id value.
+  (Robert Collins, John Arbash Meinel)
+
+* New method ``WorkingTree.flush()`` which will write the current memory
+  inventory out to disk. At the same time, ``read_working_inventory`` will
+  no longer trash the current tree inventory if it has been modified within
+  the current lock, and the tree will now ``flush()`` automatically on
+  ``unlock()``. ``WorkingTree.set_root_id()`` has been updated to take
+  advantage of this functionality. (Robert Collins, John Arbash Meinel)
+
+* ``bzrlib.tsort.merge_sorted`` now accepts ``generate_revnos``. This
+  parameter will cause it to add another column to its output, which
+  contains the dotted-decimal revno for each revision, as a tuple.
+  (Robert Collins)
+
+* ``LogFormatter.show_merge`` is deprecated in favour of
+  ``LogFormatter.show_merge_revno``. (Robert Collins)
+
+Bug Fixes
+*********
+
+* Avoid circular imports by creating a deprecated function for
+  ``bzrlib.tree.RevisionTree``. Callers should have been using
+  ``bzrlib.revisontree.RevisionTree`` anyway. (John Arbash Meinel,
+  #66349)
+
+* Don't use ``socket.MSG_WAITALL`` as it doesn't exist on all
+  platforms. (Martin Pool, #66356)
+
+* Don't require ``Content-Type`` in range responses. Assume they are a
+  single range if ``Content-Type`` does not exist.
+  (John Arbash Meinel, #62473)
+
+* bzr branch/pull no longer complain about progress bar cleanup when
+  interrupted during fetch.  (Aaron Bentley, #54000)
+
+* ``WorkingTree.set_parent_trees()`` uses the trees to directly write
+  the basis inventory, rather than going through the repository. This
+  allows us to have 1 inventory read, and 2 inventory writes when
+  committing a new tree. (John Arbash Meinel)
+
+* When reverting, files that are not locally modified that do not exist
+  in the target are deleted, not just unversioned (Aaron Bentley)
+
+* When trying to acquire a lock, don't fail immediately. Instead, try
+  a few times (up to 1 hour) before timing out. Also, report why the
+  lock is unavailable (John Arbash Meinel, #43521, #49556)
+
+* Leave HttpTransportBase daughter classes decides how they
+  implement cloning. (Vincent Ladeuil, #61606)
+
+* diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
+
+* If a commit fails, the commit message is stored in a file at the root of
+  the tree for later commit. (Cheuksan Edward Wang, Stefan Metzmacher,
+  #32054)
+
+Testing
+*******
+
+* New test base class TestCaseWithMemoryTransport offers memory-only
+  testing facilities: its not suitable for tests that need to mutate disk
+  state, but most tests should not need that and should be converted to
+  TestCaseWithMemoryTransport. (Robert Collins)
+
+* ``TestCase.make_branch_and_memory_tree`` now takes a format
+  option to set the BzrDir, Repository and Branch formats of the
+  created objects. (Robert Collins, John Arbash Meinel)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

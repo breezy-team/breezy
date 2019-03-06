@@ -1,0 +1,134 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Patterns &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Repositories" href="repositories-help.html" />
+    <link rel="prev" title="Storage Formats" href="formats-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="formats-help.html" title="Storage Formats"
+             accesskey="P">previous</a> |
+          <a href="repositories-help.html" title="Repositories"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="patterns">
+<h1>Patterns<a class="headerlink" href="#patterns" title="Permalink to this headline">¶</a></h1>
+<p>Bazaar uses patterns to match files at various times. For example,
+the <code class="docutils literal notranslate"><span class="pre">add</span></code> command skips over files that match ignore patterns
+and preferences can be associated with files using rule patterns.
+The pattern syntax is described below.</p>
+<p>Trailing slashes on patterns are ignored. If the pattern contains a
+slash or is a regular expression, it is compared to the whole path
+from the branch root. Otherwise, it is compared to only the last
+component of the path. To match a file only in the root directory,
+prepend <code class="docutils literal notranslate"><span class="pre">./</span></code>. Patterns specifying absolute paths are not allowed.</p>
+<p>Patterns may include globbing wildcards such as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>? - Matches any single character except &#39;/&#39;
+* - Matches 0 or more characters except &#39;/&#39;
+/**/ - Matches 0 or more directories in a path
+[a-z] - Matches a single character from within a group of characters
+</pre></div>
+</div>
+<p>Patterns may also be <a class="reference external" href="http://docs.python.org/library/re.html">Python regular expressions</a>. Regular expression
+patterns are identified by a <code class="docutils literal notranslate"><span class="pre">RE:</span></code> prefix followed by the regular
+expression.  Regular expression patterns may not include named or
+numbered groups.</p>
+<p>Case insensitive ignore patterns can be specified with regular expressions
+by using the <code class="docutils literal notranslate"><span class="pre">i</span></code> (for ignore case) flag in the pattern.</p>
+<p>For example, a case insensitive match for <code class="docutils literal notranslate"><span class="pre">foo</span></code> may be specified as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>RE:(?i)foo
+</pre></div>
+</div>
+<p>Ignore patterns may be prefixed with <code class="docutils literal notranslate"><span class="pre">!</span></code>, which means that a filename
+matched by that pattern will not be ignored.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="formats-help.html" title="Storage Formats"
+              >previous</a> |
+            <a href="repositories-help.html" title="Repositories"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/patterns-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

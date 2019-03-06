@@ -1,0 +1,349 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Developing a plugin &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="developing-a-plugin">
+<h1>Developing a plugin<a class="headerlink" href="#developing-a-plugin" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="naming">
+<h2>Naming<a class="headerlink" href="#naming" title="Permalink to this headline">¶</a></h2>
+<p>By convention, most plugins are named brz-xxx and are installed into a
+directory called xxx. Note that the directory name must be a legal
+Python package name, so a plugin called brz-xxx-yyy need to be installed
+into a directory called xxx_yyy, i.e. ‘-‘ in a plugin name should be mapped to
+an underscore in the directory name.</p>
+</div>
+<div class="section" id="licensing">
+<h2>Licensing<a class="headerlink" href="#licensing" title="Permalink to this headline">¶</a></h2>
+<p>We encourage plugin authors to make their plugins publicly available
+under the same license as Breezy itself, namely GPL v2 or later. However, there
+is no requirement to do so. You are free to create Breezy plugins for
+private or internal use within your company and not distribute them.</p>
+<p>By sharing your work, a larger number of people benefit. In our experience,
+plugin developers also benefit heavily by having more users involved in
+the design, testing, bug fixing and longer term maintenance. In other words,
+sharing leads to a better plugin faster.</p>
+</div>
+<div class="section" id="testing">
+<h2>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h2>
+<p>To ensure your plugin under development is available to Breezy, set
+the <code class="docutils literal notranslate"><span class="pre">BRZ_PLUGIN_PATH</span></code> environment variable to its parent directory.
+Alternatively, you may wish to develop your plugin within a directory
+under your personal plugins area (<code class="docutils literal notranslate"><span class="pre">~/.config/breezy/plugins</span></code> on GNU/Linux)
+or put a symbolic link in that area pointing to your plugin under
+test.  Finally you can use <code class="docutils literal notranslate"><span class="pre">BRZ_PLUGINS_AT</span></code> to point to a specific
+directory for a specific plugin (separated by your platform’s value of
+os.pathsep), e.g.</p>
+<blockquote>
+<div>export <a class="reference external" href="mailto:BRZ_PLUGINS_AT=qbrz&#37;&#52;&#48;/home/me/qbrz">BRZ_PLUGINS_AT=qbrz<span>&#64;</span>/home/me/qbrz</a>:<a class="reference external" href="mailto:explorer&#37;&#52;&#48;/home/me/explorer">explorer<span>&#64;</span>/home/me/explorer</a></div></blockquote>
+<p>You can disable loading plugins with <code class="docutils literal notranslate"><span class="pre">BRZ_DISABLE_PLUGINS</span></code>.</p>
+<p>If you want to stop loading all but installed plugins you can use:</p>
+<blockquote>
+<div>BRZ_PLUGIN_PATH=-site</div></blockquote>
+<p>We also encourage plugin developers to provide tests for their plugin.
+When you run <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">selftest</span></code>, Breezy will scan all its plugins to see if
+they contain a function named <code class="docutils literal notranslate"><span class="pre">test_suite()</span></code>.  For each plugin that does,
+it calls the function and adds any resulting tests to the master test suite.
+To run just the tests for plugin xxx, the command is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">selftest</span> <span class="o">-</span><span class="n">s</span> <span class="n">bp</span><span class="o">.</span><span class="n">xxx</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="providing-help">
+<h2>Providing help<a class="headerlink" href="#providing-help" title="Permalink to this headline">¶</a></h2>
+<p>Plugins in this guide have their documentation automatically
+generated from the online help provided for a plugin. Sections are
+ordered as follows:</p>
+<ol class="arabic simple">
+<li>High level introduction</li>
+<li>Plugin-specific help topics (COMING SOON)</li>
+<li>Commands defined or extended by the plugin.</li>
+</ol>
+<p>High level help is specified in the docstring for the <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> module.
+You can register plugin-specific help topics in <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">_xxx_tutorial</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;XXX Tutorial</span>
+
+<span class="s2">Welcome to xxx, your new best friend. ...</span>
+<span class="s2">&quot;&quot;&quot;</span>
+<span class="n">topic_registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s1">&#39;xxx-tutorial&#39;</span><span class="p">,</span>
+    <span class="n">_xxx_tutorial</span><span class="p">,</span>
+    <span class="s1">&#39;How to use xxx&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Command level help is specified in the docstring for the relevant
+<code class="docutils literal notranslate"><span class="pre">cmd_xxx</span></code> Command class.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The final documentation needs to be in ReST format. Keep in mind though
+that the documentation should also be readable via <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">help</span> <span class="pre">xxx</span></code> so
+it’s best to keep markup to a reasonable minimum.</p>
+</div>
+</div>
+<div class="section" id="providing-custom-code-via-hooks">
+<h2>Providing custom code via hooks<a class="headerlink" href="#providing-custom-code-via-hooks" title="Permalink to this headline">¶</a></h2>
+<p>Hooks let you provide custom code at certain processing points.
+The available hook point are documented in the <a class="reference external" href="http://doc.bazaar-vcs.org/development/en/user-reference/index.html#hooks">User Reference</a>.</p>
+<p>Adding a new hook is done with, for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">breezy.branch</span>
+<span class="n">breezy</span><span class="o">.</span><span class="n">branch</span><span class="o">.</span><span class="n">Branch</span><span class="o">.</span><span class="n">hooks</span><span class="o">.</span><span class="n">install_named_hook</span><span class="p">(</span><span class="s1">&#39;post_push&#39;</span><span class="p">,</span> <span class="n">post_push_hook</span><span class="p">,</span>
+                               <span class="s1">&#39;My post_push hook&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For more information on how to write hooks,
+see <a class="reference external" href="http://doc.bazaar-vcs.org/development/en/user-guide/hooks.html">http://doc.bazaar-vcs.org/development/en/user-guide/hooks.html</a>.</p>
+</div>
+<div class="section" id="defining-a-new-command">
+<h2>Defining a new command<a class="headerlink" href="#defining-a-new-command" title="Permalink to this headline">¶</a></h2>
+<p>Breezy commands are defined as subclasses of <code class="docutils literal notranslate"><span class="pre">breezy.commands.Command</span></code>, the
+command name is specified by the name of the subclass, and they must be
+registered into <code class="docutils literal notranslate"><span class="pre">brz</span></code> with the <code class="docutils literal notranslate"><span class="pre">breezy.commands.register_command</span></code> function
+at module import time.</p>
+<p>To define the <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">foo-bar</span></code> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy.commands</span> <span class="k">import</span> <span class="n">Command</span><span class="p">,</span> <span class="n">register_command</span>
+
+<span class="k">class</span> <span class="nc">cmd_foo_bar</span><span class="p">(</span><span class="n">Command</span><span class="p">):</span>
+  <span class="c1"># see breezy/builtins.py for information about what to put here</span>
+  <span class="k">pass</span>
+
+<span class="n">register_command</span><span class="p">(</span><span class="n">cmd_foo_bar</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If the class name starts with <code class="docutils literal notranslate"><span class="pre">cmd_</span></code>, the prefix will get dropped
+and <code class="docutils literal notranslate"><span class="pre">_</span></code> will be replaced by <code class="docutils literal notranslate"><span class="pre">-</span></code> characters.</p>
+</div>
+<div class="section" id="managing-data">
+<h2>Managing data<a class="headerlink" href="#managing-data" title="Permalink to this headline">¶</a></h2>
+<p>Plugin data falls into several categories:</p>
+<ul class="simple">
+<li>Configuration settings.</li>
+<li>Data the user can see and version control.</li>
+<li>Data behind the scenes.</li>
+</ul>
+<p>Configuration settings are often stored in <code class="docutils literal notranslate"><span class="pre">branch.conf</span></code>,
+<code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> or <code class="docutils literal notranslate"><span class="pre">bazaar.conf</span></code>.</p>
+<p>User-visible data for a plugin called xxx should be stored in
+<code class="docutils literal notranslate"><span class="pre">.bzrmeta/xxx</span></code>. If mutiple files are desirable, make <code class="docutils literal notranslate"><span class="pre">.bzrmeta/xxx</span></code>
+a directory or give them a common prefix within <code class="docutils literal notranslate"><span class="pre">.bzrmeta</span></code>, e.g.
+<code class="docutils literal notranslate"><span class="pre">xxx-foo</span></code>, <code class="docutils literal notranslate"><span class="pre">xxx-bar</span></code>.</p>
+<p>Data managed behind the scenes should be stored in <code class="docutils literal notranslate"><span class="pre">.bzr</span></code>.
+Depending on the nature of the data, it may belong in a subdirectory
+within there, e.g. <code class="docutils literal notranslate"><span class="pre">checkout</span></code>, <code class="docutils literal notranslate"><span class="pre">branch</span></code> or <code class="docutils literal notranslate"><span class="pre">repository</span></code>.
+It’s your responsibility to ensure behind-the-scenes data is
+propagated and merged appropriately via custom code. You may want
+to use existing hooks for this or ask for new hooks to help.</p>
+</div>
+<div class="section" id="useful-metadata">
+<h2>Useful metadata<a class="headerlink" href="#useful-metadata" title="Permalink to this headline">¶</a></h2>
+<p>It is highly recommended that plugins define a version number. This
+is displayed by <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">plugins</span></code> and by the <code class="docutils literal notranslate"><span class="pre">qplugins</span></code> GUI dialog.
+To do this, define <code class="docutils literal notranslate"><span class="pre">version_info</span></code> in <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">version_info</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;beta&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Plugins can also declare other useful metadata such as a mimimum
+breezy version, new transports and storage formats. See
+<a class="reference external" href="plugin-api">Plugin API</a> for details.</p>
+</div>
+<div class="section" id="performance-tips">
+<h2>Performance tips<a class="headerlink" href="#performance-tips" title="Permalink to this headline">¶</a></h2>
+<p>When brz starts up, it imports every plugin, so plugins can degrade
+performance when they’re not being used. However, sub-modules are not
+loaded, only the main name.</p>
+<p>One way you can avoid this slowdown is by putting most of your code
+in sub-modules, so that the plugin, itself, is small. All you really
+need in the <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> is the plugin’s Command classes, the
+commands to register them, and the optional <code class="docutils literal notranslate"><span class="pre">test_suite()</span></code>.</p>
+<p>Another way to reduce your plugin’s overhead is to use the breezy
+lazy_import functionality. That looks something like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy.lazy_import</span> <span class="k">import</span> <span class="n">lazy_import</span>
+<span class="n">lazy_import</span><span class="p">(</span><span class="nb">globals</span><span class="p">(),</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">from breezy import (</span>
+<span class="s2">    branch as _mod_branch,</span>
+<span class="s2">    option,</span>
+<span class="s2">    workingtree,</span>
+<span class="s2">    )</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Lazy importing only works for packages and modules, not classes or
+functions. It defers the import until you actually need it.</p>
+</div>
+<div class="section" id="learning-more">
+<h2>Learning more<a class="headerlink" href="#learning-more" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="http://wiki.bazaar.canonical.com/Integrating_with_Bazaar">Integrating with Bazaar</a>
+explains how to do such operations as <code class="docutils literal notranslate"><span class="pre">add</span></code>, <code class="docutils literal notranslate"><span class="pre">commit</span></code>, <code class="docutils literal notranslate"><span class="pre">log</span></code> and more.</p>
+<p>Reference documentation on some key APIs is provided below. For a more
+detailed reference, see the <a class="reference external" href="api/index">complete breezy API documentation</a>.</p>
+</div>
+<div class="section" id="mini-api-reference">
+<h2>Mini API Reference<a class="headerlink" href="#mini-api-reference" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="command-class">
+<h3>Command Class<a class="headerlink" href="#command-class" title="Permalink to this headline">¶</a></h3>
+<p>Base class for commands. Commands are the heart of the command-line brz
+interface.</p>
+<p>The command object mostly handles the mapping of command-line parameters into
+one or more breezy operations, and of the results into textual output.</p>
+<p>Commands normally don’t have any state. All their arguments are passed in to
+the run method. (Subclasses may take a different policy if the behaviour of the
+instance needs to depend on e.g. a shell plugin and not just its Python class.)</p>
+<p>The docstring for an actual command should give a single-line summary, then a
+complete description of the command. A grammar description will be inserted.</p>
+<dl class="docutils">
+<dt>aliases</dt>
+<dd>Other accepted names for this command.</dd>
+<dt>takes_args</dt>
+<dd><p class="first">List of argument forms, marked with whether they are optional,
+repeated, etc.</p>
+<p>For example: <code class="docutils literal notranslate"><span class="pre">['to_location',</span> <span class="pre">'from_branch?',</span> <span class="pre">'file*']</span></code> means:</p>
+<ul class="last simple">
+<li>‘to_location’ is required</li>
+<li>‘from_branch’ is optional</li>
+<li>‘file’ can be specified 0 or more times</li>
+</ul>
+</dd>
+<dt>takes_options</dt>
+<dd>List of options that may be given for this command. These can be either
+strings, referring to globally-defined options, or option objects.
+Retrieve through options().</dd>
+<dt>hidden</dt>
+<dd>If true, this command isn’t advertised. This is typically for commands
+intended for expert users.</dd>
+<dt>run()</dt>
+<dd><p class="first">Actually run the command. This is invoked with the options and arguments
+bound to keyword parameters.</p>
+<p class="last">Return 0 or None if the command was successful, or a non-zero shell error
+code if not. It’s OK for this method to allow an exception to raise up.</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="register-command-function">
+<h3>register_command Function<a class="headerlink" href="#register-command-function" title="Permalink to this headline">¶</a></h3>
+<p>Utility function to help register a command.</p>
+<dl class="docutils">
+<dt>param <em>cmd</em></dt>
+<dd>Command subclass to register</dd>
+<dt>param <em>decorate</em></dt>
+<dd>If true, allow overriding an existing command of the same name; the old
+command is returned by this function. Otherwise it is an error to try to
+override an existing command.</dd>
+</dl>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/plugin-development.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

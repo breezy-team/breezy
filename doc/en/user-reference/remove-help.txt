@@ -1,0 +1,28 @@
+remove
+======
+
+:Purpose: Remove files or directories.
+:Usage:   brz remove [FILE...]
+
+:Options:
+  -h, --help     Show help message.
+  --new          Only remove files that have never been committed.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+  Deletion Strategy:
+    --keep       Delete from brz but leave the working copy.
+    --no-backup  Don't backup changed files.
+    --safe       Backup changed files (default).
+
+:Description:
+  This makes Breezy stop tracking changes to the specified files. Breezy will
+  delete them if they can easily be recovered using revert otherwise they
+  will be backed up (adding an extension of the form .~#~). If no options or
+  parameters are given Breezy will scan for files that are being tracked by
+  Breezy but missing in your tree and stop tracking them for you.
+
+:Aliases:  rm, del
+
+

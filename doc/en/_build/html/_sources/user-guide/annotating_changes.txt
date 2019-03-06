@@ -1,0 +1,35 @@
+Annotating changes
+==================
+
+Seeing the origin of content
+----------------------------
+
+When two or more people are working on files, it can be highly
+useful at times to see who created or last changed certain content.
+To do this, using the annotate command like this::
+
+  brz annotate readme.txt
+
+If you are a pessimist or an optimist, you might prefer to use
+one of built-in aliases for ``annotate``: ``blame`` or ``praise``.
+Either way, this displays each line of the file together with
+information such as:
+
+ * who changed it last
+ * when it was last changed
+ * the commit message.
+
+GUI tools
+---------
+
+The various GUI plugins for Breezy provide graphical tools for
+viewing annotation information. For example, the brz-gtk plugin
+provides a GUI tool for this that can be launched using the
+``gannotate`` command::
+
+  brz gannotate readme.txt
+
+The GUI tools typically provide a much richer display of
+interesting information (e.g. all the changes in each commit)
+so you may prefer them over the text-based command.
+

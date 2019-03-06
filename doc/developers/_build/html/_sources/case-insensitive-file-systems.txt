@@ -1,0 +1,97 @@
+Case Insensitive File Systems
+=============================
+
+Bazaar must be portable across operating-systems and file-systems.  While the
+primary file-system for an operating-system might have some particular
+characteristics, it's not necessary that *all* file-systems for that
+operating-system will have the same characteristics.
+
+For example, the FAT32 file-system is most commonly found on Windows operating
+systems, and has the characteristics usually associated with a Windows
+file-system.  However, USB devices means FAT32 file-systems are often used
+with GNU/Linux systems, so the current operating system doesn't necessarily reflect the
+capabilities of the file-system.
+
+Bazaar supports 3 kinds of file-systems, each to different degrees.
+
+* Case-sensitive file-systems: This is the file-system generally used on
+  GNU/Linux: 2 files can differ only by case, and the exact case must be used
+  when opening a file.
+
+* Case-insensitive, case-preserving (cicp) file-systems: This is the
+  file-system generally used on Windows; FAT32 is an example of such a
+  file-system.  Although existing files can be opened using any case, the
+  exact case used to create the file is preserved and available for programs
+  to query.  Two files that differ only by case is not allowed.
+
+* Case-insensitive: This is the file-system used by very old Windows versions
+  and is rarely encountered "in the wild".  Two files that differ only by
+  case is not allowed and the case used to create a file is not preserved.
+
+As can be implied by the above descriptions, only the first two are considered
+relevant to a modern Bazaar.
+
+For more details, including use cases, please see
+http://wiki.bazaar.canonical.com/CasePreservingWorkingTreeUseCases
+
+Handling these file-systems
+---------------------------
+
+The fundamental problem handling these file-systems is that the user may
+specify a file name or inventory item with an "incorrect" case - where
+"incorrect" simply means different than what is stored - from the user's
+point-of-view, the filename is still correct, as it can be used to open, edit
+delete etc the item.
+
+The approach Bazaar takes is to "fixup" each of the command-line arguments
+which refer to a filename or an inventory item - where "fixup" means to
+adjust the case specified by the user so it exactly matches an existing item.
+
+There are two places this match can be performed against - the file-system
+and the Bazaar inventory.  When looking at a case-insensitive file-system, it
+is impossible to have 2 names that differ only by case, so there is no
+ambiguity. The inventory doesn't have the same rules, but it is expected that
+projects which wish to work with Windows would, by convention, avoid filenames
+that differ only by case.
+
+The rules for such fixups turn out to be quite simple:
+
+* If an argument refers to an existing inventory item, we fixup the argument
+  using the inventory.  This is, basically, all commands that take a filename
+  or directory argument *other* than 'add' and in some cases 'mv'
+
+* If an argument refers to an existing filename for the creation of an
+  inventory item (eg, add), then the case of the existing file on the disk
+  will be used.  However, Bazaar must still check the inventory to prevent
+  accidentally creating 2 inventory items that differ only by case.
+
+* If an argument results in the creation of a *new* filename (eg, a move
+  destination), the argument will be used as specified.  Breezy will create
+  a file and inventory item that exactly matches the case specified (although
+  as above, care must be taken to avoid creating two inventory items that
+  differ only by case.)
+
+Implementation of support for these file-systems
+------------------------------------------------
+
+From the description above, it can be seen the implementation is fairly
+simple and need not intrude on the internals of Bazaar too much; most of
+the time it is simply converting a string specified by the user to the
+"canonical" form as stored in either the inventory or filesystem.  These
+boil down to the following new API functions:
+
+* osutils.canonical_relpath() - like osutils.relpath() but adjust the case
+  of the result to match any existing items.
+
+* Tree.get_canonical_inventory_path - somewhat like Tree.get_symlink_target(),
+  Tree.get_file() etc; returns a name with the case adjusted to match
+  existing inventory items.
+
+* osutils.canonical_relpaths() and Tree.get_canonical_inventory_paths() - like
+  the 'singular' versions above, but accept and return sequences and therefore
+  offer more optimization opportunities when working with multiple names.
+
+The only complication is the requirement that Bazaar not allow the creation
+of items that differ only by case on such file-systems.  For this requirement,
+case-insensitive and cicp file-systems can be treated the same.  The
+'case_sensitive' attribute on a MutableTree is used to control this behaviour.

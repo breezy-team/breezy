@@ -1,0 +1,532 @@
+
+
+
+Hooks
+=====
+
+Introduction
+------------
+
+A hook of type *xxx* of class *yyy* needs to be registered using::
+
+  yyy.hooks.install_named_hook("xxx", ...)
+
+See :doc:`Using hooks<../user-guide/hooks>` in the User Guide for examples.
+
+The class that contains each hook is given before the hooks it supplies. For
+instance, BranchHooks as the class is the hooks class for
+`breezy.branch.Branch.hooks`.
+
+Each description also indicates whether the hook runs on the client (the
+machine where bzr was invoked) or the server (the machine addressed by
+the branch URL).  These may be, but are not necessarily, the same machine.
+
+Plugins (including hooks) are run on the server if all of these is true:
+
+  * The connection is via a smart server (accessed with a URL starting with
+    "bzr://", "bzr+ssh://" or "bzr+http://", or accessed via a "http://"
+    URL when a smart server is available via HTTP).
+
+  * The hook is either server specific or part of general infrastructure rather
+    than client specific code (such as commit).
+
+
+BranchHooks
+-----------
+
+automatic_tag_name
+~~~~~~~~~~~~~~~~~~
+
+Introduced in: 2.2
+
+Called to determine an automatic tag name for a revision.
+automatic_tag_name is called with (branch, revision_id) and should
+return a tag name or None if no tag name could be determined. The
+first non-None tag name returned will be used.
+
+open
+~~~~
+
+Introduced in: 1.8
+
+Called with the Branch object that has been opened after a branch is
+opened.
+
+post_branch_init
+~~~~~~~~~~~~~~~~
+
+Introduced in: 2.2
+
+Called after new branch initialization completes. post_branch_init is
+called with a breezy.branch.BranchInitHookParams. Note that init,
+branch and checkout (both heavyweight and lightweight) will all
+trigger this hook.
+
+post_change_branch_tip
+~~~~~~~~~~~~~~~~~~~~~~
+
+Introduced in: 1.4
+
+Called in bzr client and server after a change to the tip of a branch
+is made. post_change_branch_tip is called with a
+breezy.branch.ChangeBranchTipParams. Note that push, pull, commit,
+uncommit will all trigger this hook.
+
+post_commit
+~~~~~~~~~~~
+
+Introduced in: 0.15
+
+Called in the bzr client after a commit has completed. post_commit is
+called with (local, master, old_revno, old_revid, new_revno,
+new_revid). old_revid is NULL_REVISION for the first commit to a
+branch.
+
+post_pull
+~~~~~~~~~
+
+Introduced in: 0.15
+
+Called after a pull operation completes. post_pull is called with a
+breezy.branch.PullResult object and only runs in the bzr client.
+
+post_push
+~~~~~~~~~
+
+Introduced in: 0.15
+
+Called after a push operation completes. post_push is called with a
+breezy.branch.BranchPushResult object and only runs in the bzr client.
+
+post_switch
+~~~~~~~~~~~
+
+Introduced in: 2.2
+
+Called after a checkout switches branch. post_switch is called with a
+breezy.branch.SwitchHookParams.
+
+post_uncommit
+~~~~~~~~~~~~~
+
+Introduced in: 0.15
+
+Called in the bzr client after an uncommit completes. post_uncommit is
+called with (local, master, old_revno, old_revid, new_revno,
+new_revid) where local is the local branch or None, master is the
+target branch, and an empty branch receives new_revno of 0, new_revid
+of None.
+
+pre_change_branch_tip
+~~~~~~~~~~~~~~~~~~~~~
+
+Introduced in: 1.6
+
+Called in bzr client and server before a change to the tip of a branch
+is made. pre_change_branch_tip is called with a
+breezy.branch.ChangeBranchTipParams. Note that push, pull, commit,
+uncommit will all trigger this hook.
+
+pre_commit
+~~~~~~~~~~
+
+Introduced in: 0.91
+
+Called after a commit is calculated but before it is completed.
+pre_commit is called with (local, master, old_revno, old_revid,
+future_revno, future_revid, tree_delta, future_tree). old_revid is
+NULL_REVISION for the first commit to a branch, tree_delta is a
+TreeDelta object describing changes from the basis revision. hooks
+MUST NOT modify this delta.  future_tree is an in-memory tree obtained
+from CommitBuilder.revision_tree() and hooks MUST NOT modify this
+tree.
+
+transform_fallback_location
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Introduced in: 1.9
+
+Called when a stacked branch is activating its fallback locations.
+transform_fallback_location is called with (branch, url), and should
+return a new url. Returning the same url allows it to be used as-is,
+returning a different one can be used to cause the branch to stack on
+a closer copy of that fallback_location. Note that the branch cannot
+have history accessing methods called on it during this hook because
+the fallback locations have not been activated. When there are
+multiple hooks installed for transform_fallback_location, all are
+called with the url returned from the previous hook.The order is
+however undefined.
+
+SmartClientHooks
+----------------
+
+call
+~~~~
+
+Introduced in: unknown
+
+Called when the smart client is submitting a request to the smart
+server. Called with a breezy.bzr.smart.client.CallHookParams object.
+Streaming request bodies, and responses, are not accessible.
+
+SmartServerHooks
+----------------
+
+server_exception
+~~~~~~~~~~~~~~~~
+
+Introduced in: 2.4
+
+Called by the bzr server when an exception occurs. server_exception is
+called with the sys.exc_info() tuple return true for the hook if the
+exception has been handled, in which case the server will exit
+normally.
+
+server_started
+~~~~~~~~~~~~~~
+
+Introduced in: 0.16
+
+Called by the bzr server when it starts serving a directory.
+server_started is called with (backing urls, public url), where
+backing_url is a list of URLs giving the server-specific directory
+locations, and public_url is the public URL for the directory being
+served.
+
+server_started_ex
+~~~~~~~~~~~~~~~~~
+
+Introduced in: 1.17
+
+Called by the bzr server when it starts serving a directory.
+server_started is called with (backing_urls, server_obj).
+
+server_stopped
+~~~~~~~~~~~~~~
+
+Introduced in: 0.16
+
+Called by the bzr server when it stops serving a directory.
+server_stopped is called with the same parameters as the
+server_started hook: (backing_urls, public_url).
+
+CommandHooks
+------------
+
+extend_command
+~~~~~~~~~~~~~~
+
+Introduced in: 1.13
+
+Called after creating a command object to allow modifications such as
+adding or removing options, docs etc. Called with the new
+breezy.commands.Command object.
+
+get_command
+~~~~~~~~~~~
+
+Introduced in: 1.17
+
+Called when creating a single command. Called with (cmd_or_None,
+command_name). get_command should either return the cmd_or_None
+parameter, or a replacement Command object that should be used for the
+command. Note that the Command.hooks hooks are core infrastructure.
+Many users will prefer to use breezy.commands.register_command or
+plugin_cmds.register_lazy.
+
+get_missing_command
+~~~~~~~~~~~~~~~~~~~
+
+Introduced in: 1.17
+
+Called when creating a single command if no command could be found.
+Called with (command_name). get_missing_command should either return
+None, or a Command object to be used for the command.
+
+list_commands
+~~~~~~~~~~~~~
+
+Introduced in: 1.17
+
+Called when enumerating commands. Called with a set of cmd_name
+strings for all the commands found so far. This set  is safe to mutate
+- e.g. to remove a command. list_commands should return the updated
+set of command names.
+
+post_command
+~~~~~~~~~~~~
+
+Introduced in: 2.6
+
+Called after executing a command. Called with the command object.
+
+pre_command
+~~~~~~~~~~~
+
+Introduced in: 2.6
+
+Called prior to executing a command. Called with the command object.
+
+_ConfigHooks
+------------
+
+get
+~~~
+
+Introduced in: 2.4
+
+Invoked when a config option is read. The signature is (stack, name,
+value).
+
+load
+~~~~
+
+Introduced in: 2.4
+
+Invoked when a config store is loaded. The signature is (store).
+
+remove
+~~~~~~
+
+Introduced in: 2.4
+
+Invoked when a config option is removed. The signature is (stack,
+name).
+
+save
+~~~~
+
+Introduced in: 2.4
+
+Invoked when a config store is saved. The signature is (store).
+
+set
+~~~
+
+Introduced in: 2.4
+
+Invoked when a config option is set. The signature is (stack, name,
+value).
+
+ControlDirHooks
+---------------
+
+post_repo_init
+~~~~~~~~~~~~~~
+
+Introduced in: 2.2
+
+Invoked after a repository has been initialized. post_repo_init is
+called with a breezy.controldir.RepoInitHookParams.
+
+pre_open
+~~~~~~~~
+
+Introduced in: 1.14
+
+Invoked before attempting to open a ControlDir with the transport that
+the open will use.
+
+InfoHooks
+---------
+
+repository
+~~~~~~~~~~
+
+Introduced in: 1.15
+
+Invoked when displaying the statistics for a repository. repository is
+called with a statistics dictionary as returned by the repository and
+a file-like object to write to.
+
+LockHooks
+---------
+
+lock_acquired
+~~~~~~~~~~~~~
+
+Introduced in: 1.8
+
+Called with a breezy.lock.LockResult when a physical lock is acquired.
+
+lock_broken
+~~~~~~~~~~~
+
+Introduced in: 1.15
+
+Called with a breezy.lock.LockResult when a physical lock is broken.
+
+lock_released
+~~~~~~~~~~~~~
+
+Introduced in: 1.8
+
+Called with a breezy.lock.LockResult when a physical lock is released.
+
+MergeHooks
+----------
+
+merge_file_content
+~~~~~~~~~~~~~~~~~~
+
+Introduced in: 2.1
+
+Called with a breezy.merge.Merger object to create a per file merge
+object when starting a merge. Should return either None or a subclass
+of ``breezy.merge.AbstractPerFileMerger``. Such objects will then be
+called per file that needs to be merged (including when one side has
+deleted the file and the other has changed it). See the
+AbstractPerFileMerger API docs for details on how it is used by merge.
+
+post_merge
+~~~~~~~~~~
+
+Introduced in: 2.5
+
+Called after a merge. Receives a Merger object as the single argument.
+The return value is ignored.
+
+pre_merge
+~~~~~~~~~
+
+Introduced in: 2.5
+
+Called before a merge. Receives a Merger object as the single
+argument.
+
+MergeDirectiveHooks
+-------------------
+
+merge_request_body
+~~~~~~~~~~~~~~~~~~
+
+Introduced in: 1.15.0
+
+Called with a MergeRequestBodyParams when a body is needed for a merge
+request.  Callbacks must return a body.  If more than one callback is
+registered, the output of one callback is provided to the next.
+
+MessageEditorHooks
+------------------
+
+commit_message_template
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Introduced in: 1.10
+
+Called when a commit message is being generated.
+commit_message_template is called with the breezy.commit.Commit object
+and the message that is known so far. commit_message_template must
+return a new message to use (which could be the same as it was given).
+When there are multiple hooks registered for commit_message_template,
+they are chained with the result from the first passed into the
+second, and so on.
+
+set_commit_message
+~~~~~~~~~~~~~~~~~~
+
+Introduced in: 2.4
+
+Set a fixed commit message. set_commit_message is called with the
+breezy.commit.Commit object (so you can also change e.g. revision
+properties by editing commit.builder._revprops) and the message so
+far. set_commit_message must return the message to use or None if it
+should use the message editor as normal.
+
+MutableTreeHooks
+----------------
+
+post_build_tree
+~~~~~~~~~~~~~~~
+
+Introduced in: 2.5
+
+Called after a completely new tree is built. The hook is called with
+the tree as its only argument.
+
+post_commit
+~~~~~~~~~~~
+
+Introduced in: 2.0
+
+Called after a commit is performed on a tree. The hook is called with
+a breezy.mutabletree.PostCommitHookParams object. The mutable tree the
+commit was performed on is available via the mutable_tree attribute of
+that object.
+
+post_transform
+~~~~~~~~~~~~~~
+
+Introduced in: 2.5
+
+Called after a tree transform has been performed on a tree. The hook
+is called with the tree that is being transformed and the transform.
+
+pre_transform
+~~~~~~~~~~~~~
+
+Introduced in: 2.5
+
+Called before a tree transform on this tree. The hook is called with
+the tree that is being transformed and the transform.
+
+start_commit
+~~~~~~~~~~~~
+
+Introduced in: 1.4
+
+Called before a commit is performed on a tree. The start commit hook
+is able to change the tree before the commit takes place. start_commit
+is called with the breezy.mutabletree.MutableTree that the commit is
+being performed on.
+
+StatusHooks
+-----------
+
+post_status
+~~~~~~~~~~~
+
+Introduced in: 2.3
+
+Called with argument StatusHookParams after Bazaar has displayed the
+status. StatusHookParams has the attributes (old_tree, new_tree,
+to_file, versioned, show_ids, short, verbose). The last four arguments
+correspond to the command line options specified by the user for the
+status command. to_file is the output stream for writing.
+
+pre_status
+~~~~~~~~~~
+
+Introduced in: 2.3
+
+Called with argument StatusHookParams before Bazaar displays the
+status. StatusHookParams has the attributes (old_tree, new_tree,
+to_file, versioned, show_ids, short, verbose). The last four arguments
+correspond to the command line options specified by the user for the
+status command. to_file is the output stream for writing.
+
+TransportHooks
+--------------
+
+post_connect
+~~~~~~~~~~~~
+
+Introduced in: 2.5
+
+Called after a new connection is established or a reconnect occurs.
+The sole argument passed is either the connected transport or smart
+medium instance.
+
+RioVersionInfoBuilderHooks
+--------------------------
+
+revision
+~~~~~~~~
+
+Introduced in: 1.15
+
+Invoked when adding information about a revision to the RIO stanza
+that is printed. revision is called with a revision object and a RIO
+stanza.
+
+

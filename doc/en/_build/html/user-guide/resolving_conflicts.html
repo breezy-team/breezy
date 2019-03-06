@@ -1,0 +1,182 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Resolving conflicts &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Annotating changes" href="annotating_changes.html" />
+    <link rel="prev" title="Merging changes" href="merging_changes.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="merging_changes.html" title="Merging changes"
+             accesskey="P">previous</a> |
+          <a href="annotating_changes.html" title="Annotating changes"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="resolving-conflicts">
+<h1>Resolving conflicts<a class="headerlink" href="#resolving-conflicts" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="workflow">
+<h2>Workflow<a class="headerlink" href="#workflow" title="Permalink to this headline">¶</a></h2>
+<p>Unlike some other tools that force you to resolve each conflict during
+the merge process, Breezy merges as much as it can and then reports the
+conflicts. This can make conflict resolution easier because the contents
+of the whole post-merge tree are available to help you decide how things
+ought to be resolved. You may also wish to selectively run tests as you go
+to confirm each resolution or group or resolutions is good.</p>
+</div>
+<div class="section" id="listing-conflicts">
+<h2>Listing conflicts<a class="headerlink" href="#listing-conflicts" title="Permalink to this headline">¶</a></h2>
+<p>As well as being reported by the <code class="docutils literal notranslate"><span class="pre">merge</span></code> command, the list of outstanding
+conflicts may be displayed at any time by using the <code class="docutils literal notranslate"><span class="pre">conflicts</span></code>
+command. It is also included as part of the output from the <code class="docutils literal notranslate"><span class="pre">status</span></code>
+command.</p>
+</div>
+<div class="section" id="resolving-a-conflict">
+<h2>Resolving a conflict<a class="headerlink" href="#resolving-a-conflict" title="Permalink to this headline">¶</a></h2>
+<p>When a conflict is encountered, the <code class="docutils literal notranslate"><span class="pre">merge</span></code> command puts embedded
+markers in each file showing the areas it couldn’t resolve. It also
+creates 3 files for each file with a conflict:</p>
+<blockquote>
+<div><ul class="simple">
+<li>foo.BASE</li>
+<li>foo.THIS</li>
+<li>foo.OTHER</li>
+</ul>
+</div></blockquote>
+<p>where <code class="docutils literal notranslate"><span class="pre">foo</span></code> is the name of the conflicted file.
+In many cases, you can resolve conflicts by simply manually editing
+each file in question, fixing the relevant areas and removing the
+conflict markers as you go.</p>
+<p>After fixing all the files in conflict, and removing the markers,
+ask Breezy to mark them as resolved using the <code class="docutils literal notranslate"><span class="pre">resolve</span></code> command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">resolve</span>
+</pre></div>
+</div>
+<p>Alternatively, after fixing each file, you can mark it as resolved
+like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">resolve</span> <span class="n">foo</span>
+</pre></div>
+</div>
+<p>Among other things, the <code class="docutils literal notranslate"><span class="pre">resolve</span></code> command cleans up the BASE,
+THIS and OTHER files from your working tree.</p>
+</div>
+<div class="section" id="using-the-remerge-command">
+<h2>Using the remerge command<a class="headerlink" href="#using-the-remerge-command" title="Permalink to this headline">¶</a></h2>
+<p>In some cases, you may wish to try a different merge algorithm on a
+given file. To do this, use the <code class="docutils literal notranslate"><span class="pre">remerge</span></code> command nominating
+the file like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">remerge</span> <span class="o">--</span><span class="n">weave</span> <span class="n">foo</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">foo</span></code> is the file and <code class="docutils literal notranslate"><span class="pre">weave</span></code> is one of the available
+merge algorithms. This algorithm is particularly useful when a
+so-called <code class="docutils literal notranslate"><span class="pre">criss-cross</span></code> merge is detected, e.g. when two branches
+merge the same thing then merge each other. See the online help for
+<code class="docutils literal notranslate"><span class="pre">criss-cross</span></code> and <code class="docutils literal notranslate"><span class="pre">remerge</span></code> for further details.</p>
+</div>
+<div class="section" id="using-external-tools-to-resolve-conflicts">
+<h2>Using external tools to resolve conflicts<a class="headerlink" href="#using-external-tools-to-resolve-conflicts" title="Permalink to this headline">¶</a></h2>
+<p>If you have a GUI tool you like using to resolve conflicts, be sure
+to install the <em>extmerge</em> plugin. Once installed, it can be used
+like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">extmerge</span> <span class="n">foo</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">foo</span></code> is the conflicted file. Rather than provide a list of
+files to resolve, you can give the <code class="docutils literal notranslate"><span class="pre">--all</span></code> option to implicitly
+specify all conflicted files.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">extmerge</span></code> command uses the tool specified by the
+<code class="docutils literal notranslate"><span class="pre">external_merge</span></code> setting in your <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> file.
+If not set, it will look for some popular merge tools such
+as <code class="docutils literal notranslate"><span class="pre">kdiff3</span></code> or <code class="docutils literal notranslate"><span class="pre">opendiff</span></code>, the latter being a command
+line interface to the FileMerge utility in OS X.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="merging_changes.html" title="Merging changes"
+              >previous</a> |
+            <a href="annotating_changes.html" title="Annotating changes"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/resolving_conflicts.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

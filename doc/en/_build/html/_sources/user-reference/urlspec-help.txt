@@ -1,0 +1,39 @@
+URL Identifiers
+===============
+
+
+Supported URL prefixes::
+
+  bzr://              Fast access using the Bazaar smart server.
+  bzr+ssh://          Fast access using the Bazaar smart server over SSH.
+  file://             Access using the standard filesystem (default)
+  http://             Read-only access of branches exported on the web.
+  https://            Read-only access of branches exported on the web using SSL.
+  sftp://             Access using SFTP (most SSH servers provide SFTP).
+
+Supported modifiers::
+
+  gio+                Access using any GIO supported protocols.
+
+Breezy supports all of the standard parts within the URL::
+
+  <protocol>://[user[:password]@]host[:port]/[path]
+
+allowing URLs such as::
+
+  http://brzuser:BadPass@brz.example.com:8080/brz/trunk
+
+For brz+ssh:// and sftp:// URLs, Breezy also supports paths that begin
+with '~' as meaning that the rest of the path should be interpreted
+relative to the remote user's home directory.  For example if the user
+``remote`` has a  home directory of ``/home/remote`` on the server
+shell.example.com, then::
+
+  brz+ssh://remote@shell.example.com/~/myproject/trunk
+
+would refer to ``/home/remote/myproject/trunk``.
+
+Many commands that accept URLs also accept location aliases too.
+See :doc:`location-alias-help` and :doc:`url-special-chars-help`.
+
+

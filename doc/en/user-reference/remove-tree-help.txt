@@ -1,0 +1,23 @@
+remove-tree
+===========
+
+:Purpose: Remove the working tree from a given branch/checkout.
+:Usage:   brz remove-tree [LOCATION...]
+
+:Options:
+  --force        Remove the working tree even if it has uncommitted or shelved
+                 changes.
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  Since a lightweight checkout is little more than a working tree
+  this will refuse to run against one.
+  
+  To re-create the working tree, use "brz checkout".
+
+:See also: :doc:`checkout <checkout-help>`, :doc:`working-trees <working-trees-help>`
+
+

@@ -1,0 +1,424 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Development repository formats &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="KnitPack repository format" href="packrepo.html" />
+    <link rel="prev" title="Case Insensitive File Systems" href="case-insensitive-file-systems.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="case-insensitive-file-systems.html" title="Case Insensitive File Systems"
+             accesskey="P">previous</a> |
+          <a href="packrepo.html" title="KnitPack repository format"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="development-repository-formats">
+<h1><a class="toc-backref" href="#id1">Development repository formats</a><a class="headerlink" href="#development-repository-formats" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#development-repository-formats" id="id1">Development repository formats</a><ul>
+<li><a class="reference internal" href="#using-development-repository-formats" id="id2">Using development repository formats</a><ul>
+<li><a class="reference internal" href="#motivation" id="id3">Motivation</a></li>
+<li><a class="reference internal" href="#format-names" id="id4">Format names</a></li>
+<li><a class="reference internal" href="#support-for-upgrade-and-migration" id="id5">Support for upgrade and migration</a></li>
+<li><a class="reference internal" href="#before-converting-to-a-development-format" id="id6">Before converting to a development format</a></li>
+<li><a class="reference internal" href="#creating-a-new-development-format-branch" id="id7">Creating a new development format branch</a></li>
+<li><a class="reference internal" href="#creating-a-new-development-format-repository" id="id8">Creating a new development format repository</a></li>
+<li><a class="reference internal" href="#upgrading-an-existing-branch-or-repository-to-development" id="id9">Upgrading an existing branch or repository to development</a></li>
+<li><a class="reference internal" href="#starting-a-new-development-format-branch-from-one-in-an-older-format" id="id10">Starting a new development format branch from one in an older format</a></li>
+<li><a class="reference internal" href="#develoment-formats-for-bzr-svn-users" id="id11">Develoment formats for bzr-svn users</a></li>
+<li><a class="reference internal" href="#reporting-problems" id="id12">Reporting problems</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#technical-notes" id="id13">Technical notes</a><ul>
+<li><a class="reference internal" href="#when-to-create-a-new-development-format" id="id14">When to create a new development format</a></li>
+<li><a class="reference internal" href="#how-to-create-a-new-development-format" id="id15">How to create a new development format</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#format-details" id="id16">Format Details</a><ul>
+<li><a class="reference internal" href="#development" id="id17">development</a></li>
+<li><a class="reference internal" href="#development-rich-root" id="id18">development-rich-root</a></li>
+<li><a class="reference internal" href="#development-subtree" id="id19">development-subtree</a></li>
+<li><a class="reference internal" href="#development6richroot-subtree" id="id20">Development6RichRoot[Subtree]</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="using-development-repository-formats">
+<h2><a class="toc-backref" href="#id2">Using development repository formats</a><a class="headerlink" href="#using-development-repository-formats" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="motivation">
+<h3><a class="toc-backref" href="#id3">Motivation</a><a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h3>
+<p>We believe that we can continue to gain substantial performance benefits
+by altering the repository storage in bzr. The more feedback we can get
+on the changes during the development process the better.</p>
+<p>To make it possible to get more feedback we are going to expose the
+current development formats to the users of our development trunk
+‘bzr.dev’. The technical details of the individual formats are at the
+end of this document.</p>
+</div>
+<div class="section" id="format-names">
+<h3><a class="toc-backref" href="#id4">Format names</a><a class="headerlink" href="#format-names" title="Permalink to this headline">¶</a></h3>
+<p>The current development format will be called ‘development’. Each time
+the development format changes, the prior development format will be
+renamed to e.g. ‘development0’, ‘development1’ etc.</p>
+<p>When a release of bzr is done, all the older numbered development
+formats will be removed from ‘bzr.dev’, so we will not be carrying the
+code for them around indefinately.</p>
+</div>
+<div class="section" id="support-for-upgrade-and-migration">
+<h3><a class="toc-backref" href="#id5">Support for upgrade and migration</a><a class="headerlink" href="#support-for-upgrade-and-migration" title="Permalink to this headline">¶</a></h3>
+<p>The preservation and renaming policy makes it quite safe for users to
+test out development formats (though we cannot guarantee bugs of course
+- it is development code):</p>
+<blockquote>
+<div><ul class="simple">
+<li>users of a given development format can always get back onto regular
+formats by switching to the next bzr released version which is
+guaranteed to be able to upgrade from that development format.</li>
+<li>users that routinely use bzr.dev should upgrade to the most recent
+development version available before pulling in bzr.dev changes
+around release time, as that is when old format cleanups will occur.</li>
+</ul>
+</div></blockquote>
+<p>We cannot guarantee backwards compatibility though, because some of the
+planned work may be ‘upgrade only’. Please see <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">formats</span></code> for
+the text of the ‘development’ format which will indicate its
+compatibility with other formats if you need to interoperate with
+users or services that do not have bzr.dev.</p>
+</div>
+<div class="section" id="before-converting-to-a-development-format">
+<h3><a class="toc-backref" href="#id6">Before converting to a development format</a><a class="headerlink" href="#before-converting-to-a-development-format" title="Permalink to this headline">¶</a></h3>
+<p>Run a <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">check</span></code> with the version of bzr that you will be using.
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">check</span></code> gets updated as we find new things that are inconsistent
+with existing repositories. While only a small number of repositories
+are likely to have any given error, it is best to check just in case.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">check</span></code> reports a problem, run this command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">reconcile</span>
+</pre></div>
+</div>
+<p>Note that reconcile can take many hours, particularly if you are
+reconciling one of the ‘knit’ or ‘dirstate’ format repositories. If you
+have such a repository, consider upgrading it to ‘pack-0.92’ first,
+which will perform reconcile significantly faster.</p>
+</div>
+<div class="section" id="creating-a-new-development-format-branch">
+<h3><a class="toc-backref" href="#id7">Creating a new development format branch</a><a class="headerlink" href="#creating-a-new-development-format-branch" title="Permalink to this headline">¶</a></h3>
+<p>If you’re starting a project from scratch, it’s easy to make it a
+<code class="docutils literal notranslate"><span class="pre">development</span></code> one. Here’s how:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">stuff</span>
+<span class="n">bzr</span> <span class="n">init</span> <span class="o">--</span><span class="n">development</span>
+<span class="n">bzr</span> <span class="n">add</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;initial import&quot;</span>
+</pre></div>
+</div>
+<p>In other words, use the normal sequence of commands but add the
+<code class="docutils literal notranslate"><span class="pre">--development</span></code> option to the <code class="docutils literal notranslate"><span class="pre">init</span></code> command.</p>
+</div>
+<div class="section" id="creating-a-new-development-format-repository">
+<h3><a class="toc-backref" href="#id8">Creating a new development format repository</a><a class="headerlink" href="#creating-a-new-development-format-repository" title="Permalink to this headline">¶</a></h3>
+<p>If you’re starting a project from scratch and wish to use a shared repository
+for branches, you can make it a <code class="docutils literal notranslate"><span class="pre">development</span></code> repository like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">repo</span>
+<span class="n">bzr</span> <span class="n">init</span><span class="o">-</span><span class="n">repo</span> <span class="o">--</span><span class="n">development</span> <span class="o">.</span>
+<span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">stuff</span>
+<span class="n">bzr</span> <span class="n">init</span>
+<span class="n">bzr</span> <span class="n">add</span>
+<span class="n">bzr</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;initial import&quot;</span>
+</pre></div>
+</div>
+<p>In other words, use the normal sequence of commands but add the
+<code class="docutils literal notranslate"><span class="pre">--development</span></code> option to the <code class="docutils literal notranslate"><span class="pre">init-repo</span></code> command.</p>
+</div>
+<div class="section" id="upgrading-an-existing-branch-or-repository-to-development">
+<h3><a class="toc-backref" href="#id9">Upgrading an existing branch or repository to development</a><a class="headerlink" href="#upgrading-an-existing-branch-or-repository-to-development" title="Permalink to this headline">¶</a></h3>
+<p>If you have an existing branch and wish to migrate it to
+a <code class="docutils literal notranslate"><span class="pre">development</span></code> format, use the <code class="docutils literal notranslate"><span class="pre">upgrade</span></code> command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">upgrade</span> <span class="o">--</span><span class="n">development</span> <span class="n">path</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="n">my</span><span class="o">-</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>If you are using a shared repository, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">upgrade</span> <span class="o">--</span><span class="n">development</span> <span class="n">ROOT_OF_REPOSITORY</span>
+</pre></div>
+</div>
+<p>to upgrade the history database. Note that this will not
+alter the branch format of each branch, so
+you will need to also upgrade each branch individually
+if you are upgrading from an old (e.g. &lt; 0.17) bzr.
+More modern bzr’s will already have the branch format at
+our latest branch format which adds support for tags.</p>
+</div>
+<div class="section" id="starting-a-new-development-format-branch-from-one-in-an-older-format">
+<h3><a class="toc-backref" href="#id10">Starting a new development format branch from one in an older format</a><a class="headerlink" href="#starting-a-new-development-format-branch-from-one-in-an-older-format" title="Permalink to this headline">¶</a></h3>
+<p>This can be done in one of several ways:</p>
+<ol class="arabic simple">
+<li>Create a new branch and pull into it</li>
+<li>Create a standalone branch and upgrade its format</li>
+<li>Create a knitpack shared repository and branch into it</li>
+</ol>
+<p>Here are the commands for using the <code class="docutils literal notranslate"><span class="pre">pull</span></code> approach:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">init</span> <span class="o">--</span><span class="n">development</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+<span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+<span class="n">bzr</span> <span class="n">pull</span> <span class="n">my</span><span class="o">-</span><span class="n">source</span><span class="o">-</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>Here are the commands for using the <code class="docutils literal notranslate"><span class="pre">upgrade</span></code> approach:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">branch</span> <span class="n">my</span><span class="o">-</span><span class="n">source</span><span class="o">-</span><span class="n">branch</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+<span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+<span class="n">bzr</span> <span class="n">upgrade</span> <span class="o">--</span><span class="n">development</span> <span class="o">.</span>
+</pre></div>
+</div>
+<p>Here are the commands for the shared repository approach:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">repo</span>
+<span class="n">bzr</span> <span class="n">init</span><span class="o">-</span><span class="n">repo</span> <span class="o">--</span><span class="n">development</span> <span class="o">.</span>
+<span class="n">bzr</span> <span class="n">branch</span> <span class="n">my</span><span class="o">-</span><span class="n">source</span><span class="o">-</span><span class="n">branch</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+<span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">new</span><span class="o">-</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>As a reminder, any of the above approaches can fail if the source branch
+has inconsistent data within it and hasn’t been reconciled yet. Please
+be sure to check that before reporting problems.</p>
+</div>
+<div class="section" id="develoment-formats-for-bzr-svn-users">
+<h3><a class="toc-backref" href="#id11">Develoment formats for bzr-svn users</a><a class="headerlink" href="#develoment-formats-for-bzr-svn-users" title="Permalink to this headline">¶</a></h3>
+<p>If you are using <code class="docutils literal notranslate"><span class="pre">bzr-svn</span></code> or are testing the prototype subtree support,
+you can still use and assist in testing the development formats. The
+commands to use are identical to the ones given above except that the
+name of the format to use is <code class="docutils literal notranslate"><span class="pre">development-subtree</span></code>.</p>
+<p><strong>WARNING</strong>: Note that bzr only supports one-way conversion <strong>to</strong> the
+subtree format <code class="docutils literal notranslate"><span class="pre">development-subtree</span></code>. Once you are using
+<code class="docutils literal notranslate"><span class="pre">development-subtree</span></code> you cannot pull or merge back into a regular
+format such as <code class="docutils literal notranslate"><span class="pre">pack-0.92</span></code>, <code class="docutils literal notranslate"><span class="pre">development</span></code> etc.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">development-subtree</span></code> format is required for the bzr-svn
+plug-in but should otherwise not be used until the subtree feature is
+complete within bzr.</p>
+</div>
+<div class="section" id="reporting-problems">
+<h3><a class="toc-backref" href="#id12">Reporting problems</a><a class="headerlink" href="#reporting-problems" title="Permalink to this headline">¶</a></h3>
+<p>If you need any help or encounter any problems, please contact the developers
+via the usual ways, i.e. chat to us on IRC or send a message to our mailing
+list. See <a class="reference external" href="https://www.breezy-vcs.org/pages/support.html">https://www.breezy-vcs.org/pages/support.html</a> for contact details.</p>
+</div>
+</div>
+<div class="section" id="technical-notes">
+<h2><a class="toc-backref" href="#id13">Technical notes</a><a class="headerlink" href="#technical-notes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="when-to-create-a-new-development-format">
+<h3><a class="toc-backref" href="#id14">When to create a new development format</a><a class="headerlink" href="#when-to-create-a-new-development-format" title="Permalink to this headline">¶</a></h3>
+<p>Whenever a code change will result in incorrect behaviour with existing
+<code class="docutils literal notranslate"><span class="pre">development</span></code> repositories. Changes in push/pull/init/commit/merge
+have all been known to do this in the past.</p>
+</div>
+<div class="section" id="how-to-create-a-new-development-format">
+<h3><a class="toc-backref" href="#id15">How to create a new development format</a><a class="headerlink" href="#how-to-create-a-new-development-format" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic">
+<li><p class="first">Register two new formats with the next available sequence number.
+e.g. <code class="docutils literal notranslate"><span class="pre">development1</span></code> and <code class="docutils literal notranslate"><span class="pre">development1-subtree</span></code>. (You can see the
+current development format for an example.
+These should:</p>
+<ul class="simple">
+<li>Use your new development repository/branch/tree classes</li>
+<li>Have really bare bones help - something like ‘changes X to be Y
+see …developers/development-repo.html’</li>
+<li>Be hidden and experimental.</li>
+</ul>
+</li>
+<li><p class="first">Change the repository class (or branch or tree) in the
+<code class="docutils literal notranslate"><span class="pre">development</span></code> and <code class="docutils literal notranslate"><span class="pre">development-subtree</span></code> formats to point to the
+new class you are creating.</p>
+</li>
+<li><p class="first">Add a new development format (and tests!). Repository formats are in
+<code class="docutils literal notranslate"><span class="pre">breezy.repofmt</span></code>. You probably want to reproduce the current
+development format from <code class="docutils literal notranslate"><span class="pre">breezy.repofmt.pack_repo</span></code> with just new
+disk format strings, <code class="docutils literal notranslate"><span class="pre">_get_matching_bzrdir</span></code> and help.</p>
+</li>
+<li><p class="first">Register your development format with the various registries. At the
+moment you need to update:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><code class="docutils literal notranslate"><span class="pre">breezy/bzrdir.py</span></code> to register the WT/Branch/Repository
+collection.</li>
+<li><code class="docutils literal notranslate"><span class="pre">breezy/workingtree.py</span></code>, <code class="docutils literal notranslate"><span class="pre">breezy/branch.py</span></code>,
+<code class="docutils literal notranslate"><span class="pre">breezy/repository.py</span></code>, each one maintains a direct list of
+their respective formats.</li>
+<li>For repositories, you also need to update the InterKnit1and2
+class. This is responsible for converting between rich-root and
+non-rich-root repositories.</li>
+<li>For repositories based on KnitPackRepository, you need to update
+<code class="docutils literal notranslate"><span class="pre">breezy/tests/test_pack_repository.py</span></code> to add the class to the
+tested permutations.</li>
+</ol>
+</div></blockquote>
+</li>
+<li><p class="first">Alter any other things that do class based tests. The easiest way
+to find these is a grep for Development in breezy - and please
+refactor as you find these to reduce the relevance this step has,
+as it should not need to exist.</p>
+</li>
+<li><p class="first">Now subclass/create from scratch/whatever the live object code you
+need to change to introduce your new format. Keep in mind that
+eventually it will become the default format, so please don’t keep
+subclassing the last releases code, rather consider making the last
+releases code a subclass of your new code (if there is a lot in
+common) so that we can eventually remove that format once it becomes
+ancient (or relegate it to a plugin).</p>
+</li>
+<li><p class="first">Once you have made the changes that required a new disk format, you
+should submit the resulting branch to be merged. Other changes - to
+take advantage of whatever new feature you have added - should be
+sent in separately, because the disk level changes are a contention
+point between multiple developers.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="section" id="format-details">
+<h2><a class="toc-backref" href="#id16">Format Details</a><a class="headerlink" href="#format-details" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="development">
+<h3><a class="toc-backref" href="#id17">development</a><a class="headerlink" href="#development" title="Permalink to this headline">¶</a></h3>
+<p>Not currently available, as our development formats are all rich root or
+subtrees now.</p>
+</div>
+<div class="section" id="development-rich-root">
+<h3><a class="toc-backref" href="#id18">development-rich-root</a><a class="headerlink" href="#development-rich-root" title="Permalink to this headline">¶</a></h3>
+<p>Currently an alias for Development6Subtree</p>
+</div>
+<div class="section" id="development-subtree">
+<h3><a class="toc-backref" href="#id19">development-subtree</a><a class="headerlink" href="#development-subtree" title="Permalink to this headline">¶</a></h3>
+<p>Currently an alias for Development6Subtree</p>
+</div>
+<div class="section" id="development6richroot-subtree">
+<h3><a class="toc-backref" href="#id20">Development6RichRoot[Subtree]</a><a class="headerlink" href="#development6richroot-subtree" title="Permalink to this headline">¶</a></h3>
+<p>These formats use the new groupcompress delta compress and a CHK(Content
+Hash Key) based inventory store which is much faster at incremental
+operations than the prior XML based store.
+<em>Note</em> Converting from a non-rich-root to a rich-root format is a
+one-way upgrade, and you cannot merge back afterwards: using this format
+for everyday use is likely to cause all developers of a project to
+upgrade to a rich-root format themselves. This is fine, as bzr is moving
+to make rich-root formats the default and to get all users to upgrade,
+but we have not finalised the migration process, and until we do do not
+recomment that casual users upgrade. Users of bzr-svn are already using
+rich-root formats and can test with this with impunity.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="case-insensitive-file-systems.html" title="Case Insensitive File Systems"
+              >previous</a> |
+            <a href="packrepo.html" title="KnitPack repository format"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/development-repo.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

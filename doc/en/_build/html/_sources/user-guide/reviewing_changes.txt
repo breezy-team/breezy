@@ -1,0 +1,66 @@
+Reviewing changes
+=================
+
+Looking before you leap
+-----------------------
+
+Once you have completed some work, it's a good idea to review your changes
+prior to permanently recording it. This way, you can make sure you'll be
+committing what you intend to.
+
+Two brz commands are particularly useful here: **status** and **diff**.
+
+brz status
+----------
+
+The **status** command tells you what changes have been made to the
+working directory since the last revision::
+
+    % brz status
+    modified:
+       foo
+
+``brz status`` hides "boring" files that are either unchanged or ignored.
+The status command can optionally be given the name of some files or
+directories to check.
+
+brz diff
+--------
+
+The **diff** command shows the full text of changes to all files as a
+standard unified diff.  This can be piped through many programs such as
+''patch'', ''diffstat'', ''filterdiff'' and ''colordiff''::
+
+    % brz diff
+    === added file 'hello.txt'
+    --- hello.txt   1970-01-01 00:00:00 +0000
+    +++ hello.txt   2005-10-18 14:23:29 +0000
+    @@ -0,0 +1,1 @@
+    +hello world
+
+
+With the ``-r`` option, the tree is compared to an earlier revision, or
+the differences between two versions are shown::
+
+    % brz diff -r 1000..          # everything since r1000
+    % brz diff -r 1000..1100      # changes from 1000 to 1100
+
+To see the changes introduced by a single revision, you can use the ``-c``
+option to diff.
+
+::
+
+    % brz diff -c 1000            # changes from r1000
+                                  # identical to -r999..1000
+
+The ``--diff-options`` option causes brz to run the external diff program,
+passing options.  For example::
+
+    % brz diff --diff-options --side-by-side foo
+
+Some projects prefer patches to show a prefix at the start of the path
+for old and new files.  The ``--prefix`` option can be used to provide
+such a prefix.
+As a shortcut, ``brz diff -p1`` produces a form that works with the
+command ``patch -p1``.
+

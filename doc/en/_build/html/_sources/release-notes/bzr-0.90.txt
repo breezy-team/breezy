@@ -1,0 +1,311 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.90
+########
+
+:Released: 2007-08-28
+
+Improvements
+************
+
+* Documentation is now organized into multiple directories with a level
+  added for different languages or locales. Added the Mini Tutorial
+  and Quick Start Summary (en) documents from the Wiki, improving the
+  content and readability of the former. Formatted NEWS as Release Notes
+  complete with a Table of Conents, one heading per release. Moved the
+  Developer Guide into the main document catalog and provided a link
+  from the developer document catalog back to the main one.
+  (Ian Clatworthy, Sabin Iacob, Alexander Belchenko)
+
+
+API Changes
+***********
+
+* The static convenience method ``BzrDir.create_repository``
+  is deprecated.  Callers should instead create a ``BzrDir`` instance
+  and call ``create_repository`` on that.  (Martin Pool)
+
+
+bzr 0.90rc1
+###########
+
+:Released: 2007-08-14
+
+Bugfixes
+********
+
+* ``bzr init`` should connect to the remote location one time only.  We
+  have been connecting several times because we forget to pass around the
+  Transport object. This modifies ``BzrDir.create_branch_convenience``,
+  so that we can give it the Transport we already have.
+  (John Arbash Meinel, Vincent Ladeuil, #111702)
+
+* Get rid of SFTP connection cache (get rid of the FTP one too).
+  (Vincent Ladeuil, #43731)
+
+* bzr branch {local|remote} remote don't try to create a working tree
+  anymore.
+  (Vincent Ladeuil, #112173)
+
+* All identified multiple connections for a single bzr command have been
+  fixed. See bzrlib/tests/commands directory.
+  (Vincent Ladeuil)
+
+* ``bzr rm`` now does not insist on ``--force`` to delete files that
+  have been renamed but not otherwise modified.  (Marius Kruger,
+  #111664)
+
+* ``bzr selftest --bench`` no longer emits deprecation warnings
+  (Lukáš Lalinský)
+
+* ``bzr status`` now honours FILE parameters for conflict lists
+  (Aaron Bentley, #127606)
+
+* ``bzr checkout`` now honours -r when reconstituting a working tree.
+  It also honours -r 0.  (Aaron Bentley, #127708)
+
+* ``bzr add *`` no more fails on Windows if working tree contains
+  non-ascii file names. (Kuno Meyer, #127361)
+
+* allow ``easy_install bzr`` runs without fatal errors.
+  (Alexander Belchenko, #125521)
+
+* Graph._filter_candidate_lca does not raise KeyError if a candidate
+  is eliminated just before it would normally be examined.  (Aaron Bentley)
+
+* SMTP connection failures produce a nice message, not a traceback.
+  (Aaron Bentley)
+
+Improvements
+************
+
+* Don't show "dots" progress indicators when run non-interactively, such
+  as from cron.  (Martin Pool)
+
+* ``info`` now formats locations more nicely and lists "submit" and
+  "public" branches (Aaron Bentley)
+
+* New ``pack`` command that will trigger database compression within
+  the repository (Robert Collins)
+
+* Implement ``_KnitIndex._load_data`` in a pyrex extension. The pyrex
+  version is approximately 2-3x faster at parsing a ``.kndx`` file.
+  Which yields a measurable improvement for commands which have to
+  read from the repository, such as a 1s => 0.75s improvement in
+  ``bzr diff`` when there are changes to be shown.  (John Arbash Meinel)
+
+* Merge is now faster.  Depending on the scenario, it can be more than 2x
+  faster. (Aaron Bentley)
+
+* Give a clearer warning, and allow ``python setup.py install`` to
+  succeed even if pyrex is not available.
+  (John Arbash Meinel)
+
+* ``DirState._read_dirblocks`` now has an optional Pyrex
+  implementation. This improves the speed of any command that has to
+  read the entire DirState. (``diff``, ``status``, etc, improve by
+  about 10%).
+  ``bisect_dirblocks`` has also been improved, which helps all
+  ``_get_entry`` type calls (whenever we are searching for a
+  particular entry in the in-memory DirState).
+  (John Arbash Meinel)
+
+* ``bzr pull`` and ``bzr push`` no longer do a complete walk of the
+  branch revision history for ui display unless -v is supplied.
+  (Robert Collins)
+
+* ``bzr log -rA..B`` output shifted to the left margin if the log only
+  contains merge revisions. (Kent Gibson)
+
+* The ``plugins`` command is now public with improved help.
+  (Ian Clatworthy)
+
+* New bundle and merge directive formats are faster to generate, and
+
+* Annotate merge now works when there are local changes. (Aaron Bentley)
+
+* Commit now only shows the progress in terms of directories instead of
+  entries. (Ian Clatworthy)
+
+* Fix ``KnitRepository.get_revision_graph`` to not request the graph 2
+  times. This makes ``get_revision_graph`` 2x faster. (John Arbash
+  Meinel)
+
+* Fix ``VersionedFile.get_graph()`` to avoid using
+  ``set.difference_update(other)``, which has bad scaling when
+  ``other`` is large. This improves ``VF.get_graph([version_id])`` for
+  a 12.5k graph from 2.9s down to 200ms. (John Arbash Meinel)
+
+* The ``--lsprof-file`` option now generates output for KCacheGrind if
+  the file starts with ``callgrind.out``. This matches the default file
+  filtering done by KCacheGrind's Open Dialog. (Ian Clatworthy)
+
+* Fix ``bzr update`` to avoid an unnecessary
+  ``branch.get_master_branch`` call, which avoids 1 extra connection
+  to the remote server. (Partial fix for #128076, John Arbash Meinel)
+
+* Log errors from the smart server in the trace file, to make debugging
+  test failures (and live failures!) easier.  (Andrew Bennetts)
+
+* The HTML version of the man page has been superceded by a more
+  comprehensive manual called the Bazaar User Reference. This manual
+  is completed generated from the online help topics. As part of this
+  change, limited reStructuredText is now explicitly supported in help
+  topics and command help with 'unnatural' markup being removed prior
+  to display by the online help or inclusion in the man page.
+  (Ian Clatworthy)
+
+* HTML documentation now use files extension ``*.html``
+  (Alexander Belchenko)
+
+* The cache of ignore definitions is now cleared in WorkingTree.unlock()
+  so that changes to .bzrignore aren't missed. (#129694, Daniel Watkins)
+
+* ``bzr selftest --strict`` fails if there are any missing features or
+  expected test failures. (Daniel Watkins, #111914)
+
+* Link to registration survey added to README. (Ian Clatworthy)
+
+* Windows standalone installer show link to registration survey
+  when installation finished. (Alexander Belchenko)
+
+Library API Breaks
+******************
+
+* Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
+  Options are now required to provide a help string and it must
+  comply with the style guide by being one or more sentences with an
+  initial capital and final period. (Martin Pool)
+
+* KnitIndex.get_parents now returns tuples. (Robert Collins)
+
+* Ancient unused ``Repository.text_store`` attribute has been removed.
+  (Robert Collins)
+
+* The ``bzrlib.pack`` interface has changed to use tuples of bytestrings
+  rather than just bytestrings, making it easier to represent multiple
+  element names. As this interface was not used by any internal facilities
+  since it was introduced in 0.18 no API compatibility is being preserved.
+  The serialised form of these packs is identical with 0.18 when a single
+  element tuple is in use. (Robert Collins)
+
+Internals
+*********
+
+* merge now uses ``iter_changes`` to calculate changes, which makes room for
+  future performance increases.  It is also more consistent with other
+  operations that perform comparisons, and reduces reliance on
+  Tree.inventory.  (Aaron Bentley)
+
+* Refactoring of transport classes connected to a remote server.
+  ConnectedTransport is a new class that serves as a basis for all
+  transports needing to connect to a remote server.  transport.split_url
+  have been deprecated, use the static method on the object instead. URL
+  tests have been refactored too.
+  (Vincent Ladeuil)
+
+* Better connection sharing for ConnectedTransport objects.
+  transport.get_transport() now accepts a 'possible_transports' parameter.
+  If a newly requested transport can share a connection with one of the
+  list, it will.
+  (Vincent Ladeuil)
+
+* Most functions now accept ``bzrlib.revision.NULL_REVISION`` to indicate
+  the null revision, and consider using ``None`` for this purpose
+  deprecated.  (Aaron Bentley)
+
+* New ``index`` module with abstract index functionality. This will be
+  used during the planned changes in the repository layer. Currently the
+  index layer provides a graph aware immutable index, a builder for the
+  same index type to allow creating them, and finally a composer for
+  such indices to allow the use of many indices in a single query. The
+  index performance is not optimised, however the API is stable to allow
+  development on top of the index. (Robert Collins)
+
+* ``bzrlib.dirstate.cmp_by_dirs`` can be used to compare two paths by
+  their directory sections. This is equivalent to comparing
+  ``path.split('/')``, only without having to split the paths.
+  This has a Pyrex implementation available.
+  (John Arbash Meinel)
+
+* New transport decorator 'unlistable+' which disables the list_dir
+  functionality for testing.
+
+* Deprecated ``change_entry`` in transform.py. (Ian Clatworthy)
+
+* RevisionTree.get_weave is now deprecated.  Tree.plan_merge is now used
+  for performing annotate-merge.  (Aaron Bentley)
+
+* New EmailMessage class to create email messages. (Adeodato Simó)
+
+* Unused functions on the private interface KnitIndex have been removed.
+  (Robert Collins)
+
+* New ``knit.KnitGraphIndex`` which provides a ``KnitIndex`` layered on top
+  of a ``index.GraphIndex``. (Robert Collins)
+
+* New ``knit.KnitVersionedFile.iter_parents`` method that allows querying
+  the parents of many knit nodes at once, reducing round trips to the
+  underlying index. (Robert Collins)
+
+* Graph now has an is_ancestor method, various bits use it.
+  (Aaron Bentley)
+
+* The ``-Dhpss`` flag now includes timing information. As well as
+  logging when a new connection is opened. (John Arbash Meinel)
+
+* ``bzrlib.pack.ContainerWriter`` now returns an offset, length tuple to
+  callers when inserting data, allowing generation of readv style access
+  during pack creation, without needing a separate pass across the output
+  pack to gather such details. (Robert Collins)
+
+* ``bzrlib.pack.make_readv_reader`` allows readv based access to pack
+  files that are stored on a transport. (Robert Collins)
+
+* New ``Repository.has_same_location`` method that reports if two
+  repository objects refer to the same repository (although with some risk
+  of false negatives).  (Andrew Bennetts)
+
+* InterTree.compare now passes require_versioned on correctly.
+  (Marius Kruger)
+
+* New methods on Repository - ``start_write_group``,
+  ``commit_write_group``, ``abort_write_group`` and ``is_in_write_group`` -
+  which provide a clean hook point for transactional Repositories - ones
+  where all the data for a fetch or commit needs to be made atomically
+  available in one step. This allows the write lock to remain while making
+  a series of data insertions.  (e.g. data conversion). (Robert Collins)
+
+* In ``bzrlib.knit`` the internal interface has been altered to use
+  3-tuples (index, pos, length) rather than two-tuples (pos, length) to
+  describe where data in a knit is, allowing knits to be split into
+  many files. (Robert Collins)
+
+* ``bzrlib.knit._KnitData`` split into cache management and physical access
+  with two access classes - ``_PackAccess`` and ``_KnitAccess`` defined.
+  The former provides access into a .pack file, and the latter provides the
+  current production repository form of .knit files. (Robert Collins)
+
+Testing
+*******
+
+* Remove selftest ``--clean-output``, ``--numbered-dirs`` and
+  ``--keep-output`` options, which are obsolete now that tests
+  are done within directories in $TMPDIR.  (Martin Pool)
+
+* The SSH_AUTH_SOCK environment variable is now reset to avoid
+  interaction with any running SSH agents.  (Jelmer Vernooij, #125955)
+
+* run_bzr_subprocess handles parameters the same way as run_bzr:
+  either a string or a list of strings should be passed as the first
+  parameter.  Varargs-style parameters are deprecated. (Aaron Bentley)
+
+
+..
+   vim: tw=74 ft=rst ff=unix
+

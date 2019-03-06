@@ -1,0 +1,174 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Breezy System Administrator’s Guide &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Introduction" href="introduction.html" />
+    <link rel="prev" title="whoami" href="../user-reference/whoami-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../user-reference/whoami-help.html" title="whoami"
+             accesskey="P">previous</a> |
+          <a href="introduction.html" title="Introduction"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="breezy-system-administrator-s-guide">
+<h1>Breezy System Administrator’s Guide<a class="headerlink" href="#breezy-system-administrator-s-guide" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#scope-of-this-guide">Scope of this guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#what-you-need-to-run-a-bazaar-server">What you need to run a Bazaar server</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="simple-setups.html">Simple Setups</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="simple-setups.html#smart-server">Smart server</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="other-setups.html">Other Setups</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="other-setups.html#dumb-servers">Dumb servers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="other-setups.html#smart-server-over-http-s">Smart server over HTTP(S)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="other-setups.html#direct-smart-server-access">Direct Smart Server Access</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="migration.html">Migration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="migration.html#fast-import">Fast Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="migration.html#subversion-conversion">Subversion Conversion</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="hooks-plugins.html">Extending Bazaar with Hooks and Plugins</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="hooks-plugins.html#email-notification">Email Notification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hooks-plugins.html#feed-generation">Feed Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hooks-plugins.html#mirroring">Mirroring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hooks-plugins.html#other-useful-plugins">Other Useful Plugins</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="code-browsing.html">Web-based code browsing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="code-browsing.html#loggerhead">Loggerhead</a></li>
+<li class="toctree-l2"><a class="reference internal" href="code-browsing.html#other-web-interfaces">Other web interfaces</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integration with Other Tools</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="integration.html#patch-queue-manager-pqm">Patch Queue Manager (PQM)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="integration.html#bug-trackers">Bug Trackers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="integration.html#continuous-integration-tools">Continuous Integration Tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="integration.html#bundle-buggy">Bundle Buggy</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="security.html#authentication">Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="security.html#access-control">Access Control</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="backup.html">Back-up and Restore</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#filesystem-backups">Filesystem Backups</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#bazaar-as-its-own-backup">Bazaar as its own backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="backup.html#restoring-from-backups">Restoring from Backups</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade.html">Upgrades</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="upgrade.html#software-upgrades">Software upgrades</a></li>
+<li class="toctree-l2"><a class="reference internal" href="upgrade.html#disk-format-upgrades">Disk format upgrades</a></li>
+<li class="toctree-l2"><a class="reference internal" href="upgrade.html#plugin-upgrades">Plugin upgrades</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced.html">Advanced Topics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="advanced.html#system-monitoring">System Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced.html#capacity-planning-tips">Capacity Planning Tips</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced.html#clustering">Clustering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced.html#multi-site-setups">Multi-site Setups</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="licence.html">Licence</a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../user-reference/whoami-help.html" title="whoami"
+              >previous</a> |
+            <a href="introduction.html" title="Introduction"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/admin-guide/index.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

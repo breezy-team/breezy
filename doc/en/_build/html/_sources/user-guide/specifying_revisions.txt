@@ -1,0 +1,159 @@
+Specifying revisions
+====================
+
+Revision identifiers and ranges
+-------------------------------
+
+Breezy has a very expressive way to specify a revision or a range of revisions.
+To specify a range of revisions, the upper and lower bounds are separated by the
+``..`` symbol. For example::
+
+    $ brz log -r 1..4
+
+You can omit one bound like::
+
+    $ brz log -r 1..
+    $ brz log -r ..4
+
+Some commands take only one revision, not a range. For example::
+
+    $ brz cat -r 42 foo.c
+
+In other cases, a range is required but you want the length of the range to
+be one. For commands where this is relevant, the ``-c`` option is used like this::
+
+    $ brz diff -c 42
+
+
+Available revision identifiers
+------------------------------
+
+The revision, or the bounds of the range, can be given using
+different format specifications as shown below.
+
+ +----------------------+------------------------------------+
+ |  argument type       | description                        |
+ +----------------------+------------------------------------+
+ | *number*             | revision number                    |
+ +----------------------+------------------------------------+
+ | **revno**:*number*   | revision number                    |
+ +----------------------+------------------------------------+
+ | **last**:*number*    | negative revision number           |
+ +----------------------+------------------------------------+
+ | *guid*               | globally unique revision id        |
+ +----------------------+------------------------------------+
+ | **revid**:*guid*     | globally unique revision id        |
+ +----------------------+------------------------------------+
+ | **before**:*rev*     | leftmost parent of ''rev''         |
+ +----------------------+------------------------------------+
+ | *date-value*         | first entry after a given date     |
+ +----------------------+------------------------------------+
+ | **date**:*date-value*| first entry after a given date     |
+ +----------------------+------------------------------------+
+ | *tag-name*           | revision matching a given tag      |
+ +----------------------+------------------------------------+
+ | **tag**:*tag-name*   | revision matching a given tag      |
+ +----------------------+------------------------------------+
+ | **ancestor**:*path*  | last merged revision from a branch |
+ +----------------------+------------------------------------+
+ | **branch**:*path*    | latest revision on another branch  |
+ +----------------------+------------------------------------+
+ | **submit**:*path*    | common ancestor with submit branch |
+ +----------------------+------------------------------------+
+
+A brief introduction to some of these formats is given below.
+For complete details, see `Revision Identifiers`_ in the
+Breezy User Reference.
+
+.. _Revision Identifiers: ../user-reference/index.html#revision-identifiers
+
+Numbers
+~~~~~~~
+
+Positive numbers denote revision numbers in the current branch. Revision
+numbers are labelled as "revno" in the output of ``brz log``.  To display
+the log for the first ten revisions::
+
+    $ brz log -r ..10
+
+Negative numbers count from the latest revision, -1 is the last committed
+revision.
+
+To display the log for the last ten revisions::
+
+    $ brz log -r -10..
+
+revid
+~~~~~
+
+**revid** allows specifying an internal revision ID, as shown by ``brz
+log --show-ids`` and some other commands.
+
+For example::
+
+    $ brz log -r revid:Matthieu.Moy@imag.fr-20051026185030-93c7cad63ee570df
+
+before
+~~~~~~
+
+**before**
+    ''rev'' specifies the leftmost parent of ''rev'', that is the revision
+    that appears before ''rev'' in the revision history, or the revision that
+    was current when ''rev'' was committed.
+
+''rev'' can be any revision specifier and may be chained.
+
+For example::
+
+    $ brz log -r before:before:4
+    ...
+    revno: 2
+    ...
+
+date
+~~~~
+
+**date**
+    ''value'' matches the first history entry after a given date, either at
+    midnight or at a specified time.
+
+Legal values are:
+
+ * **yesterday**
+ * **today**
+ * **tomorrow**
+ * A **YYYY-MM-DD** format date.
+ * A **YYYY-MM-DD,HH:MM:SS** format date/time, seconds are optional (note the
+   comma)
+
+The proper way of saying "give me all the log entries for today" is::
+
+    $ brz log -r date:yesterday..date:today
+
+Ancestor
+~~~~~~~~
+
+**ancestor**:*path*
+    specifies the common ancestor between the current branch and a
+    different branch. This is the same ancestor that would be used for
+    merging purposes.
+
+*path* may be the URL of a remote branch, or the file path to a local branch.
+
+For example, to see what changes were made on a branch since it was forked
+off ``../parent``::
+
+    $ brz diff -r ancestor:../parent
+
+Branch
+~~~~~~
+
+branch
+   ``path`` specifies the latest revision in another branch.
+
+``path`` may be the URL of a remote branch, or the file path to a local branch.
+
+For example, to get the differences between this and another branch::
+
+    $ brz diff -r branch:http://example.com/brz/foo.dev
+

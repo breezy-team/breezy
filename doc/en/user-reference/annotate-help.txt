@@ -1,0 +1,29 @@
+annotate
+========
+
+:Purpose: Show the origin of each line in a file.
+:Usage:   brz annotate FILENAME
+
+:Options:
+  --all                 Show annotations on all lines.
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  --long                Show commit date in annotations.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --show-ids            Show internal object ids.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  This prints out the given file with an annotation on the left side
+  indicating which revision, author and date introduced the change.
+  
+  If the origin is the same for a run of consecutive lines, it is
+  shown only at the top, unless the --all option is given.
+
+:Aliases:  ann, blame, praise
+
+

@@ -1,0 +1,71 @@
+Sending changes
+===============
+
+Motivation
+----------
+
+In many distributed development scenarios, it isn't always feasible for
+developers to share task branches by advertising their URLs.
+For example, a developer working on a laptop might take it home overnight
+so his/her task branches could well be inaccessible when a gatekeeper
+in another timezone wants to review or merge it.
+
+Breezy provides a neat feature to assist here: *merge directives*.
+
+Understanding merge directives
+------------------------------
+
+You can think of a merge directive as a "mini branch" - just the
+new growth on a branch since it was created. It's a software
+patch showing what's new but with added intelligence: metadata
+like interim commits, renames and digital signatures.
+
+Another useful metaphor is a packet cake: a merge directive has a recipe
+together with the ingredients you need bundled inside it.
+To stretch the metaphor, the ingredients are all the metadata on the
+changes made to the branch; the recipe is instructions on how those
+changes ought to be merged, i.e. information for the ``merge`` command
+to use in selecting common ancestors.
+
+Regardless of how you think of them, merge directives are neat.
+They are easy to create, suitable for mailing around as attachments
+and can be processed much like branches can on the receiving end.
+
+Creating a merge directive
+--------------------------
+
+To create and optionally send a merge directive, use the ``send`` command.
+
+By default, ``send`` will email the merge directive to the "submission
+address" for the branch, which is typically the lead developer or the
+development mailing list.
+``send`` without options will create a merge directive, fire up your email
+tool and attach it, ready for you to add the explanatory text bit.
+(See the online help for ``send`` and
+`Configuration Settings <../user-reference/index.html#configuration-settings>`_
+in the User Reference for further details on how to configure this.)
+
+Most projects like people to add some explanation to the mail along with
+the patch, explaining the reason for the patch, and why it is done the way
+it is.  This gives a reviewer some context before going into the
+line-by-line diff.
+
+Alternatively, if the ``--output`` (or ``-o``) option is given, ``send``
+will write the merge directive to a file, so you can mail it yourself,
+examine it, or save it for later use.  If an output file of ``-`` is
+given, the directive is written to stdout.  For example::
+
+  cd X-fix-123
+  brz send -o ../fix-123.patch
+
+
+Applying a merge directive
+--------------------------
+
+Merge directives can be applied in much the same way as branches: by
+using the ``merge`` and ``pull`` commands.
+
+They can also be useful when communicating with upstream projects
+that don't use Breezy. In particular, the preview of the overall
+change in a merge directive looks like a vanilla software patch, so
+they can be applied using ``patch -p0`` for example.

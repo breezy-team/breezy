@@ -1,0 +1,1128 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Breezy Testing Guide &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Reviewing proposed changes to Breezy" href="code-review.html" />
+    <link rel="prev" title="Breezy Developer Guide" href="HACKING.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="HACKING.html" title="Breezy Developer Guide"
+             accesskey="P">previous</a> |
+          <a href="code-review.html" title="Reviewing proposed changes to Breezy"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="breezy-testing-guide">
+<h1>Breezy Testing Guide<a class="headerlink" href="#breezy-testing-guide" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="the-importance-of-testing">
+<h2>The Importance of Testing<a class="headerlink" href="#the-importance-of-testing" title="Permalink to this headline">¶</a></h2>
+<p>Reliability is a critical success factor for any version control system.
+We want Breezy to be highly reliable across multiple platforms while
+evolving over time to meet the needs of its community.</p>
+<p>In a nutshell, this is what we expect and encourage:</p>
+<ul>
+<li><p class="first">New functionality should have test cases.  Preferably write the
+test before writing the code.</p>
+<p>In general, you can test at either the command-line level or the
+internal API level.  See <a class="reference internal" href="#writing-tests">Writing tests</a> below for more detail.</p>
+</li>
+<li><p class="first">Try to practice Test-Driven Development: before fixing a bug, write a
+test case so that it does not regress.  Similarly for adding a new
+feature: write a test case for a small version of the new feature before
+starting on the code itself.  Check the test fails on the old code, then
+add the feature or fix and check it passes.</p>
+</li>
+</ul>
+<p>By doing these things, the Breezy team gets increased confidence that
+changes do what they claim to do, whether provided by the core team or
+by community members. Equally importantly, we can be surer that changes
+down the track do not break new features or bug fixes that you are
+contributing today.</p>
+<p>As of September 2009, Breezy ships with a test suite containing over
+23,000 tests and growing. We are proud of it and want to remain so. As
+community members, we all benefit from it. Would you trust version control
+on your project to a product <em>without</em> a test suite like Breezy has?</p>
+</div>
+<div class="section" id="running-the-test-suite">
+<h2>Running the Test Suite<a class="headerlink" href="#running-the-test-suite" title="Permalink to this headline">¶</a></h2>
+<p>As of Breezy 2.1, you must have the <a class="reference external" href="https://launchpad.net/testtools/">testtools</a> library installed to run
+the brz test suite.</p>
+<p>To test all of Breezy, just run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">selftest</span>
+</pre></div>
+</div>
+<p>With <code class="docutils literal notranslate"><span class="pre">--verbose</span></code> brz will print the name of every test as it is run.</p>
+<p>This should always pass, whether run from a source tree or an installed
+copy of Breezy.  Please investigate and/or report any failures.</p>
+<div class="section" id="running-particular-tests">
+<h3>Running particular tests<a class="headerlink" href="#running-particular-tests" title="Permalink to this headline">¶</a></h3>
+<p>Currently, brz selftest is used to invoke tests.
+You can provide a pattern argument to run a subset. For example,
+to run just the blackbox tests, run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">brz</span> <span class="n">selftest</span> <span class="o">-</span><span class="n">v</span> <span class="n">blackbox</span>
+</pre></div>
+</div>
+<p>To skip a particular test (or set of tests), use the –exclude option
+(shorthand -x) like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">brz</span> <span class="n">selftest</span> <span class="o">-</span><span class="n">v</span> <span class="o">-</span><span class="n">x</span> <span class="n">blackbox</span>
+</pre></div>
+</div>
+<p>To ensure that all tests are being run and succeeding, you can use the
+–strict option which will fail if there are any missing features or known
+failures, like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">brz</span> <span class="n">selftest</span> <span class="o">--</span><span class="n">strict</span>
+</pre></div>
+</div>
+<p>To list tests without running them, use the –list-only option like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">brz</span> <span class="n">selftest</span> <span class="o">--</span><span class="nb">list</span><span class="o">-</span><span class="n">only</span>
+</pre></div>
+</div>
+<p>This option can be combined with other selftest options (like -x) and
+filter patterns to understand their effect.</p>
+<p>Once you understand how to create a list of tests, you can use the –load-list
+option to run only a restricted set of tests that you kept in a file, one test
+id by line. Keep in mind that this will never be sufficient to validate your
+modifications, you still need to run the full test suite for that, but using it
+can help in some cases (like running only the failed tests for some time):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">brz</span> <span class="n">selftest</span> <span class="o">--</span> <span class="n">load</span><span class="o">-</span><span class="nb">list</span> <span class="n">my_failing_tests</span>
+</pre></div>
+</div>
+<p>This option can also be combined with other selftest options, including
+patterns. It has some drawbacks though, the list can become out of date pretty
+quick when doing Test Driven Development.</p>
+<p>To address this concern, there is another way to run a restricted set of tests:
+the –starting-with option will run only the tests whose name starts with the
+specified string. It will also avoid loading the other tests and as a
+consequence starts running your tests quicker:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">brz</span> <span class="n">selftest</span> <span class="o">--</span><span class="n">starting</span><span class="o">-</span><span class="k">with</span> <span class="n">breezy</span><span class="o">.</span><span class="n">blackbox</span>
+</pre></div>
+</div>
+<p>This option can be combined with all the other selftest options including
+–load-list. The later is rarely used but allows to run a subset of a list of
+failing tests for example.</p>
+</div>
+<div class="section" id="disabling-plugins">
+<h3>Disabling plugins<a class="headerlink" href="#disabling-plugins" title="Permalink to this headline">¶</a></h3>
+<p>To test only the brz core, ignoring any plugins you may have installed,
+use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">brz</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">plugins</span> <span class="n">selftest</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="disabling-crash-reporting">
+<h3>Disabling crash reporting<a class="headerlink" href="#disabling-crash-reporting" title="Permalink to this headline">¶</a></h3>
+<p>By default Breezy uses <a class="reference external" href="https://launchpad.net/apport/">apport</a> to report program crashes.  In developing
+Breezy it’s normal and expected to have it crash from time to time, at
+least because a test failed if for no other reason.</p>
+<p>Therefore you should probably add <code class="docutils literal notranslate"><span class="pre">debug_flags</span> <span class="pre">=</span> <span class="pre">no_apport</span></code> to your
+<code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> file (in <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/</span></code> on Unix), so that failures just
+print a traceback rather than writing a crash file.</p>
+</div>
+<div class="section" id="test-suite-debug-flags">
+<h3>Test suite debug flags<a class="headerlink" href="#test-suite-debug-flags" title="Permalink to this headline">¶</a></h3>
+<p>Similar to the global <code class="docutils literal notranslate"><span class="pre">-Dfoo</span></code> debug options, brz selftest accepts
+<code class="docutils literal notranslate"><span class="pre">-E=foo</span></code> debug flags.  These flags are:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">allow_debug:</th><td class="field-body"><p class="first">do <em>not</em> clear the global debug flags when running a test.
+This can provide useful logging to help debug test failures when used
+with e.g. <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">-Dhpss</span> <span class="pre">selftest</span> <span class="pre">-E=allow_debug</span></code></p>
+<p class="last">Note that this will probably cause some tests to fail, because they
+don’t expect to run with any debug flags on.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="using-subunit">
+<h3>Using subunit<a class="headerlink" href="#using-subunit" title="Permalink to this headline">¶</a></h3>
+<p>Breezy can optionally produce output in the machine-readable <a class="reference external" href="https://launchpad.net/subunit/">subunit</a>
+format, so that test output can be post-processed by various tools. To
+generate a subunit test stream:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./brz selftest --subunit
+</pre></div>
+</div>
+<p>Processing such a stream can be done using a variety of tools including:</p>
+<ul class="simple">
+<li>The builtin <code class="docutils literal notranslate"><span class="pre">subunit2pyunit</span></code>, <code class="docutils literal notranslate"><span class="pre">subunit-filter</span></code>, <code class="docutils literal notranslate"><span class="pre">subunit-ls</span></code>,
+<code class="docutils literal notranslate"><span class="pre">subunit2junitxml</span></code> from the subunit project.</li>
+<li><a class="reference external" href="https://launchpad.net/tribunal/">tribunal</a>, a GUI for showing test results.</li>
+<li><a class="reference external" href="https://launchpad.net/testrepository">testrepository</a>, a tool for gathering and managing test runs.</li>
+</ul>
+</div>
+<div class="section" id="using-testrepository">
+<h3>Using testrepository<a class="headerlink" href="#using-testrepository" title="Permalink to this headline">¶</a></h3>
+<p>Breezy ships with a config file for <a class="reference external" href="https://launchpad.net/testrepository">testrepository</a>. This can be very
+useful for keeping track of failing tests and doing general workflow
+support. To run tests using testrepository:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ testr run
+</pre></div>
+</div>
+<p>To run only failing tests:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ testr run --failing
+</pre></div>
+</div>
+<p>To run only some tests, without plugins:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ test run test_selftest -- --no-plugins
+</pre></div>
+</div>
+<p>See the testrepository documentation for more details.</p>
+</div>
+<div class="section" id="running-tests-in-parallel">
+<h3>Running tests in parallel<a class="headerlink" href="#running-tests-in-parallel" title="Permalink to this headline">¶</a></h3>
+<p>Breezy can use subunit to spawn multiple test processes.  There is
+slightly more chance you will hit ordering or timing-dependent bugs but
+it’s much faster:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./brz selftest --parallel=fork
+</pre></div>
+</div>
+<p>Note that you will need the Subunit library
+&lt;<a class="reference external" href="https://launchpad.net/subunit/">https://launchpad.net/subunit/</a>&gt; to use this, which is in
+<code class="docutils literal notranslate"><span class="pre">python-subunit</span></code> on Ubuntu.</p>
+</div>
+<div class="section" id="running-tests-from-a-ramdisk">
+<h3>Running tests from a ramdisk<a class="headerlink" href="#running-tests-from-a-ramdisk" title="Permalink to this headline">¶</a></h3>
+<p>The tests create and delete a lot of temporary files.  In some cases you
+can make the test suite run much faster by running it on a ramdisk.  For
+example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo mkdir /ram
+$ sudo mount -t tmpfs none /ram
+$ TMPDIR=/ram ./brz selftest ...
+</pre></div>
+</div>
+<p>You could also change <code class="docutils literal notranslate"><span class="pre">/tmp</span></code> in <code class="docutils literal notranslate"><span class="pre">/etc/fstab</span></code> to have type <code class="docutils literal notranslate"><span class="pre">tmpfs</span></code>,
+if you don’t mind possibly losing other files in there when the machine
+restarts.  Add this line (if there is none for <code class="docutils literal notranslate"><span class="pre">/tmp</span></code> already):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">none</span>           <span class="o">/</span><span class="n">tmp</span>            <span class="n">tmpfs</span>  <span class="n">defaults</span>        <span class="mi">0</span>       <span class="mi">0</span>
+</pre></div>
+</div>
+<p>With a 6-core machine and <code class="docutils literal notranslate"><span class="pre">--parallel=fork</span></code> using a tmpfs doubles the
+test execution speed.</p>
+</div>
+</div>
+<div class="section" id="writing-tests">
+<h2>Writing Tests<a class="headerlink" href="#writing-tests" title="Permalink to this headline">¶</a></h2>
+<p>Normally you should add or update a test for all bug fixes or new features
+in Breezy.</p>
+<div class="section" id="where-should-i-put-a-new-test">
+<h3>Where should I put a new test?<a class="headerlink" href="#where-should-i-put-a-new-test" title="Permalink to this headline">¶</a></h3>
+<p>breezy’s tests are organised by the type of test.  Most of the tests in
+brz’s test suite belong to one of these categories:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Unit tests</li>
+<li>Blackbox (UI) tests</li>
+<li>Per-implementation tests</li>
+<li>Doctests</li>
+</ul>
+</div></blockquote>
+<p>A quick description of these test types and where they belong in breezy’s
+source follows.  Not all tests fall neatly into one of these categories;
+in those cases use your judgement.</p>
+<div class="section" id="unit-tests">
+<h4>Unit tests<a class="headerlink" href="#unit-tests" title="Permalink to this headline">¶</a></h4>
+<p>Unit tests make up the bulk of our test suite.  These are tests that are
+focused on exercising a single, specific unit of the code as directly
+as possible.  Each unit test is generally fairly short and runs very
+quickly.</p>
+<p>They are found in <code class="docutils literal notranslate"><span class="pre">breezy/tests/test_*.py</span></code>.  So in general tests should
+be placed in a file named test_FOO.py where FOO is the logical thing under
+test.</p>
+<p>For example, tests for merge3 in breezy belong in breezy/tests/test_merge3.py.
+See breezy/tests/test_sampler.py for a template test script.</p>
+</div>
+<div class="section" id="blackbox-ui-tests">
+<h4>Blackbox (UI) tests<a class="headerlink" href="#blackbox-ui-tests" title="Permalink to this headline">¶</a></h4>
+<p>Tests can be written for the UI or for individual areas of the library.
+Choose whichever is appropriate: if adding a new command, or a new command
+option, then you should be writing a UI test.  If you are both adding UI
+functionality and library functionality, you will want to write tests for
+both the UI and the core behaviours.  We call UI tests ‘blackbox’ tests
+and they belong in <code class="docutils literal notranslate"><span class="pre">breezy/tests/blackbox/*.py</span></code>.</p>
+<p>When writing blackbox tests please honour the following conventions:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Place the tests for the command ‘name’ in
+breezy/tests/blackbox/test_name.py. This makes it easy for developers
+to locate the test script for a faulty command.</li>
+<li>Use the ‘self.run_brz(“name”)’ utility function to invoke the command
+rather than running brz in a subprocess or invoking the
+cmd_object.run() method directly. This is a lot faster than
+subprocesses and generates the same logging output as running it in a
+subprocess (which invoking the method directly does not).</li>
+<li>Only test the one command in a single test script. Use the breezy
+library when setting up tests and when evaluating the side-effects of
+the command. We do this so that the library api has continual pressure
+on it to be as functional as the command line in a simple manner, and
+to isolate knock-on effects throughout the blackbox test suite when a
+command changes its name or signature. Ideally only the tests for a
+given command are affected when a given command is changed.</li>
+<li>If you have a test which does actually require running brz in a
+subprocess you can use <code class="docutils literal notranslate"><span class="pre">run_brz_subprocess</span></code>. By default the spawned
+process will not load plugins unless <code class="docutils literal notranslate"><span class="pre">--allow-plugins</span></code> is supplied.</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="per-implementation-tests">
+<h4>Per-implementation tests<a class="headerlink" href="#per-implementation-tests" title="Permalink to this headline">¶</a></h4>
+<p>Per-implementation tests are tests that are defined once and then run
+against multiple implementations of an interface.  For example,
+<code class="docutils literal notranslate"><span class="pre">per_transport.py</span></code> defines tests that all Transport implementations
+(local filesystem, HTTP, and so on) must pass. They are found in
+<code class="docutils literal notranslate"><span class="pre">breezy/tests/per_*/*.py</span></code>, and <code class="docutils literal notranslate"><span class="pre">breezy/tests/per_*.py</span></code>.</p>
+<p>These are really a sub-category of unit tests, but an important one.</p>
+<p>Along the same lines are tests for extension modules. We generally have
+both a pure-python and a compiled implementation for each module. As such,
+we want to run the same tests against both implementations. These can
+generally be found in <code class="docutils literal notranslate"><span class="pre">breezy/tests/*__*.py</span></code> since extension modules are
+usually prefixed with an underscore. Since there are only two
+implementations, we have a helper function
+<code class="docutils literal notranslate"><span class="pre">breezy.tests.permute_for_extension</span></code>, which can simplify the
+<code class="docutils literal notranslate"><span class="pre">load_tests</span></code> implementation.</p>
+</div>
+<div class="section" id="doctests">
+<h4>Doctests<a class="headerlink" href="#doctests" title="Permalink to this headline">¶</a></h4>
+<p>We make selective use of <a class="reference external" href="http://docs.python.org/lib/module-doctest.html">doctests</a>.  In general they should provide
+<em>examples</em> within the API documentation which can incidentally be tested.  We
+don’t try to test every important case using doctests — regular Python
+tests are generally a better solution.  That is, we just use doctests to make
+our documentation testable, rather than as a way to make tests. Be aware that
+doctests are not as well isolated as the unit tests, if you need more
+isolation, you’re likely want to write unit tests anyway if only to get a
+better control of the test environment.</p>
+<p>Most of these are in <code class="docutils literal notranslate"><span class="pre">breezy/doc/api</span></code>.  More additions are welcome.</p>
+<blockquote>
+<div></div></blockquote>
+<p>There is an <cite>assertDoctestExampleMatches</cite> method in
+<cite>breezy.tests.TestCase</cite> that allows you to match against doctest-style
+string templates (including <code class="docutils literal notranslate"><span class="pre">...</span></code> to skip sections) from regular Python
+tests.</p>
+</div>
+</div>
+<div class="section" id="shell-like-tests">
+<h3>Shell-like tests<a class="headerlink" href="#shell-like-tests" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">breezy/tests/script.py</span></code> allows users to write tests in a syntax very
+close to a shell session, using a restricted and limited set of commands
+that should be enough to mimic most of the behaviours.</p>
+<p>A script is a set of commands, each command is composed of:</p>
+<blockquote>
+<div><ul class="simple">
+<li>one mandatory command line,</li>
+<li>one optional set of input lines to feed the command,</li>
+<li>one optional set of output expected lines,</li>
+<li>one optional set of error expected lines.</li>
+</ul>
+</div></blockquote>
+<p>Input, output and error lines can be specified in any order.</p>
+<p>Except for the expected output, all lines start with a special
+string (based on their origin when used under a Unix shell):</p>
+<blockquote>
+<div><ul class="simple">
+<li>‘$ ‘ for the command,</li>
+<li>‘&lt;’ for input,</li>
+<li>nothing for output,</li>
+<li>‘2&gt;’ for errors,</li>
+</ul>
+</div></blockquote>
+<p>Comments can be added anywhere, they start with ‘#’ and end with
+the line.</p>
+<p>The execution stops as soon as an expected output or an expected error is not
+matched.</p>
+<p>If output occurs and no output is expected, the execution stops and the
+test fails.  If unexpected output occurs on the standard error, then
+execution stops and the test fails.</p>
+<p>If an error occurs and no expected error is specified, the execution stops.</p>
+<p>An error is defined by a returned status different from zero, not by the
+presence of text on the error stream.</p>
+<p>The matching is done on a full string comparison basis unless ‘…’ is used, in
+which case expected output/errors can be less precise.</p>
+<p>Examples:</p>
+<p>The following will succeeds only if ‘brz add’ outputs ‘adding file’:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz add file
+&gt;adding file
+</pre></div>
+</div>
+<p>If you want the command to succeed for any output, just use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz add file
+...
+2&gt;...
+</pre></div>
+</div>
+<p>or use the <code class="docutils literal notranslate"><span class="pre">--quiet</span></code> option:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz add -q file
+</pre></div>
+</div>
+<p>The following will stop with an error:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz not-a-command
+</pre></div>
+</div>
+<p>If you want it to succeed, use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz not-a-command
+2&gt; brz: ERROR: unknown command &quot;not-a-command&quot;
+</pre></div>
+</div>
+<p>You can use ellipsis (…) to replace any piece of text you don’t want to be
+matched exactly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz branch not-a-branch
+2&gt;brz: ERROR: Not a branch...not-a-branch/&quot;.
+</pre></div>
+</div>
+<p>This can be used to ignore entire lines too:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat
+&lt;first line
+&lt;second line
+&lt;third line
+# And here we explain that surprising fourth line
+&lt;fourth line
+&lt;last line
+&gt;first line
+&gt;...
+&gt;last line
+</pre></div>
+</div>
+<p>You can check the content of a file with cat:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat &lt;file
+&gt;expected content
+</pre></div>
+</div>
+<p>You can also check the existence of a file with cat, the following will fail if
+the file doesn’t exist:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat file
+</pre></div>
+</div>
+<p>You can run files containing shell-like scripts with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz test-script &lt;script&gt;
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">&lt;script&gt;</span></code> is the path to the file containing the shell-like script.</p>
+<p>The actual use of ScriptRunner within a TestCase looks something like
+this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy.tests</span> <span class="k">import</span> <span class="n">script</span>
+
+<span class="k">def</span> <span class="nf">test_unshelve_keep</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c1"># some setup here</span>
+    <span class="n">script</span><span class="o">.</span><span class="n">run_script</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">        $ brz add -q file</span>
+<span class="s1">        $ brz shelve -q --all -m Foo</span>
+<span class="s1">        $ brz shelve --list</span>
+<span class="s1">        1: Foo</span>
+<span class="s1">        $ brz unshelve -q --keep</span>
+<span class="s1">        $ brz shelve --list</span>
+<span class="s1">        1: Foo</span>
+<span class="s1">        $ cat file</span>
+<span class="s1">        contents of file</span>
+<span class="s1">        &#39;&#39;&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can also test commands that read user interaction:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_confirm_action</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;You can write tests that demonstrate user confirmation&quot;&quot;&quot;</span>
+    <span class="n">commands</span><span class="o">.</span><span class="n">builtin_command_registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">cmd_test_confirm</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">addCleanup</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">builtin_command_registry</span><span class="o">.</span><span class="n">remove</span><span class="p">,</span> <span class="s1">&#39;test-confirm&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">run_script</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        $ brz test-confirm</span>
+<span class="s2">        2&gt;Really do it? [y/n]:</span>
+<span class="s2">        &lt;yes</span>
+<span class="s2">        yes</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To avoid having to specify “-q” for all commands whose output is
+irrelevant, the run_script() method may be passed the keyword argument
+<code class="docutils literal notranslate"><span class="pre">null_output_matches_anything=True</span></code>.  For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_ignoring_null_output</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">run_script</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        $ brz init</span>
+<span class="s2">        $ brz ci -m &#39;first revision&#39; --unchanged</span>
+<span class="s2">        $ brz log --line</span>
+<span class="s2">        1: ...</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">null_output_matches_anything</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="import-tariff-tests">
+<h3>Import tariff tests<a class="headerlink" href="#import-tariff-tests" title="Permalink to this headline">¶</a></h3>
+<p><cite>breezy.tests.test_import_tariff</cite> has some tests that measure how many
+Python modules are loaded to run some representative commands.</p>
+<p>We want to avoid loading code unnecessarily, for reasons including:</p>
+<ul class="simple">
+<li>Python modules are interpreted when they’re loaded, either to define
+classes or modules or perhaps to initialize some structures.</li>
+<li>With a cold cache we may incur blocking real disk IO for each module.</li>
+<li>Some modules depend on many others.</li>
+<li>Some optional modules such as <cite>testtools</cite> are meant to be soft
+dependencies and only needed for particular cases.  If they’re loaded in
+other cases then brz may break for people who don’t have those modules.</li>
+</ul>
+<p><cite>test_import_tariff</cite> allows us to check that removal of imports doesn’t
+regress.</p>
+<p>This is done by running the command in a subprocess with
+<code class="docutils literal notranslate"><span class="pre">PYTHON_VERBOSE=1</span></code>.  Starting a whole Python interpreter is pretty slow,
+so we don’t want exhaustive testing here, but just enough to guard against
+distinct fixed problems.</p>
+<p>Assertions about precisely what is loaded tend to be brittle so we instead
+make assertions that particular things aren’t loaded.</p>
+<p>Unless selftest is run with <code class="docutils literal notranslate"><span class="pre">--no-plugins</span></code>, modules will be loaded in
+the usual way and checks made on what they cause to be loaded.  This is
+probably worth checking into, because many brz users have at least some
+plugins installed (and they’re included in binary installers).</p>
+<p>In theory, plugins might have a good reason to load almost anything:
+someone might write a plugin that opens a network connection or pops up a
+gui window every time you run ‘brz status’.  However, it’s more likely
+that the code to do these things is just being loaded accidentally.  We
+might eventually need to have a way to make exceptions for particular
+plugins.</p>
+<p>Some things to check:</p>
+<ul class="simple">
+<li>non-GUI commands shouldn’t load GUI libraries</li>
+<li>operations on brz native formats sholudn’t load foreign branch libraries</li>
+<li>network code shouldn’t be loaded for purely local operations</li>
+<li>particularly expensive Python built-in modules shouldn’t be loaded
+unless there is a good reason</li>
+</ul>
+</div>
+<div class="section" id="testing-locking-behaviour">
+<h3>Testing locking behaviour<a class="headerlink" href="#testing-locking-behaviour" title="Permalink to this headline">¶</a></h3>
+<p>In order to test the locking behaviour of commands, it is possible to install
+a hook that is called when a write lock is: acquired, released or broken.
+(Read locks also exist, they cannot be discovered in this way.)</p>
+<p>A hook can be installed by calling breezy.lock.Lock.hooks.install_named_hook.
+The three valid hooks are: <cite>lock_acquired</cite>, <cite>lock_released</cite> and <cite>lock_broken</cite>.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">locks_acquired</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">locks_released</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="n">lock</span><span class="o">.</span><span class="n">Lock</span><span class="o">.</span><span class="n">hooks</span><span class="o">.</span><span class="n">install_named_hook</span><span class="p">(</span><span class="s1">&#39;lock_acquired&#39;</span><span class="p">,</span>
+    <span class="n">locks_acquired</span><span class="o">.</span><span class="n">append</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<span class="n">lock</span><span class="o">.</span><span class="n">Lock</span><span class="o">.</span><span class="n">hooks</span><span class="o">.</span><span class="n">install_named_hook</span><span class="p">(</span><span class="s1">&#39;lock_released&#39;</span><span class="p">,</span>
+    <span class="n">locks_released</span><span class="o">.</span><span class="n">append</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><cite>locks_acquired</cite> will now receive a LockResult instance for all locks acquired
+since the time the hook is installed.</p>
+<p>The last part of the <cite>lock_url</cite> allows you to identify the type of object that is locked.</p>
+<ul class="simple">
+<li>brzDir: <cite>/branch-lock</cite></li>
+<li>Working tree: <cite>/checkout/lock</cite></li>
+<li>Branch: <cite>/branch/lock</cite></li>
+<li>Repository: <cite>/repository/lock</cite></li>
+</ul>
+<p>To test if a lock is a write lock on a working tree, one can do the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">assertEndsWith</span><span class="p">(</span><span class="n">locks_acquired</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">lock_url</span><span class="p">,</span> <span class="s2">&quot;/checkout/lock&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See breezy/tests/commands/test_revert.py for an example of how to use this for
+testing locks.</p>
+</div>
+<div class="section" id="skipping-tests">
+<h3>Skipping tests<a class="headerlink" href="#skipping-tests" title="Permalink to this headline">¶</a></h3>
+<p>In our enhancements to unittest we allow for some addition results beyond
+just success or failure.</p>
+<p>If a test can’t be run, it can say that it’s skipped by raising a special
+exception.  This is typically used in parameterized tests — for example
+if a transport doesn’t support setting permissions, we’ll skip the tests
+that relating to that.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">branch_format</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">repo</span><span class="o">.</span><span class="n">brzdir</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">errors</span><span class="o">.</span><span class="n">UninitializableFormat</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="n">tests</span><span class="o">.</span><span class="n">TestSkipped</span><span class="p">(</span><span class="s1">&#39;Uninitializable branch format&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Raising TestSkipped is a good idea when you want to make it clear that the
+test was not run, rather than just returning which makes it look as if it
+was run and passed.</p>
+<p>Several different cases are distinguished:</p>
+<dl class="docutils">
+<dt>TestSkipped</dt>
+<dd>Generic skip; the only type that was present up to brz 0.18.</dd>
+<dt>TestNotApplicable</dt>
+<dd>The test doesn’t apply to the parameters with which it was run.
+This is typically used when the test is being applied to all
+implementations of an interface, but some aspects of the interface
+are optional and not present in particular concrete
+implementations.  (Some tests that should raise this currently
+either silently return or raise TestSkipped.)  Another option is
+to use more precise parameterization to avoid generating the test
+at all.</dd>
+<dt>UnavailableFeature</dt>
+<dd><p class="first">The test can’t be run because a dependency (typically a Python
+library) is not available in the test environment.  These
+are in general things that the person running the test could fix
+by installing the library.  It’s OK if some of these occur when
+an end user runs the tests or if we’re specifically testing in a
+limited environment, but a full test should never see them.</p>
+<p class="last">See <a class="reference internal" href="#test-feature-dependencies">Test feature dependencies</a> below.</p>
+</dd>
+<dt>KnownFailure</dt>
+<dd><p class="first">The test exists but is known to fail, for example this might be
+appropriate to raise if you’ve committed a test for a bug but not
+the fix for it, or if something works on Unix but not on Windows.</p>
+<p>Raising this allows you to distinguish these failures from the
+ones that are not expected to fail.  If the test would fail
+because of something we don’t expect or intend to fix,
+KnownFailure is not appropriate, and TestNotApplicable might be
+better.</p>
+<p class="last">KnownFailure should be used with care as we don’t want a
+proliferation of quietly broken tests.</p>
+</dd>
+</dl>
+<p>We plan to support three modes for running the test suite to control the
+interpretation of these results.  Strict mode is for use in situations
+like merges to the mainline and releases where we want to make sure that
+everything that can be tested has been tested.  Lax mode is for use by
+developers who want to temporarily tolerate some known failures.  The
+default behaviour is obtained by <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">selftest</span></code> with no options, and
+also (if possible) by running under another unittest harness.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="51%" />
+<col width="16%" />
+<col width="16%" />
+<col width="18%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">result</th>
+<th class="head">strict</th>
+<th class="head">default</th>
+<th class="head">lax</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>TestSkipped</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr class="row-odd"><td>TestNotApplicable</td>
+<td>pass</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr class="row-even"><td>UnavailableFeature</td>
+<td>fail</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+<tr class="row-odd"><td>KnownFailure</td>
+<td>fail</td>
+<td>pass</td>
+<td>pass</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="test-feature-dependencies">
+<h3>Test feature dependencies<a class="headerlink" href="#test-feature-dependencies" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="writing-tests-that-require-a-feature">
+<h4>Writing tests that require a feature<a class="headerlink" href="#writing-tests-that-require-a-feature" title="Permalink to this headline">¶</a></h4>
+<p>Rather than manually checking the environment in each test, a test class
+can declare its dependence on some test features.  The feature objects are
+checked only once for each run of the whole test suite.</p>
+<p>(For historical reasons, as of May 2007 many cases that should depend on
+features currently raise TestSkipped.)</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">TestStrace</span><span class="p">(</span><span class="n">TestCaseWithTransport</span><span class="p">):</span>
+
+    <span class="n">_test_needs_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">StraceFeature</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>This means all tests in this class need the feature.  If the feature is
+not available the test will be skipped using UnavailableFeature.</p>
+<p>Individual tests can also require a feature using the <code class="docutils literal notranslate"><span class="pre">requireFeature</span></code>
+method:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">requireFeature</span><span class="p">(</span><span class="n">StraceFeature</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The old naming style for features is CamelCase, but because they’re
+actually instances not classses they’re now given instance-style names
+like <code class="docutils literal notranslate"><span class="pre">apport</span></code>.</p>
+<p>Features already defined in <code class="docutils literal notranslate"><span class="pre">breezy.tests</span></code> and <code class="docutils literal notranslate"><span class="pre">breezy.tests.features</span></code>
+include:</p>
+<blockquote>
+<div><ul class="simple">
+<li>apport</li>
+<li>paramiko</li>
+<li>SymlinkFeature</li>
+<li>HardlinkFeature</li>
+<li>OsFifoFeature</li>
+<li>UnicodeFilenameFeature</li>
+<li>FTPServerFeature</li>
+<li>CaseInsensitiveFilesystemFeature.</li>
+<li>chown_feature: The test can rely on OS being POSIX and python
+supporting os.chown.</li>
+<li>posix_permissions_feature: The test can use POSIX-style
+user/group/other permission bits.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="defining-a-new-feature-that-tests-can-require">
+<h4>Defining a new feature that tests can require<a class="headerlink" href="#defining-a-new-feature-that-tests-can-require" title="Permalink to this headline">¶</a></h4>
+<p>New features for use with <code class="docutils literal notranslate"><span class="pre">_test_needs_features</span></code> or <code class="docutils literal notranslate"><span class="pre">requireFeature</span></code>
+are defined by subclassing <code class="docutils literal notranslate"><span class="pre">breezy.tests.Feature</span></code> and overriding the
+<code class="docutils literal notranslate"><span class="pre">_probe</span></code> and <code class="docutils literal notranslate"><span class="pre">feature_name</span></code> methods.  For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">_SymlinkFeature</span><span class="p">(</span><span class="n">Feature</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">_probe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">osutils</span><span class="o">.</span><span class="n">has_symlinks</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">feature_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;symlinks&#39;</span>
+
+<span class="n">SymlinkFeature</span> <span class="o">=</span> <span class="n">_SymlinkFeature</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>A helper for handling running tests based on whether a python
+module is available. This can handle 3rd-party dependencies (is
+<code class="docutils literal notranslate"><span class="pre">paramiko</span></code> available?) as well as stdlib (<code class="docutils literal notranslate"><span class="pre">termios</span></code>) or
+extension modules (<code class="docutils literal notranslate"><span class="pre">breezy._groupcompress_pyx</span></code>). You create a
+new feature instance with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># in breezy/tests/features.py</span>
+<span class="n">apport</span> <span class="o">=</span> <span class="n">tests</span><span class="o">.</span><span class="n">ModuleAvailableFeature</span><span class="p">(</span><span class="s1">&#39;apport&#39;</span><span class="p">)</span>
+
+
+<span class="c1"># then in breezy/tests/test_apport.py</span>
+<span class="k">class</span> <span class="nc">TestApportReporting</span><span class="p">(</span><span class="n">TestCaseInTempDir</span><span class="p">):</span>
+
+    <span class="n">_test_needs_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">features</span><span class="o">.</span><span class="n">apport</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="testing-translations">
+<h3>Testing translations<a class="headerlink" href="#testing-translations" title="Permalink to this headline">¶</a></h3>
+<p>Translations are disabled by default in tests.  If you want to test
+that code is translated you can use the <code class="docutils literal notranslate"><span class="pre">ZzzTranslations</span></code> class from
+<code class="docutils literal notranslate"><span class="pre">test_i18n</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">overrideAttr</span><span class="p">(</span><span class="n">i18n</span><span class="p">,</span> <span class="s1">&#39;_translations&#39;</span><span class="p">,</span> <span class="n">ZzzTranslations</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>And check the output strings look like <code class="docutils literal notranslate"><span class="pre">u&quot;zz\xe5{{output}}&quot;</span></code>.</p>
+<p>To test the gettext setup and usage you override i18n.installed back
+to self.i18nInstalled and _translations to None, see
+test_i18n.TestInstall.</p>
+</div>
+<div class="section" id="testing-deprecated-code">
+<h3>Testing deprecated code<a class="headerlink" href="#testing-deprecated-code" title="Permalink to this headline">¶</a></h3>
+<p>When code is deprecated, it is still supported for some length of time,
+usually until the next major version. The <code class="docutils literal notranslate"><span class="pre">applyDeprecated</span></code> helper
+wraps calls to deprecated code to verify that it is correctly issuing the
+deprecation warning, and also prevents the warnings from being printed
+during test runs.</p>
+<p>Typically patches that apply the <code class="docutils literal notranslate"><span class="pre">&#64;deprecated_function</span></code> decorator should
+update the accompanying tests to use the <code class="docutils literal notranslate"><span class="pre">applyDeprecated</span></code> wrapper.</p>
+<p><code class="docutils literal notranslate"><span class="pre">applyDeprecated</span></code> is defined in <code class="docutils literal notranslate"><span class="pre">breezy.tests.TestCase</span></code>. See the API
+docs for more details.</p>
+</div>
+<div class="section" id="testing-exceptions-and-errors">
+<h3>Testing exceptions and errors<a class="headerlink" href="#testing-exceptions-and-errors" title="Permalink to this headline">¶</a></h3>
+<p>It’s important to test handling of errors and exceptions.  Because this
+code is often not hit in ad-hoc testing it can often have hidden bugs –
+it’s particularly common to get NameError because the exception code
+references a variable that has since been renamed.</p>
+<p>In general we want to test errors at two levels:</p>
+<ol class="arabic simple">
+<li>A test in <code class="docutils literal notranslate"><span class="pre">test_errors.py</span></code> checking that when the exception object is
+constructed with known parameters it produces an expected string form.
+This guards against mistakes in writing the format string, or in the
+<code class="docutils literal notranslate"><span class="pre">str</span></code> representations of its parameters.  There should be one for
+each exception class.</li>
+<li>Tests that when an api is called in a particular situation, it raises
+an error of the expected class.  You should typically use
+<code class="docutils literal notranslate"><span class="pre">assertRaises</span></code>, which in the Breezy test suite returns the exception
+object to allow you to examine its parameters.</li>
+</ol>
+<p>In some cases blackbox tests will also want to check error reporting.  But
+it can be difficult to provoke every error through the commandline
+interface, so those tests are only done as needed — eg in response to a
+particular bug or if the error is reported in an unusual way(?)  Blackbox
+tests should mostly be testing how the command-line interface works, so
+should only test errors if there is something particular to the cli in how
+they’re displayed or handled.</p>
+</div>
+<div class="section" id="testing-warnings">
+<h3>Testing warnings<a class="headerlink" href="#testing-warnings" title="Permalink to this headline">¶</a></h3>
+<p>The Python <code class="docutils literal notranslate"><span class="pre">warnings</span></code> module is used to indicate a non-fatal code
+problem.  Code that’s expected to raise a warning can be tested through
+callCatchWarnings.</p>
+<p>The test suite can be run with <code class="docutils literal notranslate"><span class="pre">-Werror</span></code> to check no unexpected errors
+occur.</p>
+<p>However, warnings should be used with discretion.  It’s not an appropriate
+way to give messages to the user, because the warning is normally shown
+only once per source line that causes the problem.  You should also think
+about whether the warning is serious enought that it should be visible to
+users who may not be able to fix it.</p>
+</div>
+<div class="section" id="interface-implementation-testing-and-test-scenarios">
+<h3>Interface implementation testing and test scenarios<a class="headerlink" href="#interface-implementation-testing-and-test-scenarios" title="Permalink to this headline">¶</a></h3>
+<p>There are several cases in Breezy of multiple implementations of a common
+conceptual interface.  (“Conceptual” because it’s not necessary for all
+the implementations to share a base class, though they often do.)
+Examples include transports and the working tree, branch and repository
+classes.</p>
+<p>In these cases we want to make sure that every implementation correctly
+fulfils the interface requirements.  For example, every Transport should
+support the <code class="docutils literal notranslate"><span class="pre">has()</span></code> and <code class="docutils literal notranslate"><span class="pre">get()</span></code> and <code class="docutils literal notranslate"><span class="pre">clone()</span></code> methods.  We have a
+sub-suite of tests in <code class="docutils literal notranslate"><span class="pre">test_transport_implementations</span></code>.  (Most
+per-implementation tests are in submodules of <code class="docutils literal notranslate"><span class="pre">breezy.tests</span></code>, but not
+the transport tests at the moment.)</p>
+<p>These tests are repeated for each registered Transport, by generating a
+new TestCase instance for the cross product of test methods and transport
+implementations.  As each test runs, it has <code class="docutils literal notranslate"><span class="pre">transport_class</span></code> and
+<code class="docutils literal notranslate"><span class="pre">transport_server</span></code> set to the class it should test.  Most tests don’t
+access these directly, but rather use <code class="docutils literal notranslate"><span class="pre">self.get_transport</span></code> which returns
+a transport of the appropriate type.</p>
+<p>The goal is to run per-implementation only the tests that relate to that
+particular interface.  Sometimes we discover a bug elsewhere that happens
+with only one particular transport.  Once it’s isolated, we can consider
+whether a test should be added for that particular implementation,
+or for all implementations of the interface.</p>
+<p>See also <a class="reference internal" href="#per-implementation-tests">Per-implementation tests</a> (above).</p>
+</div>
+<div class="section" id="test-scenarios-and-variations">
+<h3>Test scenarios and variations<a class="headerlink" href="#test-scenarios-and-variations" title="Permalink to this headline">¶</a></h3>
+<p>Some utilities are provided for generating variations of tests.  This can
+be used for per-implementation tests, or other cases where the same test
+code needs to run several times on different scenarios.</p>
+<p>The general approach is to define a class that provides test methods,
+which depend on attributes of the test object being pre-set with the
+values to which the test should be applied.  The test suite should then
+also provide a list of scenarios in which to run the tests.</p>
+<p>A single <em>scenario</em> is defined by a <cite>(name, parameter_dict)</cite> tuple.  The
+short string name is combined with the name of the test method to form the
+test instance name.  The parameter dict is merged into the instance’s
+attributes.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">load_tests</span> <span class="o">=</span> <span class="n">load_tests_apply_scenarios</span>
+
+<span class="k">class</span> <span class="nc">TestCheckout</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+
+    <span class="n">scenarios</span> <span class="o">=</span> <span class="n">multiply_scenarios</span><span class="p">(</span>
+        <span class="n">VaryByRepositoryFormat</span><span class="p">(),</span>
+        <span class="n">VaryByTreeFormat</span><span class="p">(),</span>
+        <span class="p">)</span>
+</pre></div>
+</div>
+<p>The <cite>load_tests</cite> declaration or definition should be near the top of the
+file so its effect can be seen.</p>
+</div>
+<div class="section" id="test-support">
+<h3>Test support<a class="headerlink" href="#test-support" title="Permalink to this headline">¶</a></h3>
+<p>We have a rich collection of tools to support writing tests. Please use
+them in preference to ad-hoc solutions as they provide portability and
+performance benefits.</p>
+<div class="section" id="testcase-and-its-subclasses">
+<h4>TestCase and its subclasses<a class="headerlink" href="#testcase-and-its-subclasses" title="Permalink to this headline">¶</a></h4>
+<p>The <code class="docutils literal notranslate"><span class="pre">breezy.tests</span></code> module defines many TestCase classes to help you
+write your tests.</p>
+<dl class="docutils">
+<dt>TestCase</dt>
+<dd>A base TestCase that extends the Python standard library’s
+TestCase in several ways.  TestCase is build on
+<code class="docutils literal notranslate"><span class="pre">testtools.TestCase</span></code>, which gives it support for more assertion
+methods (e.g.  <code class="docutils literal notranslate"><span class="pre">assertContainsRe</span></code>), <code class="docutils literal notranslate"><span class="pre">addCleanup</span></code>, and other
+features (see its API docs for details).  It also has a <code class="docutils literal notranslate"><span class="pre">setUp</span></code> that
+makes sure that global state like registered hooks and loggers won’t
+interfere with your test.  All tests should use this base class
+(whether directly or via a subclass).  Note that we are trying not to
+add more assertions at this point, and instead to build up a library
+of <code class="docutils literal notranslate"><span class="pre">breezy.tests.matchers</span></code>.</dd>
+<dt>TestCaseWithMemoryTransport</dt>
+<dd>Extends TestCase and adds methods like <code class="docutils literal notranslate"><span class="pre">get_transport</span></code>,
+<code class="docutils literal notranslate"><span class="pre">make_branch</span></code> and <code class="docutils literal notranslate"><span class="pre">make_branch_builder</span></code>.  The files created are
+stored in a MemoryTransport that is discarded at the end of the test.
+This class is good for tests that need to make branches or use
+transports, but that don’t require storing things on disk.  All tests
+that create brzdirs should use this base class (either directly or via
+a subclass) as it ensures that the test won’t accidentally operate on
+real branches in your filesystem.</dd>
+<dt>TestCaseInTempDir</dt>
+<dd>Extends TestCaseWithMemoryTransport.  For tests that really do need
+files to be stored on disk, e.g. because a subprocess uses a file, or
+for testing functionality that accesses the filesystem directly rather
+than via the Transport layer (such as dirstate).</dd>
+<dt>TestCaseWithTransport</dt>
+<dd>Extends TestCaseInTempDir.  Provides <code class="docutils literal notranslate"><span class="pre">get_url</span></code> and
+<code class="docutils literal notranslate"><span class="pre">get_readonly_url</span></code> facilities.  Subclasses can control the
+transports used by setting <code class="docutils literal notranslate"><span class="pre">vfs_transport_factory</span></code>,
+<code class="docutils literal notranslate"><span class="pre">transport_server</span></code> and/or <code class="docutils literal notranslate"><span class="pre">transport_readonly_server</span></code>.</dd>
+</dl>
+<p>See the API docs for more details.</p>
+</div>
+<div class="section" id="branchbuilder">
+<h4>BranchBuilder<a class="headerlink" href="#branchbuilder" title="Permalink to this headline">¶</a></h4>
+<p>When writing a test for a feature, it is often necessary to set up a
+branch with a certain history.  The <code class="docutils literal notranslate"><span class="pre">BranchBuilder</span></code> interface allows the
+creation of test branches in a quick and easy manner.  Here’s a sample
+session:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">builder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_branch_builder</span><span class="p">(</span><span class="s1">&#39;relpath&#39;</span><span class="p">)</span>
+<span class="n">builder</span><span class="o">.</span><span class="n">build_commit</span><span class="p">()</span>
+<span class="n">builder</span><span class="o">.</span><span class="n">build_commit</span><span class="p">()</span>
+<span class="n">builder</span><span class="o">.</span><span class="n">build_commit</span><span class="p">()</span>
+<span class="n">branch</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">get_branch</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">make_branch_builder</span></code> is a method of <code class="docutils literal notranslate"><span class="pre">TestCaseWithMemoryTransport</span></code>.</p>
+<p>Note that many current tests create test branches by inheriting from
+<code class="docutils literal notranslate"><span class="pre">TestCaseWithTransport</span></code> and using the <code class="docutils literal notranslate"><span class="pre">make_branch_and_tree</span></code> helper to
+give them a <code class="docutils literal notranslate"><span class="pre">WorkingTree</span></code> that they can commit to. However, using the
+newer <code class="docutils literal notranslate"><span class="pre">make_branch_builder</span></code> helper is preferred, because it can build
+the changes in memory, rather than on disk. Tests that are explictly
+testing how we work with disk objects should, of course, use a real
+<code class="docutils literal notranslate"><span class="pre">WorkingTree</span></code>.</p>
+<p>Please see breezy.branchbuilder for more details.</p>
+<p>If you’re going to examine the commit timestamps e.g. in a test for log
+output, you should set the timestamp on the tree, rather than using fuzzy
+matches in the test.</p>
+</div>
+<div class="section" id="treebuilder">
+<h4>TreeBuilder<a class="headerlink" href="#treebuilder" title="Permalink to this headline">¶</a></h4>
+<p>The <code class="docutils literal notranslate"><span class="pre">TreeBuilder</span></code> interface allows the construction of arbitrary trees
+with a declarative interface. A sample session might look like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_branch_and_tree</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">)</span>
+<span class="n">builder</span> <span class="o">=</span> <span class="n">TreeBuilder</span><span class="p">()</span>
+<span class="n">builder</span><span class="o">.</span><span class="n">start_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="n">builder</span><span class="o">.</span><span class="n">build</span><span class="p">([</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="s2">&quot;bar/&quot;</span><span class="p">,</span> <span class="s2">&quot;bar/file&quot;</span><span class="p">])</span>
+<span class="n">tree</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="s1">&#39;commit the tree&#39;</span><span class="p">)</span>
+<span class="n">builder</span><span class="o">.</span><span class="n">finish_tree</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Usually a test will create a tree using <code class="docutils literal notranslate"><span class="pre">make_branch_and_memory_tree</span></code> (a
+method of <code class="docutils literal notranslate"><span class="pre">TestCaseWithMemoryTransport</span></code>) or <code class="docutils literal notranslate"><span class="pre">make_branch_and_tree</span></code> (a
+method of <code class="docutils literal notranslate"><span class="pre">TestCaseWithTransport</span></code>).</p>
+<p>Please see breezy.treebuilder for more details.</p>
+</div>
+<div class="section" id="previewtree">
+<h4>PreviewTree<a class="headerlink" href="#previewtree" title="Permalink to this headline">¶</a></h4>
+<p>PreviewTrees are based on TreeTransforms.  This means they can represent
+virtually any state that a WorkingTree can have, including unversioned files.
+They can be used to test the output of anything that produces TreeTransforms,
+such as merge algorithms and revert.  They can also be used to test anything
+that takes arbitrary Trees as its input.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get an empty tree to base the transform on.</span>
+<span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_branch</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+<span class="n">empty_tree</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">repository</span><span class="o">.</span><span class="n">revision_tree</span><span class="p">(</span><span class="n">_mod_revision</span><span class="o">.</span><span class="n">NULL_REVISION</span><span class="p">)</span>
+<span class="n">tt</span> <span class="o">=</span> <span class="n">TransformPreview</span><span class="p">(</span><span class="n">empty_tree</span><span class="p">)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">addCleanup</span><span class="p">(</span><span class="n">tt</span><span class="o">.</span><span class="n">finalize</span><span class="p">)</span>
+<span class="c1"># Empty trees don&#39;t have a root, so add it first.</span>
+<span class="n">root</span> <span class="o">=</span> <span class="n">tt</span><span class="o">.</span><span class="n">new_directory</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">ROOT_PARENT</span><span class="p">,</span> <span class="s1">&#39;tree-root&#39;</span><span class="p">)</span>
+<span class="c1"># Set the contents of a file.</span>
+<span class="n">tt</span><span class="o">.</span><span class="n">new_file</span><span class="p">(</span><span class="s1">&#39;new-file&#39;</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="s1">&#39;contents&#39;</span><span class="p">,</span> <span class="s1">&#39;file-id&#39;</span><span class="p">)</span>
+<span class="n">preview</span> <span class="o">=</span> <span class="n">tt</span><span class="o">.</span><span class="n">get_preview_tree</span><span class="p">()</span>
+<span class="c1"># Test the contents.</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="s1">&#39;contents&#39;</span><span class="p">,</span> <span class="n">preview</span><span class="o">.</span><span class="n">get_file_text</span><span class="p">(</span><span class="s1">&#39;file-id&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>PreviewTrees can stack, with each tree falling back to the previous:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tt2</span> <span class="o">=</span> <span class="n">TransformPreview</span><span class="p">(</span><span class="n">preview</span><span class="p">)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">addCleanup</span><span class="p">(</span><span class="n">tt2</span><span class="o">.</span><span class="n">finalize</span><span class="p">)</span>
+<span class="n">tt2</span><span class="o">.</span><span class="n">new_file</span><span class="p">(</span><span class="s1">&#39;new-file2&#39;</span><span class="p">,</span> <span class="n">tt2</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="s1">&#39;contents2&#39;</span><span class="p">,</span> <span class="s1">&#39;file-id2&#39;</span><span class="p">)</span>
+<span class="n">preview2</span> <span class="o">=</span> <span class="n">tt2</span><span class="o">.</span><span class="n">get_preview_tree</span><span class="p">()</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="s1">&#39;contents&#39;</span><span class="p">,</span> <span class="n">preview2</span><span class="o">.</span><span class="n">get_file_text</span><span class="p">(</span><span class="s1">&#39;file-id&#39;</span><span class="p">))</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="s1">&#39;contents2&#39;</span><span class="p">,</span> <span class="n">preview2</span><span class="o">.</span><span class="n">get_file_text</span><span class="p">(</span><span class="s1">&#39;file-id2&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="temporarily-changing-state">
+<h4>Temporarily changing state<a class="headerlink" href="#temporarily-changing-state" title="Permalink to this headline">¶</a></h4>
+<p>If your test needs to temporarily mutate some global state, and you need
+it restored at the end, you can say for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">overrideAttr</span><span class="p">(</span><span class="n">osutils</span><span class="p">,</span> <span class="s1">&#39;_cached_user_encoding&#39;</span><span class="p">,</span> <span class="s1">&#39;latin-1&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This should be used with discretion; sometimes it’s better to make the
+underlying code more testable so that you don’t need to rely on monkey
+patching.</p>
+</div>
+<div class="section" id="observing-calls-to-a-function">
+<h4>Observing calls to a function<a class="headerlink" href="#observing-calls-to-a-function" title="Permalink to this headline">¶</a></h4>
+<p>Sometimes it’s useful to observe how a function is called, typically when
+calling it has side effects but the side effects are not easy to observe
+from a test case.  For instance the function may be expensive and we want
+to assert it is not called too many times, or it has effects on the
+machine that are safe to run during a test but not easy to measure.  In
+these cases, you can use <cite>recordCalls</cite> which will monkey-patch in a
+wrapper that records when the function is called.</p>
+</div>
+<div class="section" id="temporarily-changing-environment-variables">
+<h4>Temporarily changing environment variables<a class="headerlink" href="#temporarily-changing-environment-variables" title="Permalink to this headline">¶</a></h4>
+<p>If yout test needs to temporarily change some environment variable value
+(which generally means you want it restored at the end), you can use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">overrideEnv</span><span class="p">(</span><span class="s1">&#39;brz_ENV_VAR&#39;</span><span class="p">,</span> <span class="s1">&#39;new_value&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you want to remove a variable from the environment, you should use the
+special <code class="docutils literal notranslate"><span class="pre">None</span></code> value:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">overrideEnv</span><span class="p">(</span><span class="s1">&#39;PATH&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you add a new feature which depends on a new environment variable, make
+sure it behaves properly when this variable is not defined (if applicable) and
+if you need to enforce a specific default value, check the
+<code class="docutils literal notranslate"><span class="pre">TestCase._cleanEnvironment</span></code> in <code class="docutils literal notranslate"><span class="pre">breezy.tests.__init__.py</span></code> which defines a
+proper set of values for all tests.</p>
+</div>
+<div class="section" id="cleaning-up">
+<h4>Cleaning up<a class="headerlink" href="#cleaning-up" title="Permalink to this headline">¶</a></h4>
+<p>Our base <code class="docutils literal notranslate"><span class="pre">TestCase</span></code> class provides an <code class="docutils literal notranslate"><span class="pre">addCleanup</span></code> method, which
+should be used instead of <code class="docutils literal notranslate"><span class="pre">tearDown</span></code>.  All the cleanups are run when the
+test finishes, regardless of whether it passes or fails.  If one cleanup
+fails, later cleanups are still run.</p>
+<p>(The same facility is available outside of tests through
+<code class="docutils literal notranslate"><span class="pre">breezy.cleanup</span></code>.)</p>
+</div>
+</div>
+</div>
+<div class="section" id="manual-testing">
+<h2>Manual testing<a class="headerlink" href="#manual-testing" title="Permalink to this headline">¶</a></h2>
+<p>Generally we prefer automated testing but sometimes a manual test is the
+right thing, especially for performance tests that want to measure elapsed
+time rather than effort.</p>
+<div class="section" id="simulating-slow-networks">
+<h3>Simulating slow networks<a class="headerlink" href="#simulating-slow-networks" title="Permalink to this headline">¶</a></h3>
+<p>To get realistically slow network performance for manually measuring
+performance, we can simulate 500ms latency (thus 1000ms round trips):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo tc qdisc add dev lo root netem delay 500ms
+</pre></div>
+</div>
+<p>Normal system behaviour is restored with</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo tc qdisc del dev lo root
+</pre></div>
+</div>
+<p>A more precise version that only filters traffic to port 4155 is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tc</span> <span class="n">qdisc</span> <span class="n">add</span> <span class="n">dev</span> <span class="n">lo</span> <span class="n">root</span> <span class="n">handle</span> <span class="mi">1</span><span class="p">:</span> <span class="n">prio</span>
+<span class="n">tc</span> <span class="n">qdisc</span> <span class="n">add</span> <span class="n">dev</span> <span class="n">lo</span> <span class="n">parent</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span> <span class="n">handle</span> <span class="mi">30</span><span class="p">:</span> <span class="n">netem</span> <span class="n">delay</span> <span class="mi">500</span><span class="n">ms</span>
+<span class="n">tc</span> <span class="nb">filter</span> <span class="n">add</span> <span class="n">dev</span> <span class="n">lo</span> <span class="n">protocol</span> <span class="n">ip</span> <span class="n">parent</span> <span class="mi">1</span><span class="p">:</span><span class="mi">0</span> <span class="n">prio</span> <span class="mi">3</span> <span class="n">u32</span> <span class="n">match</span> <span class="n">ip</span> <span class="n">dport</span> <span class="mi">4155</span> <span class="mh">0xffff</span> <span class="n">flowid</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span>
+<span class="n">tc</span> <span class="nb">filter</span> <span class="n">add</span> <span class="n">dev</span> <span class="n">lo</span> <span class="n">protocol</span> <span class="n">ip</span> <span class="n">parent</span> <span class="mi">1</span><span class="p">:</span><span class="mi">0</span> <span class="n">prio</span> <span class="mi">3</span> <span class="n">u32</span> <span class="n">match</span> <span class="n">ip</span> <span class="n">sport</span> <span class="mi">4155</span> <span class="mh">0xffff</span> <span class="n">flowid</span> <span class="mi">1</span><span class="p">:</span><span class="mi">3</span>
+</pre></div>
+</div>
+<p>and to remove this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tc</span> <span class="nb">filter</span> <span class="k">del</span> <span class="n">dev</span> <span class="n">lo</span> <span class="n">protocol</span> <span class="n">ip</span> <span class="n">parent</span> <span class="mi">1</span><span class="p">:</span> <span class="n">pref</span> <span class="mi">3</span> <span class="n">u32</span>
+<span class="n">tc</span> <span class="n">qdisc</span> <span class="k">del</span> <span class="n">dev</span> <span class="n">lo</span> <span class="n">root</span> <span class="n">handle</span> <span class="mi">1</span><span class="p">:</span>
+</pre></div>
+</div>
+<p>You can use similar code to add additional delay to a real network
+interface, perhaps only when talking to a particular server or pointing at
+a VM.  For more information see &lt;<a class="reference external" href="http://lartc.org/">http://lartc.org/</a>&gt;.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="HACKING.html" title="Breezy Developer Guide"
+              >previous</a> |
+            <a href="code-review.html" title="Reviewing proposed changes to Breezy"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/testing.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

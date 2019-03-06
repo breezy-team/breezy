@@ -1,0 +1,331 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Breezy in five minutes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Breezy Tutorial" href="../tutorials/tutorial.html" />
+    <link rel="prev" title="Tutorials" href="../tutorials/index.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../tutorials/index.html" title="Tutorials"
+             accesskey="P">previous</a> |
+          <a href="../tutorials/tutorial.html" title="Breezy Tutorial"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="breezy-in-five-minutes">
+<h1>Breezy in five minutes<a class="headerlink" href="#breezy-in-five-minutes" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>Breezy is a distributed version control system that makes it easier for
+people to work together on software projects.</p>
+<p>Over the next five minutes, you’ll learn how to put your files under
+version control, how to record changes to them, examine your work, publish
+it and send your work for merger into a project’s trunk.</p>
+</div>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>This guide doesn’t describe how to install Breezy but it’s usually very
+easy. You can find installation instructions at:</p>
+<ul class="simple">
+<li><strong>GNU/Linux:</strong> Breezy is probably in your GNU/Linux distribution already.</li>
+<li><strong>Windows:</strong> <a class="reference external" href="http://wiki.bazaar.canonical.com/WindowsDownloads">installation instructions for Windows</a>.</li>
+<li><strong>Mac OS X:</strong> <a class="reference external" href="http://wiki.bazaar.canonical.com/MacOSXBundle">installation instructions for Mac OS X</a>.</li>
+</ul>
+<p>For other platforms and to install from source code, see the <a class="reference external" href="http://wiki.bazaar.canonical.com/Download">Download</a>
+and <a class="reference external" href="http://wiki.bazaar.canonical.com/InstallationFaq">Installation</a> pages.</p>
+</div>
+<div class="section" id="introducing-yourself">
+<h2>Introducing yourself<a class="headerlink" href="#introducing-yourself" title="Permalink to this headline">¶</a></h2>
+<p>Breezy records changes to source code, and it records who made the change.
+The person is identified by their name and email address.  (If you’re
+concerned about spam, you don’t need to use a real address that you
+actually read, but the convention is that it looks like an email address.)</p>
+<p>Before you start working, let’s tell Breezy who you are.  Using your name
+and email address, instead of John Doe’s, type:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz whoami &quot;John Doe &lt;john.doe@gmail.com&gt;&quot;
+</pre></div>
+</div>
+<p>You can check what identity is stored in Breezy’s configuration:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz whoami
+John Doe &lt;john.doe@gmail.com&gt;
+</pre></div>
+</div>
+</div>
+<div class="section" id="starting-a-new-project">
+<h2>Starting a new project<a class="headerlink" href="#starting-a-new-project" title="Permalink to this headline">¶</a></h2>
+<p>Let’s suppose we want to store a new project under Breezy.  First, we’ll
+make a <em>repository directory</em> to hold all our work related to this
+project, where developers can create branches to test development of
+specific features or, more generally, modifications to the working file
+set.</p>
+<p>After creating the repository, change to that directory, and create the
+project’s main trunk branch.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz init-repo sample
+Shared repository with trees (format: 2a)
+Location:
+  shared repository: sample
+$ brz init sample/trunk
+Created a repository tree (format: 2a)
+Using shared repository: /home/john/sample/
+</pre></div>
+</div>
+</div>
+<div class="section" id="adding-files">
+<h2>Adding files<a class="headerlink" href="#adding-files" title="Permalink to this headline">¶</a></h2>
+<p>Now that we have the trunk, we need to move to that directory and
+create some example files for the first version of that project.  Create
+a file <code class="docutils literal notranslate"><span class="pre">test1.txt</span></code> using a text editor (like emacs, nano, or notepad),
+and save it.  Then we’ll “add” the file, which tells brz we want it to
+track changes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd sample/trunk
+# create the file test1.txt now
+$ brz add test1.txt
+adding test1.txt
+</pre></div>
+</div>
+<p>and then commit, which saves a snapshot of all versioned files:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz commit -m &quot;Added first line of text&quot;
+added test1.txt
+Committed revision 1.
+</pre></div>
+</div>
+</div>
+<div class="section" id="making-changes-to-your-files">
+<h2>Making changes to your files<a class="headerlink" href="#making-changes-to-your-files" title="Permalink to this headline">¶</a></h2>
+<p>Let’s change a file and commit that change to your branch.</p>
+<p>Edit <code class="docutils literal notranslate"><span class="pre">test1.txt</span></code> in your favourite editor, then use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">add</span></code> to tell brz
+to track changes to this file</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ echo test test test &gt; test1.txt
+$ brz add test1.txt
+adding test1.txt
+</pre></div>
+</div>
+<p><cite>brz diff</cite> shows the changes between the last revision in this branch, and your
+current tree (or, with the <code class="docutils literal notranslate"><span class="pre">-r</span></code> option, between any two trees).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz diff
+=== modified file &#39;test1.txt&#39;
+--- test1.txt   2007-10-08 17:56:14 +0000
++++ test1.txt   2007-10-08 17:46:22 +0000
+@@ -0,0 +1,1 @@
++test test test
+</pre></div>
+</div>
+<p>Commit your work to the Breezy branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz commit -m &quot;Added first line of text&quot;
+Committing to: /home/john/sample/trunk/
+added test1.txt
+Committed revision 1.
+</pre></div>
+</div>
+</div>
+<div class="section" id="viewing-the-revision-log">
+<h2>Viewing the revision log<a class="headerlink" href="#viewing-the-revision-log" title="Permalink to this headline">¶</a></h2>
+<p>You can see the history of your branch by browsing its log:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log
+revno: 1
+committer: John Doe &lt;john.doe@gmail.com&gt;
+branch nick: trunk
+timestamp: Mon 2006-10-08 17:46:22 +0000
+message:
+  Initial import
+</pre></div>
+</div>
+</div>
+<div class="section" id="publishing-your-branch-on-launchpad">
+<h2>Publishing your branch on Launchpad<a class="headerlink" href="#publishing-your-branch-on-launchpad" title="Permalink to this headline">¶</a></h2>
+<p>Launchpad is a suite of development and hosting tools for
+software projects. You can use it to publish your branch.  (You can
+also publish branches onto your own server or other hosting services.)</p>
+<p>The steps to publishing branches on Launchpad are:</p>
+<ol class="arabic simple">
+<li>Create a Launchpad account: visit the <a class="reference external" href="https://launchpad.net/+login">Launchpad login page</a> and choose to create a new account.</li>
+</ol>
+<ol class="arabic" start="2">
+<li><p class="first">Breezy uses the SSH encryption and authentication protocol to connect
+to Launchpad.  You need to first <a class="reference external" href="https://help.launchpad.net/YourAccount/CreatingAnSSHKeyPair">create an SSH key</a> on your own computer,
+by running the command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ssh-keygen
+</pre></div>
+</div>
+</li>
+</ol>
+<ol class="arabic simple" start="3">
+<li><a class="reference external" href="https://launchpad.net/~/+editsshkeys">Upload your SSH public key to Launchpad</a>.</li>
+</ol>
+<ol class="arabic simple" start="4">
+<li><a class="reference external" href="https://help.launchpad.net/Teams/CreatingAndRunning">Make a team for your project</a>.  Even if you’re starting as the only
+developer on this project, creating a new one now will let you more
+easily add other people later.</li>
+</ol>
+<ol class="arabic simple" start="5">
+<li><a class="reference external" href="https://help.launchpad.net/Projects/Registering">Create a project</a>.</li>
+</ol>
+<ol class="arabic" start="6">
+<li><p class="first">Tell Breezy your Launchpad account name.  If your account is john.doe, type</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz launchpad-login john.doe
+</pre></div>
+</div>
+</li>
+<li><p class="first"><a class="reference external" href="https://help.launchpad.net/Code/UploadingABranch">Push the branch for your project</a>.  Once you’ve committed your changes
+locally, you can publish them as the trunk of your new project by saying</p>
+<blockquote>
+<div><p>$ brz push lp:~sample-developers/sample/trunk</p>
+</div></blockquote>
+<p>(Of course, using the team and project names you just chose.)</p>
+</li>
+</ol>
+</div>
+<div class="section" id="creating-your-own-copy-of-another-branch">
+<h2>Creating your own copy of another branch<a class="headerlink" href="#creating-your-own-copy-of-another-branch" title="Permalink to this headline">¶</a></h2>
+<p>To work with someone else’s code, you can make your own copy of their
+branch. Let’s take a real-world example, Breezy’s GTK interface:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz init-repo ~/brz-gtk
+$ brz branch lp:~brz/brz-gtk/trunk ~/brz-gtk/john
+Branched 292 revision(s).
+</pre></div>
+</div>
+<p>Breezy will download all the files and complete revision history from the
+brz-gtk project’s trunk branch and create a copy called <code class="docutils literal notranslate"><span class="pre">john</span></code>.</p>
+<p>Now, you have your own copy of the branch and can commit changes with
+or without a net connection. You can share your branch at any time by
+publishing it and, if the  brz-gtk team want to use your work, Breezy
+makes it easy for them to merge your branch back into their trunk branch.</p>
+</div>
+<div class="section" id="updating-your-branch-from-the-main-branch">
+<h2>Updating your branch from the main branch<a class="headerlink" href="#updating-your-branch-from-the-main-branch" title="Permalink to this headline">¶</a></h2>
+<p>While you commit changes to your branch, it’s likely that other people will
+also continue to commit code to the parent branch.</p>
+<p>To make sure your branch stays up to date, you should merge changes from
+the parent into your personal branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz merge
+Merging from saved parent location: http://bazaar.launchpad.net/~brz/brz-gtk/trunk
+All changes applied successfully.
+</pre></div>
+</div>
+<p>Check what has changed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz diff
+</pre></div>
+</div>
+<p>If different branches have made changes to the same areas of the same
+files, then merging them may generate conflicts.  When this happens,
+Breezy puts text markers like <code class="docutils literal notranslate"><span class="pre">&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span></code> into the files, and records them
+in a list of conflicted files.  You should edit the files to reflect the
+way you want to resolve the conflicts, use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span></code> to check the
+changes, and then <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> to mark them as resolved.</p>
+<p>If you’re happy with the changes, you can commit them to your personal
+branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz commit -m &quot;Merge from main branch&quot;
+Committed revision 295.
+</pre></div>
+</div>
+</div>
+<div class="section" id="learning-more">
+<h2>Learning more<a class="headerlink" href="#learning-more" title="Permalink to this headline">¶</a></h2>
+<p>You can find out more about Breezy in the
+<a class="reference external" href="../user-guide/index.html">Breezy User Guide</a>.</p>
+<p>To learn about Breezy on the command-line:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz help
+</pre></div>
+</div>
+<p>To learn about the ‘’foo’’ topic or command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz help foo
+</pre></div>
+</div>
+</div>
+<div class="section" id="licence">
+<h2>Licence<a class="headerlink" href="#licence" title="Permalink to this headline">¶</a></h2>
+<p>Copyright 2007-2011 Canonical Ltd. Breezy is free software, and you
+may use, modify and redistribute both Breezy and this document under
+the terms of the GNU General Public License version 2 or later. See
+&lt;<a class="reference external" href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a>&gt;.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../tutorials/index.html" title="Tutorials"
+              >previous</a> |
+            <a href="../tutorials/tutorial.html" title="Breezy Tutorial"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/mini-tutorial/index.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

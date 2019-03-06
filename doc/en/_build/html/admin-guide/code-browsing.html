@@ -1,0 +1,214 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Web-based code browsing &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Integration with Other Tools" href="integration.html" />
+    <link rel="prev" title="Extending Bazaar with Hooks and Plugins" href="hooks-plugins.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="hooks-plugins.html" title="Extending Bazaar with Hooks and Plugins"
+             accesskey="P">previous</a> |
+          <a href="integration.html" title="Integration with Other Tools"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="web-based-code-browsing">
+<h1>Web-based code browsing<a class="headerlink" href="#web-based-code-browsing" title="Permalink to this headline">¶</a></h1>
+<p>Browsing the history of a project online is an important part of version
+control, since it allows people to easily see what happens in a branch
+without having to have a local, up-to-date copy of that branch.  There are a
+number of possible choices for browsing Bazaar branches on the web, but we
+will cover one of them in particular detail and briefly mention the other
+choices where they differ.</p>
+<div class="section" id="loggerhead">
+<h2>Loggerhead<a class="headerlink" href="#loggerhead" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="http://launchpad.net/loggerhead">Loggerhead</a> is a code browsing interface for Bazaar branches (now used in
+Launchpad).  To see an example of Loggerhead in action, browse to
+<a class="reference external" href="http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/files">http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/files</a> which is the loggerhead
+view of Bazaar’s trunk branch.  Loggerhead runs as a web application on the
+server which is accessed over HTTP via a RESTful interface.  It is possible to
+run this application on its own dedicated port as
+<code class="docutils literal notranslate"><span class="pre">http://www.example.com:8080</span></code> or to proxy this location behind a separate web
+server, for example at <code class="docutils literal notranslate"><span class="pre">http://www.example.com/loggerhead/</span></code>.  We will discuss
+both of these configurations below.</p>
+<div class="section" id="requirements">
+<h3>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h3>
+<p>Loggerhead depends on a number of other Python packages for the various Web
+technologies that it builds on.  Some of these must be installed to use
+loggerhead, although some of them are optional.  From the loggerhead <cite>README</cite>
+file, these are</p>
+<ol class="arabic simple">
+<li>SimpleTAL for templating.
+On Ubuntu, <cite>sudo apt-get install python-simpletal</cite>
+or download from <a class="reference external" href="http://www.owlfish.com/software/simpleTAL/download.html">http://www.owlfish.com/software/simpleTAL/download.html</a></li>
+<li>simplejson for producing JSON data.
+On Ubuntu, <cite>sudo apt-get install python-simplejson</cite>
+or use <cite>easy_install simplejson</cite>.</li>
+<li>Paste for the server. (You need version 1.2 or newer of Paste.)
+On Ubuntu, <cite>sudo apt-get install python-paste</cite>
+or use <cite>easy_install Paste</cite></li>
+<li>Paste Deploy  (optional, needed when proxying through Apache)
+On Ubuntu, <cite>sudo apt-get install python-pastedeploy</cite>
+or use <cite>easy_install PasteDeploy</cite></li>
+<li>flup (optional, needed to use FastCGI, SCGI or AJP)
+On Ubuntu, <cite>sudo apt-get install python-flup</cite>
+or use <cite>easy_install flup</cite></li>
+</ol>
+<p>Although directions for installing these on Ubuntu are given, most other
+GNU/Linux distributions should package these dependencies, making installation
+easy.  For Windows and Mac OS X, they should all be <code class="docutils literal notranslate"><span class="pre">easy_install</span></code>-able or at
+worst installable from the Python sources.</p>
+</div>
+<div class="section" id="built-in-web-server">
+<h3>Built-in Web Server<a class="headerlink" href="#built-in-web-server" title="Permalink to this headline">¶</a></h3>
+<p>Loggerhead has a built-in web server and when started with the
+<code class="docutils literal notranslate"><span class="pre">serve-branches</span></code> command, that web server is started on a default port
+listening on the localhost.  If port 8080 (the default) is accessible on
+<code class="docutils literal notranslate"><span class="pre">www.example.com</span></code>, then running</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ serve-branches --host=www.example.com --port=8080 /srv/bzr
+</pre></div>
+</div>
+<p>will list all of the available branches under that directory on
+<code class="docutils literal notranslate"><span class="pre">http://www.example.com:8080/</span></code>, so that the ProjectX trunk could be browsed
+at <code class="docutils literal notranslate"><span class="pre">http://www.example.com:8080/projectx/trunk</span></code>.  Note that loggerhead
+provides HTTP access to the underlying Bazaar branches (similar to that
+described in <a class="reference external" href="other-setups.html#smart-server-over-http-s">Smart server over HTTP(S)</a>), so this command should be run
+as a user without write privileges in <code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code>.  By default, loggerhead
+only listens on the localhost, not any external ports, unless specified as
+above.</p>
+</div>
+<div class="section" id="behind-a-proxy">
+<h3>Behind a Proxy<a class="headerlink" href="#behind-a-proxy" title="Permalink to this headline">¶</a></h3>
+<p>A more common and more safe way to run loggerhead is behind another web server
+which will proxy certain requests to the loggerhead server on the localhost.
+To do this, you need to have PasteDeploy installed (see <a class="reference internal" href="#requirements">Requirements</a>).
+Assuming that your server has Apache running, you need to add configuration
+such as this to set up the proxy</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">Location</span> <span class="s2">&quot;/loggerhead/&quot;</span><span class="o">&gt;</span>
+    <span class="n">ProxyPass</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">127.0</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">8080</span><span class="o">/</span>
+    <span class="n">ProxyPassReverse</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">127.0</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">8080</span><span class="o">/</span>
+<span class="o">&lt;/</span><span class="n">Location</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>If your proxy runs at some path within the server, then the <code class="docutils literal notranslate"><span class="pre">serve-branches</span></code>
+command must be started with the <code class="docutils literal notranslate"><span class="pre">--prefix</span></code> option.  For this example, we
+could start loggerhead with the command</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ serve-branches --prefix=/loggerhead /srv/bzr
+</pre></div>
+</div>
+<p>This would allow the trunk branch of ProjectX to be browsed at
+<code class="docutils literal notranslate"><span class="pre">http://www.example.com/loggerhead/projectx/trunk</span></code>.</p>
+<p>Loggerhead comes with a script allowing it to run as a service on
+<code class="docutils literal notranslate"><span class="pre">init.d</span></code> based Unix systems.  Contributions to do a similar thing on
+Windows servers would be welcomed at <a class="reference external" href="http://launchpad.net/loggerhead">http://launchpad.net/loggerhead</a>.</p>
+</div>
+</div>
+<div class="section" id="other-web-interfaces">
+<h2>Other web interfaces<a class="headerlink" href="#other-web-interfaces" title="Permalink to this headline">¶</a></h2>
+<p>There are a number of other web interfaces available for Bazaar branches (see
+the list at <a class="reference external" href="http://wiki.bazaar.canonical.com/WebInterfaces">http://wiki.bazaar.canonical.com/WebInterfaces</a>) and we will just
+mention a couple of them here for their advantages in particular situations.</p>
+<dl class="docutils">
+<dt>trac+bzr (<a class="reference external" href="http://launchpad.net/trac-bzr">http://launchpad.net/trac-bzr</a>)</dt>
+<dd>Trac is a popular web app that integrates a browser for branches, an issue
+tracker and a wiki.  trac+bzr is a trac extension that allows for the
+trac to be used with Bazaar.</dd>
+<dt>webbzr (<a class="reference external" href="http://thoughts.enseed.com/webbzr">http://thoughts.enseed.com/webbzr</a>)</dt>
+<dd>This is a notable solution because it is written in pure PHP for web hosts
+that don’t provide a way to run arbitrary Python applications such as Trac
+or Loggerhead.</dd>
+<dt>Redmine (<a class="reference external" href="http://redmine.org/">http://redmine.org/</a>)</dt>
+<dd>Like trac, Redmine is a full project management application using the Ruby
+on Rails framework.  It includes support for Bazaar branches.</dd>
+</dl>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="hooks-plugins.html" title="Extending Bazaar with Hooks and Plugins"
+              >previous</a> |
+            <a href="integration.html" title="Integration with Other Tools"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/admin-guide/code-browsing.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

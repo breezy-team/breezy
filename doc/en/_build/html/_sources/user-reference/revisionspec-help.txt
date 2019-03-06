@@ -1,0 +1,185 @@
+Revision Identifiers
+====================
+
+
+A revision identifier refers to a specific state of a branch's history.  It
+can be expressed in several ways.  It can begin with a keyword to
+unambiguously specify a given lookup type; some examples are 'last:1',
+'before:yesterday' and 'submit:'.
+
+Alternately, it can be given without a keyword, in which case it will be
+checked as a revision number, a tag, a revision id, a date specification, or a
+branch specification, in that order.  For example, 'date:today' could be
+written as simply 'today', though if you have a tag called 'today' that will
+be found first.
+
+If 'REV1' and 'REV2' are revision identifiers, then 'REV1..REV2' denotes a
+revision range. Examples: '3647..3649', 'date:yesterday..-1' and
+'branch:/path/to/branch1/..branch:/branch2' (note that there are no quotes or
+spaces around the '..').
+
+Ranges are interpreted differently by different commands. To the "log" command,
+a range is a sequence of log messages, but to the "diff" command, the range
+denotes a change between revisions (and not a sequence of changes).  In
+addition, "log" considers a closed range whereas "diff" and "merge" consider it
+to be open-ended, that is, they include one end but not the other.  For example:
+"brz log -r 3647..3649" shows the messages of revisions 3647, 3648 and 3649,
+while "brz diff -r 3647..3649" includes the changes done in revisions 3648 and
+3649, but not 3647.
+
+The keywords used as revision selection methods are the following:
+
+:revid:
+	Selects a revision using the revision id.
+:submit:
+	Selects a common ancestor with the submit branch.
+:ancestor:
+	Selects a common ancestor with a second branch.
+:date:
+	Selects a revision on the basis of a datestamp.
+:branch:
+	Selects the last revision of a specified branch.
+:tag:
+	Selects a revision identified by a tag name.
+:revno:
+	Selects a revision using a number.
+:before:
+	Selects the parent of the revision specified.
+:annotate:
+	Select the revision that last modified the specified line.
+:mainline:
+	Select mainline revision that merged the specified revision.
+:last:
+	Selects the nth revision from the end.
+
+In addition, plugins can provide other keywords.
+
+A detailed description of each keyword is given below.
+
+:revid:
+
+    Supply a specific revision id, that can be used to specify any
+    revision id in the ancestry of the branch.
+    Including merges, and pending merges.
+    Examples::
+
+      revid:aaaa@bbbb-123456789 -> Select revision 'aaaa@bbbb-123456789'
+
+:submit:
+
+    Diffing against this shows all the changes that were made in this branch,
+    and is a good predictor of what merge will do.  The submit branch is
+    used by the bundle and merge directive commands.  If no submit branch
+    is specified, the parent branch is used instead.
+
+    The common ancestor is the last revision that existed in both
+    branches. Usually this is the branch point, but it could also be
+    a revision that was merged.
+
+    Examples::
+
+      $ bzr diff -r submit:
+
+:ancestor:
+
+    Supply the path to a branch to select the common ancestor.
+
+    The common ancestor is the last revision that existed in both
+    branches. Usually this is the branch point, but it could also be
+    a revision that was merged.
+
+    This is frequently used with 'diff' to return all of the changes
+    that your branch introduces, while excluding the changes that you
+    have not merged from the remote branch.
+
+    Examples::
+
+      ancestor:/path/to/branch
+      $ bzr diff -r ancestor:../../mainline/branch
+
+:date:
+
+    Supply a datestamp to select the first revision that matches the date.
+    Date can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
+    Matches the first entry after a given date (either at midnight or
+    at a specified time).
+
+    One way to display all the changes since yesterday would be::
+
+        brz log -r date:yesterday..
+
+    Examples::
+
+      date:yesterday            -> select the first revision since yesterday
+      date:2006-08-14,17:10:14  -> select the first revision after
+                                   August 14th, 2006 at 5:10pm.
+
+:branch:
+
+    Supply the path to a branch to select its last revision.
+
+    Examples::
+
+      branch:/path/to/branch
+
+:tag:
+
+    Tags are stored in the branch and created by the 'tag' command.
+
+:revno:
+
+    Use an integer to specify a revision in the history of the branch.
+    Optionally a branch can be specified.  A negative number will count
+    from the end of the branch (-1 is the last revision, -2 the previous
+    one). If the negative number is larger than the branch's history, the
+    first revision is returned.
+    Examples::
+
+      revno:1                   -> return the first revision of this branch
+      revno:3:/path/to/branch   -> return the 3rd revision of
+                                   the branch '/path/to/branch'
+      revno:-1                  -> The last revision in a branch.
+      -2:http://other/branch    -> The second to last revision in the
+                                   remote branch.
+      -1000000                  -> Most likely the first revision, unless
+                                   your history is very long.
+
+:before:
+
+    Supply any revision spec to return the parent of that revision.  This is
+    mostly useful when inspecting revisions that are not in the revision history
+    of a branch.
+
+    It is an error to request the parent of the null revision (before:0).
+
+    Examples::
+
+      before:1913    -> Return the parent of revno 1913 (revno 1912)
+      before:revid:aaaa@bbbb-1234567890  -> return the parent of revision
+                                            aaaa@bbbb-1234567890
+      bzr diff -r before:1913..1913
+            -> Find the changes between revision 1913 and its parent (1912).
+               (What changes did revision 1913 introduce).
+               This is equivalent to:  bzr diff -c 1913
+
+:annotate:
+
+    Select the revision that last modified the specified line.  Line is
+    specified as path:number.  Path is a relative path to the file.  Numbers
+    start at 1, and are relative to the current version, not the last-
+    committed version of the file.
+
+:mainline:
+
+    Select the revision that merged the specified revision into mainline.
+
+:last:
+
+    Supply a positive number to get the nth revision from the end.
+    This is the same as supplying negative numbers to the 'revno:' spec.
+    Examples::
+
+      last:1        -> return the last revision
+      last:3        -> return the revision 2 before the end.
+
+

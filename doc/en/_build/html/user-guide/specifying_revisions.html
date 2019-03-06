@@ -1,0 +1,280 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Specifying revisions &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Organizing your workspace" href="organizing_your_workspace.html" />
+    <link rel="prev" title="Bug trackers" href="bug_trackers.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="bug_trackers.html" title="Bug trackers"
+             accesskey="P">previous</a> |
+          <a href="organizing_your_workspace.html" title="Organizing your workspace"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="specifying-revisions">
+<h1>Specifying revisions<a class="headerlink" href="#specifying-revisions" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="revision-identifiers-and-ranges">
+<h2>Revision identifiers and ranges<a class="headerlink" href="#revision-identifiers-and-ranges" title="Permalink to this headline">¶</a></h2>
+<p>Breezy has a very expressive way to specify a revision or a range of revisions.
+To specify a range of revisions, the upper and lower bounds are separated by the
+<code class="docutils literal notranslate"><span class="pre">..</span></code> symbol. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log -r 1..4
+</pre></div>
+</div>
+<p>You can omit one bound like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log -r 1..
+$ brz log -r ..4
+</pre></div>
+</div>
+<p>Some commands take only one revision, not a range. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz cat -r 42 foo.c
+</pre></div>
+</div>
+<p>In other cases, a range is required but you want the length of the range to
+be one. For commands where this is relevant, the <code class="docutils literal notranslate"><span class="pre">-c</span></code> option is used like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz diff -c 42
+</pre></div>
+</div>
+</div>
+<div class="section" id="available-revision-identifiers">
+<h2>Available revision identifiers<a class="headerlink" href="#available-revision-identifiers" title="Permalink to this headline">¶</a></h2>
+<p>The revision, or the bounds of the range, can be given using
+different format specifications as shown below.</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="38%" />
+<col width="62%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>argument type</td>
+<td>description</td>
+</tr>
+<tr class="row-even"><td><em>number</em></td>
+<td>revision number</td>
+</tr>
+<tr class="row-odd"><td><strong>revno</strong>:<em>number</em></td>
+<td>revision number</td>
+</tr>
+<tr class="row-even"><td><strong>last</strong>:<em>number</em></td>
+<td>negative revision number</td>
+</tr>
+<tr class="row-odd"><td><em>guid</em></td>
+<td>globally unique revision id</td>
+</tr>
+<tr class="row-even"><td><strong>revid</strong>:<em>guid</em></td>
+<td>globally unique revision id</td>
+</tr>
+<tr class="row-odd"><td><strong>before</strong>:<em>rev</em></td>
+<td>leftmost parent of ‘’rev’‘</td>
+</tr>
+<tr class="row-even"><td><em>date-value</em></td>
+<td>first entry after a given date</td>
+</tr>
+<tr class="row-odd"><td><strong>date</strong>:<em>date-value</em></td>
+<td>first entry after a given date</td>
+</tr>
+<tr class="row-even"><td><em>tag-name</em></td>
+<td>revision matching a given tag</td>
+</tr>
+<tr class="row-odd"><td><strong>tag</strong>:<em>tag-name</em></td>
+<td>revision matching a given tag</td>
+</tr>
+<tr class="row-even"><td><strong>ancestor</strong>:<em>path</em></td>
+<td>last merged revision from a branch</td>
+</tr>
+<tr class="row-odd"><td><strong>branch</strong>:<em>path</em></td>
+<td>latest revision on another branch</td>
+</tr>
+<tr class="row-even"><td><strong>submit</strong>:<em>path</em></td>
+<td>common ancestor with submit branch</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>A brief introduction to some of these formats is given below.
+For complete details, see <a class="reference external" href="../user-reference/index.html#revision-identifiers">Revision Identifiers</a> in the
+Breezy User Reference.</p>
+<div class="section" id="numbers">
+<h3>Numbers<a class="headerlink" href="#numbers" title="Permalink to this headline">¶</a></h3>
+<p>Positive numbers denote revision numbers in the current branch. Revision
+numbers are labelled as “revno” in the output of <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">log</span></code>.  To display
+the log for the first ten revisions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log -r ..10
+</pre></div>
+</div>
+<p>Negative numbers count from the latest revision, -1 is the last committed
+revision.</p>
+<p>To display the log for the last ten revisions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log -r -10..
+</pre></div>
+</div>
+</div>
+<div class="section" id="revid">
+<h3>revid<a class="headerlink" href="#revid" title="Permalink to this headline">¶</a></h3>
+<p><strong>revid</strong> allows specifying an internal revision ID, as shown by <code class="docutils literal notranslate"><span class="pre">brz</span>
+<span class="pre">log</span> <span class="pre">--show-ids</span></code> and some other commands.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log -r revid:Matthieu.Moy@imag.fr-20051026185030-93c7cad63ee570df
+</pre></div>
+</div>
+</div>
+<div class="section" id="before">
+<h3>before<a class="headerlink" href="#before" title="Permalink to this headline">¶</a></h3>
+<dl class="docutils">
+<dt><strong>before</strong></dt>
+<dd>‘’rev’’ specifies the leftmost parent of ‘’rev’‘, that is the revision
+that appears before ‘’rev’’ in the revision history, or the revision that
+was current when ‘’rev’’ was committed.</dd>
+</dl>
+<p>‘’rev’’ can be any revision specifier and may be chained.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log -r before:before:4
+...
+revno: 2
+...
+</pre></div>
+</div>
+</div>
+<div class="section" id="date">
+<h3>date<a class="headerlink" href="#date" title="Permalink to this headline">¶</a></h3>
+<dl class="docutils">
+<dt><strong>date</strong></dt>
+<dd>‘’value’’ matches the first history entry after a given date, either at
+midnight or at a specified time.</dd>
+</dl>
+<p>Legal values are:</p>
+<blockquote>
+<div><ul class="simple">
+<li><strong>yesterday</strong></li>
+<li><strong>today</strong></li>
+<li><strong>tomorrow</strong></li>
+<li>A <strong>YYYY-MM-DD</strong> format date.</li>
+<li>A <strong>YYYY-MM-DD,HH:MM:SS</strong> format date/time, seconds are optional (note the
+comma)</li>
+</ul>
+</div></blockquote>
+<p>The proper way of saying “give me all the log entries for today” is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log -r date:yesterday..date:today
+</pre></div>
+</div>
+</div>
+<div class="section" id="ancestor">
+<h3>Ancestor<a class="headerlink" href="#ancestor" title="Permalink to this headline">¶</a></h3>
+<dl class="docutils">
+<dt><strong>ancestor</strong>:<em>path</em></dt>
+<dd>specifies the common ancestor between the current branch and a
+different branch. This is the same ancestor that would be used for
+merging purposes.</dd>
+</dl>
+<p><em>path</em> may be the URL of a remote branch, or the file path to a local branch.</p>
+<p>For example, to see what changes were made on a branch since it was forked
+off <code class="docutils literal notranslate"><span class="pre">../parent</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz diff -r ancestor:../parent
+</pre></div>
+</div>
+</div>
+<div class="section" id="branch">
+<h3>Branch<a class="headerlink" href="#branch" title="Permalink to this headline">¶</a></h3>
+<dl class="docutils">
+<dt>branch</dt>
+<dd><code class="docutils literal notranslate"><span class="pre">path</span></code> specifies the latest revision in another branch.</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">path</span></code> may be the URL of a remote branch, or the file path to a local branch.</p>
+<p>For example, to get the differences between this and another branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz diff -r branch:http://example.com/brz/foo.dev
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="bug_trackers.html" title="Bug trackers"
+              >previous</a> |
+            <a href="organizing_your_workspace.html" title="Organizing your workspace"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/specifying_revisions.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

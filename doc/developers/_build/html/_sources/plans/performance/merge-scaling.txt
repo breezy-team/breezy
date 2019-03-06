@@ -1,0 +1,35 @@
+Scaling analysys of Merge
+=========================
+
+1. Fetch revisions O(a)
+2. Common Ancestor [O(b)] **O(h)**
+3. Calculate tree merge O(c) [+ O(b) + O(d)] **+ O(i)**
+
+ - text merge O(e * e * f) + O(b)
+
+4. Find filesystem conflicts O(c)
+5. Resolve filesystem conflicts O(g)
+6. Apply changes O(c) + O(log(d))
+7. Set pending merges O(1)
+8. Print conflicts O(g)
+9. Print changes O(c)
+
+:a: revisions missing from repo:
+:b: nodes in the revision graph:
+:c: files that differ between base and other:
+:d: number of files in the tree
+:e: number of lines in the text
+:f: number of files requiring text merge
+:g: number of conflicts (g <= c)
+:h: humber of uncommon ancestors
+:i: number of revisions between base and other
+
+Needs
+-----
+- Access to revision graph proportional to number of revisions read
+- Access to changed file metadata proportional to number of changes and number of intervening revisions.
+- O(1) access to fulltexts
+
+Notes
+-----
+Multiparent deltas may offer some nice properties for performance of annotation based merging.

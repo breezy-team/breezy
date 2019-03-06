@@ -1,0 +1,162 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Reviewing changes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Recording changes" href="recording_changes.html" />
+    <link rel="prev" title="Controlling file registration" href="controlling_registration.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="controlling_registration.html" title="Controlling file registration"
+             accesskey="P">previous</a> |
+          <a href="recording_changes.html" title="Recording changes"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="reviewing-changes">
+<h1>Reviewing changes<a class="headerlink" href="#reviewing-changes" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="looking-before-you-leap">
+<h2>Looking before you leap<a class="headerlink" href="#looking-before-you-leap" title="Permalink to this headline">¶</a></h2>
+<p>Once you have completed some work, it’s a good idea to review your changes
+prior to permanently recording it. This way, you can make sure you’ll be
+committing what you intend to.</p>
+<p>Two brz commands are particularly useful here: <strong>status</strong> and <strong>diff</strong>.</p>
+</div>
+<div class="section" id="brz-status">
+<h2>brz status<a class="headerlink" href="#brz-status" title="Permalink to this headline">¶</a></h2>
+<p>The <strong>status</strong> command tells you what changes have been made to the
+working directory since the last revision:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">status</span>
+<span class="n">modified</span><span class="p">:</span>
+   <span class="n">foo</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">status</span></code> hides “boring” files that are either unchanged or ignored.
+The status command can optionally be given the name of some files or
+directories to check.</p>
+</div>
+<div class="section" id="brz-diff">
+<h2>brz diff<a class="headerlink" href="#brz-diff" title="Permalink to this headline">¶</a></h2>
+<p>The <strong>diff</strong> command shows the full text of changes to all files as a
+standard unified diff.  This can be piped through many programs such as
+‘’patch’‘, ‘’diffstat’‘, ‘’filterdiff’’ and ‘’colordiff’‘:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">diff</span>
+<span class="o">===</span> <span class="n">added</span> <span class="n">file</span> <span class="s1">&#39;hello.txt&#39;</span>
+<span class="o">---</span> <span class="n">hello</span><span class="o">.</span><span class="n">txt</span>   <span class="mi">1970</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">01</span> <span class="mi">00</span><span class="p">:</span><span class="mi">00</span><span class="p">:</span><span class="mi">00</span> <span class="o">+</span><span class="mi">0000</span>
+<span class="o">+++</span> <span class="n">hello</span><span class="o">.</span><span class="n">txt</span>   <span class="mi">2005</span><span class="o">-</span><span class="mi">10</span><span class="o">-</span><span class="mi">18</span> <span class="mi">14</span><span class="p">:</span><span class="mi">23</span><span class="p">:</span><span class="mi">29</span> <span class="o">+</span><span class="mi">0000</span>
+<span class="o">@@</span> <span class="o">-</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span> <span class="o">@@</span>
+<span class="o">+</span><span class="n">hello</span> <span class="n">world</span>
+</pre></div>
+</div>
+<p>With the <code class="docutils literal notranslate"><span class="pre">-r</span></code> option, the tree is compared to an earlier revision, or
+the differences between two versions are shown:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">diff</span> <span class="o">-</span><span class="n">r</span> <span class="mf">1000.</span><span class="o">.</span>          <span class="c1"># everything since r1000</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">diff</span> <span class="o">-</span><span class="n">r</span> <span class="mf">1000.</span><span class="o">.</span><span class="mi">1100</span>      <span class="c1"># changes from 1000 to 1100</span>
+</pre></div>
+</div>
+<p>To see the changes introduced by a single revision, you can use the <code class="docutils literal notranslate"><span class="pre">-c</span></code>
+option to diff.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">diff</span> <span class="o">-</span><span class="n">c</span> <span class="mi">1000</span>            <span class="c1"># changes from r1000</span>
+                              <span class="c1"># identical to -r999..1000</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">--diff-options</span></code> option causes brz to run the external diff program,
+passing options.  For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">diff</span> <span class="o">--</span><span class="n">diff</span><span class="o">-</span><span class="n">options</span> <span class="o">--</span><span class="n">side</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">side</span> <span class="n">foo</span>
+</pre></div>
+</div>
+<p>Some projects prefer patches to show a prefix at the start of the path
+for old and new files.  The <code class="docutils literal notranslate"><span class="pre">--prefix</span></code> option can be used to provide
+such a prefix.
+As a shortcut, <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span> <span class="pre">-p1</span></code> produces a form that works with the
+command <code class="docutils literal notranslate"><span class="pre">patch</span> <span class="pre">-p1</span></code>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="controlling_registration.html" title="Controlling file registration"
+              >previous</a> |
+            <a href="recording_changes.html" title="Recording changes"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/reviewing_changes.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

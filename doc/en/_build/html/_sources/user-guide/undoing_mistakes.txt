@@ -1,0 +1,168 @@
+Undoing mistakes
+================
+
+Mistakes happen
+---------------
+
+Breezy has been designed to make it easy to
+recover from mistakes as explained below.
+
+Dropping the revision history for a project
+-------------------------------------------
+
+If you accidentally put the wrong tree under version control, simply
+delete the ``.brz`` directory.
+
+Deregistering a file or directory
+---------------------------------
+
+If you accidentally register a file using ``add`` that you
+don't want version controlled, you can use the ``remove``
+command to tell Breezy to forget about it.
+
+``remove`` has been designed to *Do the Safe Thing* in
+that it will not delete a modified file. For example::
+
+  brz add foo.html
+  (oops - didn't mean that)
+  brz remove foo.html
+
+This will complain about the file being modified or unknown.
+If you want to keep the file, use the ``--keep`` option.
+Alternatively, if you want to delete the file, use the ``--force`` option.
+For example::
+
+  brz add foo.html
+  (oops - didn't mean that)
+  brz remove --keep foo.html
+  (foo.html left on disk, but deregistered)
+
+On the other hand, the unchanged ``TODO`` file is deregistered and
+removed from disk without complaint in this example::
+
+  brz add TODO
+  brz commit -m "added TODO"
+  (hack, hack, hack - but don't change TODO)
+  brz remove TODO
+  (TODO file deleted)
+
+Note: If you delete a file using your file manager, IDE or via an operating
+system command, the ``commit`` command will implicitly treat it as removed.
+
+Undoing changes since the last commit
+-------------------------------------
+
+One of the reasons for using a version control tool is that it
+lets you easily checkpoint good tree states while working. If you
+decide that the changes you have made since the last ``commit`` ought
+to be thrown away, the command to use is ``revert`` like this::
+
+  brz revert
+
+As a precaution, it is good practice to use ``brz status`` and
+``brz diff`` first to check that everything being thrown away
+really ought to be.
+
+Undoing changes to a file since the last commit
+-----------------------------------------------
+
+If you want to undo changes to a particular file since the last commit but
+keep all the other changes in the tree, pass the filename as an argument
+to ``revert`` like this::
+
+  brz revert foo.py
+
+Undoing the last commit
+-----------------------
+
+If you make a commit and really didn't mean to, use the ``uncommit`` command
+to undo it like this::
+
+  brz uncommit
+
+Unlike ``revert``, ``uncommit`` leaves the content of your working tree
+exactly as it is. That's really handy if you make a commit and accidently
+provide the wrong error message. For example::
+
+  brz commit -m "Fix bug #11"
+  (damn - wrong bug number)
+  brz uncommit
+  brz commit -m "Fix bug #1"
+
+Another common reason for undoing a commit is because you forgot to add
+one or more files. Some users like to alias ``commit`` to ``commit --strict``
+so that commits fail if unknown files are found in the tree.
+
+Tags for uncommitted revisions are removed from the branch unless
+``--keep-tags`` was specified.
+
+Note: While the ``merge`` command is not introduced until the next
+chapter, it is worth noting now that ``uncommit`` restores any pending
+merges. (Running ``brz status`` after ``uncommit`` will show these.)
+``merge`` can also be used to effectively undo just a selected commit
+earlier in history. For more information on ``merge``, see
+`Merging changes <merging_changes.html>`_ in the next chapter and the
+Breezy User Reference.
+
+Undoing multiple commits
+------------------------
+
+You can use the -r option to undo several commits like this::
+
+  brz uncommit -r -3
+
+If your reason for doing this is that you really want to
+back out several changes, then be sure to remember that ``uncommit``
+does not change your working tree: you'll probably need to run the
+``revert`` command as well to complete the task. In many cases though,
+it's arguably better to leave your history alone and add a new
+revision reflecting the content of the last good state.
+
+Reverting to the state of an earlier version
+--------------------------------------------
+
+If you make an unwanted change but it doesn't make sense to uncommit
+it (because that code has been released to users say), you can use
+``revert`` to take your working tree back to the desired state.
+For example::
+
+  % brz commit "Fix bug #5"
+  Committed revision 20.
+  (release the code)
+  (hmm - bad fix)
+  brz revert -r 19
+  brz commit -m "Backout fix for bug #5"
+
+This will change your entire tree back to the state as of revision 19,
+which is probably only what you want if you haven't made any new commits
+since then. If you have, the ``revert`` would wipe them out as well. In that
+case, you probably want to use `Reverse cherrypicking
+<adv_merging.html#reverse-cherrypicking>`_ instead to
+back out the bad fix.
+
+Note: As an alternative to using an absolute revision number (like 19), you can
+specify one relative to the tip (-1) using a negative number like this::
+
+  brz revert -r -2
+
+Correcting a tag
+----------------
+
+If you have defined a tag prematurely, use the ``--force`` option of
+the ``tag`` command to redefine it. For example::
+
+  brz tag 2.0-beta-1
+  (oops, we're not yet ready for that)
+  (make more commits to include more fixes)
+  brz tag 2.0-beta-1 --force
+
+Clearing a tag
+--------------
+
+If you have defined a tag and no longer want it defined, use the
+``--delete`` option of the ``tag`` command to remove it. For example::
+
+  brz tag 2.0-beta-4
+  (oops, we're not releasing a 4th beta)
+  brz tag 2.0-beta-4 --delete
+

@@ -1,0 +1,159 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Global Options &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Glossary" href="glossary-help.html" />
+    <link rel="prev" title="Files" href="files-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="files-help.html" title="Files"
+             accesskey="P">previous</a> |
+          <a href="glossary-help.html" title="Glossary"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="global-options">
+<h1>Global Options<a class="headerlink" href="#global-options" title="Permalink to this headline">¶</a></h1>
+<p>These options may be used with any command, and may appear in front of any
+command.  (e.g. <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">--profile</span> <span class="pre">help</span></code>).</p>
+<table class="docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group">
+<kbd><span class="option">--version</span></kbd></td>
+<td>Print the version number. Must be supplied before the command.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--no-aliases</span></kbd></td>
+<td>Do not process command aliases when running this command.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--builtin</span></kbd></td>
+<td>Use the built-in version of a command, not the plugin version.
+This does not suppress other plugin effects.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--no-plugins</span></kbd></td>
+<td>Do not process any plugins.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--no-l10n</span></kbd></td>
+<td>Do not translate messages.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--concurrency</span></kbd></td>
+<td>Number of processes that can be run concurrently (selftest).</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--profile</span></kbd></td>
+<td>Profile execution using the hotshot profiler.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--lsprof</span></kbd></td>
+<td>Profile execution using the lsprof profiler.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--lsprof-file</span></kbd></td>
+<td>Profile execution using the lsprof profiler, and write the
+results to a specified file.  If the filename ends with “.txt”,
+text format will be used.  If the filename either starts with
+“callgrind.out” or end with “.callgrind”, the output will be
+formatted for use with KCacheGrind. Otherwise, the output
+will be a pickle.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--coverage</span></kbd></td>
+<td>Generate line coverage report in the specified directory.</td></tr>
+</tbody>
+</table>
+<dl class="docutils">
+<dt>-Oname=value   Override the <code class="docutils literal notranslate"><span class="pre">name</span></code> config option setting it to <code class="docutils literal notranslate"><span class="pre">value</span></code> for</dt>
+<dd>the duration of the command.  This can be used multiple times if
+several options need to be overridden.</dd>
+</dl>
+<p>See <a class="reference external" href="https://www.breezy-vcs.org/developers/profiling.html">https://www.breezy-vcs.org/developers/profiling.html</a> for more
+information on profiling.</p>
+<p>A number of debug flags are also available to assist troubleshooting and
+development.  See <a class="reference internal" href="debug-flags-help.html"><span class="doc">Debug Flags</span></a>.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="files-help.html" title="Files"
+              >previous</a> |
+            <a href="glossary-help.html" title="Glossary"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/global-options-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,577 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Network Protocol &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Plugin API" href="plugin-api.html" />
+    <link rel="prev" title="LCA Merge" href="lca-merge.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="lca-merge.html" title="LCA Merge"
+             accesskey="P">previous</a> |
+          <a href="plugin-api.html" title="Plugin API"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="network-protocol">
+<h1><a class="toc-backref" href="#id1">Network Protocol</a><a class="headerlink" href="#network-protocol" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Date:</th><td class="field-body">2009-01-07</td>
+</tr>
+</tbody>
+</table>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#network-protocol" id="id1">Network Protocol</a><ul>
+<li><a class="reference internal" href="#overview" id="id2">Overview</a></li>
+<li><a class="reference internal" href="#layering" id="id3">Layering</a><ul>
+<li><a class="reference internal" href="#medium" id="id4">Medium</a></li>
+<li><a class="reference internal" href="#protocol" id="id5">Protocol</a></li>
+<li><a class="reference internal" href="#request-response-processing" id="id6">Request/Response processing</a></li>
+<li><a class="reference internal" href="#server-side" id="id7">Server-side</a></li>
+<li><a class="reference internal" href="#client-side" id="id8">Client-side</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#protocol-description" id="id9">Protocol description</a><ul>
+<li><a class="reference internal" href="#version-one" id="id10">Version one</a></li>
+<li><a class="reference internal" href="#version-two" id="id11">Version two</a></li>
+<li><a class="reference internal" href="#version-two-with-streamed-bodies" id="id12">Version two with streamed bodies</a></li>
+<li><a class="reference internal" href="#version-three" id="id13">Version three</a><ul>
+<li><a class="reference internal" href="#headers" id="id14">Headers</a></li>
+<li><a class="reference internal" href="#conventional-requests-and-responses" id="id15">Conventional requests and responses</a></li>
+<li><a class="reference internal" href="#early-error-returns" id="id16">Early error returns</a></li>
+<li><a class="reference internal" href="#full-duplex-operation" id="id17">Full-duplex operation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#apis" id="id18">APIs</a></li>
+<li><a class="reference internal" href="#paths" id="id19">Paths</a></li>
+<li><a class="reference internal" href="#requests" id="id20">Requests</a></li>
+<li><a class="reference internal" href="#recognised-errors" id="id21">Recognised errors</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2><a class="toc-backref" href="#id2">Overview</a><a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>The smart protocol provides a way to send requests and corresponding
+responses to communicate with a remote bzr process.</p>
+</div>
+<div class="section" id="layering">
+<h2><a class="toc-backref" href="#id3">Layering</a><a class="headerlink" href="#layering" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="medium">
+<h3><a class="toc-backref" href="#id4">Medium</a><a class="headerlink" href="#medium" title="Permalink to this headline">¶</a></h3>
+<p>At the bottom level there is either a socket, pipes, or an HTTP
+request/response.  We call this layer the <em>medium</em>.  It is responsible for
+carrying bytes between a client and server.  For sockets, we have the idea
+that you have multiple requests and get a read error because the other
+side did shutdown.  For pipes we have read pipe which will have a zero
+read which marks end-of-file.  For HTTP server environment there is no
+end-of-stream because each request coming into the server is independent.</p>
+<p>So we need a wrapper around pipes and sockets to separate out requests
+from substrate and this will give us a single model which is consistent
+for HTTP, sockets and pipes.</p>
+</div>
+<div class="section" id="protocol">
+<h3><a class="toc-backref" href="#id5">Protocol</a><a class="headerlink" href="#protocol" title="Permalink to this headline">¶</a></h3>
+<p>On top of the medium is the <em>protocol</em>.  This is the layer that
+deserialises bytes into the structured data that requests and responses
+consist of.</p>
+</div>
+<div class="section" id="request-response-processing">
+<h3><a class="toc-backref" href="#id6">Request/Response processing</a><a class="headerlink" href="#request-response-processing" title="Permalink to this headline">¶</a></h3>
+<p>On top of the protocol is the logic for processing requests (on the
+server) or responses (on the client).</p>
+</div>
+<div class="section" id="server-side">
+<h3><a class="toc-backref" href="#id7">Server-side</a><a class="headerlink" href="#server-side" title="Permalink to this headline">¶</a></h3>
+<p>Sketch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">MEDIUM</span>  <span class="p">(</span><span class="n">factory</span> <span class="k">for</span> <span class="n">protocol</span><span class="p">,</span> <span class="n">reads</span> <span class="nb">bytes</span> <span class="o">&amp;</span> <span class="n">pushes</span> <span class="n">to</span> <span class="n">protocol</span><span class="p">,</span>
+         <span class="n">uses</span> <span class="n">protocol</span> <span class="n">to</span> <span class="n">detect</span> <span class="n">end</span><span class="o">-</span><span class="n">of</span><span class="o">-</span><span class="n">request</span><span class="p">,</span> <span class="n">sends</span> <span class="n">written</span>
+         <span class="nb">bytes</span> <span class="n">to</span> <span class="n">client</span><span class="p">)</span> <span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span> <span class="n">socket</span><span class="p">,</span> <span class="n">pipe</span><span class="p">,</span> <span class="n">HTTP</span> <span class="n">request</span> <span class="n">handler</span><span class="o">.</span>
+ <span class="o">^</span>
+ <span class="o">|</span> <span class="nb">bytes</span><span class="o">.</span>
+ <span class="n">v</span>
+
+<span class="n">PROTOCOL</span><span class="p">(</span><span class="n">serialization</span><span class="p">,</span> <span class="n">deserialization</span><span class="p">)</span>  <span class="n">accepts</span> <span class="nb">bytes</span> <span class="k">for</span> <span class="n">one</span>
+         <span class="n">request</span><span class="p">,</span> <span class="n">decodes</span> <span class="n">according</span> <span class="n">to</span> <span class="n">internal</span> <span class="n">state</span><span class="p">,</span> <span class="n">pushes</span>
+         <span class="n">structured</span> <span class="n">data</span> <span class="n">to</span> <span class="n">handler</span><span class="o">.</span>  <span class="n">accepts</span> <span class="n">structured</span> <span class="n">data</span> <span class="kn">from</span>
+         <span class="nn">handler</span> <span class="ow">and</span> <span class="n">encodes</span> <span class="ow">and</span> <span class="n">writes</span> <span class="n">to</span> <span class="n">the</span> <span class="n">medium</span><span class="o">.</span>  <span class="n">factory</span> <span class="k">for</span>
+         <span class="n">handler</span><span class="o">.</span>
+ <span class="o">^</span>
+ <span class="o">|</span> <span class="n">structured</span> <span class="n">data</span>
+ <span class="n">v</span>
+
+<span class="n">HANDLER</span>  <span class="p">(</span><span class="n">domain</span> <span class="n">logic</span><span class="p">)</span> <span class="n">accepts</span> <span class="n">structured</span> <span class="n">data</span><span class="p">,</span> <span class="n">operates</span> <span class="n">state</span>
+         <span class="n">machine</span> <span class="n">until</span> <span class="n">the</span> <span class="n">request</span> <span class="n">can</span> <span class="n">be</span> <span class="n">satisfied</span><span class="p">,</span>
+         <span class="n">sends</span> <span class="n">structured</span> <span class="n">data</span> <span class="n">to</span> <span class="n">the</span> <span class="n">protocol</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>Request handlers are registered in the <cite>breezy.smart.request</cite> module.</p>
+</div>
+<div class="section" id="client-side">
+<h3><a class="toc-backref" href="#id8">Client-side</a><a class="headerlink" href="#client-side" title="Permalink to this headline">¶</a></h3>
+<p>Sketch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">CLIENT</span>   <span class="n">domain</span> <span class="n">logic</span><span class="p">,</span> <span class="n">accepts</span> <span class="n">domain</span> <span class="n">requests</span><span class="p">,</span> <span class="n">generated</span> <span class="n">structured</span>
+         <span class="n">data</span><span class="p">,</span> <span class="n">reads</span> <span class="n">structured</span> <span class="n">data</span> <span class="kn">from</span> <span class="nn">responses</span> <span class="ow">and</span> <span class="n">turns</span> <span class="n">into</span>
+         <span class="n">domain</span> <span class="n">data</span><span class="o">.</span>  <span class="n">Sends</span> <span class="n">structured</span> <span class="n">data</span> <span class="n">to</span> <span class="n">the</span> <span class="n">protocol</span><span class="o">.</span>
+         <span class="n">Operates</span> <span class="n">state</span> <span class="n">machines</span> <span class="n">until</span> <span class="n">the</span> <span class="n">request</span> <span class="n">can</span> <span class="n">be</span> <span class="n">delivered</span>
+         <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span> <span class="n">reading</span> <span class="kn">from</span> <span class="nn">a</span> <span class="n">bundle</span> <span class="n">generated</span> <span class="ow">in</span> <span class="n">bzrlib</span> <span class="n">to</span> <span class="n">deliver</span> <span class="n">a</span>
+         <span class="n">complete</span> <span class="n">request</span><span class="p">)</span><span class="o">.</span>
+
+         <span class="n">This</span> <span class="ow">is</span> <span class="n">RemoteBzrDir</span><span class="p">,</span> <span class="n">RemoteRepository</span><span class="p">,</span> <span class="n">etc</span><span class="o">.</span>
+ <span class="o">^</span>
+ <span class="o">|</span> <span class="n">structured</span> <span class="n">data</span>
+ <span class="n">v</span>
+
+<span class="n">PROTOCOL</span>  <span class="p">(</span><span class="n">serialization</span><span class="p">,</span> <span class="n">deserialization</span><span class="p">)</span>  <span class="n">accepts</span> <span class="n">structured</span> <span class="n">data</span> <span class="k">for</span> <span class="n">one</span>
+         <span class="n">request</span><span class="p">,</span> <span class="n">encodes</span> <span class="ow">and</span> <span class="n">writes</span> <span class="n">to</span> <span class="n">the</span> <span class="n">medium</span><span class="o">.</span>  <span class="n">Reads</span> <span class="nb">bytes</span> <span class="kn">from</span> <span class="nn">the</span>
+         <span class="n">medium</span><span class="p">,</span> <span class="n">decodes</span> <span class="ow">and</span> <span class="n">allows</span> <span class="n">the</span> <span class="n">client</span> <span class="n">to</span> <span class="n">read</span> <span class="n">structured</span> <span class="n">data</span><span class="o">.</span>
+ <span class="o">^</span>
+ <span class="o">|</span> <span class="nb">bytes</span><span class="o">.</span>
+ <span class="n">v</span>
+
+<span class="n">MEDIUM</span>   <span class="n">accepts</span> <span class="nb">bytes</span> <span class="kn">from</span> <span class="nn">the</span> <span class="n">protocol</span> <span class="o">&amp;</span> <span class="n">delivers</span> <span class="n">to</span> <span class="n">the</span> <span class="n">remote</span> <span class="n">server</span><span class="o">.</span>
+         <span class="n">Allows</span> <span class="n">the</span> <span class="n">protocol</span> <span class="n">to</span> <span class="n">read</span> <span class="nb">bytes</span> <span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span> <span class="n">socket</span><span class="p">,</span> <span class="n">pipe</span><span class="p">,</span> <span class="n">HTTP</span> <span class="n">request</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>The domain logic is in <cite>bzrlib.remote</cite>: <cite>RemoteBzrDir</cite>, <cite>RemoteBranch</cite>,
+and so on.</p>
+<p>There is also a plain file-level transport that calls remote methods to
+manipulate files on the server in <cite>bzrlib.transport.remote</cite>.</p>
+</div>
+</div>
+<div class="section" id="protocol-description">
+<h2><a class="toc-backref" href="#id9">Protocol description</a><a class="headerlink" href="#protocol-description" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="version-one">
+<h3><a class="toc-backref" href="#id10">Version one</a><a class="headerlink" href="#version-one" title="Permalink to this headline">¶</a></h3>
+<p>Version one of the protocol was introduced in Bazaar 0.11.</p>
+<p>The protocol (for both requests and responses) is described by:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">REQUEST</span> <span class="p">:</span><span class="o">=</span> <span class="n">MESSAGE_V1</span>
+<span class="n">RESPONSE</span> <span class="p">:</span><span class="o">=</span> <span class="n">MESSAGE_V1</span>
+<span class="n">MESSAGE_V1</span> <span class="p">:</span><span class="o">=</span> <span class="n">ARGS</span> <span class="p">[</span><span class="n">BODY</span><span class="p">]</span>
+
+<span class="n">ARGS</span> <span class="p">:</span><span class="o">=</span> <span class="n">ARG</span> <span class="p">[</span><span class="n">MORE_ARGS</span><span class="p">]</span> <span class="n">NEWLINE</span>
+<span class="n">MORE_ARGS</span> <span class="p">:</span><span class="o">=</span> <span class="n">SEP</span> <span class="n">ARG</span> <span class="p">[</span><span class="n">MORE_ARGS</span><span class="p">]</span>
+<span class="n">SEP</span> <span class="p">:</span><span class="o">=</span> <span class="mh">0x01</span>
+
+<span class="n">BODY</span> <span class="p">:</span><span class="o">=</span> <span class="n">LENGTH</span> <span class="n">NEWLINE</span> <span class="n">BODY_BYTES</span> <span class="n">TRAILER</span>
+<span class="n">LENGTH</span> <span class="p">:</span><span class="o">=</span> <span class="n">decimal</span> <span class="n">integer</span>
+<span class="n">TRAILER</span> <span class="p">:</span><span class="o">=</span> <span class="s2">&quot;done&quot;</span> <span class="n">NEWLINE</span>
+</pre></div>
+</div>
+<p>That is, a tuple of arguments separated by Ctrl-A and terminated with a
+newline, followed by length prefixed body with a constant trailer.  Note
+that although arguments are not 8-bit safe (they cannot include 0x01 or
+0x0a bytes without breaking the protocol encoding), the body is.</p>
+</div>
+<div class="section" id="version-two">
+<h3><a class="toc-backref" href="#id11">Version two</a><a class="headerlink" href="#version-two" title="Permalink to this headline">¶</a></h3>
+<p>Version two was introduced in Bazaar 0.16.</p>
+<p>The request protocol is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">REQUEST_V2</span> <span class="p">:</span><span class="o">=</span> <span class="s2">&quot;bzr request 2&quot;</span> <span class="n">NEWLINE</span> <span class="n">MESSAGE_V2</span>
+</pre></div>
+</div>
+<p>The response protocol is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">RESPONSE_V2</span> <span class="p">:</span><span class="o">=</span> <span class="s2">&quot;bzr response 2&quot;</span> <span class="n">NEWLINE</span> <span class="n">RESPONSE_STATUS</span> <span class="n">NEWLINE</span> <span class="n">MESSAGE_V2</span>
+<span class="n">RESPONSE_STATUS</span> <span class="p">:</span><span class="o">=</span> <span class="s2">&quot;success&quot;</span> <span class="o">|</span> <span class="s2">&quot;failed&quot;</span>
+</pre></div>
+</div>
+<p>Future versions should follow this structure, like version two does:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FUTURE_MESSAGE</span> <span class="p">:</span><span class="o">=</span> <span class="n">VERSION_STRING</span> <span class="n">NEWLINE</span> <span class="n">REST_OF_MESSAGE</span>
+</pre></div>
+</div>
+<p>This is so that clients and servers can read bytes up to the first newline
+byte to determine what version a message is.</p>
+<p>For compatibility will all versions (past and future) of bzr clients,
+servers that receive a request in an unknown protocol version should
+respond with a single-line error terminated with 0x0a (NEWLINE), rather
+than structured response prefixed with a version string.</p>
+<p>Version two of the message protocol is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">MESSAGE_V2</span> <span class="p">:</span><span class="o">=</span> <span class="n">ARGS</span> <span class="p">[</span><span class="n">BODY_V2</span><span class="p">]</span>
+<span class="n">BODY_V2</span> <span class="p">:</span><span class="o">=</span> <span class="n">BODY</span> <span class="o">|</span> <span class="n">STREAMED_BODY</span>
+</pre></div>
+</div>
+<p>That is, a version one length-prefixed body, or a version two streamed
+body.</p>
+</div>
+<div class="section" id="version-two-with-streamed-bodies">
+<h3><a class="toc-backref" href="#id12">Version two with streamed bodies</a><a class="headerlink" href="#version-two-with-streamed-bodies" title="Permalink to this headline">¶</a></h3>
+<p>An extension to version two allows streamed bodies.  A streamed body looks
+a lot like HTTP’s chunked encoding:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">STREAMED_BODY</span> <span class="p">:</span><span class="o">=</span> <span class="s2">&quot;chunked&quot;</span> <span class="n">NEWLINE</span> <span class="n">CHUNKS</span> <span class="n">TERMINATOR</span>
+<span class="n">CHUNKS</span> <span class="p">:</span><span class="o">=</span> <span class="n">CHUNK</span> <span class="p">[</span><span class="n">CHUNKS</span><span class="p">]</span>
+<span class="n">CHUNK</span> <span class="p">:</span><span class="o">=</span> <span class="n">HEX_LENGTH</span> <span class="n">CHUNK_CONTENT</span>
+<span class="n">HEX_LENGTH</span> <span class="p">:</span><span class="o">=</span> <span class="n">HEX_DIGITS</span> <span class="n">NEWLINE</span>
+<span class="n">CHUNK_CONTENT</span> <span class="p">:</span><span class="o">=</span> <span class="nb">bytes</span>
+
+<span class="n">TERMINATOR</span> <span class="p">:</span><span class="o">=</span> <span class="n">SUCCESS_TERMINATOR</span> <span class="o">|</span> <span class="n">ERROR_TERMINATOR</span>
+<span class="n">SUCCESS_TERMINATOR</span> <span class="p">:</span><span class="o">=</span> <span class="s1">&#39;END&#39;</span> <span class="n">NEWLINE</span>
+<span class="n">ERROR_TERMINATOR</span> <span class="p">:</span><span class="o">=</span> <span class="s1">&#39;ERR&#39;</span> <span class="n">NEWLINE</span> <span class="n">CHUNKS</span> <span class="n">SUCCESS_TERMINATOR</span>
+</pre></div>
+</div>
+<p>That is, the body consists of a series of chunks.  Each chunk starts with
+a length prefix in hexadecimal digits, followed by an ASCII newline byte.
+The end of the body is signaled by ‘<code class="docutils literal notranslate"><span class="pre">END\\n</span></code>’, or by ‘<code class="docutils literal notranslate"><span class="pre">ERR\\n</span></code>’
+followed by error args, one per chunk.  Note that these args are 8-bit
+safe, unlike request args.</p>
+<p>A streamed body starts with the string “chunked” so that legacy clients
+and servers will not mistake the first chunk as the start of a version one
+body.</p>
+<p>The type of body (length-prefixed or chunked) in a response is always the
+same for a given request method.  Only new request methods introduced in
+Bazaar 0.91 and later use streamed bodies.</p>
+</div>
+<div class="section" id="version-three">
+<h3><a class="toc-backref" href="#id13">Version three</a><a class="headerlink" href="#version-three" title="Permalink to this headline">¶</a></h3>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">For some discussion of the requirements that led to this new protocol
+version, see <a class="reference external" href="https://bugs.launchpad.net/bzr/+bug/83935">bug #83935</a>.</p>
+</div>
+<p>Version three has bencoding of most protocol structures, to make parsing
+simpler.  For extra parsing convenience, these structures are length
+prefixed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">LENGTH_PREFIX</span> <span class="p">:</span><span class="o">=</span> <span class="mi">32</span><span class="o">-</span><span class="n">bit</span> <span class="n">unsigned</span> <span class="n">integer</span> <span class="ow">in</span> <span class="n">network</span> <span class="n">byte</span> <span class="n">order</span>
+</pre></div>
+</div>
+<p>Unlike earlier versions, clients and servers are no longer required to
+know which request verbs and responses will have bodies attached.  Because
+of length-prefixing and other changes, it is always possible to know when
+a complete request or response has been read, even if the server
+implements no verbs.</p>
+<p>The underlying message format is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">MESSAGE</span> <span class="p">:</span><span class="o">=</span> <span class="n">MAGIC</span> <span class="n">NEWLINE</span> <span class="n">HEADERS</span> <span class="n">CONTENTS</span> <span class="n">END_MESSAGE</span>
+<span class="n">MAGIC</span> <span class="p">:</span><span class="o">=</span> <span class="s2">&quot;bzr message 3 (bzr 1.6)&quot;</span>
+<span class="n">HEADERS</span> <span class="p">:</span><span class="o">=</span> <span class="n">LENGTH_PREFIX</span> <span class="n">bencoded_dict</span>
+<span class="n">END_MESSAGE</span> <span class="p">:</span><span class="o">=</span> <span class="s2">&quot;e&quot;</span>
+
+<span class="n">BODY</span> <span class="p">:</span><span class="o">=</span> <span class="n">MESSAGE_PART</span><span class="o">+</span>
+<span class="n">MESSAGE_PART</span> <span class="p">:</span><span class="o">=</span> <span class="n">ONE_BYTE</span> <span class="o">|</span> <span class="n">STRUCTURE</span> <span class="o">|</span> <span class="n">BYTES</span>
+<span class="n">ONE_BYTE</span> <span class="p">:</span><span class="o">=</span> <span class="s2">&quot;o&quot;</span> <span class="n">byte</span>
+<span class="n">STRUCTURE</span> <span class="p">:</span><span class="o">=</span> <span class="s2">&quot;s&quot;</span> <span class="n">LENGTH_PREFIX</span> <span class="n">bencoded_structure</span>
+<span class="n">BYTES</span> <span class="p">:</span><span class="o">=</span> <span class="s2">&quot;b&quot;</span> <span class="n">LENGTH_PREFIX</span> <span class="nb">bytes</span>
+</pre></div>
+</div>
+<p>(Where <code class="docutils literal notranslate"><span class="pre">+</span></code> indicates one or more.)</p>
+<p>This format allows an arbitrary sequence of message parts to be encoded
+in a single message.  The contents of a MESSAGE have a higher-level
+message, but knowing just this amount of data it’s possible to
+deserialize and consume a message, so that implementations can respond to
+messages sent by later versions.</p>
+<div class="section" id="headers">
+<h4><a class="toc-backref" href="#id14">Headers</a><a class="headerlink" href="#headers" title="Permalink to this headline">¶</a></h4>
+<p>Each request and response will have “headers”, a dictionary of key-value pairs.
+The keys must be strings, not any other type of value.</p>
+<p>Currently, the only defined header is “Software version”.  Both the client and
+the server should include a “Software version” header, with a value of a
+free-form string such as “bzrlib 1.5”, to aid debugging and logging.  Clients
+and servers <strong>should not</strong> vary behaviour based on this string.</p>
+</div>
+<div class="section" id="conventional-requests-and-responses">
+<h4><a class="toc-backref" href="#id15">Conventional requests and responses</a><a class="headerlink" href="#conventional-requests-and-responses" title="Permalink to this headline">¶</a></h4>
+<p>By convention, most requests and responses have a simple “arguments plus
+optional body” structure, as in earlier protocol versions.  This section
+describes how such messages are encoded.  All requests and responses
+defined by earlier protocol versions must be encoded in this way.</p>
+<p>Conventional requests will send a CONTENTS of</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>CONV_REQ := ARGS SINGLE_OR_STREAMED_BODY?
+SINGLE_OR_STREAMED_BODY := BYTES
+      | BYTES+ TRAILER
+
+ARGS := STRUCTURE(argument_tuple)
+TRAILER := SUCCESS_STATUS | ERROR
+SUCCESS_STATUS := ONE_BYTE(&quot;S&quot;)
+ERROR := ONE_BYTE(&quot;E&quot;) STRUCTURE(argument_tuple)
+</pre></div>
+</div>
+<p>Conventional responses will send CONTENTS of</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>CONV_RESP := RESP_STATUS ARGS SINGLE_OR_STREAMED_BODY?
+RESP_STATUS := ONE_BYTE(&quot;S&quot;) | ONE_BYTE(&quot;E&quot;)
+</pre></div>
+</div>
+<p>If the RESP_STATUS is success (“S”), the arguments are the
+method-dependent result.</p>
+<p>For errors (where the Status byte of a response or a streamed body is
+“E”), the situation is analagous to requests.  The first item in the
+encoded sequence must be a string of the error name.  The other arguments
+supply details about the error, and their number and types will depend on
+the type of error (as identified by the error name).</p>
+<p>Note that the streamed body from version two is now just multiple
+BYTES parts.</p>
+<p>The end of the request or response is indicated by the lower-level
+END_MESSAGE.  If there’s only one BYTES element in the body, the TRAILER
+may or may not be present, depending on whether it was sent as a single
+chunk or as a stream that happens to have one element.</p>
+<blockquote>
+<div><p><em>(Discussion)</em> The success marker at the end of a streamed body seems
+redundant; it doesn’t have space for any arguments, and the end of the
+body is marked anyhow by the end of the message.  Recipients shouldn’t
+take any action on it, though they should map an error into raising an
+error locally.</p>
+<p>1.10 clients don’t assert that they get a status byte at the end of the
+message.  They will complain (in
+<code class="docutils literal notranslate"><span class="pre">ConventionalResponseHandler.byte_part_received</span></code>) if they get an
+initial success and then another byte part with no intervening bytes.
+If we stop sending the final success message and only flag errors
+they’ll only get one if the error is detected after streaming starts but
+before any bytes are actually sent.  Possibly we should wait until at
+least the first chunk is ready before declaring success.</p>
+</div></blockquote>
+<p>For new methods, these sequences are just a convention and may be varied
+if appropriate for a particular request or response.  However, each
+request should at least start with a STRUCTURE encoding the arguments
+tuple.  The first element of that tuple must be a string that names the
+request method.  (Note that arguments in this protocol version are
+bencoded.  As a result, unlike previous protocol versions, arguments in
+this version are 8-bit clean.)</p>
+<blockquote>
+<div><p>(Discussion) We’re discussing having the byte segments be not just a
+method for sending a stream across the network, but actually having them
+be preserved in the RPC from end to end.  This may be useful when
+there’s an iterator on one side feeding in to an iterator on the other,
+if it avoids doing chunking and byte-counting at two levels, and if
+those iterators are a natural place to get good granularity.  Also, for
+cases like <code class="docutils literal notranslate"><span class="pre">insert_record_stream</span></code> the server can’t do much with the
+data until it gets a whole chunk, and so it’ll be natural and efficient
+for it to be called with one chunk at a time.</p>
+<p>On the other hand, there may be times when we’ve got some bytes from the
+network but not a full chunk, and it might be worthwhile to pass it up.
+If we promise to preserve chunks, then to do this we’d need two separate
+streaming interfaces: “we got a chunk” and “we got some bytes but not
+yet a full chunk”.  For <code class="docutils literal notranslate"><span class="pre">insert_record_stream</span></code> the second might not be
+useful, but it might be good when writing to a file where any number of
+bytes can be processed.</p>
+<p>If we promise to preserve chunks, it’ll tend to make some RPCs work only
+in chunks, and others just on whole blocks, and we can’t so easily
+migrate RPCs from one to the other transparently to older
+implementations.</p>
+<p>The data inside those chunks will be serialized anyhow, and possibly the
+data inside them will already be able to be serialized apart without
+understanding the chunks.  Also, we might want to use these formats e.g.
+for pack files or in bundles, and so they don’t particularly need
+lower-level chunking.  So the current (unmerged, unstable) record stream
+serialization turns each record into a bencoded tuple and it’d be
+feasible to parse one tuple at a time from a byte stream that contains a
+sequence of them.</p>
+<p>So we’ve decided that the chunks won’t be semantic, and code should not
+count on them being preserved from client to server.</p>
+</div></blockquote>
+</div>
+<div class="section" id="early-error-returns">
+<h4><a class="toc-backref" href="#id16">Early error returns</a><a class="headerlink" href="#early-error-returns" title="Permalink to this headline">¶</a></h4>
+<blockquote>
+<div><p><em>(Discussion)</em> It would be nice if the server could notify the client of
+errors even before a streaming request has finished.  This could cover
+situtaions such as the server not understanding the request, it being
+unable to open the requested location, or it finding that some of the
+revisions being sent are not actually needed.</p>
+<p>Especially in the last case, we’d like to be able to gracefully notice
+the condition while the client is writing, and then have it adapt its
+behaviour.  In any case, we don’t want to have drop and restart the
+network stream.</p>
+<p>It should be possible for the client to finish its current chunk and
+then its message, possibly with an error to cancel what’s already been
+sent.</p>
+<p>This relies on the client being able to read back from the server while
+it’s writing.  This is technically difficult for HTTP but feasible over
+a socket or SSH.</p>
+<p>We’d need a clean way to pass this back to the request method, even
+though it’s presumably in the middle of doing its body iterator.
+Possibly the body iterator could be manually given a reference to the
+request object, and it can poll it to see if there’s a response.</p>
+<p>Perhaps we need to distinguish error conditions, which should turn into
+a client-side error regardless of the request code, from early success,
+which should be handled only if the request code specifically wants to
+do it.</p>
+</div></blockquote>
+</div>
+<div class="section" id="full-duplex-operation">
+<h4><a class="toc-backref" href="#id17">Full-duplex operation</a><a class="headerlink" href="#full-duplex-operation" title="Permalink to this headline">¶</a></h4>
+<blockquote>
+<div><p>Code not geared to do pipelined requests, and this might require doing
+asynchrony within bzrlib.  We might want to either go fully pipelined
+and asynchronous, but there might be a profitable middle ground.</p>
+<p>The particular case where duplex communication would be good is in
+working towards the common points in the graphs between the client and
+server: we want to send speculatively, but detect as soon as they’ve
+matched up.</p>
+<p>So we could for instance have a synchronous core, but rely on the OS
+network buffering to allow us to work on batches of say 64kB.  We can
+also pipeline requests and responses, without allowing for them
+happening out of order, or mixed requests happening at the same time.</p>
+<p>Wonder how our network performance would have turned out now if we’d
+done full-duplex from the start, and ignored hpss over HTTP.  We have
+pretty good (read-only) HTTP support just over dumb HTTP, and that may be
+better for many users.</p>
+</div></blockquote>
+</div>
+</div>
+</div>
+<div class="section" id="apis">
+<h2><a class="toc-backref" href="#id18">APIs</a><a class="headerlink" href="#apis" title="Permalink to this headline">¶</a></h2>
+<p>On the client, the bzrlib code is “in charge”: when it makes a request, or
+asks from data from the network, that causes network IO.  The server is
+event driven: the network code tells the response handler when data has
+been received, and it takes back a Response object from the request
+handler that is then polled for body stream data.</p>
+</div>
+<div class="section" id="paths">
+<h2><a class="toc-backref" href="#id19">Paths</a><a class="headerlink" href="#paths" title="Permalink to this headline">¶</a></h2>
+<p>Paths are passed across the network.  The client needs to see a namespace
+that includes any repository that might need to be referenced, and the
+client needs to know about a root directory beyond which it cannot ascend.</p>
+<p>Servers run over SSH will typically want to be able to access any path the
+user can access.  Public servers on the other hand (which might be over
+HTTP, SSH or TCP) will typically want to restrict access to only a
+particular directory and its children, so will want to do a software
+virtual root at that level.  In other words they’ll want to rewrite
+incoming paths to be under that level (and prevent escaping using ../
+tricks).  The default implementation in bzrlib does this using the
+<cite>bzrlib.transport.chroot</cite> module.</p>
+<p>URLs that include ~ are passed across to the server verbatim and the
+server can expand them.  The default implementation in bzrlib does this
+using <cite>bzrlib.transport.pathfilter</cite> and <cite>os.path.expanduser</cite>, taking care
+to respect the virtual root.</p>
+<p>Paths in request arguments are UTF-8 encoded, except for the legacy VFS
+requests which expect escaped (<cite>bzrlib.urlutils.escape</cite>) paths.</p>
+</div>
+<div class="section" id="requests">
+<h2><a class="toc-backref" href="#id20">Requests</a><a class="headerlink" href="#requests" title="Permalink to this headline">¶</a></h2>
+<p>The first argument of a request specifies the request method.</p>
+<p>The available request methods are registered in <cite>bzrlib.smart.request</cite>.</p>
+<p><strong>XXX</strong>: ideally the request methods should be documented here.
+Contributions welcome!</p>
+</div>
+<div class="section" id="recognised-errors">
+<h2><a class="toc-backref" href="#id21">Recognised errors</a><a class="headerlink" href="#recognised-errors" title="Permalink to this headline">¶</a></h2>
+<p>The first argument of an error response specifies the error type.</p>
+<p>One possible error name is <code class="docutils literal notranslate"><span class="pre">UnknownMethod</span></code>, which means the server does
+not recognise the verb used by the client’s request.  This error was
+introduced in version three.</p>
+<p><strong>XXX</strong>: ideally the error types should be documented here.  Contributions
+welcome!</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="lca-merge.html" title="LCA Merge"
+              >previous</a> |
+            <a href="plugin-api.html" title="Plugin API"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/network-protocol.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

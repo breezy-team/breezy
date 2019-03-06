@@ -1,0 +1,64 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 2.8b1
+#########
+
+:2.8b1: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+ * When generating documentation with a custom locale set, make sure
+   doc/en/user-reference only contains English documentation.
+   (Jelmer Vernooij, #1565503)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+* POSIX mandates diff to exit with status 1 (was 2 previously), bzr didn't
+  rely on that feature but one of the tests did.
+  (Vincent Ladeuil, #1622039)
+
+..
+   vim: tw=74 ft=rst ff=unix

@@ -1,0 +1,25 @@
+nick
+====
+
+:Purpose: Print or set the branch nickname.
+:Usage:   brz nick [NICKNAME]
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  If unset, the colocated branch name is used for colocated branches, and
+  the branch directory name is used for other branches.  To print the
+  current nickname, execute with no argument.
+  
+  Bound branches use the nickname of its master branch unless it is set
+  locally.
+
+:See also: :doc:`info <info-help>`
+
+

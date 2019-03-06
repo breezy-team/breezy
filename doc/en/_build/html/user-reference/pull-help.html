@@ -1,0 +1,201 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pull &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="push" href="push-help.html" />
+    <link rel="prev" title="plugins" href="plugins-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="plugins-help.html" title="plugins"
+             accesskey="P">previous</a> |
+          <a href="push-help.html" title="push"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="pull">
+<h1>pull<a class="headerlink" href="#pull" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Turn this branch into a mirror of another branch.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz pull [LOCATION]</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-d <var>ARG</var></span>, <span class="option">--directory=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Branch to pull into, rather than the one containing
+the working directory.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
+<td><p class="first last">Show help message.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--local</span></kbd></td>
+<td><p class="first last">Perform a local pull in a bound branch.  Local pulls
+are not applied to the master branch.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--overwrite</span></kbd></td>
+<td><p class="first last">Ignore differences between branches and overwrite
+unconditionally.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">--overwrite-tags</span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Overwrite tags only.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
+<td><p class="first last">Only display errors and warnings.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--remember</span></kbd></td>
+<td><p class="first last">Remember the specified location as a default.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-r <var>ARG</var></span>, <span class="option">--revision=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">See “help revisionspec” for details.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--show-base</span></kbd></td>
+<td><p class="first last">Show base revision text in conflicts.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--usage</span></kbd></td>
+<td><p class="first last">Show usage message and options.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
+<td><p class="first last">Show logs of pulled revisions.</p>
+</td></tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">By default, this command only works on branches that have not diverged.
+Branches are considered diverged if the destination branch’s most recent
+commit is one that has not been merged (directly or indirectly) into the
+parent.</p>
+<p>If branches have diverged, you can use ‘brz merge’ to integrate the changes
+from one into the other.  Once one branch has merged, the other should
+be able to pull it again.</p>
+<p>If you want to replace your local changes and just want your branch to
+match the remote one, use pull –overwrite. This will work even if the two
+branches have diverged.</p>
+<p>If there is no default location set, the first pull will set it (use
+–no-remember to avoid setting it). After that, you can omit the
+location to use the default.  To change the default, use –remember. The
+value will only be saved if the remote location can be accessed.</p>
+<p>The –verbose option will display the revisions pulled using the log_format
+configuration option. You can use a different format by overriding it with
+-Olog_format=&lt;other_format&gt;.</p>
+<p>Note: The location can be specified either in the form of a branch,
+or in the form of a path to a file containing a merge directive generated
+with brz send.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">See also:</th><td class="field-body"><p class="first last"><a class="reference internal" href="push-help.html"><span class="doc">push</span></a>, <a class="reference internal" href="send-help.html"><span class="doc">send</span></a>, <a class="reference internal" href="status-flags-help.html"><span class="doc">status-flags</span></a>, <a class="reference internal" href="update-help.html"><span class="doc">update</span></a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="plugins-help.html" title="plugins"
+              >previous</a> |
+            <a href="push-help.html" title="push"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/pull-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

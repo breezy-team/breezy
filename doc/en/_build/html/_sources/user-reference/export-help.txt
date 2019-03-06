@@ -1,0 +1,52 @@
+export
+======
+
+:Purpose: Export current or past revision to a destination directory or archive.
+:Usage:   brz export DEST [BRANCH_OR_SUBDIR]
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  --filters             Apply content filters to export the convenient form.
+  --format=ARG          Type of file to export to.
+  -h, --help            Show help message.
+  --per-file-timestamps
+                        Set modification time of files to that of the last
+                        revision in which it was changed.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --root=ARG            Name of the root directory inside the exported file.
+  --uncommitted         Export the working tree contents rather than that of
+                        the last revision.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  If no revision is specified this exports the last committed revision.
+  
+  Format may be an "exporter" name, such as tar, tgz, tbz2.  If none is
+  given, try to find the format with the extension. If no extension
+  is found exports to a directory (equivalent to --format=dir).
+  
+  If root is supplied, it will be used as the root directory inside
+  container formats (tar, zip, etc). If it is not supplied it will default
+  to the exported filename. The root option has no effect for 'dir' format.
+  
+  If branch is omitted then the branch containing the current working
+  directory will be used.
+  
+  Note: Export of tree with non-ASCII filenames to zip is not supported.
+  
+    =================       =========================
+    Supported formats       Autodetected by extension
+    =================       =========================
+       dir                         (none)
+       tar                          .tar
+       tbz2                    .tar.bz2, .tbz2
+       tgz                      .tar.gz, .tgz
+       zip                          .zip
+    =================       =========================
+
+
+

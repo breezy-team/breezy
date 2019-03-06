@@ -1,0 +1,60 @@
+Other Setups
+============
+
+Dumb servers
+------------
+
+Bazaar can also serve branches over protocols that know nothing about Bazaar's
+specific needs.  These are called "dumb servers" to distinguish them from
+Bazaar's native protocol.  Currently HTTP, HTTPS, FTP, SFTP and HTTP+WebDAV can
+be used to read branches remotely.  FTP, SFTP and HTTP+WebDAV can be used for
+writing as well.  To use any of these protocols, it is just necessary to
+provide access to the server's filesystem under ``/srv/bzr``.
+
+For example, for Apache to provide read-only access to the branches
+in ``/srv/bzr`` the configuration may look like this::
+
+  Alias /code /srv/bzr
+  <Directory /srv/bzr>
+      Options Indexes
+      # ...
+  </Directory>
+
+and users could use the URL ``http://server.example.com/code/projectx/trunk``
+to refer to the trunk branch.
+
+Note that SFTP access is often available whenever there is SSH access and it
+may be a good choice when Bazaar cannot be installed on the server to allow
+``bzr+ssh://`` access.  Dumb servers are slower by their very nature than the
+native protocol, but they can be a good choice in situations where the
+software and protocols that can be used on the server or the network is
+limited.
+
+Smart server over HTTP(S)
+-------------------------
+
+Bazaar can use its native protocol with HTTP or HTTPS requests.  Since HTTP is
+a network protocol that is available on many networks, this can be a good
+option where SSH access is not possible.  Another benefit of this setup is that
+all of the authentication and access control methods available to the HTTP
+server (basic, LDAP, ActiveDirectory, etc.) are then available to control
+access to Bazaar branches.  More information about setting up this type of
+access using Apache and FastCGI or mod_python or WSGI is in the `smart server
+section of the User's Guide <../user-guide/http_smart_server.html>`_.
+
+Direct Smart Server Access
+--------------------------
+
+The built-in server that is used by ``bzr+ssh://`` access can also be used as a
+persistent server on a dedicated port.  Bazaar's official port is 4155,
+although the port used can be configured.  Further information on running the
+Bazaar smart server from inetd, or directly from the shell is in the `User's
+Guide <../user-guide/server.html#inetd>`_.  The dedicated Bazaar server does
+not currently perform any authentication, so this server by default provides
+read-only access.  It can be run with the ``--allow-writes`` option, but the
+smart server does not do any additional access control so this may allow
+undesired people to make changes to branches.  (Which of course can be
+reverted.)  If the user that runs the server has write access to the branches
+on the filesystem, then anyone with access to port 4155 on the server can make
+changes to the branches stored there. 
+

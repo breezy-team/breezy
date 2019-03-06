@@ -1,0 +1,256 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>End of Line Conversion &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Storage Formats" href="formats-help.html" />
+    <link rel="prev" title="Diverged Branches" href="diverged-branches-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="diverged-branches-help.html" title="Diverged Branches"
+             accesskey="P">previous</a> |
+          <a href="formats-help.html" title="Storage Formats"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="end-of-line-conversion">
+<h1>End of Line Conversion<a class="headerlink" href="#end-of-line-conversion" title="Permalink to this headline">¶</a></h1>
+<p>EOL conversion is provided as a content filter where Bazaar internally
+stores a canonical format but outputs a convenience format. See
+<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">help</span> <span class="pre">content-filters</span></code> for general information about using these.</p>
+<p>Note: Content filtering is only supported in recently added formats,
+e.g. 1.14. Be sure that both the repository <em>and</em> the branch are
+in a recent format. (Just setting the format on the repository
+is not enough.) If content filtering does not appear to be working, use
+‘brz info -v’ to confirm that the branch is using “Working tree format 5”
+or later.</p>
+<p>EOL conversion needs to be enabled for selected file patterns using
+rules. See <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">help</span> <span class="pre">rules</span></code> for general information on defining rules.
+Currently, rules are only supported in $brz_HOME/.bazaar/rules (or
+%brz_HOME%/bazaar/2.0/rules on Windows). Branch specific rules will be
+supported in a future verison of Bazaar.</p>
+<p>To configure which files to filter, set <code class="docutils literal notranslate"><span class="pre">eol</span></code> to one of the values below.
+(If a value is not set, <code class="docutils literal notranslate"><span class="pre">exact</span></code> is the default.)</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="14%" />
+<col width="54%" />
+<col width="32%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Value</th>
+<th class="head">Checkout end-of-lines as</th>
+<th class="head">Commit end-of-lines as</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">native</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">crlf</span></code> on Windows, <code class="docutils literal notranslate"><span class="pre">lf</span></code> otherwise</td>
+<td><code class="docutils literal notranslate"><span class="pre">lf</span></code></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">lf</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">lf</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">lf</span></code></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">crlf</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">crlf</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">lf</span></code></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">exact</span></code></td>
+<td>No conversion</td>
+<td>Exactly as in file</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>Note: For safety reasons, no conversion is applied to any file where a null
+byte is detected in the file.</p>
+<p>For users working on a cross-platform project, here is a suggested rule
+to use as a starting point:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">name</span> <span class="o">*</span><span class="p">]</span>
+<span class="n">eol</span> <span class="o">=</span> <span class="n">native</span>
+</pre></div>
+</div>
+<p>If you have binary files that do not contain a null byte though, be
+sure to add <code class="docutils literal notranslate"><span class="pre">eol</span> <span class="pre">=</span> <span class="pre">exact</span></code> rules for those as well. You can do this
+by giving more explicit patterns earlier in the rules file. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">name</span> <span class="o">*.</span><span class="n">png</span><span class="p">]</span>
+<span class="n">eol</span> <span class="o">=</span> <span class="n">exact</span>
+
+<span class="p">[</span><span class="n">name</span> <span class="o">*</span><span class="p">]</span>
+<span class="n">eol</span> <span class="o">=</span> <span class="n">native</span>
+</pre></div>
+</div>
+<p>If your working tree is on a network drive shared by users on different
+operating systems, you typically want to force certain conventions for
+certain files. In that way, if a file is created with the wrong line
+endings or line endings get mixed during editing, it gets committed
+correctly and gets checked out correctly. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">name</span> <span class="o">*.</span><span class="n">bat</span><span class="p">]</span>
+<span class="n">eol</span> <span class="o">=</span> <span class="n">crlf</span>
+
+<span class="p">[</span><span class="n">name</span> <span class="o">*.</span><span class="n">sh</span><span class="p">]</span>
+<span class="n">eol</span> <span class="o">=</span> <span class="n">lf</span>
+
+<span class="p">[</span><span class="n">name</span> <span class="o">*</span><span class="p">]</span>
+<span class="n">eol</span> <span class="o">=</span> <span class="n">native</span>
+</pre></div>
+</div>
+<p>If you take the care to create files with their required endings, you can
+achieve <em>almost</em> the same thing by using <code class="docutils literal notranslate"><span class="pre">eol</span> <span class="pre">=</span> <span class="pre">exact</span></code>. It is slightly
+safer to use <code class="docutils literal notranslate"><span class="pre">lf</span></code> and <code class="docutils literal notranslate"><span class="pre">crlf</span></code> though because edits accidentally
+introducing mixed line endings will be corrected during commit for files
+with those settings.</p>
+<p>If you have sample test data that deliberately has text files with mixed
+newline conventions, you can ask for those to be left alone like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">name</span> <span class="n">test_data</span><span class="o">/</span><span class="p">]</span>
+<span class="n">eol</span> <span class="o">=</span> <span class="n">exact</span>
+
+<span class="p">[</span><span class="n">name</span> <span class="o">*</span><span class="p">]</span>
+<span class="n">eol</span> <span class="o">=</span> <span class="n">native</span>
+</pre></div>
+</div>
+<p>Note that <code class="docutils literal notranslate"><span class="pre">exact</span></code> does not imply the file is binary but it does mean
+that no conversion of end-of-lines will be done. (Bazaar currently relies
+of content analysis to detect binary files for commands like <code class="docutils literal notranslate"><span class="pre">diff</span></code>.
+In the future, a <code class="docutils literal notranslate"><span class="pre">binary</span> <span class="pre">=</span> <span class="pre">true</span></code> rule may be added but it is not
+supported yet.)</p>
+<p>If you have an existing repository with text files already stored using
+Windows newline conventions (<code class="docutils literal notranslate"><span class="pre">crlf</span></code>), then you may want to keep using that
+convention in the repository. Forcing certain files to this convention
+may also help users who do not have rules configured. To do this, set
+<code class="docutils literal notranslate"><span class="pre">eol</span></code> to one of the values below.</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="38%" />
+<col width="32%" />
+<col width="30%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Value</th>
+<th class="head">Checkout end-of-lines as</th>
+<th class="head">Commit end-of-lines as</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">native-with-crlf-in-repo</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">crlf</span></code> on Windows,
+<code class="docutils literal notranslate"><span class="pre">lf</span></code> otherwise</td>
+<td><code class="docutils literal notranslate"><span class="pre">crlf</span></code></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">lf-with-crlf-in-repo</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">lf</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">crlf</span></code></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">crlf-with-crlf-in-repo</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">crlf</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">crlf</span></code></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>For users working on an existing project that uses Windows newline
+conventions in their Bazaar repository, this rule is suggested as a
+starting point:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">name</span> <span class="o">*</span><span class="p">]</span>
+<span class="n">eol</span> <span class="o">=</span> <span class="n">native</span><span class="o">-</span><span class="k">with</span><span class="o">-</span><span class="n">crlf</span><span class="o">-</span><span class="ow">in</span><span class="o">-</span><span class="n">repo</span>
+</pre></div>
+</div>
+<p>For new projects, it is recommended that end-of-lines be stored as <code class="docutils literal notranslate"><span class="pre">lf</span></code>
+and that users stick to the basic settings, i.e. <code class="docutils literal notranslate"><span class="pre">native</span></code>, <code class="docutils literal notranslate"><span class="pre">lf</span></code>,
+<code class="docutils literal notranslate"><span class="pre">crlf</span></code> and <code class="docutils literal notranslate"><span class="pre">exact</span></code>.</p>
+<p>Note: Bazaar’s EOL conversion will convert the content of files but
+never reject files because a given line ending or mixed line endings
+are found. A precommit hook should be used if you wish to validate
+(and not just convert) content before committing.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="diverged-branches-help.html" title="Diverged Branches"
+              >previous</a> |
+            <a href="formats-help.html" title="Storage Formats"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/eol-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

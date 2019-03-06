@@ -1,0 +1,257 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-0-14">
+<h2>bzr 0.14<a class="headerlink" href="#bzr-0-14" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2007-01-23</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">global-options</span></code> describes the global options. (Aaron Bentley)</li>
+</ul>
+</div>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Skip documentation generation tests if the tools to do so are not
+available. Fixes running selftest for installled copies of bzr.
+(John Arbash Meinel, #80330)</li>
+<li>Fix the code that discovers whether bzr is being run from it’s
+working tree to handle the case when it isn’t but the directory
+it is in is below a repository. (James Westby, #77306)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-14rc1">
+<h2>bzr 0.14rc1<a class="headerlink" href="#bzr-0-14rc1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2007-01-16</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="id1">
+<h3>Improvements<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first">New connection: <code class="docutils literal notranslate"><span class="pre">bzr+http://</span></code> which supports tunnelling the smart
+protocol over an HTTP connection. If writing is enabled on the bzr
+server, then you can write over the HTTP connection.
+(Andrew Bennetts, John Arbash Meinel)</p>
+</li>
+<li><p class="first">Aliases now support quotation marks, so they can contain whitespace
+(Marius Kruger)</p>
+</li>
+<li><p class="first">PyCurlTransport now use a single curl object. By specifying explicitly
+the ‘Range’ header, we avoid the need to use two different curl objects
+(and two connections to the same server). (Vincent Ladeuil)</p>
+</li>
+<li><p class="first"><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span></code> does not prompt for a message until it is very likely to
+succeed.  (Aaron Bentley)</p>
+</li>
+<li><p class="first"><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">conflicts</span></code> now takes –text to list pathnames of text conflicts
+(Aaron Bentley)</p>
+</li>
+<li><p class="first">Fix <code class="docutils literal notranslate"><span class="pre">iter_lines_added_or_present_in_versions</span></code> to use a set instead
+of a list while checking if a revision id was requested. Takes 10s
+off of the <code class="docutils literal notranslate"><span class="pre">fileids_affected_by_revision_ids</span></code> time, which is 10s
+of the <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span></code> time. Also improve <code class="docutils literal notranslate"><span class="pre">fileids_...</span></code> time by
+filtering lines with a regex rather than multiple <code class="docutils literal notranslate"><span class="pre">str.find()</span></code>
+calls. (saves another 300ms) (John Arbash Meinel)</p>
+</li>
+<li><p class="first">Policy can be set for each configuration key. This allows keys to be
+inherited properly across configuration entries. For example, this
+should enable you to do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">user</span><span class="o">/</span><span class="n">project</span><span class="p">]</span>
+<span class="n">push_location</span> <span class="o">=</span> <span class="n">sftp</span><span class="p">:</span><span class="o">//</span><span class="n">host</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">project</span><span class="o">/</span>
+<span class="n">push_location</span><span class="p">:</span><span class="n">policy</span> <span class="o">=</span> <span class="n">appendpath</span>
+</pre></div>
+</div>
+<p>And then a branch like <code class="docutils literal notranslate"><span class="pre">/home/user/project/mybranch</span></code> should get an
+automatic push location of <code class="docutils literal notranslate"><span class="pre">sftp://host/srv/project/mybranch</span></code>.
+(James Henstridge)</p>
+</li>
+<li><p class="first">Added <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">status</span> <span class="pre">--short</span></code> to make status report svn style flags
+for each file.  For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr status --short
+A  foo
+A  bar
+D  baz
+?  wooley
+</pre></div>
+</div>
+</li>
+<li><p class="first">‘bzr selftest –clean-output’ allows easily clean temporary tests
+directories without running tests. (Alexander Belchenko)</p>
+</li>
+<li><p class="first"><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">hidden-commands</span></code> lists all hidden commands. (Aaron Bentley)</p>
+</li>
+<li><p class="first"><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">merge</span></code> now has an option <code class="docutils literal notranslate"><span class="pre">--pull</span></code> to fall back to pull if
+local is fully merged into remote. (Jan Hudec)</p>
+</li>
+<li><p class="first"><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">formats</span></code> describes available directory formats. (Aaron Bentley)</p>
+</li>
+</ul>
+</div>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>A few tweaks directly to <code class="docutils literal notranslate"><span class="pre">fileids_affected_by_revision_ids</span></code> to
+help speed up processing, as well allowing to extract unannotated
+lines. Between the two <code class="docutils literal notranslate"><span class="pre">fileids_affected_by_revision_ids</span></code> is
+improved by approx 10%. (John Arbash Meinel)</li>
+<li>Change Revision serialization to only write out millisecond
+resolution. Rather than expecting floating point serialization to
+preserve more resolution than we need. (Henri Weichers, Martin Pool)</li>
+<li>Test suite ends cleanly on Windows.  (Vincent Ladeuil)</li>
+<li>When <code class="docutils literal notranslate"><span class="pre">encoding_type</span></code> attribute of class Command is equal to ‘exact’,
+force sys.stdout to be a binary stream on Windows, and therefore
+keep exact line-endings (without LF -&gt; CRLF conversion).
+(Alexander Belchenko)</li>
+<li>Single-letter short options are no longer globally declared.  (Martin
+Pool)</li>
+<li>Before using detected user/terminal encoding bzr should check
+that Python has corresponding codec. (Alexander Belchenko)</li>
+<li>Formats for end-user selection are provided via a FormatRegistry (Aaron Bentley)</li>
+</ul>
+</div>
+<div class="section" id="id2">
+<h3>Bug Fixes<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">missing</span> <span class="pre">--verbose</span></code> was showing adds/removals in the wrong
+direction. (John Arbash Meinel)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">annotate</span></code> now defaults to showing dotted revnos for merged
+revisions. It cuts them off at a depth of 12 characters, but you can
+supply <code class="docutils literal notranslate"><span class="pre">--long</span></code> to see the full number. You can also use
+<code class="docutils literal notranslate"><span class="pre">--show-ids</span></code> to display the original revision ids, rather than
+revision numbers and committer names. (John Arbash Meinel, #75637)</li>
+<li>bzr now supports Win32 UNC path (e.g. <code class="docutils literal notranslate"><span class="pre">\HOST\path</span></code>.
+(Alexander Belchenko, #57869)</li>
+<li>Win32-specific: output of cat, bundle and diff commands don’t mangle
+line-endings (Alexander Belchenko, #55276)</li>
+<li>Replace broken fnmatch based ignore pattern matching with custom pattern
+matcher.
+(Kent Gibson, Jan Hudec #57637)</li>
+<li>pycurl and urllib can detect short reads at different places. Update
+the test suite to test more cases. Also detect HTTP error code 416
+which was raised for that specific bug. Also enhance the urllib
+robustness by detecting invalid ranges (and pycurl’s one by detecting
+short reads during the initial GET). (Vincent Ladeuil, #73948)</li>
+<li>The urllib connection sharing interacts badly with urllib2
+proxy setting (the connections didn’t go thru the proxy
+anymore). Defining a proper ProxyHandler solves the
+problem.  (Vincent Ladeuil, #74759)</li>
+<li>Use urlutils to generate relative URLs, not osutils
+(Aaron Bentley, #76229)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">status</span></code> in a readonly directory should work without giving
+lots of errors. (John Arbash Meinel, #76299)</li>
+<li>Mention the revisionspec topic for the revision option help.
+(Wouter van Heyst, #31663)</li>
+<li>Allow plugins import from zip archives.
+(Alexander Belchenko, #68124)</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-0.14.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

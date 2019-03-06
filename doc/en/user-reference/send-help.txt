@@ -1,0 +1,97 @@
+send
+====
+
+:Purpose: Mail or create a merge-directive for submitting changes.
+:Usage:   brz send [SUBMIT_BRANCH] [PUBLIC_BRANCH]
+
+:Options:
+  --body=ARG            Body for the email.
+  --format=ARG          Use the specified output format.
+  -f ARG, --from=ARG    Branch to generate the submission from, rather than
+                        the one containing the working directory.
+  -h, --help            Show help message.
+  --mail-to=ARG         Mail the request to this address.
+  -m ARG, --message=ARG
+                        Message string.
+  --no-bundle           Do not include a bundle in the merge directive.
+  --no-patch            Do not include a preview patch in the merge directive.
+  -o ARG, --output=ARG  Write merge directive to this file or directory; use -
+                        for stdout.
+  -q, --quiet           Only display errors and warnings.
+  --remember            Remember submit and public branch.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --strict              Refuse to send if there are uncommitted changes in the
+                        working tree, --no-strict disables the check.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  A merge directive provides many things needed for requesting merges:
+  
+  * A machine-readable description of the merge to perform
+  
+  * An optional patch that is a preview of the changes requested
+  
+  * An optional bundle of revision data, so that the changes can be applied
+    directly from the merge directive, without retrieving data from a
+    branch.
+  
+  `brz send` creates a compact data set that, when applied using brz
+  merge, has the same effect as merging from the source branch.
+  
+  By default the merge directive is self-contained and can be applied to any
+  branch containing submit_branch in its ancestory without needing access to
+  the source branch.
+  
+  If --no-bundle is specified, then Breezy doesn't send the contents of the
+  revisions, but only a structured request to merge from the
+  public_location.  In that case the public_branch is needed and it must be
+  up-to-date and accessible to the recipient.  The public_branch is always
+  included if known, so that people can check it later.
+  
+  The submit branch defaults to the parent of the source branch, but can be
+  overridden.  Both submit branch and public branch will be remembered in
+  branch.conf the first time they are used for a particular branch.  The
+  source branch defaults to that containing the working directory, but can
+  be changed using --from.
+  
+  Both the submit branch and the public branch follow the usual behavior with
+  respect to --remember: If there is no default location set, the first send
+  will set it (use --no-remember to avoid setting it). After that, you can
+  omit the location to use the default.  To change the default, use
+  --remember. The value will only be saved if the location can be accessed.
+  
+  In order to calculate those changes, brz must analyse the submit branch.
+  Therefore it is most efficient for the submit branch to be a local mirror.
+  If a public location is known for the submit_branch, that location is used
+  in the merge directive.
+  
+  The default behaviour is to send the merge directive by mail, unless -o is
+  given, in which case it is sent to a file.
+  
+  Mail is sent using your preferred mail program.  This should be transparent
+  on Windows (it uses MAPI).  On Unix, it requires the xdg-email utility.
+  If the preferred client can't be found (or used), your editor will be used.
+  
+  To use a specific mail program, set the mail_client configuration option.
+  Supported values for specific clients are "claws", "evolution", "kmail",
+  "mail.app" (MacOS X's Mail.app), "mutt", and "thunderbird"; generic options
+  are "default", "editor", "emacsclient", "mapi", and "xdg-email".  Plugins
+  may also add supported clients.
+  
+  If mail is being sent, a to address is required.  This can be supplied
+  either on the commandline, by setting the submit_to configuration
+  option in the branch itself or the child_submit_to configuration option
+  in the submit branch.
+  
+  The merge directives created by brz send may be applied using brz merge or
+  brz pull by specifying a file containing a merge directive as the location.
+  
+  brz send makes extensive use of public locations to map local locations into
+  URLs that can be used by other people.  See `brz help configuration` to
+  set them, and use `brz info` to display them.
+
+:See also: :doc:`merge <merge-help>`, :doc:`pull <pull-help>`
+
+

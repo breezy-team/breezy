@@ -1,0 +1,273 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Computing last_modified values &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Content Filtering" href="content-filtering.html" />
+    <link rel="prev" title="BTree Index Prefetch" href="btree_index_prefetch.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="btree_index_prefetch.html" title="BTree Index Prefetch"
+             accesskey="P">previous</a> |
+          <a href="content-filtering.html" title="Content Filtering"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="computing-last-modified-values">
+<h1>Computing last_modified values<a class="headerlink" href="#computing-last-modified-values" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar (through at least 0.19) computes a <code class="docutils literal notranslate"><span class="pre">last_modified</span></code>
+attribute for all inventory entries and stores it at commit time.
+This is the <code class="docutils literal notranslate"><span class="pre">revision_id</span></code> that last changed or merged the file.  It is
+used in knit and weave repositories to look up the file text, and to index
+into the file graph.  It’s also used to determine which revisions of the
+file text to pull during <code class="docutils literal notranslate"><span class="pre">fetch</span></code>.</p>
+<p>This data is not natively stored by most other systems so we need to
+synthesize it during conversion.</p>
+<p>This is a case of non-core data that we might wish to treat as cached,
+rather than always stored.</p>
+</div>
+<div class="section" id="definition">
+<h2>Definition<a class="headerlink" href="#definition" title="Permalink to this headline">¶</a></h2>
+<p>Take the set of all “heads”: all the versions of these files in parent
+trees.</p>
+<p>Reduce the heads by eliminating any whose last_modified is an ancestor of
+the last_modified of any other head.</p>
+<p>If there is still more than one head, a new last_modified is assigned.
+This points to the merge point in the file graph.</p>
+<p>If the file text and properties are the same as the sole remaining head,
+its last_modified is inherited. Property changes include executable bit,
+filename, and containing directory.</p>
+<p>Otherwise, a new last_modified is used.</p>
+<p>(This is meant to be the simplest statement, but it may not be the most
+efficient algorithm; anything that gives equivalent results can be used.)</p>
+</div>
+<div class="section" id="generation-in-commit">
+<h2>Generation in commit<a class="headerlink" href="#generation-in-commit" title="Permalink to this headline">¶</a></h2>
+<p>Commit and converters both need this when writing into Bazaar native
+formats.</p>
+<p>This is an O(tree) operation because it needs to check for files with
+multiple heads.  It could be reduced to O(changed_or_merged_files) if that
+was faster to determine.  So it needs to be fast.</p>
+<p>For the single-parent commit case, we just need to determine which files have
+changed compared to the parent.  If the file was changed, it gets the
+revision id of the new revision; otherwise it inherits the value from the
+parent tree.</p>
+<p>In the multi-parent commit case (commit of a merge), it can take the value
+from any of the parent trees, or of the new revision.</p>
+<p>Commit in a dirstate tree should be able to do this more easily by looking
+at a row of the dirstate to get the per-file parents.  It still needs to
+look at the revision or file graph information to work out whether heads can be
+eliminated as previously merged.  At the moment <code class="docutils literal notranslate"><span class="pre">find_previous_heads</span></code> works on
+inventories, so needs to spend considerable effort building whole
+inventories, including files that are not modified or merged.  (Called
+from <code class="docutils literal notranslate"><span class="pre">record_entry_contents</span></code>.)  It might be better to have the commit
+builder pass in the per-entry parents so that dirstate can generate just
+those that are necessary.  (See also the spec for
+<code class="docutils literal notranslate"><span class="pre">iter_changes_multiple_parents</span></code>.)</p>
+<p>If merge used a per-file graph then it would know when one version fully
+supersedes another, and it could emit only a single parent.  Merge could
+in fact do this even when not using per-file graphs.  In the current
+dirstate format we need to store the full data for all trees because they
+can be extracted from the dirstate, but it could mark some parents as
+already merged.</p>
+<p>Alternatively, we could change the dirstate to include
+only the base and current trees, and cache the merged-in parents
+elsewhere.</p>
+<p>(Offtopic other dirstate changes: we could also omit the working-copy
+hash, and just have a stat-fingerprint of when it was last known equal to
+the basis revision.  That reduces the amount of data stored and possibly
+makes it simpler to update, and shouldn’t penalize common cases.)</p>
+</div>
+<div class="section" id="generation-during-conversion">
+<h2>Generation during conversion<a class="headerlink" href="#generation-during-conversion" title="Permalink to this headline">¶</a></h2>
+<p>Accessing a foreign branch requires synthesizing this information.
+If last_modified is removed from a future Breezy version, we will also need
+to synthesize it to pull back to earlier formats.</p>
+<p>Because last_modified is not natively stored in the foreign branches, we
+want to take advantage of any conversion we’ve already done, so that we
+don’t need to recursively generate them on every access.  We’d
+prefer to find a revision that’s already converted to a Bazaar inventory
+within another related repository, such as the target of a conversion.</p>
+</div>
+<div class="section" id="avoiding-last-modified">
+<h2>Avoiding last_modified<a class="headerlink" href="#avoiding-last-modified" title="Permalink to this headline">¶</a></h2>
+<p>last_modified is potentially expensive to determine and we may not want to
+store it in inventories in future.  Therefore we should use it only when
+necessary:</p>
+<ul class="simple">
+<li>When writing out an inventory format that includes it.</li>
+<li>In Bazaar formats that use it as a key for the file text or file
+ancestry.  This should be hidden behind the Repository/RevisionTree
+interface.</li>
+<li>When a user operation specifically requires the last_modified (e.g.
+hypothetical annotate directory).</li>
+</ul>
+<p>We already do this in most cases.</p>
+</div>
+<div class="section" id="compared-to-annotate">
+<h2>Compared to annotate<a class="headerlink" href="#compared-to-annotate" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="use-cases">
+<h2>Use cases<a class="headerlink" href="#use-cases" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="cases-to-test">
+<h2>Cases to test<a class="headerlink" href="#cases-to-test" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li>Single parent, unmodified file</li>
+<li>Single parent, modified file</li>
+<li>Two parents, one descended from the other, modified in one parent only</li>
+<li>Two parents, one descended from the other, modified in one parent only,
+but also modified locally.</li>
+<li>Two parents, not descended from each other, modified in one parent only.</li>
+<li>Two parents, not descended from each other, modified in one parent only,
+but also modified locally.</li>
+<li>Two parents, modified in both to different values.</li>
+<li>Two parents, modified in both to the same value.</li>
+<li>Two parents, modified in both, and reverted in both back to the
+original text.</li>
+<li>Three parents, modified in only one</li>
+<li>Three parents, modified in only one, also modified locally.</li>
+<li>Three parents, modified in 2</li>
+<li>Three parents, modified in 2, and locally.</li>
+<li>Three parents, modified in 2, but one is a descendant of the other.</li>
+</ol>
+</div>
+<div class="section" id="performance-considerations">
+<h2>Performance considerations<a class="headerlink" href="#performance-considerations" title="Permalink to this headline">¶</a></h2>
+<p>Often we’ll want the last_modified information for multiple files, perhaps
+everything in a directory or in a whole tree.  It may be more efficient
+for the api to accommodate this.  Often the last_modified will be similar
+for multiple files, and if we process them all at once we can avoid some
+repeated work in calculating their heads.</p>
+</div>
+<div class="section" id="open-questions">
+<h2>Open questions<a class="headerlink" href="#open-questions" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>How does caching <code class="docutils literal notranslate"><span class="pre">find_heads</span></code> interact with cherry-picks?</li>
+</ul>
+<div class="section" id="possible-structure">
+<h3>Possible structure<a class="headerlink" href="#possible-structure" title="Permalink to this headline">¶</a></h3>
+<p>For a single file, if I am different from all parents, ‘new’. (Do not need
+to evaluate last modified).</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="btree_index_prefetch.html" title="BTree Index Prefetch"
+              >previous</a> |
+            <a href="content-filtering.html" title="Content Filtering"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/last-modified.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

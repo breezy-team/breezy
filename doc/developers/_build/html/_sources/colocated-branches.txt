@@ -1,0 +1,129 @@
+co-located branches
+===================
+
+At the moment, each Bazaar branch has a separate directory in the file
+system. While this works well, and makes it very easy to discover
+branches there are several situations where it might be useful to also
+support multiple branches under the same file system directory.
+
+Rationale
+---------
+
+Allowing multiple branches to live under the same directory in the file
+system means that it is possible to very easily share the same working
+tree and repository between those branches, without having a lot of fs
+infrastructure.
+
+Git and Mercurial (can) store multiple branches under a single directory
+in the file system - per repository, so to speak. In order for this to
+be accessible in Bazaar, Bazaar needs to have the right APIs and UI for
+accessing these branches.
+
+Use Cases
+---------
+
+Carla has a large C-based project with a large tree and a lot of .o
+files that get generated as part of her build process. She doesn't want
+to create a new working tree for each new branch but simply uses "bzr
+switch" to switch between the different colocated branches that all use
+the same working tree.
+
+Brad has a single project with a lot of related branches. He works on
+them and occasionally pushes all of those branches to a remote host
+using a single push command.
+
+Joe follows one of his co-workers local branches in Mercurial by pulling
+into Bazaar.
+
+Implementation
+--------------
+
+UI Changes
+~~~~~~~~~~
+
+Bazaar URLs need to have some way to address colocated branches in
+directories that contain multiple branches.
+
+Per RFC3986 we have picked the comma (",") to allow the specification of
+colocated branch names. Comma's in path names would have to be
+urlencoded at first to avoid ambiguity, though perhaps it would be
+possible to support heuristics later when interpreting user-specified URLs.
+
+An example URL would be:
+
+ bzr://bazaar.launchpad.net/~jelmer/bzr/bzr.dev,colo-urls
+
+The segment after the comma will initially be interpreted as a colocated
+branch name but we would like to keep the option to allow
+key=value style specifications in the future and DWIM for segments that
+do not contain an =. Following the RFC the comma would be interpreted within
+the scope of a path segment. In other words, in the URL:
+
+ git://git.debian.org/pkg-python-debian/python-debian.git,unstable/README
+
+unstable is interpreted as the colocated branch living in the python-debian.git
+control directory; README is a path inside of the branch.
+
+Control directories will also have the notion of an "active" branch. This is
+the branch that is being used by a working tree, if present and the branch
+that will be used if no explicit colocated branch is specified. The
+active branch support makes it easier to deal with existing bzrdirs and
+is useful when accessing foreign control directories that have the concept
+as well.
+
+A new command 'bzr rmbranch' needs to be added to make it possible to
+remove colocated branches, as this won't be possible by simple
+directory removal, at least not of a user-visible directory.
+
+Code Changes
+~~~~~~~~~~~~
+
+BzrDirFormat will need a supports_colocated_branches property that
+indicates whether a format supports the creation, removal and accessing of
+colocated branches.
+
+Several methods on BzrDir will need to be updated to take an option branch_name
+parameter. If this parameter is not specified or None, the active branch
+will be used.
+
+The methods that will have to be extended are:
+
+ * BzrDir.open_branch()
+ * BzrDir.create_branch()
+ * BzrDir.destroy_branch()
+ * BzrDir.get_branch_transport()
+
+ * BranchFormat.initialise()
+ * BranchFormat.open()
+
+A new BzrDir.list_branches() method will return all colocated branches
+present in a control directory.
+
+Any URL interpreting methods (e.g. Branch.open) will need to be updated
+to extract a colocated branch name and need to pass that into the
+relevant methods.
+
+Existing callers of BzrDir.{create,open,destroy}_branch() need to
+be updated to pass in branch names and optionally be changed to use
+BzrDir.list_branches().
+
+Schema Changes
+--------------
+
+No format changes are necessary at first; at least, even if Bazaar
+provides the right infrastructure it doesn't have to support this
+feature in its own file formats.
+
+Eventually, Bazaar could easily support colocated branches by just
+creating a new branch transport for each colocated branch and have a
+"regular" branch live there. This would require something like
+BzrDirMeta2 though. An example of this is implemented in the
+lp:bzr-colocated plugin
+
+Further integration
+-------------------
+
+Loggerhead and Launchpad need to be updated to show colocated branches
+(perhaps in a similar way as they would show tags?).
+
+qbzr/bzr-gtk need to be updated to support colocated branches.
