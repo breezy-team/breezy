@@ -1,0 +1,32 @@
+Storage Formats
+===============
+
+
+To ensure that older clients do not access data incorrectly,
+Breezy's policy is to introduce a new storage format whenever
+new features requiring new metadata are added. New storage
+formats may also be introduced to improve performance and
+scalability.
+
+The newest format, 2a, is highly recommended. If your
+project is not using 2a, then you should suggest to the
+project owner to upgrade.
+
+
+.. note::
+
+   Some of the older formats have two variants:
+   a plain one and a rich-root one. The latter include an additional
+   field about the root of the tree. There is no performance cost
+   for using a rich-root format but you cannot easily merge changes
+   from a rich-root format into a plain format. As a consequence,
+   moving a project to a rich-root format takes some co-ordination
+   in that all contributors need to upgrade their repositories
+   around the same time. 2a and all future formats will be
+   implicitly rich-root.
+
+See :doc:`current-formats-help` for the complete list of
+currently supported formats. See :doc:`other-formats-help` for
+descriptions of any available experimental and deprecated formats.
+
+

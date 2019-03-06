@@ -1,0 +1,166 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Using Breezy with GitHub &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Using Breezy with Launchpad" href="using_breezy_with_launchpad.html" />
+    <link rel="prev" title="Breezy Tutorial" href="tutorial.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="tutorial.html" title="Breezy Tutorial"
+             accesskey="P">previous</a> |
+          <a href="using_breezy_with_launchpad.html" title="Using Breezy with Launchpad"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="using-breezy-with-github">
+<h1>Using Breezy with GitHub<a class="headerlink" href="#using-breezy-with-github" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="github-the-largest-code-hosting-site">
+<h2>GitHub: the largest code-hosting site<a class="headerlink" href="#github-the-largest-code-hosting-site" title="Permalink to this headline">¶</a></h2>
+<p>This tutorial looks at how Breezy and GitHub can be used together.</p>
+<div class="section" id="accessing-code-in-github-using-breezy">
+<h3>Accessing code in GitHub using Breezy<a class="headerlink" href="#accessing-code-in-github-using-breezy" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="getting-the-code-for-a-project">
+<h2>Getting the code for a project<a class="headerlink" href="#getting-the-code-for-a-project" title="Permalink to this headline">¶</a></h2>
+<p>Breezy users can grab code from GitHub using regular GitHub URLs:</p>
+<blockquote>
+<div>brz branch git://github.com/owner/name</div></blockquote>
+<p>where <cite>owner</cite> is the name of the owner and <cite>name</cite> is the repository name. Here are some examples:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">inkscape</span><span class="o">/</span><span class="n">inkscape</span>
+<span class="n">brz</span> <span class="n">branch</span> <span class="n">git</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">KDE</span><span class="o">/</span><span class="n">amarok</span>
+<span class="n">brz</span> <span class="n">branch</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">python</span><span class="o">/</span><span class="n">cpython</span>
+</pre></div>
+</div>
+<p>You can then browse the code locally using your favorite editor or IDE and
+change the code if you wish.</p>
+<p>To access a non-default branch, specify the ‘branch’ segment parameter:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">inkscape</span><span class="o">/</span><span class="n">inkscape</span><span class="p">,</span><span class="n">branch</span><span class="o">=</span><span class="n">backports</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="publishing-your-changes">
+<h2>Publishing your changes<a class="headerlink" href="#publishing-your-changes" title="Permalink to this headline">¶</a></h2>
+<p>Having fixed that annoying bug or added that cool feature you’ve always
+wanted, it’s time to impress your friends and make the world a better
+place by making your code available to others. As explained earlier,
+GitHub is a code hosting service so you can push your
+branch to it and others can access your code from there.</p>
+<p>In the GitHub web UI, you can create a “fork” of an upstream repository. For
+example, if user “jelmer” forked the inkscape repository at
+<a class="reference external" href="https://github.com/inkscape/inkscape">https://github.com/inkscape/inkscape</a> then the fork would be at
+<a class="reference external" href="https://github.com/jelmer/inkscape">https://github.com/jelmer/inkscape</a>.</p>
+<p>You can then push your changes to a branch like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">push</span> <span class="n">git</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">jelmer</span><span class="o">/</span><span class="n">inkscape</span><span class="p">,</span><span class="n">branch</span><span class="o">=</span><span class="n">my</span><span class="o">-</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>Others can then download your code like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">git</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">jelmer</span><span class="o">/</span><span class="n">inkscape</span><span class="p">,</span><span class="n">branch</span><span class="o">=</span><span class="n">my</span><span class="o">-</span><span class="n">branch</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="associating-branches-with-github-issues">
+<h2>Associating branches with GitHub issues<a class="headerlink" href="#associating-branches-with-github-issues" title="Permalink to this headline">¶</a></h2>
+<p>The standard Breezy bugtracking functionality can also be used for GitHub
+issues.</p>
+<p>When you commit using Breezy, use the –fixes option like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">commit</span> <span class="o">--</span><span class="n">fixes</span> <span class="n">github</span><span class="p">:</span><span class="n">inkscape</span><span class="o">/</span><span class="n">inkscape</span><span class="o">/</span><span class="mi">1234</span>
+</pre></div>
+</div>
+<p>where 1234 is the bug ID. This will add some metadata to the commit message.</p>
+<p>You can also define a short name for a specific project, by adding an alias for
+a project. For example, to add an alias for dulwich:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">config</span> <span class="n">bugtracker_dulwich_url</span><span class="o">=</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">dulwich</span><span class="o">/</span><span class="n">dulwich</span><span class="o">/</span><span class="n">issues</span><span class="o">/</span><span class="p">{</span><span class="nb">id</span><span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="tutorial.html" title="Breezy Tutorial"
+              >previous</a> |
+            <a href="using_breezy_with_launchpad.html" title="Using Breezy with Launchpad"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/tutorials/using_breezy_with_github.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,300 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>merge &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="missing" href="missing-help.html" />
+    <link rel="prev" title="ls" href="ls-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="ls-help.html" title="ls"
+             accesskey="P">previous</a> |
+          <a href="missing-help.html" title="missing"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="merge">
+<h1>merge<a class="headerlink" href="#merge" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Perform a three-way merge.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz merge [LOCATION]</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-c <var>ARG</var></span>, <span class="option">--change=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Select changes introduced by the specified revision.
+See also “help revisionspec”.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-d <var>ARG</var></span>, <span class="option">--directory=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Branch to merge into, rather than the one containing
+the working directory.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--force</span></kbd></td>
+<td><p class="first last">Merge even if the destination tree has uncommitted
+changes.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
+<td><p class="first last">Show help message.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-i</span>, <span class="option">--interactive</span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Select changes interactively.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--preview</span></kbd></td>
+<td><p class="first last">Instead of merging, show a diff of the merge.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--pull</span></kbd></td>
+<td><p class="first last">If the destination is already completely merged into
+the source, pull from the source rather than merging.
+When this happens, you do not need to commit the
+result.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
+<td><p class="first last">Only display errors and warnings.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--remember</span></kbd></td>
+<td><p class="first last">Remember the specified location as a default.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--reprocess</span></kbd></td>
+<td><p class="first last">Reprocess to reduce spurious conflicts.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-r <var>ARG</var></span>, <span class="option">--revision=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">See “help revisionspec” for details.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--show-base</span></kbd></td>
+<td><p class="first last">Show base revision text in conflicts.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--uncommitted</span></kbd></td>
+<td><p class="first last">Apply uncommitted changes from a working copy, instead
+of branch changes.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--usage</span></kbd></td>
+<td><p class="first last">Show usage message and options.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
+<td><p class="first last">Display more information.</p>
+</td></tr>
+</tbody>
+</table>
+<dl class="docutils">
+<dt>Merge algorithm:</dt>
+<dd><table class="first last docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">--merge-type=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Select a particular merge algorithm.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--diff3</span></kbd></td>
+<td><p class="first last">Merge using external diff3.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--lca</span></kbd></td>
+<td><p class="first last">LCA-newness merge.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--merge3</span></kbd></td>
+<td><p class="first last">Native diff3-style merge.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--weave</span></kbd></td>
+<td><p class="first last">Weave-based merge.</p>
+</td></tr>
+</tbody>
+</table>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">The source of the merge can be specified either in the form of a branch,
+or in the form of a path to a file containing a merge directive generated
+with brz send. If neither is specified, the default is the upstream branch
+or the branch most recently merged using –remember.  The source of the
+merge may also be specified in the form of a path to a file in another
+branch:  in this case, only the modifications to that file are merged into
+the current working tree.</p>
+<p>When merging from a branch, by default brz will try to merge in all new
+work from the other branch, automatically determining an appropriate base
+revision.  If this fails, you may need to give an explicit base.</p>
+<p>To pick a different ending revision, pass “–revision OTHER”.  brz will
+try to merge in all new work up to and including revision OTHER.</p>
+<p>If you specify two values, “–revision BASE..OTHER”, only revisions BASE
+through OTHER, excluding BASE but including OTHER, will be merged.  If this
+causes some revisions to be skipped, i.e. if the destination branch does
+not already contain revision BASE, such a merge is commonly referred to as
+a “cherrypick”. Unlike a normal merge, Breezy does not currently track
+cherrypicks. The changes look like a normal commit, and the history of the
+changes from the other branch is not stored in the commit.</p>
+<p>Revision numbers are always relative to the source branch.</p>
+<p>Merge will do its best to combine the changes in two branches, but there
+are some kinds of problems only a human can fix.  When it encounters those,
+it will mark a conflict.  A conflict means that you need to fix something,
+before you can commit.</p>
+<p>Use brz resolve when you have fixed a problem.  See also brz conflicts.</p>
+<p>If there is no default branch set, the first merge will set it (use
+–no-remember to avoid setting it). After that, you can omit the branch
+to use the default.  To change the default, use –remember. The value will
+only be saved if the remote location can be accessed.</p>
+<p>The results of the merge are placed into the destination working
+directory, where they can be reviewed (with brz diff), tested, and then
+committed to record the result of the merge.</p>
+<p>merge refuses to run if there are any uncommitted changes, unless
+–force is given.  If –force is given, then the changes from the source
+will be merged with the current working tree, including any uncommitted
+changes in the tree.  The –force option can also be used to create a
+merge revision which has more than two parents.</p>
+<p>If one would like to merge changes from the working tree of the other
+branch without merging any committed revisions, the –uncommitted option
+can be given.</p>
+<p>To select only some changes to merge, use “merge -i”, which will prompt
+you to apply each diff hunk and file change, similar to “shelve”.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Examples:</th><td class="field-body"><p class="first">To merge all new revisions from brz.dev:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span> <span class="o">../</span><span class="n">brz</span><span class="o">.</span><span class="n">dev</span>
+</pre></div>
+</div>
+<p>To merge changes up to and including revision 82 from brz.dev:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span> <span class="o">-</span><span class="n">r</span> <span class="mi">82</span> <span class="o">../</span><span class="n">brz</span><span class="o">.</span><span class="n">dev</span>
+</pre></div>
+</div>
+<p>To merge the changes introduced by 82, without previous changes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span> <span class="o">-</span><span class="n">r</span> <span class="mf">81.</span><span class="o">.</span><span class="mi">82</span> <span class="o">../</span><span class="n">brz</span><span class="o">.</span><span class="n">dev</span>
+</pre></div>
+</div>
+<p>To apply a merge directive contained in /tmp/merge:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">merge</span>
+</pre></div>
+</div>
+<p>To create a merge revision with three parents from two branches
+feature1a and feature1b:</p>
+<blockquote>
+<div><p>brz merge ../feature1a
+brz merge ../feature1b –force
+brz commit -m ‘revision with three parents’</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">See also:</th><td class="field-body"><p class="first last"><a class="reference internal" href="remerge-help.html"><span class="doc">remerge</span></a>, <a class="reference internal" href="send-help.html"><span class="doc">send</span></a>, <a class="reference internal" href="status-flags-help.html"><span class="doc">status-flags</span></a>, <a class="reference internal" href="update-help.html"><span class="doc">update</span></a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="ls-help.html" title="ls"
+              >previous</a> |
+            <a href="missing-help.html" title="missing"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/merge-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

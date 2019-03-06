@@ -1,0 +1,161 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Migration &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Extending Bazaar with Hooks and Plugins" href="hooks-plugins.html" />
+    <link rel="prev" title="Other Setups" href="other-setups.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="other-setups.html" title="Other Setups"
+             accesskey="P">previous</a> |
+          <a href="hooks-plugins.html" title="Extending Bazaar with Hooks and Plugins"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="migration">
+<h1>Migration<a class="headerlink" href="#migration" title="Permalink to this headline">¶</a></h1>
+<p>Migrating between version control systems can be a complicated process, and
+Bazaar has extensive documentation on the process at
+<a class="reference external" href="http://doc.bazaar.canonical.com/migration/en">http://doc.bazaar.canonical.com/migration/en</a> and we won’t attempt to repeat that
+here.  We will try to give a few motivating examples for conversion from
+Mercurial and Subversion.</p>
+<div class="section" id="fast-import">
+<h2>Fast Import<a class="headerlink" href="#fast-import" title="Permalink to this headline">¶</a></h2>
+<p>In many projects wishing to use Bazaar, there is pre-existing history for the
+codebase that should be taken into consideration.  Bazaar leverages an
+interchange format originally developed for Git called <cite>fast-import</cite> to
+provide migration strategies for many other version control systems.  To
+work with fast-import files, Bazaar needs the <a class="reference external" href="http://launchpad.net/bzr-fastimport">fastimport</a> plugin.  This can
+be installed as with any Bazaar plugin.</p>
+<p>The way that fast-import can be used for migration is to export the existing
+history into a fast-import file, then use the <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">fast-import</span></code> command.
+The <cite>fastimport</cite> plugin includes exporters for Subversion, CVS, Git, Mercurial
+and darcs, accessible as the <code class="docutils literal notranslate"><span class="pre">fast-export-from-XXX</span></code> commands.  Note that
+<code class="docutils literal notranslate"><span class="pre">fast-import</span></code> should not be used in a branch with existing history.</p>
+<p>Assuming that ProjectX was first developed in Mercurial before switching to
+Bazaar, and that the Mercurial repository is in <code class="docutils literal notranslate"><span class="pre">/srv/hg/projectx</span></code>, the
+following commands will import that history into a newly created <code class="docutils literal notranslate"><span class="pre">trunk</span></code>
+branch.  (Recall that in <a class="reference external" href="simple-setups.html#further-configuration">Further Configuration</a> we created the
+<code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx</span></code> directory as a shared repository.)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /srv/bzr/projectx
+$ brz fast-export-from-hg ../../hg/projectx projectx.fi
+$ brz init trunk
+$ brz fast-import projectx.fi trunk
+</pre></div>
+</div>
+</div>
+<div class="section" id="subversion-conversion">
+<h2>Subversion Conversion<a class="headerlink" href="#subversion-conversion" title="Permalink to this headline">¶</a></h2>
+<p>As the most common centralized version control system, migration from
+Subversion is particularly important for any <em>new</em> version control system.
+Bazaar’s <a class="reference external" href="http://launchpad.net/bzr-svn">svn</a> plugin provides tools for interaction with Subversion
+projects.  In fact, Bazaar can be used transparently with projects stored in
+Subversion, but that is beyond the scope of this document.  (See
+<a class="reference external" href="http://doc.bazaar.canonical.com/migration/en/foreign/bzr-on-svn-projects.html">http://doc.bazaar.canonical.com/migration/en/foreign/bzr-on-svn-projects.html</a> for
+more on that subject.)  What is relevant here is the <code class="docutils literal notranslate"><span class="pre">svn-import</span></code> command
+provided by that plugin.  This can import an entire subversion repository
+including tags and branches, particularly if they are stored in Subversion’s
+recommended directory structure: <code class="docutils literal notranslate"><span class="pre">/tags/</span></code>, <code class="docutils literal notranslate"><span class="pre">/branches/</span></code> and <code class="docutils literal notranslate"><span class="pre">/trunk/</span></code>.</p>
+<p>This command has flexible ways to specify what paths within the Subversion
+repository contain branches and which contain tags.  For example, the
+recommended layout for Subversion projects (called <code class="docutils literal notranslate"><span class="pre">trunk</span></code> by the svn
+plugin) could be specified in <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/subversion.conf</span></code> as</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">203</span><span class="n">ae883</span><span class="o">-</span><span class="n">c723</span><span class="o">-</span><span class="mi">44</span><span class="n">c9</span><span class="o">-</span><span class="n">aabd</span><span class="o">-</span><span class="n">cb56e4f81c9a</span><span class="p">]</span>
+<span class="n">branches</span> <span class="o">=</span> <span class="n">branches</span><span class="o">/*</span>
+<span class="n">tags</span> <span class="o">=</span> <span class="n">tags</span><span class="o">/*</span>
+</pre></div>
+</div>
+<p>This allows substantially complicated Subversion repositories to be converted
+into a set of separate Bazaar branches.  After installing the svn plugin, see
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">svn-import</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">svn-layout</span></code>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="other-setups.html" title="Other Setups"
+              >previous</a> |
+            <a href="hooks-plugins.html" title="Extending Bazaar with Hooks and Plugins"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/admin-guide/migration.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

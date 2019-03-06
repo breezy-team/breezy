@@ -1,0 +1,220 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Debug Flags &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Environment Variables" href="env-variables-help.html" />
+    <link rel="prev" title="Current Storage Formats" href="current-formats-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="current-formats-help.html" title="Current Storage Formats"
+             accesskey="P">previous</a> |
+          <a href="env-variables-help.html" title="Environment Variables"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="debug-flags">
+<h1>Debug Flags<a class="headerlink" href="#debug-flags" title="Permalink to this headline">¶</a></h1>
+<p>These flags can be passed on the brz command line or (without the <code class="docutils literal notranslate"><span class="pre">-D</span></code>
+prefix) put in the <code class="docutils literal notranslate"><span class="pre">debug_flags</span></code> variable in <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code>.</p>
+<table class="docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>auth</var></span></kbd></td>
+<td>Trace authentication sections used.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>bytes</var></span></kbd></td>
+<td>Print out how many bytes were transferred</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>dirstate</var></span></kbd></td>
+<td>Trace dirstate activity (verbose!)</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>error</var></span></kbd></td>
+<td>Instead of normal error handling, always print a traceback
+on error.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>evil</var></span></kbd></td>
+<td>Capture call sites that do expensive or badly-scaling
+operations.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>fetch</var></span></kbd></td>
+<td>Trace history copying between repositories.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>filters</var></span></kbd></td>
+<td>Emit information for debugging content filtering.</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-D<var>forceinvdeltas</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td>Force use of inventory deltas during generic streaming fetch.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>graph</var></span></kbd></td>
+<td>Trace graph traversal.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>hashcache</var></span></kbd></td>
+<td>Log every time a working file is read to determine its hash.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>hooks</var></span></kbd></td>
+<td>Trace hook execution.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>hpss</var></span></kbd></td>
+<td>Trace smart protocol requests and responses.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>hpssdetail</var></span></kbd></td>
+<td>More hpss details.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>hpssvfs</var></span></kbd></td>
+<td>Traceback on vfs access to Remote objects.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>http</var></span></kbd></td>
+<td>Trace http connections, requests and responses.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>index</var></span></kbd></td>
+<td>Trace major index operations.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>knit</var></span></kbd></td>
+<td>Trace knit operations.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>lock</var></span></kbd></td>
+<td>Trace when lockdir locks are taken or released.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>noretry</var></span></kbd></td>
+<td>If a connection is reset, fail immediately rather than
+retrying the request.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>progress</var></span></kbd></td>
+<td>Trace progress bar operations.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>mem_dump</var></span></kbd></td>
+<td>Dump memory to a file upon an out of memory error.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>merge</var></span></kbd></td>
+<td>Emit information for debugging merges.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>no_apport</var></span></kbd></td>
+<td>Don’t use apport to report crashes.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>no_activity</var></span></kbd></td>
+<td>Don’t show transport activity indicator in progress bar.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>pack</var></span></kbd></td>
+<td>Emit information about pack operations.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>relock</var></span></kbd></td>
+<td>Emit a message every time a branch or repository object is
+unlocked then relocked the same way.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>sftp</var></span></kbd></td>
+<td>Trace SFTP internals.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>static_tuple</var></span></kbd></td>
+<td>Error when a tuple is used where a StaticTuple is expected</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>stream</var></span></kbd></td>
+<td>Trace fetch streams.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>strict_locks</var></span></kbd></td>
+<td>Trace when OS locks are potentially used in a non-portable
+manner.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>unlock</var></span></kbd></td>
+<td>Some errors during unlock are treated as warnings.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>IDS_never</var></span></kbd></td>
+<td>Never use InterDifferingSerializer when fetching.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-D<var>IDS_always</var></span></kbd></td>
+<td>Always use InterDifferingSerializer to fetch if appropriate
+for the format, even for non-local fetches.</td></tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="current-formats-help.html" title="Current Storage Formats"
+              >previous</a> |
+            <a href="env-variables-help.html" title="Environment Variables"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/debug-flags-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

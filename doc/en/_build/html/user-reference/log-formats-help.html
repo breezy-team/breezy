@@ -1,0 +1,136 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Log Formats &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Missing Extensions" href="missing-extensions-help.html" />
+    <link rel="prev" title="Location aliases" href="location-alias-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="location-alias-help.html" title="Location aliases"
+             accesskey="P">previous</a> |
+          <a href="missing-extensions-help.html" title="Missing Extensions"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="log-formats">
+<h1>Log Formats<a class="headerlink" href="#log-formats" title="Permalink to this headline">¶</a></h1>
+<p>A log format controls how information about each revision is displayed.
+The standard log formats are compared below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Feature</span>                 <span class="n">long</span>           <span class="n">short</span>         <span class="n">line</span>
+<span class="o">----------------------</span>  <span class="o">-------------</span>  <span class="o">------------</span>  <span class="o">-------------------</span>
+<span class="n">design</span> <span class="n">goal</span>             <span class="n">detailed</span> <span class="n">view</span>  <span class="n">concise</span> <span class="n">view</span>  <span class="mi">1</span> <span class="n">revision</span> <span class="n">per</span> <span class="n">line</span>
+<span class="n">committer</span>               <span class="n">name</span><span class="o">+</span><span class="n">email</span>     <span class="n">name</span> <span class="n">only</span>     <span class="n">name</span> <span class="n">only</span>
+<span class="n">author</span>                  <span class="n">name</span><span class="o">+</span><span class="n">email</span>     <span class="o">-</span>             <span class="o">-</span>
+<span class="n">date</span><span class="o">-</span><span class="n">time</span> <span class="nb">format</span>        <span class="n">full</span>           <span class="n">date</span> <span class="n">only</span>     <span class="n">date</span> <span class="n">only</span>
+<span class="n">commit</span> <span class="n">message</span>          <span class="n">full</span>           <span class="n">full</span>          <span class="n">top</span> <span class="n">line</span>
+<span class="n">tags</span>                    <span class="n">yes</span>            <span class="n">yes</span>           <span class="n">yes</span>
+<span class="n">merges</span> <span class="n">indicator</span>        <span class="o">-</span>              <span class="n">yes</span>           <span class="o">-</span>
+<span class="n">status</span><span class="o">/</span><span class="n">delta</span>            <span class="n">optional</span>       <span class="n">optional</span>      <span class="o">-</span>
+<span class="n">diff</span><span class="o">/</span><span class="n">patch</span>              <span class="n">optional</span>       <span class="n">optional</span>      <span class="o">-</span>
+<span class="n">revision</span><span class="o">-</span><span class="nb">id</span>             <span class="n">optional</span>       <span class="n">optional</span>      <span class="o">-</span>
+<span class="n">branch</span> <span class="n">nick</span>             <span class="n">yes</span>            <span class="o">-</span>             <span class="o">-</span>
+<span class="n">foreign</span> <span class="n">vcs</span> <span class="n">properties</span>  <span class="n">yes</span>            <span class="n">yes</span>           <span class="o">-</span>
+<span class="n">preferred</span> <span class="n">levels</span>        <span class="nb">all</span>            <span class="mi">1</span>             <span class="mi">1</span>
+<span class="n">digital</span> <span class="n">signature</span>       <span class="n">optional</span>       <span class="o">-</span>             <span class="o">-</span>
+</pre></div>
+</div>
+<p>The default format is <code class="docutils literal notranslate"><span class="pre">long</span></code>. To change this, define the <code class="docutils literal notranslate"><span class="pre">log_format</span></code>
+setting in the <code class="docutils literal notranslate"><span class="pre">[DEFAULT]</span></code> section of <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> like this (say):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">log_format</span> <span class="o">=</span> <span class="n">short</span>
+</pre></div>
+</div>
+<p>Alternatively, to change the log format used for a given query, use the
+–long, –short or –line options.</p>
+<p>If one of the standard log formats does not meet your needs, additional
+formats can be provided by plugins.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="location-alias-help.html" title="Location aliases"
+              >previous</a> |
+            <a href="missing-extensions-help.html" title="Missing Extensions"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/log-formats-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

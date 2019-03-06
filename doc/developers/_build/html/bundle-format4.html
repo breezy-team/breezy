@@ -1,0 +1,392 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Merge Directive format 2 and Bundle format 4 &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="merge-directive-format-2-and-bundle-format-4">
+<h1>Merge Directive format 2 and Bundle format 4<a class="headerlink" href="#merge-directive-format-2-and-bundle-format-4" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Date:</th><td class="field-body">2007-06-21</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h2>
+<p>Merge Directive format 2 represents a request to perform a certain merge.  It
+provides access to all the data necessary to perform that merge, by including
+a branch URL or a bundle payload.  It typically will include a preview of
+what applying the patch would do.</p>
+<p>Bundle Format 4 is designed to be a compact format for storing revision
+metadata that can be generated quickly and installed into a repository
+efficiently.  It is not intended to be human-readable.</p>
+</div>
+<div class="section" id="note">
+<h2>Note<a class="headerlink" href="#note" title="Permalink to this headline">¶</a></h2>
+<p>These two formats, taken together, can be viewed as the successor of Bundle
+format 0.9, so their specifications are combined.  It is expected that in the
+future, bundle and merge-directive formats will vary independently.</p>
+</div>
+<div class="section" id="bundle-format-name">
+<h2>Bundle Format Name<a class="headerlink" href="#bundle-format-name" title="Permalink to this headline">¶</a></h2>
+<p>This is the fourth bundle format to see public use.  Previous versions were
+0.7, 0.8, and 0.9.  Only 0.7’s version number was aligned with a Bazaar
+release.</p>
+</div>
+<div class="section" id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Container format 1</li>
+<li>Multiparent diffs</li>
+<li>Bencode</li>
+<li>Patch-RIO</li>
+</ul>
+</div>
+<div class="section" id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+<p>Merge Directives fulfil the role previous bundle formats had of requesting a
+merge to be performed, but are a more flexible way of doing so.  With the
+introduction of these two formats, there is a clear split between “directive”,
+which is a request to merge (and therefore signable), and “bundle”, which is
+just data.</p>
+<p>Merge Directive format 2 may provide a patch preview of the change being
+requested.  If a preview is supplied, the receiving client will verify that
+the actual change matches the preview.</p>
+<p>Merge Directive format 2 also includes a testament hash, to ensure that if a
+branch is used, the branch cannot be subverted to cause the wrong changes to be
+applied.</p>
+<p>Bundle format 4 is designed to trade human-readability for speed and
+compactness.  It does not contain a human-readable “prelude” patch.</p>
+</div>
+<div class="section" id="merge-directive-2-contents">
+<h2>Merge Directive 2 Contents<a class="headerlink" href="#merge-directive-2-contents" title="Permalink to this headline">¶</a></h2>
+<p>This format consists of three sections, in the following order.</p>
+<div class="section" id="patch-rio-command-section">
+<h3>Patch-RIO command section<a class="headerlink" href="#patch-rio-command-section" title="Permalink to this headline">¶</a></h3>
+<p>This section is identical to the corresponding section in Format 1 merge
+directives, except as noted below.  It is mandatory.  It is terminated by a
+line reading <code class="docutils literal notranslate"><span class="pre">#</span></code> that is not preceeded by a line ending with <code class="docutils literal notranslate"><span class="pre">\</span></code>.</p>
+<p>In order to support cherry-picking and patch comparison, this format adds a new
+piece of information, the <code class="docutils literal notranslate"><span class="pre">base_revision_id</span></code>.  This is a suggested base
+revision for merging.  It may be supplied by the user.  If not, it is
+calculated using the standard merge base algorithm, with the <code class="docutils literal notranslate"><span class="pre">revision_id</span></code>
+and target branch’s <code class="docutils literal notranslate"><span class="pre">last_revision</span></code> as its inputs.</p>
+<p>When merging, clients should use the <code class="docutils literal notranslate"><span class="pre">base_revision_id</span></code> when it is not
+already present in the ancestry of the <code class="docutils literal notranslate"><span class="pre">last_revision</span></code> of the target branch.
+If it is already present, clients should calculate a merge base in the normal
+way.</p>
+</div>
+<div class="section" id="patch-preview-section">
+<h3>Patch preview section<a class="headerlink" href="#patch-preview-section" title="Permalink to this headline">¶</a></h3>
+<p>This section is optional.  It begins with the line <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">Begin</span> <span class="pre">patch</span></code>.  It is
+terminated by the end-of-file or by the beginning of a bundle section.</p>
+<p>Its contents are a unified diff, as per the <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">diff</span></code> command.  The FROM
+revision is the <code class="docutils literal notranslate"><span class="pre">base_revision_id</span></code> specified in the Patch-RIO section.</p>
+</div>
+<div class="section" id="bundle-section">
+<h3>Bundle section<a class="headerlink" href="#bundle-section" title="Permalink to this headline">¶</a></h3>
+<p>This section is optional, but if it is not supplied, a source_branch must be
+supplied.  It begins with the line <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">Begin</span> <span class="pre">bundle</span></code>, and is terminated by the
+end-of-file.</p>
+<p>The contents are a base-64 encoded bundle.  This may be any bundle format, but
+formats 4+ are strongly recommended.  The base revision is the newest revision
+in the source branch which is an ancestor of all revisions not present in
+target which are ancestors of revision_id.</p>
+<p>This base revision may or may not be the same as the <code class="docutils literal notranslate"><span class="pre">base_revision_id</span></code>.  In
+particular, the <code class="docutils literal notranslate"><span class="pre">base_revision_id</span></code> may specify a cherry-pick, but all the
+ancestors of the <code class="docutils literal notranslate"><span class="pre">base_revision_id</span></code> should be installed in the target
+repository before performing such a merge.</p>
+</div>
+</div>
+<div class="section" id="bundle-4-contents">
+<h2>Bundle 4 Contents<a class="headerlink" href="#bundle-4-contents" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar revision bundles  begin with a format marker that reads
+<code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">Bazaar</span> <span class="pre">revision</span> <span class="pre">bundle</span> <span class="pre">v4</span></code> in plaintext.  The remainder of the file is a
+<code class="docutils literal notranslate"><span class="pre">Bazaar</span> <span class="pre">pack</span> <span class="pre">format</span> <span class="pre">1</span></code> container.  The container is compressed using bzip2.</p>
+<p>Putting the format marker in plaintext ensures that old clients will give good
+diagnostics, but renders the file unreadable by standard bzip2 utilities.</p>
+<div class="section" id="serialization">
+<h3>Serialization<a class="headerlink" href="#serialization" title="Permalink to this headline">¶</a></h3>
+<p>Format 4 records revision and inventory records in their repository
+serialization format.  This minimizes translation and compression costs
+in the common case, where the sender and receiver use the same serialization
+format for their repository. Steps have been taken to ensure a faithful
+conversion when serialization formats are mismatched.</p>
+</div>
+<div class="section" id="bundle-records">
+<h3>Bundle Records<a class="headerlink" href="#bundle-records" title="Permalink to this headline">¶</a></h3>
+<p>The bundle format creates a single bundle-level record out of two container
+records.  The first container record contains metainfo as a Bencoded dict.  The
+second container record contains the body.</p>
+<p>The bundle record name is associated with the metainfo record.  The body record
+is anonymous.</p>
+</div>
+<div class="section" id="record-metainfo">
+<h3>Record metainfo<a class="headerlink" href="#record-metainfo" title="Permalink to this headline">¶</a></h3>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">record_kind:</th><td class="field-body">The storage strategy of the record.  May be <code class="docutils literal notranslate"><span class="pre">fulltext</span></code> (the
+record body contains the full text of the value), <code class="docutils literal notranslate"><span class="pre">mpdiff</span></code> (the record
+body contains a multi-parent diff of the value), or <code class="docutils literal notranslate"><span class="pre">header</span></code> (no record
+body).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">parents:</th><td class="field-body">Used in fulltext and mpdiff records.  The revisions that should be
+noted as parents of this revision in the repository.  For mpdiffs, this is
+also the list of build-parents.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">sha1:</th><td class="field-body">Used in mpdiff records.  The sha-1 hash of the full-text value.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="bundle-record-naming">
+<h3>Bundle record naming<a class="headerlink" href="#bundle-record-naming" title="Permalink to this headline">¶</a></h3>
+<p>All bundle records have a single name, which is associated with the metainfo
+container record.  Records are named according to the body’s content-kind,
+revision-id, and file-id.</p>
+<p>Content-kind may be one of:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">file:</th><td class="field-body">a version of a user file</td>
+</tr>
+<tr class="field-even field"><th class="field-name">inventory:</th><td class="field-body">the tree inventory</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">revision:</th><td class="field-body">the revision metadata for a revision</td>
+</tr>
+<tr class="field-even field"><th class="field-name">signature:</th><td class="field-body">the revision signature for a revision</td>
+</tr>
+</tbody>
+</table>
+<p>Names are constructed like so: <code class="docutils literal notranslate"><span class="pre">content-kind/revision-id/file-id</span></code>.  Values
+are iterpreted left-to-right, so if two values are present, they are
+content-kind and revision-id.
+A record has a file-id if-and-only-if it is a file record.
+Info records have no revision or file-id.
+Inventory, revision and signature all have content-kind and revision-id, but
+no file-id.</p>
+</div>
+<div class="section" id="layout">
+<h3>Layout<a class="headerlink" href="#layout" title="Permalink to this headline">¶</a></h3>
+<p>The first record is an info/header record.</p>
+<p>The subsequent records are mpdiff file records.  The are ordered first by file
+id, then in topological order by revision-id.</p>
+<p>The next records are mpdiff inventory records.  They are topologically sorted.</p>
+<p>The next records are revision and signature fulltexts.  They are interleaved
+and topologically sorted.</p>
+</div>
+<div class="section" id="info-record">
+<h3>Info record<a class="headerlink" href="#info-record" title="Permalink to this headline">¶</a></h3>
+<p>The info record has type <code class="docutils literal notranslate"><span class="pre">header</span></code>.  It has no revision_id or file_id.
+Its metadata contains:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">serializer:</th><td class="field-body">A string describing the serialization format used for inventory
+and revision data.  May be <code class="docutils literal notranslate"><span class="pre">xml5</span></code>, <code class="docutils literal notranslate"><span class="pre">xml6</span></code> or <code class="docutils literal notranslate"><span class="pre">xml7</span></code>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">supports_rich_root:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body">1 if the source repository supports rich roots,
+0 otherwise.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="implementation-notes">
+<h3>Implementation notes<a class="headerlink" href="#implementation-notes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>knit deltas contain almost enough information to extract the original
+SequenceMatcher.get_matching_blocks() call used to produce them.  Combining
+that information with the relevant fulltexts allows us to avoid performing
+sequence matching on any fulltexts for which we have deltas.</li>
+<li>MultiParent deltas contain <code class="docutils literal notranslate"><span class="pre">get_matching_blocks</span></code> output almost verbatim,
+but if there is more than one parent, the information about the leftmost
+parent may be incomplete.  However, for single-parent multiparent diffs, we
+can extract the <code class="docutils literal notranslate"><span class="pre">SequenceMatcher.get_matching_blocks</span></code> output, and therefore
+<code class="docutils literal notranslate"><span class="pre">the</span> <span class="pre">SequenceMatcher.get_opcodes</span></code> output used to create knit deltas.</li>
+</ul>
+</div>
+<div class="section" id="installing-data-across-serialization-mismatches">
+<h3>Installing data across serialization mismatches<a class="headerlink" href="#installing-data-across-serialization-mismatches" title="Permalink to this headline">¶</a></h3>
+<p>In practice, there cannot be revision serialization mismatches, because the
+serialization of revisions has been consistent in serializations 5-7</p>
+<p>If there is a mismatch in inventory serialization formats, the receiver can</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>extract the inventory objects for the parents</li>
+<li>serialize them using the bundle serialize</li>
+<li>apply the mpdiff</li>
+<li>calculate the fulltext sha1</li>
+<li>compare the calculated sha1 to the expected sha1</li>
+<li>deserialize using the bundle serializer</li>
+<li>serialize using the repository serializer</li>
+<li>add to the repository</li>
+</ol>
+</div></blockquote>
+<p>This is much slower, of course.  But since the since the fulltext is verified
+at step 5, it should be just as safe as any other conversion.</p>
+</div>
+<div class="section" id="model-differences">
+<h3>Model differences<a class="headerlink" href="#model-differences" title="Permalink to this headline">¶</a></h3>
+<p>Note that there may be model differences requiring additional changes.  These
+differences are described by the “supports_rich_root” value in the info record.</p>
+<p>A subset of xml6 and xml7 records are compatible with xml5 (i.e. those that
+were converted from xml5 originally).</p>
+<p>When installing from a bundle whose serializer supports tree references to a
+repository that does not support tree references, clients should halt if they
+encounter a record containing a tree reference.</p>
+<p>When installing from a supports_rich_root bundle to a repository that does not
+support rich roots, clients should halt if they encounter an inventory record
+whose root directory revision-id does not match the inventory revision id.</p>
+<p>When installing from a bundle that does not support rich roots to a repository
+that does, additional knits should be added for the root directory, with a
+revision for each inventory revision.</p>
+</div>
+<div class="section" id="validating-preview-patches">
+<h3>Validating preview patches<a class="headerlink" href="#validating-preview-patches" title="Permalink to this headline">¶</a></h3>
+<p>When applying a merge directive that includes a preview, clients should
+verify that the preview matches the changes requested by the merge directive.</p>
+<p>In order to do this, the client should generate a diff from the
+<code class="docutils literal notranslate"><span class="pre">base_revision_id</span></code> to the <code class="docutils literal notranslate"><span class="pre">revision_id</span></code>.  This diff should be compared
+against the preview patch, making allowances for the fact that whitespace
+munging may have occurred.</p>
+<p>One form of whitespace munging that has been observed is line-ending
+conversion.  Certain mail clients such as Evolution do not respect the
+line-endings of text attachments.  Since line-ending conversion is unlikely to
+alter the meaning of a patch, it seems safe to ignore line endings when
+comparing the preview patch.</p>
+<p>Another form of whitespace munging that has been observed is
+trailing-whitespace stripping.  Again, it seems unlikely that stripping
+trailing whitespace could alter the meaning of a patch.  Such a distinction
+is also invisible to readers, so ignoring it does not create a new threat.  So
+it seems reasonable to ignore trailing whitespace when comparing the patches.</p>
+<p>Other mungings are possible, but it is recommended not to implement support
+for them until they have been observed.  Each of these changes makes the
+comparison more approximate, and the more approximate it becomes, the easier it
+is to provide a preview patch that does not match the requested changes.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/bundle-format4.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

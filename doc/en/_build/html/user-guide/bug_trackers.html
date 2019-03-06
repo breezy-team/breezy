@@ -1,0 +1,150 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bug trackers &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Specifying revisions" href="specifying_revisions.html" />
+    <link rel="prev" title="Web browsing" href="web_browsing.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="web_browsing.html" title="Web browsing"
+             accesskey="P">previous</a> |
+          <a href="specifying_revisions.html" title="Specifying revisions"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bug-trackers">
+<h1>Bug trackers<a class="headerlink" href="#bug-trackers" title="Permalink to this headline">¶</a></h1>
+<p>Breezy has a facility that allows you to associate a commit with a bug
+in the project’s bug tracker. Other tools (or hooks) can then use this
+information to generate hyperlinks between the commit and the bug, or to
+automatically mark the bug closed in the branches that contain the commit.</p>
+<div class="section" id="associating-commits-and-bugs">
+<h2>Associating commits and bugs<a class="headerlink" href="#associating-commits-and-bugs" title="Permalink to this headline">¶</a></h2>
+<p>When you make a commit, you can associate it with a bug by using the
+<code class="docutils literal notranslate"><span class="pre">--fixes</span></code> option of <code class="docutils literal notranslate"><span class="pre">commit</span></code>. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz commit --fixes lp:12345 -m &quot;Properly close the connection&quot;
+</pre></div>
+</div>
+<p>This records metadata in Breezy linking the commit with bug 12345 in
+Launchpad. If you use a different bug tracker, it can be given its own
+tracker code (instead of <code class="docutils literal notranslate"><span class="pre">lp</span></code>) and used instead. For details on how
+to configure this for Bugzilla, Trac, Roundup and other bug/issue trackers,
+refer to <a class="reference external" href="../user-reference/index.html#bug-tracker-settings">Bug Tracker Settings</a> in the Breezy User Reference.</p>
+</div>
+<div class="section" id="metadata-recording-vs-bug-tracker-updating">
+<h2>Metadata recording vs bug tracker updating<a class="headerlink" href="#metadata-recording-vs-bug-tracker-updating" title="Permalink to this headline">¶</a></h2>
+<p>Recording metadata about bugs fixed at commit time is only
+one of the features needed for complete bug tracker integration.
+As Breezy is a distributed VCS, users may be offline while committing
+so accessing the bug tracker itself at that time may not be possible.
+Instead, it is recommended that a hook be installed to update
+the bug tracker when changes are pushed to a central location
+appropriate for your project’s workflow.</p>
+<p>Note: This second processing stage is part of the integration provided
+by Launchpad when it scans external or hosted branches.</p>
+</div>
+<div class="section" id="making-corrections">
+<h2>Making corrections<a class="headerlink" href="#making-corrections" title="Permalink to this headline">¶</a></h2>
+<p>This method of associating revisions and bugs does have some limitations. The
+first is that the association can only be made at commit time. This means that
+if you forget to make the association when you commit, or the bug is reported
+after you fix it, you generally cannot go back and add the link later.</p>
+<p>Related to this is the fact that the association is immutable. If a bug is
+marked as fixed by one commit but that revision does not fully solve the
+bug, or there is a later regression, you cannot go back and remove the link.</p>
+<p>Of course, <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">uncommit</span></code> can always be used to undo the last commit in
+order to make it again with the correct options. This is commonly done
+to correct a bad commit message and it equally applies to correcting
+metadata recorded (via <code class="docutils literal notranslate"><span class="pre">--fixes</span></code> for example) on the last commit.</p>
+<p>Note: <code class="docutils literal notranslate"><span class="pre">uncommit</span></code> is best done before incorrect revisions become public.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="web_browsing.html" title="Web browsing"
+              >previous</a> |
+            <a href="specifying_revisions.html" title="Specifying revisions"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/bug_trackers.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

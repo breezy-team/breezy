@@ -1,0 +1,116 @@
+What should be in the roadmap?
+==============================
+
+A good roadmap provides a place for contributors to look for tasks, it
+provides users with a sense of when we will fix things that are
+affecting them, and it also allows us all to agree about where we are
+headed. So the roadmap should contain enough things to let all this
+happen.
+
+I think that it needs to contain the analysis work which is required, a
+list of the use cases to be optimised, the disk changes required, and
+the broad sense of the api changes required. It also needs to list the
+inter-dependencies between these things: we should aim for a large
+surface area of 'ready to be worked on' items, that makes it easy to
+improve performance without having to work in lockstep with other
+developers.
+
+Clearly the analysis step is an immediate bottleneck - we cannot tell if
+an optimisation for use case A is a pessimism for use case B until we
+have analysed both A and B. I propose that we complete the analysis of
+say a dozen core use cases end to end during the upcoming sprint in
+London. We should then be able to fork() for much of the detailed design
+work and regroup with disk and api changes shortly thereafter.
+
+I suspect that clarity of layering will make a big difference to
+developer parallelism, so another proposal I have is for us to look at
+the APIs for Branch and Repository in London in the light of what we
+have learnt over the last years.
+
+What should the final system look like, how is it different to what we have today?
+==================================================================================
+
+One of the things I like the most about bzr is its rich library API, and
+I've heard this from numerous other folk. So anything that will remove
+that should be considered a last resort.
+
+Similarly our relatively excellent cross platform support is critical
+for projects that are themselves cross platform, and thats a
+considerable number these days.
+
+And of course, our focus on doing the right thing is what differentiates
+us from some of the other VCS's, so we should be focusing on doing the
+right thing quickly :).
+
+What we have today though has grown organically in response to us
+identifying bottlenecks over several iterations of back end storage,
+branch metadata and the local tree representation. I think we are
+largely past that and able to describe the ideal characteristics of the
+major actors in the system - primarily Tree, Branch, Repository - based
+on what we have learnt.
+
+What use cases should be covered?
+=================================
+
+My list of use cases is probably not complete - its just the ones I
+happen to see a lot :). I think each should be analysed comprehensively
+so we dont need to say 'push over the network' - its implied in the
+scaling analysis that both semantic and file operation latency will be
+considered.
+
+These use cases are ordered by roughly the ease of benchmarking, and the
+frequency of use. This ordering is so that when people are comparing bzr
+they are going to get use cases we have optimised; and so that as we
+speed things up our existing users will have the things they do the most
+optimised.
+
+ * status tree
+ * status subtree
+ * commit
+ * commit to a bound branch
+ * incremental push/pull
+ * log
+ * log path
+ * add
+ * initial push or pull [both to a new repo and an existing repo with
+   different data in it]
+ * diff tree
+ * diff subtree
+
+ * revert tree
+ * revert subtree
+ * merge from a branch
+ * merge from a bundle
+ * annotate
+ * create a bundle against a branch
+ * uncommit
+ * missing
+ * update
+ * cbranch
+
+How is development on the roadmap coordinated?
+==============================================
+
+I think we should hold regular get-togethers (on IRC) to coordinate on
+our progress, because this is a big task and its a lot easier to start
+helping out some area which is having trouble if we have kept in contact
+about each areas progress. This might be weekly or fortnightly or some
+such.
+
+we need a shared space to record the results of the analysis and the
+roadmap as we go forward. Given that we'll need to update these as new
+features are considered, I propose that we use doc/design as a working
+space, and as we analyse use cases we include them in there - including
+the normal review process for each patch. We also need documentation
+about doing performance tuning - not the minutiae, though that is
+needed, but about how to effective choose things to optimise which will
+give the best return on time spent - that is what the roadmap should
+help with, but this looks to be a large project and an overview will be
+of great assistance I think. We want to help everyone that wishes to
+contribute to performance to do so effectively.
+
+Finally, it's important to note that coding is not the only contribution
+- testing, giving feedback on current performance, helping with the
+analysis are all extremely important tasks too and we probably want to
+have clear markers of where that should be done to encourage such
+contributions.

@@ -1,0 +1,204 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Using hooks &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Exporting version information" href="version_info.html" />
+    <link rel="prev" title="Running a smart server" href="server.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="server.html" title="Running a smart server"
+             accesskey="P">previous</a> |
+          <a href="version_info.html" title="Exporting version information"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="using-hooks">
+<h1>Using hooks<a class="headerlink" href="#using-hooks" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="what-is-a-hook">
+<h2>What is a hook?<a class="headerlink" href="#what-is-a-hook" title="Permalink to this headline">¶</a></h2>
+<p>One way to customize Breezy’s behaviour is with <em>hooks</em>.  Hooks allow you to
+perform actions before or after certain Breezy operations.  The operations
+include <code class="docutils literal notranslate"><span class="pre">commit</span></code>, <code class="docutils literal notranslate"><span class="pre">push</span></code>, <code class="docutils literal notranslate"><span class="pre">pull</span></code>, and <code class="docutils literal notranslate"><span class="pre">uncommit</span></code>.
+For a complete list of hooks and their parameters, see <a class="reference external" href="../user-reference/index.html#hooks">Hooks</a> in the User Reference.</p>
+<p>Most hooks are run on the client, but a few are run on the server.  (Also
+see the <a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/push-and-update-plugin.html">push-and-update plugin</a> that handles one special case of
+server-side operations.)</p>
+</div>
+<div class="section" id="id1">
+<h2>Using hooks<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>To use a hook, you should <a class="reference external" href="../../developers/plugin-development.html">write a plugin</a>.  Instead of
+creating a new command, this plugin will define and install the hook.  Here’s
+an example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy</span> <span class="k">import</span> <span class="n">branch</span>
+
+
+<span class="k">def</span> <span class="nf">post_push_hook</span><span class="p">(</span><span class="n">push_result</span><span class="p">):</span>
+    <span class="nb">print</span> <span class="s2">&quot;The new revno is </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">push_result</span><span class="o">.</span><span class="n">new_revno</span>
+
+
+<span class="n">branch</span><span class="o">.</span><span class="n">Branch</span><span class="o">.</span><span class="n">hooks</span><span class="o">.</span><span class="n">install_named_hook</span><span class="p">(</span><span class="s1">&#39;post_push&#39;</span><span class="p">,</span> <span class="n">post_push_hook</span><span class="p">,</span>
+                                 <span class="s1">&#39;My post_push hook&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To use this example, create a file named <code class="docutils literal notranslate"><span class="pre">push_hook.py</span></code>, and stick it in
+<code class="docutils literal notranslate"><span class="pre">plugins</span></code> subdirectory of your configuration directory.  (If you have never
+installed any plugins, you may need to create the <code class="docutils literal notranslate"><span class="pre">plugins</span></code> directory).</p>
+<p>That’s it!  The next time you push, it should show “The new revno is…”.
+Of course, hooks can be much more elaborate than this, because you have the
+full power of Python at your disposal.  Now that you know how to use hooks,
+what you do with them is up to you.</p>
+<p>The plugin code does two things.  First, it defines a function that will be
+run after <code class="docutils literal notranslate"><span class="pre">push</span></code> completes.  (It could instead use an instance method or
+a callable object.)  All push hooks take a single argument, the
+<code class="docutils literal notranslate"><span class="pre">push_result</span></code>.</p>
+<p>Second, the plugin installs the hook.  The first argument <code class="docutils literal notranslate"><span class="pre">'post_push'</span></code>
+identifies where to install the hook.  The second argument is the hook
+itself.  The third argument is a name <code class="docutils literal notranslate"><span class="pre">'My</span> <span class="pre">post_push</span> <span class="pre">hook'</span></code>, which can be
+used in progress messages and error messages.</p>
+<p>To reduce the start-up time of Breezy it is also possible to “lazily” install hooks,
+using the <code class="docutils literal notranslate"><span class="pre">breezy.hooks.install_lazy_named_hook</span></code> function. This removes the need
+to load the module that contains the hook point just to install the hook. Here’s lazy
+version of the example above:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy</span> <span class="k">import</span> <span class="n">hooks</span>
+
+<span class="k">def</span> <span class="nf">post_push_hook</span><span class="p">(</span><span class="n">push_result</span><span class="p">):</span>
+    <span class="nb">print</span> <span class="s2">&quot;The new revno is </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">push_result</span><span class="o">.</span><span class="n">new_revno</span>
+
+
+<span class="n">hooks</span><span class="o">.</span><span class="n">install_lazy_named_hook</span><span class="p">(</span><span class="s1">&#39;breezy.branch&#39;</span><span class="p">,</span> <span class="s1">&#39;Branch.hooks&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;post_push&#39;</span><span class="p">,</span> <span class="n">post_push_hook</span><span class="p">,</span> <span class="s1">&#39;My post_push hook&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="debugging-hooks">
+<h2>Debugging hooks<a class="headerlink" href="#debugging-hooks" title="Permalink to this headline">¶</a></h2>
+<p>To get a list of installed hooks (and available hook points), use the hidden
+<code class="docutils literal notranslate"><span class="pre">hooks</span></code> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">hooks</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="example-a-merge-plugin">
+<h2>Example: a merge plugin<a class="headerlink" href="#example-a-merge-plugin" title="Permalink to this headline">¶</a></h2>
+<p>Here’s a complete plugin that demonstrates the <code class="docutils literal notranslate"><span class="pre">Merger.merge_file_content</span></code>
+hook.  It installs a hook that forces any merge of a file named <code class="docutils literal notranslate"><span class="pre">*.xml</span></code>
+to be a conflict, even if Breezy thinks it can merge it cleanly.</p>
+<p><code class="docutils literal notranslate"><span class="pre">merge_xml.py</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;Custom &#39;merge&#39; logic for *.xml files.</span>
+
+<span class="sd">Always conflicts if both branches have changed the file.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">breezy.merge</span> <span class="k">import</span> <span class="n">PerFileMerger</span><span class="p">,</span> <span class="n">Merger</span>
+
+<span class="k">def</span> <span class="nf">merge_xml_files_hook</span><span class="p">(</span><span class="n">merger</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Hook to merge *.xml files&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">AlwaysConflictXMLMerger</span><span class="p">(</span><span class="n">merger</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">AlwaysConflictXMLMerger</span><span class="p">(</span><span class="n">PerFileMerger</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">file_matches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_filename</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">merger</span><span class="o">.</span><span class="n">this_tree</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">filename</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.xml&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">merge_matching</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;conflicted&#39;</span><span class="p">,</span> <span class="n">params</span><span class="o">.</span><span class="n">this_lines</span>
+
+<span class="n">Merger</span><span class="o">.</span><span class="n">hooks</span><span class="o">.</span><span class="n">install_named_hook</span><span class="p">(</span>
+    <span class="s1">&#39;merge_file_content&#39;</span><span class="p">,</span> <span class="n">merge_xml_files_hook</span><span class="p">,</span> <span class="s1">&#39;*.xml file merge&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">merge_file_content</span></code> hooks are executed for each file to be merged.  For
+a more a complex example look at the <code class="docutils literal notranslate"><span class="pre">news_merge</span></code> plugin that’s bundled with
+Breezy in the <code class="docutils literal notranslate"><span class="pre">breezy/plugins</span></code> directory.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="server.html" title="Running a smart server"
+              >previous</a> |
+            <a href="version_info.html" title="Exporting version information"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/hooks.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

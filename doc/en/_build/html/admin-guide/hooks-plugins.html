@@ -1,0 +1,372 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Extending Bazaar with Hooks and Plugins &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Web-based code browsing" href="code-browsing.html" />
+    <link rel="prev" title="Migration" href="migration.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="migration.html" title="Migration"
+             accesskey="P">previous</a> |
+          <a href="code-browsing.html" title="Web-based code browsing"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="extending-bazaar-with-hooks-and-plugins">
+<h1>Extending Bazaar with Hooks and Plugins<a class="headerlink" href="#extending-bazaar-with-hooks-and-plugins" title="Permalink to this headline">¶</a></h1>
+<p>Bazaar offers a powerful extension mechanism for adding capabilities.  In
+addition to offering full library API access to all of its structures, which
+can be useful for outside programs that would like to interact with Bazaar
+branches, Bazaar can also load <em>plugins</em> that perform specific tasks.  These
+specific tasks are specified by <em>hooks</em> that run during certain steps of the
+version control process.</p>
+<p>For full documentation on the available hooks, see <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">hooks</span></code>.  Among
+those, some of the most significant hooks from an administration
+standpoint are <cite>pre_commit</cite>, <cite>post_commit</cite> and <cite>post_change_branch_tip</cite>.
+A <cite>pre_commit</cite> hook can inspect a commit before it happens and cancel it if
+some criteria are not met.  This can be useful for enforcing policies about
+the code, such as line-endings or whitespace conventions.  A
+<cite>post_commit</cite> hook can take actions based on the commit that just happened,
+such as providing various types of notifications.  Finally, a
+<cite>post_change_branch_tip</cite> hook is a more general form of a <cite>post_commit</cite>
+hook which is used whenever the tip of a branch changes (which can happen in
+more ways than just committing).  This too can be used for notification
+purposes, as well as for backups and mirroring.</p>
+<p>Information on the whole range of Bazaar plugins is available at
+<a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/">http://doc.bazaar.canonical.com/plugins/en/</a>.  For purposes of installation,
+plugins are simply python packages.  They can be installed alongside Bazaar in
+the <code class="docutils literal notranslate"><span class="pre">bzrlib.plugins</span></code> package using each plugin’s <code class="docutils literal notranslate"><span class="pre">setup.py</span></code>.  They can
+also be installed in the plugin path which is the user’s
+<code class="docutils literal notranslate"><span class="pre">~/.config/breezy/plugins</span></code> directory or can be specified with the
+<code class="docutils literal notranslate"><span class="pre">BZR_PLUGIN_PATH</span></code> environment variable.  See <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">configuration</span></code> for
+more on specifying the location of plugins.</p>
+<div class="section" id="email-notification">
+<h2>Email Notification<a class="headerlink" href="#email-notification" title="Permalink to this headline">¶</a></h2>
+<p>A common need is for every change made on a branch to send an email message to
+some address, most often a mailing list.  These plugins provide that capability
+in a number of different ways.</p>
+<p>The <cite>email</cite> plugin sends email from each individual developer’s computer.  This
+can be useful for situations that want to track what each individual developer
+is working on.  On the downside, it requires that every developer’s branches be
+configured individually to use the same plugin.</p>
+<p>The next two plugins <cite>hookless-email</cite> and <cite>email-notifier</cite> address this concern
+by running on a central server whenever changes happen on centrally stored
+branches.</p>
+<div class="section" id="email">
+<h3>email<a class="headerlink" href="#email" title="Permalink to this headline">¶</a></h3>
+<p>To configure this plugin, simply install the plugin and configure the
+<code class="docutils literal notranslate"><span class="pre">post_commit_to</span></code>  option for each branch.  This configuration can be done
+in the <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> file or individually in each branch’s
+<code class="docutils literal notranslate"><span class="pre">branch.conf</span></code> file.  The sender’s email address can be specified as
+<code class="docutils literal notranslate"><span class="pre">post_commit_sender</span></code> if it is different than the email address reported by
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">whoami</span></code>.  The <code class="docutils literal notranslate"><span class="pre">post_commit_mailer</span></code> option specifies how the
+mail should be sent.  If it isn’t set, email is sent via <code class="docutils literal notranslate"><span class="pre">/usr/bin/mail</span></code>.
+It can also be configured to communicate directly with an SMTP server.
+For more details on configuring this plugin, see
+<a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/email-plugin.html">http://doc.bazaar.canonical.com/plugins/en/email-plugin.html</a>.  As examples,
+consider the following two possible configurations.  A minimal one (uses
+<code class="docutils literal notranslate"><span class="pre">/usr/bin/mail</span></code>)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">post_commit_to</span> <span class="o">=</span> <span class="n">projectx</span><span class="o">-</span><span class="n">commits</span><span class="nd">@example</span><span class="o">.</span><span class="n">com</span>
+</pre></div>
+</div>
+<p>and a more complicated one (using all of the options)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">post_commit_url</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">www</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">code</span><span class="o">/</span><span class="n">projectx</span><span class="o">/</span><span class="n">trunk</span>
+<span class="n">post_commit_to</span> <span class="o">=</span> <span class="n">projectx</span><span class="o">-</span><span class="n">commits</span><span class="nd">@example</span><span class="o">.</span><span class="n">com</span>
+<span class="n">post_commit_sender</span> <span class="o">=</span> <span class="n">donotreply</span><span class="nd">@example</span><span class="o">.</span><span class="n">com</span>
+<span class="n">post_commit_mailer</span> <span class="o">=</span> <span class="n">smtplib</span>
+<span class="n">smtp_server</span> <span class="o">=</span> <span class="n">mail</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">587</span>
+<span class="n">smtp_username</span> <span class="o">=</span> <span class="n">bob</span>
+<span class="c1"># smtp_password = &#39;not specified, will prompt&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="hookless-email">
+<h3>hookless-email<a class="headerlink" href="#hookless-email" title="Permalink to this headline">¶</a></h3>
+<p>This plugin is basically a server-side version of the <cite>email</cite> plugin.  It is
+a program that runs either from the command line or as a daemon that monitors
+the branches specified on the command line for any changes.  When a change
+occurs to any of the monitored branches, it will send an email to the
+specified address.  Using our simple example, the following command would send
+an email to <code class="docutils literal notranslate"><span class="pre">projectx-commits&#64;example.com</span></code> on any of the branches under
+<code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code> since the last time the command was run.  (This command could be
+set up to run at regular intervals, for example from <code class="docutils literal notranslate"><span class="pre">cron</span></code>.)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz_hookless_email.py --email=projectx-commits@example.com \
+--recurse /srv/bzr
+</pre></div>
+</div>
+</div>
+<div class="section" id="email-notifier">
+<h3>email-notifier<a class="headerlink" href="#email-notifier" title="Permalink to this headline">¶</a></h3>
+<p>This is a more elaborate version of the <cite>hookless-email</cite> plugin that can send
+templated HTML emails, render wiki-style markup in commit messages and update
+working copies on the server (similar to <a class="reference internal" href="#push-and-update">push_and_update</a>).  It can also
+send emails reporting the creation of new branches or the removal of branches
+under a specified directory (here <code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx</span></code>).  As it is more
+complicated, its configuration is also more complicated and we won’t repeat
+its documentation here, but a simple configuration that will send emails on
+commits and creation/deletion of branches is</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[smtp]
+
+server=smtp.example.com
+# If user is not provided then no authentication will be performed.
+user=bob
+password=pAssW0rd
+
+[commits]
+
+# The address to send commit emails to.
+to=projctx-commits@example.com
+from=$revision.committer
+
+# A Cheetah template used to construct the subject of the email message.
+subject=$relative_path: $revision_number $summary
+
+[new-branches]
+to=projectx-commits@example.com
+from=donotreply@example.com
+subject=$relative_path: New branch created
+
+[removed-branches]
+to=projectx-commits@example.com
+from=donotreply@example.com
+subject=$relative_path: Branch removed
+</pre></div>
+</div>
+<p>If this file is stored as <code class="docutils literal notranslate"><span class="pre">/srv/bzr/email-notifier.conf</span></code>, then the command</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz-email-notifier.py --config=/srv/bzr/email-notifier.conf /srv/bzr/projectx
+</pre></div>
+</div>
+<p>will watch all branches under the given directory for commits, branch
+creations and branch deletions.</p>
+</div>
+</div>
+<div class="section" id="feed-generation">
+<h2>Feed Generation<a class="headerlink" href="#feed-generation" title="Permalink to this headline">¶</a></h2>
+<p>A related concept to sending out emails when branches change is the generation
+of news feeds from changes on each branch.  Interested parties can then choose
+to follow those news feeds in order to see what is happening on a branch.</p>
+<div class="section" id="branchfeed">
+<h3>branchfeed<a class="headerlink" href="#branchfeed" title="Permalink to this headline">¶</a></h3>
+<p>This plugin creates an ATOM feed for every branch on every branch change
+(commit, etc.).  It stores these files as <code class="docutils literal notranslate"><span class="pre">.bzr/branch/branch.atom</span></code> inside
+each branch.  Currently, it includes the 20 most recent changes in each feed.
+To use it, simply install the plugin and set your feed reader to follow the
+<code class="docutils literal notranslate"><span class="pre">branch.atom</span></code> files.</p>
+<p>In addition, there are other tools that are not plugins for creating news
+feeds from Bazaar branches.  See
+<a class="reference external" href="http://wiki.bazaar.canonical.com/FeedGenerators">http://wiki.bazaar.canonical.com/FeedGenerators</a> for more on those tools.</p>
+</div>
+</div>
+<div class="section" id="mirroring">
+<h2>Mirroring<a class="headerlink" href="#mirroring" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes it is useful to ensure that one branch exists as an exact copy of
+another.  This can be used to provide simple backup facilities or redundancy
+(see <a class="reference external" href="backup.html">Back-up and restore</a> for more details on backups).  One
+way to do this using Bazaar’s workflows is to make the branch where changes
+happen into a bound branch of the mirror branch.  Then, when commits happen on
+the working branch, they will also happen on the mirror branch.  Note that
+commits to bound branches do <em>not</em> update the mirror branch’s working copy, so
+if the mirror branch is more than just a backup of the complete history of the
+branch, for example if it is being served as a web page, then additional
+plugins are necessary.</p>
+<div class="section" id="push-and-update">
+<h3>push_and_update<a class="headerlink" href="#push-and-update" title="Permalink to this headline">¶</a></h3>
+<p>This plugin updates Bazaar’s <code class="docutils literal notranslate"><span class="pre">push</span></code> command to also update the remote
+working copy.  It can only work over connections that imply filesystem or SSH
+access to the remote working copy (<code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code>, <code class="docutils literal notranslate"><span class="pre">sftp://</span></code> and
+<code class="docutils literal notranslate"><span class="pre">file://</span></code>).  Also, it is only useful when the remote branch is updated with
+an explicit <code class="docutils literal notranslate"><span class="pre">push</span></code> command.</p>
+</div>
+<div class="section" id="automirror">
+<h3>automirror<a class="headerlink" href="#automirror" title="Permalink to this headline">¶</a></h3>
+<p>This plugin is similar to <cite>push_and_update</cite> in that it updates the working
+copy of a remote branch.  The difference is that this plugin is designed to
+update the remote branch on every change to the working branch.  To configure
+this, set the <code class="docutils literal notranslate"><span class="pre">post_commit_mirror</span> <span class="pre">=</span> <span class="pre">URL</span></code> option on a branch.  This option
+can include multiple branch URLs separated by commas to create multiple
+mirrors.  For example, if we want to mirror our <code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx/trunk</span></code>
+branch to the URL <code class="docutils literal notranslate"><span class="pre">sftp://www.example.com/var/www/projectx</span></code> (for example if
+ProjectX were a web project that we wanted to access at
+<code class="docutils literal notranslate"><span class="pre">http://www.example.com/projectx</span></code>), then we could include</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">post_commit_mirror</span> <span class="o">=</span> <span class="n">sftp</span><span class="p">:</span><span class="o">//</span><span class="n">www</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">www</span><span class="o">/</span><span class="n">branches</span><span class="o">/</span><span class="n">trunk</span>
+</pre></div>
+</div>
+<p>in the file <code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx/trunk/.bzr/branch/branch.conf</span></code>.</p>
+</div>
+</div>
+<div class="section" id="other-useful-plugins">
+<h2>Other Useful Plugins<a class="headerlink" href="#other-useful-plugins" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="pqm-plugin">
+<h3>pqm (plugin)<a class="headerlink" href="#pqm-plugin" title="Permalink to this headline">¶</a></h3>
+<p>Facilitating interaction with <a class="reference external" href="integration.html#patch-queue-manager-pqm">PQM</a>, this plugin provides support for
+submitting merge requests to a remote Patch Queue Manager.  PQM provides
+a way to automatically run the test suite before merging changes to the
+trunk branch.</p>
+</div>
+<div class="section" id="testrunner">
+<h3>testrunner<a class="headerlink" href="#testrunner" title="Permalink to this headline">¶</a></h3>
+<p>Sometimes referred to as the poor man’s PQM, this plugin runs a single command
+on the updated revision (in a temporary directory) and if the command returns
+0, then the revision can be committed to that branch.  For example, if the
+testsuite is run with the command <code class="docutils literal notranslate"><span class="pre">nosetests</span></code> in the root of the branch
+(which returns 0 if the test suite passes and 1 if it doesn’t pass), then one
+can set</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">pre_change_branch_tip_test_command</span> <span class="o">=</span> <span class="n">nosetests</span>
+</pre></div>
+</div>
+<p>in <code class="docutils literal notranslate"><span class="pre">.bzr/branch/branch.conf</span></code>.</p>
+</div>
+<div class="section" id="checkeol">
+<h3>checkeol<a class="headerlink" href="#checkeol" title="Permalink to this headline">¶</a></h3>
+<p>This plugin is an example of a <cite>pre_commit</cite> hook that checks the revision
+being committed for meeting some policy.  In this case, it checks that all of
+the files have the specified line endings.  It uses a configuration file
+<code class="docutils literal notranslate"><span class="pre">.bzreol</span></code> in the root of the working tree (similar to the <code class="docutils literal notranslate"><span class="pre">.bzrignore</span></code>
+file).  This configuration file has sections for line feed endings (LF),
+carriage return/line-feed endings (CRLF) and carriage return endings (CR).
+For an unusual example that specifies different line endings for different
+files, that file might look like</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">LF</span><span class="p">]</span>
+<span class="o">*.</span><span class="n">py</span>
+<span class="o">*.</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span>
+
+<span class="p">[</span><span class="n">CRLF</span><span class="p">]</span>
+<span class="o">*.</span><span class="n">txt</span>
+<span class="o">*.</span><span class="n">ini</span>
+
+<span class="p">[</span><span class="n">CR</span><span class="p">]</span>
+<span class="n">foo</span><span class="o">.</span><span class="n">mac</span>
+</pre></div>
+</div>
+<p>or if you simply want to enforce a single line ending convention on the branch
+you can use</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">LF</span><span class="p">]</span>
+<span class="o">*</span>
+</pre></div>
+</div>
+<p>This plugin needs to be installed on the server where the branch updates will
+happen, and the <code class="docutils literal notranslate"><span class="pre">.bzreol</span></code> file must be in each branch where line ending
+policies will be enforced.  (Adding it to the branch with <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">add</span> <span class="pre">.bzreol</span></code>
+is an easy way to ensure this, although it means that branches on the server
+must have working trees.)</p>
+</div>
+<div class="section" id="text-checker">
+<h3>text_checker<a class="headerlink" href="#text-checker" title="Permalink to this headline">¶</a></h3>
+<p>This plugin is a more advanced version of <cite>checkeol</cite> that can check such
+coding style guidelines such as trailing whitespace, long lines and files that
+don’t end with a newline.  It is configured using Bazaar’s built in rules
+specification in <code class="docutils literal notranslate"><span class="pre">BZR_HOME/rules</span></code> (see <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">rules</span></code> for more
+information.  For different types of undesired changes, you can specify
+different types of actions.  For example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">name</span> <span class="n">NEWS</span> <span class="n">README</span><span class="p">]</span>
+<span class="n">trailing_whitespace</span><span class="o">=</span><span class="n">fail</span>
+<span class="n">long_lines</span><span class="o">=</span><span class="n">warn</span>
+<span class="n">newline_at_eof</span><span class="o">=</span><span class="n">ignore</span>
+
+<span class="p">[</span><span class="n">name</span> <span class="o">*.</span><span class="n">py</span><span class="p">]</span>
+<span class="n">tabs</span><span class="o">=</span><span class="n">fail</span>
+<span class="n">long_line_length</span><span class="o">=</span><span class="mi">78</span>
+<span class="n">long_lines</span><span class="o">=</span><span class="n">fail</span>
+<span class="n">trailing_whitespace</span><span class="o">=</span><span class="n">fail</span>
+</pre></div>
+</div>
+<p>will prevent changes from adding new trailing whitespace to the specified
+files and keep all python source files free of tabs and lines over 78
+characters.  To commit while violating these rules, one can pass the
+<code class="docutils literal notranslate"><span class="pre">--text-check-warn-only</span></code> option to commit.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="migration.html" title="Migration"
+              >previous</a> |
+            <a href="code-browsing.html" title="Web-based code browsing"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/admin-guide/hooks-plugins.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

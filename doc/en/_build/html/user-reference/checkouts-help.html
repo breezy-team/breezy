@@ -1,0 +1,177 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Checkouts &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Content Filters" href="content-filters-help.html" />
+    <link rel="prev" title="branches" href="branches-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="branches-help.html" title="branches"
+             accesskey="P">previous</a> |
+          <a href="content-filters-help.html" title="Content Filters"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="checkouts">
+<h1>Checkouts<a class="headerlink" href="#checkouts" title="Permalink to this headline">¶</a></h1>
+<p>Checkouts are source trees that are connected to a branch, so that when
+you commit in the source tree, the commit goes into that branch.  They
+allow you to use a simpler, more centralized workflow, ignoring some of
+Breezy’s decentralized features until you want them. Using checkouts
+with shared repositories is very similar to working with SVN or CVS, but
+doesn’t have the same restrictions.  And using checkouts still allows
+others working on the project to use whatever workflow they like.</p>
+<p>A checkout is created with the brz checkout command (see “help checkout”).
+You pass it a reference to another branch, and it will create a local copy
+for you that still contains a reference to the branch you created the
+checkout from (the master branch). Then if you make any commits they will be
+made on the other branch first. This creates an instant mirror of your work, or
+facilitates lockstep development, where each developer is working together,
+continuously integrating the changes of others.</p>
+<p>However the checkout is still a first class branch in Breezy terms, so that
+you have the full history locally.  As you have a first class branch you can
+also commit locally if you want, for instance due to the temporary loss af a
+network connection. Use the –local option to commit to do this. All the local
+commits will then be made on the master branch the next time you do a non-local
+commit.</p>
+<p>If you are using a checkout from a shared branch you will periodically want to
+pull in all the changes made by others. This is done using the “update”
+command. The changes need to be applied before any non-local commit, but
+Breezy will tell you if there are any changes and suggest that you use this
+command when needed.</p>
+<p>It is also possible to create a “lightweight” checkout by passing the
+–lightweight flag to checkout. A lightweight checkout is even closer to an
+SVN checkout in that it is not a first class branch, it mainly consists of the
+working tree. This means that any history operations must query the master
+branch, which could be slow if a network connection is involved. Also, as you
+don’t have a local branch, then you cannot commit locally.</p>
+<p>Lightweight checkouts work best when you have fast reliable access to the
+master branch. This means that if the master branch is on the same disk or LAN
+a lightweight checkout will be faster than a heavyweight one for any commands
+that modify the revision history (as only one copy of the branch needs to
+be updated). Heavyweight checkouts will generally be faster for any command
+that uses the history but does not change it, but if the master branch is on
+the same disk then there won’t be a noticeable difference.</p>
+<p>Another possible use for a checkout is to use it with a treeless repository
+containing your branches, where you maintain only one working tree by
+switching the master branch that the checkout points to when you want to
+work on a different branch.</p>
+<p>Obviously to commit on a checkout you need to be able to write to the master
+branch. This means that the master branch must be accessible over a writeable
+protocol , such as sftp://, and that you have write permissions at the other
+end. Checkouts also work on the local file system, so that all that matters is
+file permissions.</p>
+<p>You can change the master of a checkout by using the “switch” command (see
+“help switch”).  This will change the location that the commits are sent to.
+The “bind” command can also be used to turn a normal branch into a heavy
+checkout. If you would like to convert your heavy checkout into a normal
+branch so that every commit is local, you can use the “unbind” command. To see
+whether or not a branch is bound or not you can use the “info” command. If the
+branch is bound it will tell you the location of the bound branch.</p>
+<p>Related commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">checkout</span>    <span class="n">Create</span> <span class="n">a</span> <span class="n">checkout</span><span class="o">.</span> <span class="n">Pass</span> <span class="o">--</span><span class="n">lightweight</span> <span class="n">to</span> <span class="n">get</span> <span class="n">a</span> <span class="n">lightweight</span>
+            <span class="n">checkout</span>
+<span class="n">update</span>      <span class="n">Pull</span> <span class="nb">any</span> <span class="n">changes</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">master</span> <span class="n">branch</span> <span class="ow">in</span> <span class="n">to</span> <span class="n">your</span> <span class="n">checkout</span>
+<span class="n">commit</span>      <span class="n">Make</span> <span class="n">a</span> <span class="n">commit</span> <span class="n">that</span> <span class="ow">is</span> <span class="n">sent</span> <span class="n">to</span> <span class="n">the</span> <span class="n">master</span> <span class="n">branch</span><span class="o">.</span> <span class="n">If</span> <span class="n">you</span> <span class="n">have</span>
+            <span class="n">a</span> <span class="n">heavy</span> <span class="n">checkout</span> <span class="n">then</span> <span class="n">the</span> <span class="o">--</span><span class="n">local</span> <span class="n">option</span> <span class="n">will</span> <span class="n">commit</span> <span class="n">to</span> <span class="n">the</span>
+            <span class="n">checkout</span> <span class="n">without</span> <span class="n">sending</span> <span class="n">the</span> <span class="n">commit</span> <span class="n">to</span> <span class="n">the</span> <span class="n">master</span>
+<span class="n">switch</span>      <span class="n">Change</span> <span class="n">the</span> <span class="n">master</span> <span class="n">branch</span> <span class="n">that</span> <span class="n">the</span> <span class="n">commits</span> <span class="ow">in</span> <span class="n">the</span> <span class="n">checkout</span> <span class="n">will</span>
+            <span class="n">be</span> <span class="n">sent</span> <span class="n">to</span>
+<span class="n">bind</span>        <span class="n">Turn</span> <span class="n">a</span> <span class="n">standalone</span> <span class="n">branch</span> <span class="n">into</span> <span class="n">a</span> <span class="n">heavy</span> <span class="n">checkout</span> <span class="n">so</span> <span class="n">that</span> <span class="nb">any</span>
+            <span class="n">commits</span> <span class="n">will</span> <span class="n">be</span> <span class="n">sent</span> <span class="n">to</span> <span class="n">the</span> <span class="n">master</span> <span class="n">branch</span>
+<span class="n">unbind</span>      <span class="n">Turn</span> <span class="n">a</span> <span class="n">heavy</span> <span class="n">checkout</span> <span class="n">into</span> <span class="n">a</span> <span class="n">standalone</span> <span class="n">branch</span> <span class="n">so</span> <span class="n">that</span> <span class="nb">any</span>
+            <span class="n">commits</span> <span class="n">are</span> <span class="n">only</span> <span class="n">made</span> <span class="n">locally</span>
+<span class="n">info</span>        <span class="n">Displays</span> <span class="n">whether</span> <span class="n">a</span> <span class="n">branch</span> <span class="ow">is</span> <span class="n">bound</span> <span class="ow">or</span> <span class="n">unbound</span><span class="o">.</span> <span class="n">If</span> <span class="n">the</span> <span class="n">branch</span> <span class="ow">is</span>
+            <span class="n">bound</span><span class="p">,</span> <span class="n">then</span> <span class="n">it</span> <span class="n">will</span> <span class="n">also</span> <span class="n">display</span> <span class="n">the</span> <span class="n">location</span> <span class="n">of</span> <span class="n">the</span> <span class="n">bound</span> <span class="n">branch</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="branches-help.html" title="branches"
+              >previous</a> |
+            <a href="content-filters-help.html" title="Content Filters"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/checkouts-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

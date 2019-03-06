@@ -1,0 +1,449 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Configuring Breezy &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Fetching data" href="fetch.html" />
+    <link rel="prev" title="Documenting Changes" href="documenting-changes.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="documenting-changes.html" title="Documenting Changes"
+             accesskey="P">previous</a> |
+          <a href="fetch.html" title="Fetching data"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="configuring-breezy">
+<h1><a class="toc-backref" href="#id1">Configuring Breezy</a><a class="headerlink" href="#configuring-breezy" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#configuring-breezy" id="id1">Configuring Breezy</a><ul>
+<li><a class="reference internal" href="#get-an-option-value" id="id2">Get an option value</a></li>
+<li><a class="reference internal" href="#add-a-new-option" id="id3">Add a new option</a></li>
+<li><a class="reference internal" href="#modify-an-option-value-or-delete-an-option" id="id4">Modify an option value or delete an option</a></li>
+<li><a class="reference internal" href="#old-and-new-configuration-code" id="id5">Old and new configuration code</a></li>
+<li><a class="reference internal" href="#adding-a-new-stack" id="id6">Adding a new stack</a></li>
+<li><a class="reference internal" href="#adding-a-new-store" id="id7">Adding a new store</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#breezy-conf" id="id8">breezy.conf</a></li>
+<li><a class="reference internal" href="#location-conf" id="id9">location.conf</a></li>
+<li><a class="reference internal" href="#branch-conf" id="id10">branch.conf</a><ul>
+<li><a class="reference internal" href="#option" id="id11">Option</a></li>
+<li><a class="reference internal" href="#sections" id="id12">Sections</a></li>
+<li><a class="reference internal" href="#stores" id="id13">Stores</a></li>
+<li><a class="reference internal" href="#filtering-sections" id="id14">Filtering sections</a></li>
+<li><a class="reference internal" href="#stacks" id="id15">Stacks</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<p>As a Breezy developer there are a few things you need to know about
+configuration:</p>
+<ul class="simple">
+<li>how to add a new option,</li>
+<li>how add a new stack,</li>
+<li>how add a new store.</li>
+</ul>
+<p>The first sections in this document summarize the steps needed when adding a
+new configuration item, the rest of the document gives more internal details
+on how this is implemented.</p>
+<div class="section" id="get-an-option-value">
+<h2><a class="toc-backref" href="#id2">Get an option value</a><a class="headerlink" href="#get-an-option-value" title="Permalink to this headline">¶</a></h2>
+<p>Options values are obtained with <code class="docutils literal notranslate"><span class="pre">stack.get(option_name)</span></code> where <code class="docutils literal notranslate"><span class="pre">stack</span></code>
+is one of the daughter classes of <code class="docutils literal notranslate"><span class="pre">config.Stack</span></code>, see their docstrings for
+a description of which sections are used from which stores.</p>
+<p>The value returned is of the type declared for that <code class="docutils literal notranslate"><span class="pre">Option</span></code> and if
+nothing is specifically declared you will get the default for that option.</p>
+</div>
+<div class="section" id="add-a-new-option">
+<h2><a class="toc-backref" href="#id3">Add a new option</a><a class="headerlink" href="#add-a-new-option" title="Permalink to this headline">¶</a></h2>
+<p>You add a new <code class="docutils literal notranslate"><span class="pre">Option</span></code> to the <code class="docutils literal notranslate"><span class="pre">option_registry</span></code>, either inside
+<code class="docutils literal notranslate"><span class="pre">breezy/config.py</span></code> or during initialization of your plugin (use
+<code class="docutils literal notranslate"><span class="pre">register_lazy</span></code> in this case). New plugins should have systematic
+hierarchical names so that related values are grouped together:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">option_registry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span>
+    <span class="n">Option</span><span class="p">(</span><span class="s1">&#39;dirstate.fdatasync&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+          <span class="n">from_unicode</span><span class="o">=</span><span class="n">bool_from_store</span><span class="p">,</span>
+          <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Flush dirstate changes onto physical disk? ....&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>You then need to decide which stack is appropriate to implement the Option
+policy:</p>
+<ul class="simple">
+<li>which config files (aka <code class="docutils literal notranslate"><span class="pre">Store</span></code>) needs to be queried, which sections are
+relevant and in what order,</li>
+<li>which section will receive the modifications (if relevant).</li>
+</ul>
+<p>The docstrings for the existing stacks cover most of the known use cases.</p>
+</div>
+<div class="section" id="modify-an-option-value-or-delete-an-option">
+<h2><a class="toc-backref" href="#id4">Modify an option value or delete an option</a><a class="headerlink" href="#modify-an-option-value-or-delete-an-option" title="Permalink to this headline">¶</a></h2>
+<p>Just reading an option is what is needed most of the time, modifying option
+values or removing options is usually something that is not automated but
+left to the user (with <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">config</span></code>).</p>
+<p>Nevertheless, if you need to save a modified option value, use
+<code class="docutils literal notranslate"><span class="pre">.set(option_name,</span> <span class="pre">value)</span></code> and <code class="docutils literal notranslate"><span class="pre">.remove(option_name)</span></code> to delete the
+option. Both methods are provided by the <code class="docutils literal notranslate"><span class="pre">Stack</span></code> object.</p>
+<p>But before doing that, you must be sure that the stack you’re using have a
+writable section (this is true for <code class="docutils literal notranslate"><span class="pre">GlobalStack</span></code> which uses the
+<code class="docutils literal notranslate"><span class="pre">DEFAULT</span></code> section in <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> and for <code class="docutils literal notranslate"><span class="pre">BranchStack``which</span> <span class="pre">uses</span> <span class="pre">the</span>
+<span class="pre">no-name</span> <span class="pre">section</span> <span class="pre">in</span> <span class="pre">``branch.conf</span></code>).</p>
+</div>
+<div class="section" id="old-and-new-configuration-code">
+<h2><a class="toc-backref" href="#id5">Old and new configuration code</a><a class="headerlink" href="#old-and-new-configuration-code" title="Permalink to this headline">¶</a></h2>
+<p>There is (as of late 2011) some older and some newer configuration code. The
+old code has specific methods for various checks or uses classes like
+<code class="docutils literal notranslate"><span class="pre">GlobalConfig</span></code>.  Don’t add to to it; try to remove it.</p>
+<p>If you encounter an option using the old code you may want to migrate
+it. This generally involves:</p>
+<ul class="simple">
+<li>registering the option,</li>
+<li>replace the old config by a stack:<ul>
+<li><code class="docutils literal notranslate"><span class="pre">GlobalConfig</span></code> became <code class="docutils literal notranslate"><span class="pre">GlobalStack</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">LocationConfig</span></code> became <code class="docutils literal notranslate"><span class="pre">LocationStack</span></code>,</li>
+<li><code class="docutils literal notranslate"><span class="pre">BranchConfig</span></code> became <code class="docutils literal notranslate"><span class="pre">BranchStack</span></code> (or in this case,
+<code class="docutils literal notranslate"><span class="pre">get_config()</span></code> became <code class="docutils literal notranslate"><span class="pre">get_config_stack()</span></code>.</li>
+</ul>
+</li>
+<li>replace the custom accessor calls with <code class="docutils literal notranslate"><span class="pre">conf.get(option_name)</span></code>.</li>
+</ul>
+<p>The new config code provides some help for commonly encountered use cases
+that can allow further simplifications like:</p>
+<ul class="simple">
+<li>providing a default value when the option is not defined in any way by the
+user,</li>
+<li>convert the unicode string provided by the user into a suitable
+representation (integer, list, etc).</li>
+</ul>
+<p>If you start migrating a given option to the config stacks, don’t stop
+mid-way, all its uses should be covered (tests included). There are some
+edge cases where updates via one API will be not be seen by the other API
+(see <a class="reference external" href="http://pad.lv/948339">http://pad.lv/948339</a> and <a class="reference external" href="http://pad.lv/948344">http://pad.lv/948344</a> for details). Roughly,
+the old API always trigger an IO while the new one cache values to avoid
+them. This works fine as long as a given option is handled via a single API.</p>
+</div>
+<div class="section" id="adding-a-new-stack">
+<h2><a class="toc-backref" href="#id6">Adding a new stack</a><a class="headerlink" href="#adding-a-new-stack" title="Permalink to this headline">¶</a></h2>
+<p>Stacks capture the various places an option can be declared by the user with
+associated levels of generality and query them in the appropriate order
+returning the first definition found. For example, the
+<code class="docutils literal notranslate"><span class="pre">append_revisions_only</span></code> option may be declared for all branches of a user
+in <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code>, or for a hierarchy of branches in <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> or
+in a single branch in <code class="docutils literal notranslate"><span class="pre">branch.conf</span></code>.</p>
+<p>Defining a new stack means you need a new way to expose these levels to the
+user that is not covered by the existing stacks.</p>
+<p>This is achieved by declaring:</p>
+<ul class="simple">
+<li>which stores can provide a value for the option,</li>
+<li>which sections apply to the stack instance, some filtering for a given
+context can be defined,</li>
+<li>which (store, section) should receive the modifications.</li>
+</ul>
+<p>Mapping different sections to different stacks is a powerful way to organize
+the options and provide various levels of configuration to the user. This is
+achieved with <code class="docutils literal notranslate"><span class="pre">Store</span></code> and <code class="docutils literal notranslate"><span class="pre">SectionMatcher</span></code> objects.</p>
+</div>
+<div class="section" id="adding-a-new-store">
+<h2><a class="toc-backref" href="#id7">Adding a new store</a><a class="headerlink" href="#adding-a-new-store" title="Permalink to this headline">¶</a></h2>
+<p>The following stores are used by <code class="docutils literal notranslate"><span class="pre">brz</span></code> in ways that illustrate various
+uses of sections.</p>
+</div>
+</div>
+<div class="section" id="breezy-conf">
+<h1><a class="toc-backref" href="#id8">breezy.conf</a><a class="headerlink" href="#breezy-conf" title="Permalink to this headline">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">brz</span></code> itself defines two sections here:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">DEFAULT</span></code> where global options are defined,</li>
+<li><code class="docutils literal notranslate"><span class="pre">ALIASES</span></code> where command aliases are defined. This section is <em>not</em>
+available via <code class="docutils literal notranslate"><span class="pre">GlobalStack</span></code>, instead, the <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">alias</span></code> command uses it
+for its own purposes.</li>
+</ul>
+<p>Plugins can define either additional options in the <code class="docutils literal notranslate"><span class="pre">DEFAULT</span></code> section or
+new sections for their own needs (this is not especially encouraged
+though). The <code class="docutils literal notranslate"><span class="pre">bzr-bookmarks</span></code> plugin defines a <code class="docutils literal notranslate"><span class="pre">BOOKMARKS</span></code> section there
+for example.</p>
+</div>
+<div class="section" id="location-conf">
+<h1><a class="toc-backref" href="#id9">location.conf</a><a class="headerlink" href="#location-conf" title="Permalink to this headline">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">brz</span></code> defines sections corresponding to URLs there and includes the
+relevant sections in <code class="docutils literal notranslate"><span class="pre">LocationStack</span></code> and <code class="docutils literal notranslate"><span class="pre">BranchStack</span></code>. No no-name
+section is recognized in this file.</p>
+</div>
+<div class="section" id="branch-conf">
+<h1><a class="toc-backref" href="#id10">branch.conf</a><a class="headerlink" href="#branch-conf" title="Permalink to this headline">¶</a></h1>
+<p>This file defines the option for a given branch and uses only the no-name
+section.</p>
+<div class="section" id="option">
+<h2><a class="toc-backref" href="#id11">Option</a><a class="headerlink" href="#option" title="Permalink to this headline">¶</a></h2>
+<p>The Option object is used to define its properties:</p>
+<ul>
+<li><p class="first">name: a name: a valid python identifier (even if it’s not used as an
+identifier in python itself). This is also used to register the option.</p>
+</li>
+<li><p class="first">from_unicode: a callable accepting a unicode string and returning a
+suitable value for the option. If the string cannot be coerced it should
+return None.</p>
+</li>
+<li><p class="first">override_from_env: a list of environment variables. The first variable set
+will be used as the option value overriding any other definition of the
+option.</p>
+</li>
+<li><p class="first">default: the default value that Stack.get() should return if no value can
+be found for the option. This can also be a callable as long as it returns
+a unicode string.</p>
+</li>
+<li><p class="first">default_from_env: a list of environment variables. The first variable set
+will provide a default value overriding ‘default’ which remains the
+default value if <em>no</em> environment variable is set.</p>
+</li>
+<li><p class="first">help: a doc string describing the option, the first line should be a
+summary and can be followed by a blank line and a more detailed
+explanation. This will be displayed to the user with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">help</span> <span class="o">&lt;</span><span class="n">option</span> <span class="n">name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">invalid: the action to be taken when an invalid value is encountered in a
+store (during a Stack.get()).</p>
+</li>
+</ul>
+<p>The value of an option is a unicode string or <code class="docutils literal notranslate"><span class="pre">None</span></code> if it’s not
+defined. By using <code class="docutils literal notranslate"><span class="pre">from_unicode</span></code> you can turn this string into a more
+appropriate representation.</p>
+<p>If you need a list value, you should use <code class="docutils literal notranslate"><span class="pre">ListOption</span></code> instead.</p>
+<p>For options that take their values from a <code class="docutils literal notranslate"><span class="pre">Registry</span></code> object,
+<code class="docutils literal notranslate"><span class="pre">RegistryOption</span></code> can be used. This will automatically take care of
+looking up the specified values in the dictionary and documenting the
+possible values in help.</p>
+</div>
+<div class="section" id="sections">
+<h2><a class="toc-backref" href="#id12">Sections</a><a class="headerlink" href="#sections" title="Permalink to this headline">¶</a></h2>
+<p>Options are grouped into sections which share some properties with the well
+known dict objects:</p>
+<ul class="simple">
+<li>the key is the name,</li>
+<li>you can get, set and remove an option,</li>
+<li>the value is a unicode string.</li>
+</ul>
+<p>MutableSection is needed to set or remove an option, ReadOnlySection should
+be used otherwise.</p>
+</div>
+<div class="section" id="stores">
+<h2><a class="toc-backref" href="#id13">Stores</a><a class="headerlink" href="#stores" title="Permalink to this headline">¶</a></h2>
+<p>Options can be persistent in which case they are saved into Stores.</p>
+<p><code class="docutils literal notranslate"><span class="pre">config.Store</span></code> defines the abstract interface that all stores should
+implement.</p>
+<p>This object doesn’t provide direct access to the options, it only provides
+access to Sections. This is deliberate to ensure that sections can be
+properly shared by reusing the same underlying objects. Accessing options
+should be done via the <code class="docutils literal notranslate"><span class="pre">Section</span></code> objects.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Store</span></code> can contain one or more sections, each section is uniquely
+identified by a unicode string.</p>
+<p><code class="docutils literal notranslate"><span class="pre">config.IniFileStore</span></code> is an implementation that use <code class="docutils literal notranslate"><span class="pre">ConfigObj</span></code>.</p>
+<p>Depending on the object it is associated with (or not) a <code class="docutils literal notranslate"><span class="pre">Store</span></code> also needs
+to implement a locking mechanism. <code class="docutils literal notranslate"><span class="pre">LockableIniFileStore</span></code> implements such a
+mechanism for <code class="docutils literal notranslate"><span class="pre">IniFileStore</span></code> based stores.</p>
+<p>Classes are provided for the usual Breezy configuration files and could be
+used as examples to define new ones if needed. The associated tests provides a
+basis for new classes which only need to register themselves in the right
+places to inherit from the existing basic tests and add their own specific
+ones.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Store</span></code> defines how option values are stored, this includes:</p>
+<ul class="simple">
+<li>defining the sections where the options are grouped,</li>
+<li>defining how the values are quoted/unquoted for storage purposes. Stacks
+use the unquoted values internally (default value handling and option
+expansion are simpler this way) and <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">config</span></code> quote them when they
+need to be displayed.</li>
+</ul>
+</div>
+<div class="section" id="filtering-sections">
+<h2><a class="toc-backref" href="#id14">Filtering sections</a><a class="headerlink" href="#filtering-sections" title="Permalink to this headline">¶</a></h2>
+<p>For some contexts, only some sections from a given store will apply. The
+<code class="docutils literal notranslate"><span class="pre">SectionMatcher</span></code> objects are used to define which sections in a store
+apply to a given context.</p>
+<p>The main constraint here is that a <code class="docutils literal notranslate"><span class="pre">SectionMatcher</span></code> should delay the loading
+of the associated store as long as possible. The constructor should collect
+all data needed for the selection and uses it while processing the sections in
+<code class="docutils literal notranslate"><span class="pre">get_sections</span></code>.</p>
+<p>Only <code class="docutils literal notranslate"><span class="pre">ReadOnlySection</span></code> objects are manipulated here but a
+<code class="docutils literal notranslate"><span class="pre">SectionMatcher</span></code> can return dedicated <code class="docutils literal notranslate"><span class="pre">Section</span></code> objects to provide
+additional context (the <code class="docutils literal notranslate"><span class="pre">LocationSection</span></code> add an <code class="docutils literal notranslate"><span class="pre">extra_path</span></code> attribute
+to implement the section local options for example). If no sections match,
+an empty list is returned.</p>
+<p>Options local to a section can be defined for special purposes and be
+handled by <code class="docutils literal notranslate"><span class="pre">Section.get()</span></code>. One such option is <code class="docutils literal notranslate"><span class="pre">relpath</span></code> which is
+defined in <code class="docutils literal notranslate"><span class="pre">LocationSection</span></code> as an alternative to the <code class="docutils literal notranslate"><span class="pre">appendpath</span></code>
+policy.</p>
+<p>For <code class="docutils literal notranslate"><span class="pre">appendpath</span></code>, the <code class="docutils literal notranslate"><span class="pre">LocationSection</span></code> will carry <code class="docutils literal notranslate"><span class="pre">extra_path</span></code> as the
+relative path between the section name and the location used. <code class="docutils literal notranslate"><span class="pre">relpath</span></code>
+will be available as a <code class="docutils literal notranslate"><span class="pre">Section</span></code> local option with the same
+value. <code class="docutils literal notranslate"><span class="pre">basename</span></code> will carry the location base name and be available as a
+local option with the same name. Note that such options can only be expanded
+inside the section that defines them.</p>
+<p>Specific section matchers can be implemented by overriding <code class="docutils literal notranslate"><span class="pre">get_sections</span></code>
+or just <code class="docutils literal notranslate"><span class="pre">match</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">breezy</span></code> provides:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">NameMatcher(store,</span> <span class="pre">unique_id)</span></code>: To select a single section matching
+<code class="docutils literal notranslate"><span class="pre">unique_id</span></code>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">LocationMatcher(store,</span> <span class="pre">location)</span></code>: To select all sections that match
+<code class="docutils literal notranslate"><span class="pre">location</span></code> sorted by decreasing number of path components.</li>
+<li><code class="docutils literal notranslate"><span class="pre">StartingPathMatcher(store,</span> <span class="pre">location)</span></code>: To select all sections that
+match <code class="docutils literal notranslate"><span class="pre">location</span></code> in the order they appear in the <code class="docutils literal notranslate"><span class="pre">store</span></code>.</li>
+</ul>
+</div>
+<div class="section" id="stacks">
+<h2><a class="toc-backref" href="#id15">Stacks</a><a class="headerlink" href="#stacks" title="Permalink to this headline">¶</a></h2>
+<p>An option can take different values depending on the context it is
+used. This can involve configuration files, options from the command line,
+default values in breezy and then some.</p>
+<p>Such a context is implemented by creating a list of <code class="docutils literal notranslate"><span class="pre">Section</span></code> stacked upon
+each other. A <code class="docutils literal notranslate"><span class="pre">Stack</span></code> can then be asked for an option value and returns the
+first definition found.</p>
+<p>This provides a great flexibility to decide priorities between sections when
+the stack is defined without to worry about them in the code itself.</p>
+<p>A stack also defines a mutable section (which can be None) to handle
+modifications.</p>
+<p>Many sections (or even stores) are aimed at providing default values for an
+option but these sections shouldn’t be modified lightly as modifying an option
+used for different contexts will indeed be seen by all these contexts.</p>
+<p>Default values in configuration files are defined by users. Developers
+shouldn’t have to modify them, as such, no mechanism nor heuristics are used
+to find which section (or sections) should be modified.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Stack</span></code> defines a mutable section when there is no ambiguity.  If there
+is one, then the <em>user</em> should be able to decide and in this case a new
+<code class="docutils literal notranslate"><span class="pre">Stack</span></code> can be created cheaply.</p>
+<p>Different stacks can be created for different purposes, the existing
+<code class="docutils literal notranslate"><span class="pre">GlobalStack</span></code>, <code class="docutils literal notranslate"><span class="pre">LocationStack</span></code> and <code class="docutils literal notranslate"><span class="pre">BranchStack</span></code> can be used as basis
+or examples. These classes are the only ones that should be used in code,
+<code class="docutils literal notranslate"><span class="pre">Stores</span></code> can be used to build them but shouldn’t be used otherwise, ditto
+for sections. Again, the associated tests could and should be used against the
+created stacks.</p>
+<p>Also note that <code class="docutils literal notranslate"><span class="pre">MemoryStack</span></code> can be used without any disk resources which
+allows for simpler and faster tests. A common pattern is to accept a
+<code class="docutils literal notranslate"><span class="pre">config</span></code> parameter related to a given feature and test it with predefined
+configurations without involving the whole
+stack. <code class="docutils literal notranslate"><span class="pre">breezy.tests.test_commit</span></code>, <code class="docutils literal notranslate"><span class="pre">breezy.tests.test_gpg</span></code> and
+<code class="docutils literal notranslate"><span class="pre">breezy.tests.test_smtp_connection</span></code> are good examples.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="documenting-changes.html" title="Documenting Changes"
+              >previous</a> |
+            <a href="fetch.html" title="Fetching data"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/configuration.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

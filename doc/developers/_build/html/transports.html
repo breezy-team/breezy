@@ -1,0 +1,222 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Developer guide to breezy transports &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Interacting with the user" href="ui.html" />
+    <link rel="prev" title="Fetching data" href="fetch.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="fetch.html" title="Fetching data"
+             accesskey="P">previous</a> |
+          <a href="ui.html" title="Interacting with the user"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="developer-guide-to-breezy-transports">
+<h1>Developer guide to breezy transports<a class="headerlink" href="#developer-guide-to-breezy-transports" title="Permalink to this headline">¶</a></h1>
+<p>This guide describes the <cite>Transport</cite> classes that Breezy uses for most
+local and remote file access.  (Working tree files are the major
+exception (<cite>bug 606249 &lt;https://bugs.launchpad.net/bzr/+bug/606249&gt;</cite>).</p>
+<div class="section" id="handling-symlinks">
+<h2>Handling symlinks<a class="headerlink" href="#handling-symlinks" title="Permalink to this headline">¶</a></h2>
+<p>A symlink creates an alias where files or directories can be accessed by a
+different name.  Symlinks are useful but raise a few annoying cases for
+bzr.</p>
+<p>It’s important to have tests for symlinks but these tests can’t run on
+Windows, so you need eg</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">_test_needs_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">tests</span><span class="o">.</span><span class="n">SymlinkFeature</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>or</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">requireFeature</span><span class="p">(</span><span class="n">tests</span><span class="o">.</span><span class="n">SymlinkFeature</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Breezy versions symlinks as objects in their own right, whose content is
+the path they point to.  Breezy doesn’t care whether a versioned
+symlink is absolute or relative; or whether it points inside or outside
+the working tree; or whether its referent exists or not.  In Unix the
+target of a symlink is a byte string; Breezy treats this as a Unicode string
+in the filesystem encoding (<cite>osutils._fs_enc</cite>).</p>
+<p>So when we say <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">add</span> <span class="pre">symlink</span></code>, this should always add the symlink to
+its containing working tree, and never dereference the symlink.</p>
+<p>However, <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">add</span> <span class="pre">symlink/file</span></code> shouldn’t add <code class="docutils literal notranslate"><span class="pre">file</span></code> as a child of
+<code class="docutils literal notranslate"><span class="pre">symlink</span></code>.  (Symlinks don’t have files underneath them: they may point to
+a directory which contains children, but if the symlink was pointed
+somewhere else those children would be unaffected.)  This could either add
+the file in its containing working tree, or fail outright.</p>
+<p>One interesting case for this is</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">add</span> <span class="o">~/</span><span class="n">dev</span><span class="o">/</span><span class="n">bug123</span><span class="o">/</span><span class="n">a</span><span class="o">.</span><span class="n">c</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">~/dev</span></code> is actually a symlink to <code class="docutils literal notranslate"><span class="pre">/srv/dev/joe/</span></code>.  In this case
+clearly the user does want us to follow the symlink to open the tree.</p>
+<p>As of bzr2.2, when we open a <cite>WorkingTree</cite>, we typically immediately
+compute its real path and store that as <code class="docutils literal notranslate"><span class="pre">.basedir</span></code>, but <cite>BzrDir</cite> stores
+its apparent path.  (This may not be the best thing.)</p>
+<div class="section" id="useful-functions">
+<h3>Useful functions<a class="headerlink" href="#useful-functions" title="Permalink to this headline">¶</a></h3>
+<p><cite>breezy.osutils.dereference_path</cite> does the commonly useful operation of
+resolving the directory part of a path, but leaving the filename
+untouched.  In other words</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ln</span> <span class="o">-</span><span class="n">s</span> <span class="n">x</span> <span class="n">a</span>
+<span class="n">ln</span> <span class="o">-</span><span class="n">s</span> <span class="n">y</span> <span class="n">x</span><span class="o">/</span><span class="n">b</span>
+<span class="n">dereference_path</span><span class="p">(</span><span class="s1">&#39;a/b&#39;</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="s1">&#39;x/b&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="relative-paths-beyond-symlinks">
+<h3>Relative paths beyond symlinks<a class="headerlink" href="#relative-paths-beyond-symlinks" title="Permalink to this headline">¶</a></h3>
+<p>Another interesting case is when a control directory contains a relative
+path, perhaps from a branch to its master or from a working tree to its
+branch.  If it contains <code class="docutils literal notranslate"><span class="pre">../</span></code> parts as it typically will, these may have
+different effects depending on whether they’re looked up relative to the
+real path or the apparent path given by the user.  It may be that some
+users expect different behaviours at different times.</p>
+<p>Resolving the path relative to the real directory makes it somewhat more
+consistent with what you would see by in a shell entering that directory
+and then opening the given name.  It may also make things more consistent
+when there are multiple links to the same bzrdir.  However it may cause
+problems when using a transport that hides symlinks.</p>
+<p>We could possibly handle this by doing less path arithmetic and asking the
+OS or server to open the path including <code class="docutils literal notranslate"><span class="pre">..</span></code> and other relative
+elements, but that might cause other problems.  HTTP servers may do their
+own path arithmetic before passing it to the OS.</p>
+</div>
+<div class="section" id="transports-that-hide-symlinks">
+<h3>Transports that hide symlinks<a class="headerlink" href="#transports-that-hide-symlinks" title="Permalink to this headline">¶</a></h3>
+<p>On local, SFTP and bzr+ssh transports, we can directly see symlinks as
+symlinks.  Over HTTP (and FTP?) they’re expanded by the server and we
+cannot detect them.  This can cause problems when Breezy follows relative
+paths because typically we will join the paths, and we may do this
+inconsistently with how the server, which can see the symlinks, would do.</p>
+</div>
+<div class="section" id="symlinks-and-chroottransports">
+<h3>Symlinks and ChrootTransports<a class="headerlink" href="#symlinks-and-chroottransports" title="Permalink to this headline">¶</a></h3>
+<p>Breezy has an internal concept of a <cite>ChrootTransport</cite> that locks access into
+a particular directory.  Symlinks should not break out of a chroot jail
+which implies they should be expanded and checked within breezy.
+(At least as long as the transport lets us see the symlink; otherwise it
+may not be possible.)</p>
+<blockquote>
+<div></div></blockquote>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="fetch.html" title="Fetching data"
+              >previous</a> |
+            <a href="ui.html" title="Interacting with the user"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/transports.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

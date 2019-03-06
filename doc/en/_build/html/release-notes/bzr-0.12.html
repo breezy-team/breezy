@@ -1,0 +1,231 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-0-12">
+<h2>bzr 0.12<a class="headerlink" href="#bzr-0-12" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2006-10-30</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Clean up <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">selftest</span> <span class="pre">--benchmark</span> <span class="pre">bundle</span></code> to correct an import,
+and remove benchmarks that take longer than 10min to run.
+(John Arbash Meinel)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-12rc1">
+<h2>bzr 0.12rc1<a class="headerlink" href="#bzr-0-12rc1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2006-10-23</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span></code> now shows dotted-decimal revision numbers for all revisions,
+rather than just showing a decimal revision number for revisions on the
+mainline. These revision numbers are not yet accepted as input into bzr
+commands such as log, diff etc. (Robert Collins)</li>
+<li>revisions can now be specified using dotted-decimal revision numbers.
+For instance, <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">diff</span> <span class="pre">-r</span> <span class="pre">1.2.1..1.2.3</span></code>. (Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">commands</span></code> output is now shorter (Aaron Bentley)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span></code> now uses lazy importing to reduce the startup time. This has
+a moderate effect on lots of actions, especially ones that have
+little to do. For example <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">rocks</span></code> time is down to 116ms from
+283ms. (John Arbash Meinel)</li>
+<li>New Registry class to provide name-to-object registry-like support,
+for example for schemes where plugins can register new classes to
+do certain tasks (e.g. log formatters). Also provides lazy registration
+to allow modules to be loaded on request.
+(John Arbash Meinel, Adeodato Simó)</li>
+</ul>
+</div>
+<div class="section" id="api-incompatibility">
+<h3>API Incompatibility<a class="headerlink" href="#api-incompatibility" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>LogFormatter subclasses show now expect the ‘revno’ parameter to
+show() to be a string rather than an int. (Robert Collins)</li>
+</ul>
+</div>
+<div class="section" id="id1">
+<h3>Internals<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">TestCase.run_bzr</span></code>, <code class="docutils literal notranslate"><span class="pre">run_bzr_captured</span></code>, and <code class="docutils literal notranslate"><span class="pre">run_bzr_subprocess</span></code>
+can take a <code class="docutils literal notranslate"><span class="pre">working_dir='foo'</span></code> parameter, which will change directory
+for the command. (John Arbash Meinel)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.lazy_regex.lazy_compile</span></code> can be used to create a proxy
+around a regex, which defers compilation until first use.
+(John Arbash Meinel)</li>
+<li><code class="docutils literal notranslate"><span class="pre">TestCase.run_bzr_subprocess</span></code> defaults to supplying the
+<code class="docutils literal notranslate"><span class="pre">--no-plugins</span></code> parameter to ensure test reproducability, and avoid
+problems with system-wide installed plugins. (John Arbash Meinel)</li>
+<li>Unique tree root ids are now supported. Newly created trees still
+use the common root id for compatibility with bzr versions before 0.12.
+(Aaron Bentley)</li>
+<li><code class="docutils literal notranslate"><span class="pre">WorkingTree.set_root_id(None)</span></code> is now deprecated. Please
+pass in <code class="docutils literal notranslate"><span class="pre">inventory.ROOT_ID</span></code> if you want the default root id value.
+(Robert Collins, John Arbash Meinel)</li>
+<li>New method <code class="docutils literal notranslate"><span class="pre">WorkingTree.flush()</span></code> which will write the current memory
+inventory out to disk. At the same time, <code class="docutils literal notranslate"><span class="pre">read_working_inventory</span></code> will
+no longer trash the current tree inventory if it has been modified within
+the current lock, and the tree will now <code class="docutils literal notranslate"><span class="pre">flush()</span></code> automatically on
+<code class="docutils literal notranslate"><span class="pre">unlock()</span></code>. <code class="docutils literal notranslate"><span class="pre">WorkingTree.set_root_id()</span></code> has been updated to take
+advantage of this functionality. (Robert Collins, John Arbash Meinel)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.tsort.merge_sorted</span></code> now accepts <code class="docutils literal notranslate"><span class="pre">generate_revnos</span></code>. This
+parameter will cause it to add another column to its output, which
+contains the dotted-decimal revno for each revision, as a tuple.
+(Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">LogFormatter.show_merge</span></code> is deprecated in favour of
+<code class="docutils literal notranslate"><span class="pre">LogFormatter.show_merge_revno</span></code>. (Robert Collins)</li>
+</ul>
+</div>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Avoid circular imports by creating a deprecated function for
+<code class="docutils literal notranslate"><span class="pre">bzrlib.tree.RevisionTree</span></code>. Callers should have been using
+<code class="docutils literal notranslate"><span class="pre">bzrlib.revisontree.RevisionTree</span></code> anyway. (John Arbash Meinel,
+#66349)</li>
+<li>Don’t use <code class="docutils literal notranslate"><span class="pre">socket.MSG_WAITALL</span></code> as it doesn’t exist on all
+platforms. (Martin Pool, #66356)</li>
+<li>Don’t require <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> in range responses. Assume they are a
+single range if <code class="docutils literal notranslate"><span class="pre">Content-Type</span></code> does not exist.
+(John Arbash Meinel, #62473)</li>
+<li>bzr branch/pull no longer complain about progress bar cleanup when
+interrupted during fetch.  (Aaron Bentley, #54000)</li>
+<li><code class="docutils literal notranslate"><span class="pre">WorkingTree.set_parent_trees()</span></code> uses the trees to directly write
+the basis inventory, rather than going through the repository. This
+allows us to have 1 inventory read, and 2 inventory writes when
+committing a new tree. (John Arbash Meinel)</li>
+<li>When reverting, files that are not locally modified that do not exist
+in the target are deleted, not just unversioned (Aaron Bentley)</li>
+<li>When trying to acquire a lock, don’t fail immediately. Instead, try
+a few times (up to 1 hour) before timing out. Also, report why the
+lock is unavailable (John Arbash Meinel, #43521, #49556)</li>
+<li>Leave HttpTransportBase daughter classes decides how they
+implement cloning. (Vincent Ladeuil, #61606)</li>
+<li>diff3 does not indicate conflicts on clean merge. (Aaron Bentley)</li>
+<li>If a commit fails, the commit message is stored in a file at the root of
+the tree for later commit. (Cheuksan Edward Wang, Stefan Metzmacher,
+#32054)</li>
+</ul>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>New test base class TestCaseWithMemoryTransport offers memory-only
+testing facilities: its not suitable for tests that need to mutate disk
+state, but most tests should not need that and should be converted to
+TestCaseWithMemoryTransport. (Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">TestCase.make_branch_and_memory_tree</span></code> now takes a format
+option to set the BzrDir, Repository and Branch formats of the
+created objects. (Robert Collins, John Arbash Meinel)</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-0.12.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

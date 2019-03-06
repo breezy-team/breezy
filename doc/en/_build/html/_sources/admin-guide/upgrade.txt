@@ -1,0 +1,77 @@
+Upgrades
+========
+
+Bazaar has a strong commitment to inter-version compatibility both on disk and
+over the network.  Newer clients should be able to interact with older
+versions on the server (although perhaps not at optimal speed) and older
+clients should also be able to communicate with newer versions of Bazaar on
+the server.  Divergences from this rule are considered bugs and are fixed in
+later versions.
+
+That said, Bazaar is constantly improving and the most recent versions are the
+most featureful and have better performance.  In particular, the Bazaar
+versions 2.0 and later have significant advantages over earlier versions,
+including a more compact disk format, faster network operations and overall
+performance improvements.  With the 2.0 release, Bazaar has moved to a
+stable/development release model where the 2.x series is maintained with
+bugfixes releases for six months, while simultaneously the 2.(x+1) series is
+being developed with monthly beta releases that are suitable for everyday use.
+Bazaar development has a stable trunk with an extensive test suite, so there
+is no reason to fear using the development series for everyday use, it simply
+changes more often than the stable series.  Many users do run the development
+version of Bazaar and update it regularly, including most of the Bazaar
+developers themselves.
+
+
+Software upgrades
+-----------------
+
+Upgrading the Bazaar software is as simple as re-installing the Python package
+using either the latest binary package for Windows or Mac OS X, the binary
+package provided by your GNU/Linux distribution, or installing from the source
+release.  See http://wiki.bazaar.canonical.com/Downloads for the latest
+releases for all supported platforms.
+
+Bazaar's later versions support all of the earlier disk formats (back to the
+very first one), so there is no need to upgrade the branches on the disk when
+upgrading the software.  To make use of particular new features that might
+need updated versions on both the server and developer's machines, it does not
+matter if the clients or the servers are upgraded first.
+
+
+Disk format upgrades
+--------------------
+
+In its evolution, Bazaar has used a sequence of disk formats for improved
+storage efficiency and speed.  With the new disk format released in version
+2.0, there is a commitment to keep that disk format until version 3.0 is
+released, which has not even been planned yet.  (Bazaar 2.0 was released
+almost two years after Bazaar 1.0.)  As a result, disk format upgrades should
+be extremely infrequent.
+
+If there are existing branches in an older format that you would like to
+upgrade to the latest format, you can see the `2.0 Upgrade Guide
+<../upgrade-guide/index.html>`_ for more information.  From the system
+administration perspective, it is important to coordinate the timing of
+various upgrades in the process.  First, the central branches on the server
+should be upgraded.  Next, any local mirrors that developers have should be
+upgraded.  Finally, developers' local branches should be upgraded.  These
+upgrades will require an appropriate version of the software whenever they are
+performed.  (It is possible to upgrade branches remotely over the network, but
+it may be much slower.)
+
+
+Plugin upgrades
+---------------
+
+When Bazaar does update its version, plugins that use the Bazaar API may need
+to be upgraded to reflect changes in that API.  Some plugins have strict
+version dependencies on the version of the Bazaar API that they will accept.
+If this is the case, then you should ensure that the plugins you depend on
+have been updated *before* you upgrade your Bazaar version to avoid a
+situation where your plugins won't work with the installed version of Bazaar.
+If this does happen, then the solution is simply to reinstall the previous
+version of Bazaar that *did* work with the plugins.  For installations that
+depend on a large number of plugins, this sort of version upgrade should be
+tested in a safe sandbox to ensure that the entire collection of Bazaar and
+its plugins can all work together.

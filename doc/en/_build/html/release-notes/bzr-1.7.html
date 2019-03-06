@@ -1,0 +1,366 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-1-7-1">
+<h2>bzr 1.7.1<a class="headerlink" href="#bzr-1-7-1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2008-10-01</td>
+</tr>
+</tbody>
+</table>
+<p>No changes from 1.7.1rc1.</p>
+</div>
+<div class="section" id="bzr-1-7-1rc1">
+<h2>bzr 1.7.1rc1<a class="headerlink" href="#bzr-1-7-1rc1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2008-09-24</td>
+</tr>
+</tbody>
+</table>
+<p>This release just includes an update to how the merge algorithm handles
+file paths when we encounter complex history.</p>
+<div class="section" id="features">
+<h3>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>If we encounter a criss-cross in history, use information from
+direct Least Common Ancestors to resolve inventory shape (locations
+of files, adds, deletes, etc). This is similar in concept to using
+<code class="docutils literal notranslate"><span class="pre">--lca</span></code> for merging file texts, only applied to paths.
+(John Arbash Meinel)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-1-7">
+<h2>bzr 1.7<a class="headerlink" href="#bzr-1-7" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2008-09-23</td>
+</tr>
+</tbody>
+</table>
+<p>This release includes many bug fixes and a few performance and feature
+improvements.  <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">rm</span></code> will now scan for missing files and remove them,
+like how <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">add</span></code> scans for unknown files and adds them. A bit more
+polish has been applied to the stacking code. The b-tree indexing code has
+been brought in, with an eye on using it in a future repository format.
+There are only minor installer changes since bzr-1.7rc2.</p>
+<div class="section" id="id1">
+<h3>Features<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Some small updates to the win32 installer. Include localization
+files found in plugins, and include the builtin distutils as part of
+packaging qbzr. (Mark Hammond)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-1-7rc2">
+<h2>bzr 1.7rc2<a class="headerlink" href="#bzr-1-7rc2" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2008-09-17</td>
+</tr>
+</tbody>
+</table>
+<p>A few bug fixes from 1.7rc1. The biggest change is a new
+<code class="docutils literal notranslate"><span class="pre">RemoteBranch.get_stacked_on_url</span></code> RPC. This allows clients that are
+trying to access a Stacked branch over the smart protocol, to properly
+connect to the stacked-on location.</p>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Branching from a shared repository on a smart server into a new
+repository now preserves the repository format.
+(Andrew Bennetts, #269214)</li>
+<li>Branching from a stacked branch via <code class="docutils literal notranslate"><span class="pre">bzr+ssh</span></code> can properly connect
+to the stacked-on branch.  (Martin Pool, #261315)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">init</span></code> no longer re-opens the BzrDir multiple times.
+(Vincent Ladeuil)</li>
+<li>Fix ‘_in_buffer’ AttributeError when using the -Dhpss debug flag.
+(Andrew Bennetts)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-1-7rc1">
+<h2>bzr 1.7rc1<a class="headerlink" href="#bzr-1-7rc1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2008-09-09</td>
+</tr>
+</tbody>
+</table>
+<p>This release candidate for bzr 1.7 has several bug fixes and a few
+performance and feature improvements.  <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">rm</span></code> will now scan for
+missing files and remove them, like how <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">add</span></code> scans for unknown
+files and adds them. A bit more polish has been applied to the stacking
+code. The b-tree indexing code has been brought in, with an eye on using
+it in a future repository format.</p>
+<div class="section" id="changes">
+<h3>Changes<a class="headerlink" href="#changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">export</span></code> can now export a subdirectory of a project.
+(Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">remove-tree</span></code> will now refuse to remove a tree with uncommitted
+changes, unless the <code class="docutils literal notranslate"><span class="pre">--force</span></code> option is specified.
+(Lukáš Lalinský, #74101)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">rm</span></code> will now scan for files that are missing and remove just
+them automatically, much as <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">add</span></code> scans for new files that
+are not ignored and adds them automatically. (Robert Collins)</li>
+</ul>
+</div>
+<div class="section" id="id2">
+<h3>Features<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Support for GSSAPI authentication when using FTP as documented in
+RFC2228. (Jelmer Vernooij, #49623)</li>
+<li>Add support for IPv6 in the smart server. (Jelmer Vernooij, #165014)</li>
+</ul>
+</div>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>A URL like <code class="docutils literal notranslate"><span class="pre">log+file:///tmp</span></code> will log all access to that Transport
+to <code class="docutils literal notranslate"><span class="pre">.bzr.log</span></code>, which may help in debugging or profiling.
+(Martin Pool)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">push</span></code> use the default stacking policy if the
+branch format supports it. (Aaron Bentley)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">init</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">init-repo</span></code> will now print out the same as
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">info</span></code> if it completed successfully.
+(Marius Kruger)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">uncommit</span></code> logs the old tip revision id, and displays how to
+restore the branch to that tip using <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pull</span></code>.  This allows you
+to recover if you realize you uncommitted the wrong thing.
+(John Arbash Meinel)</li>
+<li>Fix problems in accessing stacked repositories over <code class="docutils literal notranslate"><span class="pre">bzr://</span></code>.
+(Martin Pool, #261315)</li>
+<li><code class="docutils literal notranslate"><span class="pre">SFTPTransport.readv()</span></code> was accidentally using <code class="docutils literal notranslate"><span class="pre">list</span> <span class="pre">+=</span> <span class="pre">string</span></code>,
+which ‘works’, but adds each character separately to the list,
+rather than using <code class="docutils literal notranslate"><span class="pre">list.append(string)</span></code>. Fixing this makes the
+SFTP transport a little bit faster (~20%) and use a bit less memory.
+(John Arbash Meinel)</li>
+<li>When reading index files, if we happen to read the whole file in a
+single request treat it as a <code class="docutils literal notranslate"><span class="pre">_buffer_all</span></code> request. This happens
+most often on small indexes over remote transports, where we default
+to reading 64kB. It saves a round trip for each small index during
+fetch operations. Also, if we have read more than 50% of an index
+file, trigger a <code class="docutils literal notranslate"><span class="pre">_buffer_all</span></code> on the next request. This works
+around some inefficiencies because reads don’t fall neatly on page
+boundaries, so we would ignore those bytes, but request them again
+later. This could trigger a total read size of more than the whole
+file. (John Arbash Meinel)</li>
+</ul>
+</div>
+<div class="section" id="id3">
+<h3>Bug Fixes<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">rm</span></code> is now aliased to <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">del</span></code> for the convenience of svn
+users. (Robert Collins, #205416)</li>
+<li>Catch the infamous “select/poll returned error” which occurs when
+pycurl try to send a body request to an HTTP/1.0 server which has
+already refused to handle the request. (Vincent Ladeuil, #225020)</li>
+<li>Fix <code class="docutils literal notranslate"><span class="pre">ObjectNotLocked</span></code> errors when using various commands
+(including <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">cat</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">annotate</span></code>) in combination with a
+smart server URL.  (Andrew Bennetts, #237067)</li>
+<li><code class="docutils literal notranslate"><span class="pre">FTPTransport.stat()</span></code> would return <code class="docutils literal notranslate"><span class="pre">0000</span></code> as the permission bits
+for the containing <code class="docutils literal notranslate"><span class="pre">.bzr/</span></code> directory (it does not implement
+permissions). This would cause us to set all subdirectories to
+<code class="docutils literal notranslate"><span class="pre">0700</span></code> and files to <code class="docutils literal notranslate"><span class="pre">0600</span></code> rather than leaving them unmodified.
+Now we ignore <code class="docutils literal notranslate"><span class="pre">0000</span></code> as the permissions and assume they are
+invalid. (John Arbash Meinel, #259855)</li>
+<li>Merging from a previously joined branch will no longer cause
+a traceback. (Jelmer Vernooij, #203376)</li>
+<li>Pack operations on windows network shares will work even with large
+files. (Robert Collins, #255656)</li>
+<li>Running <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">st</span> <span class="pre">PATH_TO_TREE</span></code> will no longer suppress merge
+status. Status is also about 7% faster on mozilla sized trees
+when the path to the root of the tree has been given. Users of
+the internal <code class="docutils literal notranslate"><span class="pre">show_tree_status</span></code> function should be aware that
+the show_pending flag is now authoritative for showing pending
+merges, as it was originally. (Robert Collins, #255204)</li>
+<li>Set valid default _param_name for Option so that ListOption can embed
+‘-‘ in names. (Vincent Ladeuil, #263249)</li>
+<li>Show proper error rather than traceback when an unknown revision
+id is specified to <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">cat-revision</span></code>. (Jelmer Vernooij, #175569)</li>
+<li>Trailing text in the dirstate file could cause the C dirstate parser
+to try to allocate an invalid amount of memory. We now properly
+check and test for parsing a dirstate with invalid trailing data.
+(John Arbash Meinel, #186014)</li>
+<li>Unexpected error responses from a smart server no longer cause the
+client to traceback.  (Andrew Bennetts, #263527)</li>
+<li>Use a Windows api function to get a Unicode host name, rather than
+assuming the host name is ascii.
+(Mark Hammond, John Arbash Meinel, #256550)</li>
+<li><code class="docutils literal notranslate"><span class="pre">WorkingTree4</span></code> trees will now correctly report missing-and-new
+paths in the output of <code class="docutils literal notranslate"><span class="pre">iter_changes</span></code>. (Robert Collins)</li>
+</ul>
+</div>
+<div class="section" id="documentation">
+<h3>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Updated developer documentation.  (Martin Pool)</li>
+</ul>
+</div>
+<div class="section" id="api-changes">
+<h3>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Exporters now take 4 parameters. (Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Tree.iter_changes</span></code> will now return False for the content change
+field when a file is missing in the basis tree and not present in
+the target tree. Previously it returned True unconditionally.
+(Robert Collins)</li>
+<li>The deprecated <code class="docutils literal notranslate"><span class="pre">Branch.abspath</span></code> and unimplemented
+<code class="docutils literal notranslate"><span class="pre">Branch.rename_one</span></code> and <code class="docutils literal notranslate"><span class="pre">Branch.move</span></code> were removed. (Jelmer Vernooij)</li>
+<li>BzrDir.clone_on_transport implementations must now accept a stacked_on
+parameter.  (Aaron Bentley)</li>
+<li>BzrDir.cloning_metadir implementations must now take a require_stacking
+parameter.  (Aaron Bentley)</li>
+</ul>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">addCleanup</span></code> now takes <code class="docutils literal notranslate"><span class="pre">*arguments</span></code> and <code class="docutils literal notranslate"><span class="pre">**keyword_arguments</span></code>
+which are then passed to the cleanup callable as it is run. In
+addition, addCleanup no longer requires that the callables passed to
+it be unique. (Jonathan Lange)</li>
+<li>Fix some tests that fail on Windows because files are deleted while
+still in use.
+(Mark Hammond)</li>
+<li><code class="docutils literal notranslate"><span class="pre">selftest</span></code>’s <code class="docutils literal notranslate"><span class="pre">--starting-with</span></code> option can now use predefined
+prefixes so that one can say <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">selftest</span> <span class="pre">-s</span> <span class="pre">bp.loom</span></code> instead of
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">selftest</span> <span class="pre">-s</span> <span class="pre">bzrlib.plugins.loom</span></code>. (Vincent Ladeuil)</li>
+<li><code class="docutils literal notranslate"><span class="pre">selftest</span></code>’s <code class="docutils literal notranslate"><span class="pre">--starting-with</span></code> option now accepts multiple values.
+(Vincent Ladeuil)</li>
+</ul>
+</div>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>A new plugin interface, <code class="docutils literal notranslate"><span class="pre">bzrlib.log.log_adapters</span></code>, has been added.
+This allows dynamic log output filtering by plugins.
+(Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.btree_index</span></code> is now available, providing a b-tree index
+layer. The design is memory conservative (limited memory cache),
+faster to seek (approx 100 nodes per page, gives 100-way fan out),
+and stores compressed pages allowing more keys per page.
+(Robert Collins, John Arbash Meinel)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.diff.DiffTree.show_diff</span></code> now skips changes where the kind
+is unknown in both source and target.
+(Robert Collins, Aaron Bentley)</li>
+<li><code class="docutils literal notranslate"><span class="pre">GraphIndexBuilder.add_node</span></code> and <code class="docutils literal notranslate"><span class="pre">BTreeBuilder</span></code> have been
+streamlined a bit. This should make creating large indexes faster.
+(In benchmarking, it now takes less time to create a BTree index than
+it takes to read the GraphIndex one.) (John Arbash Meinel)</li>
+<li>Mail clients for <cite>bzr send</cite> are now listed in a registry.  This
+allows plugins to add new clients by registering them with
+<code class="docutils literal notranslate"><span class="pre">bzrlib.mail_client.mail_client_registry</span></code>.  All of the built-in
+clients now use this mechanism.  (Neil Martinsen-Burrell)</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-1.7.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

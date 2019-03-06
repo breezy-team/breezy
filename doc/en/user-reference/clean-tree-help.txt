@@ -1,0 +1,35 @@
+clean-tree
+==========
+
+:Purpose: Remove unwanted files from working tree.
+:Usage:   brz clean-tree
+
+:Options:
+  --detritus            Delete conflict files, merge and revert backups, and
+                        failed selftest dirs.
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  --dry-run             Show files to delete instead of deleting them.
+  --force               Do not prompt before deleting.
+  -h, --help            Show help message.
+  --ignored             Delete all ignored files.
+  -q, --quiet           Only display errors and warnings.
+  --unknown             Delete files unknown to brz (default).
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  By default, only unknown files, not ignored files, are deleted.  Versioned
+  files are never deleted.
+  
+  Another class is 'detritus', which includes files emitted by brz during
+  normal operations and selftests.  (The value of these files decreases with
+  time.)
+  
+  If no options are specified, unknown files are deleted.  Otherwise, option
+  flags are respected, and may be combined.
+  
+  To check what clean-tree will do, use --dry-run.
+
+
+

@@ -1,0 +1,556 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>CHK Optimized index &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="chk-optimized-index">
+<h1>CHK Optimized index<a class="headerlink" href="#chk-optimized-index" title="Permalink to this headline">¶</a></h1>
+<p>Our current btree style index is nice as a general index, but it is not optimal
+for Content-Hash-Key based content. With CHK, the keys themselves are hashes,
+which means they are randomly distributed (similar keys do not refer to
+similar content), and they do not compress well. However, we can create an
+index which takes advantage of these abilites, rather than suffering from
+them. Even further, there are specific advantages provided by
+<code class="docutils literal notranslate"><span class="pre">groupcompress</span></code>, because of how individual items are clustered together.</p>
+<p>Btree indexes also rely on zlib compression, in order to get their compact
+size, and further has to try hard to fit things into a compressed 4k page.
+When the key is a sha1 hash, we would not expect to get better than 20bytes
+per key, which is the same size as the binary representation of the hash. This
+means we could write an index format that gets approximately the same on-disk
+size, without having the overhead of <code class="docutils literal notranslate"><span class="pre">zlib.decompress</span></code>. Some thought would
+still need to be put into how to efficiently access these records from remote.</p>
+<div class="section" id="required-information">
+<h2>Required information<a class="headerlink" href="#required-information" title="Permalink to this headline">¶</a></h2>
+<p>For a given groupcompress record, we need to know the offset and length of the
+compressed group in the .pack file, and the start and end of the content inside
+the uncompressed group. The absolute minimum is slightly less, but this is a
+good starting point. The other thing to consider, is that for 1M revisions and
+1M files, we’ll probably have 10-20M CHK pages, so we want to make sure we
+have an index that can scale up efficiently.</p>
+<ol class="arabic simple">
+<li>A compressed sha hash is 20-bytes</li>
+<li>Pack files can be &gt; 4GB, we could use an 8-byte (64-bit) pointer, or we
+could store a 5-byte pointer for a cap at 1TB. 8-bytes still seems like
+overkill, even if it is the natural next size up.</li>
+<li>An individual group would never be longer than 2^32, but they will often
+be bigger than 2^16. 3 bytes for length (16MB) would be the minimum safe
+length, and may not be safe if we expand groups for large content (like ISOs).
+So probably 4-bytes for group length is necessary.</li>
+<li>A given start offset has to fit in the group, so another 4-bytes.</li>
+<li>Uncompressed length of record is based on original size, so 4-bytes is
+expected as well.</li>
+<li>That leaves us with 20+8+4+4+4 = 40 bytes per record. At the moment, btree
+compression gives us closer to 38.5 bytes per record. We don’t have perfect
+compression, but we also don’t have &gt;4GB pack files (and if we did, the first
+4GB are all under then 2^32 barrier :).</li>
+</ol>
+<p>If we wanted to go back to the ‘’minimal’’ amount of data that we would need to
+store.</p>
+<ol class="arabic">
+<li><p class="first">8 bytes of a sha hash are generally going to be more than enough to fully
+determine the entry (see <a class="reference internal" href="#partial-hash">Partial hash</a>). We could support some amount of
+collision in an index record, in exchange for resolving it inside the
+content. At least in theory, we don’t <em>have</em> to record the whole 20-bytes
+for the sha1 hash. (8-bytes gives us less than 1 in 1000 chance of
+a single collision for 10M nodes in an index)</p>
+</li>
+<li><p class="first">We could record the start and length of each group in a separate location,
+and then have each record reference the group by an ‘offset’. This is because
+we expect to have many records in the same group (something like 10k or so,
+though we’ve fit &gt;64k under some circumstances). At a minimum, we have one
+record per group so we have to store at least one reference anyway. So the
+maximum overhead is just the size and cost of the dereference (and normally
+will be much much better than that.)</p>
+</li>
+<li><p class="first">If a group reference is an 8-byte start, and a 4-byte length, and we have
+10M keys, but get at least 1k records per group, then we would have 10k
+groups.  So we would need 120kB to record all the group offsets, and then
+each individual record would only need a 2-byte group number, rather than a
+12-byte reference.  We could be safe with a 4-byte group number, but if
+each group is ~1MB, 64k groups is 64GB. We can start with 2-byte, but leave
+room in the header info to indicate if we have more than 64k group entries.
+Also, current grouping creates groups of 4MB each, which would make it
+256GB, to create 64k groups. And our current chk pages compress down to
+less than 100 bytes each (average is closer to 40 bytes), which for 256GB
+of raw data, would amount to 2.7 billion CHK records. (This will change if
+we start to use CHK for text records, as they do not compress down as
+small.) Using 100 bytes per 10M chk records, we have 1GB of compressed chk
+data, split into 4MB groups or 250 total groups. Still &lt;&lt; 64k groups.
+Conversions could create 1 chk record at a time, creating a group for each,
+but they would be foolish to not commit a write group after 10k revisions
+(assuming 6 CHK pages each).</p>
+</li>
+<li><p class="first">We want to know the start-and-length of a record in the decompressed
+stream. This could actually be moved into a mini-index inside the group
+itself. Initial testing showed that storing an expanded “key =&gt;
+start,offset” consumed a considerable amount of compressed space. (about
+30% of final size was just these internal indices.) However, we could move
+to a pure “record 1 is at location 10-20”, and then our external index
+would just have a single ‘group entry number’.</p>
+<p>There are other internal forces that would give a natural cap of 64k
+entries per group. So without much loss of generality, we could probably get
+away with a 2-byte ‘group entry’ number. (which then generates an 8-byte
+offset + endpoint as a header in the group itself.)</p>
+</li>
+<li><p class="first">So for 1M keys, an ideal chk+group index would be:</p>
+<blockquote>
+<div><ol class="loweralpha simple">
+<li>6-byte hash prefix</li>
+<li>2-byte group number</li>
+<li>2-byte entry in group number</li>
+<li>a separate lookup of 12-byte group number to offset + length</li>
+<li>a variable width mini-index that splits X bits of the key. (to maintain
+small keys, low chance of collision, this is <em>not</em> redundant with the
+value stored in (a)) This should then dereference into a location in
+the index. This should probably be a 4-byte reference. It is unlikely,
+but possible, to have an index &gt;16MB. With an 10-byte entry, it only
+takes 1.6M chk nodes to do so.  At the smallest end, this will probably
+be a 256-way (8-bits) fan out, at the high end it could go up to
+64k-way (16-bits) or maybe even 1M-way (20-bits). (64k-way should
+handle up to 5-16M nodes and still allow a cheap &lt;4k read to find the
+final entry.)</li>
+</ol>
+</div></blockquote>
+</li>
+</ol>
+<p>So the max size for the optimal groupcompress+chk index with 10M entries would be:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">10</span> <span class="o">*</span> <span class="mi">10</span><span class="n">M</span> <span class="p">(</span><span class="n">entries</span><span class="p">)</span> <span class="o">+</span> <span class="mi">64</span><span class="n">k</span> <span class="o">*</span> <span class="mi">12</span> <span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="o">+</span> <span class="mi">64</span><span class="n">k</span> <span class="o">*</span> <span class="mi">4</span> <span class="p">(</span><span class="n">mini</span> <span class="n">index</span><span class="p">)</span> <span class="o">=</span> <span class="mi">101</span> <span class="n">MiB</span>
+</pre></div>
+</div>
+<p>So 101MiB which breaks down as 100MiB for the actual entries, 0.75MiB for the
+group records, and 0.25MiB for the mini index.</p>
+<ol class="arabic">
+<li><p class="first">Looking up a key would involve:</p>
+<ol class="loweralpha">
+<li><p class="first">Read <code class="docutils literal notranslate"><span class="pre">XX</span></code> bytes to get the header, and various config for the index.
+Such as length of the group records, length of mini index, etc.</p>
+</li>
+<li><p class="first">Find the offset in the mini index for the first YY bits of the key. Read
+the 4 byte pointer stored at that location (which may already be in the
+first content if we pre-read a minimum size.)</p>
+</li>
+<li><p class="first">Jump to the location indicated, and read enough bytes to find the
+correct 12-byte record. The mini-index only indicates the start of
+records that start with the given prefix. A 64k-way index resolves 10MB
+records down to 160 possibilities. So at 12 bytes each, to read all would
+cost 1920 bytes to be read.</p>
+</li>
+<li><p class="first">Determine the offset for the group entry, which is the known <code class="docutils literal notranslate"><span class="pre">start</span> <span class="pre">of</span>
+<span class="pre">groups</span></code> location + 12B*offset number. Read its 12-byte record.</p>
+</li>
+<li><p class="first">Switch to the .pack file, and read the group header to determine where in
+the stream the given record exists. At this point, you have enough
+information to read the entire group block. For local ops, you could
+only read enough to get the header, and then only read enough to
+decompress just the content you want to get at.</p>
+<p>Using an offset, you also don’t need to decode the entire group header.
+If we assume that things are stored in fixed-size records, you can jump
+to exactly the entry that you care about, and read its 8-byte
+(start,length in uncompressed) info.  If we wanted more redundancy we
+could store the 20-byte hash, but the content can verify itself.</p>
+</li>
+<li><p class="first">If the size of these mini headers becomes critical (8 bytes per record
+is 8% overhead for 100 byte records), we could also compress this mini
+header. Changing the number of bytes per entry is unlikely to be
+efficient, because groups standardize on 4MiB wide, which is &gt;&gt;64KiB for
+a 2-byte offset, 3-bytes would be enough as long as we never store an
+ISO as a single entry in the content. Variable width also isn’t a big
+win, since base-128 hits 4-bytes at just 2MiB.</p>
+<p>For minimum size without compression, we could only store the 4-byte
+length of each node. Then to compute the offset, you have to sum all
+previous nodes. We require &lt;64k nodes in a group, so it is up to 256KiB
+for this header, but we would lose partial reads.  This should still be
+cheap in compiled code (needs tests, as you can’t do partial info), and
+would also have the advantage that fixed width would be highly
+compressible itself. (Most nodes are going to have a length that fits
+1-2 bytes.)</p>
+<p>An alternative form would be to use the base-128 encoding.  (If the MSB
+is set, then the next byte needs to be added to the current value
+shifted by 7*n bits.) This encodes 4GiB in 5 bytes, but stores 127B in 1
+byte, and 2MiB in 3 bytes. If we only stored 64k entries in a 4 MiB
+group, the average size can only be 64B, which fits in a single byte
+length, so 64KiB for this header, or only 1.5% overhead. We also don’t
+have to compute the offset of <em>all</em> nodes, just the ones before the one
+we want, which is the similar to what we have to do to get the actual
+content out.</p>
+</li>
+</ol>
+</li>
+</ol>
+</div>
+<div class="section" id="partial-hash">
+<h2>Partial Hash<a class="headerlink" href="#partial-hash" title="Permalink to this headline">¶</a></h2>
+<p>The size of the index is dominated by the individual entries (the 1M records).
+Saving 1 byte there saves 1MB overall, which is the same as the group entries
+and mini index combined. If we can change the index so that it can handle
+collisions gracefully (have multiple records for a given collision), then we
+can shrink the number of bytes we need overall. Also, if we aren’t going to
+put the full 20-bytes into the index, then some form of graceful handling of
+collisions is recommended anyway.</p>
+<p>The current structure does this just fine, in that the mini-index dereferences
+you to a “list” of records that start with that prefix. It is assumed that
+those would be sorted, but we could easily have multiple records. To resolve
+the exact record, you can read both records, and compute the sha1 to decide
+between them. This has performance implications, as you are now decoding 2x
+the records to get at one.</p>
+<p>The chance of <code class="docutils literal notranslate"><span class="pre">n</span></code> texts colliding with a hash space of <code class="docutils literal notranslate"><span class="pre">H</span></code> is generally
+given as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">1</span> <span class="o">-</span> <span class="n">e</span> <span class="o">^</span><span class="p">(</span><span class="o">-</span><span class="n">n</span><span class="o">^</span><span class="mi">2</span> <span class="o">/</span> <span class="mi">2</span> <span class="n">H</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or if you use <code class="docutils literal notranslate"><span class="pre">H</span> <span class="pre">=</span> <span class="pre">2^h</span></code>, where <code class="docutils literal notranslate"><span class="pre">h</span></code> is the number of bits:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">1</span> <span class="o">-</span> <span class="n">e</span> <span class="o">^</span><span class="p">(</span><span class="o">-</span><span class="n">n</span><span class="o">^</span><span class="mi">2</span> <span class="o">/</span> <span class="mi">2</span><span class="o">^</span><span class="p">(</span><span class="n">h</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>For 1M keys and 4-bytes (32-bit), the chance of collision is for all intents
+and purposes 100%.  Rewriting the equation to give the number of bits (<code class="docutils literal notranslate"><span class="pre">h</span></code>)
+needed versus the number of entries (<code class="docutils literal notranslate"><span class="pre">n</span></code>) and the desired collision rate
+(<code class="docutils literal notranslate"><span class="pre">epsilon</span></code>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">h</span> <span class="o">=</span> <span class="n">log_2</span><span class="p">(</span><span class="o">-</span><span class="n">n</span><span class="o">^</span><span class="mi">2</span> <span class="o">/</span> <span class="n">ln</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">epsilon</span><span class="p">))</span> <span class="o">-</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>The denominator <code class="docutils literal notranslate"><span class="pre">ln(1-epsilon)</span></code> == <code class="docutils literal notranslate"><span class="pre">-epsilon`</span></code> for small values (even &#64;0.1
+== -0.105, and we are assuming we want a much lower chance of collision than
+10%). So we have:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">h</span> <span class="o">=</span> <span class="n">log_2</span><span class="p">(</span><span class="n">n</span><span class="o">^</span><span class="mi">2</span><span class="o">/</span><span class="n">epsilon</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">=</span> <span class="mi">2</span> <span class="n">log_2</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">-</span> <span class="n">log_2</span><span class="p">(</span><span class="n">epsilon</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>Given that <code class="docutils literal notranslate"><span class="pre">epsilon</span></code> will often be very small and <code class="docutils literal notranslate"><span class="pre">n</span></code> very large, it can
+be more convenient to transform it into <code class="docutils literal notranslate"><span class="pre">epsilon</span> <span class="pre">=</span> <span class="pre">10^-E</span></code> and <code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">=</span> <span class="pre">10^N</span></code>,
+which gives us:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">h</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">log_2</span><span class="p">(</span><span class="mi">10</span><span class="o">^</span><span class="n">N</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span> <span class="n">log_2</span><span class="p">(</span><span class="mi">10</span><span class="o">^-</span><span class="n">E</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+<span class="n">h</span> <span class="o">=</span> <span class="n">log_2</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="p">(</span><span class="mi">2</span><span class="n">N</span> <span class="o">+</span> <span class="n">E</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+<span class="n">h</span> <span class="o">~</span> <span class="mf">3.3</span> <span class="p">(</span><span class="mi">2</span><span class="n">N</span> <span class="o">+</span> <span class="n">E</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>Or if we use number of bytes <code class="docutils literal notranslate"><span class="pre">h</span> <span class="pre">=</span> <span class="pre">8H</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">H</span> <span class="o">~</span> <span class="mf">0.4</span> <span class="p">(</span><span class="mi">2</span><span class="n">N</span> <span class="o">+</span> <span class="n">E</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This actually has some nice understanding to be had. For every order of
+magnitude we want to increase the number of keys (at the same chance of
+collision), we need ~1 byte (0.8), for every two orders of magnitude we want
+to reduce the chance of collision we need the same extra bytes. So with 8
+bytes, you can have 20 orders of magnitude to work with, 10^10 keys, with
+guaranteed collision, or 10 keys with 10^-20 chance of collision.</p>
+<p>Putting this in a different form, we could make <code class="docutils literal notranslate"><span class="pre">epsilon</span> <span class="pre">==</span> <span class="pre">1/n</span></code>. This gives
+us an interesting simplified form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">h</span> <span class="o">=</span> <span class="n">log_2</span><span class="p">(</span><span class="n">n</span><span class="o">^</span><span class="mi">3</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">=</span> <span class="mi">3</span> <span class="n">log_2</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>writing <code class="docutils literal notranslate"><span class="pre">n</span></code> as <code class="docutils literal notranslate"><span class="pre">10^N</span></code>, and <code class="docutils literal notranslate"><span class="pre">H=8h</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">h</span> <span class="o">=</span> <span class="mi">3</span> <span class="n">N</span> <span class="n">log_2</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">=~</span> <span class="mi">10</span> <span class="n">N</span> <span class="o">-</span> <span class="mi">1</span>
+<span class="n">H</span> <span class="o">~</span> <span class="mf">1.25</span> <span class="n">N</span>
+</pre></div>
+</div>
+<p>So to have a one in a million chance of collision using 1 million keys, you
+need ~59 bits, or slightly more than 7 bytes. For 10 million keys and a one in
+10 million chance of any of them colliding, you can use 9 (8.6) bytes. With 10
+bytes, we have a one in a 100M chance of getting a collision in 100M keys
+(substituting back, the original equation says the chance of collision is 4e-9
+for 100M keys when using 10 bytes.)</p>
+<p>Given that the only cost for a collision is reading a second page and ensuring
+the sha hash actually matches we could actually use a fairly “high” collision
+rate. A chance of 1 in 1000 that you will collide in an index with 1M keys is
+certainly acceptible.  (note that isn’t 1 in 1000 of those keys will be a
+collision, but 1 in 1000 that you will have a <em>single</em> collision).  Using a
+collision chance of 10^-3, and number of keys 10^6, means we need (12+3)*0.4 =
+6 bytes. For 10M keys, you need (14+3)*0.4 = 6.8 aka 7. We get that extra byte
+from the <code class="docutils literal notranslate"><span class="pre">mini-index</span></code>. In an index with a lot of keys, you want a bigger
+fan-out up front anyway, which gives you more bytes consumed and extends your
+effective key width.</p>
+<p>Also taking one more look at <code class="docutils literal notranslate"><span class="pre">H</span> <span class="pre">~</span> <span class="pre">0.4</span> <span class="pre">(2N</span> <span class="pre">+</span> <span class="pre">E)</span></code>, you can rearrange and
+consider that for every order of magnitude more keys you insert, your chance
+for collision goes up by 2 orders of magnitude. But for 100M keys, 8 bytes
+gives you a 1 in 10,000 chance of collision, and that is gotten at a 16-bit
+fan-out (64k-way), but for 100M keys, we would likely want at least 20-bit fan
+out.</p>
+<p>You can also see this from the original equation with a bit of rearranging:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">epsilon</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">e</span><span class="o">^</span><span class="p">(</span><span class="o">-</span><span class="n">n</span><span class="o">^</span><span class="mi">2</span> <span class="o">/</span> <span class="mi">2</span><span class="o">^</span><span class="p">(</span><span class="n">h</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">epsilon</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">e</span><span class="o">^</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="mi">2</span><span class="o">^</span><span class="n">N</span><span class="p">)</span><span class="o">^</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">^</span><span class="p">(</span><span class="n">h</span><span class="o">+</span><span class="mi">1</span><span class="p">)))</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">e</span><span class="o">^</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="mi">2</span><span class="o">^</span><span class="p">(</span><span class="mi">2</span><span class="n">N</span><span class="p">))(</span><span class="mi">2</span><span class="o">^-</span><span class="p">(</span><span class="n">h</span><span class="o">+</span><span class="mi">1</span><span class="p">)))</span>
+        <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">e</span><span class="o">^</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="mi">2</span><span class="o">^</span><span class="p">(</span><span class="mi">2</span><span class="n">N</span> <span class="o">-</span> <span class="n">h</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)))</span>
+</pre></div>
+</div>
+<p>Such that you want <code class="docutils literal notranslate"><span class="pre">2N</span> <span class="pre">-</span> <span class="pre">h</span></code> to be a very negative integer, such that
+<code class="docutils literal notranslate"><span class="pre">2^-X</span></code> is thus very close to zero, and <code class="docutils literal notranslate"><span class="pre">1-e^0</span> <span class="pre">=</span> <span class="pre">0</span></code>. But you can see that
+if you want to double the number of source texts, you need to quadruple the
+number of bits.</p>
+</div>
+<div class="section" id="scaling-sizes">
+<h2>Scaling Sizes<a class="headerlink" href="#scaling-sizes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="scaling-up">
+<h3>Scaling up<a class="headerlink" href="#scaling-up" title="Permalink to this headline">¶</a></h3>
+<p>We have said we want to be able to scale to a tree with 1M files and 1M
+commits. With a 255-way fan out for chk pages, you need 2 internal nodes,
+and a leaf node with 16 items. (You maintain 2 internal nodes up until 16.5M
+nodes, when you get another internal node, and your leaf nodes shrink down to
+1 again.) If we assume every commit averages 10 changes (large, but possible,
+especially with large merges), then you get 1 root + 10*(1 internal + 1 leaf
+node) per commit or 21 nodes per commit. At 1M revisions, that is 21M chk
+nodes. So to support the 1Mx1M project, we really need to consider having up
+to 100M chk nodes.</p>
+<p>Even if you went up to 16M tree nodes, that only bumps us up to 31M chk
+nodes. Though it also scales by number of changes, so if you had a huge churn,
+and had 100 changes per commit and a 16M node tree, you would have 301M chk
+nodes. Note that 8 bytes (64-bits) in the prefix still only gives us a 0.27%
+chance of collision (1 in 370). Or if you had 370 projects of that size, with
+all different content, <em>one</em> of them would have a collision in the index.</p>
+<p>We also should consider that you have the <code class="docutils literal notranslate"><span class="pre">(parent_id,basename)</span> <span class="pre">=&gt;</span> <span class="pre">file_id</span></code>
+map that takes up its own set of chk pages, but testing seems to indicate that
+it is only about 1/10th that of the <code class="docutils literal notranslate"><span class="pre">id_to_entry</span></code> map. (rename,add,delete
+are much less common then content changes.)</p>
+<p>As a point of reference, one of the largest projects today OOo, has only 170k
+revisions, and something less than 100k files (and probably 4-5 changes per
+commit, but their history has very few merges, being a conversion from CVS).
+At 100k files, they are probably just starting to hit 2-internal nodes, so
+they would end up with 10 pages per commit (as a fair-but-high estimate), and
+at 170k revs, that would be 1.7M chk nodes.</p>
+</div>
+<div class="section" id="scaling-down">
+<h3>Scaling down<a class="headerlink" href="#scaling-down" title="Permalink to this headline">¶</a></h3>
+<p>While it is nice to scale to a 16M files tree with 1M files (100M total
+changes), it is also important to scale efficiently to more <em>real world</em>
+scenarios. Most projects will fall into the 255-64k file range, which is where
+you have one internal node and 255 leaf nodes (1-2 chk nodes per commit). And
+a modest number of changes (10 is generally a high figure). At 50k revisions,
+that would give you 50*2*10=500k chk nodes. (Note that all of python has 303k
+chk nodes, all of launchpad has 350k, mysql-5.1 in gc255 rather than gc255big had
+650k chk nodes, [depth=3].)</p>
+<p>So for these trees, scaling to 1M nodes is more than sufficient, and allows us
+to use a 6-byte prefix per record. At a minimum, group records could use a
+4-byte start and 3-byte length, but honestly, they are a tiny fraction of the
+overall index size, and it isn’t really worth the implementation cost of being
+flexible here. We can keep a field in the header for the group record layout
+(8, 4) and for now just assert that this size is fixed.</p>
+</div>
+</div>
+<div class="section" id="other-discussion">
+<h2>Other discussion<a class="headerlink" href="#other-discussion" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="group-encoding">
+<h3>group encoding<a class="headerlink" href="#group-encoding" title="Permalink to this headline">¶</a></h3>
+<p>In the above scheme we store the group locations as an 8-byte start, and
+4-byte length. We could theoretically just store a 4-byte length, and then you
+have to read all of the groups and add them up to determine the actual start
+position. The trade off is a direct jump-to-location versus storing 3x the
+data. Given when you have 64k groups you will need only .75MiB to store it,
+versus the 120MB for the actual entries, this seems to be no real overhead.
+Especially when you consider that 10M chk nodes should fit in only 250 groups,
+so total data is actually only 3KiB. Then again, if it was only 1KiB it is
+obvious that you would read the whole thing in one pass. But again, see the
+pathological “conversion creating 1 group per chk page” issue.</p>
+<p>Also, we might want to support more than 64k groups in a given index when we
+get to the point of storing file content in a CHK index. A lot of the analysis
+about the number of groups is based on the 100 byte compression of CHK nodes,
+which would not be true with file-content. We should compress well, I don’t
+expect us to compress <em>that</em> well. Launchpad shows that the average size of a
+content record is about 500-600 bytes (after you filter out the ~140k that are
+NULL content records). At that size, you expect to get approx 7k records per
+group, down from 40k. Going further, though, you also want to split groups
+earlier, since you end up with better compression. so with 100,000 unique file
+texts, you end up with ~100 groups. With 1M revisions &#64; 10 changes each, you
+have 10M file texts, and would end up at 10,485 groups. That seems like more
+64k groups is still more than enough head room. You need to fit only 100
+entries per group, to get down to where you are getting into trouble (and have
+10M file texts.) Something to keep an eye on, but unlikely to be something
+that is strictly a problem.</p>
+<p>Still reasonable to have a record in the header indicating that index entries
+use a 2-byte group entry pointer, and allow it to scale to 3 (we may also find
+a win scaling it down to 1 in the common cases of &lt;250 groups). Note that if
+you have the full 4MB groups, it takes 256 GB of compressed content to fill
+64k records. And our groups are currently scaled that we require at least
+1-2MB before they can be considered ‘full’.</p>
+</div>
+<div class="section" id="variable-length-index-entries">
+<h3>variable length index entries<a class="headerlink" href="#variable-length-index-entries" title="Permalink to this headline">¶</a></h3>
+<p>The above had us store 8-bytes of sha hash, 2 bytes of group number, and
+2 bytes for record-in-group. However, since we have the variable-pointer
+mini-index, we could consider having those values be ‘variable length’. So
+when you read the bytes between the previous-and-next record, you have a
+parser that can handle variable width. The main problem is that to encode
+start/stop of record takes some bytes, and at 12-bytes for a record, you don’t
+have a lot of space to waste for a “end-of-entry” indicator. The easiest would
+be to store things in base-128 (high bit indicates the next byte also should
+be included).</p>
+</div>
+<div class="section" id="storing-uncompressed-offset-length">
+<h3>storing uncompressed offset + length<a class="headerlink" href="#storing-uncompressed-offset-length" title="Permalink to this headline">¶</a></h3>
+<p>To get the smallest index possible, we store only a 2-byte ‘record indicator’
+inside the index, and then assume that it can be decoded once we’ve read the
+actual group. This is certainly possible, but it represents yet another layer
+of indirection before you can actually get content. If we went with
+variable-length index entries, we could probably get most of the benefit with
+a variable-width start-of-entry value. The length-of-content is already being
+stored as a base128 integer starting at the second byte of the uncompressed
+data (the first being the record type, fulltext/delta). It complicates some of
+our other processing, since we would then only know how much to decompress to
+get the start of the record.</p>
+<p>Another intriguing possibility would be to store the <em>end</em> of the record in
+the index, and then in the data stream store the length and type information
+at the <em>end</em> of the record, rather than at the beginning (or possibly at both
+ends). Storing it at the end is a bit unintuitive when you think about reading
+in the data as a stream, and figuring out information (you have to read to the
+end, then seek back) But a given GC block does store the
+length-of-uncompressed-content, which means we can trivially decompress, jump
+to the end, and then walk-backwards for everything else.</p>
+<p>Given that every byte in an index entry costs 10MiB in a 10M index, it is
+worth considering. At 4MiB for a block, base 128 takes 4 bytes to encode the
+last 50% of records (those beyond 2MiB), 3 bytes for everything from 16KiB =&gt;
+2MiB.  So the expected size is for all intents and purposes, 3.5 bytes.  (Just
+due to an unfortunate effect of where the boundary is that you need more
+bytes.) If we capped the data at 2MB, the expected drops to just under 3
+bytes. Note that a flat 3bytes could decode up to 16MiB, which would be much
+better for our purpose, but wouldn’t let us write groups that had a record
+after 16MiB, which doesn’t work for the ISO case. Though it works <em>absolutely</em>
+fine for the CHK inventory cases (what we have today).</p>
+</div>
+<div class="section" id="null-content">
+<h3>null content<a class="headerlink" href="#null-content" title="Permalink to this headline">¶</a></h3>
+<p>At the moment, we have a lot of records in our per-file graph that refers to
+empty content. We get one for every symlink and directory, for every time that
+they change. This isn’t specifically relevant for CHK pages, but for
+efficiency we could certainly consider setting “group = 0 entry = 0” to mean
+that this is actually a no-content entry. It means the group block itself
+doesn’t have to hold a record for it, etc. Alternatively we could use
+“group=FFFF entry = FFFF” to mean the same thing.</p>
+</div>
+<div class="section" id="vf-keys">
+<h3><code class="docutils literal notranslate"><span class="pre">VF.keys()</span></code><a class="headerlink" href="#vf-keys" title="Permalink to this headline">¶</a></h3>
+<p>At the moment, some apis expect that you can list the references by reading
+all of the index. We would like to get away from this anyway, as it doesn’t
+scale particularly well. However, with this format, we no longer store the
+exact value for the content. The content is self describing, and we <em>would</em> be
+storing enough to uniquely decide which node to read. Though that is actually
+contained in just 4-bytes (2-byte group, 2-byte group entry).</p>
+<p>We use <code class="docutils literal notranslate"><span class="pre">VF.keys()</span></code> during ‘pack’ and ‘autopack’ to avoid asking for content
+we don’t have, and to put a counter on the progress bar. For the latter, we
+can just use <code class="docutils literal notranslate"><span class="pre">index.key_count()</span></code> for the former, we could just properly
+handle <code class="docutils literal notranslate"><span class="pre">AbsentContentFactory</span></code>.</p>
+</div>
+<div class="section" id="more-than-64k-groups">
+<h3>More than 64k groups<a class="headerlink" href="#more-than-64k-groups" title="Permalink to this headline">¶</a></h3>
+<p>Doing a streaming conversion all at once is still something to consider. As it
+would default to creating all chk pages in separate groups (300-400k easily).
+However, just making the number of group block entries variable, and allowing
+the pointer in each entry to be variable should suffice. At 3 bytes for the
+group pointer, we can refer to 16.7M groups. It does add complexity, but it is
+likely necessary to allow for arbitrary cases.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/improved_chk_index.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

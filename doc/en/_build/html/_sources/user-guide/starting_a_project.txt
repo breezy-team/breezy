@@ -1,0 +1,55 @@
+Starting a project
+==================
+
+Putting an existing project under version control
+-------------------------------------------------
+
+If you already have a tree of source code (or directory of documents) you
+wish to put under version control, here are the commands to use::
+
+  cd my-stuff
+  brz init
+  brz add
+  brz commit -m "Initial import"
+
+``brz init`` creates a ``.brz`` directory in the top level directory
+(``my-stuff`` in the example above). Note that:
+
+ * Breezy has everything it needs in that directory - you do
+   **not** need to setup a database, web server or special service
+   to use it
+
+ * Breezy is polite enough to only create one ``.brz`` in the
+   directory given, not one in every subdirectory thereof.
+
+``brz add`` then finds all the files and directories it thinks
+ought to be version controlled and registers them internally.
+``brz commit`` then records a snapshot of the content of these
+and records that information, together with a commit message.
+
+More information on ``init``, ``add`` and ``commit`` will be provided
+later. For now, the important thing to remember is the recipe above.
+
+Starting a new project
+----------------------
+
+If you are starting a project from scratch, you can also use the recipe
+above, after creating an empty directory first of course. For efficiency
+reasons that will be explored more in later chapters though, it is a good
+idea to create a repository for the project at the top level and to nest
+a *main* branch within it like this::
+
+  brz init-repo my.repo
+  cd my.repo
+  brz init my.main
+  cd my.main
+  hack, hack, hack
+  brz add
+  brz commit -m "Initial import"
+
+Some users prefer a name like *trunk* or *dev* to *main*. Choose
+whichever name makes the most sense to you.
+
+Note that the ``init-repo`` and ``init`` commands both take a path as an
+argument and will create that path if it doesn't already exist.
+

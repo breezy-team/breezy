@@ -1,0 +1,231 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Overview &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Indices" href="indices.html" />
+    <link rel="prev" title="Container format" href="container-format.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="container-format.html" title="Container format"
+             accesskey="P">previous</a> |
+          <a href="indices.html" title="Indices"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <p>This document contains notes about the design for groupcompress, replacement
+VersionedFiles store for use in pack based repositories. The goal is to provide
+fast, history bounded text extraction.</p>
+<div class="section" id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h1>
+<p>The goal: Much tighter compression, maintained automatically. Considerations
+to weigh: The minimum IO to reconstruct a text with no other repository
+involved; The number of index lookups to plan a reconstruction. The minimum
+IO to reconstruct a text with another repositories assistance (affects
+network IO for fetch, which impacts incremental pulls and shallow branch
+operations).</p>
+<div class="section" id="current-approach">
+<h2>Current approach<a class="headerlink" href="#current-approach" title="Permalink to this headline">¶</a></h2>
+<p>Each delta is individually compressed against another text, and then entropy
+compressed. We index the pointers between these deltas.</p>
+<p>Solo reconstruction: Plan a readv via the index, read the deltas in forward
+IO, apply each delta. Total IO: sum(deltas) + deltacount*index overhead.
+Fetch/stacked reconstruction: Plan a readv via the index, using local basis
+texts where possible. Then readv locally and remote and apply deltas. Total IO
+as for solo reconstruction.</p>
+</div>
+<div class="section" id="things-to-keep">
+<h2>Things to keep<a class="headerlink" href="#things-to-keep" title="Permalink to this headline">¶</a></h2>
+<p>Reasonable sizes ‘amount read’ from remote machines to reconstruct an arbitrary
+text: Reading 5MB for a 100K plain text is not a good trade off. Reading (say)
+500K is probably acceptable. Reading ~100K is ideal. However, it’s likely that
+some texts (e.g NEWS versions) can be stored for nearly-no space at all if we
+are willing to have unbounded IO. Profiling to set a good heuristic will be
+important. Also allowing users to choose to optimise for a server environment
+may make sense: paying more local IO for less compact storage may be useful.</p>
+</div>
+<div class="section" id="things-to-remove">
+<h2>Things to remove<a class="headerlink" href="#things-to-remove" title="Permalink to this headline">¶</a></h2>
+<p>Index scatter gather IO. Doing hundreds or thousands of index lookups is very
+expensive, and doing that per file just adds insult to injury.</p>
+<p>Partioned compression amongst files.</p>
+<p>Scatter gather IO when reconstructing texts: linear forward IO is better.</p>
+</div>
+<div class="section" id="thoughts">
+<h2>Thoughts<a class="headerlink" href="#thoughts" title="Permalink to this headline">¶</a></h2>
+<p>Merges combine texts from multiple versions to create a new version. Deltas
+add new text to existing files and remove some text from the same. Getting
+high compression means reading some base and then a chain of deltas (could
+be a tree) to gain access to the thing that the final delta was made against,
+and that delta. Rather than composing all these deltas, we can just just
+perform the final diff against the base text and the serialised invidual
+deltas. If the diff algorithm can reuse out of order lines from previous
+texts (e.g. storing AB -&gt; BA as pointers rather than delete and add, then
+the presence of any previously stored line in a single chain can be reused.
+One such diff algorithm is xdelta, another reasonable one to consider is
+plain old zlib or lzma. We could also use bzip2. One advantage of using
+a generic compression engine is less python code. One advantage of
+preprocessing line based deltas is that we reduce the window size for the
+text repeated within lines, and that will help compression by a simple
+entropy compressor as a post processor.
+lzma appears fantastic at compression - 420MB of NEWS files down to 200KB.
+so window size appears to be a key determiner for efficiency.</p>
+</div>
+</div>
+<div class="section" id="delta-strategy">
+<h1>Delta strategy<a class="headerlink" href="#delta-strategy" title="Permalink to this headline">¶</a></h1>
+<p>Very big objects - no delta. I plan to kick this in at 5MB initially, but
+once the codebase is up and running, we can tweak this to</p>
+<p>Very small objects - no delta? If they are combined with a larger zlib object
+why not? (Answer: because zlib’s window is really small)</p>
+<p>Other objects - group by fileid (gives related texts a chance, though using a
+file name would be better long term as e.g. COPYING and COPYING from different
+projects could combine). Then by reverse topological graph(as this places more
+recent texts at the front of a chain). Alternatively, group by size, though
+that should not matter with a large enough window.
+Finally, delta the texts against the current output of the compressor. This is
+essentially a somewhat typed form of sliding window dictionary compression. An
+alternative implementation would be to just use zlib, or lzma, or bzip2
+directory.</p>
+<p>Unfortunately, just using entropy compression forces a lot of data to be output
+by the decompressor - e.g. 420MB in the NEWS sample corpus. When we only want
+a single 55K text thats inefficient. (An initial test took several seconds with
+lzma.)</p>
+<p>The fastest to implement approach is probably just ‘diff output to date and add
+to entropy compressor’. This should produce reasonable results. As delta
+chain length is not a concern (only one delta to apply ever), we can simply
+cap the chain when the total read size becomes unreasonable. Given older texts
+are smaller we probably want some weighted factor of plaintext size.</p>
+<p>In this approach, a single entropy compressed region is read as a unit, giving
+the lower bound for IO (and how much to read is an open question - what byte
+offset of compressed data is sufficient to ensue that the delta-stream contents
+we need are reconstructable. Flushing, while possible, degrades compression(and
+adds overhead - we’d be paying 4 bytes per record guaranteed). Again - tests
+will be needed.</p>
+<p>A nice possibility is to output mpdiff compatible records, which might enable
+some code reuse. This is more work than just diff (current_out, new_text), so
+can wait for the concept to be proven.</p>
+</div>
+<div class="section" id="implementation-strategy">
+<h1>Implementation Strategy<a class="headerlink" href="#implementation-strategy" title="Permalink to this headline">¶</a></h1>
+<p>Bring up a VersionedFiles object that implements this, then stuff it into a
+repository format. zlib as a starting compressor, though bzip2 will probably
+do a good job.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="container-format.html" title="Container format"
+              >previous</a> |
+            <a href="indices.html" title="Indices"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/groupcompress-design.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,70 @@
+revert
+======
+
+:Purpose: Set files in the working tree back to the contents of a previous revision.
+:Usage:   brz revert [FILE...]
+
+:Options:
+  --forget-merges       Remove pending merge marker, without changing any
+                        files.
+  -h, --help            Show help message.
+  --no-backup           Do not save backups of reverted files.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  Giving a list of files will revert only those files.  Otherwise, all files
+  will be reverted.  If the revision is not specified with '--revision', the
+  working tree basis revision is used. A revert operation affects only the
+  working tree, not any revision history like the branch and repository or
+  the working tree basis revision.
+  
+  To remove only some changes, without reverting to a prior version, use
+  merge instead.  For example, "merge . -r -2..-3" (don't forget the ".")
+  will remove the changes introduced by the second last commit (-2), without
+  affecting the changes introduced by the last commit (-1).  To remove
+  certain changes on a hunk-by-hunk basis, see the shelve command.
+  To update the branch to a specific revision or the latest revision and
+  update the working tree accordingly while preserving local changes, see the
+  update command.
+  
+  Uncommitted changes to files that are reverted will be discarded.
+  However, by default, any files that have been manually changed will be
+  backed up first.  (Files changed only by merge are not backed up.)  Backup
+  files have '.~#~' appended to their name, where # is a number.
+  
+  When you provide files, you can use their current pathname or the pathname
+  from the target revision.  So you can use revert to "undelete" a file by
+  name.  If you name a directory, all the contents of that directory will be
+  reverted.
+  
+  If you have newly added files since the target revision, they will be
+  removed.  If the files to be removed have been changed, backups will be
+  created as above.  Directories containing unknown files will not be
+  deleted.
+  
+  The working tree contains a list of revisions that have been merged but
+  not yet committed. These revisions will be included as additional parents
+  of the next commit.  Normally, using revert clears that list as well as
+  reverting the files.  If any files are specified, revert leaves the list
+  of uncommitted merges alone and reverts only the files.  Use ``brz revert
+  .`` in the tree root to revert all files but keep the recorded merges,
+  and ``brz revert --forget-merges`` to clear the pending merge list without
+  reverting any files.
+  
+  Using "brz revert --forget-merges", it is possible to apply all of the
+  changes from a branch in a single revision.  To do this, perform the merge
+  as desired.  Then doing revert with the "--forget-merges" option will keep
+  the content of the tree as it was, but it will clear the list of pending
+  merges.  The next commit will then contain all of the changes that are
+  present in the other branch, but without any other parent revisions.
+  Because this technique forgets where these changes originated, it may
+  cause additional conflicts on later merges involving the same source and
+  target branches.
+
+:See also: :doc:`cat <cat-help>`, :doc:`export <export-help>`, :doc:`merge <merge-help>`, :doc:`shelve <shelve-help>`
+
+

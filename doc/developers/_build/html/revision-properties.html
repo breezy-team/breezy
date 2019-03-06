@@ -1,0 +1,178 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Revision Properties &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Bazaar Apport Integration" href="apport.html" />
+    <link rel="prev" title="Specifications" href="specifications.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="specifications.html" title="Specifications"
+             accesskey="P">previous</a> |
+          <a href="apport.html" title="Bazaar Apport Integration"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="revision-properties">
+<h1>Revision Properties<a class="headerlink" href="#revision-properties" title="Permalink to this headline">¶</a></h1>
+<p>Bazaar repositories support setting of a key/value pairs for each revision.
+Applications can use these properties to store additional information
+about the revision.</p>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<p>In general, revision properties are set by passing keyword argument
+<code class="docutils literal notranslate"><span class="pre">revprops</span></code> to method <code class="docutils literal notranslate"><span class="pre">MutableTree.commit</span></code>. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">properties</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">properties</span><span class="p">[</span><span class="s1">&#39;my-property&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;test&#39;</span>
+<span class="n">tree</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">revprops</span><span class="o">=</span><span class="n">properties</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Properties can be retrieved via the attribute <code class="docutils literal notranslate"><span class="pre">properties</span></code> of
+instances of the class <code class="docutils literal notranslate"><span class="pre">Revision</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="s1">&#39;my-property&#39;</span> <span class="ow">in</span> <span class="n">revision</span><span class="o">.</span><span class="n">properties</span><span class="p">:</span>
+    <span class="n">my_property</span> <span class="o">=</span> <span class="n">revision</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="s1">&#39;my-property&#39;</span><span class="p">]</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="well-known-properties">
+<h2>Well-known properties<a class="headerlink" href="#well-known-properties" title="Permalink to this headline">¶</a></h2>
+<p>At the moment, three standardized revision properties are recognized and used
+by breezy:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">authors</span></code> - Authors of the change. This value is a “\n” separated set
+of values in the same format as the committer-id. This property can be
+set by passing a list to the keyword argument <code class="docutils literal notranslate"><span class="pre">authors</span></code> of the function
+<code class="docutils literal notranslate"><span class="pre">MutableTree.commit</span></code>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">author</span></code> - Single author of the change. This property is deprecated in
+favour of <code class="docutils literal notranslate"><span class="pre">authors</span></code>. It should no longer be set by any code, but will
+still be read. It is ignored if <code class="docutils literal notranslate"><span class="pre">authors</span></code> is set in the same revision.</li>
+<li><code class="docutils literal notranslate"><span class="pre">branch-nick</span></code> - Nickname of the branch. This can be specified by the user,
+but it defaults to the colocated branch name or the branch’s directory name.
+The value is set automatically in <code class="docutils literal notranslate"><span class="pre">MutableTree.commit</span></code>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">bugs</span></code> - A list of bug URLs and their statuses. The list is separated
+by the new-line character (\n) and each entry is in format
+‘&lt;URL&gt; &lt;status&gt;’. Currently, breezy uses only status ‘fixed’. See
+<a class="reference external" href="../en/user-guide/index.html#bug-trackers">Bug Trackers</a> for more details about using this feature.</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="specifications.html" title="Specifications"
+              >previous</a> |
+            <a href="apport.html" title="Bazaar Apport Integration"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/revision-properties.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

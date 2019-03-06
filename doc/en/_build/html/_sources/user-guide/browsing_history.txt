@@ -1,0 +1,103 @@
+Browsing history
+================
+
+brz log
+-------
+
+The ``brz log`` command shows a list of previous revisions.
+
+As with ``brz diff``, ``brz log`` supports the ``-r`` argument::
+
+    % brz log -r 1000..          # Revision 1000 and everything after it
+    % brz log -r ..1000          # Everything up to and including r1000
+    % brz log -r 1000..1100      # changes from 1000 to 1100
+    % brz log -r 1000            # The changes in only revision 1000
+
+Viewing merged revisions
+------------------------
+
+As distributed VCS tools like Breezy make merging much easier than
+it is in central VCS tools, the history of a branch may often contain
+lines of development splitting off the mainline and merging back
+in at a later time. Technically, the relationship between the
+numerous revision nodes is known as a Directed Acyclic Graph or
+DAG for short.
+
+In many cases, you typically want to see the mainline first and drill
+down from there. The default behaviour of log is therefore to show
+the mainline and indicate which revisions have nested merged revisions.
+To explore the merged revisions for revision X, use the following command::
+
+  brz log -n0 -rX
+
+To see all revisions and all their merged revisions::
+
+  brz log -n0
+
+Note that the -n option is used to indicate the number of levels to display
+where 0 means all. If that is too noisy, you can easily adjust the number
+to only view down so far. For example, if your project is structured with
+a top level gatekeeper merging changes from team gatekeepers, ``brz log``
+shows what the top level gatekeeper did while ``brz log -n2`` shows what
+the team gatekeepers did. In the vast majority of cases though, ``-n0``
+is fine.
+
+Tuning the output
+-----------------
+
+The ``log`` command has several options that are useful for tuning
+the output. These include:
+
+ * ``--forward`` presents the log in chronological order, i.e. the
+   most recent revisions are displayed last.
+
+ * the ``--limit`` option controls the maximum number of revisions displayed.
+
+See the online help for the log command or the User Reference for more
+information on tuning the output.
+
+Viewing the history for a file
+------------------------------
+
+It is often useful to filter the history so that it only
+applies to a given file. To do this, provide the filename
+to the ``log`` command like this::
+
+  brz log foo.py
+
+Viewing an old version of a file
+--------------------------------
+
+To get the contents of a file at a given version, use the
+``cat`` command like this::
+
+  brz cat -r X file
+
+where ``X`` is the revision identifier and ``file`` is
+the filename. This will send output to the standard output
+stream so you'll typically want to pipe the output through
+a viewing tool (like ``less`` or ``more``) or redirect it
+like this::
+
+  brz cat -r -2 foo.py | less
+  brz cat -r 1 foo.py > /tmp/foo-1st-version.py
+
+Graphical history viewers
+-------------------------
+
+History browsing is one area where GUI tools really make life easier.
+Breezy has numerous plug-ins that provide this capability including
+QBzr and brz-gtk. See `Using plugins <plugins.html>`_ for details on how to install
+these if they are not already installed.
+
+To use the graphical viewer from QBzr::
+
+  brz qlog
+
+To use the graphical viewer from brz-gtk::
+
+  brz viz
+
+``viz`` is actually a built-in alias for ``visualize`` so use the longer
+command name if you prefer.
+

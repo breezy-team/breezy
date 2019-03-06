@@ -1,0 +1,18 @@
+root
+====
+
+:Purpose: Show the tree root directory.
+:Usage:   brz root [FILENAME]
+
+:Options:
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  The root is the nearest enclosing directory with a control
+  directory.
+
+
+

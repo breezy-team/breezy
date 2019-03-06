@@ -1,0 +1,168 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.14
+########
+
+:Released:  2007-01-23
+
+Improvements
+************
+
+* ``bzr help global-options`` describes the global options. (Aaron Bentley)
+
+Bug Fixes
+*********
+
+* Skip documentation generation tests if the tools to do so are not
+  available. Fixes running selftest for installled copies of bzr.
+  (John Arbash Meinel, #80330)
+
+* Fix the code that discovers whether bzr is being run from it's
+  working tree to handle the case when it isn't but the directory
+  it is in is below a repository. (James Westby, #77306)
+
+
+bzr 0.14rc1
+###########
+
+:Released:  2007-01-16
+
+Improvements
+************
+
+* New connection: ``bzr+http://`` which supports tunnelling the smart
+  protocol over an HTTP connection. If writing is enabled on the bzr
+  server, then you can write over the HTTP connection.
+  (Andrew Bennetts, John Arbash Meinel)
+
+* Aliases now support quotation marks, so they can contain whitespace
+  (Marius Kruger)
+
+* PyCurlTransport now use a single curl object. By specifying explicitly
+  the 'Range' header, we avoid the need to use two different curl objects
+  (and two connections to the same server). (Vincent Ladeuil)
+
+* ``bzr commit`` does not prompt for a message until it is very likely to
+  succeed.  (Aaron Bentley)
+
+* ``bzr conflicts`` now takes --text to list pathnames of text conflicts
+  (Aaron Bentley)
+
+* Fix ``iter_lines_added_or_present_in_versions`` to use a set instead
+  of a list while checking if a revision id was requested. Takes 10s
+  off of the ``fileids_affected_by_revision_ids`` time, which is 10s
+  of the ``bzr branch`` time. Also improve ``fileids_...`` time by
+  filtering lines with a regex rather than multiple ``str.find()``
+  calls. (saves another 300ms) (John Arbash Meinel)
+
+* Policy can be set for each configuration key. This allows keys to be
+  inherited properly across configuration entries. For example, this
+  should enable you to do::
+
+    [/home/user/project]
+    push_location = sftp://host/srv/project/
+    push_location:policy = appendpath
+
+  And then a branch like ``/home/user/project/mybranch`` should get an
+  automatic push location of ``sftp://host/srv/project/mybranch``.
+  (James Henstridge)
+
+* Added ``bzr status --short`` to make status report svn style flags
+  for each file.  For example::
+
+    $ bzr status --short
+    A  foo
+    A  bar
+    D  baz
+    ?  wooley
+
+* 'bzr selftest --clean-output' allows easily clean temporary tests
+  directories without running tests. (Alexander Belchenko)
+
+* ``bzr help hidden-commands`` lists all hidden commands. (Aaron Bentley)
+
+* ``bzr merge`` now has an option ``--pull`` to fall back to pull if
+  local is fully merged into remote. (Jan Hudec)
+
+* ``bzr help formats`` describes available directory formats. (Aaron Bentley)
+
+Internals
+*********
+
+* A few tweaks directly to ``fileids_affected_by_revision_ids`` to
+  help speed up processing, as well allowing to extract unannotated
+  lines. Between the two ``fileids_affected_by_revision_ids`` is
+  improved by approx 10%. (John Arbash Meinel)
+
+* Change Revision serialization to only write out millisecond
+  resolution. Rather than expecting floating point serialization to
+  preserve more resolution than we need. (Henri Weichers, Martin Pool)
+
+* Test suite ends cleanly on Windows.  (Vincent Ladeuil)
+
+* When ``encoding_type`` attribute of class Command is equal to 'exact',
+  force sys.stdout to be a binary stream on Windows, and therefore
+  keep exact line-endings (without LF -> CRLF conversion).
+  (Alexander Belchenko)
+
+* Single-letter short options are no longer globally declared.  (Martin
+  Pool)
+
+* Before using detected user/terminal encoding bzr should check
+  that Python has corresponding codec. (Alexander Belchenko)
+
+* Formats for end-user selection are provided via a FormatRegistry (Aaron Bentley)
+
+Bug Fixes
+*********
+
+* ``bzr missing --verbose`` was showing adds/removals in the wrong
+  direction. (John Arbash Meinel)
+
+* ``bzr annotate`` now defaults to showing dotted revnos for merged
+  revisions. It cuts them off at a depth of 12 characters, but you can
+  supply ``--long`` to see the full number. You can also use
+  ``--show-ids`` to display the original revision ids, rather than
+  revision numbers and committer names. (John Arbash Meinel, #75637)
+
+* bzr now supports Win32 UNC path (e.g. ``\HOST\path``.
+  (Alexander Belchenko, #57869)
+
+* Win32-specific: output of cat, bundle and diff commands don't mangle
+  line-endings (Alexander Belchenko, #55276)
+
+* Replace broken fnmatch based ignore pattern matching with custom pattern
+  matcher.
+  (Kent Gibson, Jan Hudec #57637)
+
+* pycurl and urllib can detect short reads at different places. Update
+  the test suite to test more cases. Also detect HTTP error code 416
+  which was raised for that specific bug. Also enhance the urllib
+  robustness by detecting invalid ranges (and pycurl's one by detecting
+  short reads during the initial GET). (Vincent Ladeuil, #73948)
+
+* The urllib connection sharing interacts badly with urllib2
+  proxy setting (the connections didn't go thru the proxy
+  anymore). Defining a proper ProxyHandler solves the
+  problem.  (Vincent Ladeuil, #74759)
+
+* Use urlutils to generate relative URLs, not osutils
+  (Aaron Bentley, #76229)
+
+* ``bzr status`` in a readonly directory should work without giving
+  lots of errors. (John Arbash Meinel, #76299)
+
+* Mention the revisionspec topic for the revision option help.
+  (Wouter van Heyst, #31663)
+
+* Allow plugins import from zip archives.
+  (Alexander Belchenko, #68124)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

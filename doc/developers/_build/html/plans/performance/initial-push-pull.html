@@ -1,0 +1,208 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Initial push / pull &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="../../search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="initial-push-pull">
+<h1>Initial push / pull<a class="headerlink" href="#initial-push-pull" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="optimal-case">
+<h2>Optimal case<a class="headerlink" href="#optimal-case" title="Permalink to this headline">¶</a></h2>
+<p>(a motivating example of ultimate performance)
+Assume there is a file with exactly the right data in compressed form.  This
+may be a tarred branch, a bundle, or a blob format.  Performance in this case
+scales with the size of the file.</p>
+</div>
+<div class="section" id="disk-case">
+<h2>Disk case<a class="headerlink" href="#disk-case" title="Permalink to this headline">¶</a></h2>
+<p>Assume current repo format.  Attempt to achieve parity with <code class="docutils literal notranslate"><span class="pre">cp</span> <span class="pre">-r</span></code>.  Read
+each file only 1 time.</p>
+<ul class="simple">
+<li>read knit graph for revisions</li>
+<li>write filtered copy of revision knit O(d+a)</li>
+<li>write filtered copy of knit index O(d)</li>
+<li>Open knit index for inventory</li>
+<li>Write a filtered copy of inventory knit and simultaneously not all referenced
+file-ids O(b+d)</li>
+<li>Write filtered copy of inventory knit index O(d)</li>
+<li>For each referenced file-id:<ul>
+<li>Open knit index for each file knit O(e)</li>
+<li>If acceptable threshold of irrelevant data hard-link O(f)</li>
+<li>Otherwise write filtered copy of text knit and simultaneously write
+the fulltext to tree transform O(h)</li>
+</ul>
+</li>
+<li>Write format markers O(1)</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">a:</th><td class="field-body">size of aggregate revision metadata</td>
+</tr>
+<tr class="field-even field"><th class="field-name">b:</th><td class="field-body">size of inventory changes for all revisions</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">c:</th><td class="field-body">size of text changes for all files and all revisions (e * g)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">d:</th><td class="field-body">number of relevant revisions</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">e:</th><td class="field-body">number of relevant versioned files</td>
+</tr>
+<tr class="field-even field"><th class="field-name">f:</th><td class="field-body">size of the particular versioned file knit index</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">g:</th><td class="field-body">size of the filtered versioned file knit</td>
+</tr>
+<tr class="field-even field"><th class="field-name">h:</th><td class="field-body">size of the versioned file fulltext</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">i:</th><td class="field-body">size of the largest file fulltext</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="smart-network-case">
+<h2>Smart Network Case<a class="headerlink" href="#smart-network-case" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="phase-1">
+<h3>Phase 1<a class="headerlink" href="#phase-1" title="Permalink to this headline">¶</a></h3>
+<p>Push: ask if there is a repository, and if not, what formats are okay
+Pull: Nothing</p>
+</div>
+<div class="section" id="phase-2">
+<h3>Phase 2<a class="headerlink" href="#phase-2" title="Permalink to this headline">¶</a></h3>
+<p>Push: send initial push command, streaming data in acceptable format, following
+disk case strategy
+Pull: receive initial pull command, specifying format</p>
+<p>Pull client complexity: O(a), memory cost O(1)
+Push client complexity: procesing and memory cost same as disk case</p>
+</div>
+</div>
+<div class="section" id="dumb-network-case">
+<h2>Dumb Network Case<a class="headerlink" href="#dumb-network-case" title="Permalink to this headline">¶</a></h2>
+<p>Pull: same as disk case, but request all file knit indices at once and request
+al file knits at once.
+Push: same as disk case, but write all files at once.</p>
+</div>
+<div class="section" id="wants">
+<h2>Wants<a class="headerlink" href="#wants" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Read partial graph</li>
+<li>Read multiple segments of multiple files on HTTP and SFTP</li>
+<li>Write multiple files over SFTP</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../../_sources/plans/performance/initial-push-pull.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

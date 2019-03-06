@@ -1,0 +1,540 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Authentication ring &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Bundles" href="bundles.html" />
+    <link rel="prev" title="Bazaar Apport Integration" href="apport.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="apport.html" title="Bazaar Apport Integration"
+             accesskey="P">previous</a> |
+          <a href="bundles.html" title="Bundles"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="authentication-ring">
+<h1>Authentication ring<a class="headerlink" href="#authentication-ring" title="Permalink to this headline">¶</a></h1>
+<p>When accessing a remote branch (specified as an URL), it may occur that the
+server requests an authentication.</p>
+<p>This authentication can be provided in different ways:</p>
+<p>1. Embedding the user and password
+in the URL:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">branch</span> <span class="o">&lt;</span><span class="n">scheme</span><span class="o">&gt;</span><span class="p">:</span><span class="o">//&lt;</span><span class="n">user</span><span class="o">&gt;</span><span class="p">:</span><span class="o">&lt;</span><span class="n">password</span><span class="o">&gt;</span><span class="nd">@host</span><span class="p">:</span><span class="n">port</span><span class="o">/</span><span class="n">path</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">scheme</span></code>: Any transport protocol requiring authentication.</li>
+<li><code class="docutils literal notranslate"><span class="pre">user</span></code>: The login used to authenticate.</li>
+<li><code class="docutils literal notranslate"><span class="pre">password</span></code>: The associated password.</li>
+<li><code class="docutils literal notranslate"><span class="pre">host</span></code>: The address of the server.</li>
+<li><code class="docutils literal notranslate"><span class="pre">port</span></code>: The port the server is listening to.</li>
+<li><code class="docutils literal notranslate"><span class="pre">path</span></code>: The path on the server.</li>
+</ul>
+<p>2. Embedding the user in the URL and let bzr find the right password or prompt
+for one:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">branch</span> <span class="o">&lt;</span><span class="n">scheme</span><span class="o">&gt;</span><span class="p">:</span><span class="o">//&lt;</span><span class="n">user</span><span class="o">&gt;</span><span class="nd">@host</span><span class="o">/</span><span class="n">path</span>
+</pre></div>
+</div>
+<p>3. Embedding nothing in the URL and let bzr find user and password or prompt
+for user and/or password:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">branch</span> <span class="o">&lt;</span><span class="n">scheme</span><span class="o">&gt;</span><span class="p">:</span><span class="o">//</span><span class="n">host</span><span class="o">/</span><span class="n">path</span>
+</pre></div>
+</div>
+<p>This specification proposes a mechanism that will allow users to
+just use <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span> <span class="pre">&lt;scheme&gt;://host/path</span></code> or <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span>
+<span class="pre">&lt;scheme&gt;://&lt;user&gt;&#64;host/path</span></code> and leaves bzr find the <code class="docutils literal notranslate"><span class="pre">user</span></code>
+and <code class="docutils literal notranslate"><span class="pre">password</span></code> in its configuration files.</p>
+<p>When no user is specified for <code class="docutils literal notranslate"><span class="pre">FTP</span></code>, <code class="docutils literal notranslate"><span class="pre">SFTP</span></code> or <code class="docutils literal notranslate"><span class="pre">SSH</span></code>, the actual behavior
+of <code class="docutils literal notranslate"><span class="pre">bzr</span></code> is to default to <code class="docutils literal notranslate"><span class="pre">getpass.get_user()</span></code>.</p>
+<p>Any implementation of this specification should respect that behaviour.</p>
+<p>This specification also proposes a way to describe credentials so that several
+remote branches can use the same definition. This is particularily important
+for users handling a lot of passwords and who need to update them on a regular
+basis.</p>
+<div class="section" id="rationale">
+<h2>Rationale<a class="headerlink" href="#rationale" title="Permalink to this headline">¶</a></h2>
+<p>Embedding user and passwords in the command line is a security
+hazard (see <a class="reference external" href="https://launchpad.net/products/bzr/+bug/34685">bug #34685</a>).</p>
+<p>Storing passwords in <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/breezy.conf</span></code> or
+<code class="docutils literal notranslate"><span class="pre">~/.config/breezy/locations.conf</span></code> is also a security risk.</p>
+<p>Typing user and passwords is error-prone and boring.</p>
+<p>Yet, a safe way to store passwords, while allowing bzr to retrieve them, when
+needed, could improve the bzr user experience.</p>
+<p>This specification describes a way to provide user and passwords to bzr while
+storing them in a relatively safe way.</p>
+<p>Note that SSH servers can be configured to use keys instead of (<code class="docutils literal notranslate"><span class="pre">user</span></code>,
+<code class="docutils literal notranslate"><span class="pre">password</span></code>) and, when used with appropriate agents, provide the same kind of
+comfort this specification aims to provide for all other schemes. Since SSH
+agents provide a safer way to secure the passwords, this specification is
+restricted to providing <code class="docutils literal notranslate"><span class="pre">user</span></code> but does not provide <code class="docutils literal notranslate"><span class="pre">password</span></code> when used
+for SSH.</p>
+</div>
+<div class="section" id="authentication-definitions">
+<h2>Authentication definitions<a class="headerlink" href="#authentication-definitions" title="Permalink to this headline">¶</a></h2>
+<p>There are two kinds of authentication used by the various schemes supported by
+bzr:</p>
+<ol class="arabic simple">
+<li>user and password</li>
+</ol>
+<p><code class="docutils literal notranslate"><span class="pre">FTP</span></code> and <code class="docutils literal notranslate"><span class="pre">SFTP</span></code> needs a (<code class="docutils literal notranslate"><span class="pre">user</span></code>, <code class="docutils literal notranslate"><span class="pre">password</span></code>) to authenticate against a
+<code class="docutils literal notranslate"><span class="pre">host</span></code> (SFTP can use SSH keys too, but we don’t talk about that in this
+specification as SSH agents provide a better solution).</p>
+<ol class="arabic simple" start="2">
+<li>user, realm and password</li>
+</ol>
+<p><code class="docutils literal notranslate"><span class="pre">HTTP</span></code> and <code class="docutils literal notranslate"><span class="pre">HTTPS</span></code> needs a (<code class="docutils literal notranslate"><span class="pre">user,</span> <span class="pre">realm,</span> <span class="pre">password</span></code>) to authenticate
+against a host. But, by using <code class="docutils literal notranslate"><span class="pre">.htaccess</span></code> files, for example, it is possible
+to define several (<code class="docutils literal notranslate"><span class="pre">user,</span> <span class="pre">realm,</span> <span class="pre">password</span></code>) for a given <code class="docutils literal notranslate"><span class="pre">host</span></code>. So what is
+really needed is (<code class="docutils literal notranslate"><span class="pre">user</span></code>, <code class="docutils literal notranslate"><span class="pre">password</span></code>, <code class="docutils literal notranslate"><span class="pre">host</span></code>, <code class="docutils literal notranslate"><span class="pre">path</span></code>). The <code class="docutils literal notranslate"><span class="pre">realm</span></code>
+can be ignored <a class="footnote-reference" href="#ignored-realm" id="id1">[1]</a> as long as it is still presented to the user
+when prompting for the password (unless someone found a way to declare two
+different realms for the same path).</p>
+<p><code class="docutils literal notranslate"><span class="pre">HTTP</span> <span class="pre">proxy</span></code> can be handled as <code class="docutils literal notranslate"><span class="pre">HTTP</span></code> (or <code class="docutils literal notranslate"><span class="pre">HTTPS</span></code>) by explicitly
+specifying the appropriate port.</p>
+<table class="docutils footnote" frame="void" id="ignored-realm" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>The true purpose of realms is to allow the same credentials
+to be reused for disjoint hierarchies. Ignoring them in this specification
+aims to simplify the user experience while still allowing to share the same
+credentials for a whole hierarchy.</td></tr>
+</tbody>
+</table>
+<p>To take all schemes into account, the password will be deduced from a set of
+authentication definitions (<code class="docutils literal notranslate"><span class="pre">scheme</span></code>, <code class="docutils literal notranslate"><span class="pre">host</span></code>, <code class="docutils literal notranslate"><span class="pre">port</span></code>, <code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">user</span></code>,
+<code class="docutils literal notranslate"><span class="pre">password</span></code>).</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">scheme</span></code>: can be empty (meaning the rest of the definition can be used
+for any scheme), <code class="docutils literal notranslate"><span class="pre">SFTP</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr+ssh</span></code> should not be used here, <code class="docutils literal notranslate"><span class="pre">ssh</span></code>
+should be used instead since this is the real scheme regarding
+authentication,</li>
+<li><code class="docutils literal notranslate"><span class="pre">host</span></code>: can be empty (to act as a default for any host),</li>
+<li><code class="docutils literal notranslate"><span class="pre">port</span></code> can be empty (useful when an host provides several servers for the
+same scheme), only numerical values are allowed, this should be used only
+when the server uses a port different than the scheme standard port,</li>
+<li><code class="docutils literal notranslate"><span class="pre">path</span></code>: can be empty (FTP or SFTP will never use it),</li>
+<li><code class="docutils literal notranslate"><span class="pre">user</span></code>: can be empty (<code class="docutils literal notranslate"><span class="pre">bzr</span></code> will defaults to Python’s
+<code class="docutils literal notranslate"><span class="pre">getpass.get_user()</span></code> for FTP, SFTP and SSH),</li>
+<li><code class="docutils literal notranslate"><span class="pre">password</span></code>: can be empty (for security reasons, a user may use the
+definitions without storing the passwords but want to be prompted ; or the
+password will be provided by an external plugin via the
+<code class="docutils literal notranslate"><span class="pre">password_encoding</span></code> mechanism decribed below). Must be left empty for
+<code class="docutils literal notranslate"><span class="pre">ssh</span></code>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">password_encoding</span></code>: can be empty (default is <code class="docutils literal notranslate"><span class="pre">plaintext</span></code>).</li>
+</ul>
+</div></blockquote>
+<p>Also note that an optional <code class="docutils literal notranslate"><span class="pre">verify_certificates=no</span></code> field will allow the
+connection to <code class="docutils literal notranslate"><span class="pre">HTTPS</span></code> hosts that provides a self certified certificate (the
+default should be to refuse the connection and inform the user). (Not
+implemented yet)</p>
+<p>Multiple definitions can be provided and, for a given URL, bzr will select a
+(<code class="docutils literal notranslate"><span class="pre">user</span></code> [, <code class="docutils literal notranslate"><span class="pre">password</span></code>]) based on the following rules :</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>the first match wins,</li>
+<li>empty fields match everything,</li>
+<li><code class="docutils literal notranslate"><span class="pre">scheme</span></code> matches even if decorators are used in the requested URL,</li>
+<li><code class="docutils literal notranslate"><span class="pre">host</span></code> matches exactly or act as a domain if it starts with ‘.’
+(<code class="docutils literal notranslate"><span class="pre">project.bzr.sf.net</span></code> will match <code class="docutils literal notranslate"><span class="pre">.bzr.sf.net</span></code> but <code class="docutils literal notranslate"><span class="pre">projectbzr.sf.net</span></code>
+will not match <code class="docutils literal notranslate"><span class="pre">bzr.sf.net</span></code>).</li>
+<li><code class="docutils literal notranslate"><span class="pre">port</span></code> matches if included in the requested URL (exact matches only)</li>
+<li><code class="docutils literal notranslate"><span class="pre">path</span></code> matches if included in the requested URL (and by rule #2 above,
+empty paths will match any provided path).</li>
+</ol>
+</div></blockquote>
+<p>An optional <code class="docutils literal notranslate"><span class="pre">password_encoding</span></code> field may specify how the password is encoded
+but has no impact on the definition selection.</p>
+<p>Possible values are <code class="docutils literal notranslate"><span class="pre">plaintext</span></code> (no encoding at all) and <code class="docutils literal notranslate"><span class="pre">base64</span></code>. When the
+field is absent, <code class="docutils literal notranslate"><span class="pre">plaintext</span></code> is assumed. Additional encodings may be added in
+future versions.</p>
+<p>Encoding passwords in <code class="docutils literal notranslate"><span class="pre">base64</span></code>, while weak, provides protection against
+accidental reading (if an administrator have to look into the file, he will not
+see the passwords in clear).</p>
+<p>This specification intends to ease the authentication providing, not to secure
+it in the best possible way.</p>
+<p>Plugins can provide additional password encodings. The provided
+<code class="docutils literal notranslate"><span class="pre">netrc_credential_store</span></code> plugin can be used as an example implementation.</p>
+<p>Future versions of this specification may provide additional
+encodings <a class="footnote-reference" href="#password-encoding" id="id2">[2]</a>.</p>
+<table class="docutils footnote" frame="void" id="password-encoding" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Additional password encoding methods may be defined
+that will rely on external means to store the password which, in these
+cases, will not appear anymore in the definition. It is assumed that
+additional password encodings will provide a storage outside of the file
+described here. The <code class="docutils literal notranslate"><span class="pre">netrc</span></code> encoding, for example, provides passwords by
+retrieving them from the <code class="docutils literal notranslate"><span class="pre">.netrc</span></code> file.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="file-format">
+<h2>File format<a class="headerlink" href="#file-format" title="Permalink to this headline">¶</a></h2>
+<p>Even if <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/breezy.conf</span></code> and
+<code class="docutils literal notranslate"><span class="pre">~/.config/breezy/locations.conf</span></code> seems to provide most of the needed
+infrastructure, we choose to use a dedicated file
+for the authentication info <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/authentication.conf</span></code> for the following
+reasons:</p>
+<blockquote>
+<div><ul class="simple">
+<li>allow the user to protect the content of one file only, relaxing security
+constraints on the others,</li>
+<li>while <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> is organized around <em>local</em> branches,
+<code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> is organized around <em>remote</em> branches or more
+generally servers. The same authentification definition can even be used
+for several schemes for servers providing those schemes.</li>
+</ul>
+</div></blockquote>
+<p><code class="docutils literal notranslate"><span class="pre">~/.config/breezy//authentication.conf</span></code> will use the same file format as
+<code class="docutils literal notranslate"><span class="pre">~/.config/breezy/breezy.conf</span></code>.</p>
+<p>Each section describes an authentication definition.</p>
+<p>The section name is an arbitrary string, only the <code class="docutils literal notranslate"><span class="pre">DEFAULT</span></code> value is reserved
+and should appear as the <em>last</em> section.</p>
+<p>Each section should define:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">user</span></code>: the login to be used,</li>
+</ul>
+</div></blockquote>
+<p>Each section could define:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">host</span></code>: the remote server,</li>
+<li><code class="docutils literal notranslate"><span class="pre">port</span></code>: the port the server is listening,</li>
+<li><code class="docutils literal notranslate"><span class="pre">verify_certificates</span></code>: to control certificate verification (useful
+for self certified hosts). This applies to HTTPS only. Accepted values
+are yes and no, default to yes.</li>
+<li><code class="docutils literal notranslate"><span class="pre">path</span></code>: the branch location,</li>
+<li><code class="docutils literal notranslate"><span class="pre">password</span></code>: the password,</li>
+<li><code class="docutils literal notranslate"><span class="pre">password_encoding</span></code>: the method used to encode the password if any,</li>
+</ul>
+</div></blockquote>
+<p>The default content of the file will be:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>This section could define:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">user</span></code>: default user to be used (if not defined the usual
+bzr way applies, see below).</li>
+<li><code class="docutils literal notranslate"><span class="pre">password_encoding</span></code>: default password encoding.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="use-cases">
+<h2>Use Cases<a class="headerlink" href="#use-cases" title="Permalink to this headline">¶</a></h2>
+<p>The use cases described below use the file format defined above.</p>
+<blockquote>
+<div><ul>
+<li><p class="first">all FTP connections to the foo.net domain are done with the same (<code class="docutils literal notranslate"><span class="pre">user</span></code>,
+<code class="docutils literal notranslate"><span class="pre">password</span></code>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Identity on foo.net</span>
+<span class="p">[</span><span class="n">foo</span><span class="o">.</span><span class="n">net</span><span class="p">]</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">ftp</span>
+<span class="n">host</span><span class="o">=</span><span class="n">foo</span><span class="o">.</span><span class="n">net</span>
+<span class="n">user</span><span class="o">=</span><span class="n">joe</span>
+<span class="n">password</span><span class="o">=</span><span class="n">secret</span><span class="o">-</span><span class="k">pass</span>
+</pre></div>
+</div>
+<p>will provide (‘joe’, ‘secret-pass’) for:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">branch</span> <span class="n">ftp</span><span class="p">:</span><span class="o">//</span><span class="n">foo</span><span class="o">.</span><span class="n">net</span><span class="o">/</span><span class="n">bzr</span><span class="o">/</span><span class="n">branch</span>
+<span class="n">bzr</span> <span class="n">pull</span> <span class="n">ftp</span><span class="p">:</span><span class="o">//</span><span class="n">bzr</span><span class="o">.</span><span class="n">foo</span><span class="o">.</span><span class="n">net</span><span class="o">/</span><span class="n">bzr</span><span class="o">/</span><span class="n">product</span><span class="o">/</span><span class="n">branch</span><span class="o">/</span><span class="n">trunk</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">all connections are done with the same <code class="docutils literal notranslate"><span class="pre">user</span></code> (the remote one for which
+the default bzr one is not appropriate) and the password is always prompted
+with some exceptions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pet projects on hobby.net</span>
+<span class="p">[</span><span class="n">hobby</span><span class="p">]</span>
+<span class="n">host</span><span class="o">=</span><span class="n">r</span><span class="o">.</span><span class="n">hobby</span><span class="o">.</span><span class="n">net</span>
+<span class="n">user</span><span class="o">=</span><span class="n">jim</span>
+<span class="n">password</span><span class="o">=</span><span class="n">obvious1234</span>
+
+<span class="c1"># Home server</span>
+<span class="p">[</span><span class="n">home</span><span class="p">]</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">https</span>
+<span class="n">host</span><span class="o">=</span><span class="n">home</span><span class="o">.</span><span class="n">net</span>
+<span class="n">user</span><span class="o">=</span><span class="n">joe</span>
+<span class="c1"># Obtain the base64 encoded password by running &#39;echo -n &quot;secret-pass&quot; | base64&#39;</span>
+<span class="n">password</span><span class="o">=</span><span class="s1">&#39;c2VjcmV0LXBhc3M=&#39;</span>
+<span class="n">password_encoding</span><span class="o">=</span><span class="n">base64</span>
+<span class="n">verify_certificates</span><span class="o">=</span><span class="n">no</span> <span class="c1"># Still searching a free certificate provider</span>
+
+<span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="c1"># Our local user is barbaz, on all remote sites we&#39;re known as foobar</span>
+<span class="n">user</span><span class="o">=</span><span class="n">foobar</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">an HTTP server and a proxy:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># development branches on dev server</span>
+<span class="p">[</span><span class="n">dev</span><span class="p">]</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">https</span>
+<span class="n">host</span><span class="o">=</span><span class="n">dev</span><span class="o">.</span><span class="n">company</span><span class="o">.</span><span class="n">com</span>
+<span class="n">path</span><span class="o">=/</span><span class="n">dev</span>
+<span class="n">user</span><span class="o">=</span><span class="n">user1</span>
+<span class="n">password</span><span class="o">=</span><span class="n">pass1</span>
+
+<span class="c1"># toy branches</span>
+<span class="p">[</span><span class="n">localhost</span><span class="p">]</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">http</span>
+<span class="n">host</span><span class="o">=</span><span class="n">dev</span><span class="o">.</span><span class="n">company</span><span class="o">.</span><span class="n">com</span>
+<span class="n">path</span><span class="o">=/</span>
+<span class="n">user</span><span class="o">=</span><span class="n">user2</span>
+<span class="n">password</span><span class="o">=</span><span class="n">pass2</span>
+
+<span class="c1"># proxy</span>
+<span class="p">[</span><span class="n">proxy</span><span class="p">]</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">http</span>
+<span class="n">host</span><span class="o">=</span><span class="n">proxy</span><span class="o">.</span><span class="n">company</span><span class="o">.</span><span class="n">com</span>
+<span class="n">port</span><span class="o">=</span><span class="mi">3128</span>
+<span class="n">user</span><span class="o">=</span><span class="n">proxyuser1</span>
+<span class="n">password</span><span class="o">=</span><span class="n">proxypass1</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">source hosting provider declaring sub-domains for each project:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">sfnet</span> <span class="n">domain</span><span class="p">]</span>
+<span class="c1"># we use SFTP, but SSH is the scheme used for authentication</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">ssh</span>
+<span class="c1"># The leading &#39;.&#39; ensures that &#39;sf.net&#39; alone doesn&#39;t match</span>
+<span class="n">host</span><span class="o">=.</span><span class="n">sf</span><span class="o">.</span><span class="n">net</span>
+<span class="n">user</span><span class="o">=</span><span class="n">georges</span>
+<span class="n">password</span><span class="o">=</span><span class="n">ben</span><span class="o">...</span><span class="n">son</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="ui-changes">
+<h2>UI Changes<a class="headerlink" href="#ui-changes" title="Permalink to this headline">¶</a></h2>
+<p>Depending on the info provided in the URL, bzr will interact with the user in
+different ways:</p>
+<ol class="arabic simple">
+<li><code class="docutils literal notranslate"><span class="pre">user</span></code> and <code class="docutils literal notranslate"><span class="pre">password</span></code> given in the URL.</li>
+</ol>
+<blockquote>
+<div>Nothing to do.</div></blockquote>
+<ol class="arabic simple" start="2">
+<li><code class="docutils literal notranslate"><span class="pre">user</span></code> given in the URL.</li>
+</ol>
+<blockquote>
+<div>Get a password from <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/authentication.conf</span></code> or prompt
+for one if none is found.</div></blockquote>
+<ol class="arabic simple" start="3">
+<li>No <code class="docutils literal notranslate"><span class="pre">user</span></code> given in the URL (and no <code class="docutils literal notranslate"><span class="pre">password</span></code>).</li>
+</ol>
+<blockquote>
+<div>Get a user from <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/authentication.conf</span></code> or prompt for one if
+none is found. Continue as 2. (Not implemented yet)</div></blockquote>
+<p>Note: A user will be queried only if the server requires it for <code class="docutils literal notranslate"><span class="pre">HTTP</span></code> or
+<code class="docutils literal notranslate"><span class="pre">HTTPS</span></code>, other protocols always require a user.</p>
+<p>In any case, if the server refuses the authentication, bzr reports to the user
+and terminates.</p>
+</div>
+<div class="section" id="implementation-constraints">
+<h2>Implementation constraints<a class="headerlink" href="#implementation-constraints" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>bzr should be able to prompt for a <code class="docutils literal notranslate"><span class="pre">user</span></code> for a given (<code class="docutils literal notranslate"><span class="pre">scheme</span></code>, <code class="docutils literal notranslate"><span class="pre">host</span></code>
+[, <code class="docutils literal notranslate"><span class="pre">realm</span></code>]). Note that <code class="docutils literal notranslate"><span class="pre">realm</span></code> is available only after a first
+connection attempt to the server.</li>
+<li>No assumptions should be made about the clients of this service
+(i.e. Transport is the primary target but plugins must be able to use it as
+well, the definitions used: (<code class="docutils literal notranslate"><span class="pre">scheme,</span> <span class="pre">host,</span> <span class="pre">[port,]</span> <span class="pre">path</span></code>) are general
+enough to described credentials for <code class="docutils literal notranslate"><span class="pre">svn</span></code> servers or LaunchPad XML-RPC
+calls).</li>
+<li>Policies regarding default users may be taken into account by the
+implementations, there is no good way to represent that in this specification
+and stays flexible enough to accommodate various needs (default user policies
+may differ for different schemes and that may be easier to handle in the code
+than in the authentication file itself).</li>
+<li>If no user can be found by the mechanism described above, bzr should still
+default to <code class="docutils literal notranslate"><span class="pre">getpass.get_user()</span></code> and may attempt a second matching to obtain
+a password.</li>
+<li>As this specification proposes a matching between some credentials
+definitions and real URLs, the implementation provides an optional UI
+feedback about which credential definition is used. Using <code class="docutils literal notranslate"><span class="pre">-Dauth</span></code> will
+output some traces in the <code class="docutils literal notranslate"><span class="pre">.bzr.log</span></code> file metionning the sections
+used. This allows the user to validate his definitions.</li>
+</ul>
+</div>
+<div class="section" id="questions-and-answers">
+<h2>Questions and Answers<a class="headerlink" href="#questions-and-answers" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><ul>
+<li><p class="first">What if a <code class="docutils literal notranslate"><span class="pre">.authinfo</span></code> file exists ?</p>
+<ul class="simple">
+<li>It will be ignored,</li>
+<li>Automatic (one-time) conversions may be proposed if sufficient demand
+exists,</li>
+</ul>
+</li>
+<li><p class="first">What if a <code class="docutils literal notranslate"><span class="pre">.netrc</span></code> file exists ?</p>
+<ul class="simple">
+<li>It is honored if the definition specifies
+<code class="docutils literal notranslate"><span class="pre">password_encoding=netrc</span></code>.</li>
+</ul>
+</li>
+<li><p class="first">What mode should the authentication file use ?</p>
+<ul class="simple">
+<li>600 read/write for owner only by default, if another mode (more
+permissive) is used, a warning will be issued to inform the users of the
+potential risks.(Not implemented yet)</li>
+</ul>
+</li>
+<li><p class="first">What about using <code class="docutils literal notranslate"><span class="pre">seahorse</span></code> on Ubuntu or <code class="docutils literal notranslate"><span class="pre">KeyChain</span> <span class="pre">Access</span></code> on Mac OS X ?</p>
+<ul class="simple">
+<li>plugins can be written and registered to handle the associated
+<code class="docutils literal notranslate"><span class="pre">password_encoding</span></code>.</li>
+</ul>
+</li>
+<li><p class="first">Could it be possible to encode the whole authentication file with an SSH key
+?</p>
+<ul class="simple">
+<li>yes and if the user configure a ssh-agent it will not be queried for
+pass-phrase every time we want to query the file for a password. But
+that seems a bit extreme for a first version.(Not implemented yet and
+may be never)</li>
+</ul>
+</li>
+<li><p class="first">Why can’t bzr update the authentication file when it queried the user for a
+password ?</p>
+<ul>
+<li><p class="first">a future version may address that but:</p>
+<p>1. The user may want to decide which passwords are stored in the file and
+which aren’t.</p>
+<p>2. The user should decide if the passwords are encoded (and how) or not
+(but we may default to base64).</p>
+<p>3. The right definition may be hard to get right, but reducing it to
+(<code class="docutils literal notranslate"><span class="pre">scheme,</span> <span class="pre">host,</span> <span class="pre">[port,]</span> <span class="pre">user,</span> <span class="pre">password</span></code>) may be a good start. I.e. no
+path so that all paths on the host will match. The user will have to
+modify it for more complex configurations anyway.</p>
+</li>
+</ul>
+</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="apport.html" title="Bazaar Apport Integration"
+              >previous</a> |
+            <a href="bundles.html" title="Bundles"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/authentication-ring.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

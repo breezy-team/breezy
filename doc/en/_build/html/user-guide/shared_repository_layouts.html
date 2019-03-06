@@ -1,0 +1,432 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Advanced shared repository layouts &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Configuring email" href="setting_up_email.html" />
+    <link rel="prev" title="Organizing your workspace" href="organizing_your_workspace.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="organizing_your_workspace.html" title="Organizing your workspace"
+             accesskey="P">previous</a> |
+          <a href="setting_up_email.html" title="Configuring email"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="advanced-shared-repository-layouts">
+<h1>Advanced shared repository layouts<a class="headerlink" href="#advanced-shared-repository-layouts" title="Permalink to this headline">¶</a></h1>
+<p>Breezy is designed to give you flexibility in how you layout branches inside a shared repository.
+This flexibility allows users to tailor Breezy to their workflow,
+but it also leads to questions about what is a “good” layout.
+We present some alternatives and give some discussion about the benefits of each.</p>
+<p>One key point which should be mentioned is that any good layout should somehow highlight
+what branch a “general” user should grab. In SVN this is deemed the “<code class="docutils literal notranslate"><span class="pre">trunk/</span></code>” branch,
+and in most of the layouts this naming convention is preserved. Some would call this
+“<code class="docutils literal notranslate"><span class="pre">mainline</span></code>” or “<code class="docutils literal notranslate"><span class="pre">dev</span></code>”, and people from CVS often refer to this as “<code class="docutils literal notranslate"><span class="pre">HEAD</span></code>”.</p>
+<div class="section" id="svn-style-trunk-branches">
+<h2>“SVN-Style” (<code class="docutils literal notranslate"><span class="pre">trunk/</span></code>, <code class="docutils literal notranslate"><span class="pre">branches/</span></code>)<a class="headerlink" href="#svn-style-trunk-branches" title="Permalink to this headline">¶</a></h2>
+<p>Most people coming from SVN will be familiar with their “standard” project layout.
+Which is to layout the repository as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">repository</span><span class="o">/</span>       <span class="c1"># Overall repository</span>
+ <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>        <span class="c1"># The mainline of development</span>
+ <span class="o">+-</span> <span class="n">branches</span><span class="o">/</span>     <span class="c1"># A container directory</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">foo</span><span class="o">/</span>      <span class="c1"># Branch for developing feature foo</span>
+ <span class="o">|</span>     <span class="o">...</span>
+ <span class="o">+-</span> <span class="n">tags</span><span class="o">/</span>         <span class="c1"># Container directory</span>
+     <span class="o">+-</span> <span class="n">release</span><span class="o">-</span><span class="n">X</span> <span class="c1"># A branch specific to mark a given release version</span>
+        <span class="o">...</span>
+</pre></div>
+</div>
+<p>With Breezy, that is a perfectly reasonable layout.
+It has the benefit of being familiar to people coming from SVN,
+and making it clear where the development focus is.</p>
+<p>When you have multiple projects in the same repository,
+the SVN layout is a little unclear what to do.</p>
+<div class="section" id="project-trunk">
+<h3><code class="docutils literal notranslate"><span class="pre">project/trunk</span></code><a class="headerlink" href="#project-trunk" title="Permalink to this headline">¶</a></h3>
+<p>The preferred method for SVN seems to be to give each project a top level directory for a layout like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">repository</span><span class="o">/</span>            <span class="c1"># Overall repository</span>
+ <span class="o">+-</span> <span class="n">project1</span><span class="o">/</span>          <span class="c1"># A container directory</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>         <span class="c1"># The mainline of development of project1</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">branches</span><span class="o">/</span>      <span class="c1"># A container directory</span>
+ <span class="o">|</span>       <span class="o">+-</span> <span class="n">foo</span><span class="o">/</span>       <span class="c1"># Branch for developing feature foo of project1</span>
+ <span class="o">|</span>         <span class="o">...</span>
+ <span class="o">|</span>
+ <span class="o">+-</span> <span class="n">project2</span><span class="o">/</span>          <span class="c1"># Container for project2</span>
+     <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>         <span class="c1"># Mainline for project2</span>
+     <span class="o">+-</span> <span class="n">branches</span><span class="o">/</span>      <span class="c1"># Container for project2 branches</span>
+</pre></div>
+</div>
+<p>This also works with Breezy.
+However, with Breezy repositories are cheap to create
+(a simple <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">init-repo</span></code> away), and their primary benefit is when the
+branches share a common ancestry.</p>
+<p>So the preferred way for Breezy would be:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">project1</span><span class="o">/</span>          <span class="c1"># A repository for project1</span>
+ <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>         <span class="c1"># The mainline of development of project1</span>
+ <span class="o">+-</span> <span class="n">branches</span><span class="o">/</span>      <span class="c1"># A container directory</span>
+     <span class="o">+-</span> <span class="n">foo</span><span class="o">/</span>       <span class="c1"># Branch for developing feature foo of project1</span>
+       <span class="o">...</span>
+
+<span class="n">project2</span><span class="o">/</span>          <span class="c1"># A repository for project2</span>
+ <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>         <span class="c1"># Mainline for project2</span>
+ <span class="o">+-</span> <span class="n">branches</span><span class="o">/</span>      <span class="c1"># Container for project2 branches</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="trunk-project">
+<h3><code class="docutils literal notranslate"><span class="pre">trunk/project</span></code><a class="headerlink" href="#trunk-project" title="Permalink to this headline">¶</a></h3>
+<p>There are also a few projects who use this layout in SVN:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">repository</span><span class="o">/</span>             <span class="c1"># Overall repository</span>
+  <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>             <span class="c1"># A container directory</span>
+  <span class="o">|</span>   <span class="o">+-</span> <span class="n">project1</span>       <span class="c1"># Mainline for project 1</span>
+  <span class="o">|</span>   <span class="o">+-</span> <span class="n">project2</span>       <span class="c1"># Mainline for project 2</span>
+  <span class="o">|</span>         <span class="o">...</span>
+  <span class="o">|</span>
+  <span class="o">+-</span> <span class="n">branches</span><span class="o">/</span>          <span class="c1"># Container</span>
+      <span class="o">+-</span> <span class="n">project1</span><span class="o">/</span>      <span class="c1"># Container (?)</span>
+      <span class="o">|</span>   <span class="o">+-</span> <span class="n">foo</span>        <span class="c1"># Branch &#39;foo&#39; of project1</span>
+      <span class="o">+-</span> <span class="n">project2</span><span class="o">/</span>
+          <span class="o">+-</span> <span class="n">bar</span>        <span class="c1"># Branch &#39;bar&#39; of project2</span>
+</pre></div>
+</div>
+<p>A slight variant is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">repository</span><span class="o">/</span>             <span class="c1"># Overall repository</span>
+  <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>             <span class="c1"># A container directory</span>
+  <span class="o">|</span>   <span class="o">+-</span> <span class="n">project1</span>       <span class="c1"># Mainline for project 1</span>
+  <span class="o">|</span>   <span class="o">+-</span> <span class="n">project2</span>       <span class="c1"># Mainline for project 2</span>
+  <span class="o">|</span>         <span class="o">...</span>
+  <span class="o">|</span>
+  <span class="o">+-</span> <span class="n">branches</span><span class="o">/</span>          <span class="c1"># Container</span>
+      <span class="o">+-</span> <span class="n">project1</span><span class="o">-</span><span class="n">foo</span><span class="o">/</span>  <span class="c1"># Branch &#39;foo&#39; of project1</span>
+      <span class="o">+-</span> <span class="n">project2</span><span class="o">-</span><span class="n">bar</span><span class="o">/</span>  <span class="c1"># Branch &#39;bar&#39; of project2</span>
+</pre></div>
+</div>
+<p>I believe the reason for this in SVN, is so that someone
+can checkout all of “<code class="docutils literal notranslate"><span class="pre">trunk/</span></code>” and get the all the mainlines for all projects.</p>
+<p>This layout can be used for Breezy, but it is not generally recommended.</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">branch/checkout/get</span></code> is a single branch at a time.
+So you don’t get the benefit of getting all mainlines with a single command. <a class="footnote-reference" href="#id2" id="id1">[1]</a></li>
+<li>It is less obvious of whether <code class="docutils literal notranslate"><span class="pre">repository/trunk/foo</span></code> is the <code class="docutils literal notranslate"><span class="pre">trunk</span></code> of project
+<code class="docutils literal notranslate"><span class="pre">foo</span></code> or it is just the <code class="docutils literal notranslate"><span class="pre">foo</span></code> directory in the <code class="docutils literal notranslate"><span class="pre">trunk</span></code> branch.
+Some of this confusion is due to SVN, because it uses the same “namespace”
+for files in a project that it uses for branches of a project.
+In Breezy, there is a clear distinction of what files make up a project, versus
+the location of the Branch. (After all, there is only one <code class="docutils literal notranslate"><span class="pre">.brz/</span></code> directory per branch,
+versus many <code class="docutils literal notranslate"><span class="pre">.svn/</span></code> directories in the checkout).</li>
+</ol>
+</div></blockquote>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Note: <a class="reference external" href="http://wiki.bazaar.canonical.com/NestedTrees">NestedTreeSupport</a> can provide a way to create “meta-projects” which
+aggregate multiple projects regardless of the repository layout.
+Letting you <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">checkout</span></code> one project, and have it grab all the necessary
+sub-projects.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="nested-style-project-branch-sub-branch">
+<h2>Nested Style (<code class="docutils literal notranslate"><span class="pre">project/branch/sub-branch/</span></code>)<a class="headerlink" href="#nested-style-project-branch-sub-branch" title="Permalink to this headline">¶</a></h2>
+<p>Another style with Breezy, which is not generally possible in SVN
+is to have branches nested within each-other.
+This is possible because Breezy supports (and recommends) creating repositories
+with no working trees (<code class="docutils literal notranslate"><span class="pre">--no-trees</span></code>).
+With a <code class="docutils literal notranslate"><span class="pre">--no-trees</span></code> repository, because the working files are not intermixed with
+your branch locations, you are free to put a branch in whatever namespace you want.</p>
+<p>One possibility is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">project</span><span class="o">/</span>             <span class="c1"># The overall repository, *and* the project&#39;s mainline branch</span>
+ <span class="o">+</span> <span class="n">joe</span><span class="o">/</span>              <span class="c1"># Developer Joe&#39;s primary branch of development</span>
+ <span class="o">|</span>  <span class="o">+-</span> <span class="n">feature1</span><span class="o">/</span>     <span class="c1"># Developer Joe&#39;s feature1 development branch</span>
+ <span class="o">|</span>  <span class="o">|</span>   <span class="o">+-</span> <span class="n">broken</span><span class="o">/</span>   <span class="c1"># A staging branch for Joe to develop feature1</span>
+ <span class="o">|</span>  <span class="o">+-</span> <span class="n">feature2</span><span class="o">/</span>     <span class="c1"># Joe&#39;s feature2 development branch</span>
+ <span class="o">|</span>    <span class="o">...</span>
+ <span class="o">+</span> <span class="n">barry</span><span class="o">/</span>            <span class="c1"># Barry&#39;s development branch</span>
+ <span class="o">|</span>  <span class="o">...</span>
+ <span class="o">+</span> <span class="n">releases</span><span class="o">/</span>
+    <span class="o">+-</span> <span class="mf">1.0</span><span class="o">/</span>
+        <span class="o">+-</span> <span class="mf">1.1</span><span class="o">.</span><span class="mi">1</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>The idea with this layout is that you are creating a hierarchical layout for branches.
+Where changes generally flow upwards in the namespace. It also gives people a little
+corner of the namespace to work on their stuff.
+One nice feature of this layout, is it makes branching “cheaper” because it gives you
+a place to put all the mini branches without cluttering up the global <code class="docutils literal notranslate"><span class="pre">branches/</span></code> namespace.</p>
+<p>The other power of this is that you don’t have to repeat yourself when specifying more detail in the
+branch name.</p>
+<p>For example compare:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">host</span><span class="o">/</span><span class="n">repository</span><span class="o">/</span><span class="n">project</span><span class="o">/</span><span class="n">branches</span><span class="o">/</span><span class="n">joe</span><span class="o">-</span><span class="n">feature</span><span class="o">-</span><span class="n">foo</span><span class="o">-</span><span class="n">bugfix</span><span class="o">-</span><span class="mi">10</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>Versus:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">host</span><span class="o">/</span><span class="n">project</span><span class="o">/</span><span class="n">joe</span><span class="o">/</span><span class="n">foo</span><span class="o">/</span><span class="n">bugfix</span><span class="o">-</span><span class="mi">10</span>
+</pre></div>
+</div>
+<p>Also, if you list the <code class="docutils literal notranslate"><span class="pre">repository/project/branches/</span></code> directory you might see something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">barry</span><span class="o">-</span><span class="n">feature</span><span class="o">-</span><span class="n">bar</span><span class="o">/</span>
+<span class="n">barry</span><span class="o">-</span><span class="n">bugfix</span><span class="o">-</span><span class="mi">10</span><span class="o">/</span>
+<span class="n">barry</span><span class="o">-</span><span class="n">bugfix</span><span class="o">-</span><span class="mi">12</span><span class="o">/</span>
+<span class="n">joe</span><span class="o">-</span><span class="n">bugfix</span><span class="o">-</span><span class="mi">10</span><span class="o">/</span>
+<span class="n">joe</span><span class="o">-</span><span class="n">bugfix</span><span class="o">-</span><span class="mi">13</span><span class="o">/</span>
+<span class="n">joe</span><span class="o">-</span><span class="n">frizban</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>Versus having these broken out by developer.
+If the number of branches are small, <code class="docutils literal notranslate"><span class="pre">branches/</span></code> has the nice advantage
+of being able to see all branches in a single view.
+If the number of branches is large, <code class="docutils literal notranslate"><span class="pre">branches/</span></code> has the distinct disadvantage
+of seeing all the branches in a single view (it becomes difficult to find the
+branch you are interested in, when there are 100 branches to look through).</p>
+<p>Nested branching seems to scale better to larger number of branches.
+However, each individual branch is less discoverable.
+(eg. “Is Joe working on bugfix 10 in his feature foo branch, or his feature bar branch?”)</p>
+<p>One other small advantage is that you can do something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span> <span class="n">brz</span> <span class="n">branch</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">host</span><span class="o">/</span><span class="n">project</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">1</span><span class="o">/</span><span class="mi">1</span><span class="o">/</span><span class="mi">1</span>
+<span class="ow">or</span>
+ <span class="n">brz</span> <span class="n">branch</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">host</span><span class="o">/</span><span class="n">project</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">1</span><span class="o">/</span><span class="mi">1</span><span class="o">/</span><span class="mi">2</span>
+</pre></div>
+</div>
+<p>To indicate release 1.1.1 and 1.1.2. This again depends on how many releases you have
+and whether the gain of splitting things up outweighs the ability to see more at a glance.</p>
+</div>
+<div class="section" id="sorted-by-status-dev-merged-experimental">
+<h2>Sorted by Status (<code class="docutils literal notranslate"><span class="pre">dev/</span></code>, <code class="docutils literal notranslate"><span class="pre">merged/</span></code>, <code class="docutils literal notranslate"><span class="pre">experimental/</span></code>)<a class="headerlink" href="#sorted-by-status-dev-merged-experimental" title="Permalink to this headline">¶</a></h2>
+<p>One other way to break up branches is to sort them by their current status.
+So you would end up with a layout something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">project</span><span class="o">/</span>               <span class="c1"># Overall layout</span>
+ <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>             <span class="c1"># The development focus branch</span>
+ <span class="o">+-</span> <span class="n">dev</span><span class="o">/</span>               <span class="c1"># Container directory for in-progress work</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">joe</span><span class="o">-</span><span class="n">feature1</span>   <span class="c1"># Joe&#39;s current feature-1 branch</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">barry</span><span class="o">-</span><span class="n">bugfix10</span> <span class="c1"># Barry&#39;s work for bugfix 10</span>
+ <span class="o">|</span>    <span class="o">...</span>
+ <span class="o">+-</span> <span class="n">merged</span><span class="o">/</span>            <span class="c1"># Container indicating these branches have been merged</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">bugfix</span><span class="o">-</span><span class="mi">12</span>      <span class="c1"># Bugfix which has already been merged.</span>
+ <span class="o">+-</span> <span class="n">abandonded</span><span class="o">/</span>        <span class="c1"># Branches which are considered &#39;dead-end&#39;</span>
+</pre></div>
+</div>
+<p>This has a couple benefits and drawbacks.
+It lets you see what branches are actively being developed on, which is usually
+only a small number, versus the total number of branches ever created.
+Old branches are not lost (versus deleting them), but they are “filed away”,
+such that the more likely you are to want a branch the easier it is to find.
+(Conversely, older branches are likely to be harder to find).</p>
+<p>The biggest disadvantage with this layout, is that branches move around.
+Which means that if someone is following the <code class="docutils literal notranslate"><span class="pre">project/dev/new-feature</span></code> branch,
+when it gets merged into <code class="docutils literal notranslate"><span class="pre">trunk/</span></code> suddenly <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">pull</span></code> doesn’t mirror the branch
+for them anymore because the branch is now at <code class="docutils literal notranslate"><span class="pre">project/merged/new-feature</span></code>.
+There are a couple ways around this. One is to use HTTP redirects to point people
+requesting the old branch to the new branch. <code class="docutils literal notranslate"><span class="pre">brz</span></code> &gt;= 0.15 will let users know
+that <code class="docutils literal notranslate"><span class="pre">http://old/path</span> <span class="pre">redirects</span> <span class="pre">to</span> <span class="pre">http://new/path</span></code>. However, this doesn’t help
+if people are accessing a branch through methods other than HTTP (SFTP, local filesystem, etc).</p>
+<p>It would also be possible to use a symlink for temporary redirecting (as long as the symlink
+is within the repository it should cause little trouble). However eventually you want to
+remove the symlink, or you don’t get the clutter reduction benefit.
+Another possibility instead of a symlink is to use a <code class="docutils literal notranslate"><span class="pre">BranchReference</span></code>. It is currently
+difficult to create these through the <code class="docutils literal notranslate"><span class="pre">brz</span></code> command line, but if people find them useful
+that could be changed.
+This is actually how <a class="reference external" href="https://launchpad.net">Launchpad</a> allows you to <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">checkout</span> <span class="pre">https://launchpad.net/bzr</span></code>.
+Effectively a <code class="docutils literal notranslate"><span class="pre">BranchReference</span></code> is a symlink, but it allows you to reference any other URL.
+If it is extended to support relative references, it would even work over HTTP, SFTP,
+and local paths.</p>
+</div>
+<div class="section" id="sorted-by-date-release-etc-2006-06-2006-07-0-8-0-9">
+<h2>Sorted by date/release/etc (<code class="docutils literal notranslate"><span class="pre">2006-06/</span></code>, <code class="docutils literal notranslate"><span class="pre">2006-07/</span></code>, <code class="docutils literal notranslate"><span class="pre">0.8/</span></code>, <code class="docutils literal notranslate"><span class="pre">0.9</span></code>)<a class="headerlink" href="#sorted-by-date-release-etc-2006-06-2006-07-0-8-0-9" title="Permalink to this headline">¶</a></h2>
+<p>Another method of allowing some scalability while also allowing the
+browsing of “current” branches. Basically, this works on the assumption
+that actively developed branches will be “new” branches, and older branches
+are either merged or abandoned.</p>
+<p>Basically the date layout looks something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">project</span><span class="o">/</span>                <span class="c1"># Overall project repository</span>
+ <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>              <span class="c1"># General mainline</span>
+ <span class="o">+-</span> <span class="mi">2006</span><span class="o">-</span><span class="mi">06</span><span class="o">/</span>            <span class="c1"># containing directory for branches created in this month</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">feature1</span><span class="o">/</span>       <span class="c1"># Branch of &quot;project&quot; for &quot;feature1&quot;</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">feature2</span><span class="o">/</span>       <span class="c1"># Branch of &quot;project&quot; for &quot;feature2&quot;</span>
+ <span class="o">+-</span> <span class="mi">2005</span><span class="o">-</span><span class="mi">05</span><span class="o">/</span>            <span class="c1"># Containing directory for branches create in a different month</span>
+     <span class="o">+-</span> <span class="n">feature3</span><span class="o">/</span>
+     <span class="o">...</span>
+</pre></div>
+</div>
+<p>This answers the question “Where should I put my new branch?” very quickly.
+If a feature is developed for a long time, it is even reasonable to copy a
+branch into the newest date, and continue working on it there.
+Finding an active branch generally means going to the newest date, and
+going backwards from there. (A small disadvantage is that most directory
+listings sort oldest to the top, which may mean more scrolling).
+If you don’t copy old branches to newer locations, it also has the disadvantage
+that searching for a branch may take a while.</p>
+<p>Another variant is by release target:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">project</span><span class="o">/</span>          <span class="c1"># Overall repository</span>
+ <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>        <span class="c1"># Mainline development branch</span>
+ <span class="o">+-</span> <span class="n">releases</span><span class="o">/</span>     <span class="c1"># Container for release branches</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="mf">0.8</span><span class="o">/</span>      <span class="c1"># The branch for release 0.8</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="mf">0.9</span><span class="o">/</span>      <span class="c1"># The branch for release 0.9</span>
+ <span class="o">+-</span> <span class="mf">0.8</span><span class="o">/</span>          <span class="c1"># Container for branches targeting release 0.8</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">feature1</span><span class="o">/</span> <span class="c1"># Branch for &quot;feature1&quot; which is intended to be merged into 0.8</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">feature2</span><span class="o">/</span> <span class="c1"># Branch for &quot;feature2&quot; which is targeted for 0.8</span>
+ <span class="o">+-</span> <span class="mf">0.9</span><span class="o">/</span>
+     <span class="o">+-</span> <span class="n">feature3</span><span class="o">/</span> <span class="c1"># Branch for &quot;feature3&quot;, targeted for release 0.9</span>
+</pre></div>
+</div>
+<p>Some possible variants include having the <code class="docutils literal notranslate"><span class="pre">0.9</span></code> directory imply
+that it is branched <em>from</em> 0.9 rather than <em>for</em> 0.9, or having the <code class="docutils literal notranslate"><span class="pre">0.8/release</span></code>
+as the official release 0.8 branch.</p>
+<p>The general idea is that by targeting a release, you can look at what branches are
+waiting to be merged. It doesn’t necessarily give you a good idea of what the
+state of the branch (is it in development or finished awaiting review).
+It also has a history-hiding effect, and otherwise has the same benefits
+and deficits as a date-based sorting.</p>
+</div>
+<div class="section" id="simple-developer-naming-project-joe-foo-project-barry-bar">
+<h2>Simple developer naming (<code class="docutils literal notranslate"><span class="pre">project/joe/foo</span></code>, <code class="docutils literal notranslate"><span class="pre">project/barry/bar</span></code>)<a class="headerlink" href="#simple-developer-naming-project-joe-foo-project-barry-bar" title="Permalink to this headline">¶</a></h2>
+<p>Another possibly layout is to give each developer a directory, and then
+have a single sub-directory for branches. Something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">project</span><span class="o">/</span>      <span class="c1"># Overall repository</span>
+ <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>    <span class="c1"># Mainline branch</span>
+ <span class="o">+-</span> <span class="n">joe</span><span class="o">/</span>      <span class="c1"># A container for Joe&#39;s branches</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">foo</span><span class="o">/</span>  <span class="c1"># Joe&#39;s &quot;foo&quot; branch of &quot;project&quot;</span>
+ <span class="o">+-</span> <span class="n">barry</span><span class="o">/</span>
+     <span class="o">+-</span> <span class="n">bar</span><span class="o">/</span>  <span class="c1"># Barry&#39;s &quot;bar&quot; branch of &quot;project&quot;</span>
+</pre></div>
+</div>
+<p>The idea is that no branch is “nested” underneath another one, just that each developer
+has his/her branches grouped together.</p>
+<p>A variant which is used by <a class="reference external" href="https://launchpad.net">Launchpad</a> is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">repository</span><span class="o">/</span>
+ <span class="o">+-</span> <span class="n">joe</span><span class="o">/</span>             <span class="c1"># Joe&#39;s branches</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">project1</span><span class="o">/</span>    <span class="c1"># Container for Joe&#39;s branches of &quot;project1&quot;</span>
+ <span class="o">|</span>   <span class="o">|</span>   <span class="o">+-</span> <span class="n">foo</span><span class="o">/</span>     <span class="c1"># Joe&#39;s &quot;foo&quot; branch of &quot;project1&quot;</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">project2</span><span class="o">/</span>    <span class="c1"># Container for Joe&#39;s &quot;project2&quot; branches</span>
+ <span class="o">|</span>       <span class="o">+-</span> <span class="n">bar</span><span class="o">/</span>     <span class="c1"># Joe&#39;s &quot;bar&quot; branch of &quot;project2&quot;</span>
+ <span class="o">|</span>        <span class="o">...</span>
+ <span class="o">|</span>
+ <span class="o">+-</span> <span class="n">barry</span><span class="o">/</span>
+ <span class="o">|</span>   <span class="o">+-</span> <span class="n">project1</span><span class="o">/</span>    <span class="c1"># Container for Barry&#39;s branches of &quot;project1&quot;</span>
+ <span class="o">|</span>       <span class="o">+-</span> <span class="n">bug</span><span class="o">-</span><span class="mi">10</span><span class="o">/</span>  <span class="c1"># Barry&#39;s &quot;bug-10&quot; branch of &quot;project1&quot;</span>
+ <span class="o">|</span>   <span class="o">...</span>
+ <span class="o">+-</span> <span class="n">group</span><span class="o">/</span>
+     <span class="o">+-</span> <span class="n">project1</span><span class="o">/</span>
+         <span class="o">+-</span> <span class="n">trunk</span><span class="o">/</span>   <span class="c1"># The main development focus for &quot;project1&quot;</span>
+</pre></div>
+</div>
+<p>This lets you easily browse what each developer is working on. Focus branches
+are kept in a “group” directory, which lets you see what branches the “group”
+is working on.</p>
+<p>This keeps different people’s work separated from each-other, but also makes it
+hard to find “all branches for project X”. <a class="reference external" href="https://launchpad.net">Launchpad</a> compensates for this
+by providing a nice web interface with a database back end, which allows a
+“view” to be put on top of this layout.
+This is closer to the model of people’s home pages, where each person has a
+“<code class="docutils literal notranslate"><span class="pre">~/public_html</span></code>” directory where they can publish their own web-pages.
+In general, though, when you are creating a shared repository for centralization
+of a project, you don’t want to split it up by person and then project.
+Usually you would want to split it up by project and then by person.</p>
+</div>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p>In the end, no single naming scheme will work for everyone. It depends a lot on
+the number of developers, how often you create a new branch, what sort of
+lifecycles your branches go through. Some questions to ask yourself:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Do you create a few long-lived branches, or do you create lots of “mini” feature branches
+(Along with this is: Would you <em>like</em> to create lots of mini feature branches, but can’t
+because they are a pain in your current VCS?)</li>
+<li>Are you a single developer, or a large team?</li>
+<li>If a team, do you plan on generally having everyone working on the same branch at the same
+time? Or will you have a “stable” branch that people are expected to track.</li>
+</ol>
+</div></blockquote>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="organizing_your_workspace.html" title="Organizing your workspace"
+              >previous</a> |
+            <a href="setting_up_email.html" title="Configuring email"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/shared_repository_layouts.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

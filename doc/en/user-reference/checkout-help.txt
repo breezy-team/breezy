@@ -1,0 +1,43 @@
+checkout
+========
+
+:Purpose: Create a new checkout of an existing branch.
+:Usage:   brz checkout [BRANCH_LOCATION] [TO_LOCATION]
+
+:Options:
+  --files-from=ARG      Get file contents from this tree.
+  --hardlink            Hard-link working tree files where possible.
+  -h, --help            Show help message.
+  --lightweight         Perform a lightweight checkout.  Lightweight checkouts
+                        depend on access to the branch for every operation.
+                        Normal checkouts can perform common operations like
+                        diff and status without such access, and also support
+                        local commits.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  If BRANCH_LOCATION is omitted, checkout will reconstitute a working tree
+  for the branch found in '.'. This is useful if you have removed the working
+  tree or if it was never created - i.e. if you pushed the branch to its
+  current location using SFTP.
+  
+  If the TO_LOCATION is omitted, the last component of the BRANCH_LOCATION
+  will be used.  In other words, "checkout ../foo/bar" will attempt to create
+  ./bar.  If the BRANCH_LOCATION has no / or path separator embedded, the
+  TO_LOCATION is derived from the BRANCH_LOCATION by stripping a leading
+  scheme or drive identifier, if any. For example, "checkout lp:foo-bar" will
+  attempt to create ./foo-bar.
+  
+  To retrieve the branch as of a particular revision, supply the --revision
+  parameter, as in "checkout foo/bar -r 5". Note that this will be
+  immediately out of date [so you cannot commit] but it may be useful (i.e.
+  to examine old code.)
+
+:Aliases:  co
+:See also: :doc:`branch <branch-help>`, :doc:`checkouts <checkouts-help>`, :doc:`remove-tree <remove-tree-help>`, :doc:`working-trees <working-trees-help>`
+
+

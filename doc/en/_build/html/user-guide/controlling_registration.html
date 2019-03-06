@@ -1,0 +1,207 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Controlling file registration &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Reviewing changes" href="reviewing_changes.html" />
+    <link rel="prev" title="Starting a project" href="starting_a_project.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="starting_a_project.html" title="Starting a project"
+             accesskey="P">previous</a> |
+          <a href="reviewing_changes.html" title="Reviewing changes"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="controlling-file-registration">
+<h1>Controlling file registration<a class="headerlink" href="#controlling-file-registration" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="what-does-breezy-track">
+<h2>What does Breezy track?<a class="headerlink" href="#what-does-breezy-track" title="Permalink to this headline">¶</a></h2>
+<p>As explained earlier, <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">add</span></code> finds and registers all the things in
+and under the current directory that Breezy thinks ought to be
+version controlled. These things may be:</p>
+<blockquote>
+<div><ul class="simple">
+<li>files</li>
+<li>directories</li>
+<li>symbolic links.</li>
+</ul>
+</div></blockquote>
+<p>Breezy has default rules for deciding which files are
+interesting and which ones are not. You can tune those rules as
+explained in <a class="reference internal" href="#ignoring-files">Ignoring files</a> below.</p>
+<p>Unlike many other VCS tools, Breezy tracks directories as first class
+items. As a consequence, empty directories are correctly supported -
+you don’t need to create a dummy file inside a directory just to
+ensure it gets tracked and included in project exports.</p>
+<p>For symbolic links, the value of the symbolic link is tracked,
+not the content of the thing the symbolic link is pointing to.</p>
+<p>Note: Support for tracking projects-within-projects (“nested trees”)
+is currently under development. Please contact the Breezy developers
+if you are interested in helping develop or test this functionality.</p>
+</div>
+<div class="section" id="selective-registration">
+<h2>Selective registration<a class="headerlink" href="#selective-registration" title="Permalink to this headline">¶</a></h2>
+<p>In some cases, you may want or need to explicitly nominate the things
+to register rather than leave it up to Breezy to find things. To do this,
+simply provide paths as arguments to the <code class="docutils literal notranslate"><span class="pre">add</span></code> command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">add</span> <span class="n">fileX</span> <span class="n">dirY</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>Adding a directory implicitly adds all interesting things
+underneath it.</p>
+</div>
+<div class="section" id="ignoring-files">
+<h2>Ignoring files<a class="headerlink" href="#ignoring-files" title="Permalink to this headline">¶</a></h2>
+<p>Many source trees contain some files that do not need to be versioned,
+such as editor backups, object or bytecode files, and built programs.  You
+can simply not add them, but then they’ll always crop up as unknown files.
+You can also tell Breezy to ignore these files by adding them to a file
+called <code class="docutils literal notranslate"><span class="pre">.bzrignore</span></code> at the top of the tree.</p>
+<p>This file contains a list of file wildcards (or “globs”), one per line.
+Typical contents are like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">*.</span><span class="n">o</span>
+<span class="o">*~</span>
+<span class="o">*.</span><span class="n">tmp</span>
+<span class="o">*.</span><span class="n">py</span><span class="p">[</span><span class="n">co</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>If a glob contains a slash, it is matched against the whole path from the
+top of the tree; otherwise it is matched against only the filename.  So
+the previous example ignores files with extension <code class="docutils literal notranslate"><span class="pre">.o</span></code> in all
+subdirectories, but this example ignores only <code class="docutils literal notranslate"><span class="pre">config.h</span></code> at the top level
+and HTML files in <code class="docutils literal notranslate"><span class="pre">doc/</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">config</span><span class="o">.</span><span class="n">h</span>
+<span class="n">doc</span><span class="o">/*.</span><span class="n">html</span>
+</pre></div>
+</div>
+<p>To get a list of which files are ignored and what pattern they matched,
+use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">ignored</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">ignored</span>
+<span class="n">config</span><span class="o">.</span><span class="n">h</span>                 <span class="o">./</span><span class="n">config</span><span class="o">.</span><span class="n">h</span>
+<span class="n">configure</span><span class="o">.</span><span class="ow">in</span><span class="o">~</span>            <span class="o">*~</span>
+</pre></div>
+</div>
+<p>Note that ignore patterns are only matched against non-versioned files,
+and control whether they are treated as “unknown” or “ignored”.  If a file
+is explicitly added, it remains versioned regardless of whether it matches
+an ignore pattern.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">.bzrignore</span></code> file should normally be versioned, so that new copies
+of the branch see the same patterns:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">add</span> <span class="o">.</span><span class="n">bzrignore</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;Add ignore patterns&quot;</span>
+</pre></div>
+</div>
+<p>The command <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">ignore</span> <span class="pre">PATTERN</span></code> can be used to easily add PATTERN to
+the <code class="docutils literal notranslate"><span class="pre">.bzrignore</span> <span class="pre">file</span></code> (creating it if necessary and registering it to
+be tracked by Breezy).  Removing and modifying patterns are done by
+directly editing the <code class="docutils literal notranslate"><span class="pre">.bzrignore</span></code> file.</p>
+</div>
+<div class="section" id="global-ignores">
+<h2>Global ignores<a class="headerlink" href="#global-ignores" title="Permalink to this headline">¶</a></h2>
+<p>There are some ignored files which are not project specific, but more user
+specific. Things like editor temporary files, or personal temporary files.
+Rather than add these ignores to every project, brz supports a global
+ignore file in <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/ignore</span></code> <a class="footnote-reference" href="#id2" id="id1">[1]</a>. It has the same syntax as the
+per-project ignore file.</p>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>On Windows, the users configuration files can be found in the
+application data directory. So instead of <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/branch.conf</span></code>
+the configuration file can be found as:
+<code class="docutils literal notranslate"><span class="pre">C:\Documents</span> <span class="pre">and</span> <span class="pre">Settings\&lt;username&gt;\Application</span> <span class="pre">Data\Breezy\3.0\branch.conf</span></code>.
+The same is true for <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>, <code class="docutils literal notranslate"><span class="pre">ignore</span></code>, and the
+<code class="docutils literal notranslate"><span class="pre">plugins</span></code> directory.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="starting_a_project.html" title="Starting a project"
+              >previous</a> |
+            <a href="reviewing_changes.html" title="Reviewing changes"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/controlling_registration.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,187 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>“bzr update” performance analysis &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="../../search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bzr-update-performance-analysis">
+<h1>“bzr update” performance analysis<a class="headerlink" href="#bzr-update-performance-analysis" title="Permalink to this headline">¶</a></h1>
+<p>There are 5 different slightly different situations in which bzr update
+can be used:</p>
+<ul class="simple">
+<li>local only (no-op)</li>
+<li>lightweight checkout</li>
+<li>heavy checkout</li>
+<li>heavy checkout w/ local changes</li>
+<li>bzr update could work on “bound branch” w/no wt</li>
+</ul>
+</div>
+<div class="section" id="no-new-revisions">
+<h1>No new revisions<a class="headerlink" href="#no-new-revisions" title="Permalink to this headline">¶</a></h1>
+<p>Should be O(1) to determine
+Tree base is up to date
+wt.last-rev == wt.b.last-rev</p>
+</div>
+<div class="section" id="no-local-changes-only-new-revisions">
+<h1>No local changes, only new revisions<a class="headerlink" href="#no-local-changes-only-new-revisions" title="Permalink to this headline">¶</a></h1>
+<ol class="arabic simple">
+<li>Need to move wt.last_rev (O(1))</li>
+<li>apply delta from base to new rev (O(changes))
+applying changes to files is approx (O(lines-in-files ^ 2))</li>
+<li>update meta-info (executable bits, etc) about modified files (O(changes))</li>
+</ol>
+<p>2/3 could be concurrent (but that may not necessarily be faster)</p>
+<p>potential issue w/ serialized is having 50k files in limbo/</p>
+<p>the limbo/ directory could be avoided in some cases, for example when
+adding new files in new directories.</p>
+<p>modifying in place: reduces fragmentation of fs, not atomic
+w/ local modification, potential of data loss
+w/o should be safe</p>
+<p>“local mod” is diff between disk and last commit, not merge base</p>
+<p>Detecting name conflicts should be O(siblings). Alternatively, conflicts
+with existing files can be detected using stat() and conflicts with new files
+can be detected by examining the pending transform. This changes
+complexity to O(changes).</p>
+</div>
+<div class="section" id="out-of-date-heavyweight-checkout-out-of-date-w-master">
+<h1>out of date heavyweight checkout, out of date w/master<a class="headerlink" href="#out-of-date-heavyweight-checkout-out-of-date-w-master" title="Permalink to this headline">¶</a></h1>
+<ol class="arabic simple">
+<li>open working tree, check latest revision</li>
+<li>open working tree branch, check latest revision</li>
+<li>mismatch =&gt; update wt =&gt; wt.b.lastrev
+apply delta to tree O(changed file size)
+—- conflicts
+stop on conflicts
+stop always -&gt; inform user they need to repeat (why not?, GFD)</li>
+<li>pull new revs M =&gt; L O(newrevs)</li>
+<li>apply delta to wt
+local committed changes become a pending merge
+local uncommitted stay uncommitted
+local pending merges are retained (should be gc’d)</li>
+</ol>
+<p>offtopic:
+should bzr update report where the source is ?
+should bzr update handle both cases (local tree out-of-date w/local branch, checkout out-of-date w/master) ?</p>
+<p>if updating would diverge, give opportuniuty to branch/unbind instead
+local ahead, “push to master”</p>
+<p>ideas:
+1) can this be done as a single logical step?
+2) can this be done w/o modifying working tree until end? possible performance improvements
+3) if the pulling revision step could deliver full texts, that may help for the merge (same thing as “bzr pull”)</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../../_sources/plans/performance/update.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,63 @@
+Check Notes
+===========
+
+.. contents:: :local:
+
+Overview
+--------
+
+Check has multiple responsibilities:
+
+* Ensure that the data as recorded on disk is accessible intact and unaltered.
+* Ensure that a branch/repository/tree/whatever is ready for upgrade.
+* Look for and report on recorded-data issues where previous Breezy's, or changing
+  situations have lead so some form of inconsistency.
+* Report sufficient information for a user to either fix the issue themselves
+  or report a bug that will hopefully be sufficiently detailed we can fix based
+  on the initial report.
+* Not scare users when run if everything is okey-dokey.
+
+Ideally one check invocation can do all these things.
+
+Repository
+----------
+
+Things that can go wrong:
+* Bit errors or alterations may occur in raw data.
+* Data that is referenced may be missing
+* There could be a lot of garbage in upload etc.
+* File graphs may be inconsistent with inventories and parents.
+* The revision graph cache can be inconsistent with the revision data.
+
+Branch
+------
+
+Things that can go wrong:
+* Tag or tip revision ids may be missing from the repo.
+* The revno tip cache may be wrong.
+* Various URLS could be problematic (not inaccessible, just invalid)
+* Stacked-on branch could be inaccessible.
+
+Tree
+----
+
+Things that can go wrong:
+* Bit errors in dirstate.
+* Corrupt or invalid shelves.
+* Corrupt dirstates written to disk.
+* Cached inventories might not match repository.
+
+Duplicate work
+--------------
+
+If we check every branch in a repo separately we will encounter duplicate
+effort in assessing things like missing tags/tips, revno cache etc.
+
+Outline of approach
+-------------------
+
+To check a repository, we scan for branches, open their trees and generate
+summary data. We then collect all the summary data in as compact a form as
+possible and do a detailed check on the repository, calling back out to branch
+and trees as we encounter the actual data that that tree/branch requires to
+perform its check.

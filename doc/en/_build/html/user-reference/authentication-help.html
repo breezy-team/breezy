@@ -1,0 +1,301 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Authentication Settings &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Bug Tracker Settings" href="bugs-help.html" />
+    <link rel="prev" title="Working Trees" href="working-trees-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="working-trees-help.html" title="Working Trees"
+             accesskey="P">previous</a> |
+          <a href="bugs-help.html" title="Bug Tracker Settings"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="authentication-settings">
+<h1>Authentication Settings<a class="headerlink" href="#authentication-settings" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="intent">
+<h2>Intent<a class="headerlink" href="#intent" title="Permalink to this headline">¶</a></h2>
+<p>Many different authentication policies can be described in the
+<code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> file but a particular user should need only a few
+definitions to cover his needs without having to specify a user and a password
+for every branch he uses.</p>
+<p>The definitions found in this file are used to find the credentials to use for
+a given url. The same credentials can generally be used for as many branches as
+possible by grouping their declaration around the remote servers that need
+them. It’s even possible to declare credentials that will be used by different
+servers.</p>
+<p>The intent is to make this file as small as possible to minimize maintenance.</p>
+<p>Once the relevant credentials are declared in this file you may use branch urls
+without embedding passwords (security hazard) or even users (enabling sharing
+of your urls with others).</p>
+<p>Instead of using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">sftp</span><span class="p">:</span><span class="o">//</span><span class="n">joe</span><span class="p">:</span><span class="n">secret</span><span class="nd">@host</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">my</span><span class="o">/</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>you simply use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">sftp</span><span class="p">:</span><span class="o">//</span><span class="n">host</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">my</span><span class="o">/</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>provided you have created the following <code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> file:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">myprojects</span><span class="p">]</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">sftp</span>
+<span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="o">.</span><span class="n">com</span>
+<span class="n">user</span><span class="o">=</span><span class="n">joe</span>
+<span class="n">password</span><span class="o">=</span><span class="n">secret</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="authentication-definitions">
+<h2>Authentication definitions<a class="headerlink" href="#authentication-definitions" title="Permalink to this headline">¶</a></h2>
+<p>There are two kinds of authentication used by the various schemes supported by
+brz:</p>
+<ol class="arabic simple">
+<li>user and password</li>
+</ol>
+<p><code class="docutils literal notranslate"><span class="pre">FTP</span></code> needs a (<code class="docutils literal notranslate"><span class="pre">user</span></code>, <code class="docutils literal notranslate"><span class="pre">password</span></code>) to authenticate against a <code class="docutils literal notranslate"><span class="pre">host</span></code>
+<code class="docutils literal notranslate"><span class="pre">SFTP</span></code> can use either a password or a host key to authenticate. However,
+ssh agents are a better, more secure solution. So we have chosen to not provide
+our own less secure method.</p>
+<ol class="arabic simple" start="2">
+<li>user, realm and password</li>
+</ol>
+<p><code class="docutils literal notranslate"><span class="pre">HTTP</span></code> and <code class="docutils literal notranslate"><span class="pre">HTTPS</span></code> needs a (<code class="docutils literal notranslate"><span class="pre">user,</span> <span class="pre">realm,</span> <span class="pre">password</span></code>) to authenticate
+against a host. But, by using <code class="docutils literal notranslate"><span class="pre">.htaccess</span></code> files, for example, it is possible
+to define several (<code class="docutils literal notranslate"><span class="pre">user,</span> <span class="pre">realm,</span> <span class="pre">password</span></code>) for a given <code class="docutils literal notranslate"><span class="pre">host</span></code>. So what is
+really needed is (<code class="docutils literal notranslate"><span class="pre">user</span></code>, <code class="docutils literal notranslate"><span class="pre">password</span></code>, <code class="docutils literal notranslate"><span class="pre">host</span></code>, <code class="docutils literal notranslate"><span class="pre">path</span></code>). The <code class="docutils literal notranslate"><span class="pre">realm</span></code> is
+not taken into account in the definitions, but will displayed if brz prompts
+you for a password.</p>
+<p><code class="docutils literal notranslate"><span class="pre">HTTP</span> <span class="pre">proxy</span></code> can be handled as <code class="docutils literal notranslate"><span class="pre">HTTP</span></code> (or <code class="docutils literal notranslate"><span class="pre">HTTPS</span></code>) by explicitly
+specifying the appropriate port.</p>
+<p>To take all schemes into account, the password will be deduced from a set of
+authentication definitions (<code class="docutils literal notranslate"><span class="pre">scheme</span></code>, <code class="docutils literal notranslate"><span class="pre">host</span></code>, <code class="docutils literal notranslate"><span class="pre">port</span></code>, <code class="docutils literal notranslate"><span class="pre">path</span></code>, <code class="docutils literal notranslate"><span class="pre">user</span></code>,
+<code class="docutils literal notranslate"><span class="pre">password</span></code>).</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">scheme</span></code>: can be empty (meaning the rest of the definition can be used
+for any scheme), <code class="docutils literal notranslate"><span class="pre">SFTP</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr+ssh</span></code> should not be used here, <code class="docutils literal notranslate"><span class="pre">ssh</span></code>
+should be used instead since this is the real scheme regarding
+authentication,</li>
+<li><code class="docutils literal notranslate"><span class="pre">host</span></code>: can be empty (to act as a default for any host),</li>
+<li><code class="docutils literal notranslate"><span class="pre">port</span></code> can be empty (useful when an host provides several servers for the
+same scheme), only numerical values are allowed, this should be used only
+when the server uses a port different than the scheme standard port,</li>
+<li><code class="docutils literal notranslate"><span class="pre">path</span></code>: can be empty (FTP or SFTP will never user it),</li>
+<li><code class="docutils literal notranslate"><span class="pre">user</span></code>: can be empty (<code class="docutils literal notranslate"><span class="pre">bzr</span></code> will default to python’s
+<code class="docutils literal notranslate"><span class="pre">getpass.get_user()</span></code>),</li>
+<li><code class="docutils literal notranslate"><span class="pre">password</span></code>: can be empty if you prefer to always be prompted for your
+password.</li>
+</ul>
+</div></blockquote>
+<p>Multiple definitions can be provided and, for a given URL, brz will select a
+(<code class="docutils literal notranslate"><span class="pre">user</span></code> [, <code class="docutils literal notranslate"><span class="pre">password</span></code>]) based on the following rules :</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>the first match wins,</li>
+<li>empty fields match everything,</li>
+<li><code class="docutils literal notranslate"><span class="pre">scheme</span></code> matches even if decorators are used in the requested URL,</li>
+<li><code class="docutils literal notranslate"><span class="pre">host</span></code> matches exactly or act as a domain if it starts with ‘.’
+(<code class="docutils literal notranslate"><span class="pre">project.bzr.sf.net</span></code> will match <code class="docutils literal notranslate"><span class="pre">.bzr.sf.net</span></code> but <code class="docutils literal notranslate"><span class="pre">projectbzr.sf.net</span></code>
+will not match <code class="docutils literal notranslate"><span class="pre">bzr.sf.net</span></code>).</li>
+<li><code class="docutils literal notranslate"><span class="pre">port</span></code> matches if included in the requested URL (exact matches only)</li>
+<li><code class="docutils literal notranslate"><span class="pre">path</span></code> matches if included in the requested URL (and by rule #2 above,
+empty paths will match any provided path).</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="file-format">
+<h2>File format<a class="headerlink" href="#file-format" title="Permalink to this headline">¶</a></h2>
+<p>The general rules for <a class="reference internal" href="configuration-help.html"><span class="doc">configuration files</span></a>
+apply except for the variable policies.</p>
+<p>Each section describes an authentication definition.</p>
+<p>The section name is an arbitrary string, only the <code class="docutils literal notranslate"><span class="pre">DEFAULT</span></code> value is reserved
+and should appear as the <em>last</em> section.</p>
+<p>Each section should define:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">user</span></code>: the login to be used,</li>
+</ul>
+<p>Each section could define:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">host</span></code>: the remote server,</li>
+<li><code class="docutils literal notranslate"><span class="pre">port</span></code>: the port the server is listening,</li>
+<li><code class="docutils literal notranslate"><span class="pre">path</span></code>: the branch location,</li>
+<li><code class="docutils literal notranslate"><span class="pre">password</span></code>: the password.</li>
+</ul>
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="personal-projects-hosted-outside">
+<h3>Personal projects hosted outside<a class="headerlink" href="#personal-projects-hosted-outside" title="Permalink to this headline">¶</a></h3>
+<p>All connections are done with the same <code class="docutils literal notranslate"><span class="pre">user</span></code> (the remote one for which the
+default brz one is not appropriate) and the password is always prompted with
+some exceptions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pet projects on hobby.net</span>
+<span class="p">[</span><span class="n">hobby</span><span class="p">]</span>
+<span class="n">host</span><span class="o">=</span><span class="n">r</span><span class="o">.</span><span class="n">hobby</span><span class="o">.</span><span class="n">net</span>
+<span class="n">user</span><span class="o">=</span><span class="n">jim</span>
+<span class="n">password</span><span class="o">=</span><span class="n">obvious1234</span>
+
+<span class="c1"># Home server</span>
+<span class="p">[</span><span class="n">home</span><span class="p">]</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">https</span>
+<span class="n">host</span><span class="o">=</span><span class="n">home</span><span class="o">.</span><span class="n">net</span>
+<span class="n">user</span><span class="o">=</span><span class="n">joe</span>
+<span class="n">password</span><span class="o">=</span><span class="mi">1</span><span class="n">essobV10us</span>
+
+<span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="c1"># Our local user is barbaz, on all remote sites we&#39;re known as foobar</span>
+<span class="n">user</span><span class="o">=</span><span class="n">foobar</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="source-hosting-provider">
+<h3>Source hosting provider<a class="headerlink" href="#source-hosting-provider" title="Permalink to this headline">¶</a></h3>
+<p>In the shp.net (fictitious) domain, each project has its own site:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">shpnet</span> <span class="n">domain</span><span class="p">]</span>
+<span class="c1"># we use sftp, but ssh is the scheme used for authentication</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">ssh</span>
+<span class="c1"># The leading &#39;.&#39; ensures that &#39;shp.net&#39; alone doesn&#39;t match</span>
+<span class="n">host</span><span class="o">=.</span><span class="n">shp</span><span class="o">.</span><span class="n">net</span>
+<span class="n">user</span><span class="o">=</span><span class="n">joe</span>
+<span class="c1"># brz doesn&#39;t support supplying a password for sftp,</span>
+<span class="c1"># consider using an ssh agent if you don&#39;t want to supply</span>
+<span class="c1"># a password interactively. (pageant, ssh-agent, etc)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="https-sftp-servers-and-their-proxy">
+<h3>HTTPS, SFTP servers and their proxy<a class="headerlink" href="#https-sftp-servers-and-their-proxy" title="Permalink to this headline">¶</a></h3>
+<p>At company.com, the server hosting release and integration branches is behind a
+proxy, and the two branches use different authentication policies:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">reference</span> <span class="n">code</span><span class="p">]</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">https</span>
+<span class="n">host</span><span class="o">=</span><span class="n">dev</span><span class="o">.</span><span class="n">company</span><span class="o">.</span><span class="n">com</span>
+<span class="n">path</span><span class="o">=/</span><span class="n">dev</span>
+<span class="n">user</span><span class="o">=</span><span class="n">user1</span>
+<span class="n">password</span><span class="o">=</span><span class="n">pass1</span>
+
+<span class="c1"># development branches on dev server</span>
+<span class="p">[</span><span class="n">dev</span><span class="p">]</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">ssh</span> <span class="c1"># bzr+ssh and sftp are available here</span>
+<span class="n">host</span><span class="o">=</span><span class="n">dev</span><span class="o">.</span><span class="n">company</span><span class="o">.</span><span class="n">com</span>
+<span class="n">path</span><span class="o">=/</span><span class="n">dev</span><span class="o">/</span><span class="n">integration</span>
+<span class="n">user</span><span class="o">=</span><span class="n">user2</span>
+
+<span class="c1"># proxy</span>
+<span class="p">[</span><span class="n">proxy</span><span class="p">]</span>
+<span class="n">scheme</span><span class="o">=</span><span class="n">http</span>
+<span class="n">host</span><span class="o">=</span><span class="n">proxy</span><span class="o">.</span><span class="n">company</span><span class="o">.</span><span class="n">com</span>
+<span class="n">port</span><span class="o">=</span><span class="mi">3128</span>
+<span class="n">user</span><span class="o">=</span><span class="n">proxyuser1</span>
+<span class="n">password</span><span class="o">=</span><span class="n">proxypass1</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="planned-enhancements">
+<h2>Planned enhancements<a class="headerlink" href="#planned-enhancements" title="Permalink to this headline">¶</a></h2>
+<p>The following are not yet implemented but planned as parts of a work in
+progress:</p>
+<ul class="simple">
+<li>add a  <code class="docutils literal notranslate"><span class="pre">password_encoding</span></code> field allowing:<ul>
+<li>storing the passwords in various obfuscating encodings (base64 for one),</li>
+<li>delegate password storage to plugins (.netrc for example).</li>
+</ul>
+</li>
+<li>update the credentials when the user is prompted for user or password,</li>
+<li>add a <code class="docutils literal notranslate"><span class="pre">verify_certificates</span></code> field for <code class="docutils literal notranslate"><span class="pre">HTTPS</span></code>.</li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">password_encoding</span></code> and <code class="docutils literal notranslate"><span class="pre">verify_certificates</span></code> fields are recognized but
+ignored in the actual implementation.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="working-trees-help.html" title="Working Trees"
+              >previous</a> |
+            <a href="bugs-help.html" title="Bug Tracker Settings"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/authentication-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

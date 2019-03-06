@@ -1,0 +1,54 @@
+pull
+====
+
+:Purpose: Turn this branch into a mirror of another branch.
+:Usage:   brz pull [LOCATION]
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to pull into, rather than the one containing
+                        the working directory.
+  -h, --help            Show help message.
+  --local               Perform a local pull in a bound branch.  Local pulls
+                        are not applied to the master branch.
+  --overwrite           Ignore differences between branches and overwrite
+                        unconditionally.
+  --overwrite-tags      Overwrite tags only.
+  -q, --quiet           Only display errors and warnings.
+  --remember            Remember the specified location as a default.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --show-base           Show base revision text in conflicts.
+  --usage               Show usage message and options.
+  -v, --verbose         Show logs of pulled revisions.
+
+:Description:
+  By default, this command only works on branches that have not diverged.
+  Branches are considered diverged if the destination branch's most recent
+  commit is one that has not been merged (directly or indirectly) into the
+  parent.
+  
+  If branches have diverged, you can use 'brz merge' to integrate the changes
+  from one into the other.  Once one branch has merged, the other should
+  be able to pull it again.
+  
+  If you want to replace your local changes and just want your branch to
+  match the remote one, use pull --overwrite. This will work even if the two
+  branches have diverged.
+  
+  If there is no default location set, the first pull will set it (use
+  --no-remember to avoid setting it). After that, you can omit the
+  location to use the default.  To change the default, use --remember. The
+  value will only be saved if the remote location can be accessed.
+  
+  The --verbose option will display the revisions pulled using the log_format
+  configuration option. You can use a different format by overriding it with
+  -Olog_format=<other_format>.
+  
+  Note: The location can be specified either in the form of a branch,
+  or in the form of a path to a file containing a merge directive generated
+  with brz send.
+
+:See also: :doc:`push <push-help>`, :doc:`send <send-help>`, :doc:`status-flags <status-flags-help>`, :doc:`update <update-help>`
+
+

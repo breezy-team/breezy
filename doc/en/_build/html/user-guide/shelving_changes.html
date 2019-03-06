@@ -1,0 +1,211 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Shelving Changes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Filtered views" href="filtered_views.html" />
+    <link rel="prev" title="Switch –store" href="switch_store.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="switch_store.html" title="Switch –store"
+             accesskey="P">previous</a> |
+          <a href="filtered_views.html" title="Filtered views"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="shelving-changes">
+<h1>Shelving Changes<a class="headerlink" href="#shelving-changes" title="Permalink to this headline">¶</a></h1>
+<p>Sometimes you will want to temporarily remove changes from your working
+tree and restore them later, For instance to commit a small bug-fix you
+found while working on something. Breezy allows you to put changes on
+a <code class="docutils literal notranslate"><span class="pre">shelf</span></code> to achieve this. When you want to restore the changes later
+you can use <code class="docutils literal notranslate"><span class="pre">unshelve</span></code> to apply them to your working tree again.</p>
+<p>For example, consider a working tree with one or more changes made …</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz diff
+=== modified file &#39;description.txt&#39;
+--- description.txt
++++ description.txt
+@@ -2,7 +2,7 @@
+ ===============
+
+ These plugins
+-by Michael Ellerman
++written by Michael Ellerman
+ provide a very
+ fine-grained &#39;undo&#39;
+ facility
+@@ -11,6 +11,6 @@
+ This allows you to
+ undo some of
+ your changes,
+-commit, and get
++perform a commit, and get
+ back to where you
+ were before.
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">shelve</span></code> command interactively asks which changes
+you want to retain in the working tree:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz shelve
+--- description.txt
++++ description.txt
+@@ -2,7 +2,7 @@
+ ===============
+
+ These plugins
+-by Michael Ellerman
++written by Michael Ellerman
+ provide a very
+ fine-grained &#39;undo&#39;
+ facility
+
+Shelve? [yNfrq?]: y
+--- description.txt
++++ description.txt
+@@ -11,6 +11,6 @@
+ This allows you to
+ undo some of
+ your changes,
+-commit, and get
++perform a commit, and get
+ back to where you
+ were before.
+
+Shelve? [yNfrq?]: n
+Shelve 2 change(s)? [yNfrq?]&#39;, &#39;y&#39;
+Selected changes:
+ M  description.txt
+Changes shelved with id &quot;1&quot;.
+</pre></div>
+</div>
+<p>If there are lots of changes in the working tree, you
+can provide the <code class="docutils literal notranslate"><span class="pre">shelve</span></code> command with a list of files
+and you will only be asked about changes in those files.
+After shelving changes, it’s a good idea to use <code class="docutils literal notranslate"><span class="pre">diff</span></code>
+to confirm the tree has just the changes you expect:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz diff
+=== modified file &#39;description.txt&#39;
+--- description.txt
++++ description.txt
+@@ -2,7 +2,7 @@
+ ===============
+
+ These plugins
+-by Michael Ellerman
++written by Michael Ellerman
+ provide a very
+ fine-grained &#39;undo&#39;
+ facility
+</pre></div>
+</div>
+<p>Great - you’re ready to commit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz commit -m &quot;improve first sentence&quot;
+</pre></div>
+</div>
+<p>At some later time, you can bring the shelved changes back into the
+working tree using <code class="docutils literal notranslate"><span class="pre">unshelve</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz unshelve
+Unshelving changes with id &quot;1&quot;.
+ M  description.txt
+All changes applied successfully.
+</pre></div>
+</div>
+<p>If you want to, you can put multiple items on the shelf.
+Normally each time you run <code class="docutils literal notranslate"><span class="pre">unshelve</span></code> the most recently
+shelved changes will be reinstated. However, you can also
+unshelve changes in a different order by explicitly
+specifying which changes to unshelve.</p>
+<p>Breezy merges the changes in to your working tree, so they
+will apply even if you have edited the files since you shelved
+them, though they may conflict, in which case you will have to
+resolve the conflicts in the same way you do after a conflicted
+merge.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="switch_store.html" title="Switch –store"
+              >previous</a> |
+            <a href="filtered_views.html" title="Filtered views"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/shelving_changes.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,17 @@
+link-tree
+=========
+
+:Purpose: Hardlink matching files to another tree.
+:Usage:   brz link-tree LOCATION
+
+:Options:
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  Only files with identical content and execute bit will be linked.
+
+
+

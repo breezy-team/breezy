@@ -1,0 +1,114 @@
+brz-svn
+=======
+
+Overview
+--------
+
+brz-svn lets developers use Breezy as their VCS client on projects
+still using a central Subversion repository. Access to Subversion
+repositories is largely transparent, i.e. you can use most ``brz``
+commands directly on Subversion repositories exactly the same
+as if you were using ``brz`` on native Breezy branches.
+
+Many brz-svn users create a local mirror of the central Subversion
+trunk, work in local feature branches, and submit their
+overall change back to Subversion when it is ready
+to go. This lets them gain many of the advantages of distributed
+VCS tools without interrupting existing team-wide processes and
+tool integration hooks currently built on top of Subversion. Indeed,
+this is a common interim step for teams looking to adopt Breezy but
+who are unable to do so yet for timing or non-technical reasons.
+
+For installation instructions, see the brz-svn home page:
+http://wiki.bazaar.canonical.com/BzrForeignBranches/Subversion.
+
+
+A simple example
+----------------
+
+Here's a simple example of how you can use brz-svn to hack on a
+GNOME project like **beagle**. Firstly, setup a local shared repository
+for storing your branches in and checkout the trunk::
+
+  brz init-repo beagle-repo
+  cd beagle-repo
+  brz checkout svn+ssh://svn.gnome.org/svn/beagle/trunk beagle-trunk
+
+Next, create a feature branch and hack away::
+
+  brz branch beagle-trunk beagle-feature1
+  cd beagle-feature1
+  (hack, hack, hack)
+  brz commit -m "blah blah blah"
+  (hack, hack, hack)
+  brz commit -m "blah blah blah"
+
+When the feature is cooked, refresh your trunk mirror and merge
+your change::
+
+  cd ../beagle-trunk
+  brz update
+  brz merge ../beagle-feature1
+  brz commit -m "Complete comment for SVN commit"
+
+As your trunk mirror is a checkout, committing to it implicitly
+commits to the real Subversion trunk. That's it!
+
+
+Using a central repository mirror
+---------------------------------
+
+For large projects, it often makes sense to tweak the recipe given above.
+In particular, the initial checkout can get quite slow so you may wish
+to import the Subversion repository into a Breezy one once and for all
+for your project, and then branch from that native Breezy repository
+instead. brz-svn provides the ``svn-import`` command for doing this
+repository-to-repository conversion. Here's an example of how to use it::
+
+  brz svn-import svn+ssh://svn.gnome.org/svn/beagle
+
+Here's the recipe from above updated to use a central Breezy mirror::
+
+  brz init-repo beagle-repo
+  cd beagle-repo
+  brz branch bzr+ssh://brz.gnome.org/beagle.brz/trunk beagle-trunk
+  brz branch beagle-trunk beagle-feature1
+  cd beagle-feature1
+  (hack, hack, hack)
+  brz commit -m "blah blah blah"
+  (hack, hack, hack)
+  brz commit -m "blah blah blah"
+  cd ../beagle-trunk
+  brz pull
+  brz merge ../beagle-feature1
+  brz commit -m "Complete comment for SVN commit"
+  brz push
+
+In this case, committing to the trunk only commits the merge locally.
+To commit back to the master Subversion trunk, an additional command
+(``brz push``) is required.
+
+Note: You'll need to give ``pull`` and ``push`` the relevant URLs
+the first time you use those commands in the trunk branch. After that,
+brz remembers them.
+
+The final piece of the puzzle in this setup is to put scripts in
+place to keep the central Breezy mirror synchronized with the Subversion
+one. This can be done by adding a cron job, using a Subversion hook,
+or whatever makes sense in your environment.
+
+
+Limitations of brz-svn
+----------------------
+
+Breezy and Subversion are different tools with different capabilities
+so there will always be some limited interoperability issues.
+Here are some examples current as of brz-svn 0.5.4:
+
+ * Breezy doesn't support versioned properties
+
+ * Breezy doesn't support tracking of file copies.
+
+See the brz-svn web page,
+http://wiki.bazaar.canonical.com/BzrForeignBranches/Subversion,
+for the current list of constraints.

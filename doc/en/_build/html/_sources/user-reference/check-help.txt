@@ -1,0 +1,64 @@
+check
+=====
+
+:Purpose: Validate working tree structure, branch consistency and repository history.
+:Usage:   brz check [PATH]
+
+:Options:
+  --branch       Check the branch related to the current directory.
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --repo         Check the repository related to the current directory.
+  --tree         Check the working tree related to the current directory.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  This command checks various invariants about branch and repository storage
+  to detect data corruption or brz bugs.
+  
+  The working tree and branch checks will only give output if a problem is
+  detected. The output fields of the repository check are:
+  
+  revisions
+      This is just the number of revisions checked.  It doesn't
+      indicate a problem.
+  
+  versionedfiles
+      This is just the number of versionedfiles checked.  It
+      doesn't indicate a problem.
+  
+  unreferenced ancestors
+      Texts that are ancestors of other texts, but
+      are not properly referenced by the revision ancestry.  This is a
+      subtle problem that Breezy can work around.
+  
+  unique file texts
+      This is the total number of unique file contents
+      seen in the checked revisions.  It does not indicate a problem.
+  
+  repeated file texts
+      This is the total number of repeated texts seen
+      in the checked revisions.  Texts can be repeated when their file
+      entries are modified, but the file contents are not.  It does not
+      indicate a problem.
+  
+  If no restrictions are specified, all data that is found at the given
+  location will be checked.
+
+:Examples:
+    Check the tree and branch at 'foo'::
+
+        brz check --tree --branch foo
+
+    Check only the repository at 'bar'::
+
+        brz check --repo bar
+
+    Check everything at 'baz'::
+
+        brz check baz
+
+:See also: :doc:`reconcile <reconcile-help>`
+
+

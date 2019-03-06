@@ -1,0 +1,41 @@
+branch
+======
+
+:Purpose: Create a new branch that is a copy of an existing branch.
+:Usage:   brz branch FROM_LOCATION [TO_LOCATION]
+
+:Options:
+  --bind                Bind new branch to from location.
+  --files-from=ARG      Get file contents from this tree.
+  --hardlink            Hard-link working tree files where possible.
+  -h, --help            Show help message.
+  --no-tree             Create a branch without a working-tree.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --stacked             Create a stacked branch referring to the source
+                        branch. The new branch will depend on the availability
+                        of the source branch for all operations.
+  --standalone          Do not use a shared repository, even if available.
+  --switch              Switch the checkout in the current directory to the
+                        new branch.
+  --usage               Show usage message and options.
+  --use-existing-dir    By default branch will fail if the target directory
+                        exists, but does not already have a control directory.
+                        This flag will allow branch to proceed.
+  -v, --verbose         Display more information.
+
+:Description:
+  If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
+  be used.  In other words, "branch ../foo/bar" will attempt to create ./bar.
+  If the FROM_LOCATION has no / or path separator embedded, the TO_LOCATION
+  is derived from the FROM_LOCATION by stripping a leading scheme or drive
+  identifier, if any. For example, "branch lp:foo-bar" will attempt to
+  create ./foo-bar.
+  
+  To retrieve the branch as of a particular revision, supply the --revision
+  parameter, as in "branch foo/bar -r 5".
+
+:See also: :doc:`checkout <checkout-help>`
+
+

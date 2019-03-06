@@ -1,0 +1,21 @@
+revno
+=====
+
+:Purpose: Show current revision number.
+:Usage:   brz revno [LOCATION]
+
+:Options:
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --tree                Show revno of working tree.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  This is equal to the number of revisions on this branch.
+
+:See also: :doc:`info <info-help>`
+
+

@@ -1,0 +1,28 @@
+whoami
+======
+
+:Purpose: Show or set brz user id.
+:Usage:   brz whoami [NAME]
+
+:Options:
+  --branch              Set identity for the current branch instead of
+                        globally.
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  --email               Display email address only.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Examples:
+    Show the email of the current user::
+
+        brz whoami --email
+
+    Set the current user::
+
+        brz whoami "Frank Chu <fchu@example.com>"
+
+
+

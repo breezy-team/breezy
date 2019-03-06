@@ -1,0 +1,176 @@
+==============================
+Computing last_modified values
+==============================
+
+Introduction
+------------
+
+Bazaar (through at least 0.19) computes a ``last_modified``
+attribute for all inventory entries and stores it at commit time.
+This is the ``revision_id`` that last changed or merged the file.  It is
+used in knit and weave repositories to look up the file text, and to index
+into the file graph.  It's also used to determine which revisions of the
+file text to pull during ``fetch``.
+
+This data is not natively stored by most other systems so we need to
+synthesize it during conversion.
+
+This is a case of non-core data that we might wish to treat as cached,
+rather than always stored.
+
+Definition
+----------
+
+Take the set of all "heads": all the versions of these files in parent
+trees.
+
+Reduce the heads by eliminating any whose last_modified is an ancestor of
+the last_modified of any other head.
+
+If there is still more than one head, a new last_modified is assigned.
+This points to the merge point in the file graph.
+
+If the file text and properties are the same as the sole remaining head,
+its last_modified is inherited. Property changes include executable bit,
+filename, and containing directory.
+
+Otherwise, a new last_modified is used.
+
+(This is meant to be the simplest statement, but it may not be the most
+efficient algorithm; anything that gives equivalent results can be used.)
+
+
+Generation in commit
+--------------------
+
+Commit and converters both need this when writing into Bazaar native
+formats.
+
+This is an O(tree) operation because it needs to check for files with
+multiple heads.  It could be reduced to O(changed_or_merged_files) if that
+was faster to determine.  So it needs to be fast.
+
+For the single-parent commit case, we just need to determine which files have
+changed compared to the parent.  If the file was changed, it gets the
+revision id of the new revision; otherwise it inherits the value from the
+parent tree.
+
+In the multi-parent commit case (commit of a merge), it can take the value
+from any of the parent trees, or of the new revision.
+
+Commit in a dirstate tree should be able to do this more easily by looking
+at a row of the dirstate to get the per-file parents.  It still needs to
+look at the revision or file graph information to work out whether heads can be
+eliminated as previously merged.  At the moment ``find_previous_heads`` works on
+inventories, so needs to spend considerable effort building whole
+inventories, including files that are not modified or merged.  (Called
+from ``record_entry_contents``.)  It might be better to have the commit
+builder pass in the per-entry parents so that dirstate can generate just
+those that are necessary.  (See also the spec for
+``iter_changes_multiple_parents``.)
+
+If merge used a per-file graph then it would know when one version fully
+supersedes another, and it could emit only a single parent.  Merge could
+in fact do this even when not using per-file graphs.  In the current
+dirstate format we need to store the full data for all trees because they
+can be extracted from the dirstate, but it could mark some parents as
+already merged.
+
+Alternatively, we could change the dirstate to include
+only the base and current trees, and cache the merged-in parents
+elsewhere.
+
+(Offtopic other dirstate changes: we could also omit the working-copy
+hash, and just have a stat-fingerprint of when it was last known equal to
+the basis revision.  That reduces the amount of data stored and possibly
+makes it simpler to update, and shouldn't penalize common cases.)
+
+
+Generation during conversion
+----------------------------
+
+Accessing a foreign branch requires synthesizing this information.
+If last_modified is removed from a future Breezy version, we will also need
+to synthesize it to pull back to earlier formats.
+
+Because last_modified is not natively stored in the foreign branches, we
+want to take advantage of any conversion we've already done, so that we
+don't need to recursively generate them on every access.  We'd
+prefer to find a revision that's already converted to a Bazaar inventory
+within another related repository, such as the target of a conversion.
+
+
+Avoiding last_modified
+----------------------
+
+last_modified is potentially expensive to determine and we may not want to
+store it in inventories in future.  Therefore we should use it only when
+necessary:
+
+* When writing out an inventory format that includes it.
+
+* In Bazaar formats that use it as a key for the file text or file
+  ancestry.  This should be hidden behind the Repository/RevisionTree
+  interface.
+
+* When a user operation specifically requires the last_modified (e.g.
+  hypothetical annotate directory).
+
+We already do this in most cases.
+
+
+Compared to annotate
+--------------------
+
+
+Use cases
+---------
+
+Cases to test
+-------------
+
+1. Single parent, unmodified file
+2. Single parent, modified file
+3. Two parents, one descended from the other, modified in one parent only
+4. Two parents, one descended from the other, modified in one parent only,
+   but also modified locally.
+5. Two parents, not descended from each other, modified in one parent only.
+6. Two parents, not descended from each other, modified in one parent only,
+   but also modified locally.
+7. Two parents, modified in both to different values.
+8. Two parents, modified in both to the same value.
+9. Two parents, modified in both, and reverted in both back to the
+   original text.
+10. Three parents, modified in only one
+11. Three parents, modified in only one, also modified locally.
+12. Three parents, modified in 2
+13. Three parents, modified in 2, and locally.
+14. Three parents, modified in 2, but one is a descendant of the other.
+
+
+
+Performance considerations
+--------------------------
+
+Often we'll want the last_modified information for multiple files, perhaps
+everything in a directory or in a whole tree.  It may be more efficient
+for the api to accommodate this.  Often the last_modified will be similar
+for multiple files, and if we process them all at once we can avoid some
+repeated work in calculating their heads.
+
+
+Open questions
+--------------
+
+* How does caching ``find_heads`` interact with cherry-picks?
+
+
+
+Possible structure
+==================
+
+For a single file, if I am different from all parents, 'new'. (Do not need
+to evaluate last modified).
+
+..
+  vim: ft=rst tw=74

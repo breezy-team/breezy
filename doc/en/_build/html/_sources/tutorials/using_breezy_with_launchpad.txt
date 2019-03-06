@@ -1,0 +1,412 @@
+===========================
+Using Breezy with Launchpad
+===========================
+
+
+Motivation
+==========
+
+Communities are different to teams
+----------------------------------
+
+The team of people required to create the initial release
+of a piece of software may vary in size from one person
+to several thousand people. Depending on the requirements,
+the challenges involved, both technical and managerial,
+can be immense. As explained in the Breezy User Guide, selecting
+"just right" processes and using tools like Breezy to support
+matching workflows can greatly help.
+
+Success with software though requires more than a great team - it
+requires a healthy, active *community*. This group is typically
+far larger than the team as it includes everyone interested in
+the software: the team, users, training partners, support partners,
+third-party developers and so on.
+
+Great communities are well understood in the free software community.
+Their applicability extends well beyond that though: most
+successful commercial software vendors are well skilled at
+building and managing the communities that grow up around
+their flagship products.
+
+Like great teams, great communities don't just happen.
+Good policies and guidelines are essential for
+fostering the right sort of behaviour and healthy
+relationships between participants. For a deeper look at
+this topic, see Karl Fogel's landmark book:
+`Producing Open Source Software <http://www.producingoss.com/>`_.
+
+
+The need for Collaborative Development Environments
+---------------------------------------------------
+
+An intelligent toolset is also important for tracking and managing
+community information and workflows. These tools are called
+Collaborative Development Environments (CDEs). These toolsets are
+typically web-based and manage things such as announcements,
+issues/bugs, questions and answers, downloads, documents and
+source code. Some examples of CDEs include
+`Launchpad <https://launchpad.net>`_,
+`SourceForge <http://sourceforge.net>`_,
+`java.net <http://java.net>`_ and
+`SAP Community Network <https://www.sdn.sap.com/irj/sdn>`_.
+
+
+Helping communities work with related communities
+-------------------------------------------------
+
+Many successful products have a huge number of downstream dependencies.
+In other words, a new challenge arises with success: dealing with other
+communities and understanding how your changes will impact them. This is
+most obvious for projects like:
+
+* software languages, e.g. Python, PHP, Ruby, Java, Perl, etc.
+* compilers, e.g. gcc, JDK, etc.
+* libraries, e.g. zlib, openssl, etc.
+* frameworks, e.g. Zope, Ruby on Rails, Spring, etc.
+
+However it applies equally for popular applications on which add-ons are
+built, e.g. Firefox, Thunderbird, OpenOffice.org, Drupal, Wordpress, Joomla,
+etc.
+
+Tools that assist communities work together to track and manage
+issues and fixes across community boundaries are required. These
+tools help people at both ends of the spectrum:
+
+* users can report problems in their terms, e.g. rendering of image
+  type X is broken in application Y on operating system Z
+
+* developers can better appreciate the downstream impact of making a
+  change or fix, e.g. fixing this bug in a graphics library will
+  make the users of these 5 applications on these 10 operating
+  systems happy.
+
+People in the middle play the essential role of *joining the dots* and
+communicating up and down the line. In many cases, they may also fix the
+problem for end users, releasing a patch and pushing a suggested fix
+to the upstream development team. Keeping track of all that over time
+in a sustainable way is no easy task.
+
+
+Finding and browsing branches using Launchpad
+=============================================
+
+Finding available branches
+--------------------------
+
+While there are many advantages in adopting distributed version
+control, one of the things that disappears is the all-knowing
+central server with knowledge about all available branches. Indeed
+in a distributed environment, interesting branches can literally
+exist in 100s of locations across the Internet (or within an
+Intranet for that matter).
+
+Launchpad fills this gap by providing a registry of branches.
+
+
+Registering branches
+--------------------
+
+Branches can be uploaded to Launchpad or simply registered
+as being available in an external location. Branches can also
+be given a Status such as *New*, *Development*, *Mature* or
+*Abandoned*.
+
+Note: External branches can even be hosted in legacy version control
+tools, i.e. CVS and Subversion. Code in these systems will be
+scanned and converted to Breezy branches on a periodic basis.
+For maximum fidelity of course, it is preferable for external
+branches to be hosted in Breezy.
+
+
+Browsing branches
+-----------------
+
+Branches can be listed, filtered and sorted by numerous
+attributes including Name, Registrant, Author, Status, Age and
+time of last commit. Browsing of branches is also provided making
+it easy to see things such as:
+
+* where the branch can be downloaded from
+* how to upload changes
+* recent commits and the changes made by each
+* the source code of individual files for a given version.
+
+
+Accessing code in Launchpad using Breezy
+========================================
+
+Getting the code for a project
+------------------------------
+
+As Launchpad keeps track of thousands of projects
+and their latest code whether it be managed by Breezy, CVS or Subversion,
+Breezy users can grab that code as easily as this::
+
+  brz branch lp:project-name
+
+where `project-name` is the Launchpad project ID. Here are some examples::
+
+  brz branch lp:inkscape
+  brz branch lp:amarok
+  brz branch lp:python
+  brz branch lp:rails
+  brz branch lp:java-gnome
+
+You can then browse the code locally using your favorite editor or IDE and
+change the code if you wish.
+
+If a project has multiple series registered (e.g. a development series and a
+maintenance series), the latest code for a given series can be fetched using::
+
+  brz branch lp:project-name/series
+
+Publishing your changes
+-----------------------
+
+Having fixed that annoying bug or added that cool feature you've always
+wanted, it's time to impress your friends and make the world a better
+place by making your code available to others. As explained earlier,
+Launchpad is a free Breezy code hosting service so you can push your
+branch to it and others can access your code from there. For example,
+assuming you are a member of the relevant team, login to launchpad like this::
+
+  brz launchpad-login userid
+
+where `userid` is your Launchpad user ID.
+You can then push your changes to a team branch like this::
+
+  brz push lp:~team-name/project-name/branch-name
+
+Others can then download your code like this::
+
+  brz branch lp:~team-name/project-name/branch-name
+
+
+Personal branches
+-----------------
+
+Even if you are not a member of a team, Launchpad can be used to publish
+your changes. In this case, simply create a personal branch like this::
+
+  brz push lp:~userid/project-name/branch-name
+
+Others can then download your code like this::
+
+  brz branch lp:~userid/project-name/branch-name
+
+Note: Even when publishing to a personal branch, it is polite to notify the
+upstream developers about your branch so they can pull your changes from
+it if they are generally applicable to all users and meet the project's
+quality standards.
+
+
+Package source branches
+-----------------------
+
+When `maintaining packages for Ubuntu using Breezy`_ you can easily access the
+package's source branch on Launchpad.  The package's source branch in the
+current (default) series can be downloaded like this::
+
+  brz branch ubuntu:package
+
+where *package* is the name of the Ubuntu package you want to access.  To
+download the package branch for a specific series in Ubuntu (e.g. Maverick or
+Lucid), use this::
+
+  brz branch ubuntu:maverick/package
+
+Ubuntu distroseries can also be abbreviated to just their first letter.  For
+example, the above could also be written::
+
+  brz branch ubuntu:m/package
+
+You can also download the package source branch from Launchpad for several
+Debian series.  The default series can be downloaded like this::
+
+  brz branch debianlp:package
+
+and a specific series can be downloaded like this::
+
+  brz branch debianlp:lenny/package
+
+Note that the ``debianlp:`` scheme access the Debian source branch for a
+package from Launchpad only.
+
+.. _`maintaining packages for Ubuntu using Breezy`: https://wiki.ubuntu.com/DistributedDevelopment
+
+
+Linking branches using Launchpad
+================================
+
+Associating a branch with a bug
+-------------------------------
+
+After registering a branch, you can associate it to a bug so that
+people interested in that bug can track and download the fix as
+it becomes available.
+
+To do this, the steps are:
+
+1. Navigate to the bug in question.
+
+2. Select `Add branch` under `Actions`.
+
+3. Select the branch.
+
+4. Optionally set the State of the relationship. This is
+   *Fix In Progress* by default but you may wish to set it
+   to another state such as *Fix Available* if the branch already
+   addresses the issue.
+
+If you wish, you can also provide some arbitrary comments about
+the relationship between the bug and the branch.
+
+
+Changing the state in Launchpad while committing in Breezy
+----------------------------------------------------------
+
+Breezy and Launchpad can work together to reduce some of
+the status housekeeping for you. When you commit using Breezy,
+use the --fixes option like this::
+
+  brz commit --fixes lp:1234 -m "..."
+
+where 1234 is the bug ID. This will changes the State of the
+bug-branch relationship to *Fix Available*. If the one commit
+fixes multiple issues, the --fixes option can be specified multiple
+times.
+
+One of the cool things about this feature is that Launchpad does
+not need to be accessible when making the commit. The ``--fixes``
+option works by storing metadata which Launchpad will detect next
+time the branch is pushed to it or scanned once online again.
+
+Note: Launchpad will not implicitly close a bug just because a
+branch is available that fixes it. There are several reasons for this.
+Firstly, the branch usually needs to be merged into the trunk
+(main development branch) before most teams consider it fixed.
+Secondly, many teams have a separate process for confirming
+bugs are fixed over and above a developer saying so.
+
+As explained later, merge control features are currently under
+development in Launchpad and automatically changing the status of
+bugs to *Fix Committed* will be more appropriate once those features
+are in place.
+
+
+Associating a branch with a blueprint
+-------------------------------------
+
+After registering a branch, you can associate it to a blueprint so that
+people interested in that blueprint can track and test the feature as
+it develops.
+
+To do this, the steps are:
+
+1. Navigate to the blueprint in question.
+
+2. Select `Link branch` under `Actions`.
+
+3. Select the branch.
+
+If you wish, you can also provide some arbitrary comments about
+the relationship between the blueprint and the branch.
+
+
+Managing releases using Launchpad
+=================================
+
+Integrating changes
+-------------------
+
+Once a branch has been developed and published, communities
+typically go through a rigorous process before those changes
+are integrated into the core product and rolled out to end users.
+Some of the steps involved may include:
+
+* peer review of the changes
+
+* deciding which releases to include the changes in, e.g. the
+  next maintenance release, the next major release, or both
+
+* running functional regression tests
+
+* benchmarking to ensure performance remains acceptable
+
+* packaging into early access releases for end user testing
+
+* documentation updates, e.g. Release Notes for the targeted
+  releases
+
+* translation of the user interface and documentation into
+  multiple languages.
+
+This section briefly looks at some of the features in Launchpad that
+help get good quality code into production. Strong integration with
+Breezy is core to making this happen smoothly.
+
+Note: Where indicated, some of the features below are still under
+development. If one or more of these features interest you, please
+consider joining the Launchpad beta test team at this link:
+https://help.launchpad.net/JoiningLaunchpadBetaTesters. You can
+then get early access to features and provide feedback to the
+developers before wider roll-out.
+
+
+Branch merge proposals
+----------------------
+
+After navigating to a branch in Launchpad, one of the available actions
+is *Propose for merging*. This lets you nominate which branch this code
+ought to be merged into.
+
+Tracking the knowledge about which branches are proposed to be merged
+into a codeline helps Release Managers keep on top of what still needs
+to be completed, or can be completed, before a ship date. Using this
+information, they can ensure branches are merged after completing any
+necessary reviews. In the simple case, the Release Manager may manually
+merge branches. In more advanced cases, the merging could be automatically
+done by a robot (like `PQM`_) when the branch reaches the right state
+(e.g. *Review completed*).
+
+.. _PQM: https://launchpad.net/pqm
+
+
+Code review tracking
+--------------------
+
+A number of features are under development in Launchpad to track the
+states, conversations and outcomes of code reviews. These features are
+expected to be integrated with branch merge proposals and branch
+browsing features.
+
+
+Personal Package Archives (PPAs)
+--------------------------------
+
+PPAs help developers and development teams get custom builds into the
+hands of users for early testing and feedback. In other words, a PPA
+allows a developer to form a community of testers who are interested
+in their changes. The testing community can install the packages,
+run them for the test period and then remove them cleanly from their
+system.
+
+See https://help.launchpad.net/PPAQuickStart for further details.
+
+
+Translations
+------------
+
+The Translations module in Launchpad is designed to make it easy for
+anyone to get involved translating applications to languages they know.
+Translators are shielded from the low level details.
+
+Launchpad keeps track of the translations for each major version of a
+project separately, allowing translators to continue to improve the
+translations of your stable releases while others start work on newer
+versions that are still in development. Translation speed in reduced
+by sharing resources across projects. Automatic suggestions, from a
+library of 750,000 translated strings, and a community of 19,000
+registered translators can radically cut the time required to
+localise your project into many languages.

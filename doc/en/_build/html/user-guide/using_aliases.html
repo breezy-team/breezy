@@ -1,0 +1,167 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Using aliases &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Using plugins" href="plugins.html" />
+    <link rel="prev" title="Configuring Breezy" href="configuring_breezy.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="configuring_breezy.html" title="Configuring Breezy"
+             accesskey="P">previous</a> |
+          <a href="plugins.html" title="Using plugins"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="using-aliases">
+<h1>Using aliases<a class="headerlink" href="#using-aliases" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="what-are-aliases">
+<h2>What are aliases?<a class="headerlink" href="#what-are-aliases" title="Permalink to this headline">¶</a></h2>
+<p>Aliases are an easy way to create shortcuts for commonly-typed commands, or to set
+defaults for commands.</p>
+</div>
+<div class="section" id="defining-aliases">
+<h2>Defining aliases<a class="headerlink" href="#defining-aliases" title="Permalink to this headline">¶</a></h2>
+<p>Command aliases can be defined in the <code class="docutils literal notranslate"><span class="pre">[ALIASES]</span></code> section of your
+<code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> file. Aliases start with the alias name, then an
+equal sign, then a command fragment.  Here’s an example ALIASES section:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">ALIASES</span><span class="p">]</span>
+<span class="n">recentlog</span><span class="o">=</span><span class="n">log</span> <span class="o">-</span><span class="n">r</span><span class="o">-</span><span class="mf">3.</span><span class="o">.-</span><span class="mi">1</span>
+<span class="n">ll</span><span class="o">=</span><span class="n">log</span> <span class="o">--</span><span class="n">line</span> <span class="o">-</span><span class="n">r</span><span class="o">-</span><span class="mf">10.</span><span class="o">.-</span><span class="mi">1</span>
+<span class="n">commit</span><span class="o">=</span><span class="n">commit</span> <span class="o">--</span><span class="n">strict</span>
+<span class="n">diff</span><span class="o">=</span><span class="n">diff</span> <span class="o">--</span><span class="n">diff</span><span class="o">-</span><span class="n">options</span> <span class="o">-</span><span class="n">p</span>
+</pre></div>
+</div>
+<p>Here are the explanations of the examples above:</p>
+<blockquote>
+<div><ul class="simple">
+<li>The first alias makes a new <code class="docutils literal notranslate"><span class="pre">recentlog</span></code> command that shows the logs for the
+last three revisions</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">ll</span></code> alias shows the last 10 log entries in line format.</li>
+<li>the <code class="docutils literal notranslate"><span class="pre">commit</span></code> alias sets the default for commit to refuse to commit if new
+files in the tree are not recognized.</li>
+<li>the <code class="docutils literal notranslate"><span class="pre">diff</span></code> alias adds the coveted -p option to diff</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="using-the-aliases">
+<h2>Using the aliases<a class="headerlink" href="#using-the-aliases" title="Permalink to this headline">¶</a></h2>
+<p>The aliases defined above would be used like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">recentlog</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">ll</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">commit</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">diff</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="rules-for-aliases">
+<h2>Rules for aliases<a class="headerlink" href="#rules-for-aliases" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><ul class="simple">
+<li>You can override a portion of the options given in an alias by
+specifying the new part on the command-line.  For example, if
+you run <code class="docutils literal notranslate"><span class="pre">lastlog</span> <span class="pre">-r-5..</span></code>, you will only get five line-based log
+entries instead of 10.  Note that all boolean options have an
+implicit inverse, so you can override the commit alias with
+<code class="docutils literal notranslate"><span class="pre">commit</span> <span class="pre">--no-strict</span></code>.</li>
+<li>Aliases can override the standard behaviour of existing commands by giving
+an alias name that is the same as the original command. For example, default
+commit is changed with <code class="docutils literal notranslate"><span class="pre">commit=commit</span> <span class="pre">--strict</span></code>.</li>
+<li>Aliases cannot refer to other aliases. In other words making a
+<code class="docutils literal notranslate"><span class="pre">lastlog</span></code> alias and referring to it with a <code class="docutils literal notranslate"><span class="pre">ll</span></code> alias will not work.
+This includes aliases that override standard commands.</li>
+<li>Giving the <code class="docutils literal notranslate"><span class="pre">--no-aliases</span></code> option to the brz command will tell it to ignore aliases
+for that run. For example, running <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">--no-aliases</span> <span class="pre">commit</span></code> will perform a
+standard commit instead, not do a <code class="docutils literal notranslate"><span class="pre">commit</span> <span class="pre">--strict</span></code>.</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="configuring_breezy.html" title="Configuring Breezy"
+              >previous</a> |
+            <a href="plugins.html" title="Using plugins"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/using_aliases.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,413 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Breezy Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Breezy Upgrade Guide" href="../upgrade-guide/index.html" />
+    <link rel="prev" title="Breezy Release Notes" href="index.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="index.html" title="Breezy Release Notes"
+             accesskey="P">previous</a> |
+          <a href="../upgrade-guide/index.html" title="Breezy Upgrade Guide"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="breezy-release-notes">
+<h1>Breezy Release Notes<a class="headerlink" href="#breezy-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="brz-3-0-0">
+<h2>brz 3.0.0<a class="headerlink" href="#brz-3-0-0" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Codename:</th><td class="field-body">Pelican</td>
+</tr>
+<tr class="field-even field"><th class="field-name">3.0.0:</th><td class="field-body">2019-03-06</td>
+</tr>
+</tbody>
+</table>
+<p>brz 3.0.0 is the first release of <code class="docutils literal notranslate"><span class="pre">Breezy</span></code>, a fork of Bazaar. For more
+information, see our release announcement on the Bazaar mailing list and
+README.</p>
+<div class="section" id="external-compatibility-breaks">
+<h3>External Compatibility Breaks<a class="headerlink" href="#external-compatibility-breaks" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>The bzr command has been renamed to brz, to prevent clashes with upstream
+Bazaar.
+(Martin Packman, Jelmer Vernooĳ)</li>
+<li>The –prefix/-p argument for <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span></code> now defaults to -p1 rather
+than -p0. (Jelmer Vernooĳ, #1695126)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">register-branch</span></code> command from the Launchpad plugin has been
+removed, because it has not worked for at least five years: it relies on
+password authentication rather than SSO, the relevant systems no longer
+have firewall-level access to the outside world, and in general the
+Mirrored branch type is deprecated.  Either just push the branch to
+Launchpad or use code imports instead
+(<a class="reference external" href="https://help.launchpad.net/VcsImports">https://help.launchpad.net/VcsImports</a>).
+(Colin Watson, #254567, #483689)</li>
+<li>brz no longer supports building the C extensions using Pyrex.
+Only Cython is supported. (Jelmer Vernooĳ)</li>
+<li>Support for HTTP support using “pycurl” and the associated
+URL schemes “http+pycurl://” and “https+pycurl://” has been dropped.
+(Jelmer Vernooij, #82086, #377389, #122258, #516222, #545776, #1696602)</li>
+<li>Support for medusa for FTP tests has been dropped, only
+pyftpdlib is now supported. (Jelmer Vernooĳ)</li>
+<li>The deprecated <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">get</span></code> and <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">clone</span></code> commands have been
+removed. (Jelmer Vernooĳ)</li>
+<li>The setting to ignore missing C extensions has been changed from
+<code class="docutils literal notranslate"><span class="pre">ignore_missing_extensions=True</span></code> to
+<code class="docutils literal notranslate"><span class="pre">suppress_warnings=missing_extensions</span></code>. (Jelmer Vernooĳ)</li>
+<li>Remove format names as options to <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">init</span></code> and <code class="docutils literal notranslate"><span class="pre">brz</span>
+<span class="pre">init-repository</span></code>.. Now you must use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">init</span> <span class="pre">--format=...</span></code>.
+This simplifies <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">init</span> <span class="pre">--help</span></code>.
+(Neil Martinsen-Burrell, #330494)</li>
+<li><code class="docutils literal notranslate"><span class="pre">python-gpg</span></code> is now used for checking GPG signatures rather than
+<code class="docutils literal notranslate"><span class="pre">python-gpgme</span></code>. (Jelmer Vernooĳ, #1702308)</li>
+<li><code class="docutils literal notranslate"><span class="pre">python-gpg</span></code> is now used for signing commits, rather than shelling
+out to the gnupg command. The <code class="docutils literal notranslate"><span class="pre">gpg_signing_command</span></code> option has been
+removed.  (Jelmer Vernooĳ, #847388)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">bzr.transform.orphan_policy</span></code> configuration option
+has been renamed to <code class="docutils literal notranslate"><span class="pre">transform.orphan_policy</span></code>.
+(Jelmer Vernooĳ)</li>
+<li>Backslash () is no longer accepted as a path separator
+on platforms where it is not the default path separator,
+e.g. POSIX systems. This is so that filenames with backslashes
+in their name can be added explicitly. (#176263, #165151)</li>
+<li>One-letter shortcuts for Ubuntu releases are no
+longer supported after ‘ubuntu:’. Bazaar’s mapping for
+one-letter distroseries had not been updated since natty.
+(Jelmer Vernooĳ)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">lp-mirror-branch</span></code> subcommand has been removed.
+Please use the <code class="docutils literal notranslate"><span class="pre">lp-force-branch-mirror</span></code> command from
+the lptools package instead. (Jelmer Vernooĳ, #518807)</li>
+<li>Up-to-date checking for Bazaar packaging branches is no
+longer performed, since there are no longer
+any automated imports. (Jelmer Vernooĳ)</li>
+<li><code class="docutils literal notranslate"><span class="pre">setuptools</span></code> is now required to build and install Breezy.
+(Jelmer Vernooĳ)</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="new-features">
+<h3>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>The ‘bisect’ plugin is now shipped with brz. (Jelmer Vernooĳ)</li>
+<li>The ‘fastimport’ plugin is now bundled with Breezy.
+(Jelmer Vernooĳ)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">grep</span></code> plugin has been merged into Breezy.
+(Parth Malwankar, Martin Packman, Jelmer Vernooĳ)</li>
+<li>The ‘stats’ plugin is now bundled with Breezy.
+(Jelmer Vernooĳ)</li>
+<li>The ‘upload’ plugin is now bundled with Breezy.
+(Jelmer Vernooĳ)</li>
+<li>The ‘cvs’ and ‘mtn’ plugins are now bundled with Breezy.
+(Jelmer Vernooĳ)</li>
+<li>The ‘email’ plugin is now bundled with Breezy.
+(Jelmer Vernooĳ)</li>
+<li>The ‘import’ command is now bundled with brz.
+Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ, #773241)</li>
+<li>The ‘link-tree’ command is now bundled with brz.
+Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)</li>
+<li>The ‘fetch-ghosts’ command is now bundled with brz.
+Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)</li>
+<li>The ‘commitfromnews’ plugin is now bundled and
+can be enabled by setting <code class="docutils literal notranslate"><span class="pre">commit.template_from_files</span> <span class="pre">=</span> <span class="pre">NEWS</span></code>.
+(Jelmer Vernooĳ)</li>
+<li>The ‘darcs’ plugin is now bundled.
+(Jelmer Vernooĳ)</li>
+<li>The functionality from <code class="docutils literal notranslate"><span class="pre">bzr-guess</span></code> is now merged into Breezy.
+It will provide suggestions if the user typoes a command.
+(Jelmer Vernooĳ)</li>
+<li>Support the creation of colocated branches in <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">fast-import</span></code>.
+(Jelmer Vernooĳ, #1744626)</li>
+<li>New <code class="docutils literal notranslate"><span class="pre">lp-logout</span></code> command to unset launchpad username.
+(Jelmer Vernooĳ, #349143)</li>
+<li>Plugins can now be registered using the ‘entrypoints’ mechanism in
+setuptools. (Jelmer Vernooĳ, #1802647)</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>Doc generators now support the SOURCE_DATE_EPOCH environment
+variable (<a class="reference external" href="https://reproducible-builds.org/specs/source-date-epoch/">https://reproducible-builds.org/specs/source-date-epoch/</a>).
+(Jelmer Vernooĳ)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">repodebug</span></code> plugin is now bundled.
+(Jelmer Vernooĳ)</li>
+<li>New <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">cp</span></code> command which copies files (but does not currently track
+history). (Jelmer Vernooĳ, start towards #269095)</li>
+<li>HPSS calls for <code class="docutils literal notranslate"><span class="pre">RevisionTree.archive</span></code> and
+<code class="docutils literal notranslate"><span class="pre">RevisionTree.annotate_iter</span></code> have been added. (Jelmer Vernooĳ,
+#897781)</li>
+<li>New <code class="docutils literal notranslate"><span class="pre">lp+bzr://</span></code> URL scheme for Bazaar-only branches on Launchpad.
+(Jelmer Vernooĳ)</li>
+<li>Report colocated branch information in <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">info</span></code>.
+(Jelmer Vernooĳ, #1803846)</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Support Server Name Indication (SNI) when talking to https servers.
+Cherry-picked from lp:~vila/bzr/1089352-sni-support
+(Vincent Ladeuil, #1089352)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">bisect</span></code> command now works in non-<code class="docutils literal notranslate"><span class="pre">.bzr</span></code> directories.
+(Jelmer Vernooĳ)</li>
+<li>When creating <code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code>, umask is now set so only the
+current user can read the file. Breezy warns if the file is
+accessible for other users when it starts.
+(Joke de Buhr, Jelmer Vernooĳ, #475501)</li>
+<li>Support <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">commit</span> <span class="pre">-x</span></code> in combination with iter_changes.
+(Jelmer Vernooĳ, #796582, #403811, #694946, #268135, #299879)</li>
+<li>Print a proper error when encountering ghost revisions in
+mainline in <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">log</span></code>. (Jelmer Vernooĳ, #726466)</li>
+<li>Security fix: hostnames starting with a dash in bzr+ssh URLs
+are now filtered out when using a subprocess SSH client.
+.
+Thanks to Augie Fackler for reporting.
+(Jelmer Vernooĳ, #1710979)</li>
+<li>Mark all options as unicode. Allows using non-ASCII values in most
+options. (Jelmer Vernooĳ, #563692)</li>
+<li>Support automatic rename tracking into new directories.
+(mnn, #373319)</li>
+<li>Avoid writing directly to sys.stdout, but use self.outf in
+Command implementations instead. (#268573, B. Clausius)</li>
+<li>It is now possible to version files with backslashes in their name
+on platforms that support it. (Jelmer Vernooij, #81844)</li>
+<li>Support ‘0’ markers in fastimport plugin. (Jelmer Vernooĳ, #1744615)</li>
+<li>Support adding/removing filenames that consist of just
+backslashes in where backslash is not the path separator.
+(Jelmer Vernooĳ, #176263, #165151)</li>
+<li>Report correct path in output of <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">add</span></code>.
+(Brian de Alwis, Jelmer Vernooĳ, #1799482)</li>
+<li>Don’t report empty directories in git trees as changes.
+(Jelmer Vernooĳ, #1804072)</li>
+<li>Fix support for ‘brz ignore’ in Git trees.
+(Jelmer Vernooĳ, #1804053)</li>
+<li>Print a clearer error when GPG can’t be found.
+(Jelmer Vernooĳ, #1803898)</li>
+<li>Fix a corner case when moving files.
+(Jelmer Vernooĳ, #533152)</li>
+<li>Fix fastexport output to standard output when
+running under Python 3. (Jelmer Vernooĳ, #1805172)</li>
+<li>Restore absolute URLs in branch reference URLs. This is
+needed for backwards compatibility with Bazaar.
+(Jelmer Vernooĳ, #1803845)</li>
+<li>Don’t report .git files as unknown files.
+(Jelmer Vernooĳ, Debian Bug #921240)</li>
+<li>Raise better error when path subsegments lack =.
+(Jelmer Vernooĳ, #891483)</li>
+<li>Display correct pull location argument in
+output of <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">uncommit</span></code>.
+(Jelmer Vernooĳ, #386577)</li>
+</ul>
+</div>
+<div class="section" id="documentation">
+<h3>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>Various documents have been updated to explain that Breezy is a fork
+of Bazaar.</li>
+<li>Documentation translations into Japanese, Spanish and Russian have been
+removed since there are no current translators to update them.
+(Jelmer Vernooĳ)</li>
+<li>A quick introduction about using Breezy with GitHub has been added.
+(Jelmer Vernooĳ, #1803867)</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="api-changes">
+<h3>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>bzrlib has been renamed to breezy. (Martin Packman, Jelmer Vernooĳ)</li>
+<li>Signature of <code class="docutils literal notranslate"><span class="pre">load_tests</span></code> used by <code class="docutils literal notranslate"><span class="pre">TestLoader</span></code> changed to be
+compatible with standard libarary unittest.  (Martin Packman)</li>
+<li>All previously deprecated functionality has been removed.
+(Jelmer Vernooĳ)</li>
+<li><code class="docutils literal notranslate"><span class="pre">CommitBuilder.record_entry_contents</span></code> has been removed.
+(Jelmer Vernooĳ, #731433, #604953)</li>
+<li>Renamed <code class="docutils literal notranslate"><span class="pre">breezy.delta.report_delta</span></code> parameter <code class="docutils literal notranslate"><span class="pre">filter=</span></code> to
+<code class="docutils literal notranslate"><span class="pre">predicate=</span></code>. (Martin Packman)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Branch.bzrdir</span></code>, <code class="docutils literal notranslate"><span class="pre">Repository.bzrdir</span></code> and <code class="docutils literal notranslate"><span class="pre">WorkingTree.bzrdir</span></code>
+have been renamed to <code class="docutils literal notranslate"><span class="pre">Branch.controldir</span></code>, <code class="docutils literal notranslate"><span class="pre">Repository.controldir</span></code>
+and <code class="docutils literal notranslate"><span class="pre">WorkingTree.controldir</span></code>, respectively.
+(Jelmer Vernooĳ, #1695774)</li>
+<li><code class="docutils literal notranslate"><span class="pre">BzrBranch</span></code> and the various bzr branch format implementations
+have been moved to <code class="docutils literal notranslate"><span class="pre">breezy.bzr</span></code>. (Jelmer Vernooĳ)</li>
+<li><code class="docutils literal notranslate"><span class="pre">MetaDirBranchFormatFactory</span></code> has been removed.
+Use lazy registration on <code class="docutils literal notranslate"><span class="pre">breezy.branch.format_registry</span></code>
+instead. (Jelmer Vernooĳ)</li>
+<li><code class="docutils literal notranslate"><span class="pre">breezy.bzrdir.format_registry</span></code> has been removed; use
+<code class="docutils literal notranslate"><span class="pre">breezy.controldir.format_registry</span></code> instead.
+(Jelmer Vernooĳ)</li>
+<li><code class="docutils literal notranslate"><span class="pre">breezy.api</span></code> has been removed.  (Jelmer Vernooĳ, #742192)</li>
+<li><code class="docutils literal notranslate"><span class="pre">ControlDir.find_bzrdirs</span></code> has been renamed to
+<code class="docutils literal notranslate"><span class="pre">ControlDir.find_controldirs</span></code>. (Jelmer Vernooĳ)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Repository.get_revisions</span></code> no longer accepts <code class="docutils literal notranslate"><span class="pre">None</span></code> as
+argument. (Jelmer Vernooĳ)</li>
+<li>A new <code class="docutils literal notranslate"><span class="pre">Repository.iter_revisions</span></code> method has been added.
+(Jelmer Vernooĳ)</li>
+<li>A new <code class="docutils literal notranslate"><span class="pre">WorkingTreeFormat.supports_setting_file_ids</span></code> property
+has been added that can be set to False to indicate a working tree
+doesn’t support e.g. passing a file_id into <code class="docutils literal notranslate"><span class="pre">WorkingTree.mkdir</span></code>.
+(Jelmer Vernooĳ, #1707533)</li>
+<li>A new <code class="docutils literal notranslate"><span class="pre">RepositoryFormat.supports_setting_revision_ids</span></code> property
+has been added that can be set to False to indicate a repository
+doesn’t support passing revision ids to <code class="docutils literal notranslate"><span class="pre">CommitBuilder.commit</span></code>.
+(Jelmer Vernooĳ)</li>
+<li>A new <code class="docutils literal notranslate"><span class="pre">RepositoryFormat.supports_overriding_transport</span></code> property
+has been added that can be set to False to indicate a repository
+doesn’t support passing an alternative transport to
+<code class="docutils literal notranslate"><span class="pre">RepositoryFormat.open</span></code>.
+(Jelmer Vernooĳ)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Repository.print_file</span></code> and <code class="docutils literal notranslate"><span class="pre">Branch.print_file</span></code> have been removed.
+(Jelmer Vernooĳ)</li>
+<li>Various <code class="docutils literal notranslate"><span class="pre">lock_write</span></code> and <code class="docutils literal notranslate"><span class="pre">lock_read</span></code> functions now return a
+context manager. (Jelmer Vernooĳ)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">BranchWriteLockResult.branch_token</span></code> (returned by
+<code class="docutils literal notranslate"><span class="pre">Branch.lock_write</span></code>) has been renamed to
+<code class="docutils literal notranslate"><span class="pre">BranchWriteLockResult.token</span></code>. (Jelmer Vernooĳ)</li>
+<li><code class="docutils literal notranslate"><span class="pre">breezy.decorators.needs_write_lock</span></code>,
+<code class="docutils literal notranslate"><span class="pre">breezy.decorators.needs_read_lock</span></code> and
+<code class="docutils literal notranslate"><span class="pre">breezy.mutabletree.needs_tree_write_lock</span></code> have been deprecated.
+Instead, use the context managers returned by <code class="docutils literal notranslate"><span class="pre">.lock_write</span></code>,
+<code class="docutils literal notranslate"><span class="pre">.lock_read</span></code> and <code class="docutils literal notranslate"><span class="pre">.lock_tree_write</span></code> respectively. (Jelmer Vernooĳ)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Tree</span></code> methods now take a <code class="docutils literal notranslate"><span class="pre">path</span></code> as primary key argument, rather
+than a <code class="docutils literal notranslate"><span class="pre">file_id</span></code>. <code class="docutils literal notranslate"><span class="pre">file_id</span></code> is still present as optional argument
+for most functions, and can be specified to speed up lookups.
+(Jelmer Vernooĳ)</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Allow overriding of default HTTP headers by caller.
+(Jelmer Vernooĳ, #1753734)</li>
+</ul>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>Allow /dev/null to be a symlink to a chardev. (Igo Pashev, #832257)</li>
+<li>A test isolation issue in <code class="docutils literal notranslate"><span class="pre">breezy.tests.test_ui</span></code> was fixed,
+which caused <code class="docutils literal notranslate"><span class="pre">output_encoding</span> <span class="pre">=</span> <span class="pre">iso-8859-1</span></code> to be added to the
+users’ bazaar.conf. (Jelmer Vernooĳ)</li>
+<li>Newer versions of <code class="docutils literal notranslate"><span class="pre">pyftpdlib</span></code> are now supported for running FTP tests.
+(Jelmer Vernooĳ)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">--subunit</span></code> argument for <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">selftest</span></code> has been renamed to
+<code class="docutils literal notranslate"><span class="pre">--subunit1</span></code>, and a new argument <code class="docutils literal notranslate"><span class="pre">--subunit2</span></code> has been added that
+outputs subunit v2.
+(Jelmer Vernooĳ, #1699346, #661205)</li>
+<li>Launchpad plugin tests no longer try to connect to production
+Launchpad. (Jelmer Vernooĳ, #723183)</li>
+<li>Set the <code class="docutils literal notranslate"><span class="pre">GPGHOME</span></code> environment variable during testing, to prevent
+e.g. leaking keys into the users’ GNUPG directory.
+(Jelmer Vernooĳ, #843885)</li>
+<li>Allow some slack when comparing times.
+(Jelmer Vernooĳ, #1804121)</li>
+<li>Fix a spuriously failing fastexport test due to dictionary
+ordering. (Jelmer Vernooĳ, #1808630)</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="index.html" title="Breezy Release Notes"
+              >previous</a> |
+            <a href="../upgrade-guide/index.html" title="Breezy Upgrade Guide"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/brz-3.0.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

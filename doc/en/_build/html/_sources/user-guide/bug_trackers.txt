@@ -1,0 +1,56 @@
+Bug trackers
+============
+
+Breezy has a facility that allows you to associate a commit with a bug
+in the project's bug tracker. Other tools (or hooks) can then use this
+information to generate hyperlinks between the commit and the bug, or to
+automatically mark the bug closed in the branches that contain the commit.
+
+Associating commits and bugs
+----------------------------
+
+When you make a commit, you can associate it with a bug by using the
+``--fixes`` option of ``commit``. For example::
+
+    $ brz commit --fixes lp:12345 -m "Properly close the connection"
+
+This records metadata in Breezy linking the commit with bug 12345 in
+Launchpad. If you use a different bug tracker, it can be given its own
+tracker code (instead of ``lp``) and used instead. For details on how
+to configure this for Bugzilla, Trac, Roundup and other bug/issue trackers,
+refer to `Bug Tracker Settings`_ in the Breezy User Reference.
+
+.. _Bug Tracker Settings: ../user-reference/index.html#bug-tracker-settings
+
+Metadata recording vs bug tracker updating
+------------------------------------------
+
+Recording metadata about bugs fixed at commit time is only
+one of the features needed for complete bug tracker integration.
+As Breezy is a distributed VCS, users may be offline while committing
+so accessing the bug tracker itself at that time may not be possible.
+Instead, it is recommended that a hook be installed to update
+the bug tracker when changes are pushed to a central location
+appropriate for your project's workflow.
+
+Note: This second processing stage is part of the integration provided
+by Launchpad when it scans external or hosted branches.
+
+Making corrections
+------------------
+
+This method of associating revisions and bugs does have some limitations. The
+first is that the association can only be made at commit time. This means that
+if you forget to make the association when you commit, or the bug is reported
+after you fix it, you generally cannot go back and add the link later.
+
+Related to this is the fact that the association is immutable. If a bug is
+marked as fixed by one commit but that revision does not fully solve the
+bug, or there is a later regression, you cannot go back and remove the link.
+
+Of course, ``brz uncommit`` can always be used to undo the last commit in
+order to make it again with the correct options. This is commonly done
+to correct a bad commit message and it equally applies to correcting
+metadata recorded (via ``--fixes`` for example) on the last commit.
+
+Note: ``uncommit`` is best done before incorrect revisions become public.

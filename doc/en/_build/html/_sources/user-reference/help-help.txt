@@ -1,0 +1,17 @@
+help
+====
+
+:Purpose: Show help on a command or other topic.
+:Usage:   brz help [TOPIC]
+
+:Options:
+  -h, --help     Show help message.
+  --long         Show help on all commands.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Aliases:  ?, --help, -?, -h
+:See also: topics
+
+

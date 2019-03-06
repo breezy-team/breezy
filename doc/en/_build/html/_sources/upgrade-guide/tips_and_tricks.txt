@@ -1,0 +1,35 @@
+Tips and tricks
+###############
+
+Finding obsolete branches
+-------------------------
+
+If you use feature branching for developing each fix
+and enhancement separately, you may have several old
+branches that are no longer required. In many cases,
+the relevant changes may now be merged into trunk.
+In other cases, a branch may be obsolete thanks to
+another change made by yourself or others.
+
+When checking for an obsolete branch, there are three
+things in particular to confirm:
+
+1. The working tree has no in-progress changes.
+
+2. The working tree has no shelved changes.
+
+3. Any locally committed revisions have been merged
+   into the parent branch.
+
+After changing into the root of a branch, the commands
+to check these things respectively are::
+
+  brz status
+  brz shelve --list
+  brz missing --mine-only
+
+If your branches are stored in a shared repository locally,
+you may find the *Local Changes* tab in Breezy Explorer's
+repository view helpful here (revision 159 or later) as it
+shows a summary of these things, excluding the shelve information
+currently, for each branch as you select it.

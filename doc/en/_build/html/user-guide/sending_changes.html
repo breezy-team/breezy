@@ -1,0 +1,164 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Sending changes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="The journey ahead" href="part2_intro.html" />
+    <link rel="prev" title="Using gatekeepers" href="using_gatekeepers.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="using_gatekeepers.html" title="Using gatekeepers"
+             accesskey="P">previous</a> |
+          <a href="part2_intro.html" title="The journey ahead"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="sending-changes">
+<h1>Sending changes<a class="headerlink" href="#sending-changes" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h2>
+<p>In many distributed development scenarios, it isn’t always feasible for
+developers to share task branches by advertising their URLs.
+For example, a developer working on a laptop might take it home overnight
+so his/her task branches could well be inaccessible when a gatekeeper
+in another timezone wants to review or merge it.</p>
+<p>Breezy provides a neat feature to assist here: <em>merge directives</em>.</p>
+</div>
+<div class="section" id="understanding-merge-directives">
+<h2>Understanding merge directives<a class="headerlink" href="#understanding-merge-directives" title="Permalink to this headline">¶</a></h2>
+<p>You can think of a merge directive as a “mini branch” - just the
+new growth on a branch since it was created. It’s a software
+patch showing what’s new but with added intelligence: metadata
+like interim commits, renames and digital signatures.</p>
+<p>Another useful metaphor is a packet cake: a merge directive has a recipe
+together with the ingredients you need bundled inside it.
+To stretch the metaphor, the ingredients are all the metadata on the
+changes made to the branch; the recipe is instructions on how those
+changes ought to be merged, i.e. information for the <code class="docutils literal notranslate"><span class="pre">merge</span></code> command
+to use in selecting common ancestors.</p>
+<p>Regardless of how you think of them, merge directives are neat.
+They are easy to create, suitable for mailing around as attachments
+and can be processed much like branches can on the receiving end.</p>
+</div>
+<div class="section" id="creating-a-merge-directive">
+<h2>Creating a merge directive<a class="headerlink" href="#creating-a-merge-directive" title="Permalink to this headline">¶</a></h2>
+<p>To create and optionally send a merge directive, use the <code class="docutils literal notranslate"><span class="pre">send</span></code> command.</p>
+<p>By default, <code class="docutils literal notranslate"><span class="pre">send</span></code> will email the merge directive to the “submission
+address” for the branch, which is typically the lead developer or the
+development mailing list.
+<code class="docutils literal notranslate"><span class="pre">send</span></code> without options will create a merge directive, fire up your email
+tool and attach it, ready for you to add the explanatory text bit.
+(See the online help for <code class="docutils literal notranslate"><span class="pre">send</span></code> and
+<a class="reference external" href="../user-reference/index.html#configuration-settings">Configuration Settings</a>
+in the User Reference for further details on how to configure this.)</p>
+<p>Most projects like people to add some explanation to the mail along with
+the patch, explaining the reason for the patch, and why it is done the way
+it is.  This gives a reviewer some context before going into the
+line-by-line diff.</p>
+<p>Alternatively, if the <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) option is given, <code class="docutils literal notranslate"><span class="pre">send</span></code>
+will write the merge directive to a file, so you can mail it yourself,
+examine it, or save it for later use.  If an output file of <code class="docutils literal notranslate"><span class="pre">-</span></code> is
+given, the directive is written to stdout.  For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">X</span><span class="o">-</span><span class="n">fix</span><span class="o">-</span><span class="mi">123</span>
+<span class="n">brz</span> <span class="n">send</span> <span class="o">-</span><span class="n">o</span> <span class="o">../</span><span class="n">fix</span><span class="o">-</span><span class="mf">123.</span><span class="n">patch</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="applying-a-merge-directive">
+<h2>Applying a merge directive<a class="headerlink" href="#applying-a-merge-directive" title="Permalink to this headline">¶</a></h2>
+<p>Merge directives can be applied in much the same way as branches: by
+using the <code class="docutils literal notranslate"><span class="pre">merge</span></code> and <code class="docutils literal notranslate"><span class="pre">pull</span></code> commands.</p>
+<p>They can also be useful when communicating with upstream projects
+that don’t use Breezy. In particular, the preview of the overall
+change in a merge directive looks like a vanilla software patch, so
+they can be applied using <code class="docutils literal notranslate"><span class="pre">patch</span> <span class="pre">-p0</span></code> for example.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="using_gatekeepers.html" title="Using gatekeepers"
+              >previous</a> |
+            <a href="part2_intro.html" title="The journey ahead"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/sending_changes.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

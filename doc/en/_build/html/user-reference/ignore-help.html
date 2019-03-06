@@ -1,0 +1,221 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>ignore &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ignored" href="ignored-help.html" />
+    <link rel="prev" title="help" href="help-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="help-help.html" title="help"
+             accesskey="P">previous</a> |
+          <a href="ignored-help.html" title="ignored"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ignore">
+<h1>ignore<a class="headerlink" href="#ignore" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Ignore specified files or patterns.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz ignore [NAME_PATTERN…]</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">--default-rules</span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Display the default ignore rules that brz uses.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-d <var>ARG</var></span>, <span class="option">--directory=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Branch to operate on, instead of working directory.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
+<td><p class="first last">Show help message.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
+<td><p class="first last">Only display errors and warnings.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--usage</span></kbd></td>
+<td><p class="first last">Show usage message and options.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
+<td><p class="first last">Display more information.</p>
+</td></tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">See <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">help</span> <span class="pre">patterns</span></code> for details on the syntax of patterns.</p>
+<p>If a .bzrignore file does not exist, the ignore command
+will create one and add the specified files or patterns to the newly
+created file. The ignore command will also automatically add the
+.bzrignore file to be versioned. Creating a .bzrignore file without
+the use of the ignore command will require an explicit add command.</p>
+<p>To remove patterns from the ignore list, edit the .bzrignore file.
+After adding, editing or deleting that file either indirectly by
+using this command or directly by using an editor, be sure to commit
+it.</p>
+<p>Breezy also supports a global ignore file ~/.config/breezy/ignore. On
+Windows the global ignore file can be found in the application data
+directory as
+C:Documents and Settings&lt;user&gt;Application DataBreezy3.0ignore.
+Global ignores are not touched by this command. The global ignore file
+can be edited directly using an editor.</p>
+<p>Patterns prefixed with ‘!’ are exceptions to ignore patterns and take
+precedence over regular ignores.  Such exceptions are used to specify
+files that should be versioned which would otherwise be ignored.</p>
+<p>Patterns prefixed with ‘!!’ act as regular ignore patterns, but have
+precedence over the ‘!’ exception patterns.</p>
+<ul class="simple">
+<li>Ignore patterns containing shell wildcards must be quoted from
+the shell on Unix.</li>
+<li>Ignore patterns starting with “#” act as comments in the ignore file.
+To ignore patterns that begin with that character, use the “RE:” prefix.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Examples:</th><td class="field-body"><p class="first">Ignore the top level Makefile:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">ignore</span> <span class="o">./</span><span class="n">Makefile</span>
+</pre></div>
+</div>
+<p>Ignore .class files in all directories…:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">ignore</span> <span class="s2">&quot;*.class&quot;</span>
+</pre></div>
+</div>
+<p>…but do not ignore “special.class”:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">ignore</span> <span class="s2">&quot;!special.class&quot;</span>
+</pre></div>
+</div>
+<p>Ignore files whose name begins with the “#” character:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">ignore</span> <span class="s2">&quot;RE:^#&quot;</span>
+</pre></div>
+</div>
+<p>Ignore .o files under the lib directory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">ignore</span> <span class="s2">&quot;lib/**/*.o&quot;</span>
+</pre></div>
+</div>
+<p>Ignore .o files under the lib directory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">ignore</span> <span class="s2">&quot;RE:lib/.*\.o&quot;</span>
+</pre></div>
+</div>
+<p>Ignore everything but the “debian” toplevel directory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">ignore</span> <span class="s2">&quot;RE:(?!debian/).*&quot;</span>
+</pre></div>
+</div>
+<p>Ignore everything except the “local” toplevel directory,
+but always ignore autosave files ending in ~, even under local/:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">ignore</span> <span class="s2">&quot;*&quot;</span>
+<span class="n">brz</span> <span class="n">ignore</span> <span class="s2">&quot;!./local&quot;</span>
+<span class="n">brz</span> <span class="n">ignore</span> <span class="s2">&quot;!!*~&quot;</span>
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">See also:</th><td class="field-body"><p class="first last"><a class="reference internal" href="ignored-help.html"><span class="doc">ignored</span></a>, <a class="reference internal" href="patterns-help.html"><span class="doc">patterns</span></a>, <a class="reference internal" href="status-help.html"><span class="doc">status</span></a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="help-help.html" title="help"
+              >previous</a> |
+            <a href="ignored-help.html" title="ignored"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/ignore-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

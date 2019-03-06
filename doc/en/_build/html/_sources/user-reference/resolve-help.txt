@@ -1,0 +1,37 @@
+resolve
+=======
+
+:Purpose: Mark a conflict as resolved.
+:Usage:   brz resolve [FILE...]
+
+:Options:
+  --all                 Resolve all conflicts in this tree.
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+  action:
+    --action=ARG        How to resolve the conflict.
+    --done              Marks the conflict as resolved.
+    --take-other        Resolve the conflict taking the merged version into
+                        account.
+    --take-this         Resolve the conflict preserving the version in the
+                        working tree.
+
+:Description:
+  Merge will do its best to combine the changes in two branches, but there
+  are some kinds of problems only a human can fix.  When it encounters those,
+  it will mark a conflict.  A conflict means that you need to fix something,
+  before you can commit.
+  
+  Once you have fixed a problem, use "brz resolve" to automatically mark
+  text conflicts as fixed, "brz resolve FILE" to mark a specific conflict as
+  resolved, or "brz resolve --all" to mark all conflicts as resolved.
+
+:Aliases:  resolved
+:See also: :doc:`conflicts <conflicts-help>`
+
+

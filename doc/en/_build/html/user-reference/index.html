@@ -1,0 +1,268 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Breezy User Reference &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="branches" href="branches-help.html" />
+    <link rel="prev" title="Breezy Upgrade Guide" href="../upgrade-guide/index.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="../upgrade-guide/index.html" title="Breezy Upgrade Guide"
+             accesskey="P">previous</a> |
+          <a href="branches-help.html" title="branches"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="breezy-user-reference">
+<h1>Breezy User Reference<a class="headerlink" href="#breezy-user-reference" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="about-this-manual">
+<h2>About This Manual<a class="headerlink" href="#about-this-manual" title="Permalink to this headline">¶</a></h2>
+<p>This manual is generated from Breezy’s online help. To use
+the online help system, try the following commands.</p>
+<blockquote>
+<div><p>Introduction including a list of commonly used commands:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">help</span>
+</pre></div>
+</div>
+<p>List of topics and a summary of each:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">help</span> <span class="n">topics</span>
+</pre></div>
+</div>
+<p>List of commands and a summary of each:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">help</span> <span class="n">commands</span>
+</pre></div>
+</div>
+<p>More information about a particular topic or command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">help</span> <span class="n">topic</span><span class="o">-</span><span class="ow">or</span><span class="o">-</span><span class="n">command</span><span class="o">-</span><span class="n">name</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>The following web sites provide further information on Breezy:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Home page:</th><td class="field-body"><a class="reference external" href="http://www.breezy-vcs.org/">http://www.breezy-vcs.org/</a></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Breezy docs:</th><td class="field-body"><a class="reference external" href="http://www.breezy-vcs.org/doc/">http://www.breezy-vcs.org/doc/</a></td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Launchpad:</th><td class="field-body"><a class="reference external" href="https://launchpad.net/brz/">https://launchpad.net/brz/</a></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="concepts">
+<h2>Concepts<a class="headerlink" href="#concepts" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="branches-help.html">branches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="checkouts-help.html">Checkouts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="content-filters-help.html">Content Filters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="criss-cross-help.html">Criss-Cross</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diverged-branches-help.html">Diverged Branches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="eol-help.html">End of Line Conversion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats-help.html">Storage Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="patterns-help.html">Patterns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repositories-help.html">Repositories</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rules-help.html">Rules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="standalone-trees-help.html">Standalone Trees</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sync-for-reconfigure-help.html">Branches Out of Sync</a></li>
+<li class="toctree-l1"><a class="reference internal" href="working-trees-help.html">Working Trees</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="lists">
+<h2>Lists<a class="headerlink" href="#lists" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="authentication-help.html">Authentication Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bugs-help.html">Bug Tracker Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration-help.html">Configuration Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="conflict-types-help.html">Conflict Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="current-formats-help.html">Current Storage Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debug-flags-help.html">Debug Flags</a></li>
+<li class="toctree-l1"><a class="reference internal" href="env-variables-help.html">Environment Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="files-help.html">Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="global-options-help.html">Global Options</a></li>
+<li class="toctree-l1"><a class="reference internal" href="glossary-help.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hooks-help.html">Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="location-alias-help.html">Location aliases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="log-formats-help.html">Log Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="missing-extensions-help.html">Missing Extensions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="other-formats-help.html">Other Storage Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="revisionspec-help.html">Revision Identifiers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="standard-options-help.html">Standard Options</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status-flags-help.html">Status Flags</a></li>
+<li class="toctree-l1"><a class="reference internal" href="url-special-chars-help.html">Special character handling in URLs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="urlspec-help.html">URL Identifiers</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="commands">
+<h2>Commands<a class="headerlink" href="#commands" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="add-help.html">add</a></li>
+<li class="toctree-l1"><a class="reference internal" href="alias-help.html">alias</a></li>
+<li class="toctree-l1"><a class="reference internal" href="annotate-help.html">annotate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bind-help.html">bind</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bisect-help.html">bisect</a></li>
+<li class="toctree-l1"><a class="reference internal" href="branch-help.html">branch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="branches-help.html">branches</a></li>
+<li class="toctree-l1"><a class="reference internal" href="break-lock-help.html">break-lock</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cat-help.html">cat</a></li>
+<li class="toctree-l1"><a class="reference internal" href="check-help.html">check</a></li>
+<li class="toctree-l1"><a class="reference internal" href="checkout-help.html">checkout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clean-tree-help.html">clean-tree</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commit-help.html">commit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config-help.html">config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="conflicts-help.html">conflicts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cp-help.html">cp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deleted-help.html">deleted</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diff-help.html">diff</a></li>
+<li class="toctree-l1"><a class="reference internal" href="export-help.html">export</a></li>
+<li class="toctree-l1"><a class="reference internal" href="grep-help.html">grep</a></li>
+<li class="toctree-l1"><a class="reference internal" href="help-help.html">help</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ignore-help.html">ignore</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ignored-help.html">ignored</a></li>
+<li class="toctree-l1"><a class="reference internal" href="import-help.html">import</a></li>
+<li class="toctree-l1"><a class="reference internal" href="info-help.html">info</a></li>
+<li class="toctree-l1"><a class="reference internal" href="init-help.html">init</a></li>
+<li class="toctree-l1"><a class="reference internal" href="init-repository-help.html">init-repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="join-help.html">join</a></li>
+<li class="toctree-l1"><a class="reference internal" href="link-tree-help.html">link-tree</a></li>
+<li class="toctree-l1"><a class="reference internal" href="log-help.html">log</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ls-help.html">ls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="merge-help.html">merge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="missing-help.html">missing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mkdir-help.html">mkdir</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mv-help.html">mv</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nick-help.html">nick</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pack-help.html">pack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ping-help.html">ping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plugins-help.html">plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pull-help.html">pull</a></li>
+<li class="toctree-l1"><a class="reference internal" href="push-help.html">push</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reconcile-help.html">reconcile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reconfigure-help.html">reconfigure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="remerge-help.html">remerge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="remove-help.html">remove</a></li>
+<li class="toctree-l1"><a class="reference internal" href="remove-branch-help.html">remove-branch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="remove-tree-help.html">remove-tree</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renames-help.html">renames</a></li>
+<li class="toctree-l1"><a class="reference internal" href="resolve-help.html">resolve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="revert-help.html">revert</a></li>
+<li class="toctree-l1"><a class="reference internal" href="revno-help.html">revno</a></li>
+<li class="toctree-l1"><a class="reference internal" href="root-help.html">root</a></li>
+<li class="toctree-l1"><a class="reference internal" href="send-help.html">send</a></li>
+<li class="toctree-l1"><a class="reference internal" href="serve-help.html">serve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="shelve-help.html">shelve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sign-my-commits-help.html">sign-my-commits</a></li>
+<li class="toctree-l1"><a class="reference internal" href="split-help.html">split</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status-help.html">status</a></li>
+<li class="toctree-l1"><a class="reference internal" href="switch-help.html">switch</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tag-help.html">tag</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tags-help.html">tags</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testament-help.html">testament</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unbind-help.html">unbind</a></li>
+<li class="toctree-l1"><a class="reference internal" href="uncommit-help.html">uncommit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unshelve-help.html">unshelve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="update-help.html">update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="upgrade-help.html">upgrade</a></li>
+<li class="toctree-l1"><a class="reference internal" href="verify-signatures-help.html">verify-signatures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="version-help.html">version</a></li>
+<li class="toctree-l1"><a class="reference internal" href="version-info-help.html">version-info</a></li>
+<li class="toctree-l1"><a class="reference internal" href="view-help.html">view</a></li>
+<li class="toctree-l1"><a class="reference internal" href="whoami-help.html">whoami</a></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="../upgrade-guide/index.html" title="Breezy Upgrade Guide"
+              >previous</a> |
+            <a href="branches-help.html" title="branches"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/index.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

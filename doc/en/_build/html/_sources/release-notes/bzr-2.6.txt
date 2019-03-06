@@ -1,0 +1,364 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 2.6.0
+#########
+
+:Codename: Surprise
+:2.6.0: 2013-07-27
+
+This release marks the start of a new long-term-stable series. From here, we
+will only make bugfix releases on the 2.6 series (2.6.1, etc), while 2.7
+will become our new development series.
+
+This is a bugfix and polish release over the 2.5 series, with a large number
+of bugs fixed (~50 for the 2.6 series alone).
+
+All known fixed bugs are included here.
+
+Users are encouraged to upgrade from the other stable series.
+
+External Compatibility Breaks
+*****************************
+
+* ``bzr lp-propose --approve`` now also adds an "Approve" vote to the merge
+  proposal.  (Jonathan Lange)
+
+New Features
+************
+
+* ``bzr switch --store`` now stores uncommitted changes in the branch, and
+  restores them when switching back to the branch. (Aaron Bentley)
+
+* New option '--context' for 'bzr diff' command, to configure the amount of 
+  context (i.e. showing lines that have not changed).  Also available as the 
+  named parameter 'context_lines' to bzrlib.diff.internal_diff(). (Paul Nixon)
+
+* The 'grep' plugin is now shipped with bzr. (Jelmer Vernooij)
+
+* The 'ping' plugin is now shipped with bzr. (Jelmer Vernooij)
+
+Improvements
+************
+
+* ``bzr help env-variables`` now points users at ``bzr help configuration``
+  which has much more detailed information on the same stuff.
+  (Robert Collins)
+
+* ``bzr lp-find-proposal`` now only cares about the revision-id that is
+  specified, not the branch you use.  This was enabled by a new API call in
+  Launchpad's web service.  (Aaron Bentley)
+
+* Implement authentication.conf password obfuscation, the password_encoding
+  option can now be set to base64. (Florian Dorn)
+
+* Local configurations files (i.e. accessed on the local file system like
+  ``bazaar.conf`` and ``locations.conf``) are now shared, reducing the
+  number of IOs when querying a configuation option. (Vincent Ladeuil,
+  #832042)
+
+* ``bzr lp-propose --approve`` now correctly specifies the approved revision
+  and provides an "Approve" vote from the proposer, allowing for smoother
+  interaction with downstream merge tools.  (Jonathan Lange)
+
+Bug Fixes
+*********
+
+* Add a ``progress_bar`` configuration option defaulting to
+  ``BZR_PROGRESS_BAR``. This can be set in ``bazaar.conf`` or specified from
+  the command line with ``-Oprogress_bar=text``. (Vincent Ladeuil, #388275)
+
+* ``Authentication.Config`` now always returns unicode user names and passwords.
+  (Vincent Ladeuil, #514301)
+
+* Fixed a bug where the entire contents of ``/etc/mailname`` is read in.
+  We only want to read in the first line so that comments could be added
+  and would be ignored.
+  (Haw Loeung, #932515)
+
+* Fixed a syntax error in ``doc/ja/user-guide/http_smart_server.txt`` that
+  causes breakage with docutils 0.9.1.
+  (Vincent Ladeuil, Jelmer Vernooij, #1066307)
+
+* Support utf8 characters in platform names even without looking inside the
+  box (Fedora's Schrödinger's Cat).  
+  (Toshio Kuratomi, Vincent Ladeuil, #1195783)
+
+* Warn when ``--show-base`` is used for ``pull`` in a treeless branch
+  instead of failing. It's useless but harmless. (Vincent Ladeuil, #1022160)
+
+* When a missing referenced chk root error is encountered, bzr now suggests
+  running ``bzr reconcile --canonicalize-chks``. (Jelmer Vernooij)
+
+* When pushing a specific revision, create the new working tree at
+  that revision. (#484516, Neil Martinsen-Burrell)
+
+Documentation
+*************
+
+* Clarify ``bzr config`` usages especially around other option references
+  expansion. (Vincent Ladeuil, #996401)
+
+API Changes
+***********
+
+* None.
+
+Internals
+*********
+
+* Add __iter__ to http ResponseFile. (Jelmer Vernooij, #1184021)
+
+* The launchpad plugin now requires API 1.6.0 or later.  This version shipped
+  with Ubuntu 9.10.  (Aaron Bentley)
+
+* Better align with upstream gzip.py in tuned_gzip.py. We may lose a bit of
+  performance but that's for knit and weave formats and already partly
+  deprecated, better keep compatibility than failing fast ;)
+  (Vincent Ladeuil, #1116079)
+
+Testing
+*******
+
+* Fix test failures occurring only with LC_ALL=C, when prompting a user,
+  ``stderr`` encoding should be preferred over terminal encoding if
+  available. (Vincent Ladeuil, #1086209)
+
+bzr 2.6b2
+#########
+
+:2.6b2: 2012-09-10
+
+This is the second beta for the 2.6 series, leading up to a 2.6.0 release in
+August 2012.
+
+This release includes minor bug fixes.
+
+This release includes all bugs fixed in previous series known at the time of
+this release.
+
+Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.  Some plugins may need small updates to work
+with 2.6b2.
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+* New option ``--overwrite-tags`` for ``bzr pull`` and ``bzr push``.
+  (Jelmer Vernooij, #681792)
+
+Improvements
+************
+
+* Colocated branches can now be addressed using the 'co:NAME' rather than
+  the more complex 'file://.,branch=NAME'. (Jelmer Vernooij, #833665)
+
+Bug Fixes
+*********
+
+* "bzr missing" now shows tag names when displaying revision information.
+  (#559072, Neil Martinsen-Burrell)
+
+* Fix ``branch.conf`` saving when unlocking the branch for BranchFormat4.
+  (Vincent Ladeuil, #1020007)
+
+* Implement ``ResponseFile.readline`` and ``ReponseFile.tell``,
+  fixing some clones over HTTP. (Jelmer Vernooij, #963769)
+
+* Option values set on locked branches should be saved only when the branch
+  is finally unlocked. (Vincent Ladeuil, #948339)
+
+Documentation
+*************
+
+* Document "bzr lp-propose", "bzr register-branch" and
+  the other Launchpad plugin commands in bzr(1).
+  (Jelmer Vernooij, #843801, #163995)
+
+* Force format registration to avoid generate_docs.py traceback when the
+  registry is empty. (Vincent Ladeuil, #956860)
+
+* Generate ``ENVIRONMENT`` section in bzr(1) from known environment variable
+  list rather than hardcoding. (Jelmer Vernooij, #197618)
+
+
+API Changes
+***********
+
+* ``register_filter_stack_map`` and ``lazy_register_filter_stack_map``
+  are noew deprecated. Instead, use ``filter_stacks_registry.register``
+  and ``filter_stacks_registry.register_lazy``.
+  (Jelmer Vernooij)
+
+* Remove deprecated Branch.import_last_revision(). (Jelmer Vernooij)
+
+* Remove deprecated ``RepositoryFormat.register_format``.
+  (Jelmer Vernooij)
+
+* Remove deprecated Repository.get_ancestry(). (Jelmer Vernooij)
+
+* Remove deprecated Repository.iter_reverse_revision_history().
+  (Jelmer Vernooij)
+
+* The previously deprecated ``bzrlib.annotate.annotate_file`` function
+  has been removed. (Jelmer Vernooij)
+
+
+Internals
+*********
+
+None.
+
+Testing
+*******
+
+* Fix test failures by removing a remaining reference to ``features.sphinx``
+  which isn't needed anymore since we don't test the texinfo sphinx builder
+  anymore either. (Vincent Ladeuil)
+
+bzr 2.6b1
+#########
+
+:2.6b1: 2012-03-15
+
+This is the first beta for the 2.6 series, leading up to a 2.6.0 release in
+August 2012.
+
+This release includes ssl certificates verification from the urllib-based
+http implementation turned on by default, fixes some UI issues around
+colocated branches, documentation fixes and more.
+
+This release includes all bugs fixed in previous series known at the time of
+this release.
+
+Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.  Some plugins may need small updates to work
+with 2.6b1.
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+Improvements
+************
+
+* Access to HTTPS URLs now uses the urrllib implementation by default.
+  For the old pycurl-based implementation, specify ``https+pycurl://`` as
+  the URL scheme when accessing a HTTPS location.
+  (Jelmer Vernooij, #125055)
+
+* Add short option alias ``-N`` for ``--no-recurse``.
+  (Jelmer Vernooij, #945904)
+
+* Avoid 'Invalid range access' errors when whole files are retrieved with
+  transport.http.get() . (Vincent Ladeuil, #924746)
+
+* ``bzr rmbranch`` now supports removing colocated branches.
+  (Jelmer Vernooij, #920653)
+
+* ``bzr rmbranch`` no longer removes active branches unless ``--force``
+  is specified. (Jelmer Vernooij, #922953)
+
+* ``bzr verify-signatures`` now shows a progress bar.
+  (Jelmer Vernooij)
+
+* Two new command hooks, ``pre_command`` and ``post_command``,
+  provide notification before and after a command has been run.
+  (Brian de Alwis, Jelmer Vernooij)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* Fix ``bzr config`` display for ``RegistryOption`` values.
+  (Vincent Ladeuil, #930182)
+
+Documentation
+*************
+
+* Prevent lines of command descriptions starting with a dot to
+  accidentally be interpreted as a roff macro in bzr(1).
+  (Jelmer Vernooij, #711079)
+
+* Properly format apostrophes in manual page. (Jelmer Vernooij, #234771)
+
+API Changes
+***********
+
+* ``GPGStrategy.do_verifications`` has been deprecated.
+  (Jelmer Vernooij)
+
+* File ids in the ``Tree`` API can now be bytestring as previously,
+  or tuples of bytestrings.
+  (Jelmer Vernooij)
+
+* ``mail_client`` now accepts a configuration stack object rather than
+  an old style Config object. (Jelmer Vernooij)
+
+* New method ``Repository.verify_revision_signatures``.
+  (Jelmer Vernooij)
+
+* New configuration option class ``RegistryOption`` which is backed
+  onto a registry. (Jelmer Vernooij)
+
+* New convenience API method ``WorkingTree.get_config_stack``.
+  (Jelmer Vernooij)
+
+* Remove 
+  ``branch.PullResult.__int__`` deprecated in 2.3.0,
+  ``branch.PushResult.__int__`` deprecated in 2.3.0,
+  ``branch.BranchFormat.get_default_format`` deprecated in 2.4.0,
+  ``branch.BranchFormat.get_formats`` deprecated in 2.4.0,
+  ``branch.BranchFormat.set_default_format`` deprecated in 2.4.0,
+  ``branch.BranchFormat.register_format`` deprecated in 2.4.0,
+  ``branch.BranchFormat.unregister_format`` deprecated in 2.4.0,
+  ``bzrdir.BzrDir.generate_backup_name`` deprecated in 2.3.0,
+  ``bzrdir.BzrProber.register_bzrdir_format`` deprecated in 2.4.0,
+  ``bzrdir.BzrProber.unregister_bzrdir_format`` deprecated in 2.4.0,
+  ``config.Config.get_editor`` deprecated in 2.4.0,
+  ``hooks.known_hooks_key_to_parent_and_attribute`` deprecated in 2.3,
+  ``hooks.Hooks.create_hook`` deprecated in 2.4,
+  ``inventory.Inventory.__contains__`` deprecated in 2.4.0,
+  ``merge.Merge3Merger.scalar_three_way`` deprecated in 2.2.0,
+  ``merge.Merge3Merger.fix_root`` deprecated in 2.4.0,
+  ``transform.TreeTransformBase.has_named_child`` deprecated in 2.3.0,
+  ``transform.get_backup_name`` deprecated in 2.3.0,
+  ``transform._get_backup_name`` deprecated in 2.3.0,
+  ``workingtree.WorkingTreeFormat.get_default_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.register_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.register_extra_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.unregister_extra_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.get_formats`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.set_default_format`` deprecated in 2.4.0,
+  ``workingtree.WorkingTreeFormat.unregister_format`` deprecated in 2.4.0,
+  (Vincent Ladeuil)
+
+* Remove deprecated ``Branch.set_revision_history`` and
+  ``Branch.revision_history`` methods and the ``set_rh``
+  hook on ``Branch``. (Jelmer Vernooij)
+
+Internals
+*********
+
+* ``Tree.path2id`` now once again accepts a list of path elements
+  in addition to a path. (Jelmer Vernooij)
+
+* Turn config option expansion on by default. The only options for which
+  this should be disabled are templates which should already have used
+  conf.get(option, expand=False) or conf.get_user_option(option,
+  expand=False). (Vincent Ladeuil)
+
+..
+   vim: tw=74 ft=rst ff=unix

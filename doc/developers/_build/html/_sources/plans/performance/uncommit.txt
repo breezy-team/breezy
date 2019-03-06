@@ -1,0 +1,21 @@
+Uncommit Performance Notes
+==========================
+
+Specification of uncommit
+-------------------------
+
+``uncommit`` removes revisions from the head of a branch.  (By default, only
+the very latest revision is removed, but optionally more can be taken.)
+Uncommit does not affect the repository (garbage collection is a separate
+step and not done by default).  The working tree is not logically
+modified (revert is a different operation), except as described below
+about merges.
+
+Uncommit can be performed on either a branch or a working tree (and
+implicitly its branch.)
+
+If the uncommitted revisions includes one or more merges, after the
+uncommit those revisions are in the working tree's list of pending merges,
+because their tree changes are still present in the tree.
+
+For a bound branch, uncommit fails unless the local branch is up to date.

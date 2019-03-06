@@ -1,0 +1,15 @@
+renames
+=======
+
+:Purpose: Show list of renamed files.
+:Usage:   brz renames [DIR]
+
+:Options:
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:See also: :doc:`status <status-help>`
+
+

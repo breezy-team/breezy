@@ -1,0 +1,91 @@
+GnuPG Signatures
+=============================
+
+Reasons to Sign Your Repository
+--------------------------------
+
+Breezy can sign revisions using GnuPG, a Free Software implementation of the
+OpenPGP digital signature format.  By signing commits a person wanting to
+make use of a branch can be confident where the code came from, assuming the
+GnuPG keys used can be verified.  This could for example prevent worry about
+compromised code in the case where a server hosting Breezy branches has been
+hacked into.  It could also be used to verify that all code is written by a
+select group of people, such as if contributor agreements are needed.
+
+Signatures are passed around with commits during branch, push, merge and other
+operations.
+
+Setting up GnuPG
+----------------
+
+There are many guides to creating a digital signature key with GnuPG.  See
+for example the `GnuPG Handbook
+<http://www.gnupg.org/gph/en/manual.html#AEN26>`_ or the `Launchpad Wiki
+<https://help.launchpad.net/YourAccount/ImportingYourPGPKey>`_.
+
+
+Signing Commits
+---------------
+
+To sign commits as they are made turn on the ``create_signatures``
+configuration option in your ``breezy.conf`` or ``locations.conf`` file::
+
+  create_signatures = always
+
+When you next make a commit it will ask for the pass phrase for your GnuPG key. 
+If you want GnuPG to remember your password ensure you have ``gnupg-agent``
+installed.
+
+To sign previous commits to a branch use ``sign-my-commits``.  This will go
+through all revisions in the branch and sign any which match your
+commit name.  You can also pass the name of a contributor to ``sign-my-commits``
+to sign someone else's commits or if your GnuPG key does not match your Breezy
+name and e-mail::
+
+  brz sign-my-commits . "Amy Pond <amy@example.com>"
+
+It will not sign commits which already have a signature.
+
+To sign a single commit or a range of commits use the (hidden) command
+``re-sign``::
+
+  brz re-sign -r 24
+
+``re-sign`` is also useful to change an existing signature.
+
+By default Breezy will tell GnuPG to use a key with the same user
+identity as the one set with ``whoami``.  To override this set
+``gpg_signing_key`` in breezy.conf or locations.conf.
+
+  ``gpg_signing_key=DD4D5088``
+
+  ``gpg_signing_key=amy@example.com``
+
+Verifying Commits
+-----------------
+
+Signatures can be verified with the ``brz verify-signatures`` command.  By
+default this will check all commits in the branch and notify that all commits
+are signed by known trusted signatures.  If not all commits have trusted
+signatures it will give a summary of the number of commits which are invalid,
+having missing keys or are not signed.
+
+The ``verify-signatures`` command can be given a comma separated list of key
+patters to specify a list of acceptable keys.  It can also take a range of
+commits to verify in the current branch.  Finally using the verbose option will
+list each key that is valid or authors for commits which failed::
+
+  $brz verify-signatures -kamy -v -r 1..5
+  1 commit with valid signature
+    Amy Pond <amy@example.com> signed 4 commits
+  0 commits with unknown keys
+  1 commit not valid
+    1 commit by author The Doctor <doctor@example.com>
+  0 commits not signed
+
+Work in Progress
+----------------
+
+There is still a number of digital signature related features which
+are hoped to be added to Breezy soon.  These include brz explorer
+integration and setting branches to require signatures.

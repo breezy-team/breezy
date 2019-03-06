@@ -1,0 +1,113 @@
+.. This document describes _how_ to do use case analyses and what we want
+.. to get out of them; for the specific cases see the files referenced by
+.. performance-roadmap.txt
+
+Analysing a specific use case
+=============================
+
+The analysis of a use case needs to provide as outputs:
+ * The functional requirements that the use case has to satisfy.
+ * The file level operations and access patterns that will give the best
+   performance.
+ * A low friction API which will allow the use case to be implemented.
+ * The release of bzr (and thus the supported features) for which the analysis
+   was performed. The feature set of bzr defines the access patterns and data
+   required to implement any use case. So when we add features, their design
+   changes the requirements for the parts of the system they alter, so we need
+   to re-analyse use cases when bzr's feature set changes. If future plans are
+   considered in the analysis with the intention of avoiding rework, these
+   should also be mentioned.
+
+Performing the analysis
+=======================
+
+The analysis needs to be able to define the characteristics of the
+involved disk storage and APIs. That means we need to examine the data
+required for the operation, in what order it is required, on both the
+read and write sides, and how that needs to be presented to be
+consistent with our layering.
+
+As a quick example: 'annotation of a file requires the file id looked up
+from the tree, the basis revision id from the tree, and then the text of
+that fileid-revisionid pair along with the creating revision id
+allocated to each line, and the dotted revision number of each of those
+revision ids.' All three of our key domain objects are involved here,
+but we haven't defined any characteristics of the api or disk facilities
+yet. We could then do that by saying something like 'the file-id lookup
+should degrade gracefully as trees become huge. The tree basis id should
+be constant time. Retrieval of the annotated text should be roughly
+constant for any text of the same size regardless of the number of
+revisions contributing to its content. Mapping of the revision ids to
+dotted revnos could be done as the text is retrieved, but it's completely
+fine to post-process the annotated text to obtain dotted-revnos.'
+
+What factors should be considered?
+==================================
+
+Obviously, those that will make for an extremely fast system :). There
+are many possible factors, but the ones I think are most interesting to
+design with are:
+
+- baseline overhead:
+
+   - The time to get bzr ready to begin the use case.
+
+- scaling: how does performance change when any of the follow aspects
+  of the system are ratcheted massively up or down:
+
+   - number of files/dirs/symlinks/subtrees in a tree (both working and
+     revision trees)
+   - size of any particular file
+   - number of elements within a single directory
+   - length of symlinks
+   - number of changes to any file over time
+     (subordinately also the number of merges of the file)
+   - number of commits in the ancestry of a branch
+     (subordinately also the number of merges)
+   - number of revisions in a repository
+   - number of fileids in a repository
+   - number of ghosts in a given graph (revision or per-file)
+   - number of branches in a repository
+   - number of concurrent readers for a tree/branch/repository
+   - number of concurrent writers for objects that support that.
+   - latency to perform file operations (e.g. slow disks, network file systems,
+     our VFS layer and FTP/SFTP/etc)
+   - bandwidth to the disk storage
+   - latency to perform semantic operations (hpss specific)
+   - bandwidth when performing semantic operations.
+
+- locality of reference: If an operation requires data that is located
+  within a small region at any point, we often get better performance
+  than with an implementation of the same operation that requires the
+  same amount of data but with a lower locality of reference. It's
+  fairly tricky to add locality of reference after the fact, so I think
+  its worth considering up front.
+
+Using these factors, to the annotate example we can add that its
+reasonable to do two 'semantic' round trips to the local tree, one to
+the branch object, and two to the repository. In file-operation level
+measurements, in an ideal world there would be no more than one round
+trip for each semantic operation. What there must not be is one round
+trip per revision involved in the revisionid->dotted number mapping, nor
+per each revision id attributed to a line in the text.
+
+Not all the items mentioned above are created equal. The analysis should
+include the parameters considered and the common case values for each - the
+optimisation should be around the common cases not around the exceptions.
+
+For instance, we have a smart server now; file level operations are relatively
+low latency and we should use that as the common case. At this point we intend
+to preserve the performance of the dumb protocol networking, but focus on
+improving network performance via the smart server and thus escape the
+file-level operation latency considerations.
+
+Many performance problems only become visible when changing the scaling knobs
+upwards to large trees. On small trees it's our baseline performance that drives
+incremental improvements; on large trees it's the amount of processing per item
+that drives performance. A significant goal therefore is to keep the amount of
+data to be processed under control. Ideally we can scale in a sublinear fashion
+for all operations, but we MUST NOT scale even linearly for operations that
+invoke a latency multiplier. For example, reading a file on disk requires
+finding the inode for the file, then the block with the data and returning the
+contents. Due to directory grouping logic we pay a massive price to read files
+if we do not group the reads of files within the same directory.

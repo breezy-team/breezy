@@ -1,0 +1,210 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Security &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Back-up and Restore" href="backup.html" />
+    <link rel="prev" title="Integration with Other Tools" href="integration.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="integration.html" title="Integration with Other Tools"
+             accesskey="P">previous</a> |
+          <a href="backup.html" title="Back-up and Restore"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="security">
+<h1>Security<a class="headerlink" href="#security" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="authentication">
+<h2>Authentication<a class="headerlink" href="#authentication" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar’s philosophy on authentication is that it is best to reuse existing
+authentication technologies, rather than trying to reinvent potentially
+complicated methods for securely identifying users.  As such, we describe two
+such uses of existing software for authentication purposes.</p>
+<div class="section" id="using-ssh">
+<h3>Using SSH<a class="headerlink" href="#using-ssh" title="Permalink to this headline">¶</a></h3>
+<p>SSH is a very well tested and featureful technology for authenticating users.
+For situations where all of the developers have local accounts on the server,
+it is trivial to provide secure, authenticated <code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code> access.  One
+concern with this method is that it may not be desirable to grant shell access
+to developers on the server machine.  In this case, Bazaar provides
+<code class="docutils literal notranslate"><span class="pre">bzr_ssh_path_limiter</span></code>, a script that runs the Bazaar smart server on the
+server machine at a specified path, and allows no other access.</p>
+<p>To set it up, specify:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">command</span><span class="o">=</span><span class="s2">&quot;/path/to/bzr_ssh_path_limiter &lt;path&gt;&quot;</span> <span class="o">&lt;</span><span class="n">typical</span> <span class="n">key</span> <span class="n">line</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>in each user’s <code class="docutils literal notranslate"><span class="pre">~/.ssh/authorized_keys</span></code> file on the server, where <cite>&lt;path&gt;</cite> is
+the path to limit access to (and its subdirectories).  For more documentation
+on the syntax of the <code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code> file see the documentation of the SSH
+server.  This will only permit Bazaar access to the specified path and no other
+SSH access for that user.</p>
+<p>If it isn’t desired to give each user an account on the server, multiple
+private/public key pairs can be included under one single SSH account (say
+sshuser) in the <code class="docutils literal notranslate"><span class="pre">~sshuser/.ssh/authorized_keys</span></code> file and then each developer
+can be given their own private key.  They can then use
+<code class="docutils literal notranslate"><span class="pre">bzr+ssh://sshuser&#64;server.example.com/</span></code> URLs to access the server.</p>
+</div>
+<div class="section" id="using-http-authentication-methods">
+<h3>Using HTTP authentication methods<a class="headerlink" href="#using-http-authentication-methods" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="access-control">
+<h2>Access Control<a class="headerlink" href="#access-control" title="Permalink to this headline">¶</a></h2>
+<p>Many projects need fine-grained access control on who may read and write to
+which branches.  Incorporating these controls into OS-level user accounts
+using groups and filesystem permissions can be difficult or even not permitted
+in some instances.  Bazaar provides a script called <code class="docutils literal notranslate"><span class="pre">bzr_access</span></code> that can be
+used to provide access control based on usernames, with authentication
+performed by SSH.  To do so, we need to set up private-key authentication in
+SSH.  This can be done using a single SSH user on the server, or one account
+per user.  The idea is to use the SSH’s <code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code> file to specify
+the <code class="docutils literal notranslate"><span class="pre">bzr_access</span></code> script as the only command that can be run by a user
+identified by a particular key pair.</p>
+<p>First, you will need to generate a private/public key pair for each user who
+will be accessing the repository.  The private key should be distributed to
+the user and the public key will be needed on the server to identify the user.
+On the server, in the SSH user’s <code class="docutils literal notranslate"><span class="pre">~/.ssh/authorized_keys</span></code> file, use the
+following line for each repository user and the corresponding public key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">command</span><span class="o">=</span><span class="s2">&quot;/path/to/bzr_access /path/to/bzr /path/to/repository &lt;username&gt;&quot;</span><span class="p">,</span><span class="n">no</span><span class="o">-</span> <span class="n">port</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">X11</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">agent</span><span class="o">-</span><span class="n">forwarding</span> <span class="n">ssh</span><span class="o">-&lt;</span><span class="nb">type</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">key</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>where <cite>&lt;key&gt;</cite> is the (possibly very long) public key, <cite>&lt;type&gt;</cite> is the type of
+SSH key and <cite>&lt;username&gt;</cite> is the username to associate with that public key.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">bzr_access</span></code> script obtains its configuration information from the file
+<code class="docutils literal notranslate"><span class="pre">/path/to/repository/bzr_access.conf</span></code>.  This file should not be placed under
+version control in a branch located at <code class="docutils literal notranslate"><span class="pre">/path/to/repository</span></code> since that
+would allow anyone with access to the repository to change the access control
+rules.  The <code class="docutils literal notranslate"><span class="pre">bzr_access.conf</span></code> file is in a simple INI-style format with
+sections defined by <code class="docutils literal notranslate"><span class="pre">[groups]</span></code> and <code class="docutils literal notranslate"><span class="pre">[/]</span></code>.  The options in the <code class="docutils literal notranslate"><span class="pre">[groups]</span></code>
+section are the names of groups and the values of those options should be the
+usernames in that group.  Inside the <code class="docutils literal notranslate"><span class="pre">[/]</span></code> section, the options are
+usernames or group names (prefixed with <code class="docutils literal notranslate"><span class="pre">&#64;</span></code>) and the values are either
+<code class="docutils literal notranslate"><span class="pre">rw</span></code>, <code class="docutils literal notranslate"><span class="pre">r</span></code> or nothing, representing read-write access, read-only access or
+no access at all.  A sample of <code class="docutils literal notranslate"><span class="pre">bzr_access.conf</span></code> could be:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">groups</span><span class="p">]</span>
+<span class="n">admins</span> <span class="o">=</span> <span class="n">alpha</span>
+<span class="n">devels</span> <span class="o">=</span> <span class="n">beta</span><span class="p">,</span> <span class="n">gamma</span><span class="p">,</span> <span class="n">delta</span>
+
+<span class="p">[</span><span class="o">/</span><span class="p">]</span>
+<span class="nd">@admins</span> <span class="o">=</span> <span class="n">rw</span>
+<span class="nd">@devels</span> <span class="o">=</span> <span class="n">r</span>
+<span class="n">upsilon</span> <span class="o">=</span>
+</pre></div>
+</div>
+<p>where the user whose key is associated with <cite>alpha</cite> would have read-write
+access, the users <cite>beta</cite>, <cite>gamma</cite> and <cite>delta</cite> would have read-only access and
+user <cite>upsilon</cite> would not be able to access any branches under
+<code class="docutils literal notranslate"><span class="pre">/path/to/repository</span></code>.</p>
+<div class="section" id="additional-considerations-with-bzr-access">
+<h3>Additional Considerations with <code class="docutils literal notranslate"><span class="pre">bzr_access</span></code><a class="headerlink" href="#additional-considerations-with-bzr-access" title="Permalink to this headline">¶</a></h3>
+<p>As currently written, <code class="docutils literal notranslate"><span class="pre">bzr_access</span></code> only allows each public key to be
+associated with a single repository location.  This means that if developers
+need to access two or more different repositories, then each developer will
+need to have two or more private keys for SSH and be able to select between
+them (see <code class="docutils literal notranslate"><span class="pre">man</span> <span class="pre">ssh</span></code> for more information on configuring multiple private
+keys).</p>
+<p>Also, each repository can only have a single configuration file, with access
+configured for all branches in the repository.  This means that if different
+access rules are needed for different projects, then those projects must be in
+different repositories.  This then necessitates the use of multiple private
+keys as just described.</p>
+<p>Finally, as noted above under <a class="reference internal" href="#using-ssh">Using SSH</a> all of the public keys may be
+included in the <code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code> file of a single user on the server.  It
+is also possible to use a single private/public key pair for all of the
+developers, but this only allows a single username for access control to the
+repository (since the username is associated with the public key in
+<code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code>.  While this is certainly possible it seems to defeat the
+purpose of fine-grained access control, although it does provide the same
+limited SSH access as that described above.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="integration.html" title="Integration with Other Tools"
+              >previous</a> |
+            <a href="backup.html" title="Back-up and Restore"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/admin-guide/security.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

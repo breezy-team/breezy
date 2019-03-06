@@ -1,0 +1,79 @@
+status
+======
+
+:Purpose: Display status summary.
+:Usage:   brz status [FILE...]
+
+:Options:
+  -c ARG, --change=ARG  Select changes introduced by the specified revision.
+                        See also "help revisionspec".
+  -h, --help            Show help message.
+  --no-classify         Do not mark object type using indicator.
+  --no-pending          Don't show pending merges.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  -S, --short           Use short status indicators.
+  --show-ids            Show internal object ids.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+  -V, --versioned       Only show versioned files.
+
+:Description:
+  This reports on versioned and unknown files, reporting them
+  grouped by state.  Possible states are:
+  
+  added
+      Versioned in the working copy but not in the previous revision.
+  
+  removed
+      Versioned in the previous revision but removed or deleted
+      in the working copy.
+  
+  renamed
+      Path of this file changed from the previous revision;
+      the text may also have changed.  This includes files whose
+      parent directory was renamed.
+  
+  modified
+      Text has changed since the previous revision.
+  
+  kind changed
+      File kind has been changed (e.g. from file to directory).
+  
+  unknown
+      Not versioned and not matching an ignore pattern.
+  
+  Additionally for directories, symlinks and files with a changed
+  executable bit, Breezy indicates their type using a trailing
+  character: '/', '@' or '*' respectively. These decorations can be
+  disabled using the '--no-classify' option.
+  
+  To see ignored files use 'brz ignored'.  For details on the
+  changes to file texts, use 'brz diff'.
+  
+  Note that --short or -S gives status flags for each item, similar
+  to Subversion's status command. To get output similar to svn -q,
+  use brz status -SV.
+  
+  If no arguments are specified, the status of the entire working
+  directory is shown.  Otherwise, only the status of the specified
+  files or directories is reported.  If a directory is given, status
+  is reported for everything inside that directory.
+  
+  Before merges are committed, the pending merge tip revisions are
+  shown. To see all pending merge revisions, use the -v option.
+  To skip the display of pending merge information altogether, use
+  the no-pending option or specify a file/directory.
+  
+  To compare the working directory to a specific revision, pass a
+  single revision to the revision argument.
+  
+  To see which files have changed in a specific revision, or between
+  two revisions, pass a revision range to the revision argument.
+  This will produce the same results as calling 'brz diff --summarize'.
+
+:Aliases:  st, stat
+:See also: :doc:`diff <diff-help>`, :doc:`revert <revert-help>`, :doc:`status-flags <status-flags-help>`
+
+

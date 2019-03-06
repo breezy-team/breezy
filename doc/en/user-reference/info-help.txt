@@ -1,0 +1,40 @@
+info
+====
+
+:Purpose: Show information about a working tree, branch or repository.
+:Usage:   brz info [LOCATION]
+
+:Options:
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  This command will show all known locations and formats associated to the
+  tree, branch or repository.
+  
+  In verbose mode, statistical information is included with each report.
+  To see extended statistic information, use a verbosity level of 2 or
+  higher by specifying the verbose option multiple times, e.g. -vv.
+  
+  Branches and working trees will also report any missing revisions.
+
+:Examples:
+  Display information on the format and related locations:
+
+    brz info
+
+  Display the above together with extended format information and
+  basic statistics (like the number of files in the working tree and
+  number of revisions in the branch and repository):
+
+    brz info -v
+
+  Display the above together with number of committers to the branch:
+
+    brz info -vv
+
+:See also: :doc:`repositories <repositories-help>`, :doc:`revno <revno-help>`, :doc:`working-trees <working-trees-help>`
+
+

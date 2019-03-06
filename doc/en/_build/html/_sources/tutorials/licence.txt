@@ -1,0 +1,10 @@
+Licence
+===============
+
+Copyright 2005-2011 Canonical Ltd.
+Copyright 2018 Breezy Developers
+
+Breezy is free software, and you
+may use, modify and redistribute both Breezy and this document under
+the terms of the GNU General Public License version 2 or later.  See
+<http://www.gnu.org/licenses/>.

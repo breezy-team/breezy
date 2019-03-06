@@ -1,0 +1,242 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-1-10">
+<h2>bzr 1.10<a class="headerlink" href="#bzr-1-10" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2008-12-05</td>
+</tr>
+</tbody>
+</table>
+<p>Bazaar 1.10 has several performance improvements for copying revisions
+(especially for small updates to large projects).  There has also been a
+significant amount of effort in polishing stacked branches.  The commands
+<code class="docutils literal notranslate"><span class="pre">shelve</span></code> and <code class="docutils literal notranslate"><span class="pre">unshelve</span></code> have become core commands, with an improved
+implementation.</p>
+<p>The only changes versus bzr-1.10rc1 are bugfixes for stacked branches.</p>
+<div class="section" id="bug-fixes">
+<h3>bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Don’t set a pack write cache size from RepoFetcher, because the
+cache is not coherent with reads and causes ShortReadvErrors.
+This reverses the change that fixed #294479.
+(Martin Pool, #303856)</li>
+<li>Properly handle when a revision can be inserted as a delta versus
+when it needs to be expanded to a fulltext for stacked branches.
+There was a bug involving merge revisions. As a method to help
+prevent future difficulties, also make stacked fetches sort
+topologically. (John Arbash Meinel, #304841)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-1-10rc1">
+<h2>bzr 1.10rc1<a class="headerlink" href="#bzr-1-10rc1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2008-11-28</td>
+</tr>
+</tbody>
+</table>
+<p>This release of Bazaar focuses on performance improvements when pushing
+and pulling revisions, both locally and to remote networks.  The popular
+<code class="docutils literal notranslate"><span class="pre">shelve</span></code> and <code class="docutils literal notranslate"><span class="pre">unshelve</span></code> commands, used to interactively revert and
+restore work in progress, have been merged from bzrtools into the bzr
+core.  There are also bug fixes for portability, and for stacked branches.</p>
+<div class="section" id="new-features">
+<h3>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>New <code class="docutils literal notranslate"><span class="pre">commit_message_template</span></code> hook that is called by the commit
+code to generate a template commit message. (Jelmer Vernooij)</li>
+<li>New <cite>shelve</cite> and <cite>unshelve</cite> commands allow undoing and redoing changes.
+(Aaron Bentley)</li>
+</ul>
+</div>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">(Remote)Branch.copy_content_into</span></code> no longer generates the full revision
+history just to set the last revision info.
+(Andrew Bennetts, John Arbash Meinel)</li>
+<li>Fetches between formats with different serializers (such as
+pack-0.92-subtree and 1.9-rich-root) are faster now.  This is due to
+operating on batches of 100 revisions at time rather than
+one-by-one.  (Andrew Bennetts, John Arbash Meinel)</li>
+<li>Search index files corresponding to pack files we’ve already used
+before searching others, because they are more likely to have the
+keys we’re looking for.  This reduces the number of iix and tix
+files accessed when pushing 1 new revision, for instance.
+(John Arbash Meinel)</li>
+<li>Signatures to transfer are calculated more efficiently in
+<code class="docutils literal notranslate"><span class="pre">item_keys_introduced_by</span></code>.  (Andrew Bennetts, John Arbash Meinel)</li>
+<li>The generic fetch code can once again copy revisions and signatures
+without extracting them completely to fulltexts and then serializing
+them back down into byte strings. This is a significant performance
+improvement when fetching from a stacked branch.
+(John Arbash Meinel, #300289)</li>
+<li>When making a large readv() request over <code class="docutils literal notranslate"><span class="pre">bzr+ssh</span></code>, break up the
+request into more manageable chunks. Because the RPC is not yet able
+to stream, this helps keep us from buffering too much information at
+once. (John Arbash Meinel)</li>
+</ul>
+</div>
+<div class="section" id="id1">
+<h3>Bug Fixes<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Better message when the user needs to set their Launchpad ID.
+(Martin Pool, #289148)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span> <span class="pre">--local</span></code> doesn’t access the master branch anymore.
+This fixes a regression introduced in 1.9.  (Marius Kruger, #299313)</li>
+<li>Don’t call the system <code class="docutils literal notranslate"><span class="pre">chdir()</span></code> with an empty path. Sun OS seems
+to give an error in that case.  Also, don’t count on <code class="docutils literal notranslate"><span class="pre">getcwd()</span></code>
+being able to allocate a new buffer, which is a gnu extension.
+(John Arbash Meinel, Martin Pool, Harry Hirsch, #297831)</li>
+<li>Don’t crash when requesting log –forward &lt;file&gt; for a revision range
+starting with a dotted revno.
+(Vincent Ladeuil, #300055)</li>
+<li>Don’t create text deltas spanning stacked repositories; this could
+cause “Revision X not present in Y” when later accessing them.
+(Martin Pool, #288751)</li>
+<li>Pack repositories are now able to reload the pack listing and retry
+the current operation if another action causes the data to be
+repacked.  (John Arbash Meinel, #153786)</li>
+<li>PermissionDenied errors from smart servers no longer cause
+“PermissionDenied: “None”” on the client.
+(Andrew Bennetts, #299254)</li>
+<li>Pushing to a stacked pack repository now batches writes, the same
+way writes are batched to ordinary pack repository.  This makes
+pushing to a stacked branch over the network much faster.
+(Andrew Bennetts, #294479)</li>
+<li>TooManyConcurrentRequests no longer occur when a fetch fails and
+tries to abort a write group.  This allows the root cause (e.g. a
+network interruption) to be reported.  (Andrew Bennetts, #297014)</li>
+<li>RemoteRepository.get_parent_map now uses fallback repositories.
+(Aaron Bentley, #297991?, #293679?)</li>
+</ul>
+</div>
+<div class="section" id="api-changes">
+<h3>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">CommitBuilder</span></code> now validates the strings it will be committing,
+to ensure that they do not have characters that will not be properly
+round-tripped. For now, it just checks for characters that are
+invalid in the XML form. (John Arbash Meinel, #295161)</li>
+<li>Constructor parameters for NewPack (internal to pack repositories)
+have changed incompatibly.</li>
+<li><code class="docutils literal notranslate"><span class="pre">Repository.abort_write_group</span></code> now accepts an optional
+<code class="docutils literal notranslate"><span class="pre">suppress_errors</span></code> flag.  Repository implementations that override
+<code class="docutils literal notranslate"><span class="pre">abort_write_group</span></code> will need to be updated to accept the new
+argument.  Subclasses that only override <code class="docutils literal notranslate"><span class="pre">_abort_write_group</span></code>
+don’t need to change.</li>
+<li>Transport implementations must provide copy_tree_to_transport.  A default
+implementation is provided for Transport subclasses.</li>
+</ul>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">selftest</span></code> now fails if no doctests are found in a module
+that’s expected to have them.  (Martin Pool)</li>
+<li>Doctests now only report the first failure.  (Martin Pool)</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-1.10.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

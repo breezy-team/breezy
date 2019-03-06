@@ -1,0 +1,123 @@
+Core concepts
+=============
+
+A simple user model
+-------------------
+
+To use Breezy you need to understand four core concepts:
+
+* **Revision** - a snapshot of the files you're working with.
+
+* **Working tree** - the directory containing your version-controlled
+  files and sub-directories.
+
+* **Branch** - an ordered set of revisions that describe the history of a
+  set of files.
+
+* **Repository** - a store of revisions.
+
+Let's look at each in more detail.
+
+Revision
+--------
+
+A revision is a *snapshot* of the state of a tree of files and directories,
+including their content and shape. A revision also has some metadata
+associated with it, including:
+
+* Who committed it
+* When it was committed
+* A commit message
+* Parent revisions from which it was derived
+
+Revisions are immutable and can be globally, uniquely identified
+by a *revision-id*. An example revision-id is::
+
+ pqm@pqm.ubuntu.com-20071129184101-u9506rihe4zbzyyz
+
+Revision-ids are generated at commit time or, for imports from other
+systems, at the time of import. While revision-ids are necessary
+for internal use and external tool integration, branch-specific
+*revision numbers* are the preferred interface for humans.
+
+Revision numbers are dotted decimal identifiers like 1, 42 and 2977.1.59
+that trace a path through the revision number graph for a branch.
+Revision numbers are generally shorter than revision-ids and,
+within a single branch, can be compared with each other to get a sense
+of their relationship. For example, revision 10 is the mainline (see below)
+revision immediately after revision 9. Revision numbers
+are generated on the fly when commands are executing, because they
+depend on which revision is the tip (i.e. most recent revision)
+in the branch.
+
+See `Specifying revisions <specifying_revisions.html>`_ in the appendices
+for a closer look at the numerous ways that revisions and ranges of
+revisions can be specified in Breezy, and `Understanding Revision Numbers
+<zen.html#understanding-revision-numbers>`_ for a more detailed
+description of revision numbering.
+
+.. *TODO: add diagram*
+
+Working Tree
+------------
+
+A working tree is a *version-controlled directory* holding files the user
+can edit. A working tree is associated with a *branch*.
+
+Many commands use the working tree as their context, e.g. ``commit`` makes
+a new revision using the current content of files in the working tree.
+
+.. *TODO: add diagram*
+
+Branch
+------
+
+In the simplest case, a branch is an *ordered series of revisions*.
+The last revision is known as the *tip*.
+
+Branches may split apart and be *merged* back together, forming a
+*graph* of revisions. Technically, the graph shows directed relationships
+(between parent and child revisions) and there are no loops, so
+you may hear some people refer to it as a *directed acyclic graph* or DAG.
+
+If this name sounds scary, don't worry. The important things
+to remember are:
+
+* The primary line of development within the DAG is called
+  the *mainline*, *trunk*, or simply the *left hand side* (LHS).
+
+* A branch might have other lines of development and if it does,
+  these other lines of development begin at some point and end at
+  another point.
+
+.. *TODO: add diagram*
+
+Repository
+----------
+
+A repository is simply a *store of revisions*. In the simplest case,
+each branch has its own repository. In other cases, it makes sense for
+branches to share a repository in order to optimize disk usage.
+
+.. *TODO: add diagram*
+
+Putting the concepts together
+-----------------------------
+
+Once you have grasped the concepts above, the various ways of using Breezy
+should become easier to understand. The simplest way of using Breezy is
+to use a *standalone tree*, which has a working tree, branch, and repository
+all in a single location. Other common scenarios include:
+
+* `Shared repositories <branching_a_project.html#a-reminder-about-shared-repositories>`_
+  - working tree and branch are colocated, but the repository is in a higher level
+  directory.
+
+* `Stacked branches <stacked.html>`_ - branch stores just its
+  unique revisions, using its parent's repository for common revisions.
+
+* `Lightweight checkouts <using_checkouts.html#getting-a-lightweight-checkout>`_
+  - branch is stored in a different location to the working tree.
+
+The best way to use Breezy, however, depends on your needs. Let's take a
+look at some common workflows next.

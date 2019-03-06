@@ -1,0 +1,15 @@
+Web browsing
+============
+
+Overview
+--------
+
+There are a range of options available for providing a web view of a
+Breezy repository, the main one being Loggerhead. The homepage of Loggerhead
+can be found at https://launchpad.net/loggerhead.
+
+A list of alternative web viewers including download links can be found on
+http://wiki.bazaar.canonical.com/WebInterface.
+
+Note: If your project is hosted or mirrored on Launchpad,
+Loggerhead code browsing is provided as part of the service.

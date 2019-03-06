@@ -1,0 +1,208 @@
+=========================
+Breezy Windows EC2 Server
+=========================
+
+We have an Amazon EC2 virtual machine called Desolation_ for
+building Windows packages and general testing on Windows.  As of
+2009-02-19, this is just experimental and this is a draft specification,
+but we aim to use it for the production Windows installer build of 1.13 in
+March.
+
+See also:
+
+* `Breezy Developer Documentation Catalog <index.html>`_.
+
+
+.. _Desolation: http://en.wikipedia.org/wiki/Desolation_Island
+
+
+Goals
+=====
+
+* The instance is only running (and incurring charges) when it's needed
+  for testing or packaging.
+
+* It can be started or stopped by anyone on the team using a
+  straightforward script.
+
+* Multiple people can get into the same instance at the same time, e.g.
+  if one person needs to pass work on to some one else.
+
+* We keep snapshot of the OS and tool chain so that we can roll back if
+  we need to.
+
+* branches and similar information are kept on stable storage that
+  survives rollbacks of the OS state, and that can be backed up.
+
+Later on we may try automated Windows testing in a similar setup.
+
+
+Approach
+========
+
+The working disk and the AMI images are stored in one person's account for
+billing purposes.
+
+Ideally we want to give other people access to run this machine without
+giving full access to the account.  I'm not sure if that's feasible.  If
+it's not, we might need to allow people to launch the image within their
+own account; this may be problematic if the shared volume is already in
+use by someone else.
+
+I don't think it's possible to have an EBS that's shared across accounts,
+and they can't be attached to multiple running instances.  So for now it's
+probably best to just ignore the concept and store the working data on the
+instance's local storage, and to copy things up e.g. to Launchpad as
+required.
+
+On this machine, ``C:`` should be used only for the Windows system files,
+``D:`` for installed programs and working directories, and other drive
+letters can be used later for mounting EBS storage if desired.
+
+Through ``ec2-modify-image-attribute`` we can allow nominated users to
+access an existing image.  We need to have their AWS opaque ID.
+
+Through ``ec2-bundle-image`` we can make a new snapshot at any point,
+which will be stored into the current user's S3 account.
+
+We'll (probably) have one shared account for running builds which is also
+an administrator for ease of installing software.
+
+You do need to have an RSA keypair to get the initial password for a
+Windows machine, even though you can't use it to log in later.
+``ec2-get-password`` takes the full path to the private key to obtain the
+password from Amazon, and ``ec2-add-keypair`` creates a named keypair at
+Amazon and returns the private path. One keypair is all that is needed.
+This is distinct from the account identifier - likely due to the different
+toolchains in use (the keypairs are used for unix SSH keys, and I (Robert)
+suspect a rather unix friendly core at Amazon).
+Once a custom image is made with a saved password, you can skip using
+``ec2-get-password`` (which is only needed for Windows anyway).
+
+It would be nice if rdesktop could use private key authentication but
+apparently not.
+
+Should check how the Launchpad ec2test scripts work.
+
+
+
+Procedures
+==========
+
+Preparation
+-----------
+
+* Be in the brz core team.  If you are interested in helping with
+  Windows packaging, testing or development just ask.
+
+* Install the
+  `Amazon EC2 API tools`_ (needs-packaging `bug 330930`_)
+
+* Create an Amazon Web Services account, sign up for S3 and EC2, and do
+  the various steps to create authentication devices.
+
+* Create a private key and certificate for yourself.
+  Check these environment variables are set and exported, e.g. by setting
+  them in the file ``~/.aws``.  Make sure the files are private.::
+
+    export EC2_PRIVATE_KEY=~/.ec2/pk-XXXXXX.pem
+    export EC2_CERT=~/.ec2/cert-XXXXXX.pem
+    export EC2_HOME=~/build/ec2-api-tools-1.3-30349
+    export AWS_SECRET_ACCESS_KEY=XXXXXXXXX
+    export AWS_ACCESS_KEY_ID=XXXXXXXXXXX
+    export EC2_KEYPAIR_NAME=XXXXXXXXX
+    export PATH=$PATH:$EC2_HOME/bin
+    export JAVA_HOME=/usr/lib/jvm/java-6-openjdk
+    ssh-add ~/.ec2/id_rsa
+
+  You can now '. ~/.aws' to get the ec2 commands available.
+
+* (Unix images only) run ec2-add-keypair SOMENAME, e.g. 'bzr'. Put the
+  result (minus the first line) somewhere like ~/.ec2/id_rsa and chmod go-rw.
+
+* A useful Unix image is `ami-bdfe19d4`_, Eric Hammonds 64-bit Ubuntu image.
+
+* Install the rdesktop client, to actually access the machine.
+
+* Possibly read some of the `EC2 documentation`_ for background.
+   
+.. _`bug 330930`: https://bugs.launchpad.net/ubuntu/+bug/330930 
+.. _`Amazon EC2 API tools`: 
+     http://developer.amazonwebservices.com/connect/entry.jspa?externalID=368&categoryID=88
+.. _`EC2 documentation`: http://aws.amazon.com/
+.. _`ami-bdfe19d4`:
+   http://developer.amazonwebservices.com/connect/entry.jspa?externalID=1762&categoryID=101
+
+* Create a security group for your that allows rdesktop access and icmp with::
+
+    ec2-add-group desolation-group -d 'bzr win32 build machine'
+    ec2-authorize desolation-group -p 3389 -s 1.2.3.4/32
+    ec2-authorize desolation-group -t -1:-1 -P icmp
+
+  Add your public IP there.  You can repeat that command to allow others
+  in.
+
+
+To start up an instance
+-----------------------
+
+1. Get the right AMI image ID from another developer.
+
+1. Start the instance::
+
+     ec2-run-instances $image_id -g desolation-group
+
+   This will print out some information including the image id, something
+   like ``i-31a74258``.
+
+1. Actually starting the machine will take a few minutes.  Once it's in
+   the *running* state, get the machine's public IP with ::
+
+     ec2-describe-instances
+
+1. and then connect ::
+
+     rdesktop -g 1200x850 -u Administrator $machine_ip
+
+Don't forget to shut it down when you're done, and check with
+``ec2-describe-instances`` that it did terminate.
+
+
+To save a system snapshot as an image
+-------------------------------------
+
+1. Bundle the current state.  *Doing this will reboot the machine.*
+   You need to choose a unique s3 bucket name,
+   typically based on a domain or email address, which can contain
+   any number of images.  You also need a name unique within the bucket
+   for this image, like ``desolation-vs2008-20090219``.  And finally
+   it needs your AWS S3 access key and secret key, which should be set in
+   ``~/.aws``::
+
+      ec2-bundle-instance -b ec2.sourcefrog.net \
+          -p desolation-vs2008-2009021 \
+          -o "$AWS_ACCESS_KEY_ID" \
+          -w "$AWS_SECRET_ACCESS_KEY"
+
+1.  This will take several minutes:  You can check progress with ::
+
+      ec2-describe-bundle-tasks
+
+1. Register the files as an image, e.g.::
+
+      ec2-register ec2.sourcefrog.net/desolation-vs2008-2009021
+
+    This will give you an AMI id for the image.
+
+1. Give access to other team members identified by their Amazon account id::
+
+      ec2-modify-image-attributes $ami_id -l -a 123412341234
+
+
+Management console (useful!)
+----------------------------
+
+https://console.aws.amazon.com/ec2/home
+
+..
+   vim: ft=rst tw=74 ai

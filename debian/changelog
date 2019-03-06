@@ -1,3 +1,9 @@
+breezy (3.0.0-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 06 Mar 2019 21:44:24 +0000
+
 breezy (3.0.0~bzr7290-2) unstable; urgency=medium
 
   * Add patch 21_lp_set_description: fix setting of descriptions on

@@ -1,0 +1,66 @@
+bisect
+======
+
+:Purpose: Find an interesting commit using a binary search.
+:Usage:   brz bisect SUBCOMMAND [ARGS...]
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  -o ARG, --output=ARG  Write log to this file.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  Bisecting, in a nutshell, is a way to find the commit at which
+  some testable change was made, such as the introduction of a bug
+  or feature.  By identifying a version which did not have the
+  interesting change and a later version which did, a developer
+  can test for the presence of the change at various points in
+  the history, eventually ending up at the precise commit when
+  the change was first introduced.
+  
+  This command uses subcommands to implement the search, each
+  of which changes the state of the bisection.  The
+  subcommands are:
+  
+  brz bisect start
+      Start a bisect, possibly clearing out a previous bisect.
+  
+  brz bisect yes [-r rev]
+      The specified revision (or the current revision, if not given)
+      has the characteristic we're looking for,
+  
+  brz bisect no [-r rev]
+      The specified revision (or the current revision, if not given)
+      does not have the characteristic we're looking for,
+  
+  brz bisect move -r rev
+      Switch to a different revision manually.  Use if the bisect
+      algorithm chooses a revision that is not suitable.  Try to
+      move as little as possible.
+  
+  brz bisect reset
+      Clear out a bisection in progress.
+  
+  brz bisect log [-o file]
+      Output a log of the current bisection to standard output, or
+      to the specified file.
+  
+  brz bisect replay <logfile>
+      Replay a previously-saved bisect log, forgetting any bisection
+      that might be in progress.
+  
+  brz bisect run <script>
+      Bisect automatically using <script> to determine 'yes' or 'no'.
+      <script> should exit with:
+         0 for yes
+         125 for unknown (like build failed so we could not test)
+         anything else for no
+
+
+

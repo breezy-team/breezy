@@ -1,0 +1,139 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Diverged Branches &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="End of Line Conversion" href="eol-help.html" />
+    <link rel="prev" title="Criss-Cross" href="criss-cross-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="criss-cross-help.html" title="Criss-Cross"
+             accesskey="P">previous</a> |
+          <a href="eol-help.html" title="End of Line Conversion"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="diverged-branches">
+<h1>Diverged Branches<a class="headerlink" href="#diverged-branches" title="Permalink to this headline">¶</a></h1>
+<p>When Bazaar tries to push one branch onto another, it requires that the
+destination branch must be ready to receive the source branch.  If this isn’t
+the case, then we say that the branches have <code class="docutils literal notranslate"><span class="pre">diverged</span></code>.  Branches are
+considered diverged if the destination branch’s most recent commit is one that
+has not been merged (directly or indirectly) by the source branch.  To recover
+from diverged branches, one must merge the missing revisions into the source
+branch.</p>
+<p>This situation commonly arises when using a centralized workflow with local
+commits.  If someone else has committed new work to the mainline since your
+last pull and you have local commits that have not yet been pushed to the
+mainline, then your local branch and the mainline have diverged.</p>
+<div class="section" id="discovering-what-has-diverged">
+<h2>Discovering What Has Diverged<a class="headerlink" href="#discovering-what-has-diverged" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">missing</span></code> command is used to find out what revisions are in another
+branch that are not present in the current branch, and vice-versa.  It shows a
+summary of  which extra revisions exist in each branch.  If you want to see the
+precise effects of those revisions, you can use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span> <span class="pre">--old=other_branch</span></code>
+to show the differences between other_branch and your current branch.</p>
+</div>
+<div class="section" id="a-solution">
+<h2>A Solution<a class="headerlink" href="#a-solution" title="Permalink to this headline">¶</a></h2>
+<p>The solution is to merge the revisions from the mainline into your local
+branch.  To do so, use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">merge</span></code> to get the new revisions from the
+mainline.  This merge may result in conflicts if the other developer’s changes
+overlap with your changes.  These conflicts should be resolved before
+continuing. After any conflicts have been resolved, or even if there were no
+conflicts, Bazaar requires that you explicitly commit these new revisions
+to your local branch.  This requirement gives you an opportunity to test the
+resulting working tree for correctness, since the merged revisions could have
+made arbitrary changes.  After testing, you should commit the merge using
+<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">commit</span></code>.  This clears up the diverged branches situation.  Your local
+branch can now be pushed to the mainline.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="criss-cross-help.html" title="Criss-Cross"
+              >previous</a> |
+            <a href="eol-help.html" title="End of Line Conversion"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/diverged-branches-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

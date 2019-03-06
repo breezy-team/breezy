@@ -1,0 +1,215 @@
+===============================
+Setting Up A Windows Build Host
+===============================
+
+This document describes the steps taken to set up a Windows build host. It is
+intended to be step-by-step instructions of what packages need to be installed,
+where they can be gotten from, and how they are configured.
+
+
+Baseline
+========
+
+This was written as a step-by-step as I set up the Amazon EC2 'desolation'
+instance. This was based on an Amazon Windows 2003 instance. Also note that for
+Amazon EC2, all programs were installed into the "C:" drive, as the "D:" drive
+is essentially ``/tmp`` and is not preserved between launched instances.
+
+
+Install Packages
+================
+
+1) Download cygwin's setup.exe from http://www.cygwin.com
+   At present the current version is 1.5.25-15. This is used primarily to
+   install the build scripts and gcc-mingw. Note that we explicitly *don't*
+   install cygwin's python or Breezy package. As we are only interested in
+   running the native version of bzr. For information on running the cygwin
+   port of bzr, look elsewhere.
+
+   Probably not all of these packages are necessary, but they make life easier.
+
+   a) gcc-mingw32
+   b) make
+   c) openssh
+   d) rsync
+   e) vim
+   f) wget
+   g) zip
+   h) unzip
+   i) patch
+   j) gettext-devel # brings 'msgfmt'
+
+
+2) Download the supported versions of python from http://www.python.org
+
+   a) python 2.6.4
+   b) python 2.5.4 http://www.python.org/ftp/python/2.5.4/python-2.5.4.msi
+   c) python 2.4.4 (there is no Windows installer for 2.4.5 or 2.4.6)
+      http://www.python.org/ftp/python/2.4.4/python-2.4.4.msi
+
+   Note that for Amazon EC2, all of these were installed int
+
+3) Configure 'distutils' for the compiler that you will be using. For python
+   2.4 and 2.5 we use gcc-mingw32, for 2.6 we use Visual Studio 2008.
+
+   Edit ``D:\Python25\Lib\disutils\distutils.cfg`` (you have to create the
+   file). You want to add a section like::
+
+     [build]
+     compiler = mingw32
+
+   This also requires 'fixing' the cygwin gcc installation so that distutils
+   can find it. Specifically, it knows to look for ``gcc.exe`` however, the
+   latest versions of cygwin start using "alternatives" and making ``gcc`` just
+   a symlink.
+
+   You also need to add ``C:\cygwin\bin`` and ``C:\cygwin\lib`` into your
+   environment path. This is generally done with::
+
+        Right Click My Computer / Properties / Advanced / Environment Variables
+        System Variables / Select 'PATH' / Edit
+
+4) Download important python libraries. At the moment, the official Windows
+   all-in-one installer is built using python 2.5. We will likely soon switch
+   to python 2.6.
+
+   a) http://pypi.python.org/pypi/setuptools
+
+      Installing this first should make it easier to install some of the other
+      tools. To install something using easy install, it is generally best to
+      open up a ``cmd.exe`` shell (*not* a cygwin shell) and do::
+
+        cd C:\Python25
+        python.exe Scripts\easy_install-script.py -Z -O1 PACKAGE
+
+      The '-Z' tells it to install as a regular directory. This generally works
+      better with py2exe.
+
+   b) pywin32 http://sourceforge.net/projects/pywin32/files/
+   c) easy_install paramiko
+      This will also bring in PyCrypto and compile it, so it is important to
+      have configured step (3) correctly.
+   d) easy_install Pyrex    (or Cython)
+      Note, you should probably install pyrex for all versions of python. All
+      of them need to run 'setup.py bdist_wininst' and so it is good to have it
+      build automatically, rather than setting up an explicit build order based
+      on which one has pyrex.
+   e) easy_install cogapp
+   f) install py2exe (easy_install failed)
+      http://sourceforge.net/projects/py2exe/files/
+   g) easy_install docutils
+   h) Install PyQt
+      http://www.riverbankcomputing.co.uk/software/pyqt/download
+
+      Currently they only seem to offer PyQt 4.4.3 for python 2.5 and PyQt
+      4.6.1 for python 2.6. They generally don't make it easy to install old
+      versions of PyQt.
+   i) Install pyreadline
+      https://launchpad.net/pyreadline/+download
+   j) easy_install pygments
+   k) Patch pycrypto, so that it supports older Windows installs. (see bugs
+      #248522, #272791, #497733). The direct link to the patch is:
+      http://launchpadlibrarian.net/16133025/win32_clock.patch
+      This may not end up necessary w/ pycrypto 2.1, especially if paramiko can
+      be taught to use the new functionality (avoiding the warning).
+   l) easy_install testtools
+
+5) Get Pageant, not strictly necessary, but it is a pretty good ssh-agent for
+   Windows, and paramiko knows how to use keys from Pageant.
+
+   http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html
+
+   Note that you probably want to set the environment variable
+   ``BZR_SSH=paramiko`` at this time. Otherwise it will try to use the
+   ``ssh.exe`` that it finds on your PATH (as configured in step 3), and
+   cygwin's openssh does *not* know how to access Pageant.
+
+   I usually get the 'all-in-one' installer, but only because it is easier. You
+   only really need ``pageant.exe`` and possibly ``puttygen.exe``.
+
+   If you do this, you'll probably also want to install a shortcut to
+   ``pageant.exe`` in Start / Programs / Startup so that it always starts when
+   you log in (though you still have to manually add your SSH keys.)
+
+   Note that on the Amazon EC2 machine, I'm having problems with temp files
+   being created without the permission for the current user to actually read
+   them. They seem to be owned by ``Administrator`` rather than by
+   ``Administrators``.
+
+6) Install bzr. Usually it is easiest to just get the latest all-in-one
+   installer from https://launchpad.net/bzr/+download
+
+7) Install INNOSetup from:
+   http://www.jrsoftware.org/isdl.php
+
+   After installing, you'll want to add ``C:\Program Files\Inno Setup 5`` to
+   your PATH.
+
+8) Fix distutils for the specific version of gcc. Distutils in python2.4.4 has
+   a bug where it assumes version strings have only 3 digits. The fix is to
+   just change one '?' in the regex into a '*'::
+
+        --- version.py	2009-11-05 14:41:47.497212900 -0800
+        +++ version.py	2009-11-05 14:39:57.684712900 -0800
+        @@ -97,7 +97,7 @@
+             in the distutils documentation.
+             """
+
+        -    version_re = re.compile(r'^(\d+) \. (\d+) (\. (\d+))? ([ab](\d+))?$',
+        +    version_re = re.compile(r'^(\d+) \. (\d+) (\. (\d+))* ([ab](\d+))?$',
+                                     re.VERBOSE)
+
+
+9) If you want to build in the source tree, you need the zlib dll and
+   associated libraries, put somewhere on your path. The buildout routines grab
+   this directly and add it to the build path, but that doesn't work for
+   ``setup.py``.
+   http://www.zlib.net/zlib123-dll.zip
+
+   I usually download and extract this to something like ``C:\local\`` so that
+   I end up with a ``C:\local\lib`` and ``C:\local\include`` directory. I then
+   modify the ``distutils.cfg`` file to tell the compiler where to find these
+   headers and libraries::
+
+      [build_ext]
+      include-dirs = C:/local/include
+      library-dirs = C:/local/lib
+
+   Note that you'll probably want to put the ``zlib1.dll`` into your path. You
+   can:
+
+     1) Add ``C:\local`` to your PATH variable in
+        "My Computer/Properties/Advanced/Environment Variables"
+     2) More logically, move ``zlib1.dll`` to either 'lib' or 'bin'
+        subdirectories and add that.
+     3) Copy it to ``C:\Windows\``.
+
+   I recommend 3, mostly because lots of apps will want to use zlib1.dll in the
+   long run. (You may already have it.)
+
+10) Install Visual Studio 2008 Professional
+    http://www.microsoft.com/downloads/details.aspx?FamilyId=83C3A1EC-ED72-4A79-8961-25635DB0192B&displaylang=en
+
+    This is a 3GB DVD iso image. You can mount it directly with Microsofts
+    iso mounting utility:
+    http://download.microsoft.com/download/7/b/6/7b6abd84-7841-4978-96f5-bd58df02efa2/winxpvirtualcdcontrolpanel_21.exe
+
+    You need at least Windows XP (which introduced direct iso support, I
+    believe.)
+
+    Note that there is a Service Pack 1 for Visual Studio. The ISO can be
+    downloaded here:
+    http://www.microsoft.com/downloads/thankyou.aspx?familyId=27673c47-b3b5-4c67-bd99-84e525b5ce61&displayLang=en
+
+    However, on EC2, there isn't enough room on C: to actually run the
+    installer. You need approx 6GB of free disk space. And EC2 only gives your
+    10GB and Windows itself takes up about 5GB. So we are currently running
+    stock VS 2008 with no service packs. (Even installing VS 2008 to a
+    different drive doesn't leave enough room on C: to run the upgrader.)
+
+    When installing on EC2, it seems their 2003 Server comes with a Visual
+    Studio key already supplied. There is also the possibility of using Visual
+    Studio Express Edition, but it is currently unable to compile TortoiseBzr.
+
+..
+   vim: ft=rst tw=79 et

@@ -1,0 +1,1353 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Breezy System Administrator’s Guide &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="breezy-system-administrator-s-guide">
+<h1><a class="toc-backref" href="#id10">Breezy System Administrator’s Guide</a><a class="headerlink" href="#breezy-system-administrator-s-guide" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#breezy-system-administrator-s-guide" id="id10">Breezy System Administrator’s Guide</a><ul>
+<li><a class="reference internal" href="#introduction" id="id11">Introduction</a><ul>
+<li><a class="reference internal" href="#scope-of-this-guide" id="id12">Scope of this guide</a></li>
+<li><a class="reference internal" href="#what-you-need-to-run-a-bazaar-server" id="id13">What you need to run a Bazaar server</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#simple-setups" id="id14">Simple Setups</a><ul>
+<li><a class="reference internal" href="#smart-server" id="id15">Smart server</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#other-setups" id="id16">Other Setups</a><ul>
+<li><a class="reference internal" href="#dumb-servers" id="id17">Dumb servers</a></li>
+<li><a class="reference internal" href="#smart-server-over-http-s" id="id18">Smart server over HTTP(S)</a></li>
+<li><a class="reference internal" href="#direct-smart-server-access" id="id19">Direct Smart Server Access</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id3" id="id20">Migration</a><ul>
+<li><a class="reference internal" href="#fast-import" id="id21">Fast Import</a></li>
+<li><a class="reference internal" href="#subversion-conversion" id="id22">Subversion Conversion</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#extending-bazaar-with-hooks-and-plugins" id="id23">Extending Bazaar with Hooks and Plugins</a><ul>
+<li><a class="reference internal" href="#email-notification" id="id24">Email Notification</a></li>
+<li><a class="reference internal" href="#feed-generation" id="id25">Feed Generation</a></li>
+<li><a class="reference internal" href="#mirroring" id="id26">Mirroring</a></li>
+<li><a class="reference internal" href="#other-useful-plugins" id="id27">Other Useful Plugins</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#web-based-code-browsing" id="id28">Web-based code browsing</a><ul>
+<li><a class="reference internal" href="#loggerhead" id="id29">Loggerhead</a></li>
+<li><a class="reference internal" href="#other-web-interfaces" id="id30">Other web interfaces</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#integration-with-other-tools" id="id31">Integration with Other Tools</a><ul>
+<li><a class="reference internal" href="#patch-queue-manager-pqm" id="id32">Patch Queue Manager (PQM)</a></li>
+<li><a class="reference internal" href="#bug-trackers" id="id33">Bug Trackers</a></li>
+<li><a class="reference internal" href="#continuous-integration-tools" id="id34">Continuous Integration Tools</a></li>
+<li><a class="reference internal" href="#bundle-buggy" id="id35">Bundle Buggy</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#security" id="id36">Security</a><ul>
+<li><a class="reference internal" href="#authentication" id="id37">Authentication</a></li>
+<li><a class="reference internal" href="#access-control" id="id38">Access Control</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id7" id="id39">Back-up and Restore</a><ul>
+<li><a class="reference internal" href="#filesystem-backups" id="id40">Filesystem Backups</a></li>
+<li><a class="reference internal" href="#bazaar-as-its-own-backup" id="id41">Bazaar as its own backup</a></li>
+<li><a class="reference internal" href="#restoring-from-backups" id="id42">Restoring from Backups</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#upgrades" id="id43">Upgrades</a><ul>
+<li><a class="reference internal" href="#software-upgrades" id="id44">Software upgrades</a></li>
+<li><a class="reference internal" href="#disk-format-upgrades" id="id45">Disk format upgrades</a></li>
+<li><a class="reference internal" href="#plugin-upgrades" id="id46">Plugin upgrades</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#advanced-topics" id="id47">Advanced Topics</a><ul>
+<li><a class="reference internal" href="#system-monitoring" id="id48">System Monitoring</a></li>
+<li><a class="reference internal" href="#capacity-planning-tips" id="id49">Capacity Planning Tips</a></li>
+<li><a class="reference internal" href="#clustering" id="id50">Clustering</a></li>
+<li><a class="reference internal" href="#multi-site-setups" id="id51">Multi-site Setups</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#licence" id="id52">Licence</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="introduction">
+<h2><a class="toc-backref" href="#id11">Introduction</a><a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>Welcome to the Bazaar Version Control System’s guide for system
+administrators.  Bazaar is a flexible system that provides many possible
+options for serving projects in ways that will hopefully meet your needs.  If
+you have requirements that are not met by the current state of the Bazaar
+ecosystem, please let us know at <a class="reference external" href="mailto:bazaar&#37;&#52;&#48;lists&#46;canonical&#46;com">bazaar<span>&#64;</span>lists<span>&#46;</span>canonical<span>&#46;</span>com</a> or on Launchpad at
+<a class="reference external" href="https://launchpad.net/bzr">https://launchpad.net/bzr</a>.</p>
+<div class="section" id="scope-of-this-guide">
+<h3><a class="toc-backref" href="#id12">Scope of this guide</a><a class="headerlink" href="#scope-of-this-guide" title="Permalink to this headline">¶</a></h3>
+<p>In this guide, we will discuss various techniques for making Bazaar projects
+available, migrating from other Version Control Systems, browsing code over
+the Web and combining Bazaar with other tools.  In many of these categories,
+multiple options exist and we will try to explains the costs and benefits of
+the various options.</p>
+<p>The intended audience for this guide is the individuals who administer the
+computers that will do the serving.  Much of the configuration that we will
+discuss requires administrator privileges and we will not necessarily indicate
+every point that those privileges are needed.  That said, reading this guide
+can also be very helpful for those who are interested in communicating to the
+system administrators about the requirements for making full use of Bazaar.</p>
+</div>
+<div class="section" id="what-you-need-to-run-a-bazaar-server">
+<h3><a class="toc-backref" href="#id13">What you need to run a Bazaar server</a><a class="headerlink" href="#what-you-need-to-run-a-bazaar-server" title="Permalink to this headline">¶</a></h3>
+<p>Where possible, we will discuss both Unix (including GNU/Linux) and Windows server
+environments.  For the purposes of this document, we will consider Mac OS X as
+a type of Unix.</p>
+<p>In general, Bazaar requires only <a class="reference external" href="http://www.python.org/">Python</a> 2.6 or greater to run.
+If you would <em>optionally</em>
+like to be able to access branches using SFTP, you need <a class="reference external" href="http://www.lag.net/paramiko/">paramiko and
+pycrypto</a>.</p>
+<p>For maximum performance, Bazaar can make use of compiled versions of some
+critical components of the code.  Pure Python alternatives exist for all of
+these components, but they may be considerably slower.  To compile these
+extensions, you need a C compiler and the relevant header files from the
+Python package.  On GNU/Linux, these may be in a separate package.  Other
+operating systems should have the required headers installed by default.</p>
+<p>If you are installing a development version of Bazaar, rather than a released
+version, you will need <a class="reference external" href="http://www.cosc.canterbury.ac.nz/greg.ewing/python/Pyrex/">Pyrex</a> to create the C extensions.  The release
+tarballs already have the Pyrex-created C files.</p>
+</div>
+</div>
+<div class="section" id="simple-setups">
+<h2><a class="toc-backref" href="#id14">Simple Setups</a><a class="headerlink" href="#simple-setups" title="Permalink to this headline">¶</a></h2>
+<p>Consider the following simple scenario where we will be serving Bazaar branches
+that live on a single server.  Those branches are in the subdirectories of
+<code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code> (or <code class="docutils literal notranslate"><span class="pre">C:\bzr</span></code>) and they will all be related to a single project
+called “ProjectX”.  ProjectX will have a trunk branch and at least one feature
+branch.  As we get further, we will consider other scenarios, but this will be
+a sufficiently motivating example.</p>
+<div class="section" id="smart-server">
+<h3><a class="toc-backref" href="#id15">Smart server</a><a class="headerlink" href="#smart-server" title="Permalink to this headline">¶</a></h3>
+<p>The simplest possible setup for providing outside access to the branches on
+the server uses Bazaar’s built-in smart server tunneled over <a class="reference external" href="http://www.openssh.org/">SSH</a> so
+that people who can access your server using SSH can have read and write
+access to branches on the server.  This setup uses the authentication
+mechanisms of SSH including private keys, and the access control mechanisms of
+the server’s operating system.  In particular, using groups on the server, it
+is possible to provide different access privileges to different groups of
+developers.</p>
+<div class="section" id="setup">
+<h4>Setup<a class="headerlink" href="#setup" title="Permalink to this headline">¶</a></h4>
+<p>There is no setup required for this on the server, apart from having Bazaar
+installed and SSH access available to your developers.  Using SSH
+configuration options it is possible to restrict developers from using
+anything <em>but</em> Bazaar on the server via SSH, and to limit what part of the
+file system they can access.</p>
+</div>
+<div class="section" id="client">
+<h4>Client<a class="headerlink" href="#client" title="Permalink to this headline">¶</a></h4>
+<p>Clients can access the branches using URLs with the <code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code> prefix.  For
+example, to get a local copy of the ProjectX trunk, a developer could do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz branch bzr+ssh://server.example.com/srv/bzr/projectx/trunk projectx
+</pre></div>
+</div>
+<p>If the developers have write access to the <code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx</span></code> directory, then
+they can create new branches themselves using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz branch bzr+ssh://server.example.com/srv/bzr/projectx/trunk \
+bzr+ssh://server.example.com/srv/bzr/projectx/feature-gui
+</pre></div>
+</div>
+<p>Of course, if this isn’t desired, then developers should not have write access
+to the <code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx</span></code> directory.</p>
+</div>
+<div class="section" id="further-configuration">
+<h4>Further Configuration<a class="headerlink" href="#further-configuration" title="Permalink to this headline">¶</a></h4>
+<p>For a project with multiple branches that are all related, it is best to use a
+shared repository to hold all of the branches.  To set this up, do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /srv/bzr
+$ brz init-repo --no-trees projectx
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">--no-trees</span></code> option saves space by not creating a copy of the working
+files on the server’s filesystem.  Then, any branch created under
+<code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx</span></code> (see <a class="reference external" href="migration.html">Migration</a> for some ways to do
+this) will share storage space, which is particularly helpful for branches that
+have many revisions in common, such as a project trunk and its feature
+branches.</p>
+<p>If Bazaar is not installed on the user’s path or not specified in the SSH
+configuration, then a path can be specified from the client with the
+<code class="docutils literal notranslate"><span class="pre">BZR_REMOTE_PATH</span></code> environment variable.  For example, if the Bazaar executable
+is installed in <code class="docutils literal notranslate"><span class="pre">/usr/local/bzr-2.0/bin/bzr</span></code>, then a developer could use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz_REMOTE_PATH=/usr/local/bzr-2.0/bin/bzr bzr info \
+bzr+ssh://server.example.com/srv/bzr/proectx/trunk
+</pre></div>
+</div>
+<p>to get information about the trunk branch.  The remote path can also be
+specified in Bazaar’s configuration files for a particular location.  See
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">configuration</span></code> for more details.</p>
+<p>If developers have home directories on the server, they can use <code class="docutils literal notranslate"><span class="pre">/~/</span></code> in
+URLs to refer to their home directory.  They can also use <code class="docutils literal notranslate"><span class="pre">/~username/</span></code> to
+refer to the home directory of user <code class="docutils literal notranslate"><span class="pre">username</span></code>.  For example, if there are two
+developers <code class="docutils literal notranslate"><span class="pre">alice</span></code> and <code class="docutils literal notranslate"><span class="pre">bob</span></code>, then Bob could use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log bzr+ssh://server.example.com/~/fix-1023
+</pre></div>
+</div>
+<p>to refer to one of his bug fix branches and:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log bzr+ssh://server.example.com/~alice/fix-2047
+</pre></div>
+</div>
+<p>to refer to one of Alice’s branches. <a class="footnote-reference" href="#id2" id="id1">[1]</a></p>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>The version of Bazaar installed on the server must be at least 2.1.0b1
+or newer to support <code class="docutils literal notranslate"><span class="pre">/~/</span></code> in bzr+ssh URLs.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="using-a-restricted-ssh-account-to-host-multiple-users-and-repositories">
+<h4>Using a restricted SSH account to host multiple users and repositories<a class="headerlink" href="#using-a-restricted-ssh-account-to-host-multiple-users-and-repositories" title="Permalink to this headline">¶</a></h4>
+<p>Once you have a bzr+ssh setup using a shared repository you may want to share
+that repository among a small set of developers.  Using shared SSH access enables
+you to complete this task without any complicated setup or ongoing management.</p>
+<p>To allow multiple users to access Bazaar over ssh we can allow ssh access to a common
+account that only allows users to run a specific command.  Using a single account
+simplifies deployment as no permissions management issues exist for the filesystem.
+All users are the same user at the server level.  Bazaar labels the commits with
+each users details so seperate server accounts are not required.</p>
+<p>To enable this configuration we update the <code class="docutils literal notranslate"><span class="pre">~/.ssh/authorized_keys</span></code> to include
+command restrictions for connecting users.</p>
+<p>In these examples the user will be called <code class="docutils literal notranslate"><span class="pre">bzruser</span></code>.</p>
+<p>The following example shows how a single line is configured:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">command</span><span class="o">=</span><span class="s2">&quot;bzr serve --inet --allow-writes --directory=/srv/bzr&quot;</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">agent</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">port</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">pty</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">user</span><span class="o">-</span><span class="n">rc</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">X11</span><span class="o">-</span><span class="n">forwarding</span> <span class="n">ssh</span><span class="o">-</span><span class="n">rsa</span> <span class="n">AAA</span><span class="o">...=</span> <span class="n">my</span> <span class="n">bzr</span> <span class="n">key</span>
+</pre></div>
+</div>
+<p>This command allows the user to access only bzr and disables other SSH use.  Write
+access to each repository in the directory <code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code> has been granted with <code class="docutils literal notranslate"><span class="pre">--allow-writes</span></code>
+and can be removed for individual users that should only require read access.  The root of
+the directory structure can be altered for each user to allow them to see only a subet
+of the repositories available.  The example below assumes two seperate repositories
+for Alice and Bob.  This method will not allow you to restrict access to part
+of a repository, you may only restrict access to a single part of the directory structure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">command</span><span class="o">=</span><span class="s2">&quot;bzr serve --inet --allow-writes --directory=/srv/bzr/alice/&quot;</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">agent</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">port</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">pty</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">user</span><span class="o">-</span><span class="n">rc</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">X11</span><span class="o">-</span><span class="n">forwarding</span> <span class="n">ssh</span><span class="o">-</span><span class="n">rsa</span> <span class="n">AAA</span><span class="o">...=</span> <span class="n">Alice</span><span class="s1">&#39;s SSH Key</span>
+<span class="n">command</span><span class="o">=</span><span class="s2">&quot;bzr serve --inet --allow-writes --directory=/srv/bzr/bob/&quot;</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">agent</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">port</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">pty</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">user</span><span class="o">-</span><span class="n">rc</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">X11</span><span class="o">-</span><span class="n">forwarding</span> <span class="n">ssh</span><span class="o">-</span><span class="n">rsa</span> <span class="n">AAA</span><span class="o">...=</span> <span class="n">Bob</span><span class="s1">&#39;s SSH Key</span>
+<span class="n">command</span><span class="o">=</span><span class="s2">&quot;bzr serve --inet --allow-writes --directory=/srv/bzr/&quot;</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">agent</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">port</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">pty</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">user</span><span class="o">-</span><span class="n">rc</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">X11</span><span class="o">-</span><span class="n">forwarding</span> <span class="n">ssh</span><span class="o">-</span><span class="n">rsa</span> <span class="n">AAA</span><span class="o">...=</span> <span class="n">Repo</span> <span class="n">Manager</span> <span class="n">SSH</span> <span class="n">Key</span>
+</pre></div>
+</div>
+<p>Alice and Bob have access to their own repository and Repo Manager
+has access to the each of their repositories.  Users are not allowed access to any part of
+the system except the directory specified. The bzr+ssh urls are simplified by
+serving using <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">serve</span></code> and the <code class="docutils literal notranslate"><span class="pre">--directory</span></code> option.</p>
+<p>If Alice logs in she uses the following command for her fix-1023 branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log bzr+ssh://bzruser@server.example.com/fix-1023
+</pre></div>
+</div>
+<p>If Repo Manager logs in he uses the following command to access Alice’s
+fix-1023:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log bzr+ssh://bzruser@server.example.com/alice/fix-1023
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="other-setups">
+<h2><a class="toc-backref" href="#id16">Other Setups</a><a class="headerlink" href="#other-setups" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="dumb-servers">
+<h3><a class="toc-backref" href="#id17">Dumb servers</a><a class="headerlink" href="#dumb-servers" title="Permalink to this headline">¶</a></h3>
+<p>Bazaar can also serve branches over protocols that know nothing about Bazaar’s
+specific needs.  These are called “dumb servers” to distinguish them from
+Bazaar’s native protocol.  Currently HTTP, HTTPS, FTP, SFTP and HTTP+WebDAV can
+be used to read branches remotely.  FTP, SFTP and HTTP+WebDAV can be used for
+writing as well.  To use any of these protocols, it is just necessary to
+provide access to the server’s filesystem under <code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code>.</p>
+<p>For example, for Apache to provide read-only access to the branches
+in <code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code> the configuration may look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Alias</span> <span class="o">/</span><span class="n">code</span> <span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">bzr</span>
+<span class="o">&lt;</span><span class="n">Directory</span> <span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">bzr</span><span class="o">&gt;</span>
+    <span class="n">Options</span> <span class="n">Indexes</span>
+    <span class="c1"># ...</span>
+<span class="o">&lt;/</span><span class="n">Directory</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>and users could use the URL <code class="docutils literal notranslate"><span class="pre">http://server.example.com/code/projectx/trunk</span></code>
+to refer to the trunk branch.</p>
+<p>Note that SFTP access is often available whenever there is SSH access and it
+may be a good choice when Bazaar cannot be installed on the server to allow
+<code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code> access.  Dumb servers are slower by their very nature than the
+native protocol, but they can be a good choice in situations where the
+software and protocols that can be used on the server or the network is
+limited.</p>
+</div>
+<div class="section" id="smart-server-over-http-s">
+<h3><a class="toc-backref" href="#id18">Smart server over HTTP(S)</a><a class="headerlink" href="#smart-server-over-http-s" title="Permalink to this headline">¶</a></h3>
+<p>Bazaar can use its native protocol with HTTP or HTTPS requests.  Since HTTP is
+a network protocol that is available on many networks, this can be a good
+option where SSH access is not possible.  Another benefit of this setup is that
+all of the authentication and access control methods available to the HTTP
+server (basic, LDAP, ActiveDirectory, etc.) are then available to control
+access to Bazaar branches.  More information about setting up this type of
+access using Apache and FastCGI or mod_python or WSGI is in the <a class="reference external" href="../user-guide/http_smart_server.html">smart server
+section of the User’s Guide</a>.</p>
+</div>
+<div class="section" id="direct-smart-server-access">
+<h3><a class="toc-backref" href="#id19">Direct Smart Server Access</a><a class="headerlink" href="#direct-smart-server-access" title="Permalink to this headline">¶</a></h3>
+<p>The built-in server that is used by <code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code> access can also be used as a
+persistent server on a dedicated port.  Bazaar’s official port is 4155,
+although the port used can be configured.  Further information on running the
+Bazaar smart server from inetd, or directly from the shell is in the <a class="reference external" href="../user-guide/server.html#inetd">User’s
+Guide</a>.  The dedicated Bazaar server does
+not currently perform any authentication, so this server by default provides
+read-only access.  It can be run with the <code class="docutils literal notranslate"><span class="pre">--allow-writes</span></code> option, but the
+smart server does not do any additional access control so this may allow
+undesired people to make changes to branches.  (Which of course can be
+reverted.)  If the user that runs the server has write access to the branches
+on the filesystem, then anyone with access to port 4155 on the server can make
+changes to the branches stored there.</p>
+</div>
+</div>
+<div class="section" id="id3">
+<h2><a class="toc-backref" href="#id20">Migration</a><a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<p>Migrating between version control systems can be a complicated process, and
+Bazaar has extensive documentation on the process at
+<a class="reference external" href="http://doc.bazaar.canonical.com/migration/en">http://doc.bazaar.canonical.com/migration/en</a> and we won’t attempt to repeat that
+here.  We will try to give a few motivating examples for conversion from
+Mercurial and Subversion.</p>
+<div class="section" id="fast-import">
+<h3><a class="toc-backref" href="#id21">Fast Import</a><a class="headerlink" href="#fast-import" title="Permalink to this headline">¶</a></h3>
+<p>In many projects wishing to use Bazaar, there is pre-existing history for the
+codebase that should be taken into consideration.  Bazaar leverages an
+interchange format originally developed for Git called <cite>fast-import</cite> to
+provide migration strategies for many other version control systems.  To
+work with fast-import files, Bazaar needs the <a class="reference external" href="http://launchpad.net/bzr-fastimport">fastimport</a> plugin.  This can
+be installed as with any Bazaar plugin.</p>
+<p>The way that fast-import can be used for migration is to export the existing
+history into a fast-import file, then use the <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">fast-import</span></code> command.
+The <cite>fastimport</cite> plugin includes exporters for Subversion, CVS, Git, Mercurial
+and darcs, accessible as the <code class="docutils literal notranslate"><span class="pre">fast-export-from-XXX</span></code> commands.  Note that
+<code class="docutils literal notranslate"><span class="pre">fast-import</span></code> should not be used in a branch with existing history.</p>
+<p>Assuming that ProjectX was first developed in Mercurial before switching to
+Bazaar, and that the Mercurial repository is in <code class="docutils literal notranslate"><span class="pre">/srv/hg/projectx</span></code>, the
+following commands will import that history into a newly created <code class="docutils literal notranslate"><span class="pre">trunk</span></code>
+branch.  (Recall that in <a class="reference external" href="simple-setups.html#further-configuration">Further Configuration</a> we created the
+<code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx</span></code> directory as a shared repository.)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /srv/bzr/projectx
+$ brz fast-export-from-hg ../../hg/projectx projectx.fi
+$ brz init trunk
+$ brz fast-import projectx.fi trunk
+</pre></div>
+</div>
+</div>
+<div class="section" id="subversion-conversion">
+<h3><a class="toc-backref" href="#id22">Subversion Conversion</a><a class="headerlink" href="#subversion-conversion" title="Permalink to this headline">¶</a></h3>
+<p>As the most common centralized version control system, migration from
+Subversion is particularly important for any <em>new</em> version control system.
+Bazaar’s <a class="reference external" href="http://launchpad.net/bzr-svn">svn</a> plugin provides tools for interaction with Subversion
+projects.  In fact, Bazaar can be used transparently with projects stored in
+Subversion, but that is beyond the scope of this document.  (See
+<a class="reference external" href="http://doc.bazaar.canonical.com/migration/en/foreign/bzr-on-svn-projects.html">http://doc.bazaar.canonical.com/migration/en/foreign/bzr-on-svn-projects.html</a> for
+more on that subject.)  What is relevant here is the <code class="docutils literal notranslate"><span class="pre">svn-import</span></code> command
+provided by that plugin.  This can import an entire subversion repository
+including tags and branches, particularly if they are stored in Subversion’s
+recommended directory structure: <code class="docutils literal notranslate"><span class="pre">/tags/</span></code>, <code class="docutils literal notranslate"><span class="pre">/branches/</span></code> and <code class="docutils literal notranslate"><span class="pre">/trunk/</span></code>.</p>
+<p>This command has flexible ways to specify what paths within the Subversion
+repository contain branches and which contain tags.  For example, the
+recommended layout for Subversion projects (called <code class="docutils literal notranslate"><span class="pre">trunk</span></code> by the svn
+plugin) could be specified in <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/subversion.conf</span></code> as</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="mi">203</span><span class="n">ae883</span><span class="o">-</span><span class="n">c723</span><span class="o">-</span><span class="mi">44</span><span class="n">c9</span><span class="o">-</span><span class="n">aabd</span><span class="o">-</span><span class="n">cb56e4f81c9a</span><span class="p">]</span>
+<span class="n">branches</span> <span class="o">=</span> <span class="n">branches</span><span class="o">/*</span>
+<span class="n">tags</span> <span class="o">=</span> <span class="n">tags</span><span class="o">/*</span>
+</pre></div>
+</div>
+<p>This allows substantially complicated Subversion repositories to be converted
+into a set of separate Bazaar branches.  After installing the svn plugin, see
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">svn-import</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">svn-layout</span></code>.</p>
+</div>
+</div>
+<div class="section" id="extending-bazaar-with-hooks-and-plugins">
+<h2><a class="toc-backref" href="#id23">Extending Bazaar with Hooks and Plugins</a><a class="headerlink" href="#extending-bazaar-with-hooks-and-plugins" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar offers a powerful extension mechanism for adding capabilities.  In
+addition to offering full library API access to all of its structures, which
+can be useful for outside programs that would like to interact with Bazaar
+branches, Bazaar can also load <em>plugins</em> that perform specific tasks.  These
+specific tasks are specified by <em>hooks</em> that run during certain steps of the
+version control process.</p>
+<p>For full documentation on the available hooks, see <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">hooks</span></code>.  Among
+those, some of the most significant hooks from an administration
+standpoint are <cite>pre_commit</cite>, <cite>post_commit</cite> and <cite>post_change_branch_tip</cite>.
+A <cite>pre_commit</cite> hook can inspect a commit before it happens and cancel it if
+some criteria are not met.  This can be useful for enforcing policies about
+the code, such as line-endings or whitespace conventions.  A
+<cite>post_commit</cite> hook can take actions based on the commit that just happened,
+such as providing various types of notifications.  Finally, a
+<cite>post_change_branch_tip</cite> hook is a more general form of a <cite>post_commit</cite>
+hook which is used whenever the tip of a branch changes (which can happen in
+more ways than just committing).  This too can be used for notification
+purposes, as well as for backups and mirroring.</p>
+<p>Information on the whole range of Bazaar plugins is available at
+<a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/">http://doc.bazaar.canonical.com/plugins/en/</a>.  For purposes of installation,
+plugins are simply python packages.  They can be installed alongside Bazaar in
+the <code class="docutils literal notranslate"><span class="pre">bzrlib.plugins</span></code> package using each plugin’s <code class="docutils literal notranslate"><span class="pre">setup.py</span></code>.  They can
+also be installed in the plugin path which is the user’s
+<code class="docutils literal notranslate"><span class="pre">~/.config/breezy/plugins</span></code> directory or can be specified with the
+<code class="docutils literal notranslate"><span class="pre">BZR_PLUGIN_PATH</span></code> environment variable.  See <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">configuration</span></code> for
+more on specifying the location of plugins.</p>
+<div class="section" id="email-notification">
+<h3><a class="toc-backref" href="#id24">Email Notification</a><a class="headerlink" href="#email-notification" title="Permalink to this headline">¶</a></h3>
+<p>A common need is for every change made on a branch to send an email message to
+some address, most often a mailing list.  These plugins provide that capability
+in a number of different ways.</p>
+<p>The <cite>email</cite> plugin sends email from each individual developer’s computer.  This
+can be useful for situations that want to track what each individual developer
+is working on.  On the downside, it requires that every developer’s branches be
+configured individually to use the same plugin.</p>
+<p>The next two plugins <cite>hookless-email</cite> and <cite>email-notifier</cite> address this concern
+by running on a central server whenever changes happen on centrally stored
+branches.</p>
+<div class="section" id="email">
+<h4>email<a class="headerlink" href="#email" title="Permalink to this headline">¶</a></h4>
+<p>To configure this plugin, simply install the plugin and configure the
+<code class="docutils literal notranslate"><span class="pre">post_commit_to</span></code>  option for each branch.  This configuration can be done
+in the <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> file or individually in each branch’s
+<code class="docutils literal notranslate"><span class="pre">branch.conf</span></code> file.  The sender’s email address can be specified as
+<code class="docutils literal notranslate"><span class="pre">post_commit_sender</span></code> if it is different than the email address reported by
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">whoami</span></code>.  The <code class="docutils literal notranslate"><span class="pre">post_commit_mailer</span></code> option specifies how the
+mail should be sent.  If it isn’t set, email is sent via <code class="docutils literal notranslate"><span class="pre">/usr/bin/mail</span></code>.
+It can also be configured to communicate directly with an SMTP server.
+For more details on configuring this plugin, see
+<a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/email-plugin.html">http://doc.bazaar.canonical.com/plugins/en/email-plugin.html</a>.  As examples,
+consider the following two possible configurations.  A minimal one (uses
+<code class="docutils literal notranslate"><span class="pre">/usr/bin/mail</span></code>)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">post_commit_to</span> <span class="o">=</span> <span class="n">projectx</span><span class="o">-</span><span class="n">commits</span><span class="nd">@example</span><span class="o">.</span><span class="n">com</span>
+</pre></div>
+</div>
+<p>and a more complicated one (using all of the options)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">post_commit_url</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">www</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">code</span><span class="o">/</span><span class="n">projectx</span><span class="o">/</span><span class="n">trunk</span>
+<span class="n">post_commit_to</span> <span class="o">=</span> <span class="n">projectx</span><span class="o">-</span><span class="n">commits</span><span class="nd">@example</span><span class="o">.</span><span class="n">com</span>
+<span class="n">post_commit_sender</span> <span class="o">=</span> <span class="n">donotreply</span><span class="nd">@example</span><span class="o">.</span><span class="n">com</span>
+<span class="n">post_commit_mailer</span> <span class="o">=</span> <span class="n">smtplib</span>
+<span class="n">smtp_server</span> <span class="o">=</span> <span class="n">mail</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">587</span>
+<span class="n">smtp_username</span> <span class="o">=</span> <span class="n">bob</span>
+<span class="c1"># smtp_password = &#39;not specified, will prompt&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="hookless-email">
+<h4>hookless-email<a class="headerlink" href="#hookless-email" title="Permalink to this headline">¶</a></h4>
+<p>This plugin is basically a server-side version of the <cite>email</cite> plugin.  It is
+a program that runs either from the command line or as a daemon that monitors
+the branches specified on the command line for any changes.  When a change
+occurs to any of the monitored branches, it will send an email to the
+specified address.  Using our simple example, the following command would send
+an email to <code class="docutils literal notranslate"><span class="pre">projectx-commits&#64;example.com</span></code> on any of the branches under
+<code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code> since the last time the command was run.  (This command could be
+set up to run at regular intervals, for example from <code class="docutils literal notranslate"><span class="pre">cron</span></code>.)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz_hookless_email.py --email=projectx-commits@example.com \
+--recurse /srv/bzr
+</pre></div>
+</div>
+</div>
+<div class="section" id="email-notifier">
+<h4>email-notifier<a class="headerlink" href="#email-notifier" title="Permalink to this headline">¶</a></h4>
+<p>This is a more elaborate version of the <cite>hookless-email</cite> plugin that can send
+templated HTML emails, render wiki-style markup in commit messages and update
+working copies on the server (similar to <a class="reference internal" href="#push-and-update">push_and_update</a>).  It can also
+send emails reporting the creation of new branches or the removal of branches
+under a specified directory (here <code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx</span></code>).  As it is more
+complicated, its configuration is also more complicated and we won’t repeat
+its documentation here, but a simple configuration that will send emails on
+commits and creation/deletion of branches is</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[smtp]
+
+server=smtp.example.com
+# If user is not provided then no authentication will be performed.
+user=bob
+password=pAssW0rd
+
+[commits]
+
+# The address to send commit emails to.
+to=projctx-commits@example.com
+from=$revision.committer
+
+# A Cheetah template used to construct the subject of the email message.
+subject=$relative_path: $revision_number $summary
+
+[new-branches]
+to=projectx-commits@example.com
+from=donotreply@example.com
+subject=$relative_path: New branch created
+
+[removed-branches]
+to=projectx-commits@example.com
+from=donotreply@example.com
+subject=$relative_path: Branch removed
+</pre></div>
+</div>
+<p>If this file is stored as <code class="docutils literal notranslate"><span class="pre">/srv/bzr/email-notifier.conf</span></code>, then the command</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz-email-notifier.py --config=/srv/bzr/email-notifier.conf /srv/bzr/projectx
+</pre></div>
+</div>
+<p>will watch all branches under the given directory for commits, branch
+creations and branch deletions.</p>
+</div>
+</div>
+<div class="section" id="feed-generation">
+<h3><a class="toc-backref" href="#id25">Feed Generation</a><a class="headerlink" href="#feed-generation" title="Permalink to this headline">¶</a></h3>
+<p>A related concept to sending out emails when branches change is the generation
+of news feeds from changes on each branch.  Interested parties can then choose
+to follow those news feeds in order to see what is happening on a branch.</p>
+<div class="section" id="branchfeed">
+<h4>branchfeed<a class="headerlink" href="#branchfeed" title="Permalink to this headline">¶</a></h4>
+<p>This plugin creates an ATOM feed for every branch on every branch change
+(commit, etc.).  It stores these files as <code class="docutils literal notranslate"><span class="pre">.bzr/branch/branch.atom</span></code> inside
+each branch.  Currently, it includes the 20 most recent changes in each feed.
+To use it, simply install the plugin and set your feed reader to follow the
+<code class="docutils literal notranslate"><span class="pre">branch.atom</span></code> files.</p>
+<p>In addition, there are other tools that are not plugins for creating news
+feeds from Bazaar branches.  See
+<a class="reference external" href="http://wiki.bazaar.canonical.com/FeedGenerators">http://wiki.bazaar.canonical.com/FeedGenerators</a> for more on those tools.</p>
+</div>
+</div>
+<div class="section" id="mirroring">
+<h3><a class="toc-backref" href="#id26">Mirroring</a><a class="headerlink" href="#mirroring" title="Permalink to this headline">¶</a></h3>
+<p>Sometimes it is useful to ensure that one branch exists as an exact copy of
+another.  This can be used to provide simple backup facilities or redundancy
+(see <a class="reference external" href="backup.html">Back-up and restore</a> for more details on backups).  One
+way to do this using Bazaar’s workflows is to make the branch where changes
+happen into a bound branch of the mirror branch.  Then, when commits happen on
+the working branch, they will also happen on the mirror branch.  Note that
+commits to bound branches do <em>not</em> update the mirror branch’s working copy, so
+if the mirror branch is more than just a backup of the complete history of the
+branch, for example if it is being served as a web page, then additional
+plugins are necessary.</p>
+<div class="section" id="push-and-update">
+<h4>push_and_update<a class="headerlink" href="#push-and-update" title="Permalink to this headline">¶</a></h4>
+<p>This plugin updates Bazaar’s <code class="docutils literal notranslate"><span class="pre">push</span></code> command to also update the remote
+working copy.  It can only work over connections that imply filesystem or SSH
+access to the remote working copy (<code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code>, <code class="docutils literal notranslate"><span class="pre">sftp://</span></code> and
+<code class="docutils literal notranslate"><span class="pre">file://</span></code>).  Also, it is only useful when the remote branch is updated with
+an explicit <code class="docutils literal notranslate"><span class="pre">push</span></code> command.</p>
+</div>
+<div class="section" id="automirror">
+<h4>automirror<a class="headerlink" href="#automirror" title="Permalink to this headline">¶</a></h4>
+<p>This plugin is similar to <cite>push_and_update</cite> in that it updates the working
+copy of a remote branch.  The difference is that this plugin is designed to
+update the remote branch on every change to the working branch.  To configure
+this, set the <code class="docutils literal notranslate"><span class="pre">post_commit_mirror</span> <span class="pre">=</span> <span class="pre">URL</span></code> option on a branch.  This option
+can include multiple branch URLs separated by commas to create multiple
+mirrors.  For example, if we want to mirror our <code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx/trunk</span></code>
+branch to the URL <code class="docutils literal notranslate"><span class="pre">sftp://www.example.com/var/www/projectx</span></code> (for example if
+ProjectX were a web project that we wanted to access at
+<code class="docutils literal notranslate"><span class="pre">http://www.example.com/projectx</span></code>), then we could include</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">post_commit_mirror</span> <span class="o">=</span> <span class="n">sftp</span><span class="p">:</span><span class="o">//</span><span class="n">www</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">www</span><span class="o">/</span><span class="n">branches</span><span class="o">/</span><span class="n">trunk</span>
+</pre></div>
+</div>
+<p>in the file <code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx/trunk/.bzr/branch/branch.conf</span></code>.</p>
+</div>
+</div>
+<div class="section" id="other-useful-plugins">
+<h3><a class="toc-backref" href="#id27">Other Useful Plugins</a><a class="headerlink" href="#other-useful-plugins" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="pqm-plugin">
+<h4>pqm (plugin)<a class="headerlink" href="#pqm-plugin" title="Permalink to this headline">¶</a></h4>
+<p>Facilitating interaction with <a class="reference external" href="integration.html#patch-queue-manager-pqm">PQM</a>, this plugin provides support for
+submitting merge requests to a remote Patch Queue Manager.  PQM provides
+a way to automatically run the test suite before merging changes to the
+trunk branch.</p>
+</div>
+<div class="section" id="testrunner">
+<h4>testrunner<a class="headerlink" href="#testrunner" title="Permalink to this headline">¶</a></h4>
+<p>Sometimes referred to as the poor man’s PQM, this plugin runs a single command
+on the updated revision (in a temporary directory) and if the command returns
+0, then the revision can be committed to that branch.  For example, if the
+testsuite is run with the command <code class="docutils literal notranslate"><span class="pre">nosetests</span></code> in the root of the branch
+(which returns 0 if the test suite passes and 1 if it doesn’t pass), then one
+can set</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">pre_change_branch_tip_test_command</span> <span class="o">=</span> <span class="n">nosetests</span>
+</pre></div>
+</div>
+<p>in <code class="docutils literal notranslate"><span class="pre">.bzr/branch/branch.conf</span></code>.</p>
+</div>
+<div class="section" id="checkeol">
+<h4>checkeol<a class="headerlink" href="#checkeol" title="Permalink to this headline">¶</a></h4>
+<p>This plugin is an example of a <cite>pre_commit</cite> hook that checks the revision
+being committed for meeting some policy.  In this case, it checks that all of
+the files have the specified line endings.  It uses a configuration file
+<code class="docutils literal notranslate"><span class="pre">.bzreol</span></code> in the root of the working tree (similar to the <code class="docutils literal notranslate"><span class="pre">.bzrignore</span></code>
+file).  This configuration file has sections for line feed endings (LF),
+carriage return/line-feed endings (CRLF) and carriage return endings (CR).
+For an unusual example that specifies different line endings for different
+files, that file might look like</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">LF</span><span class="p">]</span>
+<span class="o">*.</span><span class="n">py</span>
+<span class="o">*.</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span>
+
+<span class="p">[</span><span class="n">CRLF</span><span class="p">]</span>
+<span class="o">*.</span><span class="n">txt</span>
+<span class="o">*.</span><span class="n">ini</span>
+
+<span class="p">[</span><span class="n">CR</span><span class="p">]</span>
+<span class="n">foo</span><span class="o">.</span><span class="n">mac</span>
+</pre></div>
+</div>
+<p>or if you simply want to enforce a single line ending convention on the branch
+you can use</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">LF</span><span class="p">]</span>
+<span class="o">*</span>
+</pre></div>
+</div>
+<p>This plugin needs to be installed on the server where the branch updates will
+happen, and the <code class="docutils literal notranslate"><span class="pre">.bzreol</span></code> file must be in each branch where line ending
+policies will be enforced.  (Adding it to the branch with <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">add</span> <span class="pre">.bzreol</span></code>
+is an easy way to ensure this, although it means that branches on the server
+must have working trees.)</p>
+</div>
+<div class="section" id="text-checker">
+<h4>text_checker<a class="headerlink" href="#text-checker" title="Permalink to this headline">¶</a></h4>
+<p>This plugin is a more advanced version of <cite>checkeol</cite> that can check such
+coding style guidelines such as trailing whitespace, long lines and files that
+don’t end with a newline.  It is configured using Bazaar’s built in rules
+specification in <code class="docutils literal notranslate"><span class="pre">BZR_HOME/rules</span></code> (see <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span> <span class="pre">rules</span></code> for more
+information.  For different types of undesired changes, you can specify
+different types of actions.  For example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">name</span> <span class="n">NEWS</span> <span class="n">README</span><span class="p">]</span>
+<span class="n">trailing_whitespace</span><span class="o">=</span><span class="n">fail</span>
+<span class="n">long_lines</span><span class="o">=</span><span class="n">warn</span>
+<span class="n">newline_at_eof</span><span class="o">=</span><span class="n">ignore</span>
+
+<span class="p">[</span><span class="n">name</span> <span class="o">*.</span><span class="n">py</span><span class="p">]</span>
+<span class="n">tabs</span><span class="o">=</span><span class="n">fail</span>
+<span class="n">long_line_length</span><span class="o">=</span><span class="mi">78</span>
+<span class="n">long_lines</span><span class="o">=</span><span class="n">fail</span>
+<span class="n">trailing_whitespace</span><span class="o">=</span><span class="n">fail</span>
+</pre></div>
+</div>
+<p>will prevent changes from adding new trailing whitespace to the specified
+files and keep all python source files free of tabs and lines over 78
+characters.  To commit while violating these rules, one can pass the
+<code class="docutils literal notranslate"><span class="pre">--text-check-warn-only</span></code> option to commit.</p>
+</div>
+</div>
+</div>
+<div class="section" id="web-based-code-browsing">
+<h2><a class="toc-backref" href="#id28">Web-based code browsing</a><a class="headerlink" href="#web-based-code-browsing" title="Permalink to this headline">¶</a></h2>
+<p>Browsing the history of a project online is an important part of version
+control, since it allows people to easily see what happens in a branch
+without having to have a local, up-to-date copy of that branch.  There are a
+number of possible choices for browsing Bazaar branches on the web, but we
+will cover one of them in particular detail and briefly mention the other
+choices where they differ.</p>
+<div class="section" id="loggerhead">
+<h3><a class="toc-backref" href="#id29">Loggerhead</a><a class="headerlink" href="#loggerhead" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference external" href="http://launchpad.net/loggerhead">Loggerhead</a> is a code browsing interface for Bazaar branches (now used in
+Launchpad).  To see an example of Loggerhead in action, browse to
+<a class="reference external" href="http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/files">http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/files</a> which is the loggerhead
+view of Bazaar’s trunk branch.  Loggerhead runs as a web application on the
+server which is accessed over HTTP via a RESTful interface.  It is possible to
+run this application on its own dedicated port as
+<code class="docutils literal notranslate"><span class="pre">http://www.example.com:8080</span></code> or to proxy this location behind a separate web
+server, for example at <code class="docutils literal notranslate"><span class="pre">http://www.example.com/loggerhead/</span></code>.  We will discuss
+both of these configurations below.</p>
+<div class="section" id="requirements">
+<h4>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h4>
+<p>Loggerhead depends on a number of other Python packages for the various Web
+technologies that it builds on.  Some of these must be installed to use
+loggerhead, although some of them are optional.  From the loggerhead <cite>README</cite>
+file, these are</p>
+<ol class="arabic simple">
+<li>SimpleTAL for templating.
+On Ubuntu, <cite>sudo apt-get install python-simpletal</cite>
+or download from <a class="reference external" href="http://www.owlfish.com/software/simpleTAL/download.html">http://www.owlfish.com/software/simpleTAL/download.html</a></li>
+<li>simplejson for producing JSON data.
+On Ubuntu, <cite>sudo apt-get install python-simplejson</cite>
+or use <cite>easy_install simplejson</cite>.</li>
+<li>Paste for the server. (You need version 1.2 or newer of Paste.)
+On Ubuntu, <cite>sudo apt-get install python-paste</cite>
+or use <cite>easy_install Paste</cite></li>
+<li>Paste Deploy  (optional, needed when proxying through Apache)
+On Ubuntu, <cite>sudo apt-get install python-pastedeploy</cite>
+or use <cite>easy_install PasteDeploy</cite></li>
+<li>flup (optional, needed to use FastCGI, SCGI or AJP)
+On Ubuntu, <cite>sudo apt-get install python-flup</cite>
+or use <cite>easy_install flup</cite></li>
+</ol>
+<p>Although directions for installing these on Ubuntu are given, most other
+GNU/Linux distributions should package these dependencies, making installation
+easy.  For Windows and Mac OS X, they should all be <code class="docutils literal notranslate"><span class="pre">easy_install</span></code>-able or at
+worst installable from the Python sources.</p>
+</div>
+<div class="section" id="built-in-web-server">
+<h4>Built-in Web Server<a class="headerlink" href="#built-in-web-server" title="Permalink to this headline">¶</a></h4>
+<p>Loggerhead has a built-in web server and when started with the
+<code class="docutils literal notranslate"><span class="pre">serve-branches</span></code> command, that web server is started on a default port
+listening on the localhost.  If port 8080 (the default) is accessible on
+<code class="docutils literal notranslate"><span class="pre">www.example.com</span></code>, then running</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ serve-branches --host=www.example.com --port=8080 /srv/bzr
+</pre></div>
+</div>
+<p>will list all of the available branches under that directory on
+<code class="docutils literal notranslate"><span class="pre">http://www.example.com:8080/</span></code>, so that the ProjectX trunk could be browsed
+at <code class="docutils literal notranslate"><span class="pre">http://www.example.com:8080/projectx/trunk</span></code>.  Note that loggerhead
+provides HTTP access to the underlying Bazaar branches (similar to that
+described in <a class="reference external" href="other-setups.html#smart-server-over-http-s">Smart server over HTTP(S)</a>), so this command should be run
+as a user without write privileges in <code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code>.  By default, loggerhead
+only listens on the localhost, not any external ports, unless specified as
+above.</p>
+</div>
+<div class="section" id="behind-a-proxy">
+<h4>Behind a Proxy<a class="headerlink" href="#behind-a-proxy" title="Permalink to this headline">¶</a></h4>
+<p>A more common and more safe way to run loggerhead is behind another web server
+which will proxy certain requests to the loggerhead server on the localhost.
+To do this, you need to have PasteDeploy installed (see <a class="reference internal" href="#requirements">Requirements</a>).
+Assuming that your server has Apache running, you need to add configuration
+such as this to set up the proxy</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">Location</span> <span class="s2">&quot;/loggerhead/&quot;</span><span class="o">&gt;</span>
+    <span class="n">ProxyPass</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">127.0</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">8080</span><span class="o">/</span>
+    <span class="n">ProxyPassReverse</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">127.0</span><span class="o">.</span><span class="mf">0.1</span><span class="p">:</span><span class="mi">8080</span><span class="o">/</span>
+<span class="o">&lt;/</span><span class="n">Location</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>If your proxy runs at some path within the server, then the <code class="docutils literal notranslate"><span class="pre">serve-branches</span></code>
+command must be started with the <code class="docutils literal notranslate"><span class="pre">--prefix</span></code> option.  For this example, we
+could start loggerhead with the command</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ serve-branches --prefix=/loggerhead /srv/bzr
+</pre></div>
+</div>
+<p>This would allow the trunk branch of ProjectX to be browsed at
+<code class="docutils literal notranslate"><span class="pre">http://www.example.com/loggerhead/projectx/trunk</span></code>.</p>
+<p>Loggerhead comes with a script allowing it to run as a service on
+<code class="docutils literal notranslate"><span class="pre">init.d</span></code> based Unix systems.  Contributions to do a similar thing on
+Windows servers would be welcomed at <a class="reference external" href="http://launchpad.net/loggerhead">http://launchpad.net/loggerhead</a>.</p>
+</div>
+</div>
+<div class="section" id="other-web-interfaces">
+<h3><a class="toc-backref" href="#id30">Other web interfaces</a><a class="headerlink" href="#other-web-interfaces" title="Permalink to this headline">¶</a></h3>
+<p>There are a number of other web interfaces available for Bazaar branches (see
+the list at <a class="reference external" href="http://wiki.bazaar.canonical.com/WebInterfaces">http://wiki.bazaar.canonical.com/WebInterfaces</a>) and we will just
+mention a couple of them here for their advantages in particular situations.</p>
+<dl class="docutils">
+<dt>trac+bzr (<a class="reference external" href="http://launchpad.net/trac-bzr">http://launchpad.net/trac-bzr</a>)</dt>
+<dd>Trac is a popular web app that integrates a browser for branches, an issue
+tracker and a wiki.  trac+bzr is a trac extension that allows for the
+trac to be used with Bazaar.</dd>
+<dt>webbzr (<a class="reference external" href="http://thoughts.enseed.com/webbzr">http://thoughts.enseed.com/webbzr</a>)</dt>
+<dd>This is a notable solution because it is written in pure PHP for web hosts
+that don’t provide a way to run arbitrary Python applications such as Trac
+or Loggerhead.</dd>
+<dt>Redmine (<a class="reference external" href="http://redmine.org/">http://redmine.org/</a>)</dt>
+<dd>Like trac, Redmine is a full project management application using the Ruby
+on Rails framework.  It includes support for Bazaar branches.</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="integration-with-other-tools">
+<h2><a class="toc-backref" href="#id31">Integration with Other Tools</a><a class="headerlink" href="#integration-with-other-tools" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="patch-queue-manager-pqm">
+<h3><a class="toc-backref" href="#id32">Patch Queue Manager (PQM)</a><a class="headerlink" href="#patch-queue-manager-pqm" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="bug-trackers">
+<h3><a class="toc-backref" href="#id33">Bug Trackers</a><a class="headerlink" href="#bug-trackers" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="continuous-integration-tools">
+<h3><a class="toc-backref" href="#id34">Continuous Integration Tools</a><a class="headerlink" href="#continuous-integration-tools" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="bundle-buggy">
+<h3><a class="toc-backref" href="#id35">Bundle Buggy</a><a class="headerlink" href="#bundle-buggy" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="security">
+<h2><a class="toc-backref" href="#id36">Security</a><a class="headerlink" href="#security" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="authentication">
+<h3><a class="toc-backref" href="#id37">Authentication</a><a class="headerlink" href="#authentication" title="Permalink to this headline">¶</a></h3>
+<p>Bazaar’s philosophy on authentication is that it is best to reuse existing
+authentication technologies, rather than trying to reinvent potentially
+complicated methods for securely identifying users.  As such, we describe two
+such uses of existing software for authentication purposes.</p>
+<div class="section" id="using-ssh">
+<h4>Using SSH<a class="headerlink" href="#using-ssh" title="Permalink to this headline">¶</a></h4>
+<p>SSH is a very well tested and featureful technology for authenticating users.
+For situations where all of the developers have local accounts on the server,
+it is trivial to provide secure, authenticated <code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code> access.  One
+concern with this method is that it may not be desirable to grant shell access
+to developers on the server machine.  In this case, Bazaar provides
+<code class="docutils literal notranslate"><span class="pre">bzr_ssh_path_limiter</span></code>, a script that runs the Bazaar smart server on the
+server machine at a specified path, and allows no other access.</p>
+<p>To set it up, specify:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">command</span><span class="o">=</span><span class="s2">&quot;/path/to/bzr_ssh_path_limiter &lt;path&gt;&quot;</span> <span class="o">&lt;</span><span class="n">typical</span> <span class="n">key</span> <span class="n">line</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>in each user’s <code class="docutils literal notranslate"><span class="pre">~/.ssh/authorized_keys</span></code> file on the server, where <cite>&lt;path&gt;</cite> is
+the path to limit access to (and its subdirectories).  For more documentation
+on the syntax of the <code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code> file see the documentation of the SSH
+server.  This will only permit Bazaar access to the specified path and no other
+SSH access for that user.</p>
+<p>If it isn’t desired to give each user an account on the server, multiple
+private/public key pairs can be included under one single SSH account (say
+sshuser) in the <code class="docutils literal notranslate"><span class="pre">~sshuser/.ssh/authorized_keys</span></code> file and then each developer
+can be given their own private key.  They can then use
+<code class="docutils literal notranslate"><span class="pre">bzr+ssh://sshuser&#64;server.example.com/</span></code> URLs to access the server.</p>
+</div>
+<div class="section" id="using-http-authentication-methods">
+<h4>Using HTTP authentication methods<a class="headerlink" href="#using-http-authentication-methods" title="Permalink to this headline">¶</a></h4>
+</div>
+</div>
+<div class="section" id="access-control">
+<h3><a class="toc-backref" href="#id38">Access Control</a><a class="headerlink" href="#access-control" title="Permalink to this headline">¶</a></h3>
+<p>Many projects need fine-grained access control on who may read and write to
+which branches.  Incorporating these controls into OS-level user accounts
+using groups and filesystem permissions can be difficult or even not permitted
+in some instances.  Bazaar provides a script called <code class="docutils literal notranslate"><span class="pre">bzr_access</span></code> that can be
+used to provide access control based on usernames, with authentication
+performed by SSH.  To do so, we need to set up private-key authentication in
+SSH.  This can be done using a single SSH user on the server, or one account
+per user.  The idea is to use the SSH’s <code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code> file to specify
+the <code class="docutils literal notranslate"><span class="pre">bzr_access</span></code> script as the only command that can be run by a user
+identified by a particular key pair.</p>
+<p>First, you will need to generate a private/public key pair for each user who
+will be accessing the repository.  The private key should be distributed to
+the user and the public key will be needed on the server to identify the user.
+On the server, in the SSH user’s <code class="docutils literal notranslate"><span class="pre">~/.ssh/authorized_keys</span></code> file, use the
+following line for each repository user and the corresponding public key:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">command</span><span class="o">=</span><span class="s2">&quot;/path/to/bzr_access /path/to/bzr /path/to/repository &lt;username&gt;&quot;</span><span class="p">,</span><span class="n">no</span><span class="o">-</span> <span class="n">port</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">X11</span><span class="o">-</span><span class="n">forwarding</span><span class="p">,</span><span class="n">no</span><span class="o">-</span><span class="n">agent</span><span class="o">-</span><span class="n">forwarding</span> <span class="n">ssh</span><span class="o">-&lt;</span><span class="nb">type</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">key</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>where <cite>&lt;key&gt;</cite> is the (possibly very long) public key, <cite>&lt;type&gt;</cite> is the type of
+SSH key and <cite>&lt;username&gt;</cite> is the username to associate with that public key.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">bzr_access</span></code> script obtains its configuration information from the file
+<code class="docutils literal notranslate"><span class="pre">/path/to/repository/bzr_access.conf</span></code>.  This file should not be placed under
+version control in a branch located at <code class="docutils literal notranslate"><span class="pre">/path/to/repository</span></code> since that
+would allow anyone with access to the repository to change the access control
+rules.  The <code class="docutils literal notranslate"><span class="pre">bzr_access.conf</span></code> file is in a simple INI-style format with
+sections defined by <code class="docutils literal notranslate"><span class="pre">[groups]</span></code> and <code class="docutils literal notranslate"><span class="pre">[/]</span></code>.  The options in the <code class="docutils literal notranslate"><span class="pre">[groups]</span></code>
+section are the names of groups and the values of those options should be the
+usernames in that group.  Inside the <code class="docutils literal notranslate"><span class="pre">[/]</span></code> section, the options are
+usernames or group names (prefixed with <code class="docutils literal notranslate"><span class="pre">&#64;</span></code>) and the values are either
+<code class="docutils literal notranslate"><span class="pre">rw</span></code>, <code class="docutils literal notranslate"><span class="pre">r</span></code> or nothing, representing read-write access, read-only access or
+no access at all.  A sample of <code class="docutils literal notranslate"><span class="pre">bzr_access.conf</span></code> could be:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">groups</span><span class="p">]</span>
+<span class="n">admins</span> <span class="o">=</span> <span class="n">alpha</span>
+<span class="n">devels</span> <span class="o">=</span> <span class="n">beta</span><span class="p">,</span> <span class="n">gamma</span><span class="p">,</span> <span class="n">delta</span>
+
+<span class="p">[</span><span class="o">/</span><span class="p">]</span>
+<span class="nd">@admins</span> <span class="o">=</span> <span class="n">rw</span>
+<span class="nd">@devels</span> <span class="o">=</span> <span class="n">r</span>
+<span class="n">upsilon</span> <span class="o">=</span>
+</pre></div>
+</div>
+<p>where the user whose key is associated with <cite>alpha</cite> would have read-write
+access, the users <cite>beta</cite>, <cite>gamma</cite> and <cite>delta</cite> would have read-only access and
+user <cite>upsilon</cite> would not be able to access any branches under
+<code class="docutils literal notranslate"><span class="pre">/path/to/repository</span></code>.</p>
+<div class="section" id="additional-considerations-with-bzr-access">
+<h4>Additional Considerations with <code class="docutils literal notranslate"><span class="pre">bzr_access</span></code><a class="headerlink" href="#additional-considerations-with-bzr-access" title="Permalink to this headline">¶</a></h4>
+<p>As currently written, <code class="docutils literal notranslate"><span class="pre">bzr_access</span></code> only allows each public key to be
+associated with a single repository location.  This means that if developers
+need to access two or more different repositories, then each developer will
+need to have two or more private keys for SSH and be able to select between
+them (see <code class="docutils literal notranslate"><span class="pre">man</span> <span class="pre">ssh</span></code> for more information on configuring multiple private
+keys).</p>
+<p>Also, each repository can only have a single configuration file, with access
+configured for all branches in the repository.  This means that if different
+access rules are needed for different projects, then those projects must be in
+different repositories.  This then necessitates the use of multiple private
+keys as just described.</p>
+<p>Finally, as noted above under <a class="reference internal" href="#using-ssh">Using SSH</a> all of the public keys may be
+included in the <code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code> file of a single user on the server.  It
+is also possible to use a single private/public key pair for all of the
+developers, but this only allows a single username for access control to the
+repository (since the username is associated with the public key in
+<code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code>.  While this is certainly possible it seems to defeat the
+purpose of fine-grained access control, although it does provide the same
+limited SSH access as that described above.</p>
+</div>
+</div>
+</div>
+<div class="section" id="id7">
+<h2><a class="toc-backref" href="#id39">Back-up and Restore</a><a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<p>Backing up Bazaar branches can be done in two different ways.  If an existing
+filesystem-based backup scheme already exists, then it can easily be used
+where the Bazaar branches reside.  Alternately, Bazaar itself can be used to
+mirror the desired branches to or from another location for backup purposes.</p>
+<div class="section" id="filesystem-backups">
+<h3><a class="toc-backref" href="#id40">Filesystem Backups</a><a class="headerlink" href="#filesystem-backups" title="Permalink to this headline">¶</a></h3>
+<p>Bazaar transactions are atomic in the sense that the disk format is such that
+it is in a valid state at any instant in time.  However, for a backup process
+that takes a finite amount of time to complete, it is possible to have
+inconsistencies between different on-disk structures when backing up a live
+branch or repository.  (Bazaar itself manages this concurrency issue by only
+<em>reading</em> those structures in a well-defined order.)  Tools such as LVM that
+allow instantaneous snapshots of the contents of a disk can be used to take
+filesystem backups of live Bazaar branches and repositories.</p>
+<p>For other backup methods, it is necessary to take the branch or repository
+offline while the backup is being done in order to guarantee consistency
+between the various files that comprise a Bazaar branch’s history.  This
+requirement can be alleviated by using Bazaar as its own backup client,
+since it follows an order for reading that is designed to manage concurrent
+access (see the next section for details).  Depending on the different
+access methods that are being used for a branch, there are different ways to
+take the branch “offline”.  For <code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code> access, it is possible to
+temporarily change the filesystem permissions to prevent write access from
+any users.  For <code class="docutils literal notranslate"><span class="pre">http://</span></code> access, changing permissions, shutting down
+the HTTP server or switching the server to a separate configuration that
+disallows access are all possible ways to take a branch offline for backup.
+Finally, for direct filesystem access, it is necessary to make the branch
+directories un-writable.</p>
+<p>Because this sort of downtime can be very disruptive, we strongly encourage
+using Bazaar itself as a backup client, where branches are copied and
+updated using Bazaar directly.</p>
+</div>
+<div class="section" id="bazaar-as-its-own-backup">
+<h3><a class="toc-backref" href="#id41">Bazaar as its own backup</a><a class="headerlink" href="#bazaar-as-its-own-backup" title="Permalink to this headline">¶</a></h3>
+<p>The features that make Bazaar a good distributed version control system also
+make it a good choice for backing itself up.  In particular, complete and
+consistent copies of any branch can easily be obtained with the <code class="docutils literal notranslate"><span class="pre">branch</span></code> and
+<code class="docutils literal notranslate"><span class="pre">pull</span></code> commands.  As a result, a backup process can simply run <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pull</span></code>
+on a copy of the main branch to fully update that copy.  If this backup
+process runs periodically, then the backups will be as current as the last
+time that <code class="docutils literal notranslate"><span class="pre">pull</span></code> was run.  (This is in addition to the fact
+that revisions are immutable in Bazaar so that a prior revision of a branch is
+always recoverable from that branch when the revision id is known.)</p>
+<p>As an example, consider a separate backup server that stores backups in
+<code class="docutils literal notranslate"><span class="pre">/var/backup</span></code>.  On that server, we could initially run</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /var/backup
+$ brz branch bzr+ssh://server.example.com/srv/bzr/trunk
+$ brz branch bzr+ssh://server.example.com/srv/bzr/feature-gui
+</pre></div>
+</div>
+<p>to create the branches on the backup server.  Then, we could regularly (for
+example from <code class="docutils literal notranslate"><span class="pre">cron</span></code>) do</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /var/backup/trunk
+$ brz pull  # the location to pull from is remembered
+$ cd ../var/backup/feature-gui
+$ brz pull  # again, the parent location is remembered
+</pre></div>
+</div>
+<p>The action of pulling from the parent for all branches in some directory is
+common enough that there is a plugin to do it.</p>
+<div class="section" id="bound-branch-backups">
+<h4>Bound Branch Backups<a class="headerlink" href="#bound-branch-backups" title="Permalink to this headline">¶</a></h4>
+<p>When <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pull</span></code> is run regularly to keep a backup copy up to date, then it
+is possible that there are new revisions in the original branch that have not
+yet been pulled into the backup branch.  To alleviate this problem, we can set
+the branches up so that new revisions are <em>pushed</em> to the backup rather than
+periodically pulling.  One way to do this is using Bazaar’s concept of bound
+branches, where a commit in one branch happens only when the same commit
+succeeds in the branch to which it is <cite>bound</cite>.  As a push-type technology, it
+is set up on the server itself rather than on the backup machine.  For each
+branch that should be backed up, you just need to use the <code class="docutils literal notranslate"><span class="pre">bind</span></code> command to
+set the URL for the backup branch.  In our example, we first need to create
+the branches on the backup server (we’ll use <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">push</span></code>, but we could as
+easily have used <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span></code> from the backup server)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /srv/bzr/projectx/trunk
+$ brz push bzr+ssh://backup.example.com/var/backup/trunk
+$ cd ../feature-gui
+$ brz push bzr+ssh://backup.example.com/var/backup/feature-gui
+</pre></div>
+</div>
+<p>and then we need to bind the main branches to their backups</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ../trunk
+$ brz bind bzr+ssh://backup.example.com/var/backup/trunk
+$ cd ../feature-gui
+$ brz bind bzr+ssh://backup.example.com/var/backup/feature-gui
+</pre></div>
+</div>
+<p>A branch can only be bound to a single location, so multiple backups cannot
+be created using this method.</p>
+<p>Using the <a class="reference external" href="http://launchpad.net/bzr-automirror">automirror</a> plugin mentioned under <a class="reference external" href="hooks-plugins.html">Hooks and Plugins</a>, one can
+also make a push-type backup system that more naturally handles mutliple
+backups.  Simply set the <code class="docutils literal notranslate"><span class="pre">post_commit_mirror</span></code> option to multiple URLs
+separated by commas.  In order to backup to the backup server and a
+remote location, one could do</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /srv/bzr/trunk
+$ echo &quot;post_commit_mirror=bzr+ssh://backup.example.com/var/backup/trunk,\
+bzr+ssh://offsite.example.org/projectx-corp/backup/trunk&quot; &gt;&gt; .bzr/branch/branch.conf
+$ cd ../feature-gui
+$ echo &quot;post_commit_mirror=bzr+ssh://backup.example.com/var/backup/feature-gui,\
+bzr+ssh://offsite.example.org/projectx-corp/backup/feature-gui&quot; &gt;&gt; .bzr/branch/branch.conf
+</pre></div>
+</div>
+<p>As for any push-type backup strategy that maintains consistency, the downside
+of this method is that all of the backup commits must succeed before the
+initial commit can succeed.  If there is a many mirror branches or if the bound
+branch has a slow network connection, then the delay in the original commit may
+be unacceptably long.  In this case, pull-type backups, or a mixed system may
+be preferable.</p>
+</div>
+</div>
+<div class="section" id="restoring-from-backups">
+<h3><a class="toc-backref" href="#id42">Restoring from Backups</a><a class="headerlink" href="#restoring-from-backups" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="checking-backup-consistency">
+<h4>Checking backup consistency<a class="headerlink" href="#checking-backup-consistency" title="Permalink to this headline">¶</a></h4>
+<p>Many a system administrator has been bitten by having a backup process,
+but when it came time to restore from backups, finding out that the backups
+themselves were flawed.  As such, it is important to check the quality of the
+backups periodically.  In Bazaar, there are two ways to do this: using the
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">check</span></code> command and by simply making a new branch from the backup.  The
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">check</span></code> command goes through all of the revisions in a branch and checks
+them for validity according to Bazaar’s internal invariants.  Since it goes
+through every revision, it can be quite slow for large branches.  The other
+way to ensure that the backups can be restored from is to perform a test
+restoration.  This means performing the restoration process in a temporary
+directory.  After the restoration process, <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">check</span></code> may again be relevant
+for testing the validity of the restored branches.  The following two sections
+present two restoration recipes.</p>
+</div>
+<div class="section" id="restoring-filesystem-backups">
+<h4>Restoring Filesystem Backups<a class="headerlink" href="#restoring-filesystem-backups" title="Permalink to this headline">¶</a></h4>
+<p>There are many different backup tools with different ways of accessing the
+backup data, so we can’t cover them all here.  What we will say is that
+restoring the contents of the <code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code> directory completely will restore
+all branches stored there to their state at the time of the backup (see
+<a class="reference internal" href="#filesystem-backups">Filesystem Backups</a> for concerns on backing up live branches.)  For
+example, if the backups were mounted at <code class="docutils literal notranslate"><span class="pre">/mnt/backup/bzr</span></code> then we could
+restore using simply:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /srv
+$ mv bzr bzr.old
+$ cp -r /mnt/backup/bzr bzr
+</pre></div>
+</div>
+<p>Of course, to restore only a single branch from backup, it is sufficient to
+copy only that branch.  Until the restored backup has been successfully used
+in practice, we recommend keeping the original directory available.</p>
+</div>
+<div class="section" id="restoring-bazaar-based-backups">
+<h4>Restoring Bazaar-based Backups<a class="headerlink" href="#restoring-bazaar-based-backups" title="Permalink to this headline">¶</a></h4>
+<p>In order to restore from backup branches, we can simply branch them into the
+appropriate location:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /srv
+$ mv bzr bzr.old
+$ cd bzr
+$ brz branch bzr+ssh://backup.example.com/var/backup/trunk
+$ brz branch bzr+ssh://backup.example.com/var/backup/feature-gui
+</pre></div>
+</div>
+<p>If there are multiple backups, then change the URL above to restore from the
+other backups.</p>
+</div>
+</div>
+</div>
+<div class="section" id="upgrades">
+<h2><a class="toc-backref" href="#id43">Upgrades</a><a class="headerlink" href="#upgrades" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar has a strong commitment to inter-version compatibility both on disk and
+over the network.  Newer clients should be able to interact with older
+versions on the server (although perhaps not at optimal speed) and older
+clients should also be able to communicate with newer versions of Bazaar on
+the server.  Divergences from this rule are considered bugs and are fixed in
+later versions.</p>
+<p>That said, Bazaar is constantly improving and the most recent versions are the
+most featureful and have better performance.  In particular, the Bazaar
+versions 2.0 and later have significant advantages over earlier versions,
+including a more compact disk format, faster network operations and overall
+performance improvements.  With the 2.0 release, Bazaar has moved to a
+stable/development release model where the 2.x series is maintained with
+bugfixes releases for six months, while simultaneously the 2.(x+1) series is
+being developed with monthly beta releases that are suitable for everyday use.
+Bazaar development has a stable trunk with an extensive test suite, so there
+is no reason to fear using the development series for everyday use, it simply
+changes more often than the stable series.  Many users do run the development
+version of Bazaar and update it regularly, including most of the Bazaar
+developers themselves.</p>
+<div class="section" id="software-upgrades">
+<h3><a class="toc-backref" href="#id44">Software upgrades</a><a class="headerlink" href="#software-upgrades" title="Permalink to this headline">¶</a></h3>
+<p>Upgrading the Bazaar software is as simple as re-installing the Python package
+using either the latest binary package for Windows or Mac OS X, the binary
+package provided by your GNU/Linux distribution, or installing from the source
+release.  See <a class="reference external" href="http://wiki.bazaar.canonical.com/Downloads">http://wiki.bazaar.canonical.com/Downloads</a> for the latest
+releases for all supported platforms.</p>
+<p>Bazaar’s later versions support all of the earlier disk formats (back to the
+very first one), so there is no need to upgrade the branches on the disk when
+upgrading the software.  To make use of particular new features that might
+need updated versions on both the server and developer’s machines, it does not
+matter if the clients or the servers are upgraded first.</p>
+</div>
+<div class="section" id="disk-format-upgrades">
+<h3><a class="toc-backref" href="#id45">Disk format upgrades</a><a class="headerlink" href="#disk-format-upgrades" title="Permalink to this headline">¶</a></h3>
+<p>In its evolution, Bazaar has used a sequence of disk formats for improved
+storage efficiency and speed.  With the new disk format released in version
+2.0, there is a commitment to keep that disk format until version 3.0 is
+released, which has not even been planned yet.  (Bazaar 2.0 was released
+almost two years after Bazaar 1.0.)  As a result, disk format upgrades should
+be extremely infrequent.</p>
+<p>If there are existing branches in an older format that you would like to
+upgrade to the latest format, you can see the <a class="reference external" href="../upgrade-guide/index.html">2.0 Upgrade Guide</a> for more information.  From the system
+administration perspective, it is important to coordinate the timing of
+various upgrades in the process.  First, the central branches on the server
+should be upgraded.  Next, any local mirrors that developers have should be
+upgraded.  Finally, developers’ local branches should be upgraded.  These
+upgrades will require an appropriate version of the software whenever they are
+performed.  (It is possible to upgrade branches remotely over the network, but
+it may be much slower.)</p>
+</div>
+<div class="section" id="plugin-upgrades">
+<h3><a class="toc-backref" href="#id46">Plugin upgrades</a><a class="headerlink" href="#plugin-upgrades" title="Permalink to this headline">¶</a></h3>
+<p>When Bazaar does update its version, plugins that use the Bazaar API may need
+to be upgraded to reflect changes in that API.  Some plugins have strict
+version dependencies on the version of the Bazaar API that they will accept.
+If this is the case, then you should ensure that the plugins you depend on
+have been updated <em>before</em> you upgrade your Bazaar version to avoid a
+situation where your plugins won’t work with the installed version of Bazaar.
+If this does happen, then the solution is simply to reinstall the previous
+version of Bazaar that <em>did</em> work with the plugins.  For installations that
+depend on a large number of plugins, this sort of version upgrade should be
+tested in a safe sandbox to ensure that the entire collection of Bazaar and
+its plugins can all work together.</p>
+</div>
+</div>
+<div class="section" id="advanced-topics">
+<h2><a class="toc-backref" href="#id47">Advanced Topics</a><a class="headerlink" href="#advanced-topics" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="system-monitoring">
+<h3><a class="toc-backref" href="#id48">System Monitoring</a><a class="headerlink" href="#system-monitoring" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="capacity-planning-tips">
+<h3><a class="toc-backref" href="#id49">Capacity Planning Tips</a><a class="headerlink" href="#capacity-planning-tips" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="clustering">
+<h3><a class="toc-backref" href="#id50">Clustering</a><a class="headerlink" href="#clustering" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="multi-site-setups">
+<h3><a class="toc-backref" href="#id51">Multi-site Setups</a><a class="headerlink" href="#multi-site-setups" title="Permalink to this headline">¶</a></h3>
+<p>The “distributed” in distributed version control system should indicate that
+Bazaar is  well suited for multi-site development situations and indeed, that
+is the case.  The advantage comes from the ease and transparency of managing
+merges between branches with divergent history.  Note that there are many,
+many different ways to manage widely-flung development setups using Bazaar and
+its branching and merging capabilities.  These can be discovered and tested
+before being implemented as policy.  We will describe one such possible setup
+here.</p>
+<p>Consider ProjectX Corp’s international expansion with a new branch office in
+Darwin, Australia, in addition to the company’s headquarters in Austin, Texas,
+USA.  One of the difficulties of a far-flung multi-site development
+environment such as this is that the network connection between Australia and
+Texas is slow and unreliable.  So, each branch office would like the master
+branch to be local to them.  (In situations with good network connectivity, a
+local branch bound to the remote master may be all that is needed to support
+multi-site development.)</p>
+<p>Of course, with two master branches, there is always the question of which one
+is authoritative.  Given Bazaar’s facility at managing multiple branches, we
+suggest that it is best not to privilege either the Texas or Australia
+branches, but to merge both of them into a separate master branch (which may
+reside at either site).  For definiteness, we will locate the master branch at
+the Texas site.  So, we will have three branches stored on two servers:
+trunk and texas-integration at the Texas site and australia-integration at the
+Darwin site.  These branches are named in terms of the sites where the
+development takes place, but in many cases it may make more sense to name
+branches after the functional teams rather their geographical locations.
+Since we are trying illustrate the issues with multi-<em>site</em> development, we
+will persist in this naming scheme.</p>
+<div class="section" id="id9">
+<h4>Setup<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h4>
+<p>Using our previous setup at the Texas site, we will simply rename the old
+trunk branch as trunk and branch a copy as texas-integration.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /srv/bzr/projectx
+$ mv trunk trunk              # can simply rename on the filesystem
+$ bzr branch trunk texas-integration   # very fast in a shared repository
+</pre></div>
+</div>
+<p>In Australia, we need to set up the <code class="docutils literal notranslate"><span class="pre">/srv/bzr/projectx</span></code> directory and get a
+copy of the current trunk as australia-integration:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mkdir -p /srv/bzr
+$ cd /srv/bzr
+$ bzr init-repo --no-trees projectx
+$ cd projectx
+$ bzr branch bzr+ssh://server.example.com/srv/bzr/trunk
+$ bzr branch trunk australia-integration
+</pre></div>
+</div>
+</div>
+<div class="section" id="merging-to-master">
+<h4>Merging to master<a class="headerlink" href="#merging-to-master" title="Permalink to this headline">¶</a></h4>
+<p>Then, each office works with their local copy of the trunk.  At some point,
+sooner or later depending on the pace of development in the two locations, the
+two local trunks need to be merged.  (In general, sooner beats later when
+merging, since there is no penalty for multiple merges.)  In this example,
+Alice at the Texas office will do the merging on her local machine using
+branches on the server:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># Get a copy of the Australia branch in Texas.  After the initial branch
+# command, use pull to keep the branch up to date.  With a slow network,
+# this is the only slow part
+$ bzr branch bzr+ssh://autralia.example.com/srv/bzr/projectx/australia-integration \
+  bzr+ssh://server.example.com/srv/bzr/projectx/australia-integration
+
+# Check out the master branch locally for doing the merge
+$ cd ~/projectx
+$ bzr checkout bzr+ssh://server.example.com/srv/bzr/projectx/trunk
+$ cd trunk
+$ bzr merge bzr+ssh://server.example.com/srv/bzr/projectx/texas-integration
+# Run the test suite and resolve any conflicts
+$ bzr commit -m &quot;Merge Texas branch to master&quot;
+
+# Now, merge from Australia using the local copy of that branch
+$ bzr merge bzr+ssh://server.example.com/srv/bzr/projectx/australia-integration
+# Run the test suite and resolve any conflicts between the two offices
+$ bzr commit -m &quot;Merge Australia branch to master&quot;
+</pre></div>
+</div>
+<p>Note that Bazaar does not commit even cleanly applied merges by default.  This
+is because although a merge may apply cleanly, the merged state still needs to
+be checked before it is committed.  (Just because there are no text conflicts
+does not mean that everything will work after a merge.)  An alternative that
+can pull when possible and merge otherwise is available with
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">merge</span> <span class="pre">--pull</span></code>.</p>
+</div>
+<div class="section" id="merging-back-to-local-trunks">
+<h4>Merging back to local trunks<a class="headerlink" href="#merging-back-to-local-trunks" title="Permalink to this headline">¶</a></h4>
+<p>Now the trunk branch is the most up-to-date version of the software and
+both of the local trunks need to reincorporate the changes from the master.
+If no new commits have been made to texas-integration, then that can happen using
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pull</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ~/projectx
+$ bzr checkout bzr+ssh://server.example.com/srv/bzr/projectx/texas-integration
+$ cd texas-integration
+$ bzr pull ../trunk  # Use trunk from the local disk
+                            # No need to commit
+</pre></div>
+</div>
+<p>If new changes have happened on texas-integration since the integration with
+trunk, then the above pull will produce an error suggesting to use
+merge:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr merge ../trunk
+# Run test suite, resolve conflicts
+$ bzr commit -m &quot;Merging Australian changes&quot;
+</pre></div>
+</div>
+<p>In Australia, they will need to update their local copy of trunk:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd /srv/bzr/projectx/trunk
+$ bzr pull     # parent location is used by default
+</pre></div>
+</div>
+<p>Then, they need to pull or merge the changes from trunk into the local trunk.
+This should be done by a developer with a checkout of australia-integration so
+that they can run the test suite:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ~/projectx
+$ bzr co bzr+ssh://australia.example.com/srv/bzr/projectx/australia-integration
+$ cd australia-integration
+$ bzr merge bzr+ssh://australia.example.com/srv/bzr/projectx/trunk
+# Run test suite and integrate Texan changes with only recent local
+# development
+$ bzr commit -m &quot;Integrate work from Texas&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="other-considerations">
+<h4>Other Considerations<a class="headerlink" href="#other-considerations" title="Permalink to this headline">¶</a></h4>
+<p>Multi-site deployments can be complicated, due to the many possible variations
+of development velocity, divisions of labor, network connectivity, resources
+for integration, etc.  The preceding description is meant to be one possible
+way to do fairly symmetric multi-site development.  (Neither Texas or
+Australia is privileged in this structure.)  In a situation where there is one
+main site and other smaller sites, one of the local trunk branches can be
+eliminated and trunk can be used directly for development at the main
+site.</p>
+<p>It is also up to the particular situation how frequently the local trunks are
+integrated into the master trunk.  Given resources specifically for
+integration, it is conceivable that a developer may be constantly responsible
+for integrating changes from the two teams.  Alternatively, the two sites
+could work on well-separated, well-defined features and merge to the master
+trunk only when their respective features are complete.  Given the difficulty
+of resolving conflicts in very large merges and the ease of merge handling in
+Bazaar, we suggest that merges be done more frequently, rather than less.</p>
+</div>
+</div>
+</div>
+<div class="section" id="licence">
+<h2><a class="toc-backref" href="#id52">Licence</a><a class="headerlink" href="#licence" title="Permalink to this headline">¶</a></h2>
+<p>Copyright 2008-2011 Canonical Ltd.
+Copyright 2018 Breezy Developers</p>
+<p>Breezy is free software, and you
+may use, modify and redistribute both Breezy and this document under
+the terms of the GNU General Public License version 2 or later.  See
+&lt;<a class="reference external" href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a>&gt;.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/admin-guide/index-plain.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

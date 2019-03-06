@@ -1,0 +1,85 @@
+=======
+Bundles
+=======
+
+Status
+======
+
+:Date: 2007-06-19
+
+This document describes the current and future design of the bzr bundle facility.
+
+.. contents::
+
+Motivation
+==========
+
+Bundles are intended to be a compact binary representation of the changes done within
+a branch for transmission between users. Bundles should be able to be used
+easily and seamlessly - we want to avoid having a parallel set of commands to
+get data from within a bundle.
+
+A related concept is **merge directives** which are used to transmit bzr merge
+and merge-like operations from one user to another in such a way that the
+recipient can be sure they get the correct data the initiator desired.
+
+Desired features
+================
+
+* A bundle should be able to substitute for the entire branch in any bzr
+  command that operates on branches in a read only fashion.
+* Bundles should be as small as possible without losing data to keep them
+  feasible for including in emails.
+
+Historical Design
+=================
+
+Not formally documented, the current released implementation can be found
+in bzrlib.bundle.serializer. One key element is that this design included
+parts of the branch data as human readable diffs; which were then subject
+to corruption by transports such as email.
+
+June 2007 Design
+================
+`Bundle Format 4 spec`_
+
+.. _Bundle Format 4 spec: bundle-format4.html
+
+
+Future Plans
+============
+
+Bundles will be implemented as a 'Shallow Branch' with the branch and
+repository data combined into a single file. This removes the need to
+special case bundle handling for all command which read from branches.
+
+Physical encoding
+-----------------
+
+Bundles will be encoded using the bzr pack format. Within the pack the
+branch metadata will be serialised as a BzrMetaDir1 branch entry. The
+Repository data added by the revisions contained in the bundle will be
+encoded using multi parent diffs as they are the most pithy diffs we are
+able to create today in the presence of merges. XXX More details needed?
+
+Code reuse
+----------
+
+Ideally we can reuse our BzrMetaDir based branch formats directly within a
+Bundle by layering a Transport interface on top of the pack - or just
+copying the data out into a readonly memory transport when we read the
+pack. This suggests we will have a pack specific Control instance,
+replacing the usual 'BzrDir' instance, but use the Branch class as-is.
+
+For the Repository access, we will create a composite Repository using the
+planned Repository Stacking API, and a minimal Repository implementation
+that can work with the multi parent diffs within the bundle.
+
+We will need access to a branch that has the basis revision of the bundle
+to be able to construct revisions from within it - this is a requirement
+for Shallow Branches too, so hopefully we can define a single mechanism at
+the Branch level to gain access to that.
+
+
+..
+   vim: ft=rst tw=74 ai

@@ -1,0 +1,194 @@
+log
+===
+
+:Purpose: Show historical log for a branch or subset of a branch.
+:Usage:   brz log [FILE...]
+
+:Options:
+  --authors=ARG         What names to list as authors - first, all or
+                        committer.
+  -c ARG, --change=ARG  Show just the specified revision. See also "help
+                        revisionspec".
+  --exclude-common-ancestry
+                        Display only the revisions that are not part of both
+                        ancestries (require -rX..Y).
+  --forward             Show from oldest to newest.
+  -h, --help            Show help message.
+  --include-merged      Show merged revisions like --levels 0 does.
+  -n N, --levels=N      Number of levels to display - 0 for all, 1 for flat.
+  -l N, --limit=N       Limit the output to the first N revisions.
+  -m ARG, --match=ARG   Show revisions whose properties match this expression.
+  --match-author=ARG    Show revisions whose authors match this expression.
+  --match-bugs=ARG      Show revisions whose bugs match this expression.
+  --match-committer=ARG
+                        Show revisions whose committer matches this
+                        expression.
+  --match-message=ARG   Show revisions whose message matches this expression.
+  --omit-merges         Do not report commits with more than one parent.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  -p, --show-diff       Show changes made in each revision as a patch.
+  --show-ids            Show internal object ids.
+  --signatures          Show digital signature validity.
+  --timezone=ARG        Display timezone as local, original, or utc.
+  --usage               Show usage message and options.
+  -v, --verbose         Show files changed in each revision.
+
+  Log format:
+    --log-format=ARG    Use specified log format.
+    --gnu-changelog     Format used by GNU ChangeLog files.
+    --line              Log format with one line per revision.
+    --long              Detailed log format.
+    -S, --short         Moderately short log format.
+
+:Description:
+  log is brz's default tool for exploring the history of a branch.
+  The branch to use is taken from the first parameter. If no parameters
+  are given, the branch containing the working directory is logged.
+  Here are some simple examples::
+  
+    brz log                       log the current branch
+    brz log foo.py                log a file in its branch
+    brz log http://server/branch  log a branch on a server
+  
+  The filtering, ordering and information shown for each revision can
+  be controlled as explained below. By default, all revisions are
+  shown sorted (topologically) so that newer revisions appear before
+  older ones and descendants always appear before ancestors. If displayed,
+  merged revisions are shown indented under the revision in which they
+  were merged.
+
+:Output control:
+  The log format controls how information about each revision is
+  displayed. The standard log formats are called ``long``, ``short``
+  and ``line``. The default is long. See ``brz help log-formats``
+  for more details on log formats.
+
+  The following options can be used to control what information is
+  displayed::
+
+    -l N        display a maximum of N revisions
+    -n N        display N levels of revisions (0 for all, 1 for collapsed)
+    -v          display a status summary (delta) for each revision
+    -p          display a diff (patch) for each revision
+    --show-ids  display revision-ids (and file-ids), not just revnos
+
+  Note that the default number of levels to display is a function of the
+  log format. If the -n option is not used, the standard log formats show
+  just the top level (mainline).
+
+  Status summaries are shown using status flags like A, M, etc. To see
+  the changes explained using words like ``added`` and ``modified``
+  instead, use the -vv option.
+
+:Ordering control:
+  To display revisions from oldest to newest, use the --forward option.
+  In most cases, using this option will have little impact on the total
+  time taken to produce a log, though --forward does not incrementally
+  display revisions like --reverse does when it can.
+
+:Revision filtering:
+  The -r option can be used to specify what revision or range of revisions
+  to filter against. The various forms are shown below::
+
+    -rX      display revision X
+    -rX..    display revision X and later
+    -r..Y    display up to and including revision Y
+    -rX..Y   display from X to Y inclusive
+
+  See ``brz help revisionspec`` for details on how to specify X and Y.
+  Some common examples are given below::
+
+    -r-1                show just the tip
+    -r-10..             show the last 10 mainline revisions
+    -rsubmit:..         show what's new on this branch
+    -rancestor:path..   show changes since the common ancestor of this
+                        branch and the one at location path
+    -rdate:yesterday..  show changes since yesterday
+
+  When logging a range of revisions using -rX..Y, log starts at
+  revision Y and searches back in history through the primary
+  ("left-hand") parents until it finds X. When logging just the
+  top level (using -n1), an error is reported if X is not found
+  along the way. If multi-level logging is used (-n0), X may be
+  a nested merge revision and the log will be truncated accordingly.
+
+:Path filtering:
+  If parameters are given and the first one is not a branch, the log
+  will be filtered to show only those revisions that changed the
+  nominated files or directories.
+
+  Filenames are interpreted within their historical context. To log a
+  deleted file, specify a revision range so that the file existed at
+  the end or start of the range.
+
+  Historical context is also important when interpreting pathnames of
+  renamed files/directories. Consider the following example:
+
+  * revision 1: add tutorial.txt
+  * revision 2: modify tutorial.txt
+  * revision 3: rename tutorial.txt to guide.txt; add tutorial.txt
+
+  In this case:
+
+  * ``brz log guide.txt`` will log the file added in revision 1
+
+  * ``brz log tutorial.txt`` will log the new file added in revision 3
+
+  * ``brz log -r2 -p tutorial.txt`` will show the changes made to
+    the original file in revision 2.
+
+  * ``brz log -r2 -p guide.txt`` will display an error message as there
+    was no file called guide.txt in revision 2.
+
+  Renames are always followed by log. By design, there is no need to
+  explicitly ask for this (and no way to stop logging a file back
+  until it was last renamed).
+
+:Other filtering:
+  The --match option can be used for finding revisions that match a
+  regular expression in a commit message, committer, author or bug.
+  Specifying the option several times will match any of the supplied
+  expressions. --match-author, --match-bugs, --match-committer and
+  --match-message can be used to only match a specific field.
+
+:Tips & tricks:
+  GUI tools and IDEs are often better at exploring history than command
+  line tools: you may prefer qlog or viz from qbzr or bzr-gtk, the
+  bzr-explorer shell, or the Loggerhead web interface.  See the Bazaar
+  Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/> and
+  <http://wiki.bazaar.canonical.com/IDEIntegration>.
+
+  You may find it useful to add the aliases below to ``breezy.conf``::
+
+    [ALIASES]
+    tip = log -r-1
+    top = log -l10 --line
+    show = log -v -p
+
+  ``brz tip`` will then show the latest revision while ``brz top``
+  will show the last 10 mainline revisions. To see the details of a
+  particular revision X,  ``brz show -rX``.
+
+  If you are interested in looking deeper into a particular merge X,
+  use ``brz log -n0 -rX``.
+
+  ``brz log -v`` on a branch with lots of history is currently
+  very slow. A fix for this issue is currently under development.
+  With or without that fix, it is recommended that a revision range
+  be given when using the -v option.
+
+  brz has a generic full-text matching plugin, brz-search, that can be
+  used to find revisions matching user names, commit messages, etc.
+  Among other features, this plugin can find all revisions containing
+  a list of words but not others.
+
+  When exploring non-mainline history on large projects with deep
+  history, the performance of log can be greatly improved by installing
+  the historycache plugin. This plugin buffers historical information
+  trading disk space for faster speed.
+
+:See also: :doc:`log-formats <log-formats-help>`, :doc:`revisionspec <revisionspec-help>`
+
+

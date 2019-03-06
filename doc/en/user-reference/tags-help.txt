@@ -1,0 +1,24 @@
+tags
+====
+
+:Purpose: List tags.
+:Usage:   brz tags
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch whose tags should be displayed.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --show-ids            Show internal object ids.
+  --sort=ARG            Sort tags by different criteria.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  This command shows a table of tag names and the revisions they reference.
+
+:See also: :doc:`tag <tag-help>`
+
+

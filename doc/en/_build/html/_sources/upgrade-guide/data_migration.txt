@@ -1,0 +1,217 @@
+Data migration
+##############
+
+Preparing for data migration
+----------------------------
+
+Before starting a migration, there are a few important things to do
+first:
+
+1. Take a complete backup.
+
+2. Take some time to purge obsolete branches.
+
+A complete backup gives you a safety net in case anything goes wrong.
+
+Purging obsolete branches reduces the amount of data that needs to
+be migrated. See `Finding obsolete branches`_ later for some tips
+on doing this.
+
+
+Introducing the upgrade-related commands
+----------------------------------------
+
+There are 3 important commands to be aware of when migrating data.
+
+* **check** - check a repository, branch or tree for data integrity errors
+
+* **reconcile** - fix data integrity errors
+
+* **upgrade** - migrate data to a different format.
+
+**reconcile** is rarely needed but it's good practice to run **check**
+before and after running **upgrade**.
+
+For detailed help on these commands, see the `Breezy User Reference`_.
+
+.. _Breezy User Reference: ../user-reference/index.html
+
+
+Communicating with your community
+---------------------------------
+
+To enable a smooth transition to the new format, you should:
+
+1. Make one person responsible for migrating the trunk.
+
+2. Test the migration of trunk works successfully.
+
+3. Schedule a time for the trunk migration and notify your community
+   in advance.
+
+This advance warning should be long enough for users to have time
+to upgrade Breezy and any required plugins before the migration date.
+
+For larger projects, allow some time for the migration itself.
+You should have a good idea of how long the migration will take
+after doing the test migration. It may make sense to do the migration
+on a weekend or a Friday, giving yourself some breathing space if
+things go wrong.
+
+After the trunk is migrated, you'll need to notify your community
+accordingly, giving them instructions as to how to migrate their
+local branches. Sample instructions are provided later in this
+document.
+
+
+Migrating a standalone branch
+-----------------------------
+
+The steps are:
+
+1. Run **brz check**.
+
+2. If there are errors, try using **brz reconcile** to fix them.
+   If that fails, file a bug so we can help you resolve the issue
+   and get your trunk clean. If it works, take a backup copy of
+   your now clean trunk.
+
+2. Run **brz upgrade --format** where *format* is 2a or later.
+
+3. Run **brz check** to confirm the final result is good.
+
+
+Migrating branches in a shared repository
+-----------------------------------------
+
+Upgrade things in the following order:
+
+1. Upgrade the shared repository.
+2. Upgrade the branches.
+3. Upgrade any lightweight checkouts.
+
+As in the standalone branch case, be sure to run **check** before
+and after the upgrade to check for any existing or introduced issues.
+
+
+Migrating branches on Launchpad
+-------------------------------
+
+You have two options for upgrading your Launchpad branches.  You can either
+upgrade them remotely or you can upgrade them locally and push the migrated
+branch to Launchpad.  We recommend the latter.  Upgrading remotely currently
+requires a fast, rock solid network connection to the Launchpad servers, and
+any interruption in that connection can leave you with a partially upgraded
+branch.  The instructions below are the safest and often fastest way to
+upgrade your Launchpad branches.
+
+To allow isolation between public and private branches, Launchpad
+uses stacked branches rather than shared repositories as the core
+technology for efficient branch storage. The process for migrating
+to a new format for projects using Launchpad code hosting is therefore
+different to migrating a personal or in-house project.
+
+In Launchpad, a project can define a *development series* and associate a
+branch with that series.  The branch then becomes the *focus of development*
+and gets special treatment and a shortcut URL.  By default, if anybody
+branches your project's focus of development and pushes changes back to
+Launchpad, their branch will be stacked on your development focus branch.
+Also, branches can be associated with other Launchpad artifacts such as bugs
+and merge proposals.  All of these things mean that upgrading your focus of
+development branch is trickier.
+
+Here are the steps to follow:
+
+1. The nominated person grabs a copy of trunk and does the migration locally.
+
+2. On Launchpad, unset the current trunk from being the development focus.
+   (This *must* be done or the following step won't work as expected.)
+
+   1. Go to your project's home page on Launchpad
+
+   2. Look for "XXX is the current focus of development"
+
+   3. Click on the edit (pencil) icon
+
+   4. Click on "Change details" in the portlet on the right
+
+   5. Scroll down to where it says "Branch: (Optional)"
+
+   6. Blank out this input field and click "Change"
+
+3. Push the migrated trunk to Launchpad.  See below if you want your
+   new migrated development focus branch to have the same name as your old
+   pre-migration development focus branch.
+
+4. Set it as the development focus.  Follow the instructions above but at step
+   5, enter the name of the newly migrated branch you just pushed.
+
+5. Ask users subscribed to the old trunk to subscribe to the new one.
+
+In summary, these steps mean that the old trunk is still available and
+existing branches stacked on it will continue to be so. However, the
+development focus has switched to the migrated trunk and any new branches
+pushed to Launchpad for your project will now stack on it.
+
+You are now ready to tell your community that the new trunk is available
+and to give them instructions on migrating any local branches they have.
+
+If you want your new migrated development focus branch to have the same name
+as your old pre-migration branch, you need to do a few extra things before you
+establish the new development focus.
+
+1. Rename your old pre-migration branch; use something like
+   **foo-obsolete-do-not-use**.  You will really not want to delete this
+   because there will be artifacts (bugs, merge proposals, etc.) associated
+   with it.
+
+2. Rename the new migrated branch to the pre-migration branch's old name.
+
+3. Re-establish the development focus branch using the new migrated branch's
+   new name (i.e. the old pre-migration branch's original name).
+
+
+Migrating local branches after a central trunk has migrated
+-----------------------------------------------------------
+
+To migrate a standalone branch:
+
+1. Grab the latest branch from the central location into a
+   new directory.
+
+2. Pull or merge any changes you've made in your existing branch
+   into the new branch.
+
+To migrate branches in a shared repository:
+
+1. Create a fresh shared repository in the new format (2a or later).
+
+2. Grab the latest branch from the central location into a
+   new directory inside the shared repository.
+
+3. Decide which of your local branches you want to migrate. (If you
+   haven't already, now's a good time for `Finding obsolete branches`_
+   and purging them, after backing up first of course.)
+
+4. To migrate each local branch of interest, there are 2 options:
+
+ * **init** an empty branch in the new repository and **pull** the
+   revisions from the branch in the old repository across.
+
+ * In the new repository, **branch** from trunk to the new branch
+   name then **merge** your changes from the matching branch in the
+   old repository.
+
+The first method will give you a branch which is identical (in terms of
+revision history) to the old branch, but it's parent branch will be set to the
+old branch, not your new trunk. If you use this method, you'll probably update
+the ``parent_location`` configuration variable in the ``branch.conf`` file
+with::
+
+    brz config parent_location=XXX
+
+``XXX`` being the URL to your new trunk.
+
+In contrast, the second approach sets up the parent branch correctly.
+However, it isn't ideal if you're not ready to include all the latest
+revisions from trunk into that branch yet.

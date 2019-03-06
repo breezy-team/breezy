@@ -1,0 +1,24 @@
+split
+=====
+
+:Purpose: Split a subdirectory of a tree into a separate tree.
+:Usage:   brz split TREE
+
+:Options:
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  This command will produce a target tree in a format that supports
+  rich roots, like 'rich-root' or 'rich-root-pack'.  These formats cannot be
+  converted into earlier formats like 'dirstate-tags'.
+  
+  The TREE argument should be a subdirectory of a working tree.  That
+  subdirectory will be converted into an independent tree, with its own
+  branch.  Commits in the top-level tree will not apply to the new subtree.
+
+:See also: :doc:`join <join-help>`
+
+

@@ -1,0 +1,16 @@
+The journey ahead
+=================
+
+We hope that earlier chapters have given you a solid
+understanding of how Breezy can assist you in being productive
+on your own and working effectively with others.
+If you are learning Breezy for the first time, it might be
+good to try the procedures covered already for a while,
+coming back to this manual once you have mastered them.
+
+Remaining chapters
+covers various topics to guide you in further optimizing how you
+use Breezy. Unless stated otherwise, the topics in this and
+remaining chapters are independent of each other and can therefore
+be read in whichever order you wish.
+

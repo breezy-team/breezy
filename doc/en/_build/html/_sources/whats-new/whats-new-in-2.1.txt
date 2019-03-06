@@ -1,0 +1,212 @@
+What's New in Bazaar 2.1?
+=========================
+
+This document outlines the major improvements in Bazaar 2.1
+vs Bazaar 2.0. As well as summarizing improvements made to
+the core product, it highlights enhancements within the broader
+Bazaar world of potential interest to those upgrading.
+
+Bazaar 2.1.0 marks the start of our second long-term-stable series.
+This series will be supported with bug fixes for the next 12 months.
+All users are encouraged to upgrade from the 2.0.x stable series.
+
+
+Better efficiency
+-----------------
+
+Many operations now consume less memory. Several operations are
+also faster including branching, logging merged revisions and
+upgrading from pre-2a to 2a format.
+
+
+New command options
+-------------------
+
+Several commands have new options. These include:
+
+===========     ==============  ======================================
+Command         Option            Description
+===========     ==============  ======================================
+branch          bind            Bind to the source location
+commit          commit-time     Give an explicit commit timestamp
+switch          revision        Switch to a particular revision
+unshelve        keep            Apply changes but don't delete them
+unshelve        preview         Show the diff that would result from
+                                unshelving
+update          revision        Update to a particular revision
+===========     ==============  ======================================
+
+Other command improvements include:
+
+* A :doc:`../user-reference/shelve-help` editor can be defined to provide shelf functionality at
+  a granularity finer than per-patch hunk.
+
+* :doc:`../user-reference/send-help` send now supports the OS X Mail application.
+
+See the help for the commands above for further details.
+
+
+Per-file merge hooks
+--------------------
+
+Hooks can now be defined for smart merging of selected file types.
+This enables easier merging of ChangeLogs, Release Notes and other
+file that frequently conflict.
+
+
+DWIM revision identifiers
+-------------------------
+
+Revision identifiers can now be given in a *Do-What-I-Mean* style.
+For example, you can now just give a tag (instead of saying ``tag:xxx``)
+or just say ``today`` (instead of saying ``date:today``). Prefixes
+are now only required if the revision spec could be ambiguous.
+
+Launchpad compatibility
+-----------------------
+
+Launchpad has `announced
+<http://blog.launchpad.net/general/edge-is-deprecated>`_ that the
+``edge.launchpad.net`` instance is deprecated and may be shut down in the
+future . Bazaar has therefore been updated in this release to talk to the main
+(``launchpad.net``) servers, rather than the ``edge`` ones (the same code is
+running on both servers during the interim).
+
+
+New ignore patterns
+-------------------
+
+Patterns prefixed with ``!`` are exceptions to ignore patterns and
+take precedence over regular ignores. Such exceptions are used to
+specify files that should be versioned which would otherwise be
+ignored. Patterns prefixed with ``!!`` act as regular ignore patterns,
+but have highest precedence, even over the ``!`` exception patterns. 
+
+
+Smart server home directory support
+-----------------------------------
+
+``bzr+ssh`` and ``bzr`` paths can now be relative to home directories
+specified in the URL.  Paths starting with a path segment of ``~`` are
+relative to the home directory of the user running the server, and paths
+starting with ``~user`` are relative to the home directory of the named
+user.  For example, for a user "bob" with a home directory of
+``/home/bob``, these URLs are all equivalent:
+
+* ``bzr+ssh://bob@host/~/repo``
+* ``bzr+ssh://bob@host/~bob/repo``
+* ``bzr+ssh://bob@host/home/bob/repo``
+
+If ``bzr serve`` was invoked with a ``--directory`` argument, then no
+home directories outside that directory will be accessible via this
+method.
+
+This is a feature of ``bzr serve``, so pre-2.1 clients will
+automatically benefit from this feature when ``bzr`` on the server is
+upgraded.
+
+
+Generalized glob support on Windows
+-----------------------------------
+
+On Windows, glob expansion is now handled in a universal way across
+all commands. In previous versions, it was explicitly handed by just
+a few commands, e.g. ``add``. A side effect of this change is that
+patterns now need to be quoted when passed to the ``ignore`` command,
+e.g. ``bzr ignore *.foo`` now needs to be given as ``bzr ignore "*.foo"``.
+
+
+Improved Git and Mercurial interoperability
+-------------------------------------------
+
+Many improvements have been made to the git_ and hg_ plugins.
+With these plugins installed, most Git and Mercurial repositories
+can now be read by standard Bazaar clients. Changes can also
+be written back via the dpush command.
+
+.. _git: http://doc.bazaar.canonical.com/plugins/en/git-plugin.html
+.. _hg: http://doc.bazaar.canonical.com/plugins/en/hg-plugin.html
+
+
+Metaprojects
+------------
+
+New plugins are available for constructing larger projects
+from smaller ones. These include:
+
+* builder_ - construction of a branch using recipes
+* externals_ - Subversion-style external branches
+
+.. note::
+
+   The builder plugin has been designed to complement the builddeb_
+   plugin to streamline Debian source package management. It may also
+   be useful for building test images for a QA team or disk images
+   for installers, say.
+
+.. _builder: http://doc.bazaar.canonical.com/plugins/en/builder-plugin.html
+.. _externals: http://doc.bazaar.canonical.com/plugins/en/externals-plugin.html
+.. _builddeb: http://doc.bazaar.canonical.com/plugins/en/builddeb-plugin.html
+
+
+Colocated branch workspaces
+---------------------------
+
+A colocated workspace is one where a single working tree is used
+across one or more branches managed at that same location. This
+is now supported by the new colo_ plugin and by Bazaar Explorer.
+
+.. _colo: http://doc.bazaar.canonical.com/plugins/en/colo-plugin.html
+
+
+Better documentation
+--------------------
+
+A :doc:`../admin-guide/index` covering topics such as setting up servers,
+security, backups and email integration has been added.
+
+A large number of documentation bugs have been fixed, clarifying
+numerous issues and filling in some missing holes.
+
+The :doc:`../user-reference/index`
+has been organized into topics making it easier to
+navigate through and print selected sections of.
+
+To assist users migrating from other tools, a
+`Survival Guide <http://doc.bazaar.canonical.com/migration/en/survival/index.html>`_
+has been published explaining Bazaar to users of other tools in terms they
+already know. Sections are provided for existing users of 
+CVS, Subversion, ClearCase, Perforce, Visual SourceSafe, Git, Mercurial,
+Darcs and Monotone.
+
+Selected documents have also been translated to Japanese.
+
+
+Enhanced GUI clients
+--------------------
+
+Numerous enhancements have been made to most of our GUIs including
+Bazaar Explorer, TortoiseBZR and the QBzr-Eclipse add-on. These
+applications all build on top of improvements made to QBzr. Bzr-gtk
+has also been improved.
+
+Bazaar Explorer has over a dozen new features including smart toolbars,
+support for all bzr commands (including those in plugins),
+a better working tree browser and a submit delta report showing the
+cumulative effect of a series of commits.
+See `What's New in Bazaar Explorer 1.0?
+<http://doc.bazaar.canonical.com/explorer/en/whats-new/whats-new-in-1.0.html>`_
+for more information.
+
+
+Further information
+-------------------
+
+For more detailed information on the changes made, be sure to check
+the :doc:`../release-notes/index` for:
+
+* the interim bzr `milestones <https://launchpad.net/bzr/2.1>`_
+* the plugins you use.
+
+Enjoy,
+The Bazaar Development Team

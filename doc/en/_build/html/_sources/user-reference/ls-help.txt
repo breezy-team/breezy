@@ -1,0 +1,28 @@
+ls
+==
+
+:Purpose: List files in a tree.
+:Usage:   brz ls [PATH]
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  --from-root           Print paths relative to the root of the branch.
+  -h, --help            Show help message.
+  -i, --ignored         Print ignored files.
+  -k ARG, --kind=ARG    List entries of a particular kind: file, directory,
+                        symlink, tree-reference.
+  -0, --null            Use an ASCII NUL (\0) separator rather than a newline.
+  -q, --quiet           Only display errors and warnings.
+  -R, --recursive       Recurse into subdirectories.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --show-ids            Show internal object ids.
+  -u, --unknown         Print unknown files.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+  -V, --versioned       Print versioned files.
+
+:See also: :doc:`cat <cat-help>`, :doc:`status <status-help>`
+
+

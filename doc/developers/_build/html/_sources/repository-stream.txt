@@ -1,0 +1,200 @@
+==================
+Repository Streams
+==================
+
+Status
+======
+
+:Date: 2008-04-11
+
+This document describes the proposed programming interface for streaming
+data from and into repositories. This programming interface should allow
+a single interface for pulling data from and inserting data into a Breezy
+repository.
+
+.. contents::
+
+
+Motivation
+==========
+
+To eliminate the current requirement that extracting data from a
+repository requires either using a slow format, or knowing the format of
+both the source repository and the target repository.
+
+
+Use Cases
+=========
+
+Here's a brief description of use cases this interface is intended to
+support.
+
+Fetch operations
+----------------
+
+We fetch data between repositories as part of push/pull/branch operations.
+Fetching data is currently an very interactive process with lots of
+requests. For performance having the data be supplied in a stream will
+improve push and pull to remote servers. For purely local operations the
+streaming logic should help reduce memory pressure. In fetch operations
+we always know the formats of both the source and target.
+
+Smart server operations
+~~~~~~~~~~~~~~~~~~~~~~~
+
+With the smart server we support one streaming format, but this is only
+usable when both the client and server have the same model of data, and
+requires non-optimal IO ordering for pack to pack operations. Ideally we
+can both provide optimal IO ordering the pack to pack case, and correct
+ordering for pack to knits.
+
+Bundles
+-------
+
+Bundles also create a stream of data for revisions from a repository.
+Unlike fetch operations we do not know the format of the target at the
+time the stream is created. It would be good to be able to treat bundles
+as frozen branches and repositories, so a serialised stream should be
+suitable for this.
+
+Data conversion
+---------------
+
+At this point we are not trying to integrate data conversion into this
+interface, though it is likely possible.
+
+
+Characteristics
+===============
+
+Some key aspects of the described interface are discussed in this section.
+
+Single round trip
+-----------------
+
+All users of this should be able to create an appropriate stream from a
+single round trip.
+
+Forward-only reads
+------------------
+
+There should be no need to seek in a stream when inserting data from it
+into a repository. This places an ordering constraint on streams which
+some repositories do not need.
+
+
+Serialisation
+=============
+
+At this point serialisation of a repository stream has not been specified.
+Some considerations to bear in mind about serialisation are worth noting
+however.
+
+Weaves
+------
+
+While there shouldn't be too many users of weave repositories anymore,
+avoiding pathological behaviour when a weave is being read is a good idea.
+Having the weave itself embedded in the stream is very straight forward
+and does not need expensive on the fly extraction and re-diffing to take
+place.
+
+Bundles
+-------
+
+Being able to perform random reads from a repository stream which is a
+bundle would allow stacking a bundle and a real repository together. This
+will need the pack container format to be used in such a way that we can
+avoid reading more data than needed within the pack container's readv
+interface.
+
+
+Specification
+=============
+
+This describes the interface for requesting a stream, and the programming
+interface a stream must provide. Streams that have been serialised should
+expose the same interface.
+
+Requesting a stream
+-------------------
+
+To request a stream, three parameters are needed:
+
+ * A revision search to select the revisions to include.
+ * A data ordering flag. There are two values for this - 'unordered' and
+   'topological'. 'unordered' streams are useful when inserting into
+   repositories that have the ability to perform atomic insertions.
+   'topological' streams are useful when converting data, or when
+   inserting into repositories that cannot perform atomic insertions (such
+   as knit or weave based repositories).
+ * A complete_inventory flag. When provided this flag signals the stream
+   generator to include all the data needed to construct the inventory of
+   each revision included in the stream, rather than just deltas. This is
+   useful when converting data from a repository with a different
+   inventory serialisation, as pure deltas would not be able to be
+   reconstructed.
+
+
+Structure of a stream
+---------------------
+
+A stream is an object. It can be consistency checked via the ``check``
+method (which consumes the stream). The ``iter_contents`` method can be
+used to iterate the contents of the stream. The contents of the stream are
+a series of top level records, each of which contains one or more
+bytestrings (potentially as a delta against another item in the
+repository) and some optional metadata.
+
+
+Consuming a stream
+------------------
+
+To consume a stream, obtain an iterator from the streams
+``iter_contents`` method. This iterator will yield the top level records.
+Each record has two attributes. One is ``key_prefix`` which is a tuple key
+prefix for the names of each of the bytestrings in the record. The other
+attribute is ``entries``, an iterator of the individual items in the
+record. Each item that the iterator yields is a factory which has metadata
+about the entry and the ability to return the compressed bytes. This
+factory can be decorated to allow obtaining different representations (for
+example from a compressed knit fulltext to a plain fulltext).
+
+In pseudocode::
+
+  stream = repository.get_repository_stream(search, UNORDERED, False)
+  for record in stream.iter_contents():
+      for factory in record.entries:
+          compression = factory.storage_kind
+          print "Object %s, compression type %s, %d bytes long." % (
+              record.key_prefix + factory.key,
+              compression, len(factory.get_bytes_as(compression)))
+
+This structure should allow stream adapters to be written which can coerce
+all records to the type of compression that a particular client needs. For
+instance, inserting into weaves requires fulltexts, so a stream would be
+adapted for weaves by an adapter that takes a stream, and the target
+weave, and then uses the target weave to reconstruct full texts (which is
+all that the weave inserter would ask for). In a similar approach, a
+stream could internally delta compress many fulltexts and be able to
+answer both fulltext and compressed record requests without extra IO.
+
+factory metadata
+~~~~~~~~~~~~~~~~
+
+Valid attributes on the factory are:
+ * sha1: Optional ascii representation of the sha1 of the bytestring (after
+   delta reconstruction).
+ * storage_kind: Required kind of storage compression that has been used
+   on the bytestring. One of ``mpdiff``, ``knit-annotated-ft``,
+   ``knit-annotated-delta``, ``knit-ft``, ``knit-delta``, ``fulltext``.
+ * parents: Required graph parents to associate with this bytestring.
+ * compressor_data: Required opaque data relevant to the storage_kind.
+   (This is set to None when the compressor has no special state needed)
+ * key: The key for this bytestring. Like each parent this is a tuple that
+   should have the key_prefix prepended to it to give the unified
+   repository key name.
+
+..
+   vim: ft=rst tw=74 ai
+

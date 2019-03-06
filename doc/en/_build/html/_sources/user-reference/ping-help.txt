@@ -1,0 +1,18 @@
+ping
+====
+
+:Purpose: Pings a Bazaar smart server.
+:Usage:   brz ping LOCATION
+
+:Options:
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  This command sends a 'hello' request to the given location using the brz
+  smart protocol, and reports the response.
+
+
+

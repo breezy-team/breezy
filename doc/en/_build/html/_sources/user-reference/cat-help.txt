@@ -1,0 +1,27 @@
+cat
+===
+
+:Purpose: Write the contents of a file as of a given revision to standard output.
+:Usage:   brz cat FILENAME
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  --filters             Apply content filters to display the convenience form.
+  -h, --help            Show help message.
+  --name-from-revision  The path name in the old tree.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  If no revision is nominated, the last revision is used.
+  
+  Note: Take care to redirect standard output when using this command on a
+  binary file.
+
+:See also: :doc:`ls <ls-help>`
+
+

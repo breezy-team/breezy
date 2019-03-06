@@ -1,0 +1,43 @@
+Repositories
+============
+
+
+Repositories in Breezy are where committed information is stored. There is
+a repository associated with every branch.
+
+Repositories are a form of database. Breezy will usually maintain this for
+good performance automatically, but in some situations (e.g. when doing
+very many commits in a short time period) you may want to ask brz to
+optimise the database indices. This can be done by the 'brz pack' command.
+
+By default just running 'brz init' will create a repository within the new
+branch but it is possible to create a shared repository which allows multiple
+branches to share their information in the same location. When a new branch is
+created it will first look to see if there is a containing shared repository it
+can use.
+
+When two branches of the same project share a repository, there is
+generally a large space saving. For some operations (e.g. branching
+within the repository) this translates in to a large time saving.
+
+To create a shared repository use the init-repository command (or the alias
+init-repo). This command takes the location of the repository to create. This
+means that 'brz init-repository repo' will create a directory named 'repo',
+which contains a shared repository. Any new branches that are created in this
+directory will then use it for storage.
+
+It is a good idea to create a repository whenever you might create more
+than one branch of a project. This is true for both working areas where you
+are doing the development, and any server areas that you use for hosting
+projects. In the latter case, it is common to want branches without working
+trees. Since the files in the branch will not be edited directly there is no
+need to use up disk space for a working tree. To create a repository in which
+the branches will not have working trees pass the '--no-trees' option to
+'init-repository'.
+
+Related commands::
+
+  init-repository   Create a shared repository. Use --no-trees to create one
+                    in which new branches won't get a working tree.
+
+

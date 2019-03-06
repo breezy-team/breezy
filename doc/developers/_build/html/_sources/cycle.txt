@@ -1,0 +1,426 @@
+*********************
+Breezy Release Cycles
+*********************
+
+:status: Current policy, as of 2017-11.
+
+
+Our users want easy access to bug fixes without other changes to the
+core product. They also want a Just Works experience across the full
+Breezy ecosystem. To deliver the first and enable the second, we're
+adopting some standard process patterns: a 6 monthly release cycle and a
+stable series. These changes will also have other benefits, including
+better availability of bug fixes in OS distributions, more freedom to
+remove old code, and less work for in packaging.
+
+See also:
+
+* `Breezy Developer Document Catalog <index.html>`_
+
+* `Releasing Bazaar <releasing.html>`_ -- the process for actually making
+  a release or release candidate.
+
+
+The Process
+************
+
+Breezy will make a major release every six months, which will be supported at
+least until the time of the next major release and generally 18 months after
+the first final release in a series.  During this support period, we'll make
+incremental releases which fix bugs, but which do not change network or disk
+formats or command syntax, and which do not require updates to plugins.
+
+We will also run a development series, which will become the next major
+release.  We'll make a beta release from this every four weeks.  The
+beta releases will be as stable as our current monthly releases and
+completely suitable for everyday use by users who can tolerate changes
+from month to month.
+
+Having the stable series isn't a reason to cut back on QA or to make the
+trunk or development releases unstable, which would only make our job
+harder.  We keep our trunk in an always-releasable state, and that should
+continue: any beta release could potentially be supported in the long
+term, but we identify particular releases that actually will be supported.
+
+The trunk will never be frozen: changes that pass review, other quality
+checks and that are agreed amongst the developers can always be landed
+into trunk.  The only restrictions will be on branches specifically
+targeted at a release.
+
+
+Schedule
+--------
+
+::
+
+ 2.0.0 --- 2.0.1 -- 2.0.2 -- ...
+  \
+   +--2.1.0beta1 -- 2.1.0beta2 -- ... -- 2.1.0rc1 -- 2.1.0 -- 2.1.1 -- ...
+                                                      \
+                                                       \
+                                                        +-- 3.0.0beta1 ...
+
+
+Starting from the date of a major release:
+
+At four-week intervals we make a new beta release.  There will be no
+separate release candidate, but if a serious problem is discovered we may
+do the next beta ahead of schedule or make a point release.  There will be
+about five or six releases in that series.
+
+In parallel with this, bugs targeted to the previous major release are
+merged into its branch.  We will make bugfix releases from that branch as
+appropriate to the accumulation of changes, perhaps monthly, perhaps more
+often if there are serious bugs, perhaps much less often if no new changes
+have landed.
+
+We will synchronize our major releases with Ubuntu, so that they come out
+in sufficient time for some testing and margin of error before Ubuntu's
+upstream freeze.
+
+
+Regularity
+----------
+
+We value regular releases.  We prefer to slip a feature or fix to
+a later release rather than to make a release late.  We will normally only
+slip a release to fix a critical bug.
+
+
+Numbering
+---------
+
+The number for a six-month cycle is chosen at the start, with an increment
+to either the first field (3.0.0) or second field (3.1.0) depending on
+what we expect to be the user impact of the release.  We expect releases
+that culminate in a new disk format or that require changes in how people
+use the tool will get a new major number.  We can change (forward only) if
+it turns out that we land larger changes than were expected.
+
+We will always use the 3-digit form (major.minor.micro) even when
+referring to the initial major release. This should help clarify where a
+patch is intended to land. (eg, "I propose this for 2.0.0" is clear, while
+"I propose this for 2.0" could mean you want to make the 2.0.0 release, or
+that you just want to land on the 2.0.x stable release series.)
+
+
+Terminology
+-----------
+
+Major releases (2.0.0 or 2.1.0)
+
+    The big ones, every six months, intended to ship in distributions and
+    to be used by stability-oriented users.
+
+Release candidate (2.0.0rc1)
+
+    A preview of a major release, made one or a few weeks beforehand at the
+    time the release branch is created.  There should be few if any changes
+    from the rc to the stable release.  We should avoid the confusing phrasing
+    "release candidate 2.0.0rc1 is released"; instead use "available."
+    Starting with the 2.3 series we don't plan on making release candidates
+    anymore.
+
+Bugfix releases (2.0.1)
+
+    Based on the previous major release or bugfix; contains only bugfixes
+    and perhaps documentation or translation corrections.
+
+Stable series
+
+    A major release and its descendant bugfix releases.
+
+Stable release
+
+    Either a major release or a bugfix release.
+
+Beta release (3.0.0beta1)
+
+    Made from trunk every month, except for the month there's a major
+    release.  Stable and suitable for users who want the latest code and
+    can live with some changes from month to month.
+
+Development series
+
+    The development releases leading up to a stable release.
+
+Bug Work
+--------
+
+Bug fixes should normally be done first against the stable branch,
+reviewed against that branch, and then merged forward to trunk.
+
+It may not always be easy to do this, if fixing the bug requires large
+changes or the affected code is different in the stable and development
+branches.  If the tradeoff does not seem worthwhile the bug can be fixed
+only in the development branch, at least in the first instance.  If users
+later want the fix backported we can discuss it.
+
+Developers can merge the release branch into trunk as often as they like,
+only asking for review if they're making nontrivial changes or feel review
+is needed.
+
+
+Feature and Performance Work
+----------------------------
+
+Features can be landed to the development branch at any time, and they'll
+be released for testing within a month.
+
+Performance bugs, although important, will generally not be landed in a
+stable series.  Fixing performance bugs well often requires nontrivial
+code changes or new formats.  These are not suitable for a stable series.
+
+Performance bugs that can be fixed with a small safe patch can be
+considered for the stable series.
+
+
+Plugins
+-------
+
+Plugins that want to cooperate with this should make a series and a branch
+that matches each bzr stable series, and follow similar rules in making
+releases from their stable branch.  We'd expect that plugins will make a
+release between the first beta release of a series and the final major
+release.
+
+Within a stable series, anything that breaks any known plugin is
+considered an API break and will be avoided.  Before
+making each bugfix release, we'll test that code against important
+plugins.
+
+Within a development series, the focus is on helping plugin authors keep
+up to date by giving clear error messages when an interface is removed.
+We will no longer focus on letting old plugin code work with new versions
+of breezy, which is an elusive target in Python.
+
+This may mean that in cases where today a plugin would keep running but
+give warnings, it will now fail altogether with an error.
+
+In return we expect more freedom to change and cleanup breezy code without
+needing to keep old code around, or write extra compatibility shims, or
+have review turnarounds related to compatibility.  Some changes, such as
+removing module-global variables, that are hard to do now, will be
+possible to do safely.
+
+Discussion of plugins here includes programs that import and use breezy
+but that aren't technically plugins.  The same approach, though the
+technical considerations are different, should apply to other extensions
+such as programs that use bzr through the shell interface.
+
+
+
+Data and Network Formats
+------------------------
+
+Any development release should be able to interoperate with the previous
+stable release, and any stable release should be able to interoperate with
+the previous stable release.  This is a minimum and normally releases will be
+able to interoperate with all previous releases as at present.
+
+Each major release will have one recommended data format which will be the
+default.  The name of the format will indicate which release series (not
+specific release) it comes from: '2a' is the first supported format for
+the 2.0.x series, '2b' the second, etc.  We don't mention the particular
+release that introduced it so as to avoid problems predicting precisely
+when it will land.
+
+During a development series we may have a series of experimental formats.
+We will not leave people stranded if they test these formats, but we also
+won't guarantee to keep supporting them in a future release.  If something
+inserted in one development release turns out to be bad it can just be
+removed in the next.
+
+
+Hosting Services
+-----------------
+
+The guarantees made above about format and network interoperation
+mean that hosting services such as Launchpad, Savannah, FedoraHosted,
+and Sourceforge could choose to run either the stable or beta versions.
+They might find it useful to run the beta version on their own beta
+server.
+
+
+Simultaneous Installation
+-------------------------
+
+Some people may want to simultaneously install and use both a stable
+release and development release.
+
+This can be handled in various ways either at the OS packaging or the
+Python level.  We don't propose to directly address it in the upstream
+source.  (For example, we will not change the breezy library name from one
+release to the next.)
+
+The issue already exists with people who may want to use for example the
+previous bzr release and the trunk.  There is a related issue that plugins
+may be compatible with only some of the Bazaar versions people want to use
+at the same time, and again that is something that can be handled
+separately.
+
+
+OS Distributions
+----------------
+
+OS distributors will be recommended to ship the bzr stable release that
+fits their schedule, the betas leading up to that release during their own
+beta period, and the bugfix releases following on from it.  They might
+also choose to offer the beta releases as an alternative package.
+
+
+Packaging
+---------
+
+At present we have three upstream-maintained PPAs containing Ubuntu packages
+of Bazaar: ``bzr/daily`` (snapshots), ``bzr-beta-ppa/ppa`` (beta releases) and
+``bzr/ppa`` (ie stable).  Beta contains the monthly beta releases, and the
+stable PPA contains stable releases and bugfixes to those releases.
+
+Some platforms with relatively less active packagers may choose to ship
+only the stable releases.  This is probably better than having them only
+intermittently or slowly ship the monthly releases.
+
+Binary installers should use a version number like '2.0.0-1' or
+'2.0.0beta1-1' so that the last component just reflects the packaging
+version, and can be incremented if a new installer is made with no
+upstream source changes.
+
+
+Code Freeze vs Announcement
+---------------------------
+
+We will separate the code freeze for a particular release from its actual
+announcement, allowing a window of approximately one week for plugins to
+be released and binary installers to be built.  On the date the
+announcement is published, people will be able to easily install it.
+
+
+Weekly Metronome Mail
+---------------------
+
+Every week the release manager should send a mail to the Bazaar list
+covering these points (as appropriate):
+
+* Early communication about changing dependencies or defaults
+
+* Reminder re lifecycle and where we're up to right now, in particular the
+  dates for the next release and/or candidate.
+
+* Summary of recent successes and pending work.
+
+* Reminder re release objectives
+
+* Reminder re things needing attention, e.g. bug triage, reviews, testing
+  of certain things, etc.
+
+
+Questions
+*********
+
+Do users actually want this?
+    Apparently yes, because it's often requested and often raised as a
+    problem.
+
+Would this confuse users?
+    It shouldn't, because it's a fairly standard scheme.
+
+Won't it take more time to fix bugs in multiple places?
+    It shouldn't, because we'll only do this when the stable bugfix seems
+    economical.  When we fix bugs today in both trunk and release branches
+    it normally does not take much more time.
+
+What about bzr in Ubuntu LTS, with a five-year support life?
+    Most bugs are either fixed within six months, or not fixed at all, or
+    not very important, or fixed as part of a large rework of the code
+    that would be too large to backport.  However, if there are fixes that
+    are especially desired in an old release and feasible to do, we can do
+    them without making a general commitment.
+
+Will anyone test the beta releases?
+    Probably yes, our most active users will run them, but if people would
+    really rather not test them, forcing them is not helpful.
+
+Isn't this a step backwards to a slower, less-agile process?
+    No, our trunk stays releasable, and we ship every month.  We're just
+    cutting out things that hold us back (continuous rather than episodic
+    API stability; RCs every month) and giving users what they demand.
+
+How about calling the monthly releases "milestone" or "next" not "beta"?
+    Those words are less scary but they also have less clear meanings.
+
+
+Expected Benefits
+*****************
+
+If this plan works, we'll expect to see the following changes.  If they
+don't occur, we'll think again:
+
+* We see a distribution curve of users and bug reports across nightly, monthly
+  and stable releases, indicating that each has value.
+
+* API changes are easier or safer to make during beta periods, without
+  being held back by fears of compatibility or
+
+* The stable releases are actually stable and don't introduce regressions
+  or break plugins.
+
+* Many bugs are fixed in stable branches, without developers feeling this
+  is a waste of time.
+
+* Distributions ship the stable releases in their stable releases and the
+  bugfix releases in their bugfix releases.
+
+* Plugin authors follow this policy, making their own bugfix releases.
+
+* Users like it.
+
+After doing this for the 2.0 cycle (September 2009 through to early
+2010), it seems to be going well.
+
+
+Reviewing for the Stable Branch
+*******************************
+
+These are guidelines and can be interpreted case-by-case.
+
+* All changes to the stable branch should fix a bug, even if you would not
+  normally file a bug for the change.  The bug description should if at
+  all possible explain how to manually verify the bug in a way that will
+  fail before and pass after the change.  (These are requirements for the
+  SRU process.)
+
+* The change should be reasonably small and conservative.  
+
+* Remember that the patch will be read during the SRU
+  process and so keeping the patch small is useful even beyond keeping the
+  logical changes small.  Avoid doing mechanical bulk changes on the
+  stable branch.
+
+* Use particular care for things that may behave differently across
+  platforms, encodings or locales.  It's harder to thoroughly test these
+  things before a release.
+
+* Generally speaking, just cleaning things up is not a sufficient reason
+  to make changes to the stable branch.  It has to actually fix a bug.
+
+* Changes to the stable branch should include tests as usual.  
+
+* Don't change or remove existing APIs that might be used by plugins, even
+  if they are underscore-prefixed.  Adding APIs that are also being added
+  to the trunk branch may make sense.
+
+* Keeping consistency with trunk is useful, but less important than
+  keeping the stable branch stable.
+
+* (more items welcome)
+
+References
+**********
+
+#. List thread "`[rfc] six-month stable release cycles`__", July 2009.
+
+.. __: https://lists.ubuntu.com/archives/bazaar/2009q3/060882.html
+
+..
+   vim: filetype=rst textwidth=74 ai shiftwidth=4

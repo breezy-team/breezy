@@ -1,0 +1,20 @@
+branches
+========
+
+:Purpose: List the branches available at the current location.
+:Usage:   brz branches [LOCATION]
+
+:Options:
+  -h, --help       Show help message.
+  -q, --quiet      Only display errors and warnings.
+  -R, --recursive  Recursively scan for branches rather than just looking in
+                   the specified location.
+  --usage          Show usage message and options.
+  -v, --verbose    Display more information.
+
+:Description:
+  This command will print the names of all the branches at the current
+  location.
+
+
+

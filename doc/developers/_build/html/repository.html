@@ -1,0 +1,609 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Repositories &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Repository Streams" href="repository-stream.html" />
+    <link rel="prev" title="Plugin API" href="plugin-api.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="plugin-api.html" title="Plugin API"
+             accesskey="P">previous</a> |
+          <a href="repository-stream.html" title="Repository Streams"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="repositories">
+<h1><a class="toc-backref" href="#id1">Repositories</a><a class="headerlink" href="#repositories" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="status">
+<h2><a class="toc-backref" href="#id2">Status</a><a class="headerlink" href="#status" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Date:</th><td class="field-body">2007-07-08</td>
+</tr>
+</tbody>
+</table>
+<p>This document describes the services repositories offer and need to offer
+within breezy.</p>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#repositories" id="id1">Repositories</a><ul>
+<li><a class="reference internal" href="#status" id="id2">Status</a></li>
+<li><a class="reference internal" href="#motivation" id="id3">Motivation</a></li>
+<li><a class="reference internal" href="#terminology" id="id4">Terminology</a></li>
+<li><a class="reference internal" href="#command-requirements" id="id5">Command Requirements</a></li>
+<li><a class="reference internal" href="#data-access-patterns" id="id6">Data access patterns</a><ul>
+<li><a class="reference internal" href="#patterns-used" id="id7">Patterns used</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#facilities-to-scale-well" id="id8">Facilities to scale well</a><ul>
+<li><a class="reference internal" href="#indices" id="id9">Indices</a><ul>
+<li><a class="reference internal" href="#index-size" id="id10">Index size</a></li>
+<li><a class="reference internal" href="#index-ordering" id="id11">Index ordering</a></li>
+<li><a class="reference internal" href="#changing-our-current-indexes" id="id12">Changing our current indexes</a><ul>
+<li><a class="reference internal" href="#replace-kndx" id="id13">Replace .kndx</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#data" id="id14">Data</a></li>
+<li><a class="reference internal" href="#moving-to-pack-based-repositories" id="id15">Moving to pack based repositories</a><ul>
+<li><a class="reference internal" href="#naming-of-files" id="id16">Naming of files</a></li>
+<li><a class="reference internal" href="#discovery-of-files" id="id17">Discovery of files</a></li>
+<li><a class="reference internal" href="#housing-files" id="id18">Housing files</a></li>
+<li><a class="reference internal" href="#combining-indices-on-demand" id="id19">Combining indices on demand</a></li>
+<li><a class="reference internal" href="#merging-data-on-push" id="id20">Merging data on push</a></li>
+<li><a class="reference internal" href="#choosing-compression-delta-support" id="id21">Choosing compression/delta support</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#caching-and-writeing-of-data" id="id22">Caching and writeing of data</a><ul>
+<li><a class="reference internal" href="#locks" id="id23">Locks</a></li>
+<li><a class="reference internal" href="#write-groups" id="id24">Write Groups</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="motivation">
+<h2><a class="toc-backref" href="#id3">Motivation</a><a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h2>
+<p>To provide clarity to API and performance tradeoff decisions by
+centralising the requirements placed upon repositories.</p>
+</div>
+<div class="section" id="terminology">
+<h2><a class="toc-backref" href="#id4">Terminology</a><a class="headerlink" href="#terminology" title="Permalink to this headline">¶</a></h2>
+<p>A <strong>repository</strong> is a store of historical data for Breezy.</p>
+</div>
+<div class="section" id="command-requirements">
+<h2><a class="toc-backref" href="#id5">Command Requirements</a><a class="headerlink" href="#command-requirements" title="Permalink to this headline">¶</a></h2>
+<table border="1" class="docutils">
+<colgroup>
+<col width="23%" />
+<col width="77%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Command</th>
+<th class="head">Needed services</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Add</td>
+<td>None</td>
+</tr>
+<tr class="row-odd"><td>Annotate</td>
+<td>Annotated file texts, revision details</td>
+</tr>
+<tr class="row-even"><td>Branch</td>
+<td>Fetch, Revision parents, Inventory contents, All file texts</td>
+</tr>
+<tr class="row-odd"><td>Bundle</td>
+<td>Maximally compact diffs (file and inventory), Revision graph
+difference, Revision texts.</td>
+</tr>
+<tr class="row-even"><td>Commit</td>
+<td>Insert new texts, insert new inventory via delta, insert
+revision, insert signature</td>
+</tr>
+<tr class="row-odd"><td>Fetching</td>
+<td>Revision graph difference, ghost identification, stream data
+introduced by a set of revisions in some cheap form, insert
+data from a stream, validate data during insertion.</td>
+</tr>
+<tr class="row-even"><td>Garbage Collection</td>
+<td>Exclusive lock the repository preventing readers.</td>
+</tr>
+<tr class="row-odd"><td>Revert</td>
+<td>Delta from working tree to historical tree, and then
+arbitrary file access to obtain the texts of differing
+files.</td>
+</tr>
+<tr class="row-even"><td>Uncommit</td>
+<td>Revision graph access.</td>
+</tr>
+<tr class="row-odd"><td>Status</td>
+<td>Revision graph access, revision text access, file
+fingerprint information, inventory differencing.</td>
+</tr>
+<tr class="row-even"><td>Diff</td>
+<td>As status but also file text access.</td>
+</tr>
+<tr class="row-odd"><td>Merge</td>
+<td>As diff but needs up to twice as many file texts -
+base and other for each changed file. Also an initial
+fetch is needed.</td>
+</tr>
+<tr class="row-even"><td>Log</td>
+<td>Revision graph (entire at the moment) access,
+sometimes status between adjacent revisions. Log of a
+file needs per-file-graph. Dominator caching or
+similar tools may be needed to prevent entire graph
+access.</td>
+</tr>
+<tr class="row-odd"><td>Missing</td>
+<td>Revision graph access, and revision texts to show
+output.</td>
+</tr>
+<tr class="row-even"><td>Update</td>
+<td>As for merge, but twice.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="data-access-patterns">
+<h2><a class="toc-backref" href="#id6">Data access patterns</a><a class="headerlink" href="#data-access-patterns" title="Permalink to this headline">¶</a></h2>
+<p>Ideally we can make our data access for commands such as branch to
+dovetail well with the native storage in the repository, in the common
+case. Doing this may require choosing the behaviour of some commands to
+allow us to have a smaller range of access patterns which we can optimise
+more heavily. Alternatively if each command is very predicable in its
+data access pattern we may be able to hint to the low level layers which
+pattern is needed on a per command basis to get efficient behaviour.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="26%" />
+<col width="74%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Command</th>
+<th class="head">Data access pattern</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Annotate-cached</td>
+<td>Find text name in an inventory, Recreate one text,
+recreate annotation regions</td>
+</tr>
+<tr class="row-odd"><td>Annotate-on demand</td>
+<td>Find file id from name, then breadth-first pre-order
+traversal of versions-of-the-file until the annotation
+is complete.</td>
+</tr>
+<tr class="row-even"><td>Branch</td>
+<td>Fetch, possibly taking a copy of any file present in a
+nominated revision when it is validated during fetch.</td>
+</tr>
+<tr class="row-odd"><td>Bundle</td>
+<td>Revision-graph as for fetch; then inventories for
+selected revision_ids to determine file texts, then
+mp-parent deltas for all determined file texts.</td>
+</tr>
+<tr class="row-even"><td>Commit</td>
+<td>Something like basis-inventories read to determine
+per-file graphs, insertion of new texts (which may
+be delta compressed), generation of annotation
+regions if the repository is configured to do so,
+finalisation of the inventory pointing at all the new
+texts and finally a revision and possibly signature.</td>
+</tr>
+<tr class="row-odd"><td>Fetching</td>
+<td>Revision-graph searching to find the graph difference.
+Scan the inventory data introduced during the selected
+revisions, and grab the on disk data for the found
+file texts, annotation region data, per-file-graph
+data, piling all this into a stream.</td>
+</tr>
+<tr class="row-even"><td>Garbage Collection</td>
+<td>Basically a mass fetch of all the revisions which
+branches point at, then a bait and switch with the old
+repository thus removing unreferenced data.</td>
+</tr>
+<tr class="row-odd"><td>Revert</td>
+<td>Revision graph access for the revision being reverted
+to, inventory extraction of that revision,
+dirblock-order file text extract for files that were
+different.</td>
+</tr>
+<tr class="row-even"><td>Uncommit</td>
+<td>Revision graph access to synthesise pending-merges
+linear access down left-hand-side, with is_ancestor
+checks between all the found non-left-hand-side
+parents.</td>
+</tr>
+<tr class="row-odd"><td>Status</td>
+<td>Lookup the revisions added by pending merges and their
+commit messages. Then an inventory difference between
+the trees involved, which may include a working tree.
+If there is a working tree involved then the file
+fingerprint for cache-misses on files will be needed.
+Note that dirstate caches most of this making
+repository performance largely irrelevant: but if it
+was fast enough dirstate might be able to be simpler/</td>
+</tr>
+<tr class="row-even"><td>Diff</td>
+<td>As status but also file text access for every file
+that is different - either one text (working tree
+diff) or a diff of two (revision to revision diff).</td>
+</tr>
+<tr class="row-odd"><td>Merge</td>
+<td>As diff but needs up to twice as many file texts -
+base and other for each changed file. Also an initial
+fetch is needed. Note that the access pattern is
+probably id-based at the moment, but that may be
+‘fixed’ with the iter_changes based merge. Also note
+that while the texts from OTHER are the ones accessed,
+this is equivalent to the <strong>newest</strong> form of each text
+changed from BASE to OTHER. And as the repository
+looks at when data is introduced, this should be the
+pattern we focus on for merge.</td>
+</tr>
+<tr class="row-even"><td>Log</td>
+<td>Revision graph (entire at the moment) access, log of a
+file wants a per-file-graph. Log -v will want
+newest-first inventory deltas between revisions.</td>
+</tr>
+<tr class="row-odd"><td>Missing</td>
+<td>Revision graph access, breadth-first pre-order.</td>
+</tr>
+<tr class="row-even"><td>Update</td>
+<td>As for merge, but twice.</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="patterns-used">
+<h3><a class="toc-backref" href="#id7">Patterns used</a><a class="headerlink" href="#patterns-used" title="Permalink to this headline">¶</a></h3>
+<p>Note that these are able to be changed by changing what we store. For
+instance if the repository satisfies mpdiff requests, then bundle can be
+defined in terms of mpdiff lookups rather than file text lookups
+appropriate to create mpdiffs. If the repository satisfies full text
+requests only, then you need the topological access to build up the
+desired mpdiffs.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="60%" />
+<col width="40%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Pattern</th>
+<th class="head">Commands</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Single file text</td>
+<td>annotate, diff</td>
+</tr>
+<tr class="row-odd"><td>Files present in one revision</td>
+<td>branch</td>
+</tr>
+<tr class="row-even"><td>Newest form of files altered by revisions</td>
+<td>merge, update?</td>
+</tr>
+<tr class="row-odd"><td>Topological access to file versions/deltas</td>
+<td>annotate-uncached</td>
+</tr>
+<tr class="row-even"><td>Stream all data required to recreate revs</td>
+<td>branch (lightweight)</td>
+</tr>
+<tr class="row-odd"><td>Stream file texts in topological order</td>
+<td>bundle</td>
+</tr>
+<tr class="row-even"><td>Write full versions of files, inv, rev, sig</td>
+<td>commit</td>
+</tr>
+<tr class="row-odd"><td>Write deltas of files, inv for one tree</td>
+<td>commit</td>
+</tr>
+<tr class="row-even"><td>Stream all data introduced by revs</td>
+<td>fetch</td>
+</tr>
+<tr class="row-odd"><td>Regenerate/combine deltas of many trees</td>
+<td>fetch, pack</td>
+</tr>
+<tr class="row-even"><td>Reconstruct all texts and validate trees</td>
+<td>check, fetch</td>
+</tr>
+<tr class="row-odd"><td>Revision graph walk</td>
+<td>fetch, pack, uncommit,
+annotate-uncached,
+merge, log, missing</td>
+</tr>
+<tr class="row-even"><td>Top down access multiple invs concurrently</td>
+<td>status, diff, merge?, update?</td>
+</tr>
+<tr class="row-odd"><td>Concurrent access to N file texts</td>
+<td>diff, merge</td>
+</tr>
+<tr class="row-even"><td>Iteration of inventory deltas</td>
+<td>log -v, fetch?</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="facilities-to-scale-well">
+<h2><a class="toc-backref" href="#id8">Facilities to scale well</a><a class="headerlink" href="#facilities-to-scale-well" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="indices">
+<h3><a class="toc-backref" href="#id9">Indices</a><a class="headerlink" href="#indices" title="Permalink to this headline">¶</a></h3>
+<p>We want &lt; linear access to all data in the repository. This suggests
+everything is indexed to some degree.</p>
+<p>Often we know the kind of data we are accessing; which allows us to
+partition our indices if that will help (e.g. by reducing the total index
+size for queries that only care about the revision graph).</p>
+<p>Indices that support our data access patterns will usually display
+increased locality of reference, reducing the impact of a large indices
+without needing careful page size management or other tricks.</p>
+<p>We need repository wide indices. For the current repositories this is
+achieved by dividing the keyspace (revisions, signatures, inventories,
+per-fileid) and then having an append only index within each keyspace.
+For pack based repositories we will want some means to query the index of
+each component pack, presumably as a single logical index.</p>
+<p>It would be nice if indexing was made cleanly separate from storage. So
+that suggests indices don’t know the meaning of the lookup; indices which
+offer particular ordering, or graph walking facilities will clearly need
+that information, but perhaps they don’t need to know the semantics ?</p>
+<div class="section" id="index-size">
+<h4><a class="toc-backref" href="#id10">Index size</a><a class="headerlink" href="#index-size" title="Permalink to this headline">¶</a></h4>
+<p>Smaller indexes are good. We could go with one big index, or a different
+index for different operation styles. As multiple indices will occupy more
+space in total we should consider carefully about adding indices.</p>
+</div>
+<div class="section" id="index-ordering">
+<h4><a class="toc-backref" href="#id11">Index ordering</a><a class="headerlink" href="#index-ordering" title="Permalink to this headline">¶</a></h4>
+<p>Looking at the data access patterns some operations such as graph walking
+can clearly be made more efficient by offering direct iteration rather
+than repeated reentry into the index - so having indices that support
+iteration in such a style would be useful eventually.</p>
+</div>
+<div class="section" id="changing-our-current-indexes">
+<h4><a class="toc-backref" href="#id12">Changing our current indexes</a><a class="headerlink" href="#changing-our-current-indexes" title="Permalink to this headline">¶</a></h4>
+<p>We can consider introducing cleaner indices in advance of a full pack
+based repository.</p>
+<p>There are many possibilities for this, but I’ve chosen one that seems ok
+to me for illustration.</p>
+<p>A key element is to consider when indices are updated. I think that the
+update style proposed for pack based repositories - write once, then when
+we group data again rewrite a new single index - is sufficent.</p>
+<div class="section" id="replace-kndx">
+<h5><a class="toc-backref" href="#id13">Replace .kndx</a><a class="headerlink" href="#replace-kndx" title="Permalink to this headline">¶</a></h5>
+<p>We could discard the per-knit .kndx by writing a new index at the end of
+every Breezy transaction indexing the new data introduced by the Breezy
+operation. e.g. at the end of fetch. This can be based on the new
+<code class="docutils literal notranslate"><span class="pre">GraphIndex</span></code> index type.</p>
+<p>Encoding a knit entry into a <code class="docutils literal notranslate"><span class="pre">GraphIndex</span></code> can be done as follows:</p>
+<ul class="simple">
+<li>Change the key to include a prefix of the knit name, to allow filtering
+out of data from different knits.</li>
+<li>Encode the parents from the knit as the zeroth node reference list.</li>
+<li>If the knit hunk was delta compressed encode the node it was delta
+compressed against as the 1st node reference list (otherwise the 1st
+node reference list will be empty to indicate no compression parents).</li>
+<li>For the value encode similarly to the current knit format the byte
+offset for the data record in the knit, the byte length for the data
+record in the knit and the no-end-of-line flag.</li>
+</ul>
+<p>It’s important to note that knit repositories cannot be regenerated by
+scanning .knits, so a mapped index is still irreplaceable and must be
+transmitted on push/pull.</p>
+<p>A potential improvement exists by specialising this further to not record
+data that is not needed - e.g. an index of revisions does not need to
+support a pointer to a parent compressed text as revisions.knit is not
+delta-compressed ever. Likewise signatures do not need the parent pointers
+at all as there is no ‘signature graph’.</p>
+</div>
+</div>
+</div>
+<div class="section" id="data">
+<h3><a class="toc-backref" href="#id14">Data</a><a class="headerlink" href="#data" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="moving-to-pack-based-repositories">
+<h3><a class="toc-backref" href="#id15">Moving to pack based repositories</a><a class="headerlink" href="#moving-to-pack-based-repositories" title="Permalink to this headline">¶</a></h3>
+<p>We have a number of challenges to solve.</p>
+<div class="section" id="naming-of-files">
+<h4><a class="toc-backref" href="#id16">Naming of files</a><a class="headerlink" href="#naming-of-files" title="Permalink to this headline">¶</a></h4>
+<p>As long as the file name is unique it does not really matter. It might be
+interesting to have it be deterministic based on content, but there are no
+specific problems we have solved by doing that, and doing so would require
+hashing the full file. OTOH hashing the full file is a cheap way to detect
+bit-errors in transfer (such as windows corruption). Non-reused file names
+are required for data integrity, as clients having read an index will
+readv at arbitrary times later.</p>
+</div>
+<div class="section" id="discovery-of-files">
+<h4><a class="toc-backref" href="#id17">Discovery of files</a><a class="headerlink" href="#discovery-of-files" title="Permalink to this headline">¶</a></h4>
+<p>With non-listable transports how should the collection of pack/index files
+be found ? Initially record a list of all the pack/index files from
+write actions. (Require writable transports to be listable). We can then
+use a heuristic to statically combine pack/index files later.</p>
+</div>
+<div class="section" id="housing-files">
+<h4><a class="toc-backref" href="#id18">Housing files</a><a class="headerlink" href="#housing-files" title="Permalink to this headline">¶</a></h4>
+</div>
+<div class="section" id="combining-indices-on-demand">
+<h4><a class="toc-backref" href="#id19">Combining indices on demand</a><a class="headerlink" href="#combining-indices-on-demand" title="Permalink to this headline">¶</a></h4>
+</div>
+<div class="section" id="merging-data-on-push">
+<h4><a class="toc-backref" href="#id20">Merging data on push</a><a class="headerlink" href="#merging-data-on-push" title="Permalink to this headline">¶</a></h4>
+<p>A trivial implementation would be to make a pack which has just the data
+needed for the push, then send that. More sophisticated things would be
+streaming single-pass creation, and also using this as an opportunity to
+increase the packedness of the local repo.</p>
+</div>
+<div class="section" id="choosing-compression-delta-support">
+<h4><a class="toc-backref" href="#id21">Choosing compression/delta support</a><a class="headerlink" href="#choosing-compression-delta-support" title="Permalink to this headline">¶</a></h4>
+</div>
+</div>
+</div>
+<div class="section" id="caching-and-writeing-of-data">
+<h2><a class="toc-backref" href="#id22">Caching and writeing of data</a><a class="headerlink" href="#caching-and-writeing-of-data" title="Permalink to this headline">¶</a></h2>
+<p>Repositories try to provide a consistent view of the data within them
+within a ‘lock context’.</p>
+<div class="section" id="locks">
+<h3><a class="toc-backref" href="#id23">Locks</a><a class="headerlink" href="#locks" title="Permalink to this headline">¶</a></h3>
+<p>Locks come in two flavours - read locks and write locks. Read locks allow
+data to be read from the repository. Write locks allow data to be read and
+signal that you intend to write data at some point. The actual writing of
+data must take place within a Write Group.</p>
+<p>Write locks provide a cache of repository data during the period of the
+write lock, and allow write_groups to be acquired. For some repositories
+the presence of a write lock is exclusive to a single client, for others
+which are lock free or use server side locks (e.g.  svn), the write lock
+simply provides the cache context.</p>
+</div>
+<div class="section" id="write-groups">
+<h3><a class="toc-backref" href="#id24">Write Groups</a><a class="headerlink" href="#write-groups" title="Permalink to this headline">¶</a></h3>
+<p>Write groups are the only allowed means for inserting data into a
+repository.  These are created by <code class="docutils literal notranslate"><span class="pre">start_write_group</span></code>, and concluded by
+either <code class="docutils literal notranslate"><span class="pre">commit_write_group</span></code> or <code class="docutils literal notranslate"><span class="pre">abort_write_group</span></code>.  A write lock must
+be held on the repository for the entire duration.  At most one write
+group can be active on a repository at a time.</p>
+<p>Write groups signal to the repository the window during which data is
+actively being inserted. Several write groups could be committed during a
+single lock.</p>
+<p>There is no guarantee that data inserted during a write group will be
+invisible in the repository if the write group is not committed.
+Specifically repositories without atomic insertion facilities will be
+writing data as it is inserted within the write group, and may not be able
+to revert that data - e.g. in the event of a dropped SFTP connection in a
+knit repository, inserted file data will be visible in the repository. Some
+repositories have an atomic insertion facility, and for those
+all-or-nothing will apply.</p>
+<p>The precise meaning of a write group is format specific. For instance a
+knit based repository treats the write group methods as dummy calls,
+simply meeting the api that clients will use. A pack based repository will
+open a new pack container at the start of a write group, and rename it
+into place at commit time.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="plugin-api.html" title="Plugin API"
+              >previous</a> |
+            <a href="repository-stream.html" title="Repository Streams"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/repository.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

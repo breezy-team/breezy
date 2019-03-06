@@ -1,0 +1,51 @@
+init-repository
+===============
+
+:Purpose: Create a shared repository for branches to share storage space.
+:Usage:   brz init-repository LOCATION
+
+:Options:
+  -h, --help            Show help message.
+  --no-trees            Branches in the repository will default to not having
+                        a working tree.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+  Repository format:
+    --format=ARG        Specify a format for this repository. See "brz help
+                        formats" for details.
+    --2a, --default, --bzr
+                        Format for the bzr 2.0 series.
+    --git               GIT repository.
+    --git-bare          Bare GIT repository (no working tree).
+
+:Description:
+  New branches created under the repository directory will store their
+  revisions in the repository, not in the branch directory.  For branches
+  with shared history, this reduces the amount of storage needed and
+  speeds up the creation of new branches.
+  
+  If the --no-trees option is given then the branches in the repository
+  will not have working trees by default.  They will still exist as
+  directories on disk, but they will not have separate copies of the
+  files at a certain revision.  This can be useful for repositories that
+  store branches which are interacted with through checkouts or remote
+  branches, such as on a server.
+
+:Examples:
+    Create a shared repository holding just branches::
+
+        brz init-repo --no-trees repo
+        brz init repo/trunk
+
+    Make a lightweight checkout elsewhere::
+
+        brz checkout --lightweight repo/trunk trunk-checkout
+        cd trunk-checkout
+        (add files here)
+
+:Aliases:  init-repo
+:See also: :doc:`branch <branch-help>`, :doc:`checkout <checkout-help>`, :doc:`init <init-help>`, :doc:`repositories <repositories-help>`
+
+

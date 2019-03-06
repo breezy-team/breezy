@@ -1,0 +1,43 @@
+remerge
+=======
+
+:Purpose: Redo a merge.
+:Usage:   brz remerge [FILE...]
+
+:Options:
+  -h, --help          Show help message.
+  -q, --quiet         Only display errors and warnings.
+  --reprocess         Reprocess to reduce spurious conflicts.
+  --show-base         Show base revision text in conflicts.
+  --usage             Show usage message and options.
+  -v, --verbose       Display more information.
+
+  Merge algorithm:
+    --merge-type=ARG  Select a particular merge algorithm.
+    --diff3           Merge using external diff3.
+    --lca             LCA-newness merge.
+    --merge3          Native diff3-style merge.
+    --weave           Weave-based merge.
+
+:Description:
+  Use this if you want to try a different merge technique while resolving
+  conflicts.  Some merge techniques are better than others, and remerge
+  lets you try different ones on different files.
+  
+  The options for remerge have the same meaning and defaults as the ones for
+  merge.  The difference is that remerge can (only) be run when there is a
+  pending merge, and it lets you specify particular files.
+
+:Examples:
+    Re-do the merge of all conflicted files, and show the base text in
+    conflict regions, in addition to the usual THIS and OTHER texts::
+
+        brz remerge --show-base
+
+    Re-do the merge of "foobar", using the weave merge algorithm, with
+    additional processing to reduce the size of conflict regions::
+
+        brz remerge --merge-type weave --reprocess foobar
+
+
+

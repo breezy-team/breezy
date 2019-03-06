@@ -1,0 +1,41 @@
+Entering commands
+=================
+
+User interfaces
+---------------
+
+There are numerous user interfaces available for Breezy.
+The core package provides a command line tool called **brz** and
+graphical user interfaces (GUIs) are available as plug-ins.
+
+Using brz
+---------
+
+The syntax is::
+
+  brz [global-options] command [options and arguments]
+
+Global options affect how Breezy operates and can appear either
+before or after ``command``. Command specific options must appear
+after the command but may be given either before, during or after any
+command-specific arguments.
+
+Common options
+--------------
+
+Some options are legal for all commands as shown below.
+
+  ==========  =========  =================
+  Short form  Long form  Description
+  ==========  =========  =================
+  -h          --help     get help
+  -v          --verbose  be more verbose
+  -q          --quiet    be more quiet
+  ==========  =========  =================
+
+Quiet mode implies that only errors and warnings are displayed.
+This can be useful in scripts.
+
+Note: Most commands typically only support one level of verbosity though
+that may change in the future. To ask for a higher level of verbosity,
+simply specify the -v option multiple times.

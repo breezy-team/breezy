@@ -1,0 +1,31 @@
+break-lock
+==========
+
+:Purpose: Break a dead lock.
+:Usage:   brz break-lock [LOCATION]
+
+:Options:
+  --config       LOCATION is the directory where the config lock is.
+  --force        Do not ask for confirmation before breaking the lock.
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  This command breaks a lock on a repository, branch, working directory or
+  config file.
+  
+  CAUTION: Locks should only be broken when you are sure that the process
+  holding the lock has been stopped.
+  
+  You can get information on what locks are open via the 'brz info
+  [location]' command.
+
+:Examples:
+    brz break-lock
+    brz break-lock brz+ssh://example.com/brz/foo
+    brz break-lock --conf ~/.config/breezy
+
+
+

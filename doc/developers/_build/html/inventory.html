@@ -1,0 +1,748 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Inventories &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="LCA Merge" href="lca-merge.html" />
+    <link rel="prev" title="Indices" href="indices.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="indices.html" title="Indices"
+             accesskey="P">previous</a> |
+          <a href="lca-merge.html" title="LCA Merge"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="inventories">
+<h1><a class="toc-backref" href="#id8">Inventories</a><a class="headerlink" href="#inventories" title="Permalink to this headline">¶</a></h1>
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#inventories" id="id8">Inventories</a><ul>
+<li><a class="reference internal" href="#overview" id="id9">Overview</a></li>
+<li><a class="reference internal" href="#in-memory-inventories" id="id10">In memory inventories</a></li>
+<li><a class="reference internal" href="#serialization" id="id11">Serialization</a><ul>
+<li><a class="reference internal" href="#dirstate" id="id12">dirstate</a></li>
+<li><a class="reference internal" href="#xml" id="id13">XML</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#serialization-scaling-and-future-designs" id="id14">Serialization scaling and future designs</a><ul>
+<li><a class="reference internal" href="#current-situation" id="id15">Current situation</a></li>
+<li><a class="reference internal" href="#long-term-work" id="id16">Long term work</a></li>
+<li><a class="reference internal" href="#layering" id="id17">Layering</a></li>
+<li><a class="reference internal" href="#design-elements-to-achieve-the-goals-in-a-future-inventory-implementation" id="id18">Design elements to achieve the goals in a future inventory implementation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#hash-bucket-based-inventories" id="id19">Hash bucket based inventories</a><ul>
+<li><a class="reference internal" href="#id1" id="id20">Overview</a></li>
+<li><a class="reference internal" href="#goal-satisfaction" id="id21">Goal satisfaction</a></li>
+<li><a class="reference internal" href="#issues" id="id22">Issues</a></li>
+<li><a class="reference internal" href="#canonical-form" id="id23">Canonical form</a></li>
+<li><a class="reference internal" href="#apply" id="id24">Apply</a></li>
+<li><a class="reference internal" href="#delta" id="id25">Delta</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#radix-tree-based-inventories" id="id26">Radix tree based inventories</a><ul>
+<li><a class="reference internal" href="#id2" id="id27">Overview</a></li>
+<li><a class="reference internal" href="#id3" id="id28">Goal satisfaction</a></li>
+<li><a class="reference internal" href="#id4" id="id29">Issues</a></li>
+<li><a class="reference internal" href="#id5" id="id30">Canonical form</a></li>
+<li><a class="reference internal" href="#id6" id="id31">Apply</a></li>
+<li><a class="reference internal" href="#id7" id="id32">Delta</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#hash-trie-details" id="id33">Hash Trie details</a><ul>
+<li><a class="reference internal" href="#insertion" id="id34">Insertion</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#inventory-deltas" id="id35">Inventory deltas</a></li>
+<li><a class="reference internal" href="#delta-consistency" id="id36">Delta consistency</a><ul>
+<li><a class="reference internal" href="#avoiding-inconsistent-deltas" id="id37">Avoiding inconsistent deltas</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2><a class="toc-backref" href="#id9">Overview</a><a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>Inventories provide an abstraction for talking about the shape of a tree.
+Generally only tree object implementors should be concerned about entire
+inventory objects and their implementation. Other common exceptions are
+full-tree operations such as ‘checkout’, ‘export’ and ‘import’.</p>
+</div>
+<div class="section" id="in-memory-inventories">
+<h2><a class="toc-backref" href="#id10">In memory inventories</a><a class="headerlink" href="#in-memory-inventories" title="Permalink to this headline">¶</a></h2>
+<p>In memory inventories are often used in diff and status operations between
+trees. We are working to reduce the number of times this occurs with ‘full
+tree’ inventory objects, and instead use more custom tailored data structures
+that allow operations on only a small amount of data regardless of the size of
+the tree.</p>
+</div>
+<div class="section" id="serialization">
+<h2><a class="toc-backref" href="#id11">Serialization</a><a class="headerlink" href="#serialization" title="Permalink to this headline">¶</a></h2>
+<p>There are several variants of serialised tree shape in use by Breezy. To date
+these have been mostly XML-based, though plugins have offered non-XML versions.</p>
+<div class="section" id="dirstate">
+<h3><a class="toc-backref" href="#id12">dirstate</a><a class="headerlink" href="#dirstate" title="Permalink to this headline">¶</a></h3>
+<p>The dirstate file in a working tree includes many different tree shapes - one
+for the working tree and one for each parent tree, interleaved to allow
+efficient diff and status operations.</p>
+</div>
+<div class="section" id="xml">
+<h3><a class="toc-backref" href="#id13">XML</a><a class="headerlink" href="#xml" title="Permalink to this headline">¶</a></h3>
+<p>All the XML serialized forms write to and read from a single byte string, whose
+hash is then the inventory validator for the commit object.</p>
+</div>
+</div>
+<div class="section" id="serialization-scaling-and-future-designs">
+<h2><a class="toc-backref" href="#id14">Serialization scaling and future designs</a><a class="headerlink" href="#serialization-scaling-and-future-designs" title="Permalink to this headline">¶</a></h2>
+<p>Overall efficiency and scaling is constrained by the bottom level structure
+that an inventory is stored as. We have a number of goals we want to achieve:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Allow commit to write less than the full tree’s data in to the repository
+in the general case.</li>
+<li>Allow the data that is written to be calculated without examining every
+versioned path in the tree.</li>
+<li>Generate the exact same representation for a given inventory regardless of
+the amount of history available.</li>
+<li>Allow in memory deltas to be generated directly from the serialised form
+without upcasting to a full in-memory representation or examining every
+path in the tree. Ideally the work performed will be proportional to the
+amount of changes between the trees being compared.</li>
+<li>Allow fetch to determine the file texts that need to be pulled to ensure
+that the entire tree can be reconstructed without having to probe every
+path in the tree.</li>
+<li>Allow Breezy to map paths to file ids without reading the entire serialised
+form. This is something that is used by commands such as merge PATH and
+diff -r X PATH.</li>
+<li>Let Breezy map file ids to paths without reading the entire serialised form.
+This is used by commands that are presenting output to the user such as
+loggerhead, brz-search, log FILENAME.</li>
+<li>We want a strong validator for inventories which is cheap to generate.
+Specifically we should be able to create the generator for a new commit
+without processing all the data of the basis commit.</li>
+<li>Testaments generation is currently size(tree), we would like to create a
+new testament standard which requires less work so that signed commits
+are not significantly slower than regular commits.</li>
+</ol>
+</div></blockquote>
+<p>We have current performance and memory bugs in log -v, merge, commit, diff -r,
+loggerhead and status -r which can be addressed by an inventory system
+meeting these goals.</p>
+<div class="section" id="current-situation">
+<h3><a class="toc-backref" href="#id15">Current situation</a><a class="headerlink" href="#current-situation" title="Permalink to this headline">¶</a></h3>
+<p>The XML-based implementation we use today layers the inventory as a bytestring
+which is stored under a single key; the bytestring is then compressed as a
+delta against the bytestring of its left hand parent by the knit code.</p>
+<p>Gap analysis:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Succeeds</li>
+<li>Fails - generating a new XML representation needs full tree data.</li>
+<li>Succeeds - the inventory layer accesses the bytestring, which is
+deterministic</li>
+<li>Fails - we have to reconstruct both inventories as trees and then delta
+the resulting in memory objects.</li>
+<li>Partial success - the revision field in the inventory can be scanned for
+in both text-delta and full-bytestring form; other revision values than
+those revisions which are being pulled are by definition absent.</li>
+<li>Partially succeeds - with appropriate logic a path&lt;-&gt;id map can be generated
+just-in-time, but it is complex and still requires reconstructing the
+entire byte-string.</li>
+<li>As for 6.</li>
+<li>Fails - we have to hash the entire tree in serialised form to generate
+validators.</li>
+<li>Fails.</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="long-term-work">
+<h3><a class="toc-backref" href="#id16">Long term work</a><a class="headerlink" href="#long-term-work" title="Permalink to this headline">¶</a></h3>
+<p>Some things are likely harder to fix incrementally than others. In particular,
+goal 3 (constant canonical form) is arguably only achieved if we remove all
+derived data such as the last-modified revision from the inventory itself. That
+said, the last-modified appears to be in a higher level than raw serialization.
+So in the medium term we will not alter the contents of inventories, only the
+way that the current contents are mapped to and from disk.</p>
+</div>
+<div class="section" id="layering">
+<h3><a class="toc-backref" href="#id17">Layering</a><a class="headerlink" href="#layering" title="Permalink to this headline">¶</a></h3>
+<p>We desire clear and clean layers. Each layer should be as simple as we can make
+it to aid in debugging and performance tuning. So where we can choose to either
+write a complex layer and something simple on top of it, or two layers with
+neither being as complex - then we should consider the latter choice better in
+the absence of compelling reasons not to.</p>
+<p>Some key layers we have today and can look at using or tweaking are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Tree objects - the abstract interface breezy code works in</li>
+<li>VersionedFiles - the optionally delta compressing key-&gt;bytes storage
+interface.</li>
+<li>Inventory - the abstract interface that many tree operations are written in.</li>
+</ul>
+</div></blockquote>
+<p>These layers are probably sufficient with minor tweaking. We may want to add
+additional modules/implementations of one or more layers, but that doesn’t
+really require new layers to be exposed.</p>
+</div>
+<div class="section" id="design-elements-to-achieve-the-goals-in-a-future-inventory-implementation">
+<h3><a class="toc-backref" href="#id18">Design elements to achieve the goals in a future inventory implementation</a><a class="headerlink" href="#design-elements-to-achieve-the-goals-in-a-future-inventory-implementation" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li>Split up the logical document into smaller serialised fragements. For
+instance hash buckets or nodes in a tree of some sort. By serialising in
+smaller units, we can increase the number of smaller units rather than
+their size as the tree grows; as long as two similar trees have similar
+serialised forms, the amount of different content should be quite high.</li>
+<li>Use fragment identifiers that are independent of revision id, so that
+serialisation of two related trees generates overlap in the keyspace
+for fragments without requiring explicit delta logic. Content Hash Keys
+(e.g. (‘sha1:ABCDEF0123456789…’,) are useful here because of the ability
+to assign them without reference to history.)</li>
+<li>Store the fragments in our existing VersionedFiles store. Adding an index
+for them. Have the serialised form be uncompressed utf8, so that delta logic
+in the VersionedFiles layer can be used. We may need to provide some sort
+of hinting mechanism to get good compression - but the trivially available
+zlib compression of knits-with-no-deltas is probably a good start.</li>
+<li>Item_keys_introduced_by is innately a history-using function; we can
+reproduce the text-key finding logic by doing a tree diff between any tree
+and an older tree - that will limit the amount of data we need to process
+to something proportional to the difference and the size of each fragment.
+When checking many versions we can track which fragments we have examined
+and only look at new unique ones as each version is examined in turn.</li>
+<li>Working tree to arbitrary history revision deltas/comparisons can be scaled
+up by doing a two-step (fixed at two!) delta combining - delta(tree, basis)
+and then combine that with delta(basis, arbitrary_revision) using the
+repositories ability to get a delta cheaply.</li>
+<li>The key primitives we need seem to be:
+* canonical_form(inventory) -&gt; fragments
+* delta(inventory, inventory) -&gt; inventory_delta
+* apply(inventory_delta, canonical_form) -&gt; fragments</li>
+<li>Having very many small fragments is likely to cause a high latency
+multiplier unless we are careful.</li>
+<li>Possible designs to investigate - a hash bucket approach, radix trees,
+B+ trees, directory trees (with splits inside a directory?).</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="hash-bucket-based-inventories">
+<h2><a class="toc-backref" href="#id19">Hash bucket based inventories</a><a class="headerlink" href="#hash-bucket-based-inventories" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3><a class="toc-backref" href="#id20">Overview</a><a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>We store two maps - fileid:inventory_entry and path:fileid, in a stable
+hash trie, stored in densly packed fragments. We pack keys into the map
+densely up the tree, with a single canonical form for any given tree. This is
+more stable than simple fixed size buckets, which prevents corner cases where
+the tree size varies right on a bucket size border. (Note that such cases are
+not a fatal flaw - the two forms would both be present in the repository, so
+only a small amount of data would be written at each transition - but a full
+tree reprocess would be needed at each tree operation across the boundary, and
+thats undesirable.)</p>
+</div>
+<div class="section" id="goal-satisfaction">
+<h3><a class="toc-backref" href="#id21">Goal satisfaction</a><a class="headerlink" href="#goal-satisfaction" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Success</li>
+<li>Success</li>
+<li>Success</li>
+<li>Success, though each change will need its parents looked up as well
+so it will be proportional to the changes + the directories above
+the changed path.</li>
+<li>Success - looking at the difference against all parents we can determine
+new keys without reference to the repository content will be inserted
+into.</li>
+<li>This probably needs a path-&gt;id map, allowing a 2-step lookup.</li>
+<li>If we allocate buckets by hashing the id, then this is succeed, though,
+as per 4 it will need recursive lookups.</li>
+<li>Success</li>
+<li>Fail - data beyond that currently included in testaments is included
+in the strong validator.</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="issues">
+<h3><a class="toc-backref" href="#id22">Issues</a><a class="headerlink" href="#issues" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div>1. Tuning the fragment size needs doing.
+1. Testing.
+1. Writing code.
+1. Separate root node, or inline into revision?
+1. Cannot do ‘ls’ efficiently in the current design.
+1. Cannot detect invalid deltas easily.
+1. What about LCA merge of inventories?</div></blockquote>
+</div>
+<div class="section" id="canonical-form">
+<h3><a class="toc-backref" href="#id23">Canonical form</a><a class="headerlink" href="#canonical-form" title="Permalink to this headline">¶</a></h3>
+<p>There are three fragment types for the canonical form. Each fragment is
+addressed using a Content Hash Key (CHK) - for instance
+“sha1:12345678901234567890”.</p>
+<p>root_node: (Perhaps this should be inlined into the revision object).
+HASH_INVENTORY_SIGNATURE
+path_map: CHK to root of path to id map
+content_map: CHK to root of id to entry map</p>
+<p>map_node: INTERNAL_NODE or LEAF_NODE
+INTERNAL_NODE:
+INTERNAL_NODE_SIGNATURE
+hash_prefix: PREFIX
+prefix_width: INT
+PREFIX CHK TYPE SIZE
+PREFIX CHK TYPE SIZE …</p>
+<p>(Where TYPE is I for internal or L for leaf).</p>
+<p>leaf_node:
+LEAF_NODE_SIGNATURE
+hash_prefix: PREFIX
+HASHx00KEYx00 VALUE</p>
+<dl class="docutils">
+<dt>For path maps, VALUE is::</dt>
+<dd>fileid</dd>
+<dt>For content maps, VALUE::</dt>
+<dd>fileid basename kind last-changed kind-specific-details</dd>
+</dl>
+<p>The path and content maps are populated simply by serialising every inventory
+entry and inserting them into both the path map and the content map. The maps
+start with just a single leaf node with an empty prefix.</p>
+</div>
+<div class="section" id="apply">
+<h3><a class="toc-backref" href="#id24">Apply</a><a class="headerlink" href="#apply" title="Permalink to this headline">¶</a></h3>
+<p>Given an inventory delta - a list of (old_path, new_path, InventoryEntry)
+items, with a None in new_path indicating a delete operation, and recursive
+deletes not being permitted - all entries to be deleted must be explicitly
+listed, we can transform a current inventory directly. We can’t trivially
+detect an invalid delta though.</p>
+<p>To perform an application, naively we can just update both maps. For the path
+map we would remove all entries where the paths in the delta do not match, then
+insert those with a new_path again. For the content map we would just remove
+all the fileids in the delta, then insert those with a new_path that is not
+None.</p>
+</div>
+<div class="section" id="delta">
+<h3><a class="toc-backref" href="#id25">Delta</a><a class="headerlink" href="#delta" title="Permalink to this headline">¶</a></h3>
+<p>To generate a delta between two inventories, we first generate a list of
+altered fileids, and then recursively look up their parents to generate their
+old and new file paths.</p>
+<p>To generate the list of altered file ids, we do an entry by entry comparison of
+the full contents of every leaf node that the two inventories do not have in
+common. To do this, we start at the root node, and follow every CHK pointer
+that is only in one tree. We can then bring in all the values from the leaf
+nodes and do a set difference to get the altered ones, which we would then
+parse.</p>
+</div>
+</div>
+<div class="section" id="radix-tree-based-inventories">
+<h2><a class="toc-backref" href="#id26">Radix tree based inventories</a><a class="headerlink" href="#radix-tree-based-inventories" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id2">
+<h3><a class="toc-backref" href="#id27">Overview</a><a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>We store two maps - fileid:path and path:inventory_entry. The fileid:path map
+is a hash trie (as file ids have no useful locality of reference). The
+path:inventory_entry map is stored as a regular trie. As for hash tries we
+define a single canonical representation for regular tries similar to that
+defined above for hash tries.</p>
+</div>
+<div class="section" id="id3">
+<h3><a class="toc-backref" href="#id28">Goal satisfaction</a><a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Success</li>
+<li>Success</li>
+<li>Success</li>
+<li>Success</li>
+<li>Success - looking at the difference against all parents we can determine
+new keys without reference to the repository content will be inserted
+into.</li>
+<li>Success</li>
+<li>Success</li>
+<li>Success</li>
+<li>Fail - data beyond that currently included in testaments is included
+in the strong validator.</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="id4">
+<h3><a class="toc-backref" href="#id29">Issues</a><a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div>1. Tuning the fragment size needs doing.
+1. Testing.
+1. Writing code.
+1. Separate root node, or inline into revision?
+1. What about LCA merge of inventories?</div></blockquote>
+</div>
+<div class="section" id="id5">
+<h3><a class="toc-backref" href="#id30">Canonical form</a><a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p>There are five fragment types for the canonical form:</p>
+<p>The root node, hash trie internal and leaf nodes as previous.</p>
+<p>Then we have two more, the internal and leaf node for the radix tree.</p>
+<p>radix_node: INTERNAL_NODE or LEAF_NODE</p>
+<p>INTERNAL_NODE:
+INTERNAL_NODE_SIGNATURE
+prefix: PREFIX
+suffix CHK TYPE SIZE
+suffix CHK TYPE SIZE …</p>
+<p>(Where TYPE is I for internal or L for leaf).</p>
+<p>LEAF_NODE:
+LEAF_NODE_SIGNATURE
+prefix: PREFIX
+suffixx00VALUE</p>
+<p>For the content map we use the same value as for hashtrie inventories.</p>
+<p>Node splitting and joining in the radix tree are managed in the same fashion as
+as for the internal nodes of the hashtries.</p>
+</div>
+<div class="section" id="id6">
+<h3><a class="toc-backref" href="#id31">Apply</a><a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>Apply is implemented as for hashtries - we just remove and reinsert the
+fileid:paths map entries, and likewise for the path:entry map. We can however
+cheaply detect invalid deltas where a delete fails to include its children.</p>
+</div>
+<div class="section" id="id7">
+<h3><a class="toc-backref" href="#id32">Delta</a><a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>Delta generation is very similar to that with hash tries, except we get the
+path of nodes as part of the lookup process.</p>
+</div>
+</div>
+<div class="section" id="hash-trie-details">
+<h2><a class="toc-backref" href="#id33">Hash Trie details</a><a class="headerlink" href="#hash-trie-details" title="Permalink to this headline">¶</a></h2>
+<p>The canonical form for a hash trie is a tree of internal nodes leading down to
+leaf nodes, with no node exceeding some threshold size, and every node
+containing as much content as it can, but no leaf node containing less than
+its lower size threshold. (In the event that an imbalance in the hash function
+causes a tree where an internal node is needed, but any prefix generates a
+child with less than the lower threshold, the smallest prefix should be taken).
+An internal node holds some number of key prefixes, all with the same bit-width.
+A leaf node holds the actual values. As trees do not spring fully-formed, the
+canonical form is defined iteratively - by taking every item in a tree and
+inserting it into a new tree in order you can determine what canonical form
+would look like.  As that is an expensive operation, it should only be done
+rarely.</p>
+<p>Updates to a tree that is in canonical form can be done preserving canonical
+form if we can prove that our rules for insertion are order-independent,
+and that our rules for deletion generate the same tree as if we never
+inserted those nodes.</p>
+<p>Our hash tries are balanced vertically but not horizontally. That is, one leg
+of a tree can be arbitrarily deeper than adjacent legs. We require that each
+node along a path within the tree be densely packed, with the densest nodes
+near the top of the tree, and the least dense at the bottom. Except where the
+tree cannot support it, no node is smaller than a minimum_size, and none
+larger than maximum_size. The minimum size constraint is only applied when
+there are enough entries under a prefix to meet that minimum. The maximum
+size constraint is always applied except when a node with a single entry
+is larger than the maximum size. Loosely, the maximum size constraint wins
+over the minimum size constraint, and if the minimum size contraint is to
+be ignored, a deeper prefix can be chosen to pack the containing node more
+densely, as long as no additional minimum sizes checks on child nodes are
+violated.</p>
+<div class="section" id="insertion">
+<h3><a class="toc-backref" href="#id34">Insertion</a><a class="headerlink" href="#insertion" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li>Hash the entry, and insert the entry in the leaf node with a matching
+prefix, creating that node and linking it from the internal node containing
+that prefix if there is no appropriate leaf node.</li>
+<li>Starting at the highest node altered, for all altered nodes, check if it has
+transitioned across either size boundary - 0 &lt; min_size &lt; max_size. If it
+has not, proceed to update the CHK pointers.</li>
+<li>If it increased above min_size, check the node above to see if it can be
+more densely packed. To be below the min_size the node’s parent must
+have hit the max size constraint and been forced to split even though this
+child did not have enough content to support a min_size node - so the prefix
+chosen in the parent may be shorter than desirable and we may now be able
+to more densely pack the parent by splitting the child nodes more. So if the
+parent node can support a deeper prefix without hitting max_size, and the
+count of under min_size nodes cannot be reduced, the parent should be given
+a deeper prefix.</li>
+<li>If it increased above max_size, shrink the prefix width used to split out
+new nodes until the node is below max_size (unless the prefix width is
+already 1 - the minimum).
+To shrink the prefix of an internal node, create new internal nodes for each
+new prefix, and populate them with the content of the nodes which were
+formerly linked. (This will normally bubble down due to keeping densely
+packed nodes).
+To shrink the prefix of a leaf node, create an internal node with the same
+prefix, then choose a width for the internal node such that the contents
+of the leaf all fit into new leaves obeying the min_size and max_size rules.
+The largest prefix possible should be chosen, to obey the
+higher-nodes-are-denser rule. That rule also gives room in leaf nodes for
+growth without affecting the parent node packing.</li>
+<li>Update the CHK pointers - serialise every altered node to generate a CHK,
+and update the CHK placeholder in the nodes parent; then reserialise the
+parent. CHK pointer propagation can be done lazily when many updates are
+expected.</li>
+</ol>
+<p>Multiple versions of nodes for the same PREFIX and internal prefix width should
+compress well for the same tree.</p>
+</div>
+</div>
+<div class="section" id="inventory-deltas">
+<h2><a class="toc-backref" href="#id35">Inventory deltas</a><a class="headerlink" href="#inventory-deltas" title="Permalink to this headline">¶</a></h2>
+<p>An inventory is a serialization of the in-memory inventory delta.  To serialize
+an inventory delta, one takes an existing inventory delta and the revision_id
+of the revision it was created it against and the revision id of the inventory
+which should result by applying the delta to the parent.  We then serialize
+every item in the delta in a simple format:</p>
+<p>‘format: bzr inventory delta v1 (1.14)’ NL
+‘parent:’ SP BASIS_INVENTORY NL
+‘version:’ SP NULL_OR_REVISION NL
+‘versioned_root:’ SP BOOL NL
+‘tree_references:’ SP BOOL NL
+DELTA_LINES</p>
+<p>DELTA_LINES ::= (DELTA_LINE NL)*
+DELTA_LINE ::= OLDPATH NULL NEWPATH NULL file-id NULL PARENT_ID NULL LAST_MODIFIED NULL CONTENT
+SP ::= ‘ ‘
+BOOL ::= ‘true’ | ‘false’
+NULL ::= x00
+OLDPATH ::= NONE | PATH
+NEWPATH ::= NONE | PATH
+NONE ::= ‘None’
+PATH ::= path
+PARENT_ID ::= FILE_ID | ‘’
+CONTENT ::= DELETED_CONTENT | FILE_CONTENT | DIR_CONTENT | TREE_CONTENT | LINK_CONTENT
+DELETED_CONTENT ::= ‘deleted’
+FILE_CONTENT ::= ‘file’ NULL text_size NULL EXEC NULL text_sha1
+DIR_CONTENT ::= ‘dir’
+TREE_CONTENT ::= ‘tree’ NULL tree-revision
+LINK_CONTENT ::= ‘link’ NULL link-target
+BASIS_INVENTORY ::= NULL_OR_REVISION
+LAST_MODIFIED ::= NULL_OR_REVISION
+NULL_OR_REVISION ::= ‘null:’ | REVISION
+REVISION ::= revision-id-in-utf8-no-whitespace
+EXEC ::= ‘’ | ‘Y’</p>
+<p>DELTA_LINES is lexicographically sorted.</p>
+<p>Some explanation is in order. When NEWPATH is ‘None’ a delete has been
+recorded, and because this inventory delta is not attempting to be a reversible
+delta, the only other valid fields are OLDPATH and ‘file-id’. PARENT_ID is ‘’
+when a delete has been recorded or when recording a new root entry.</p>
+</div>
+<div class="section" id="delta-consistency">
+<h2><a class="toc-backref" href="#id36">Delta consistency</a><a class="headerlink" href="#delta-consistency" title="Permalink to this headline">¶</a></h2>
+<p>Inventory deltas and more broadly changes between trees are a significant part
+of Breezy’s core operations: they are key components in status, diff, commit,
+and merge (although merge uses tree transform, deltas contain the changes that
+are applied to the transform). Our ability to perform a given operation depends
+on us creating consistent deltas between trees. Inconsistent deltas lead to
+errors and bugs, or even just unexpected conflicts.</p>
+<p>An inventory delta is a transform to change an inventory A into another
+inventory B (in patch terms its a perfect patch). Sometimes, for instance in a
+regular commit, inventory B is known at the time we create the delta. Other
+times, B is not known because the user is requesting that some parts of the
+second inventory they have are masked out from consideration. When this happens
+we create a delta that when applied to A creates a B we haven’t seen in total
+before. In this situation we need to ensure that B will be internally
+consistent. Deltas are unidirectional, a delta(A, B) creates B from A, but
+cannot be used to create A from B.</p>
+<p>Deltas are expressed as a list of (oldpath, newpath, fileid, entry) tuples. The
+fileid, entry elements are normative; the old and new paths are strong hints
+but not currently guaranteed to be accurate. (This is a shame and something we
+should tighten up). Deltas are required to list all removals explicitly -
+removing the parent of an entry doesn’t remove the entry.</p>
+<dl class="docutils">
+<dt>Applying a delta to an inventory consists of:</dt>
+<dd><ul class="first last simple">
+<li>removing all fileids for which entry is None</li>
+<li>adding or replacing all other fileids</li>
+<li>detecting consistency errors</li>
+</ul>
+</dd>
+<dt>An interesting aspect of delta inconsistencies is when we notice them:</dt>
+<dd><ul class="first last simple">
+<li>Silent errors which our application logic misses</li>
+<li>Visible errors we catch during application, so bad data isn’t stored in
+the system.</li>
+</ul>
+</dd>
+</dl>
+<p>The minimum safe level for our application logic would be to catch all errors
+during application. Making generation never generate inconsistent deltas is
+a seperate but necessary condition for robust code.</p>
+<dl class="docutils">
+<dt>An inconsistent delta is one which:</dt>
+<dd><ul class="first last simple">
+<li>after application to an inventory the inventory is an impossible state.</li>
+<li>has the same fileid, or oldpath(not-None), or newpath(not-None) multiple
+times.</li>
+<li>has a fileid field different to the entry.fileid in the same item in the
+delta.</li>
+<li>has an entry that is in an impossible state (e.g. a directory with a text
+size)</li>
+</ul>
+</dd>
+<dt>Forms of inventory inconsistency deltas can carry/cause:</dt>
+<dd><ul class="first last simple">
+<li>An entry newly introduced to a path without also removing or relocating any
+existing entry at that path. (Duplicate paths)</li>
+<li>An entry whose parent id isn’t present in the tree. (Missing parent).</li>
+<li>Having oldpath or newpath not be actual original path or resulting path.
+(Wrong path)</li>
+<li>An entry whose parent is not a directory. (Under non-directory).</li>
+<li>An entry that is internally inconsistent.</li>
+<li>An entry that is already present in the tree (Duplicate id)</li>
+</ul>
+</dd>
+<dt>Known causes of inconsistency:</dt>
+<dd><ul class="first last simple">
+<li>A ‘new’ entry which the inventory already has - when this is a directory
+even arbitrary file ids under the ‘new’ entry are more likely to collide on
+paths.</li>
+<li>Removing a directory without recursively removing its children - causes
+Missing parent.</li>
+<li>Recording a change to an entry without including all changed entries found
+following its parents up to and includin the root - can cause duplicate
+paths, missing parents, wrong path, under non-directory.</li>
+</ul>
+</dd>
+</dl>
+<div class="section" id="avoiding-inconsistent-deltas">
+<h3><a class="toc-backref" href="#id37">Avoiding inconsistent deltas</a><a class="headerlink" href="#avoiding-inconsistent-deltas" title="Permalink to this headline">¶</a></h3>
+<p>The simplest thing is to never create partial deltas, as it is trivial to
+be consistent when all data is examined every time. However users sometimes
+want to specify a subset of the changes in their tree when they do an operation
+which needs to create a delta - such as commit.</p>
+<p>We have a choice about handling user requests that can generate inconsistent
+deltas. We can alter or interpret the request in such a way that the delta will
+be consistent, but perhaps larger than the user had intended. Or we can
+identify problematic situations and abort, specifying to the user why we have
+aborted and likely things they can do to make their request generate a
+consistent delta.</p>
+<p>Currently we attempt to expand/interpret the request so that the user is not
+required to understand all the internal constraints of the system: if they
+request ‘foo/bar’ we automatically include foo. This works but can surprise
+the user sometimes when things they didn’t explicitly request are committed.</p>
+<p>Different trees can use different algorithms to expand the request as long as
+they produce consistent deltas. As part of getting a consistent UI we require
+that all trees expand the paths requested downwards. Beyond that as long as
+the delta is consistent it is up to the tree.</p>
+<p>Given two trees, source and target, and a set of selected file ids to check for
+changes and if changed in a delta between them, we have to expand that set by
+the following rules, to get consistent deltas. The test for consistency is that
+if the resulting delta is applied to source, to create a third tree ‘output’,
+and the paths in the delta match the paths in source and output, only one file
+id is at each path in output, and no file ids are missing parents, then the
+delta is consistent.</p>
+<p>Firstly, the parent ids to the root for all of the file ids that have actually
+changed must be considered. Unless they are all examined the paths in the delta
+may be wrong.</p>
+<p>Secondly, when an item included in the delta has a new path which is the same
+as a path in source, the fileid of that path in source must be included.
+Failing to do this leads to multiple ids tryin to share a path in output.</p>
+<p>Thirdly, when an item changes its kind from ‘directory’ to anything else in the
+delta, all of the direct children of the directory in source must be included.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="indices.html" title="Indices"
+              >previous</a> |
+            <a href="lca-merge.html" title="LCA Merge"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/inventory.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

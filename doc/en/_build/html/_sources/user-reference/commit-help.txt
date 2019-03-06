@@ -1,0 +1,89 @@
+commit
+======
+
+:Purpose: Commit changes into a new revision.
+:Usage:   brz commit [SELECTED...]
+
+:Options:
+  --author=ARG          Set the author's name, if it's different from the
+                        committer.
+  --bugs=ARG            Link to a related bug. (see "brz help bugs").
+  --commit-time=ARG     Manually set a commit time using commit date format,
+                        e.g. '2009-10-10 08:00:00 +0100'.
+  -x ARG, --exclude=ARG
+                        Do not consider changes made to a given path.
+  -F MSGFILE, --file=MSGFILE
+                        Take commit message from this file.
+  --fixes=ARG           Mark a bug as being fixed by this revision (see "brz
+                        help bugs").
+  -h, --help            Show help message.
+  --local               Perform a local commit in a bound branch.  Local
+                        commits are not pushed to the master branch until a
+                        normal commit is performed.
+  --lossy               When committing to a foreign version control system do
+                        not push data that can not be natively represented.
+  -m ARG, --message=ARG
+                        Description of the new revision.
+  -q, --quiet           Only display errors and warnings.
+  -p, --show-diff       When no message is supplied, show the diff along with
+                        the status summary in the message editor.
+  --strict              Refuse to commit if there are unknown files in the
+                        working tree.
+  --unchanged           Commit even if nothing has changed.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  An explanatory message needs to be given for each commit. This is
+  often done by using the --message option (getting the message from the
+  command line) or by using the --file option (getting the message from
+  a file). If neither of these options is given, an editor is opened for
+  the user to enter the message. To see the changed files in the
+  boilerplate text loaded into the editor, use the --show-diff option.
+  
+  By default, the entire tree is committed and the person doing the
+  commit is assumed to be the author. These defaults can be overridden
+  as explained below.
+
+:Selective commits:
+  If selected files are specified, only changes to those files are
+  committed.  If a directory is specified then the directory and
+  everything within it is committed.
+
+  When excludes are given, they take precedence over selected files.
+  For example, to commit only changes within foo, but not changes
+  within foo/bar::
+
+    brz commit foo -x foo/bar
+
+  A selective commit after a merge is not yet supported.
+
+:Custom authors:
+  If the author of the change is not the same person as the committer,
+  you can specify the author's name using the --author option. The
+  name should be in the same format as a committer-id, e.g.
+  "John Doe <jdoe@example.com>". If there is more than one author of
+  the change you can specify the option multiple times, once for each
+  author.
+
+:Checks:
+  A common mistake is to forget to add a new file or directory before
+  running the commit command. The --strict option checks for unknown
+  files and aborts the commit if any are found. More advanced pre-commit
+  checks can be implemented by defining hooks. See ``brz help hooks``
+  for details.
+
+:Things to note:
+  If you accidentally commit the wrong changes or make a spelling
+  mistake in the commit message say, you can use the uncommit command
+  to undo it. See ``brz help uncommit`` for details.
+
+  Hooks can also be configured to run after a commit. This allows you
+  to trigger updates to external systems like bug trackers. The --fixes
+  option can be used to record the association between a revision and
+  one or more bugs. See ``brz help bugs`` for details.
+
+:Aliases:  ci, checkin
+:See also: :doc:`add <add-help>`, :doc:`bugs <bugs-help>`, :doc:`hooks <hooks-help>`, :doc:`uncommit <uncommit-help>`
+
+

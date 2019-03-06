@@ -1,0 +1,64 @@
+grep
+====
+
+:Purpose: Print lines matching PATTERN for specified files and revisions.
+:Usage:   brz grep PATTERN [PATH...]
+
+:Options:
+  --color=WHEN          Show match in color. WHEN is never, always or auto.
+  -p, --diff            Grep for pattern in changeset for each revision.
+  -X GLOB, --exclude=GLOB
+                        Skip files whose base name matches GLOB.
+  -l, --files-with-matches
+                        Print only the name of each input file in which
+                        PATTERN is found.
+  -L, --files-without-match
+                        Print only the name of each input file in which
+                        PATTERN is not found.
+  -F, --fixed-string    Interpret PATTERN is a single fixed string (not
+                        regex).
+  --from-root           Search for pattern starting from the root of the
+                        branch. (implies --recursive)
+  -h, --help            Show help message.
+  -i, --ignore-case     Ignore case distinctions while matching.
+  -I GLOB, --include=GLOB
+                        Search only files whose base name matches GLOB.
+  --levels=N            Number of levels to display - 0 for all, 1 for
+                        collapsed (1 is default).
+  -n, --line-number     Show 1-based line number.
+  --no-recursive        Don't recurse into subdirectories. (default is
+                        --recursive)
+  -Z, --null            Write an ASCII NUL (\0) separator between output lines
+                        rather than a newline.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  This command searches the specified files and revisions for a given
+  pattern.  The pattern is specified as a Python regular expressions[1].
+  
+  If the file name is not specified, the revisions starting with the
+  current directory are searched recursively. If the revision number is
+  not specified, the working copy is searched. To search the last committed
+  revision, use the '-r -1' or '-r last:1' option.
+  
+  Unversioned files are not searched unless explicitly specified on the
+  command line. Unversioned directores are not searched.
+  
+  When searching a pattern, the output is shown in the 'filepath:string'
+  format. If a revision is explicitly searched, the output is shown as
+  'filepath~N:string', where N is the revision number.
+  
+  --include and --exclude options can be used to search only (or exclude
+  from search) files with base name matches the specified Unix style GLOB
+  pattern.  The GLOB pattern an use *, ?, and [...] as wildcards, and \
+  to quote wildcard or backslash character literally. Note that the glob
+  pattern is not a regular expression.
+  
+  [1] http://docs.python.org/library/re.html#regular-expression-syntax
+
+
+

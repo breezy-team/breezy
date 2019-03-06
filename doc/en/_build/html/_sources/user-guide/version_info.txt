@@ -1,0 +1,108 @@
+Exporting version information
+=============================
+
+Getting the last revision number
+--------------------------------
+
+If you only need the last revision number in your build scripts, you can
+use the ``revno`` command to get that value like this::
+
+  $ brz revno
+  3104
+
+
+Getting more version information
+--------------------------------
+
+The ``version-info`` command can be used to output more information
+about the latest version like this::
+
+  $ brz version-info
+  revision-id: pqm@pqm.ubuntu.com-20071211175118-s94sizduj201hrs5
+  date: 2007-12-11 17:51:18 +0000
+  build-date: 2007-12-13 13:14:51 +1000
+  revno: 3104
+  branch-nick: brz.dev
+
+You can easily filter that output using operating system tools or
+scripts. For example::
+
+  $ brz version-info | grep ^date
+  date: 2007-12-11 17:51:18 +0000
+
+The ``--all`` option will actually dump version information about
+every revision if you need that information for more advanced
+post-processing.
+
+
+Python projects
+---------------
+
+.. TODO: Figure out how to attach into ``setup.py``
+
+
+If using a Makefile to build your project, you can generate the version
+information file as simply as::
+
+  library/_version.py:
+        brz version-info --format python > library/_version.py
+
+This generates a file which contains 3 dictionaries:
+
+  * `version_info`: A dictionary containing the basic information about the
+    current state.
+
+  * `revisions`: A dictionary listing all of the revisions in the
+    history of the tree, along with the commit times and commit
+    message.  This defaults to being empty unless ``--all`` or
+    ``--include-history`` is supplied. This is useful if you want to
+    track what bug fixes, etc, might be included in the released
+    version. But for many projects it is more information than needed.
+
+  * `file_revisions`: A dictionary listing the last-modified revision
+    for all files in the project. This can be used similarly to how
+    ``$Id$`` keywords are used in CVS-controlled files. The last
+    modified date can be determined by looking in the ``revisions``
+    map. This is also empty by default, and enabled only by ``--all``
+    or ``--include-file-revisions``.
+
+
+Getting version info in other formats
+-------------------------------------
+
+Breezy supports a template-based method for getting version information in
+arbitrary formats.  The ``--custom`` option to ``version-info`` can be
+used by providing a ``--template`` argument that contains variables that
+will be expanded based on the status of the working tree.  For example, to
+generate a C header file with a formatted string containing the current
+revision number::
+
+ brz version-info --custom \
+      --template="#define VERSION_INFO \"Project 1.2.3 (r{revno})\"\n" \
+      > version_info.h
+
+where the ``{revno}`` will be replaced by the revision number of the
+working tree.  (If the example above doesn't work on your OS, try
+entering the command all on one line.) For more information on the
+variables that can be used in templates, see `Version Info`_ in the
+Breezy User Reference.
+
+.. _Version Info: ../user-reference/index.html#version-info
+
+Predefined formats for dumping version information in specific languages
+are currently in development. Please contact us on the mailing list about
+your requirements in this area.
+
+Check clean
+-----------
+
+Most information about the contents of the project can be cheaply
+determined by just reading the revision entry. However, it can be useful
+to know if the working tree was completely up-to-date when it was
+packaged, or if there was a local modification. By supplying either
+``--all`` or ``--check-clean``, ``brz`` will inspect the working tree, and
+set the ``clean`` flag in ``version_info``, as well as set entries in
+``file_revisions`` as ``modified`` where appropriate.
+
+..
+   vim: tw=74 ft=rst spell spelllang=en_us

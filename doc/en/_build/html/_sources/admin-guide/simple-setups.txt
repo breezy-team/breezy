@@ -1,0 +1,142 @@
+Simple Setups
+=============
+
+Consider the following simple scenario where we will be serving Bazaar branches
+that live on a single server.  Those branches are in the subdirectories of
+``/srv/bzr`` (or ``C:\bzr``) and they will all be related to a single project
+called "ProjectX".  ProjectX will have a trunk branch and at least one feature
+branch.  As we get further, we will consider other scenarios, but this will be
+a sufficiently motivating example.
+
+Smart server
+------------
+
+The simplest possible setup for providing outside access to the branches on
+the server uses Bazaar's built-in smart server tunneled over SSH_ so
+that people who can access your server using SSH can have read and write
+access to branches on the server.  This setup uses the authentication
+mechanisms of SSH including private keys, and the access control mechanisms of
+the server's operating system.  In particular, using groups on the server, it
+is possible to provide different access privileges to different groups of
+developers.
+
+.. _SSH: http://www.openssh.org/
+
+Setup
+~~~~~
+
+There is no setup required for this on the server, apart from having Bazaar
+installed and SSH access available to your developers.  Using SSH
+configuration options it is possible to restrict developers from using
+anything *but* Bazaar on the server via SSH, and to limit what part of the
+file system they can access.
+
+Client
+~~~~~~
+
+Clients can access the branches using URLs with the ``bzr+ssh://`` prefix.  For
+example, to get a local copy of the ProjectX trunk, a developer could do::
+
+  $ brz branch bzr+ssh://server.example.com/srv/bzr/projectx/trunk projectx
+
+If the developers have write access to the ``/srv/bzr/projectx`` directory, then
+they can create new branches themselves using::
+  
+  $ brz branch bzr+ssh://server.example.com/srv/bzr/projectx/trunk \
+  bzr+ssh://server.example.com/srv/bzr/projectx/feature-gui
+
+Of course, if this isn't desired, then developers should not have write access
+to the ``/srv/bzr/projectx`` directory.
+
+Further Configuration
+~~~~~~~~~~~~~~~~~~~~~
+
+For a project with multiple branches that are all related, it is best to use a
+shared repository to hold all of the branches.  To set this up, do::
+
+  $ cd /srv/bzr
+  $ brz init-repo --no-trees projectx
+
+The ``--no-trees`` option saves space by not creating a copy of the working
+files on the server's filesystem.  Then, any branch created under
+``/srv/bzr/projectx`` (see `Migration <migration.html>`_ for some ways to do
+this) will share storage space, which is particularly helpful for branches that
+have many revisions in common, such as a project trunk and its feature
+branches.
+
+If Bazaar is not installed on the user's path or not specified in the SSH
+configuration, then a path can be specified from the client with the
+``BZR_REMOTE_PATH`` environment variable.  For example, if the Bazaar executable
+is installed in ``/usr/local/bzr-2.0/bin/bzr``, then a developer could use::
+
+  $ brz_REMOTE_PATH=/usr/local/bzr-2.0/bin/bzr bzr info \
+  bzr+ssh://server.example.com/srv/bzr/proectx/trunk
+
+to get information about the trunk branch.  The remote path can also be
+specified in Bazaar's configuration files for a particular location.  See
+``bzr help configuration`` for more details.
+
+If developers have home directories on the server, they can use ``/~/`` in
+URLs to refer to their home directory.  They can also use ``/~username/`` to
+refer to the home directory of user ``username``.  For example, if there are two
+developers ``alice`` and ``bob``, then Bob could use::
+
+  $ brz log bzr+ssh://server.example.com/~/fix-1023
+
+to refer to one of his bug fix branches and::
+
+  $ brz log bzr+ssh://server.example.com/~alice/fix-2047
+  
+to refer to one of Alice's branches. [#]_
+
+.. [#] The version of Bazaar installed on the server must be at least 2.1.0b1 
+       or newer to support ``/~/`` in bzr+ssh URLs.
+
+Using a restricted SSH account to host multiple users and repositories
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once you have a bzr+ssh setup using a shared repository you may want to share
+that repository among a small set of developers.  Using shared SSH access enables
+you to complete this task without any complicated setup or ongoing management.
+
+To allow multiple users to access Bazaar over ssh we can allow ssh access to a common
+account that only allows users to run a specific command.  Using a single account
+simplifies deployment as no permissions management issues exist for the filesystem.
+All users are the same user at the server level.  Bazaar labels the commits with
+each users details so seperate server accounts are not required.
+
+To enable this configuration we update the ``~/.ssh/authorized_keys`` to include 
+command restrictions for connecting users.
+
+In these examples the user will be called ``bzruser``.
+
+The following example shows how a single line is configured::
+
+  command="bzr serve --inet --allow-writes --directory=/srv/bzr",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= my bzr key
+
+This command allows the user to access only bzr and disables other SSH use.  Write
+access to each repository in the directory ``/srv/bzr`` has been granted with ``--allow-writes``
+and can be removed for individual users that should only require read access.  The root of
+the directory structure can be altered for each user to allow them to see only a subet
+of the repositories available.  The example below assumes two seperate repositories
+for Alice and Bob.  This method will not allow you to restrict access to part
+of a repository, you may only restrict access to a single part of the directory structure::
+
+  command="bzr serve --inet --allow-writes --directory=/srv/bzr/alice/",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= Alice's SSH Key
+  command="bzr serve --inet --allow-writes --directory=/srv/bzr/bob/",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= Bob's SSH Key
+  command="bzr serve --inet --allow-writes --directory=/srv/bzr/",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding ssh-rsa AAA...= Repo Manager SSH Key
+
+Alice and Bob have access to their own repository and Repo Manager
+has access to the each of their repositories.  Users are not allowed access to any part of 
+the system except the directory specified. The bzr+ssh urls are simplified by 
+serving using ``bzr serve`` and the ``--directory`` option.
+
+If Alice logs in she uses the following command for her fix-1023 branch::
+
+  $ brz log bzr+ssh://bzruser@server.example.com/fix-1023
+
+If Repo Manager logs in he uses the following command to access Alice's
+fix-1023::
+
+  $ brz log bzr+ssh://bzruser@server.example.com/alice/fix-1023
+

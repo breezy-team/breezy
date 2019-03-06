@@ -1,0 +1,22 @@
+sign-my-commits
+===============
+
+:Purpose: Sign all commits by a given committer.
+:Usage:   brz sign-my-commits [LOCATION] [COMMITTER]
+
+:Options:
+  --dry-run      Don't actually sign anything, just print the revisions that
+                 would be signed.
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  If location is not specified the local tree is used.
+  If committer is not specified the default committer is used.
+  
+  This does not sign commits that already have signatures.
+
+
+

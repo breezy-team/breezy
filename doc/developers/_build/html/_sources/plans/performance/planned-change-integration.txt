@@ -1,0 +1,143 @@
+Integration of performance changes
+==================================
+
+To deliver a version of bzr with all our planned changes will require
+significant integration work. Minimally each change needs to integrate with
+some aspect of the bzr version it's merged into, but in reality many of these
+changes while conceptually independent will in fact have to integrate with the
+other changes we have planned before can have a completed system.
+
+Additionally changes that alter disk formats are inherently more tricky to
+integrate because we will often need to alter apis throughout the code base to
+expose the increased or reduced model of the preferred disk format.
+
+You can generate a graph ``performance.png`` in the source tree from
+Graphviz "dot" file ``performance.dot``.  This graphs out the dependencies
+to let us make accurate assessments of the changes needed in terms of code
+and API, hopefully minimising the number of different integration steps we
+have to take, while giving us a broad surface area for development. It's
+based on a summary in the next section of this document of the planned
+changes with their expected collaborators and dependencies. Where a
+command is listed, the expectation is that all uses of that command -
+local, remote, dumb transport and smart transport are being addressed
+together.
+
+
+The following provides a summary of the planned changes and their expected
+collaborators within the code base, along with an estimate of whether they are
+likely to require changes to their collaborators to be considered 'finished'.
+
+ * Use case target APIs: Each of these is likely to alter the Tree interface.
+   Some few of them focus on Branch and will alter Branch and Repository
+   accordingly. As they are targeted APIs we can deep changes all the way down
+   the stack to the underlying representation to make it all fit well.
+   Presenting a top level API for many things will be possible now as long as
+   the exposed data is audited for things we plan to make optional, or remove:
+   Such things cannot be present in the final API. Writing these APIs now will
+   provide strong feedback to the design process for those things which are
+   considered optional or removable, so these APIs should be implemented
+   before removing or making optional existing data.
+
+ * Deprecating versioned files as a supported API: This collaborates with the
+   Repository API but can probably be done by adding a replacement API for
+   places where the versioned-file api is used. We may well want to keep a
+   concept of 'a file over time' or 'inventories over time', so the existing
+   repository model of exposing versioned file objects may be ok; what we need
+   to ensure we do is remove the places in the code base where you create or
+   remove or otherwise describe manipulation of the storage by knit rather than
+   talking at the level of file ids and revision ids. The current
+   versioned-file API would be a burden for implementors of a blob based
+   repository format, so the removal of callers, and deprecation of those parts
+   of the API should be done before creating a blob based repository format.
+
+ * Creating a revision validator: Revision validators may depend on storage
+   layer changes to inventories so while we can create a revision validator
+   API, we cannot create the final one until we have the inventory structural
+   changes completed.
+
+ * Annotation caching API: This API is a prerequisite for new repository
+   formats. If written after they are introduced we may find that the
+   repository is lacking in functionality, so the API should be implemented
+   first.
+
+ * _iter_changes based merging: If the current _iter_changes_ API is
+   insufficient, we should know about that before designing the disk format for
+   generating fast _iter_changes_ output.
+
+ * Network-efficient revision graph API: This influences what questions we will
+   want to ask a local repository very quickly; as such it's a driver for the
+   new repository format and should be in place first if possible. It's probably
+   not sufficiently different to local operations to make this a hard ordering
+   though.
+
+ * Working tree disk ordering: Knowing the expected order for disk operations
+   may influence the needed use case specific APIs, so having a solid
+   understanding of what is optimal - and why - and whether it is pessimal on
+   non-Linux-kernel platforms is rather important.
+
+ * Be able to version files greater than memory in size: This cannot be
+   achieved until all parts of the library which deal with user files are able
+   to provide access to files larger than memory. Many strategies can be
+   considered for this - such as temporary files on disk, memory mapping etc.
+   We should have enough of a design laid out that developers of repository and
+   tree logic are able to start exposing apis, and considering requirements
+   related to them, to let this happen.
+
+ * Per-file graph access API: This should be implemented on top of or as part
+   of the newer API for accessing data about a file over time. It can be a
+   separate step easily; but as it's in the same area of the library should not
+   be done in parallel.
+
+ * Repository stacking API: The key dependency/change required for this is that
+   repositories must individually be happy with having partial data - e.g. many
+   ghosts. However the way the API needs to be used should be driven from the
+   command layer in, because it's unclear at the moment what will work best.
+
+ * Revision stream API: This API will become clear as we streamline commands.
+   On the data insertion side commit will want to generate new data. The
+   commands pull, bundle, merge, push, possibly uncommit will want to copy
+   existing data in a streaming fashion.
+
+ * New container format: It's hard to tell what the right way to structure the
+   layering is. Probably having smooth layering down to the point that code
+   wants to operate on the containers directly will make this more clear. As
+   bundles will become a read-only branch & repository, the smart server wants
+   streaming-containers, and we are planning a pack based repository, it
+   appears that we will have three different direct container users. However,
+   the bundle user may in fact be fake - because it really is a repository.
+
+ * Separation of annotation cache: Making the disk changes to achieve this
+   depends on the new API being created. Bundles probably want to be
+   annotation-free, so they are a form of implementation of this and will need
+   the on-demand annotation facility.
+
+ * Repository operation disk ordering: Dramatically changing the ordering of
+   disk operations requires a new repository format. We have most of the
+   analysis done to be able to specify the desired ordering, so it should be
+   possible to write such a format now based on the container logic, but
+   without any of the inventory representation or delta representation changes.
+   This would for instance involve pack combining ordering the existing diffs
+   in reverse order.
+
+ * Inventory representation: This has a dependency on what data is
+   dropped from the core and what is kept. Without those changes being known we
+   can implement a new representation, but it won't be a final one. One of the
+   services the new inventory representation is expected to deliver is one of
+   validators for subtrees -- a means of comparing just subtrees of two
+   inventories without comparing all the data within that subtree.
+
+ * Delta storage optimisation: This has a strict dependency on a new repository
+   format. Optimisation takes many forms - we probably cannot complete the
+   desired optimisations under knits though we could use xdelta within a
+   knit-variation.
+
+ * Greatest distance from origin cache: The potential users of this exist
+   today, it is likely able to be implemented immediately, but we are not sure
+   that its needed anymore, so it is being shelved.
+
+ * Removing derivable data: It's very hard to do this while the derived data is
+   exposed in API's but not used by commands. Implemented the targeted API's
+   for our core use cases should allow use to remove accidental use of derived
+   data, making only explicit uses of it visible, and isolating the impact of
+   removing it : allowing us to experiment sensibly. This covers both dropping
+   the per-file merge graph and the hash-based-names proposals.

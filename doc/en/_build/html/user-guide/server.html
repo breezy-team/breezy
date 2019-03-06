@@ -1,0 +1,196 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Running a smart server &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Using hooks" href="hooks.html" />
+    <link rel="prev" title="Using stacked branches" href="stacked.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="stacked.html" title="Using stacked branches"
+             accesskey="P">previous</a> |
+          <a href="hooks.html" title="Using hooks"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="running-a-smart-server">
+<h1>Running a smart server<a class="headerlink" href="#running-a-smart-server" title="Permalink to this headline">¶</a></h1>
+<p>Breezy does not require a specialised server because it operates over HTTP, FTP
+or SFTP.  There is an optional smart server that can be invoked over SSH, from
+inetd, or in a dedicated mode.</p>
+<div class="section" id="dumb-servers">
+<h2>Dumb servers<a class="headerlink" href="#dumb-servers" title="Permalink to this headline">¶</a></h2>
+<p>We describe HTTP, FTP, SFTP and HTTP-WebDAV as “dumb” servers because they do
+not offer any assistance to Breezy.  If you make a Breezy repository available
+over any of these protocols, Breezy will allow you to read it remotely.  Just
+enter the URL to the branch in the Breezy command you are running.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">bazaar</span><span class="o">.</span><span class="n">launchpad</span><span class="o">.</span><span class="n">net</span><span class="o">/~</span><span class="n">brz</span><span class="o">-</span><span class="n">pqm</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">brz</span><span class="o">.</span><span class="n">dev</span>
+</pre></div>
+</div>
+<p>Breezy supports writing over FTP, SFTP and (via a plugin) over HTTP-WebDAV.</p>
+</div>
+<div class="section" id="high-performance-smart-server">
+<h2>High-performance smart server<a class="headerlink" href="#high-performance-smart-server" title="Permalink to this headline">¶</a></h2>
+<p>The high-performance smart server (hpss) performs certain operations much faster
+than dumb servers are capable of.  In future releases, the range of operations
+that are improved by using the smart server will increase as we continue to
+tune performance.</p>
+<p>To maintain the highest security possible, the current
+smart server provides read-only access by default.  To
+enable read-write access, run it with <code class="docutils literal notranslate"><span class="pre">--allow-writes</span></code>. When using
+the SSH access method, brz automatically runs with the
+<code class="docutils literal notranslate"><span class="pre">--allow-writes</span></code> option.</p>
+<p>The alternative ways of configuring a smart server are explained below.</p>
+<div class="section" id="ssh">
+<h3>SSH<a class="headerlink" href="#ssh" title="Permalink to this headline">¶</a></h3>
+<p>Using Breezy over SSH requires no special configuration on the server; so long
+as Breezy is installed on the server you can use <code class="docutils literal notranslate"><span class="pre">bzr+ssh</span></code> URLs, e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="n">bzr</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">host</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>If <cite>brz</cite> is not installed system-wide on the server you may need to explicitly
+tell the local <cite>brz</cite> where to find the remote <cite>brz</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">BZR_REMOTE_PATH</span><span class="o">=~/</span><span class="nb">bin</span><span class="o">/</span><span class="n">brz</span> <span class="n">brz</span> <span class="n">log</span> <span class="n">bzr</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">host</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">BZR_REMOTE_PATH</span></code> environment variable adjusts how <cite>brz</cite> will be
+invoked on the remote system.  By default, just <cite>brz</cite> will be invoked,
+which requires the <cite>brz</cite> executable to be on the default search path.  You can
+also set this permanently per-location in <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>.</p>
+<p>Like SFTP, paths starting with <code class="docutils literal notranslate"><span class="pre">~</span></code> are relative to your home directory, e.g.
+<code class="docutils literal notranslate"><span class="pre">bzr+ssh://example.com/~/code/proj</span></code>.  Additionally, paths starting with
+<code class="docutils literal notranslate"><span class="pre">~user</span></code> will be relative to that user’s home directory.</p>
+</div>
+<div class="section" id="inetd">
+<h3>inetd<a class="headerlink" href="#inetd" title="Permalink to this headline">¶</a></h3>
+<p>This example shows how to run <cite>brz</cite> with a dedicated user <cite>brzuser</cite>
+for a shared repository in <code class="docutils literal notranslate"><span class="pre">/srv/brz/repo</span></code> which has a branch at
+<code class="docutils literal notranslate"><span class="pre">/srv/brz/repo/branchname</span></code>.</p>
+<p>Running a Breezy server from inetd requires an inetd.conf entry:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">4155</span>  <span class="n">stream</span>  <span class="n">TCP</span>  <span class="n">nowait</span>  <span class="n">brzuser</span>  <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">brz</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">brz</span> <span class="n">serve</span> <span class="o">--</span><span class="n">inet</span> <span class="o">--</span><span class="n">directory</span><span class="o">=/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">repo</span>
+</pre></div>
+</div>
+<p>When running client commands, the URL you supply is a <cite>bzr://</cite> URL relative to
+the <code class="docutils literal notranslate"><span class="pre">--directory</span></code> option given in inetd.conf:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="n">bzr</span><span class="p">:</span><span class="o">//</span><span class="n">host</span><span class="o">/</span><span class="n">branchname</span>
+</pre></div>
+</div>
+<p>If possible, paths starting with <code class="docutils literal notranslate"><span class="pre">~</span></code> and <code class="docutils literal notranslate"><span class="pre">~user</span></code> will be expanded as for
+<code class="docutils literal notranslate"><span class="pre">bzr+ssh</span></code>.  Home directories outside the <code class="docutils literal notranslate"><span class="pre">--directory</span></code> specified to <code class="docutils literal notranslate"><span class="pre">brz</span>
+<span class="pre">serve</span></code> will not be accessible.</p>
+</div>
+<div class="section" id="dedicated">
+<h3>Dedicated<a class="headerlink" href="#dedicated" title="Permalink to this headline">¶</a></h3>
+<p>This mode has the same path and URL behaviour as the inetd mode.  To
+run as a specific user, you should use <code class="docutils literal notranslate"><span class="pre">su</span></code> or login as that user.</p>
+<p>This example runs brz on its official port number of <cite>4155</cite> and listens on all
+interfaces. This allows connections from anywhere in the world that can reach
+your machine on port <cite>4155</cite>.</p>
+<p>server:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">serve</span> <span class="o">--</span><span class="n">directory</span><span class="o">=/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">repo</span>
+</pre></div>
+</div>
+<p>client:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="n">bzr</span><span class="p">:</span><span class="o">//</span><span class="n">host</span><span class="o">/</span><span class="n">branchname</span>
+</pre></div>
+</div>
+<p>This example runs <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">serve</span></code> on <cite>localhost</cite> port <cite>1234</cite>.</p>
+<p>server:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">serve</span> <span class="o">--</span><span class="n">listen</span><span class="o">=</span><span class="n">localhost</span> <span class="o">--</span><span class="n">port</span><span class="o">=</span><span class="mi">1234</span> <span class="o">--</span><span class="n">directory</span><span class="o">=/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">repo</span>
+</pre></div>
+</div>
+<p>client:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="n">bzr</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mi">1234</span><span class="o">/</span><span class="n">branchname</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="stacked.html" title="Using stacked branches"
+              >previous</a> |
+            <a href="hooks.html" title="Using hooks"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/server.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

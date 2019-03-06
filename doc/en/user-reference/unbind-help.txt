@@ -1,0 +1,21 @@
+unbind
+======
+
+:Purpose: Convert the current checkout into a regular branch.
+:Usage:   brz unbind
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  After unbinding, the local branch is considered independent and subsequent
+  commits will be local only.
+
+:See also: :doc:`bind <bind-help>`, :doc:`checkouts <checkouts-help>`
+
+

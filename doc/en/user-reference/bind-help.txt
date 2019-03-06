@@ -1,0 +1,27 @@
+bind
+====
+
+:Purpose: Convert the current branch into a checkout of the supplied branch.
+:Usage:   brz bind [LOCATION]
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  If no branch is supplied, rebind to the last bound location.
+  
+  Once converted into a checkout, commits must succeed on the master branch
+  before they will be applied to the local branch.
+  
+  Bound branches use the nickname of its master branch unless it is set
+  locally, in which case binding will update the local nickname to be
+  that of the master.
+
+:See also: :doc:`checkouts <checkouts-help>`, :doc:`unbind <unbind-help>`
+
+

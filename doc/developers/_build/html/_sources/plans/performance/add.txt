@@ -1,0 +1,34 @@
+Add
+===
+
+Add is used to recursively version some paths supplied by the user. Paths that
+match ignore rules are not versioned, and paths that become versioned are
+versioned in the nearest containing bzr tree. Currently we only do this within
+a single tree, but perhaps with nested trees this should change.
+
+Least work we can hope to perform
+---------------------------------
+
+* Read a subset of the full versioned paths data for the tree matching the scope of the paths the user supplied.
+* Seek once to each directory within the scope and readdir its contents.
+* Probe if each directory is a child tree to avoid adding data for paths within a child tree.
+* Calculate the ignored status for paths not previously known to be ignored
+* Write data proportional to the newly versioned file count to record their versioning.
+* Assign a fileid for each path (so that merge --uncommitted can work immediately)
+
+Optionally:
+
+* Print the ignore rule for each ignored path in the scope.
+* Print the path of each added file.
+* Print the total count of ignored files within the scopes.
+* Record the result of calculating ignored status for ignored files.
+  (proportional to the number we actually calculate).
+
+Per file algorithm
+------------------
+
+#. If the path is versioned, and it is a directory, push onto the recurse stack.
+#. If the path is supplied by the user or is not ignored, version it, and if a
+   directory, push onto the recurse stack. Versioning the path may require
+   versioning the paths parents.
+#. Output or otherwise record the ignored rule as per the user interface selected.

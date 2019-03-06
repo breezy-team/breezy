@@ -1,0 +1,224 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Pseudo merging &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Switch –store" href="switch_store.html" />
+    <link rel="prev" title="The journey ahead" href="part2_intro.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="part2_intro.html" title="The journey ahead"
+             accesskey="P">previous</a> |
+          <a href="switch_store.html" title="Switch –store"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="pseudo-merging">
+<h1>Pseudo merging<a class="headerlink" href="#pseudo-merging" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="cherrypicking">
+<h2>Cherrypicking<a class="headerlink" href="#cherrypicking" title="Permalink to this headline">¶</a></h2>
+<p>At times, it can be useful to selectively merge some of the changes
+in a branch, but not all of them. This is commonly referred to as
+<em>cherrypicking</em>. Here are some examples of where cherrypicking is
+useful:</p>
+<ul class="simple">
+<li>selectively taking fixes from the main development branch into
+a release branch</li>
+<li>selectively taking improvements out of an experimental branch into
+a feature branch.</li>
+</ul>
+<p>To merge only the changes made by revision X in branch <code class="docutils literal notranslate"><span class="pre">foo</span></code>,
+the command is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span> <span class="o">-</span><span class="n">c</span> <span class="n">X</span> <span class="n">foo</span>
+</pre></div>
+</div>
+<p>To merge only the changes up to revision X in branch <code class="docutils literal notranslate"><span class="pre">foo</span></code>,
+the command is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span> <span class="o">-</span><span class="n">r</span> <span class="n">X</span> <span class="n">foo</span>
+</pre></div>
+</div>
+<p>To merge only the changes since revision X in branch <code class="docutils literal notranslate"><span class="pre">foo</span></code>,
+the command is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span> <span class="o">-</span><span class="n">r</span> <span class="n">X</span><span class="o">..</span> <span class="n">foo</span>
+</pre></div>
+</div>
+<p>To merge only the changes from revision X to revision Y in branch <code class="docutils literal notranslate"><span class="pre">foo</span></code>,
+the command is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span> <span class="o">-</span><span class="n">r</span> <span class="n">X</span><span class="o">..</span><span class="n">Y</span> <span class="n">foo</span>
+</pre></div>
+</div>
+<p>Like a normal merge, you must explicitly commit a cherrypick. You may wish
+to see the changes made using <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span></code>, and run your test suite if any,
+before doing this.</p>
+<p>Unlike a normal merge, Breezy does not currently track cherrypicks.
+In particular, the changes look like a normal commit and the (internal)
+revision history of the changes from the other branch is lost.
+In many cases where they are useful (see above), this is not a major
+problem because there are good reasons why a full merge should never
+be done at a later time. In other cases, additional conflicts will need
+to be resolved when the changes are merged again.</p>
+</div>
+<div class="section" id="merging-without-parents">
+<h2>Merging without parents<a class="headerlink" href="#merging-without-parents" title="Permalink to this headline">¶</a></h2>
+<p>A related technique to cherrypicking, in that it makes changes without
+reference to the revisions that they came from is to perform a merge, but
+forget about the parent revisions before committing.  This has the effect of
+making all of the changes that would have been in the merge happen in a single
+commit.  After the merge and before the corresponding commit, you can do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">revert</span> <span class="o">--</span><span class="n">forget</span><span class="o">-</span><span class="n">merges</span>
+</pre></div>
+</div>
+<p>to keep the changes in the working tree, but remove the record of the
+revisions where the changes originated.  The next commit would then record
+all of those changes without any record of the merged revisions.</p>
+<p>This is desired by some users to make their history “cleaner”, but you should
+be careful that the loss of history does not outweigh the value of cleanliness,
+particularly given Breezy’s capabilities for progressively disclosing merged
+revisions.  In particular, because this will include the changes from the
+source branch, but without attribution to that branch, it can lead to
+additional conflicts on later merges that involve the same source and
+target branches.</p>
+</div>
+<div class="section" id="reverse-cherrypicking">
+<h2>Reverse cherrypicking<a class="headerlink" href="#reverse-cherrypicking" title="Permalink to this headline">¶</a></h2>
+<p>Cherrypicking can be used to reverse a set of changes made by giving an
+upper bound in the revision range which is <em>below</em> the lower bound.
+For example, to back-out changes made in revision 10, the command is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span> <span class="o">-</span><span class="n">r</span> <span class="mf">10.</span><span class="o">.</span><span class="mi">9</span>
+</pre></div>
+</div>
+<p>If you want to take most changes, but not all, from somewhere else, you
+may wish to do a normal merge followed by a few reverse cherrypicks.</p>
+</div>
+<div class="section" id="merging-uncommitted-changes">
+<h2>Merging uncommitted changes<a class="headerlink" href="#merging-uncommitted-changes" title="Permalink to this headline">¶</a></h2>
+<p>If you have several branches and you accidentally start making changes in the
+wrong one, here are the steps to take to correct this. Assuming you began
+working in branch <code class="docutils literal notranslate"><span class="pre">foo</span></code> when you meant to work in branch <code class="docutils literal notranslate"><span class="pre">bar</span></code>:</p>
+<ol class="arabic simple">
+<li>Change into branch <code class="docutils literal notranslate"><span class="pre">bar</span></code>.</li>
+<li>Run <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">merge</span> <span class="pre">--uncommitted</span> <span class="pre">foo</span></code></li>
+<li>Check the changes came across (<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span></code>)</li>
+<li>Change into branch <code class="docutils literal notranslate"><span class="pre">foo</span></code></li>
+<li>Run <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">revert</span></code>.</li>
+</ol>
+</div>
+<div class="section" id="rebasing">
+<h2>Rebasing<a class="headerlink" href="#rebasing" title="Permalink to this headline">¶</a></h2>
+<p>Another option to normal merging is <em>rebasing</em>, i.e. making it look like
+the current branch originated from a different point than it did.
+Rebasing is supported in Breezy by the <code class="docutils literal notranslate"><span class="pre">rebase</span></code> command provided by
+the <code class="docutils literal notranslate"><span class="pre">rebase</span></code> plugin.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">rebase</span></code> command takes the location of another branch on which
+the branch in the current working directory will be rebased. If a branch
+is not specified then the parent branch is used, and this is usually the
+desired result.</p>
+<p>The first step identifies the revisions that are in the current branch
+that are not in the parent branch. The current branch is then set to be
+at the same revision as the target branch, and each revision is replayed
+on top of the branch. At the end of the process it will appear as though
+your current branch was branched off the current last revision of the target.</p>
+<p>Each revision that is replayed may cause conflicts in the tree. If this
+happens the command will stop and allow you to fix them up. Resolve the
+commits as you would for a <code class="docutils literal notranslate"><span class="pre">merge</span></code>, and then run <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> to
+marked them as resolved. Once you have resolved all the conflicts, you
+should run <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rebase-continue</span></code> to continue the rebase operation.
+If conflicts are encountered and you decide not to continue,
+you can run <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rebase-abort</span></code>. You can also use <code class="docutils literal notranslate"><span class="pre">rebase-todo</span></code> to
+show the list of commits still to be replayed.</p>
+<p>Note: Some users coming from central VCS tools with poor merge tracking
+like rebasing because it’s similar to how they are use to working in older
+tools, or because “perfectly clean” history seems important. Before rebasing
+in Breezy, think about whether a normal merge is a better choice. In
+particular, rebasing a private branch before sharing it is OK but
+rebasing after sharing a branch with someone else is <strong>strongly</strong> discouraged.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="part2_intro.html" title="The journey ahead"
+              >previous</a> |
+            <a href="switch_store.html" title="Switch –store"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/adv_merging.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -561,7 +561,10 @@ def split_segment_parameters(url):
     (base_url, subsegments) = split_segment_parameters_raw(url)
     parameters = {}
     for subsegment in subsegments:
-        (key, value) = subsegment.split("=", 1)
+        try:
+            (key, value) = subsegment.split("=", 1)
+        except ValueError:
+            raise InvalidURL(url, "missing = in subsegment")
         if not isinstance(key, str):
             raise TypeError(key)
         if not isinstance(value, str):

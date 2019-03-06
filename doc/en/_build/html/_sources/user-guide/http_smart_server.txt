@@ -1,0 +1,298 @@
+Serving Breezy with Apache
+==========================
+
+This document describes one way to set up a Breezy HTTP smart server,
+using Apache 2.0 and FastCGI or mod_python or mod_wsgi.
+
+For more information on the smart server, and other ways to configure it
+see the main `smart server documentation <server.html>`_.
+
+Example
+-------
+
+You have a webserver already publishing `/srv/example.com/www/code` as
+`http://example.com/code/...` with plain HTTP.  It contains branches and
+directories like `/srv/example.com/www/code/branch-one` and
+`/srv/example.com/www/code/my-repo/branch-two`.  You want to provide read-only
+smart server access to these directories in addition to the existing HTTP
+access.
+
+Configuring Apache 2.0
+----------------------
+
+FastCGI
+~~~~~~~
+
+First, configure mod_fastcgi, e.g. by adding lines like these to your
+httpd.conf::
+
+    LoadModule fastcgi_module /usr/lib/apache2/modules/mod_fastcgi.so
+    FastCgiIpcDir /var/lib/apache2/fastcgi
+
+In our example, we're already serving `/srv/example.com/www/code` at
+`http://example.com/code`, so our existing Apache configuration would look
+like::
+
+    Alias /code /srv/example.com/www/code
+    <Directory /srv/example.com/www/code>
+        Options Indexes
+        # ...
+    </Directory>
+
+We need to change it to handle all requests for URLs ending in `.brz/smart`.  It
+will look like::
+
+    Alias /code /srv/example.com/www/code
+    <Directory /srv/example.com/www/code>
+        Options Indexes FollowSymLinks
+        RewriteEngine On
+        RewriteBase /code
+        RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/brz-smart.fcgi
+    </Directory>
+
+    # brz-smart.fcgi isn't under the DocumentRoot, so Alias it into the URL
+    # namespace so it can be executed.
+    Alias /srv/example.com/scripts/brz-smart.fcgi /srv/example.com/scripts/brz-smart.fcgi
+    <Directory /srv/example.com/scripts>
+        Options ExecCGI
+        <Files brz-smart.fcgi>
+            SetHandler fastcgi-script
+        </Files>
+    </Directory>
+
+This instructs Apache to hand requests for any URL ending with `/.brz/smart`
+inside `/code` to a Breezy smart server via FastCGI.
+
+Refer to the mod_rewrite_ and mod_fastcgi_ documentation for further
+information.
+
+.. _mod_rewrite: http://httpd.apache.org/docs/2.0/mod/mod_rewrite.html
+.. _mod_fastcgi: http://www.fastcgi.com/mod_fastcgi/docs/mod_fastcgi.html
+
+mod_python
+~~~~~~~~~~
+
+First, configure mod_python, e.g. by adding lines like these to your
+httpd.conf::
+
+    LoadModule python_module /usr/lib/apache2/modules/mod_python.so
+
+Define the rewrite rules with mod_rewrite the same way as for FastCGI, except
+change::
+
+    RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/brz-smart.fcgi
+
+to::
+
+    RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/brz-smart.py
+
+Like with mod_fastcgi, we also define how our script is to be handled::
+
+    Alias /srv/example.com/scripts/brz-smart.py /srv/example.com/scripts/brz-smart.py
+    <Directory /srv/example.com/scripts>
+        <Files brz-smart.py>
+            PythonPath "sys.path+['/srv/example.com/scripts']"
+            AddHandler python-program .py
+            PythonHandler brz-smart::handler
+        </Files>
+    </Directory>
+
+This instructs Apache to hand requests for any URL ending with `/.brz/smart`
+inside `/code` to a Breezy smart server via mod_python.
+
+NOTE: If you don't have breezy in your PATH, you will be need to change the
+following line::
+
+            PythonPath "sys.path+['/srv/example.com/scripts']"
+
+To::
+
+            PythonPath "['/path/to/brz']+sys.path+['/srv/example.com/scripts']"
+
+
+Refer to the mod_python_ documentation for further information.
+
+.. _mod_python: http://www.modpython.org/
+
+
+mod_wsgi
+~~~~~~~~
+
+First, configure mod_wsgi, e.g. enabling the mod with a2enmod wsgi.
+We need to change it to handle all requests for URLs ending in `.brz/smart`.  It
+will look like::
+
+    WSGIScriptAliasMatch ^/code/.*/\.bzr/smart$ /srv/example.com/scripts/brz.wsgi
+
+    #The three next lines allow regular GETs to work too
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/code/.*/\.bzr/smart$
+    RewriteRule ^/code/(.*/\.bzr/.*)$ /srv/example.com/www/code/$1 [L]
+
+    <Directory /srv/example.com/www/code>
+        WSGIApplicationGroup %{GLOBAL}
+    </Directory>
+
+This instructs Apache to hand requests for any URL ending with `/.brz/smart`
+inside `/code` to a Breezy smart server via WSGI, and any other URL inside
+`/code` to be served directly by Apache.
+
+Refer to the mod_wsgi_ documentation for further information.
+
+.. _mod_wsgi: http://code.google.com/p/modwsgi/
+
+Configuring Breezy
+------------------
+
+FastCGI
+~~~~~~~
+
+We've configured Apache to run the smart server at
+`/srv/example.com/scripts/brz-smart.fcgi`.  This is just a simple script we need
+to write to configure a smart server, and glue it to the FastCGI gateway.
+Here's what it looks like::
+
+    import fcgi
+    from breezy.transport.http import wsgi
+
+    smart_server_app = wsgi.make_app(
+        root='/srv/example.com/www/code',
+        prefix='/code/',
+        path_var='REQUEST_URI',
+        readonly=True,
+        load_plugins=True,
+        enable_logging=True)
+
+    fcgi.WSGIServer(smart_server_app).run()
+
+The `fcgi` module can be found at http://svn.saddi.com/py-lib/trunk/fcgi.py.  It
+is part of flup_.
+
+.. _flup: http://www.saddi.com/software/flup/
+
+mod_python
+~~~~~~~~~~
+
+We've configured Apache to run the smart server at
+`/srv/example.com/scripts/brz-smart.py`.  This is just a simple script we need
+to write to configure a smart server, and glue it to the mod_python gateway.
+Here's what it looks like::
+
+    import modpywsgi
+    from breezy.transport.http import wsgi
+
+    smart_server_app = wsgi.make_app(
+        root='/srv/example.com/www/code',
+        prefix='/code/',
+        path_var='REQUEST_URI',
+        readonly=True,
+        load_plugins=True,
+        enable_logging=True)
+
+    def handler(request):
+        """Handle a single request."""
+        wsgi_server = modpywsgi.WSGIServer(smart_server_app)
+        return wsgi_server.run(request)
+
+The `modpywsgi` module can be found at
+http://ice.usq.edu.au/svn/ice/trunk/apps/ice-server/modpywsgi.py. It was
+part of pocoo_. You sould make sure you place modpywsgi.py in the same
+directory as brz-smart.py (ie. /srv/example.com/scripts/).
+
+.. _pocoo: http://dev.pocoo.org/projects/pocoo/
+
+
+mod_wsgi
+~~~~~~~~
+
+We've configured Apache to run the smart server at
+`/srv/example.com/scripts/brz.wsgi`.  This is just a simple script we need
+to write to configure a smart server, and glue it to the WSGI gateway.
+Here's what it looks like::
+
+    from breezy.transport.http import wsgi
+
+    def application(environ, start_response):
+        app = wsgi.make_app(
+            root="/srv/example.com/www/code/",
+            prefix="/code",
+            readonly=True,
+            enable_logging=False)
+        return app(environ, start_response)
+
+Clients
+-------
+
+Now you can use `brz+http://` URLs or just `http://` URLs, e.g.::
+
+    brz log brz+http://example.com/code/my-branch
+
+Plain HTTP access should continue to work::
+
+    brz log http://example.com/code/my-branch
+
+Advanced configuration
+----------------------
+
+Because the Breezy HTTP smart server is a WSGI application, it can be used with
+any 3rd-party WSGI middleware or server that conforms the WSGI standard.  The
+only requirements are:
+
+  * to construct a `SmartWSGIApp`, you need to specify a **root transport** that it
+    will serve.
+  * each request's `environ` dict must have a **'breezy.relpath'** variable set.
+
+The `make_app` helper used in the example constructs a `SmartWSGIApp` with a
+transport based on the `root` path given to it, and calculates the
+'breezy.relpath` for each request based on the `prefix` and `path_var`
+arguments.  In the example above, it will take the 'REQUEST_URI' (which is set
+by Apache), strip the '/code/' prefix and the '/.brz/smart' suffix, and set that
+as the 'breezy.relpath', so that a request for '/code/foo/bar/.brz/smart' will
+result in a 'breezy.relpath' of 'foo/brz'.
+
+It's possible to configure a smart server for a non-local transport, or that
+does arbitrary path translations, etc, by constructing a `SmartWSGIApp`
+directly.  Refer to the docstrings of `breezy.transport.http.wsgi` and the `WSGI
+standard`_ for further information.
+
+.. _WSGI standard: http://www.python.org/dev/peps/pep-0333/
+
+
+Pushing over the HTTP smart server
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible to allow pushing data over the HTTP smart server. The
+easiest way to do this, is to just supply ``readonly=False`` to the
+``wsgi.make_app()`` call. But be careful, because the smart protocol does
+not contain any Authentication. So if you enable write support, you will
+want to restrict access to ``.brz/smart`` URLs to restrict who can
+actually write data on your system, e.g. in apache it looks like::
+
+    <Location /code>
+        AuthType Basic
+        AuthName "example"
+        AuthUserFile /srv/example.com/conf/auth.passwd
+        <LimitExcept GET>
+            Require valid-user
+        </LimitExcept>
+    </Location>
+
+At this time, it is not possible to allow some people to have read-only
+access and others to have read-write access to the same URLs. Because at
+the HTTP layer (which is doing the Authenticating), everything is just a
+POST request.  However, it would certainly be possible to have HTTPS
+require authentication and use a writable server, and plain HTTP allow
+read-only access.
+
+If brz gives an error like this when accessing your HTTPS site::
+
+  brz: ERROR: Connection error: curl connection error (server certificate verification failed.
+  CAfile:/etc/ssl/certs/ca-certificates.crt CRLfile: none)
+
+You can workaround it by using ``https+urllib`` rather than ``http`` in your
+URL, or by uninstalling pycurl.  See `bug 82086`_ for more details.
+
+.. _bug 82086: https://bugs.launchpad.net/bzr/+bug/82086
+
+..
+   vim: ft=rst tw=74 et

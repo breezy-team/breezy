@@ -1,0 +1,112 @@
+diff
+====
+
+:Purpose: Show differences in the working tree, between revisions or branches.
+:Usage:   brz diff [FILE...]
+
+:Options:
+  -c ARG, --change=ARG  Select changes introduced by the specified revision.
+                        See also "help revisionspec".
+  --context=ARG         How many lines of context to show.
+  --diff-options=ARG    Pass these options to the external diff program.
+  -F ARG, --format=ARG  Diff format to use.
+  -h, --help            Show help message.
+  --new=ARG             Branch/tree to compare to.
+  --old=ARG             Branch/tree to compare from.
+  -p ARG, --prefix=ARG  Set prefixes added to old and new filenames, as two
+                        values separated by a colon. (eg "old/:new/").
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --usage               Show usage message and options.
+  --using=ARG           Use this command to compare files.
+  -v, --verbose         Display more information.
+
+:Description:
+  If no arguments are given, all changes for the current tree are listed.
+  If files are given, only the changes in those files are listed.
+  Remote and multiple branches can be compared by using the --old and
+  --new options. If not provided, the default for both is derived from
+  the first argument, if any, or the current tree if no arguments are
+  given.
+  
+  "brz diff -p1" is equivalent to "brz diff --prefix old/:new/", and
+  produces patches suitable for "patch -p1".
+  
+  Note that when using the -r argument with a range of revisions, the
+  differences are computed between the two specified revisions.  That
+  is, the command does not show the changes introduced by the first
+  revision in the range.  This differs from the interpretation of
+  revision ranges used by "brz log" which includes the first revision
+  in the range.
+
+:Exit values:
+    1 - changed
+    2 - unrepresentable changes
+    3 - error
+    0 - no change
+
+:Examples:
+    Shows the difference in the working tree versus the last commit::
+
+        brz diff
+
+    Difference between the working tree and revision 1::
+
+        brz diff -r1
+
+    Difference between revision 3 and revision 1::
+
+        brz diff -r1..3
+
+    Difference between revision 3 and revision 1 for branch xxx::
+
+        brz diff -r1..3 xxx
+
+    The changes introduced by revision 2 (equivalent to -r1..2)::
+
+        brz diff -c2
+
+    To see the changes introduced by revision X::
+
+        brz diff -cX
+
+    Note that in the case of a merge, the -c option shows the changes
+    compared to the left hand parent. To see the changes against
+    another parent, use::
+
+        brz diff -r<chosen_parent>..X
+
+    The changes between the current revision and the previous revision
+    (equivalent to -c-1 and -r-2..-1)
+
+        brz diff -r-2..
+
+    Show just the differences for file NEWS::
+
+        brz diff NEWS
+
+    Show the differences in working tree xxx for file NEWS::
+
+        brz diff xxx/NEWS
+
+    Show the differences from branch xxx to this working tree:
+
+        brz diff --old xxx
+
+    Show the differences between two branches for file NEWS::
+
+        brz diff --old xxx --new yyy NEWS
+
+    Same as 'brz diff' but prefix paths with old/ and new/::
+
+        brz diff --prefix old/:new/
+
+    Show the differences using a custom diff program with options::
+
+        brz diff --using /usr/bin/diff --diff-options -wu
+
+:Aliases:  di, dif
+:See also: :doc:`status <status-help>`
+
+

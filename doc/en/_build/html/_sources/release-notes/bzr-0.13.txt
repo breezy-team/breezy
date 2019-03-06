@@ -1,0 +1,145 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.13
+########
+
+:Released:  2006-12-05
+
+No changes from 0.13rc
+
+
+bzr 0.13rc1
+###########
+
+:Released:  2006-11-27
+
+Improvements
+************
+
+* New command ``bzr remove-tree`` allows the removal of the working
+  tree from a branch.
+  (Daniel Silverstone)
+
+* urllib uses shared keep-alive connections, so HTTP  operations are substantially faster.
+  (Vincent Ladeuil, #53654)
+
+* ``bzr export`` allows an optional branch parameter, to export a bzr
+  tree from some other URL. For example:
+  ``bzr export bzr.tar.gz http://bazaar-vcs.org/bzr/bzr.dev``
+  (Daniel Silverstone)
+
+* Added ``bzr help topics`` to the bzr help system. This gives a
+  location for general information, outside of a specific command.
+  This includes updates for ``bzr help revisionspec`` the first topic
+  included. (Goffredo Baroncelli, John Arbash Meinel, #42714)
+
+* WSGI-compatible HTTP smart server.  See ``doc/http_smart_server.txt``.
+  (Andrew Bennetts)
+
+* Knit files will now cache full texts only when the size of the
+  deltas is as large as the size of the fulltext. (Or after 200
+  deltas, whichever comes first). This has the most benefit on large
+  files with small changes, such as the inventory for a large project.
+  (eg For a project with 2500 files, and 7500 revisions, it changes
+  the size of inventory.knit from 11MB to 5.4MB) (John Arbash Meinel)
+
+Internals
+*********
+
+* New -D option given before the command line turns on debugging output
+  for particular areas.  -Derror shows tracebacks on all errors.
+  (Martin Pool)
+
+* Clean up ``bzr selftest --benchmark bundle`` to correct an import,
+  and remove benchmarks that take longer than 10min to run.
+  (John Arbash Meinel)
+
+* Use ``time.time()`` instead of ``time.clock()`` to decide on
+  progress throttling. Because ``time.clock()`` is actually CPU time,
+  so over a high-latency connection, too many updates get throttled.
+  (John Arbash Meinel)
+
+* ``MemoryTransport.list_dir()`` would strip the first character for
+  files or directories in root directory. (John Arbash Meinel)
+
+* New method ``get_branch_reference`` on 'BzrDir' allows the detection of
+  branch references - which the smart server component needs.
+
+* New ``ChrootTransportDecorator``, accessible via the ``chroot+`` URL
+  prefix.  It disallows any access to locations above a set URL.  (Andrew
+  Bennetts)
+
+Bug Fixes
+*********
+
+* Now ``_KnitIndex`` properly decode revision ids when loading index data.
+  And optimize the knit index parsing code.
+  (Dmitry Vasiliev, John Arbash Meinel)
+
+* ``bzrlib/bzrdir.py`` was directly referencing ``bzrlib.workingtree``,
+  without importing it. This prevented ``bzr upgrade`` from working
+  unless a plugin already imported ``bzrlib.workingtree``
+  (John Arbash Meinel, #70716)
+
+* Suppress the traceback on invalid URLs (Vincent Ladeuil, #70803).
+
+* Give nicer error message when an HTTP server returns a 403
+  error code. (Vincent Ladeuil, #57644).
+
+* When a multi-range HTTP GET request fails, try a single
+  range one. If it fails too, forget about ranges. Remember that until
+  the death of the transport and propagates that to the clones.
+  (Vincent Ladeuil, #62276, #62029).
+
+* Handles user/passwords supplied in URL from command
+  line (for the urllib implementation). Don't request already
+  known passwords (Vincent Ladeuil, #42383, #44647, #48527)
+
+* ``_KnitIndex.add_versions()`` dictionary compresses revision ids as they
+  are added. This fixes bug where fetching remote revisions records
+  them as full references rather than integers.
+  (John Arbash Meinel, #64789)
+
+* ``bzr ignore`` strips trailing slashes in patterns.
+  Also ``bzr ignore`` rejects absolute paths. (Kent Gibson, #4559)
+
+* ``bzr ignore`` takes multiple arguments. (Cheuksan Edward Wang, #29488)
+
+* mv correctly handles paths that traverse symlinks.
+  (Aaron Bentley, #66964)
+
+* Give nicer looking error messages when failing to connect over SSH.
+  (John Arbash Meinel, #49172)
+
+* Pushing to a remote branch does not currently update the remote working
+  tree. After a remote push, ``bzr status`` and ``bzr diff`` on the remote
+  machine now show that the working tree is out of date.
+  (Cheuksan Edward Wang #48136)
+
+* Use patiencediff instead of difflib for determining deltas to insert
+  into knits. This avoids the O(N^3) behavior of difflib. Patience
+  diff should be O(N^2). (Cheuksan Edward Wang, #65714)
+
+* Running ``bzr log`` on nonexistent file gives an error instead of the
+  entire log history. (Cheuksan Edward Wang #50793)
+
+* ``bzr cat`` can look up contents of removed or renamed files. If the
+  pathname is ambiguous, i.e. the files in the old and new trees have
+  different id's, the default is the file in the new tree. The user can
+  use "--name-from-revision" to select the file in the old tree.
+  (Cheuksan Edward Wang, #30190)
+
+Testing
+*******
+
+* TestingHTTPRequestHandler really handles the Range header
+  (previously it was ignoring it and returning the whole file,).
+
+
+..
+   vim: tw=74 ft=rst ff=unix

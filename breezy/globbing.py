@@ -248,7 +248,9 @@ class Globster(object):
             # the combined pattern we sent to regex. Instead we indicate to
             # the user that an ignore file needs fixing.
             mutter('Invalid pattern found in regex: %s.', e.msg)
-            e.msg = "File ~/.bazaar/ignore or .bzrignore contains error(s)."
+            e.msg = (
+                "File ~/.config/breezy/ignore or "
+                ".bzrignore contains error(s).")
             bad_patterns = ''
             for _, patterns in self._regex_patterns:
                 for p in patterns:

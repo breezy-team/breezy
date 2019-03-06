@@ -1,0 +1,124 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Missing Extensions &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Other Storage Formats" href="other-formats-help.html" />
+    <link rel="prev" title="Log Formats" href="log-formats-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="log-formats-help.html" title="Log Formats"
+             accesskey="P">previous</a> |
+          <a href="other-formats-help.html" title="Other Storage Formats"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="missing-extensions">
+<h1>Missing Extensions<a class="headerlink" href="#missing-extensions" title="Permalink to this headline">¶</a></h1>
+<p>Breezy gives a warning if it failed to load some compiled extensions. (See
+<a class="reference external" href="http://bazaarvcs.wordpress.com/2009/09/17/extension-warnings/">http://bazaarvcs.wordpress.com/2009/09/17/extension-warnings/</a> for background.)</p>
+<p>This may indicate either that there’s been a problem installing or packaging
+Breezy, or it may just be a case where you don’t want to use the compiled
+extensions.</p>
+<p>1. If you installed Breezy from an official binary package or a distribution
+and you’re seeing this warning, please report a bug.</p>
+<p>2. If you’re running Breezy from a source tree or tarball, please run ‘make’ in
+that directory to compile the extensions. You should do this every time you
+update the tree. To do this you will need some build dependencies installed
+including make, a C compiler, and the Python header files.</p>
+<p>3. If you can’t or don’t want to build the extensions, add this line to
+breezy.conf (whose location is shown by ‘brz –version’):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">suppress_warnings</span><span class="o">=</span><span class="n">missing_extensions</span>
+</pre></div>
+</div>
+<p>Breezy will work normally but some operations may be slower.</p>
+<p>The specific modules that failed, and why, are listed in .brz.log.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="log-formats-help.html" title="Log Formats"
+              >previous</a> |
+            <a href="other-formats-help.html" title="Other Storage Formats"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/missing-extensions-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

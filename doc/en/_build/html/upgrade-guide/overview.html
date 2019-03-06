@@ -1,0 +1,159 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Overview &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="high-level-upgrade-process">
+<h2>High level upgrade process<a class="headerlink" href="#high-level-upgrade-process" title="Permalink to this headline">¶</a></h2>
+<p>In broad terms, there are 3 steps involved in upgrading a new format:</p>
+<ol class="arabic simple">
+<li>Upgrade the core software</li>
+<li>Upgrade required plugins</li>
+<li>Migrate data to the new default format.</li>
+</ol>
+<p>Breezy supports branches in earlier formats so the third step is strictly not
+required. However, when new default formats are introduced, they are more
+space efficient, faster on large projects and/or provide new features. So it
+is recommended that most projects migrate to it at a convenient time.</p>
+<p>For most users, upgrading and migrating to the new format is straight
+forward. For projects with a large community of developers though, things
+become more complex. In these cases, careful planning and good communications
+become essential. This document provides general advice which aims to assist
+in this regard. If in doubt, please contact us on our mailing list or IRC
+channel with any questions or concerns you have.</p>
+</div>
+<div class="section" id="upgrading-the-core-software">
+<h2>Upgrading the core software<a class="headerlink" href="#upgrading-the-core-software" title="Permalink to this headline">¶</a></h2>
+<p>The steps required to upgrade the core software vary from operating system to
+operating system.  A brief outline of the steps is given below.</p>
+<p>To upgrade Breezy on Ubuntu:</p>
+<ol class="arabic simple">
+<li>Ensure your package manager is configured with the required software
+sources, e.g. the official stable release PPA for Ubuntu:
+<a class="reference external" href="https://launchpad.net/~brz/+archive">https://launchpad.net/~brz/+archive</a></li>
+<li>Use your package manager to upgrade to the latest version.</li>
+</ol>
+<p>To upgrade Breezy on Windows:</p>
+<ol class="arabic simple">
+<li>Uninstall the existing version using Add/Remove Programs.</li>
+<li>Install the new version using the relevant installer.</li>
+</ol>
+<p>To upgrade Breezy on OS X (via the installer):</p>
+<ol class="arabic simple">
+<li>Install the new version using the relevant installer.</li>
+</ol>
+<p>To upgrade Breezy on OS X (via MacPorts):</p>
+<ol class="arabic simple">
+<li>Refresh the package metadata using <strong>sudo port selfupdate</strong></li>
+<li>Upgrade to the latest version using <strong>sudo port upgrade brz</strong></li>
+</ol>
+<p>For further information on installing and upgrading, see
+<a class="reference external" href="https://www.breezy-vcs.org/pages/download.html">https://www.breezy-vcs.org/pages/download.html</a></p>
+</div>
+<div class="section" id="upgrading-required-plugins">
+<h2>Upgrading required plugins<a class="headerlink" href="#upgrading-required-plugins" title="Permalink to this headline">¶</a></h2>
+<p>Many plugins are not dependent on a particular Breezy version so
+upgrading them is optional. Other plugins, notably bzr-svn, are more tightly
+associated with Breezy’s APIs so these typically need to be upgraded in
+lockstep with the core software.</p>
+</div>
+<div class="section" id="migrating-data-to-the-new-default-format">
+<h2>Migrating data to the new default format<a class="headerlink" href="#migrating-data-to-the-new-default-format" title="Permalink to this headline">¶</a></h2>
+<p>As mentioned earlier, the complexity of migrating to a new format
+depends on several factors, particularly project community size.
+It also depends on how data is currently stored, e.g. in a
+standalone branch, multiple branches in a shared repository,
+stacked branches on Launchpad, etc. These various scenarios are
+covered in the next chapter.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/upgrade-guide/overview.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

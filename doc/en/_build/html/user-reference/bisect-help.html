@@ -1,0 +1,207 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>bisect &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="branch" href="branch-help.html" />
+    <link rel="prev" title="bind" href="bind-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="bind-help.html" title="bind"
+             accesskey="P">previous</a> |
+          <a href="branch-help.html" title="branch"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bisect">
+<h1>bisect<a class="headerlink" href="#bisect" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Find an interesting commit using a binary search.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz bisect SUBCOMMAND [ARGS…]</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-d <var>ARG</var></span>, <span class="option">--directory=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Branch to operate on, instead of working directory.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
+<td><p class="first last">Show help message.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-o <var>ARG</var></span>, <span class="option">--output=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Write log to this file.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
+<td><p class="first last">Only display errors and warnings.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-r <var>ARG</var></span>, <span class="option">--revision=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">See “help revisionspec” for details.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--usage</span></kbd></td>
+<td><p class="first last">Show usage message and options.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
+<td><p class="first last">Display more information.</p>
+</td></tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">Bisecting, in a nutshell, is a way to find the commit at which
+some testable change was made, such as the introduction of a bug
+or feature.  By identifying a version which did not have the
+interesting change and a later version which did, a developer
+can test for the presence of the change at various points in
+the history, eventually ending up at the precise commit when
+the change was first introduced.</p>
+<p>This command uses subcommands to implement the search, each
+of which changes the state of the bisection.  The
+subcommands are:</p>
+<dl class="last docutils">
+<dt>brz bisect start</dt>
+<dd><p class="first last">Start a bisect, possibly clearing out a previous bisect.</p>
+</dd>
+<dt>brz bisect yes [-r rev]</dt>
+<dd><p class="first last">The specified revision (or the current revision, if not given)
+has the characteristic we’re looking for,</p>
+</dd>
+<dt>brz bisect no [-r rev]</dt>
+<dd><p class="first last">The specified revision (or the current revision, if not given)
+does not have the characteristic we’re looking for,</p>
+</dd>
+<dt>brz bisect move -r rev</dt>
+<dd><p class="first last">Switch to a different revision manually.  Use if the bisect
+algorithm chooses a revision that is not suitable.  Try to
+move as little as possible.</p>
+</dd>
+<dt>brz bisect reset</dt>
+<dd><p class="first last">Clear out a bisection in progress.</p>
+</dd>
+<dt>brz bisect log [-o file]</dt>
+<dd><p class="first last">Output a log of the current bisection to standard output, or
+to the specified file.</p>
+</dd>
+<dt>brz bisect replay &lt;logfile&gt;</dt>
+<dd><p class="first last">Replay a previously-saved bisect log, forgetting any bisection
+that might be in progress.</p>
+</dd>
+<dt>brz bisect run &lt;script&gt;</dt>
+<dd><p class="first">Bisect automatically using &lt;script&gt; to determine ‘yes’ or ‘no’.
+&lt;script&gt; should exit with:</p>
+<blockquote class="last">
+<div><p>0 for yes
+125 for unknown (like build failed so we could not test)
+anything else for no</p>
+</div></blockquote>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="bind-help.html" title="bind"
+              >previous</a> |
+            <a href="branch-help.html" title="branch"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/bisect-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

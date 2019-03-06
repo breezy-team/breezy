@@ -1,0 +1,30 @@
+conflicts
+=========
+
+:Purpose: List files with conflicts.
+:Usage:   brz conflicts
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --text                List paths of files with text conflicts.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  Merge will do its best to combine the changes in two branches, but there
+  are some kinds of problems only a human can fix.  When it encounters those,
+  it will mark a conflict.  A conflict means that you need to fix something,
+  before you can commit.
+  
+  Conflicts normally are listed as short, human-readable messages.  If --text
+  is supplied, the pathnames of files with text conflicts are listed,
+  instead.  (This is useful for editing all files with text conflicts.)
+  
+  Use brz resolve when you have fixed a problem.
+
+:See also: :doc:`conflict-types <conflict-types-help>`, :doc:`resolve <resolve-help>`
+
+

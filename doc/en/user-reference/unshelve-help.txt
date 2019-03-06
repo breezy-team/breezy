@@ -1,0 +1,30 @@
+unshelve
+========
+
+:Purpose: Restore shelved changes.
+:Usage:   brz unshelve [SHELF_ID]
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+  action:
+    --apply             Apply changes and remove from the shelf.
+    --delete-only       Delete changes without applying them.
+    --dry-run           Show changes, but do not apply or remove them.
+    --keep              Apply changes but don't delete them.
+    --preview           Instead of unshelving the changes, show the diff that
+                        would result from unshelving.
+
+:Description:
+  By default, the most recently shelved changes are restored. However if you
+  specify a shelf by id those changes will be restored instead.  This works
+  best when the changes don't depend on each other.
+
+:See also: :doc:`shelve <shelve-help>`
+
+

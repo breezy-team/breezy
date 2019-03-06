@@ -1,0 +1,31 @@
+plugins
+=======
+
+:Purpose: List the installed plugins.
+:Usage:   brz plugins
+
+:Options:
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  This command displays the list of installed plugins including
+  version of plugin and a short description of each.
+  
+  --verbose shows the path where each plugin is located.
+  
+  A plugin is an external component for Breezy that extends the
+  revision control system, by adding or replacing code in Breezy.
+  Plugins can do a variety of things, including overriding commands,
+  adding new commands, providing additional network transports and
+  customizing log output.
+  
+  See the Bazaar Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/>
+  for further information on plugins including where to find them and how to
+  install them. Instructions are also provided there on how to write new
+  plugins using the Python programming language.
+
+
+

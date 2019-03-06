@@ -1,0 +1,28 @@
+Implementation notes
+====================
+
+.. toctree::
+   :hidden:
+
+   btree_index_prefetch
+   last-modified
+   content-filtering
+   lca_tree_merging
+
+
+* `BTree Index Prefetch <btree_index_prefetch.html>`_ |--| How Breezy decides
+  to pre-read extra nodes in the btree index.
+
+* `Computing last_modified values <last-modified.html>`_ for inventory
+  entries
+
+* `Content filtering <content-filtering.html>`_
+
+* `LCA Tree Merging <lca_tree_merging.html>`_ |--| Merging tree-shape when
+  there is not a single unique ancestor (criss-cross merge).
+
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

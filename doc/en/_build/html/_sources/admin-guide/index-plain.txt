@@ -1,0 +1,24 @@
+###################################
+Breezy System Administrator's Guide
+###################################
+
+.. Please mark sections in included files as following:
+..   level 1 ========
+..   level 2 --------
+..   level 3 ~~~~~~~~
+..   level 4 ^^^^^^^^ (it is better not to use nesting deeper than 3 levels)
+
+.. contents:: :depth: 3
+
+.. include:: introduction.txt
+.. include:: simple-setups.txt
+.. include:: other-setups.txt
+.. include:: migration.txt
+.. include:: hooks-plugins.txt
+.. include:: code-browsing.txt
+.. include:: integration.txt
+.. include:: security.txt
+.. include:: backup.txt
+.. include:: upgrade.txt
+.. include:: advanced.txt
+.. include:: licence.txt

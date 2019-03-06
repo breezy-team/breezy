@@ -1,0 +1,220 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bug Tracker Settings &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Configuration Settings" href="configuration-help.html" />
+    <link rel="prev" title="Authentication Settings" href="authentication-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="authentication-help.html" title="Authentication Settings"
+             accesskey="P">previous</a> |
+          <a href="configuration-help.html" title="Configuration Settings"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bug-tracker-settings">
+<h1>Bug Tracker Settings<a class="headerlink" href="#bug-tracker-settings" title="Permalink to this headline">¶</a></h1>
+<p>When making a commit, metadata about bugs fixed by that change can be
+recorded by using the <code class="docutils literal notranslate"><span class="pre">--fixes</span></code> option. For each bug marked as fixed, an
+entry is included in the ‘bugs’ revision property stating ‘&lt;url&gt; &lt;status&gt;’.
+(The only <code class="docutils literal notranslate"><span class="pre">status</span></code> value currently supported is <code class="docutils literal notranslate"><span class="pre">fixed.</span></code>)</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">--fixes</span></code> option allows you to specify a bug tracker and a bug identifier
+rather than a full URL. This looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">commit</span> <span class="o">--</span><span class="n">fixes</span> <span class="o">&lt;</span><span class="n">tracker</span><span class="o">&gt;</span><span class="p">:</span><span class="o">&lt;</span><span class="nb">id</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>or:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bzr</span> <span class="n">commit</span> <span class="o">--</span><span class="n">fixes</span> <span class="o">&lt;</span><span class="nb">id</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>where “&lt;tracker&gt;” is an identifier for the bug tracker, and “&lt;id&gt;” is the
+identifier for that bug within the bugtracker, usually the bug number.
+If “&lt;tracker&gt;” is not specified the <code class="docutils literal notranslate"><span class="pre">bugtracker</span></code> set in the branch
+or global configuration is used.</p>
+<p>Bazaar knows about a few bug trackers that have many users. If
+you use one of these bug trackers then there is no setup required to
+use this feature, you just need to know the tracker identifier to use.
+These are the bugtrackers that are built in:</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="54%" />
+<col width="23%" />
+<col width="23%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">URL</th>
+<th class="head">Abbreviation</th>
+<th class="head">Example</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><a class="reference external" href="https://bugs.launchpad.net/">https://bugs.launchpad.net/</a></td>
+<td>lp</td>
+<td>lp:12345</td>
+</tr>
+<tr class="row-odd"><td><a class="reference external" href="http://bugs.debian.org/">http://bugs.debian.org/</a></td>
+<td>deb</td>
+<td>deb:12345</td>
+</tr>
+<tr class="row-even"><td><a class="reference external" href="http://bugzilla.gnome.org/">http://bugzilla.gnome.org/</a></td>
+<td>gnome</td>
+<td>gnome:12345</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>For the bug trackers not listed above configuration is required.
+Support for generating the URLs for any project using Bugzilla or Trac
+is built in, along with a template mechanism for other bugtrackers with
+simple URL schemes. If your bug tracker can’t be described by one
+of the schemes described below then you can write a plugin to support
+it.</p>
+<p>If you use Bugzilla or Trac, then you only need to set a configuration
+variable which contains the base URL of the bug tracker. These options
+can go into <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code>, <code class="docutils literal notranslate"><span class="pre">branch.conf</span></code> or into a branch-specific
+configuration section in <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>.  You can set up these values
+for each of the projects you work on.</p>
+<p>Note: As you provide a short name for each tracker, you can specify one or
+more bugs in one or more trackers at commit time if you wish.</p>
+<div class="section" id="launchpad">
+<h2>Launchpad<a class="headerlink" href="#launchpad" title="Permalink to this headline">¶</a></h2>
+<p>Use <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span> <span class="pre">--fixes</span> <span class="pre">lp:2</span></code> to record that this commit fixes bug 2.</p>
+</div>
+<div class="section" id="bugzilla-tracker-url">
+<h2>bugzilla_&lt;tracker&gt;_url<a class="headerlink" href="#bugzilla-tracker-url" title="Permalink to this headline">¶</a></h2>
+<p>If present, the location of the Bugzilla bug tracker referred to by
+&lt;tracker&gt;. This option can then be used together with <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span>
+<span class="pre">--fixes</span></code> to mark bugs in that tracker as being fixed by that commit. For
+example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bugzilla_squid_url</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">bugs</span><span class="o">.</span><span class="n">squid</span><span class="o">-</span><span class="n">cache</span><span class="o">.</span><span class="n">org</span>
+</pre></div>
+</div>
+<p>would allow <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span> <span class="pre">--fixes</span> <span class="pre">squid:1234</span></code> to mark Squid’s bug 1234 as
+fixed.</p>
+</div>
+<div class="section" id="trac-tracker-url">
+<h2>trac_&lt;tracker&gt;_url<a class="headerlink" href="#trac-tracker-url" title="Permalink to this headline">¶</a></h2>
+<p>If present, the location of the Trac instance referred to by
+&lt;tracker&gt;. This option can then be used together with <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span>
+<span class="pre">--fixes</span></code> to mark bugs in that tracker as being fixed by that commit. For
+example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">trac_twisted_url</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">www</span><span class="o">.</span><span class="n">twistedmatrix</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">trac</span>
+</pre></div>
+</div>
+<p>would allow <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span> <span class="pre">--fixes</span> <span class="pre">twisted:1234</span></code> to mark Twisted’s bug 1234 as
+fixed.</p>
+</div>
+<div class="section" id="bugtracker-tracker-url">
+<h2>bugtracker_&lt;tracker&gt;_url<a class="headerlink" href="#bugtracker-tracker-url" title="Permalink to this headline">¶</a></h2>
+<p>If present, the location of a generic bug tracker instance referred to by
+&lt;tracker&gt;. The location must contain an <code class="docutils literal notranslate"><span class="pre">{id}</span></code> placeholder,
+which will be replaced by a specific bug ID. This option can then be used
+together with <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span> <span class="pre">--fixes</span></code> to mark bugs in that tracker as being
+fixed by that commit. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bugtracker_python_url</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">bugs</span><span class="o">.</span><span class="n">python</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">issue</span><span class="p">{</span><span class="nb">id</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>would allow <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span> <span class="pre">--fixes</span> <span class="pre">python:1234</span></code> to mark bug 1234 in Python’s
+Roundup bug tracker as fixed, or:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}
+</pre></div>
+</div>
+<p>would allow <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span> <span class="pre">--fixes</span> <span class="pre">cpan:1234</span></code> to mark bug 1234 in CPAN’s
+RT bug tracker as fixed, or:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">bugtracker_hudson_url</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">issues</span><span class="o">.</span><span class="n">hudson</span><span class="o">-</span><span class="n">ci</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">browse</span><span class="o">/</span><span class="p">{</span><span class="nb">id</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>would allow <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span> <span class="pre">--fixes</span> <span class="pre">hudson:HUDSON-1234</span></code> to mark bug HUDSON-1234
+in Hudson’s JIRA bug tracker as fixed.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="authentication-help.html" title="Authentication Settings"
+              >previous</a> |
+            <a href="configuration-help.html" title="Configuration Settings"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/bugs-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

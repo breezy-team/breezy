@@ -1,0 +1,193 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Profiling &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tracking Bugs in Breezy" href="bug-handling.html" />
+    <link rel="prev" title="Contributing to Breezy" href="contribution-quickstart.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="contribution-quickstart.html" title="Contributing to Breezy"
+             accesskey="P">previous</a> |
+          <a href="bug-handling.html" title="Tracking Bugs in Breezy"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="profiling">
+<h1>Profiling<a class="headerlink" href="#profiling" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="using-profilers">
+<h2>Using profilers<a class="headerlink" href="#using-profilers" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar has some built-in support for collecting and saving profiling
+information. In the simpliest case, the <code class="docutils literal notranslate"><span class="pre">--lsprof</span></code> option can be used as
+shown below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="o">--</span><span class="n">lsprof</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>This will dump the profiling information to stdout before exiting.
+Alternatively, the <code class="docutils literal notranslate"><span class="pre">--lsprof-file</span></code> option can be used to specify a filename
+to save the profiling data into to. By default, profiling data saved to a
+file is a pickled Python object making it possible to reload the data and
+do with it what you will. For convenience though:</p>
+<ul class="simple">
+<li>if the filename ends in <code class="docutils literal notranslate"><span class="pre">.txt</span></code>, it will be dumped in a text format.</li>
+<li>if the filename either starts with <code class="docutils literal notranslate"><span class="pre">callgrind.out</span></code> or ends with
+<code class="docutils literal notranslate"><span class="pre">.callgrind</span></code>, it will be converted to a format loadable by the
+KCacheGrind visualization tool.</li>
+</ul>
+<p>Note that KCacheGrind’s Open Dialog has a default filter than only shows
+files starting with <code class="docutils literal notranslate"><span class="pre">callgrind.out</span></code> so the longer filename is usually
+preferable. Here is an example of how to use the <code class="docutils literal notranslate"><span class="pre">--lsprof-file</span></code> option
+in combination with KCacheGrind to visualize what the <code class="docutils literal notranslate"><span class="pre">status</span></code> command
+is doing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="o">--</span><span class="n">lsprof</span><span class="o">-</span><span class="n">file</span> <span class="n">callgrind</span><span class="o">.</span><span class="n">out</span><span class="o">.</span><span class="n">st001</span> <span class="n">status</span>
+<span class="n">kcachegrind</span> <span class="n">callgrind</span><span class="o">.</span><span class="n">out</span><span class="o">.</span><span class="n">st001</span> <span class="o">&amp;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">brz also has a <code class="docutils literal notranslate"><span class="pre">--profile</span></code> option that uses the hotshot profiler
+instead of the lsprof profiler. The hotshot profiler can be useful
+though the lsprof one is generally recommended. See
+<a class="reference external" href="http://docs.python.org/lib/node795.html">http://docs.python.org/lib/node795.html</a>.</p>
+</div>
+<p>Note that to use <code class="docutils literal notranslate"><span class="pre">--lsprof</span></code> you must install the lsprof module, which you
+can get with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">svn</span> <span class="n">co</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">codespeak</span><span class="o">.</span><span class="n">net</span><span class="o">/</span><span class="n">svn</span><span class="o">/</span><span class="n">user</span><span class="o">/</span><span class="n">arigo</span><span class="o">/</span><span class="n">hack</span><span class="o">/</span><span class="n">misc</span><span class="o">/</span><span class="n">lsprof</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="profiling-locks">
+<h2>Profiling locks<a class="headerlink" href="#profiling-locks" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar can log when locks are taken or released, which can help in
+identifying unnecessary lock traffic.  This is activated by the <code class="docutils literal notranslate"><span class="pre">-Dlock</span></code>
+global option.</p>
+<p>This writes messages into <code class="docutils literal notranslate"><span class="pre">~/.brz.log</span></code>.
+At present this only logs actions relating to the on-disk lockdir.  It
+doesn’t describe actions on in-memory lock counters, or OS locks (which
+are used for dirstate.)</p>
+</div>
+<div class="section" id="profiling-hpss-requests">
+<h2>Profiling HPSS Requests<a class="headerlink" href="#profiling-hpss-requests" title="Permalink to this headline">¶</a></h2>
+<p>When trying to improve network performance, it is often useful to know
+what requests are being made, and how long they are taking. The <code class="docutils literal notranslate"><span class="pre">-Dhpss</span></code>
+global option will enable logging smart server requests, including the
+time spent in each request.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="contribution-quickstart.html" title="Contributing to Breezy"
+              >previous</a> |
+            <a href="bug-handling.html" title="Tracking Bugs in Breezy"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/profiling.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

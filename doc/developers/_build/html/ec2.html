@@ -1,0 +1,328 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Breezy Windows EC2 Server &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Breezy Architectural Overview" href="overview.html" />
+    <link rel="prev" title="Managing the Breezy PPA" href="ppa.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="ppa.html" title="Managing the Breezy PPA"
+             accesskey="P">previous</a> |
+          <a href="overview.html" title="Breezy Architectural Overview"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="breezy-windows-ec2-server">
+<h1>Breezy Windows EC2 Server<a class="headerlink" href="#breezy-windows-ec2-server" title="Permalink to this headline">¶</a></h1>
+<p>We have an Amazon EC2 virtual machine called <a class="reference external" href="http://en.wikipedia.org/wiki/Desolation_Island">Desolation</a> for
+building Windows packages and general testing on Windows.  As of
+2009-02-19, this is just experimental and this is a draft specification,
+but we aim to use it for the production Windows installer build of 1.13 in
+March.</p>
+<p>See also:</p>
+<ul class="simple">
+<li><a class="reference external" href="index.html">Breezy Developer Documentation Catalog</a>.</li>
+</ul>
+<div class="section" id="goals">
+<h2>Goals<a class="headerlink" href="#goals" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>The instance is only running (and incurring charges) when it’s needed
+for testing or packaging.</li>
+<li>It can be started or stopped by anyone on the team using a
+straightforward script.</li>
+<li>Multiple people can get into the same instance at the same time, e.g.
+if one person needs to pass work on to some one else.</li>
+<li>We keep snapshot of the OS and tool chain so that we can roll back if
+we need to.</li>
+<li>branches and similar information are kept on stable storage that
+survives rollbacks of the OS state, and that can be backed up.</li>
+</ul>
+<p>Later on we may try automated Windows testing in a similar setup.</p>
+</div>
+<div class="section" id="approach">
+<h2>Approach<a class="headerlink" href="#approach" title="Permalink to this headline">¶</a></h2>
+<p>The working disk and the AMI images are stored in one person’s account for
+billing purposes.</p>
+<p>Ideally we want to give other people access to run this machine without
+giving full access to the account.  I’m not sure if that’s feasible.  If
+it’s not, we might need to allow people to launch the image within their
+own account; this may be problematic if the shared volume is already in
+use by someone else.</p>
+<p>I don’t think it’s possible to have an EBS that’s shared across accounts,
+and they can’t be attached to multiple running instances.  So for now it’s
+probably best to just ignore the concept and store the working data on the
+instance’s local storage, and to copy things up e.g. to Launchpad as
+required.</p>
+<p>On this machine, <code class="docutils literal notranslate"><span class="pre">C:</span></code> should be used only for the Windows system files,
+<code class="docutils literal notranslate"><span class="pre">D:</span></code> for installed programs and working directories, and other drive
+letters can be used later for mounting EBS storage if desired.</p>
+<p>Through <code class="docutils literal notranslate"><span class="pre">ec2-modify-image-attribute</span></code> we can allow nominated users to
+access an existing image.  We need to have their AWS opaque ID.</p>
+<p>Through <code class="docutils literal notranslate"><span class="pre">ec2-bundle-image</span></code> we can make a new snapshot at any point,
+which will be stored into the current user’s S3 account.</p>
+<p>We’ll (probably) have one shared account for running builds which is also
+an administrator for ease of installing software.</p>
+<p>You do need to have an RSA keypair to get the initial password for a
+Windows machine, even though you can’t use it to log in later.
+<code class="docutils literal notranslate"><span class="pre">ec2-get-password</span></code> takes the full path to the private key to obtain the
+password from Amazon, and <code class="docutils literal notranslate"><span class="pre">ec2-add-keypair</span></code> creates a named keypair at
+Amazon and returns the private path. One keypair is all that is needed.
+This is distinct from the account identifier - likely due to the different
+toolchains in use (the keypairs are used for unix SSH keys, and I (Robert)
+suspect a rather unix friendly core at Amazon).
+Once a custom image is made with a saved password, you can skip using
+<code class="docutils literal notranslate"><span class="pre">ec2-get-password</span></code> (which is only needed for Windows anyway).</p>
+<p>It would be nice if rdesktop could use private key authentication but
+apparently not.</p>
+<p>Should check how the Launchpad ec2test scripts work.</p>
+</div>
+<div class="section" id="procedures">
+<h2>Procedures<a class="headerlink" href="#procedures" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="preparation">
+<h3>Preparation<a class="headerlink" href="#preparation" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first">Be in the brz core team.  If you are interested in helping with
+Windows packaging, testing or development just ask.</p>
+</li>
+<li><p class="first">Install the
+<a class="reference external" href="http://developer.amazonwebservices.com/connect/entry.jspa?externalID=368&amp;categoryID=88">Amazon EC2 API tools</a> (needs-packaging <a class="reference external" href="https://bugs.launchpad.net/ubuntu/+bug/330930">bug 330930</a>)</p>
+</li>
+<li><p class="first">Create an Amazon Web Services account, sign up for S3 and EC2, and do
+the various steps to create authentication devices.</p>
+</li>
+<li><p class="first">Create a private key and certificate for yourself.
+Check these environment variables are set and exported, e.g. by setting
+them in the file <code class="docutils literal notranslate"><span class="pre">~/.aws</span></code>.  Make sure the files are private.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>export EC2_PRIVATE_KEY=~/.ec2/pk-XXXXXX.pem
+export EC2_CERT=~/.ec2/cert-XXXXXX.pem
+export EC2_HOME=~/build/ec2-api-tools-1.3-30349
+export AWS_SECRET_ACCESS_KEY=XXXXXXXXX
+export AWS_ACCESS_KEY_ID=XXXXXXXXXXX
+export EC2_KEYPAIR_NAME=XXXXXXXXX
+export PATH=$PATH:$EC2_HOME/bin
+export JAVA_HOME=/usr/lib/jvm/java-6-openjdk
+ssh-add ~/.ec2/id_rsa
+</pre></div>
+</div>
+<p>You can now ‘. ~/.aws’ to get the ec2 commands available.</p>
+</li>
+<li><p class="first">(Unix images only) run ec2-add-keypair SOMENAME, e.g. ‘bzr’. Put the
+result (minus the first line) somewhere like ~/.ec2/id_rsa and chmod go-rw.</p>
+</li>
+<li><p class="first">A useful Unix image is <a class="reference external" href="http://developer.amazonwebservices.com/connect/entry.jspa?externalID=1762&amp;categoryID=101">ami-bdfe19d4</a>, Eric Hammonds 64-bit Ubuntu image.</p>
+</li>
+<li><p class="first">Install the rdesktop client, to actually access the machine.</p>
+</li>
+<li><p class="first">Possibly read some of the <a class="reference external" href="http://aws.amazon.com/">EC2 documentation</a> for background.</p>
+</li>
+</ul>
+<ul>
+<li><p class="first">Create a security group for your that allows rdesktop access and icmp with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ec2</span><span class="o">-</span><span class="n">add</span><span class="o">-</span><span class="n">group</span> <span class="n">desolation</span><span class="o">-</span><span class="n">group</span> <span class="o">-</span><span class="n">d</span> <span class="s1">&#39;bzr win32 build machine&#39;</span>
+<span class="n">ec2</span><span class="o">-</span><span class="n">authorize</span> <span class="n">desolation</span><span class="o">-</span><span class="n">group</span> <span class="o">-</span><span class="n">p</span> <span class="mi">3389</span> <span class="o">-</span><span class="n">s</span> <span class="mf">1.2</span><span class="o">.</span><span class="mf">3.4</span><span class="o">/</span><span class="mi">32</span>
+<span class="n">ec2</span><span class="o">-</span><span class="n">authorize</span> <span class="n">desolation</span><span class="o">-</span><span class="n">group</span> <span class="o">-</span><span class="n">t</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span> <span class="o">-</span><span class="n">P</span> <span class="n">icmp</span>
+</pre></div>
+</div>
+<p>Add your public IP there.  You can repeat that command to allow others
+in.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="to-start-up-an-instance">
+<h3>To start up an instance<a class="headerlink" href="#to-start-up-an-instance" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic simple">
+<li>Get the right AMI image ID from another developer.</li>
+</ol>
+<ol class="arabic">
+<li><p class="first">Start the instance:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ec2-run-instances $image_id -g desolation-group
+</pre></div>
+</div>
+<p>This will print out some information including the image id, something
+like <code class="docutils literal notranslate"><span class="pre">i-31a74258</span></code>.</p>
+</li>
+</ol>
+<ol class="arabic">
+<li><p class="first">Actually starting the machine will take a few minutes.  Once it’s in
+the <em>running</em> state, get the machine’s public IP with</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ec2</span><span class="o">-</span><span class="n">describe</span><span class="o">-</span><span class="n">instances</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<ol class="arabic">
+<li><p class="first">and then connect</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>rdesktop -g 1200x850 -u Administrator $machine_ip
+</pre></div>
+</div>
+</li>
+</ol>
+<p>Don’t forget to shut it down when you’re done, and check with
+<code class="docutils literal notranslate"><span class="pre">ec2-describe-instances</span></code> that it did terminate.</p>
+</div>
+<div class="section" id="to-save-a-system-snapshot-as-an-image">
+<h3>To save a system snapshot as an image<a class="headerlink" href="#to-save-a-system-snapshot-as-an-image" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic">
+<li><p class="first">Bundle the current state.  <em>Doing this will reboot the machine.</em>
+You need to choose a unique s3 bucket name,
+typically based on a domain or email address, which can contain
+any number of images.  You also need a name unique within the bucket
+for this image, like <code class="docutils literal notranslate"><span class="pre">desolation-vs2008-20090219</span></code>.  And finally
+it needs your AWS S3 access key and secret key, which should be set in
+<code class="docutils literal notranslate"><span class="pre">~/.aws</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ec2</span><span class="o">-</span><span class="n">bundle</span><span class="o">-</span><span class="n">instance</span> <span class="o">-</span><span class="n">b</span> <span class="n">ec2</span><span class="o">.</span><span class="n">sourcefrog</span><span class="o">.</span><span class="n">net</span> \
+    <span class="o">-</span><span class="n">p</span> <span class="n">desolation</span><span class="o">-</span><span class="n">vs2008</span><span class="o">-</span><span class="mi">2009021</span> \
+    <span class="o">-</span><span class="n">o</span> <span class="s2">&quot;$AWS_ACCESS_KEY_ID&quot;</span> \
+    <span class="o">-</span><span class="n">w</span> <span class="s2">&quot;$AWS_SECRET_ACCESS_KEY&quot;</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<ol class="arabic">
+<li><p class="first">This will take several minutes:  You can check progress with</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ec2</span><span class="o">-</span><span class="n">describe</span><span class="o">-</span><span class="n">bundle</span><span class="o">-</span><span class="n">tasks</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<ol class="arabic">
+<li><p class="first">Register the files as an image, e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>  <span class="n">ec2</span><span class="o">-</span><span class="n">register</span> <span class="n">ec2</span><span class="o">.</span><span class="n">sourcefrog</span><span class="o">.</span><span class="n">net</span><span class="o">/</span><span class="n">desolation</span><span class="o">-</span><span class="n">vs2008</span><span class="o">-</span><span class="mi">2009021</span>
+
+<span class="n">This</span> <span class="n">will</span> <span class="n">give</span> <span class="n">you</span> <span class="n">an</span> <span class="n">AMI</span> <span class="nb">id</span> <span class="k">for</span> <span class="n">the</span> <span class="n">image</span><span class="o">.</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<ol class="arabic">
+<li><p class="first">Give access to other team members identified by their Amazon account id:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ec2-modify-image-attributes $ami_id -l -a 123412341234
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="management-console-useful">
+<h3>Management console (useful!)<a class="headerlink" href="#management-console-useful" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference external" href="https://console.aws.amazon.com/ec2/home">https://console.aws.amazon.com/ec2/home</a></p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="ppa.html" title="Managing the Breezy PPA"
+              >previous</a> |
+            <a href="overview.html" title="Breezy Architectural Overview"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/ec2.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

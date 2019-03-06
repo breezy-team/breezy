@@ -1,0 +1,60 @@
+Dirstate
+========
+
+Don't really need the hashes of the current versions - just knowing
+whether they've changed or not will generally be enough - and just the
+mtime and ctime of a point in time may be enough?
+
+
+``_dirblock_state``
+-------------------
+
+There are currently 4 levels that state can have.
+
+ 1. NOT_IN_MEMORY
+    The actual content blocks have not been read at all.
+ 2. IN_MEMORY_UNMODIFIED
+    The content blocks have been read and are available for use. They have
+    not been changed at all versus what was written on disk when we read
+    them.
+ 3. IN_MEMORY_HASH_MODIFIED
+    We have updated the in-memory state, but only to record the
+    sha1/symlink target value and the stat value that means this
+    information is 'fresh'.
+ 4. IN_MEMORY_MODIFIED
+    We have updated an actual record. (Parent lists, added a new file,
+    deleted something, etc.) In this state, we must always write out the
+    dirstate, or some user action will be lost.
+
+
+IN_MEMORY_HASH_MODIFIED
+~~~~~~~~~~~~~~~~~~~~~~~
+
+This state is a bit special, so deserves its own topic.  If we are
+IN_MEMORY_HASH_MODIFIED, we only write out the dirstate if enough records
+have been updated. The idea is that if we would save future I/O by writing
+an updated dirstate, then we should do so. The threshold for this is set
+by "worth_saving_limit". The default is that at least 10 entries must be
+updated in order to consider the dirstate file worth updating.
+
+Going one step further, newly added files, symlinks, and directory entries
+updates are treated specially. We know that we will always stat all
+entries in the tree so that we can observe *if* they have changed. In the
+case of directories, all the information we know about them is just from
+that stat value. There is no extra content to read. So an update directory
+entry doesn't cause us to update to IN_MEMORY_HASH_MODIFIED. However, if
+there are other modifications worth saving, we will go ahead and save the
+directory entry update at the same time.
+
+Similarly, symlink targets are commonly stored in the inode entry
+directly. So once we have stat'ed the symlink, we already have its target
+information in memory. The one caveat is if we used to think an object was
+a file, and it became a directory or symlink, then we will treat it as
+worth saving.
+
+In the case of newly added files, we never have to read their content to
+know that they are different from the basis tree. So saving the updated
+information also won't save a future read.
+
+
+.. vim: ft=rst tw=74 et

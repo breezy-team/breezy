@@ -1,0 +1,63 @@
+Using aliases
+=============
+
+What are aliases?
+-----------------
+
+Aliases are an easy way to create shortcuts for commonly-typed commands, or to set
+defaults for commands.
+
+Defining aliases
+----------------
+
+Command aliases can be defined in the ``[ALIASES]`` section of your
+``breezy.conf`` file. Aliases start with the alias name, then an
+equal sign, then a command fragment.  Here's an example ALIASES section::
+
+    [ALIASES]
+    recentlog=log -r-3..-1
+    ll=log --line -r-10..-1
+    commit=commit --strict
+    diff=diff --diff-options -p
+
+Here are the explanations of the examples above:
+
+ * The first alias makes a new ``recentlog`` command that shows the logs for the
+   last three revisions
+ * The ``ll`` alias shows the last 10 log entries in line format.
+ * the ``commit`` alias sets the default for commit to refuse to commit if new
+   files in the tree are not recognized.
+ * the ``diff`` alias adds the coveted -p option to diff
+
+Using the aliases
+-----------------
+
+The aliases defined above would be used like so: ::
+
+   % brz recentlog
+   % brz ll
+   % brz commit
+   % brz diff
+
+Rules for aliases
+-----------------
+
+ * You can override a portion of the options given in an alias by
+   specifying the new part on the command-line.  For example, if
+   you run ``lastlog -r-5..``, you will only get five line-based log
+   entries instead of 10.  Note that all boolean options have an
+   implicit inverse, so you can override the commit alias with
+   ``commit --no-strict``.
+
+ * Aliases can override the standard behaviour of existing commands by giving
+   an alias name that is the same as the original command. For example, default
+   commit is changed with ``commit=commit --strict``.
+
+ * Aliases cannot refer to other aliases. In other words making a
+   ``lastlog`` alias and referring to it with a ``ll`` alias will not work.
+   This includes aliases that override standard commands.
+
+ * Giving the ``--no-aliases`` option to the brz command will tell it to ignore aliases
+   for that run. For example, running ``brz --no-aliases commit`` will perform a
+   standard commit instead, not do a ``commit --strict``.
+

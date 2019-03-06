@@ -1,0 +1,62 @@
+Writing a plugin
+================
+
+Introduction
+------------
+
+Plugins are very similar to brz core functionality.  They can import
+anything in breezy.  A plugin may simply override standard functionality,
+but most plugins supply new commands.
+
+Creating a new command
+----------------------
+
+To create a command, make a new object that derives from
+``breezy.commands.Command``, and name it ``cmd_foo``, where foo is the name of
+your command.  If you create a command whose name contains an underscore,
+it will appear in the UI with the underscore turned into a hyphen.  For
+example, `cmd_baz_import` will appear as `baz-import`.  For examples of how
+to write commands, please see ``builtins.py``.
+
+Once you've created a command you must register the command with
+``breezy.commands.register_command(cmd_foo)``.  You must register the
+command when your file is imported, otherwise brz will not see it.
+
+Installing a hook
+-----------------
+
+See `Using hooks`_.
+
+ .. _Using hooks: hooks.txt
+
+
+Specifying a plugin version number
+----------------------------------
+Simply define ``version_info`` to be a tuple defining the current version
+number of your plugin. eg.
+``version_info = (0, 9, 0)``
+``version_info = (0, 9, 0, 'dev', 0)``
+
+Plugin searching rules
+----------------------
+
+Breezy will scan ``~/.config/breezy/plugins``  and ``breezy/plugins`` for
+plugins by default.  You can override this with  ``BRZ_PLUGIN_PATH``
+(see `User Reference 
+<../user-reference/configuration-help.html#brz-plugin-path>`_ for details).
+
+Plugins may be either modules or packages.  If your plugin is a single
+file, you can structure it as a module.  If it has multiple files, or if
+you want to distribute it as a brz branch, you should structure it as a
+package, i.e. a directory with an ``__init__.py`` file.
+
+More information
+----------------
+
+Please feel free to contribute your plugin to Breezy, if you think it
+would be useful to other people.
+
+See the `Breezy Developer Guide`_ for details on Breezy's development
+guidelines and policies.
+
+.. _Breezy Developer Guide: ../developer-guide/HACKING.html

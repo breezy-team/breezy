@@ -1,0 +1,230 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Contributing to Breezy &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Profiling" href="profiling.html" />
+    <link rel="prev" title="Breezy Developer Document Catalog" href="index.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="index.html" title="Breezy Developer Document Catalog"
+             accesskey="P">previous</a> |
+          <a href="profiling.html" title="Profiling"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="contributing-to-breezy">
+<h1>Contributing to Breezy<a class="headerlink" href="#contributing-to-breezy" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="talk-to-us">
+<h2>Talk to us<a class="headerlink" href="#talk-to-us" title="Permalink to this headline">¶</a></h2>
+<p>If you want to fix or improve something in Breezy, we want to help you.
+You can ask at any time for help, on the list, on irc, or through a merge
+proposal on Launchpad.</p>
+<ul class="simple">
+<li><a class="reference external" href="http://lists.ubuntu.com/mailman/listinfo/bazaar">Bazaar mailing list</a></li>
+<li>IRC in channel <code class="docutils literal notranslate"><span class="pre">#bzr</span></code> on <code class="docutils literal notranslate"><span class="pre">irc.freenode.net</span></code></li>
+</ul>
+</div>
+<div class="section" id="starting">
+<h2>Starting<a class="headerlink" href="#starting" title="Permalink to this headline">¶</a></h2>
+<p>Before starting on a change it’s a good idea to either file a bug, find a
+relevant existing bug, or send a proposal to the list.  If there is a bug
+you should set it to “In Progress” and if you wish assign it to yourself.</p>
+<p>You might like to start with a bug tagged <a class="reference external" href="https://bugs.launchpad.net/brz/+bugs?field.tag=easy">easy</a>.</p>
+<p>If you are wondering if your understanding of the bug is correct, or if the
+approach you have in mind is likely to work, feel to ask about it on the bug,
+in <code class="docutils literal notranslate"><span class="pre">#bzr</span></code> or on the mailing list.</p>
+</div>
+<div class="section" id="making-a-branch">
+<h2>Making a branch<a class="headerlink" href="#making-a-branch" title="Permalink to this headline">¶</a></h2>
+<p>First, get a local copy of Bazaar:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd $HOME
+$ brz init-repo brz
+$ cd brz
+$ brz branch lp:brz brz.dev
+</pre></div>
+</div>
+<p>Now make your own branch; we recommend you include the bug number and also
+a brief description:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz branch brz.dev 123456-status-speed
+</pre></div>
+</div>
+<p>and go ahead and commit in there.  Normally you should fix only one bug or
+closely-related cluster of bugs per branch, to make reviews and merges
+flow more smoothly.</p>
+<p>You probably want this configuration in <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/locations.conf</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">USER</span><span class="o">/</span><span class="n">brz</span><span class="p">]</span>
+<span class="n">push_location</span> <span class="o">=</span> <span class="n">lp</span><span class="p">:</span><span class="o">~</span><span class="n">LAUNCHPAD_USER</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="p">{</span><span class="n">branchname</span><span class="p">}</span>
+<span class="n">public_branch</span> <span class="o">=</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">bazaar</span><span class="o">.</span><span class="n">launchpad</span><span class="o">.</span><span class="n">net</span><span class="o">/~</span><span class="n">LAUNCHPAD_USER</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="p">{</span><span class="n">branchname</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>with your local and Launchpad usernames inserted.</p>
+</div>
+<div class="section" id="publishing-your-changes">
+<h2>Publishing your changes<a class="headerlink" href="#publishing-your-changes" title="Permalink to this headline">¶</a></h2>
+<p>After you’ve locally committed your changes, the configuration above
+should be enough that you can push them to Launchpad with a simple</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz push
+</pre></div>
+</div>
+</div>
+<div class="section" id="writing-tests">
+<h2>Writing tests<a class="headerlink" href="#writing-tests" title="Permalink to this headline">¶</a></h2>
+<p>We value test coverage and generally all changes should have or update a
+test.  There is a powerful test framework but it can be hard to find the
+right place to put your test.  Don’t hesitate to ask, or to propose a
+merge that does not yet have tests.</p>
+<p>Normally for command-line code you should look in
+<code class="docutils literal notranslate"><span class="pre">breezy.tests.blackbox</span></code> and for library code in <code class="docutils literal notranslate"><span class="pre">breezy.tests</span></code>.  For
+functions on an interface for which there are multiple implementations,
+like <cite>Transport</cite>, look in <code class="docutils literal notranslate"><span class="pre">breezy.tests.per_transport</span></code>.</p>
+<p>It’s a good idea to search the tests for something related to the thing
+you’re changing and you may find a test you can modify or adapt.</p>
+<p>To run the tests:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./brz selftest
+</pre></div>
+</div>
+<p>Normally the tests will skip if some library dependencies are not present.
+On Ubuntu, you can install them with this command (you must have source
+repositories enabled in Software Sources):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sudo apt-get build-dep brz
+</pre></div>
+</div>
+<p>To build the binary extensions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ make
+</pre></div>
+</div>
+<p>For more information: <a class="reference external" href="testing.html">Testing Guide</a>.</p>
+</div>
+<div class="section" id="proposing-a-merge">
+<h2>Proposing a merge<a class="headerlink" href="#proposing-a-merge" title="Permalink to this headline">¶</a></h2>
+<p>Then propose a merge into Breezy; for Breezy 3.0 and later you can use the <code class="docutils literal notranslate"><span class="pre">brz</span>
+<span class="pre">propose-merge</span></code> command.  In the comment for your merge proposal please
+explain what you’re trying to do and why.  For <a class="reference external" href="https://code.launchpad.net/~ian-clatworthy/bzr/whats-new-in-2.1/+merge/19677">example</a>:</p>
+<blockquote>
+<div>As discussed on the mailing list, this patch adds a What’s New document
+summarising the changes since 2.0.</div></blockquote>
+<p>If you make additional changes to your branch you don’t need to resubmit;
+they’ll automatically show up in the merge proposal.</p>
+<ul class="simple">
+<li><a class="reference external" href="http://help.launchpad.net/Code/Review">Launchpad Code Review Help</a>.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="index.html" title="Breezy Developer Document Catalog"
+              >previous</a> |
+            <a href="profiling.html" title="Profiling"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/contribution-quickstart.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

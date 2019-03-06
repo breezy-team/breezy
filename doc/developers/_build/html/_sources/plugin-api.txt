@@ -1,0 +1,262 @@
+==========
+Plugin API
+==========
+
+
+
+:Date: 2009-01-23
+
+.. contents::
+
+Introduction
+============
+
+breezy has a very flexible internal structure allowing plugins for many
+operations. Plugins can add commands, new storage formats, diff and merge
+features and more. This document provides an overview of the API and
+conventions for plugin authors.
+
+If you're writing a plugin and have questions not addressed by this
+document, please ask us.
+
+See also
+--------
+
+ * `Breezy Developer Documentation Catalog <../index.html>`_.
+ * `Breezy Plugins Guide <plugin-development.txt>`_ for
+   more suggestions about particular APIs.
+
+
+Structure of a plugin
+=====================
+
+Plugins are Python modules under ``breezy.plugins``. They can be installed
+either into the PYTHONPATH in that location, or in ~/.config/breezy/plugins.
+
+Plugins should have a setup.py.
+
+As for other Python modules, the name of the directory must match the
+expected name of the plugin.
+
+
+Plugin metadata before installation
+===================================
+
+Plugins can export a summary of what they provide, and what versions of breezy
+they are compatible with. This allows tools to be written to work with plugins,
+such as to generate a directory of plugins, or install them via a
+symlink/checkout to ~/.config/breezy/plugins.
+
+This interface allows Breezy to interrogate a plugin without actually loading
+it. This is useful because loading a plugin may have side effects such
+as registering or overriding commands, or the plugin may raise an error,
+if for example a prerequisite is not present.
+
+
+Metadata protocol
+-----------------
+
+A plugin that supports the Breezy plugin metadata protocol will do two
+things. Firstly, the ``setup.py`` for the plugin will guard the call to
+``setup()``::
+
+  if __name__ == 'main':
+      setup(...)
+
+Secondly, the setup module will have one or more of the following variables
+present at module scope. Any variables that are missing will be given the
+defaults from the table. An example of every variable is provided after
+the full list.
+
++------------------------+---------+----------------------------------------+
+| Variable               | Default | Definition                             |
++========================+=========+========================================+
+| brz_plugin_name        | None    | The name the plugin package should be  |
+|                        |         | given on disk. The plugin is then      |
+|                        |         | available to python at                 |
+|                        |         | breezy.plugins.NAME                    |
++------------------------+---------+----------------------------------------+
+| brz_commands           | []      | A list of the commands that the plugin |
+|                        |         | provides. Commands that already exist  |
+|                        |         | in brz and are decorated by the plugin |
+|                        |         | do not need to be listed (but it is not|
+|                        |         | harmful if you do list them).          |
++------------------------+---------+----------------------------------------+
+| brz_plugin_version     | None    | A version_info 5-tuple with the plugins|
+|                        |         | version.                               |
++------------------------+---------+----------------------------------------+
+| brz_minimum_version    | None    | A version_info 3-tuple for comparison  |
+|                        |         | with the breezy minimum and current    |
+|                        |         | version, for determining likely        |
+|                        |         | compatibility.                         |
++------------------------+---------+----------------------------------------+
+| brz_maximum_version    | None    | A version_info 3-tuple like            |
+|                        |         | brz_minimum_version but checking the   |
+|                        |         | upper limits supported.                |
++------------------------+---------+----------------------------------------+
+| brz_control_formats    | {}      | A dictionary of descriptions of version|
+|                        |         | control directories. See               |
+|                        |         | `Control Formats` below.               |
++------------------------+---------+----------------------------------------+
+| brz_checkout_formats   | {}      | A dictionary of tree_format_string ->  |
+|                        |         | human description strings, for tree    |
+|                        |         | formats that drop into the             |
+|                        |         | ``.bzr/checkout`` metadir system.      |
++------------------------+---------+----------------------------------------+
+| brz_branch_formats     | {}      | As brz_checkout_formats but for        |
+|                        |         | branches.                              |
++------------------------+---------+----------------------------------------+
+| brz_repository_formats | {}      | As brz_checkout_formats but for        |
+|                        |         | repositories.                          |
++------------------------+---------+----------------------------------------+
+| brz_transports         | []      | URL prefixes for which this plugin     |
+|                        |         | will register transports.              |
++------------------------+---------+----------------------------------------+
+
+Control Formats
+---------------
+
+Because disk format detection for formats that bzr does not understand at
+all can be useful, we allow a declarative description of the shape of a
+control directory. Each description has a name for showing to users, and a
+dictonary of relative paths, and the content needed at each path. Paths
+that end in '/' are required to be directories and the value for that key
+is ignored. Other paths are required to be regular files, and the value
+for that key is either None, in which case the file is statted but the
+content is ignored, or a literal string which is compared against for
+the content of the file. Thus::
+
+  # (look for a .hg directory)
+  brz_control_formats = {"Mercurial":{'.hg/': None}}
+
+  # (look for a file called .svn/format with contents 4\n).
+  brz_control_formats = {"Subversion":{'.svn/format': '4\n'}}
+
+
+Example
+-------
+
+An example setup.py follows::
+
+  #!/usr/bin/env python2.4
+  from distutils.core import setup
+
+  brz_plugin_name = 'demo'
+  brz_commands = [
+      'new-command',
+      ]
+
+  brz_branch_formats = {
+      "Branch label on disk\n":"demo branch",
+      }
+
+  brz_control_formats = {"Subversion":{'.svn/format': '4\n'}}
+
+  brz_transports = ["hg+ssh://"]
+
+  brz_plugin_version = (1, 3, 0, 'dev', 0)
+  brz_minimum_version = (1, 0, 0)
+
+  if __name__ == 'main':
+      setup(name="Demo",
+            version="1.3.0dev0",
+            description="Demo plugin for plugin metadata.",
+            author="Canonical Ltd",
+            author_email="bazaar@lists.canonical.com",
+            license = "GNU GPL v2",
+            url="https://launchpad.net/bzr-demo",
+            packages=['breezy.plugins.demo',
+                      'breezy.plugins.demo.tests',
+                      ],
+            package_dir={'breezy.plugins.demo': '.'})
+
+
+Plugin metadata after installation
+==================================
+
+After a plugin has been installed, metadata can be more easily obtained by
+looking inside the module object -- in other words, for variables defined
+in the plugin's ``__init__.py``.
+
+Help and documentation
+----------------------
+
+The module docstring is used as the plugin description shown by ``bzr
+plugins``.  As with all Python docstrings, the first line should be a
+short complete sentence summarizing the plugin.  The full docstring is
+shown by ``bzr help PLUGIN_NAME``.
+
+This is a user-visible docstring so should be prefixed with ``__doc__ =``
+to ensure help works under ``python -OO`` with docstrings stripped.
+
+API version
+-----------
+
+Plugins can and should declare that they depend on a particular version of
+breezy like so::
+
+    from breezy.api import require_api
+
+    require_api(breezy, (1, 11, 0))
+
+Please see `API versioning <api-versioning.html>`_ for more details on the API
+metadata protocol used by breezy.
+
+Plugin version
+--------------
+
+The plugin should expose a version tuple to describe its own version.
+Some plugins use a version number that corresponds to the version of bzr
+they're released against, but you can use whatever you want.  For example::
+
+    version_info = (1, 10, 0)
+
+
+Detecting whether code's being loaded as a plugin
+-------------------------------------------------
+
+You may have a Python module that can be used as a bzr plugin and also in
+other places.  To detect whether the module is being loaded by bzr, use
+something like this::
+
+    if __name__ == 'breezy.plugins.loggerhead':
+        # register with breezy...
+
+
+Plugin performance
+==================
+
+Plugins should avoid doing work or loading code from the plugin or
+external libraries, if they're just installed but not actually active,
+because this slows down every invocation of bzr.  The breezy APIs
+generally allow the plugin to 'lazily' register methods to invoke if a
+particular disk format or seen or a particular command is run.
+
+
+Plugin registrations
+====================
+
+The plugin ``__init__.py`` runs when the plugin is loaded during bzr
+startup.  Generally the plugin won't want to actually do anything at this
+time other than register or override functions to be called later.
+
+The plugin can import breezy and call any function.
+Some interesting APIs are described in `Breezy Plugins Guide <plugin-development.txt>`_.
+
+
+Publishing your plugin
+======================
+
+When your plugin is basically working you might like to share it with
+other people.  Here are some steps to consider:
+
+ * make a project on Launchpad.net like
+   <https://launchpad.net/bzr-fastimport>
+   and publish the branches or tarballs there
+
+ * include the plugin in <http://wiki.bazaar.canonical.com/BzrPlugins>
+
+ * post about it to the ``bazaar-announce`` list at ``lists.canonical.com``
+
+..
+   vim: ft=rst tw=74 ai shiftwidth=4

@@ -1,0 +1,27 @@
+remove-branch
+=============
+
+:Purpose: Remove a branch.
+:Usage:   brz remove-branch [LOCATION]
+
+:Options:
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  --force               Remove branch even if it is the active branch.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  This will remove the branch from the specified location but
+  will keep any working tree or repository in place.
+
+:Examples:
+  Remove the branch at repo/trunk::
+
+    brz remove-branch repo/trunk
+
+:Aliases:  rmbranch
+
+

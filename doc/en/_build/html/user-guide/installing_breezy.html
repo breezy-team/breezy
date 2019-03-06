@@ -1,0 +1,201 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Installing Breezy &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Entering commands" href="entering_commands.html" />
+    <link rel="prev" title="Workflows" href="breezy_workflows.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="breezy_workflows.html" title="Workflows"
+             accesskey="P">previous</a> |
+          <a href="entering_commands.html" title="Entering commands"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="installing-breezy">
+<h1>Installing Breezy<a class="headerlink" href="#installing-breezy" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="gnu-linux">
+<h2>GNU/Linux<a class="headerlink" href="#gnu-linux" title="Permalink to this headline">¶</a></h2>
+<p>Breezy packages are available for most popular GNU/Linux distributions
+including Ubuntu, Debian, Red Hat and Gentoo.
+See <a class="reference external" href="https://www.breezy-vcs.org/pages/download.html">https://www.breezy-vcs.org/pages/download.html</a> for the latest instructions.</p>
+</div>
+<div class="section" id="windows">
+<h2>Windows<a class="headerlink" href="#windows" title="Permalink to this headline">¶</a></h2>
+<p>For Windows users, an installer is available that includes
+the core Breezy package together with necessary pre-requisites
+and some useful plug-ins.
+See <a class="reference external" href="https://www.breezy-vcs.org/pages/download.html">https://www.breezy-vcs.org/pages/download.html</a> for the latest instructions.</p>
+<p>Note: If you are running Cygwin on Windows, a Breezy for Cygwin package
+is available and ought to be used instead of the Windows version.</p>
+</div>
+<div class="section" id="other-operating-systems">
+<h2>Other operating systems<a class="headerlink" href="#other-operating-systems" title="Permalink to this headline">¶</a></h2>
+<p>Beyond Linux and Windows, Breezy packages are available for a large
+range of other operating systems include Mac OS X, FreeBSD and Solaris.
+See <a class="reference external" href="https://www.breezy-vcs.org/pages/download.html">https://www.breezy-vcs.org/pages/download.html</a> for the latest instructions.</p>
+</div>
+<div class="section" id="installing-from-scratch">
+<h2>Installing from scratch<a class="headerlink" href="#installing-from-scratch" title="Permalink to this headline">¶</a></h2>
+<p>If you wish to install Breezy from scratch rather than using a
+pre-built package, the steps are:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>If it is not installed already, install Python 2.7 or later.</li>
+<li>Download the <code class="docutils literal notranslate"><span class="pre">breezy-xxx.tar.gz</span></code> file (where xxx is the version
+number) from <a class="reference external" href="https://www.breezy-vcs.org/pages/download.html">https://www.breezy-vcs.org/pages/download.html</a> or from Launchpad
+(<a class="reference external" href="https://launchpad.net/~brz/">https://launchpad.net/~brz/</a>).</li>
+<li>Unpack the archive using tar, WinZip or equivalent.</li>
+<li>Put the created directory on your PATH.</li>
+</ol>
+</div></blockquote>
+<p>To test the installation, try running the <strong>brz</strong> command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">version</span>
+</pre></div>
+</div>
+<p>This will display the version of Breezy you have installed. If this
+doesn’t work, please contact us via email or IRC so we can help you
+get things working.</p>
+<div class="section" id="installing-into-site-wide-locations">
+<h3>Installing into site-wide locations<a class="headerlink" href="#installing-into-site-wide-locations" title="Permalink to this headline">¶</a></h3>
+<p>Instead of adding the directory to your PATH, you can install brz into the
+system locations using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
+</pre></div>
+</div>
+<p>If you do not have a compiler, or do not have the python development tools
+installed, brz supplies a (slower) pure-python implementation of all
+extensions. You can install without compiling extensions with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span> <span class="n">build_ext</span> <span class="o">--</span><span class="n">allow</span><span class="o">-</span><span class="n">python</span><span class="o">-</span><span class="n">fallback</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="running-the-development-version">
+<h2>Running the development version<a class="headerlink" href="#running-the-development-version" title="Permalink to this headline">¶</a></h2>
+<p>You may wish to always be using the very latest development version of
+Breezy. Note that this is not recommended for
+the majority of users as there is an increased risk of bugs. On the other
+hand, the development version is remarkably solid (thanks to the processes
+we follow) and running it makes it easier for you to send us changes for
+bugs and improvements. It also helps us by having more people testing
+the latest software.</p>
+<p>Here are the steps to follow:</p>
+<blockquote>
+<div><ol class="arabic">
+<li><p class="first">Install Breezy using one of the methods given above.</p>
+</li>
+<li><p class="first">Get a copy of the development version like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">lp</span><span class="p">:</span><span class="n">brz</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Put the created directory on your PATH.</p>
+</li>
+</ol>
+</div></blockquote>
+<p>Advanced users may also wish to build the optional C extensions for greater
+speed. This can be done using <code class="docutils literal notranslate"><span class="pre">make</span></code> and requires <code class="docutils literal notranslate"><span class="pre">cython</span></code> and a C compiler.
+Please contact us on email or IRC if you need assistance with this.</p>
+</div>
+<div class="section" id="running-multiple-versions">
+<h2>Running multiple versions<a class="headerlink" href="#running-multiple-versions" title="Permalink to this headline">¶</a></h2>
+<p>It’s easy to have multiple versions of Breezy installed and to switch
+between them. To do this,
+simply provide the full pathname to the <strong>brz</strong> command you wish to run.
+The relevant libraries will be automatically detected and used. Of course,
+if you do not provide a pathname, then the <strong>brz</strong> used will be the one
+found on your system path as normal.</p>
+<p>Note that this capability is particularly useful if you wish to run
+(or test) both the latest released version and the development version say.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="breezy_workflows.html" title="Workflows"
+              >previous</a> |
+            <a href="entering_commands.html" title="Entering commands"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/installing_breezy.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,56 @@
+upgrade
+=======
+
+:Purpose: Upgrade a repository, branch or working tree to a newer format.
+:Usage:   brz upgrade [URL]
+
+:Options:
+  --clean               Remove the backup.bzr directory if successful.
+  --dry-run             Show what would be done, but don't actually do
+                        anything.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+  Branch format:
+    --format=ARG        Upgrade to a specific format.  See "brz help formats"
+                        for details.
+    --2a, --default, --bzr
+                        Format for the bzr 2.0 series.
+    --git               GIT repository.
+    --git-bare          Bare GIT repository (no working tree).
+
+:Description:
+  When the default format has changed after a major new release of
+  Bazaar/Breezy, you may be informed during certain operations that you
+  should upgrade. Upgrading to a newer format may improve performance
+  or make new features available. It may however limit interoperability
+  with older repositories or with older versions of Bazaar or Breezy.
+  
+  If you wish to upgrade to a particular format rather than the
+  current default, that can be specified using the --format option.
+  As a consequence, you can use the upgrade command this way to
+  "downgrade" to an earlier format, though some conversions are
+  a one way process (e.g. changing from the 1.x default to the
+  2.x default) so downgrading is not always possible.
+  
+  A backup.bzr.~#~ directory is created at the start of the conversion
+  process (where # is a number). By default, this is left there on
+  completion. If the conversion fails, delete the new .bzr directory
+  and rename this one back in its place. Use the --clean option to ask
+  for the backup.bzr directory to be removed on successful conversion.
+  Alternatively, you can delete it by hand if everything looks good
+  afterwards.
+  
+  If the location given is a shared repository, dependent branches
+  are also converted provided the repository converts successfully.
+  If the conversion of a branch fails, remaining branches are still
+  tried.
+  
+  For more information on upgrades, see the Breezy Upgrade Guide,
+  https://www.breezy-vcs.org/doc/en/upgrade-guide/.
+
+:See also: :doc:`check <check-help>`, :doc:`formats <formats-help>`, :doc:`reconcile <reconcile-help>`
+
+

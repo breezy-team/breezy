@@ -1,0 +1,33 @@
+Status Flags
+============
+
+
+Status flags are used to summarise changes to the working tree in a concise
+manner.  They are in the form::
+
+   xxx   <filename>
+
+where the columns' meanings are as follows.
+
+Column 1 - versioning/renames::
+
+  + File versioned
+  - File unversioned
+  R File renamed
+  ? File unknown
+  X File nonexistent (and unknown to brz)
+  C File has conflicts
+  P Entry for a pending merge (not a file)
+
+Column 2 - contents::
+
+  N File created
+  D File deleted
+  K File kind changed
+  M File modified
+
+Column 3 - execute::
+
+  * The execute bit was changed
+
+

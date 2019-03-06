@@ -1,0 +1,158 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Other Setups &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Migration" href="migration.html" />
+    <link rel="prev" title="Simple Setups" href="simple-setups.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="simple-setups.html" title="Simple Setups"
+             accesskey="P">previous</a> |
+          <a href="migration.html" title="Migration"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="other-setups">
+<h1>Other Setups<a class="headerlink" href="#other-setups" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="dumb-servers">
+<h2>Dumb servers<a class="headerlink" href="#dumb-servers" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar can also serve branches over protocols that know nothing about Bazaar’s
+specific needs.  These are called “dumb servers” to distinguish them from
+Bazaar’s native protocol.  Currently HTTP, HTTPS, FTP, SFTP and HTTP+WebDAV can
+be used to read branches remotely.  FTP, SFTP and HTTP+WebDAV can be used for
+writing as well.  To use any of these protocols, it is just necessary to
+provide access to the server’s filesystem under <code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code>.</p>
+<p>For example, for Apache to provide read-only access to the branches
+in <code class="docutils literal notranslate"><span class="pre">/srv/bzr</span></code> the configuration may look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Alias</span> <span class="o">/</span><span class="n">code</span> <span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">bzr</span>
+<span class="o">&lt;</span><span class="n">Directory</span> <span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">bzr</span><span class="o">&gt;</span>
+    <span class="n">Options</span> <span class="n">Indexes</span>
+    <span class="c1"># ...</span>
+<span class="o">&lt;/</span><span class="n">Directory</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>and users could use the URL <code class="docutils literal notranslate"><span class="pre">http://server.example.com/code/projectx/trunk</span></code>
+to refer to the trunk branch.</p>
+<p>Note that SFTP access is often available whenever there is SSH access and it
+may be a good choice when Bazaar cannot be installed on the server to allow
+<code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code> access.  Dumb servers are slower by their very nature than the
+native protocol, but they can be a good choice in situations where the
+software and protocols that can be used on the server or the network is
+limited.</p>
+</div>
+<div class="section" id="smart-server-over-http-s">
+<h2>Smart server over HTTP(S)<a class="headerlink" href="#smart-server-over-http-s" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar can use its native protocol with HTTP or HTTPS requests.  Since HTTP is
+a network protocol that is available on many networks, this can be a good
+option where SSH access is not possible.  Another benefit of this setup is that
+all of the authentication and access control methods available to the HTTP
+server (basic, LDAP, ActiveDirectory, etc.) are then available to control
+access to Bazaar branches.  More information about setting up this type of
+access using Apache and FastCGI or mod_python or WSGI is in the <a class="reference external" href="../user-guide/http_smart_server.html">smart server
+section of the User’s Guide</a>.</p>
+</div>
+<div class="section" id="direct-smart-server-access">
+<h2>Direct Smart Server Access<a class="headerlink" href="#direct-smart-server-access" title="Permalink to this headline">¶</a></h2>
+<p>The built-in server that is used by <code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code> access can also be used as a
+persistent server on a dedicated port.  Bazaar’s official port is 4155,
+although the port used can be configured.  Further information on running the
+Bazaar smart server from inetd, or directly from the shell is in the <a class="reference external" href="../user-guide/server.html#inetd">User’s
+Guide</a>.  The dedicated Bazaar server does
+not currently perform any authentication, so this server by default provides
+read-only access.  It can be run with the <code class="docutils literal notranslate"><span class="pre">--allow-writes</span></code> option, but the
+smart server does not do any additional access control so this may allow
+undesired people to make changes to branches.  (Which of course can be
+reverted.)  If the user that runs the server has write access to the branches
+on the filesystem, then anyone with access to port 4155 on the server can make
+changes to the branches stored there.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="simple-setups.html" title="Simple Setups"
+              >previous</a> |
+            <a href="migration.html" title="Migration"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/admin-guide/other-setups.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

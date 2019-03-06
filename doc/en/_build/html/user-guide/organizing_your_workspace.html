@@ -1,0 +1,261 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Organizing your workspace &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Advanced shared repository layouts" href="shared_repository_layouts.html" />
+    <link rel="prev" title="Specifying revisions" href="specifying_revisions.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="specifying_revisions.html" title="Specifying revisions"
+             accesskey="P">previous</a> |
+          <a href="shared_repository_layouts.html" title="Advanced shared repository layouts"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="organizing-your-workspace">
+<h1>Organizing your workspace<a class="headerlink" href="#organizing-your-workspace" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="common-workspace-layouts">
+<h2>Common workspace layouts<a class="headerlink" href="#common-workspace-layouts" title="Permalink to this headline">¶</a></h2>
+<p>The best way for a Breezy user to organize their workspace for a project
+depends on numerous factors including:</p>
+<ul class="simple">
+<li>user role: project owner vs core developer vs casual contributor</li>
+<li>workflows: particularly the workflow the project encourages/mandates
+for making contributions</li>
+<li>size: large projects have different resource requirements to small ones.</li>
+</ul>
+<p>There are at least 4 common ways of organizing one’s workspace:</p>
+<ul class="simple">
+<li>lightweight checkout</li>
+<li>standalone tree</li>
+<li>feature branches</li>
+<li>switchable sandbox.</li>
+</ul>
+<p>A brief description of each layout follows.</p>
+</div>
+<div class="section" id="lightweight-checkout">
+<h2>Lightweight checkout<a class="headerlink" href="#lightweight-checkout" title="Permalink to this headline">¶</a></h2>
+<p>In this layout, the working tree is local and the branch is remote.
+This is the standard layout used by CVS and Subversion: it’s simple
+and well understood.</p>
+<p>To set up:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">checkout</span> <span class="o">--</span><span class="n">lightweight</span> <span class="n">URL</span> <span class="n">project</span>
+<span class="n">cd</span> <span class="n">project</span>
+</pre></div>
+</div>
+<p>To work:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">make</span> <span class="n">changes</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">commit</span>
+<span class="p">(</span><span class="n">make</span> <span class="n">changes</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">commit</span>
+</pre></div>
+</div>
+<p>Note that each commit implicitly publishes the change to everyone else
+working from that branch. However, you need to be up to date with changes
+in the remote branch for the commit to succeed. To grab the latest code
+and merge it with your changes, if any:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">update</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="standalone-tree">
+<h2>Standalone tree<a class="headerlink" href="#standalone-tree" title="Permalink to this headline">¶</a></h2>
+<p>In this layout, the working tree &amp; branch are in the one place. Unless
+a shared repository exists in a higher level directory, the repository
+is located in that same place as well. This is the default layout in
+Breezy and it’s great for small to moderately sized projects.</p>
+<p>To set up:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">URL</span> <span class="n">project</span>
+<span class="n">cd</span> <span class="n">project</span>
+</pre></div>
+</div>
+<p>To work:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">make</span> <span class="n">changes</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">commit</span>
+<span class="p">(</span><span class="n">make</span> <span class="n">changes</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">commit</span>
+</pre></div>
+</div>
+<p>To publish changes to a central location:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">push</span> <span class="p">[</span><span class="n">URL</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The URL for push is only required the first time.</p>
+<p>If the central location has, in the meantime, received changes from
+other users, then you’ll need to merge those changes into your local
+branch before you try to push again:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">merge</span>
+<span class="p">(</span><span class="n">resolve</span> <span class="n">conflicts</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">commit</span>
+</pre></div>
+</div>
+<p>As an alternative, a checkout can be used. Like a branch, a checkout
+has a full copy of the history stored locally but the local branch
+is bound to the remote location so that commits are published to
+both locations at once.</p>
+<p>Note: A checkout is actually smarter than a local commit followed by
+a push. In particular, a checkout wil commit to the remote location
+first and only commit locally if the remote commit succeeds.</p>
+</div>
+<div class="section" id="feature-branches">
+<h2>Feature branches<a class="headerlink" href="#feature-branches" title="Permalink to this headline">¶</a></h2>
+<p>In this layout, there are multiple branches/trees, typically sharing
+a repository. One branch is kept as a mirror of “trunk” and each
+unit-of-work (i.e. bug-fix or enhancement) gets its own “feature branch”.
+This layout is ideal for most projects, particularly moderately sized ones.</p>
+<p>To set up:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">init</span><span class="o">-</span><span class="n">repo</span> <span class="n">project</span>
+<span class="n">cd</span> <span class="n">project</span>
+<span class="n">brz</span> <span class="n">branch</span> <span class="n">URL</span> <span class="n">trunk</span>
+</pre></div>
+</div>
+<p>To start a feature branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">trunk</span> <span class="n">featureX</span>
+<span class="n">cd</span> <span class="n">featureX</span>
+</pre></div>
+</div>
+<p>To work:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">make</span> <span class="n">changes</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">commit</span>
+<span class="p">(</span><span class="n">make</span> <span class="n">changes</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">commit</span>
+</pre></div>
+</div>
+<p>To publish changes to a mailing list for review &amp; approval:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">send</span>
+</pre></div>
+</div>
+<p>To publish changes to a public branch (that can then be registered as
+a Launchpad merge request, say):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">push</span> <span class="p">[</span><span class="n">URL</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>As a variation, the trunk can be created as a checkout. If you have
+commit privileges on trunk, that lets you merge into trunk and the
+commit of the merge will implicitly publish your change. Alternatively,
+if the trunk URL is read-only (e.g. an HTTP address), that prevents
+accidental submission this way - ideal if the project workflow uses
+an automated gatekeeper like PQM, say.</p>
+</div>
+<div class="section" id="local-sandbox">
+<h2>Local sandbox<a class="headerlink" href="#local-sandbox" title="Permalink to this headline">¶</a></h2>
+<p>This layout is very similar to the feature branches layout except that
+the feature branches share a single working tree rather than having one
+each. This is similar to git’s default layout and it’s useful for projects
+with really large trees (&gt; 10000 files say) or for projects with lots of
+build artifacts (like .o or .class files).</p>
+<p>To set up:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">init</span><span class="o">-</span><span class="n">repo</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">trees</span> <span class="n">project</span>
+<span class="n">cd</span> <span class="n">project</span>
+<span class="n">brz</span> <span class="n">branch</span> <span class="n">URL</span> <span class="n">trunk</span>
+<span class="n">brz</span> <span class="n">checkout</span> <span class="o">--</span><span class="n">lightweight</span> <span class="n">trunk</span> <span class="n">sandbox</span>
+<span class="n">cd</span> <span class="n">sandbox</span>
+</pre></div>
+</div>
+<p>While you <em>could</em> start making changes in sandbox now, committing while
+the sandbox is pointing to the trunk would mean that trunk is no longer
+a mirror of the upstream URL (well unless the trunk is a checkout).
+Therefore, you usually want to immediately create a feature branch and
+switch your sandbox to it like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="o">../</span><span class="n">trunk</span> <span class="o">../</span><span class="n">featureX</span>
+<span class="n">brz</span> <span class="n">switch</span> <span class="o">../</span><span class="n">featureX</span>
+</pre></div>
+</div>
+<p>The processes for making changes and submitting them are otherwise
+pretty much the same as those used for feature branches.</p>
+</div>
+<div class="section" id="advanced-layouts">
+<h2>Advanced layouts<a class="headerlink" href="#advanced-layouts" title="Permalink to this headline">¶</a></h2>
+<p>If you wish, you can put together your own layout based on how <strong>you</strong> like
+things organized. See <a class="reference external" href="shared_repository_layouts.html">Advanced shared repository layouts</a> for examples and inspiration.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="specifying_revisions.html" title="Specifying revisions"
+              >previous</a> |
+            <a href="shared_repository_layouts.html" title="Advanced shared repository layouts"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/organizing_your_workspace.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

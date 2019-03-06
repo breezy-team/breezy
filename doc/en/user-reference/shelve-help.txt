@@ -1,0 +1,60 @@
+shelve
+======
+
+:Purpose: Temporarily set aside some changes from the current tree.
+:Usage:   brz shelve [FILE...]
+
+:Options:
+  --all                 Shelve all changes.
+  --destroy             Destroy removed changes instead of shelving them.
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  --list                List shelved changes.
+  -m ARG, --message=ARG
+                        Message string.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+  writer:
+    --plain             Plaintext diff output.
+
+:Description:
+  Shelve allows you to temporarily put changes you've made "on the shelf",
+  ie. out of the way, until a later time when you can bring them back from
+  the shelf with the 'unshelve' command.  The changes are stored alongside
+  your working tree, and so they aren't propagated along with your branch nor
+  will they survive its deletion.
+  
+  If shelve --list is specified, previously-shelved changes are listed.
+  
+  Shelve is intended to help separate several sets of changes that have
+  been inappropriately mingled.  If you just want to get rid of all changes
+  and you don't need to restore them later, use revert.  If you want to
+  shelve all text changes at once, use shelve --all.
+  
+  If filenames are specified, only the changes to those files will be
+  shelved. Other files will be left untouched.
+  
+  If a revision is specified, changes since that revision will be shelved.
+  
+  You can put multiple items on the shelf, and by default, 'unshelve' will
+  restore the most recently shelved changes.
+  
+  For complicated changes, it is possible to edit the changes in a separate
+  editor program to decide what the file remaining in the working copy
+  should look like.  To do this, add the configuration option
+  
+      change_editor = PROGRAM @new_path @old_path
+  
+  where @new_path is replaced with the path of the new version of the
+  file and @old_path is replaced with the path of the old version of
+  the file.  The PROGRAM should save the new file with the desired
+  contents of the file in the working tree.
+
+:See also: :doc:`configuration <configuration-help>`, :doc:`unshelve <unshelve-help>`
+
+

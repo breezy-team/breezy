@@ -1,0 +1,261 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Workflows &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Installing Breezy" href="installing_breezy.html" />
+    <link rel="prev" title="Core concepts" href="core_concepts.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="core_concepts.html" title="Core concepts"
+             accesskey="P">previous</a> |
+          <a href="installing_breezy.html" title="Installing Breezy"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="workflows">
+<h1>Workflows<a class="headerlink" href="#workflows" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="breezy-is-just-a-tool">
+<h2>Breezy is just a tool<a class="headerlink" href="#breezy-is-just-a-tool" title="Permalink to this headline">¶</a></h2>
+<p>Breezy supports many different ways of working together.
+This means that you can
+start with one workflow and adapt it over time as circumstances
+change. There is no “one true way” that always makes sense and
+there never will be. This section provides a brief overview of
+some popular workflows supported by Breezy.</p>
+<p>Keep in mind that these workflow are just <em>some</em> examples of how
+Breezy can be used. You may want to use a workflow not listed here,
+perhaps building on the ideas below.</p>
+</div>
+<div class="section" id="solo">
+<h2>Solo<a class="headerlink" href="#solo" title="Permalink to this headline">¶</a></h2>
+<p>Whether developing software, editing documents or changing configuration files,
+having an easy-to-use VCS tool can help. A single user can use this workflow
+effectively for managing projects where they are the only contributor.</p>
+<img alt="../_images/workflows_single.png" src="../_images/workflows_single.png" />
+<p>Advantages of this workflow over not using version control at all include:</p>
+<blockquote>
+<div><ul class="simple">
+<li>backup of old versions</li>
+<li>rollback to an earlier state</li>
+<li>tracking of history.</li>
+</ul>
+</div></blockquote>
+<p>The key features of Breezy appropriate for this workflow are low administration
+(no server setup) and ease of use.</p>
+</div>
+<div class="section" id="partner">
+<h2>Partner<a class="headerlink" href="#partner" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes two people need to work together sharing changes as they go. This
+commonly starts off as a <em>Solo</em> workflow (see above) or a team-oriented
+workflow (see below). At some point, the second person takes a branch (copy
+including history) of what the first person has done. They can then work in
+parallel exchanging changes by merging when appropriate.</p>
+<img alt="../_images/workflows_peer.png" src="../_images/workflows_peer.png" />
+<p>Advantages over <em>Solo</em> are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>easier sharing of changes</li>
+<li>each line of each text file can be attributed to a particular change
+including who changed it, when and why.</li>
+</ul>
+</div></blockquote>
+<p>When implementing this workflow, Breezy’s advantages over CVS and Subversion include:</p>
+<blockquote>
+<div><ul class="simple">
+<li>no server to setup</li>
+<li>intelligent merging means merging multiple times isn’t painful.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="centralized">
+<h2>Centralized<a class="headerlink" href="#centralized" title="Permalink to this headline">¶</a></h2>
+<p>Also known as <em>lock-step</em>, this is essentially the same as the workflow
+encouraged/enforced by CVS and Subversion. All developers work on the same
+branch (or branches). They run <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">update</span></code> to get their checkout up-to-date,
+then <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">commit</span></code> to publish their changes to the central location.</p>
+<img alt="../_images/workflows_centralized.png" src="../_images/workflows_centralized.png" />
+<p>Subversion and CVS are good choices for implementing this workflow because they
+make it easy. Breezy directly supports it as well while providing some
+important advantages over CVS and Subversion:</p>
+<blockquote>
+<div><ul class="simple">
+<li>better branching and merging</li>
+<li>better renaming support.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="centralized-with-local-commits">
+<h2>Centralized with local commits<a class="headerlink" href="#centralized-with-local-commits" title="Permalink to this headline">¶</a></h2>
+<p>This is essentially the same as the <em>Centralized</em> model, except that when
+developers are making a series of changes, they do <code class="docutils literal notranslate"><span class="pre">commit</span> <span class="pre">--local</span></code> or unbind
+their checkout. When it is complete, they commit their work to the shared
+mainline.</p>
+<img alt="../_images/workflows_localcommit.png" src="../_images/workflows_localcommit.png" />
+<p>Advantages over <em>Centralized</em>:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Can work offline, e.g. when disconnected during travel</li>
+<li>Less chance for a bad commit to interfere with everyone else’s work</li>
+</ul>
+</div></blockquote>
+<p>Subversion and CVS do not support this model. Other distributed VCS tools can
+support it but do so less directly than Breezy does.</p>
+</div>
+<div class="section" id="decentralized-with-shared-mainline">
+<h2>Decentralized with shared mainline<a class="headerlink" href="#decentralized-with-shared-mainline" title="Permalink to this headline">¶</a></h2>
+<p>In this workflow, each developer has their own branch or branches, plus commit
+rights to the main branch. They do their work in their personal branch, then
+merge it into the mainline when it is ready.</p>
+<img alt="../_images/workflows_shared.png" src="../_images/workflows_shared.png" />
+<p>Advantage over <em>Centralized with local commits</em>:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Easier organization of work - separate changes can be developed in their own branches</li>
+<li>Developers can merge one another’s personal branches when working on something together.</li>
+</ul>
+</div></blockquote>
+<p>Subversion and CVS do not support this model. Other distributed VCS
+tools support it. Many features of Breezy are good for this workflow
+including ease of use, shared repositories, integrated merging and
+rich metadata (including directory rename tracking).</p>
+</div>
+<div class="section" id="decentralized-with-human-gatekeeper">
+<h2>Decentralized with human gatekeeper<a class="headerlink" href="#decentralized-with-human-gatekeeper" title="Permalink to this headline">¶</a></h2>
+<p>In this workflow, each developer has their own branch or branches, plus
+read-only access to the main branch. One developer (the gatekeeper) has commit
+rights to the main branch. When a developer wants their work merged, they ask
+the gatekeeper to merge it. The gatekeeper does code review, and merges the
+work into the main branch if it meets the necessary standards.</p>
+<img alt="../_images/workflows_gatekeeper.png" src="../_images/workflows_gatekeeper.png" />
+<p>Advantage over <em>Decentralized with shared mainline</em>:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Code is always reviewed before it enters the mainline</li>
+<li>Tighter control over when changes get incorporated into the mainline.</li>
+</ul>
+</div></blockquote>
+<p>A companion tool of Breezy’s called Bundle Buggy can be very useful for
+tracking what changes are up for review, their status and reviewer comments.</p>
+</div>
+<div class="section" id="decentralized-with-automatic-gatekeeper">
+<h2>Decentralized with automatic gatekeeper<a class="headerlink" href="#decentralized-with-automatic-gatekeeper" title="Permalink to this headline">¶</a></h2>
+<p>In this workflow, each developer has their own branch or branches, plus
+read-only access to the mainline. A software gatekeeper has commit rights to
+the main branch. When a developer wants their work merged, they request another
+person to review it. Once it has passed review, either the original author or
+the reviewer asks the gatekeeper software to merge it, depending on team
+policies. The gatekeeper software does a merge, a compile, and runs the test
+suite. If and only if the code passes, it is merged into the mainline.</p>
+<p>Note: As an alternative, the review step can be skipped and the author can
+submit the change to the automatic gatekeeper without it. (This is particularly
+appropriate when using practices such as Pair Programming that effectively
+promote just-in-time reviews instead of reviewing code as a separate step.)</p>
+<img alt="../_images/workflows_pqm.png" src="../_images/workflows_pqm.png" />
+<p>Advantages over <em>Decentralized with human gatekeeper</em>:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Code is always tested before it enters the mainline (so the integrity of the
+mainline is higher)</li>
+<li>Scales better as teams grow.</li>
+</ul>
+</div></blockquote>
+<p>A companion tool of Breezy’s called Patch Queue Manager (PQM) can provide the
+automated gatekeeper capability.</p>
+</div>
+<div class="section" id="implementing-a-workflow">
+<h2>Implementing a workflow<a class="headerlink" href="#implementing-a-workflow" title="Permalink to this headline">¶</a></h2>
+<p>For an in-depth look at how to implement each of the workflows above,
+see chapters 3 to 6 in this manual. First though, chapter 2
+explains some important pre-requisites including installation, general
+usage instructions and configuration tips.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="core_concepts.html" title="Core concepts"
+              >previous</a> |
+            <a href="installing_breezy.html" title="Installing Breezy"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/breezy_workflows.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

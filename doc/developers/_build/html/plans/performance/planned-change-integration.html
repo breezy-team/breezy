@@ -1,0 +1,247 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Integration of performance changes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="../../search.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="integration-of-performance-changes">
+<h1>Integration of performance changes<a class="headerlink" href="#integration-of-performance-changes" title="Permalink to this headline">¶</a></h1>
+<p>To deliver a version of bzr with all our planned changes will require
+significant integration work. Minimally each change needs to integrate with
+some aspect of the bzr version it’s merged into, but in reality many of these
+changes while conceptually independent will in fact have to integrate with the
+other changes we have planned before can have a completed system.</p>
+<p>Additionally changes that alter disk formats are inherently more tricky to
+integrate because we will often need to alter apis throughout the code base to
+expose the increased or reduced model of the preferred disk format.</p>
+<p>You can generate a graph <code class="docutils literal notranslate"><span class="pre">performance.png</span></code> in the source tree from
+Graphviz “dot” file <code class="docutils literal notranslate"><span class="pre">performance.dot</span></code>.  This graphs out the dependencies
+to let us make accurate assessments of the changes needed in terms of code
+and API, hopefully minimising the number of different integration steps we
+have to take, while giving us a broad surface area for development. It’s
+based on a summary in the next section of this document of the planned
+changes with their expected collaborators and dependencies. Where a
+command is listed, the expectation is that all uses of that command -
+local, remote, dumb transport and smart transport are being addressed
+together.</p>
+<p>The following provides a summary of the planned changes and their expected
+collaborators within the code base, along with an estimate of whether they are
+likely to require changes to their collaborators to be considered ‘finished’.</p>
+<blockquote>
+<div><ul class="simple">
+<li>Use case target APIs: Each of these is likely to alter the Tree interface.
+Some few of them focus on Branch and will alter Branch and Repository
+accordingly. As they are targeted APIs we can deep changes all the way down
+the stack to the underlying representation to make it all fit well.
+Presenting a top level API for many things will be possible now as long as
+the exposed data is audited for things we plan to make optional, or remove:
+Such things cannot be present in the final API. Writing these APIs now will
+provide strong feedback to the design process for those things which are
+considered optional or removable, so these APIs should be implemented
+before removing or making optional existing data.</li>
+<li>Deprecating versioned files as a supported API: This collaborates with the
+Repository API but can probably be done by adding a replacement API for
+places where the versioned-file api is used. We may well want to keep a
+concept of ‘a file over time’ or ‘inventories over time’, so the existing
+repository model of exposing versioned file objects may be ok; what we need
+to ensure we do is remove the places in the code base where you create or
+remove or otherwise describe manipulation of the storage by knit rather than
+talking at the level of file ids and revision ids. The current
+versioned-file API would be a burden for implementors of a blob based
+repository format, so the removal of callers, and deprecation of those parts
+of the API should be done before creating a blob based repository format.</li>
+<li>Creating a revision validator: Revision validators may depend on storage
+layer changes to inventories so while we can create a revision validator
+API, we cannot create the final one until we have the inventory structural
+changes completed.</li>
+<li>Annotation caching API: This API is a prerequisite for new repository
+formats. If written after they are introduced we may find that the
+repository is lacking in functionality, so the API should be implemented
+first.</li>
+<li>_iter_changes based merging: If the current _iter_changes_ API is
+insufficient, we should know about that before designing the disk format for
+generating fast _iter_changes_ output.</li>
+<li>Network-efficient revision graph API: This influences what questions we will
+want to ask a local repository very quickly; as such it’s a driver for the
+new repository format and should be in place first if possible. It’s probably
+not sufficiently different to local operations to make this a hard ordering
+though.</li>
+<li>Working tree disk ordering: Knowing the expected order for disk operations
+may influence the needed use case specific APIs, so having a solid
+understanding of what is optimal - and why - and whether it is pessimal on
+non-Linux-kernel platforms is rather important.</li>
+<li>Be able to version files greater than memory in size: This cannot be
+achieved until all parts of the library which deal with user files are able
+to provide access to files larger than memory. Many strategies can be
+considered for this - such as temporary files on disk, memory mapping etc.
+We should have enough of a design laid out that developers of repository and
+tree logic are able to start exposing apis, and considering requirements
+related to them, to let this happen.</li>
+<li>Per-file graph access API: This should be implemented on top of or as part
+of the newer API for accessing data about a file over time. It can be a
+separate step easily; but as it’s in the same area of the library should not
+be done in parallel.</li>
+<li>Repository stacking API: The key dependency/change required for this is that
+repositories must individually be happy with having partial data - e.g. many
+ghosts. However the way the API needs to be used should be driven from the
+command layer in, because it’s unclear at the moment what will work best.</li>
+<li>Revision stream API: This API will become clear as we streamline commands.
+On the data insertion side commit will want to generate new data. The
+commands pull, bundle, merge, push, possibly uncommit will want to copy
+existing data in a streaming fashion.</li>
+<li>New container format: It’s hard to tell what the right way to structure the
+layering is. Probably having smooth layering down to the point that code
+wants to operate on the containers directly will make this more clear. As
+bundles will become a read-only branch &amp; repository, the smart server wants
+streaming-containers, and we are planning a pack based repository, it
+appears that we will have three different direct container users. However,
+the bundle user may in fact be fake - because it really is a repository.</li>
+<li>Separation of annotation cache: Making the disk changes to achieve this
+depends on the new API being created. Bundles probably want to be
+annotation-free, so they are a form of implementation of this and will need
+the on-demand annotation facility.</li>
+<li>Repository operation disk ordering: Dramatically changing the ordering of
+disk operations requires a new repository format. We have most of the
+analysis done to be able to specify the desired ordering, so it should be
+possible to write such a format now based on the container logic, but
+without any of the inventory representation or delta representation changes.
+This would for instance involve pack combining ordering the existing diffs
+in reverse order.</li>
+<li>Inventory representation: This has a dependency on what data is
+dropped from the core and what is kept. Without those changes being known we
+can implement a new representation, but it won’t be a final one. One of the
+services the new inventory representation is expected to deliver is one of
+validators for subtrees – a means of comparing just subtrees of two
+inventories without comparing all the data within that subtree.</li>
+<li>Delta storage optimisation: This has a strict dependency on a new repository
+format. Optimisation takes many forms - we probably cannot complete the
+desired optimisations under knits though we could use xdelta within a
+knit-variation.</li>
+<li>Greatest distance from origin cache: The potential users of this exist
+today, it is likely able to be implemented immediately, but we are not sure
+that its needed anymore, so it is being shelved.</li>
+<li>Removing derivable data: It’s very hard to do this while the derived data is
+exposed in API’s but not used by commands. Implemented the targeted API’s
+for our core use cases should allow use to remove accidental use of derived
+data, making only explicit uses of it visible, and isolating the impact of
+removing it : allowing us to experiment sensibly. This covers both dropping
+the per-file merge graph and the hash-based-names proposals.</li>
+</ul>
+</div></blockquote>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../../_sources/plans/performance/planned-change-integration.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

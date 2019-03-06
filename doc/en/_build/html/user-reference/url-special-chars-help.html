@@ -1,0 +1,148 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Special character handling in URLs &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="URL Identifiers" href="urlspec-help.html" />
+    <link rel="prev" title="Status Flags" href="status-flags-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="status-flags-help.html" title="Status Flags"
+             accesskey="P">previous</a> |
+          <a href="urlspec-help.html" title="URL Identifiers"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="special-character-handling-in-urls">
+<h1>Special character handling in URLs<a class="headerlink" href="#special-character-handling-in-urls" title="Permalink to this headline">¶</a></h1>
+<p>Bazaar allows locations to be specified in multiple ways, either:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Fully qualified URLs</li>
+<li>File system paths, relative or absolute</li>
+</ul>
+</div></blockquote>
+<p>Internally brz treats all locations as URLs. For any file system paths
+that are specified it will automatically determine the appropriate URL
+representation, and escape special characters where necessary.</p>
+<p>There are a few characters which have special meaning in URLs and need careful
+handling to avoid ambiguities. Characters can be escaped with a % and a hex
+value in URLs. Any non-ASCII characters in a file path will automatically be
+urlencoded when the path is converted to a URL.</p>
+<p>URLs represent non-ASCII characters in an encoding defined by the server, but
+usually UTF-8.  The % escapes should be of the UTF-8 bytes.  Bazaar tries to be
+generous in what it accepts as a URL and to print them in a way that
+will be readable.</p>
+<p>For example, if you have a directory named ‘/tmp/%2False’ these are all valid
+ways of accessing the content (0x2F, or 47, is the ASCII code for forward slash):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">/</span><span class="n">tmp</span>
+<span class="n">brz</span> <span class="n">log</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/%</span><span class="mi">2</span><span class="kc">False</span>
+<span class="n">brz</span> <span class="n">log</span> <span class="o">%</span><span class="mi">2</span><span class="kc">False</span>
+<span class="n">brz</span> <span class="n">log</span> <span class="n">file</span><span class="p">:</span><span class="o">///</span><span class="n">tmp</span><span class="o">/%</span><span class="mi">252</span><span class="kc">False</span>
+<span class="n">brz</span> <span class="n">log</span> <span class="n">file</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="o">/</span><span class="n">tmp</span><span class="o">/%</span><span class="mi">252</span><span class="kc">False</span>
+<span class="n">brz</span> <span class="n">log</span> <span class="n">file</span><span class="p">:</span><span class="o">%</span><span class="mi">252</span><span class="kc">False</span>
+</pre></div>
+</div>
+<p>These are valid but do not refer to the same file:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="n">file</span><span class="p">:</span><span class="o">///</span><span class="n">tmp</span><span class="o">/%</span><span class="mi">2</span><span class="kc">False</span> <span class="p">(</span><span class="n">refers</span> <span class="n">to</span> <span class="n">a</span> <span class="n">file</span> <span class="n">called</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span>\<span class="o">/</span><span class="n">alse</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">log</span> <span class="o">%</span><span class="mi">252</span><span class="kc">False</span> <span class="p">(</span><span class="n">refers</span> <span class="n">to</span> <span class="n">a</span> <span class="n">file</span> <span class="n">called</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/%</span><span class="mi">252</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Comma also has special meaning in URLs, because it denotes <a class="reference internal" href="#segment-parameters">segment parameters</a></p>
+<p><span class="target" id="segment-parameters">segment parameters</span>: <a class="reference external" href="http://www.ietf.org/rfc/rfc3986.txt">http://www.ietf.org/rfc/rfc3986.txt</a> (section 3.3)</p>
+<p>Comma is also special in any file system paths that are specified. To use a literal
+comma in a file system path, specify a URL and URL encode the comma:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="n">foo</span><span class="p">,</span><span class="n">branch</span><span class="o">=</span><span class="n">bla</span> <span class="c1"># path &quot;foo&quot; with the segment parameter &quot;branch&quot; set to &quot;bla&quot;</span>
+<span class="n">brz</span> <span class="n">log</span> <span class="n">file</span><span class="p">:</span><span class="n">foo</span><span class="o">%</span><span class="mi">2</span><span class="n">Cbranch</span><span class="o">=</span><span class="n">bla</span> <span class="c1"># path &quot;foo,branch=bla&quot;</span>
+<span class="n">brz</span> <span class="n">log</span> <span class="n">file</span><span class="p">:</span><span class="n">foo</span><span class="p">,</span><span class="n">branch</span><span class="o">=</span><span class="n">bla</span> <span class="c1"># path &quot;foo&quot; with segment parameter &quot;branch&quot; set to &quot;bla&quot;</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="status-flags-help.html" title="Status Flags"
+              >previous</a> |
+            <a href="urlspec-help.html" title="URL Identifiers"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/url-special-chars-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

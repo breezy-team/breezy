@@ -1,0 +1,38 @@
+config
+======
+
+:Purpose: Display, set or remove a configuration option.
+:Usage:   brz config [NAME]
+
+:Options:
+  --all                 Display all the defined values for the matching
+                        options.
+  -d ARG, --directory=ARG
+                        Branch to operate on, instead of working directory.
+  -h, --help            Show help message.
+  -q, --quiet           Only display errors and warnings.
+  --remove              Remove the option from the configuration file.
+  --scope=ARG           Reduce the scope to the specified configuration file.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+:Description:
+  Display the active value for option NAME.
+  
+  If --all is specified, NAME is interpreted as a regular expression and all
+  matching options are displayed mentioning their scope and without resolving
+  option references in the value). The active value that bzr will take into
+  account is the first one displayed for each option.
+  
+  If NAME is not given, --all .* is implied (all options are displayed for the
+  current scope).
+  
+  Setting a value is achieved by using NAME=value without spaces. The value
+  is set in the most relevant scope and can be checked by displaying the
+  option again.
+  
+  Removing a value is achieved by using --remove NAME.
+
+:See also: :doc:`configuration <configuration-help>`
+
+

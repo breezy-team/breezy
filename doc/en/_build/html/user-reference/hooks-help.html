@@ -1,0 +1,530 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Hooks &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Location aliases" href="location-alias-help.html" />
+    <link rel="prev" title="Glossary" href="glossary-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="glossary-help.html" title="Glossary"
+             accesskey="P">previous</a> |
+          <a href="location-alias-help.html" title="Location aliases"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="hooks">
+<h1>Hooks<a class="headerlink" href="#hooks" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>A hook of type <em>xxx</em> of class <em>yyy</em> needs to be registered using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">yyy</span><span class="o">.</span><span class="n">hooks</span><span class="o">.</span><span class="n">install_named_hook</span><span class="p">(</span><span class="s2">&quot;xxx&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="../user-guide/hooks.html"><span class="doc">Using hooks</span></a> in the User Guide for examples.</p>
+<p>The class that contains each hook is given before the hooks it supplies. For
+instance, BranchHooks as the class is the hooks class for
+<cite>breezy.branch.Branch.hooks</cite>.</p>
+<p>Each description also indicates whether the hook runs on the client (the
+machine where bzr was invoked) or the server (the machine addressed by
+the branch URL).  These may be, but are not necessarily, the same machine.</p>
+<p>Plugins (including hooks) are run on the server if all of these is true:</p>
+<blockquote>
+<div><ul class="simple">
+<li>The connection is via a smart server (accessed with a URL starting with
+“bzr://”, “bzr+ssh://” or “bzr+http://”, or accessed via a “http://”
+URL when a smart server is available via HTTP).</li>
+<li>The hook is either server specific or part of general infrastructure rather
+than client specific code (such as commit).</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="branchhooks">
+<h2>BranchHooks<a class="headerlink" href="#branchhooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="automatic-tag-name">
+<h3>automatic_tag_name<a class="headerlink" href="#automatic-tag-name" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.2</p>
+<p>Called to determine an automatic tag name for a revision.
+automatic_tag_name is called with (branch, revision_id) and should
+return a tag name or None if no tag name could be determined. The
+first non-None tag name returned will be used.</p>
+</div>
+<div class="section" id="open">
+<h3>open<a class="headerlink" href="#open" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.8</p>
+<p>Called with the Branch object that has been opened after a branch is
+opened.</p>
+</div>
+<div class="section" id="post-branch-init">
+<h3>post_branch_init<a class="headerlink" href="#post-branch-init" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.2</p>
+<p>Called after new branch initialization completes. post_branch_init is
+called with a breezy.branch.BranchInitHookParams. Note that init,
+branch and checkout (both heavyweight and lightweight) will all
+trigger this hook.</p>
+</div>
+<div class="section" id="post-change-branch-tip">
+<h3>post_change_branch_tip<a class="headerlink" href="#post-change-branch-tip" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.4</p>
+<p>Called in bzr client and server after a change to the tip of a branch
+is made. post_change_branch_tip is called with a
+breezy.branch.ChangeBranchTipParams. Note that push, pull, commit,
+uncommit will all trigger this hook.</p>
+</div>
+<div class="section" id="post-commit">
+<h3>post_commit<a class="headerlink" href="#post-commit" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 0.15</p>
+<p>Called in the bzr client after a commit has completed. post_commit is
+called with (local, master, old_revno, old_revid, new_revno,
+new_revid). old_revid is NULL_REVISION for the first commit to a
+branch.</p>
+</div>
+<div class="section" id="post-pull">
+<h3>post_pull<a class="headerlink" href="#post-pull" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 0.15</p>
+<p>Called after a pull operation completes. post_pull is called with a
+breezy.branch.PullResult object and only runs in the bzr client.</p>
+</div>
+<div class="section" id="post-push">
+<h3>post_push<a class="headerlink" href="#post-push" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 0.15</p>
+<p>Called after a push operation completes. post_push is called with a
+breezy.branch.BranchPushResult object and only runs in the bzr client.</p>
+</div>
+<div class="section" id="post-switch">
+<h3>post_switch<a class="headerlink" href="#post-switch" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.2</p>
+<p>Called after a checkout switches branch. post_switch is called with a
+breezy.branch.SwitchHookParams.</p>
+</div>
+<div class="section" id="post-uncommit">
+<h3>post_uncommit<a class="headerlink" href="#post-uncommit" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 0.15</p>
+<p>Called in the bzr client after an uncommit completes. post_uncommit is
+called with (local, master, old_revno, old_revid, new_revno,
+new_revid) where local is the local branch or None, master is the
+target branch, and an empty branch receives new_revno of 0, new_revid
+of None.</p>
+</div>
+<div class="section" id="pre-change-branch-tip">
+<h3>pre_change_branch_tip<a class="headerlink" href="#pre-change-branch-tip" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.6</p>
+<p>Called in bzr client and server before a change to the tip of a branch
+is made. pre_change_branch_tip is called with a
+breezy.branch.ChangeBranchTipParams. Note that push, pull, commit,
+uncommit will all trigger this hook.</p>
+</div>
+<div class="section" id="pre-commit">
+<h3>pre_commit<a class="headerlink" href="#pre-commit" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 0.91</p>
+<p>Called after a commit is calculated but before it is completed.
+pre_commit is called with (local, master, old_revno, old_revid,
+future_revno, future_revid, tree_delta, future_tree). old_revid is
+NULL_REVISION for the first commit to a branch, tree_delta is a
+TreeDelta object describing changes from the basis revision. hooks
+MUST NOT modify this delta.  future_tree is an in-memory tree obtained
+from CommitBuilder.revision_tree() and hooks MUST NOT modify this
+tree.</p>
+</div>
+<div class="section" id="transform-fallback-location">
+<h3>transform_fallback_location<a class="headerlink" href="#transform-fallback-location" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.9</p>
+<p>Called when a stacked branch is activating its fallback locations.
+transform_fallback_location is called with (branch, url), and should
+return a new url. Returning the same url allows it to be used as-is,
+returning a different one can be used to cause the branch to stack on
+a closer copy of that fallback_location. Note that the branch cannot
+have history accessing methods called on it during this hook because
+the fallback locations have not been activated. When there are
+multiple hooks installed for transform_fallback_location, all are
+called with the url returned from the previous hook.The order is
+however undefined.</p>
+</div>
+</div>
+<div class="section" id="smartclienthooks">
+<h2>SmartClientHooks<a class="headerlink" href="#smartclienthooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="call">
+<h3>call<a class="headerlink" href="#call" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: unknown</p>
+<p>Called when the smart client is submitting a request to the smart
+server. Called with a breezy.bzr.smart.client.CallHookParams object.
+Streaming request bodies, and responses, are not accessible.</p>
+</div>
+</div>
+<div class="section" id="smartserverhooks">
+<h2>SmartServerHooks<a class="headerlink" href="#smartserverhooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="server-exception">
+<h3>server_exception<a class="headerlink" href="#server-exception" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.4</p>
+<p>Called by the bzr server when an exception occurs. server_exception is
+called with the sys.exc_info() tuple return true for the hook if the
+exception has been handled, in which case the server will exit
+normally.</p>
+</div>
+<div class="section" id="server-started">
+<h3>server_started<a class="headerlink" href="#server-started" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 0.16</p>
+<p>Called by the bzr server when it starts serving a directory.
+server_started is called with (backing urls, public url), where
+backing_url is a list of URLs giving the server-specific directory
+locations, and public_url is the public URL for the directory being
+served.</p>
+</div>
+<div class="section" id="server-started-ex">
+<h3>server_started_ex<a class="headerlink" href="#server-started-ex" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.17</p>
+<p>Called by the bzr server when it starts serving a directory.
+server_started is called with (backing_urls, server_obj).</p>
+</div>
+<div class="section" id="server-stopped">
+<h3>server_stopped<a class="headerlink" href="#server-stopped" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 0.16</p>
+<p>Called by the bzr server when it stops serving a directory.
+server_stopped is called with the same parameters as the
+server_started hook: (backing_urls, public_url).</p>
+</div>
+</div>
+<div class="section" id="commandhooks">
+<h2>CommandHooks<a class="headerlink" href="#commandhooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="extend-command">
+<h3>extend_command<a class="headerlink" href="#extend-command" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.13</p>
+<p>Called after creating a command object to allow modifications such as
+adding or removing options, docs etc. Called with the new
+breezy.commands.Command object.</p>
+</div>
+<div class="section" id="get-command">
+<h3>get_command<a class="headerlink" href="#get-command" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.17</p>
+<p>Called when creating a single command. Called with (cmd_or_None,
+command_name). get_command should either return the cmd_or_None
+parameter, or a replacement Command object that should be used for the
+command. Note that the Command.hooks hooks are core infrastructure.
+Many users will prefer to use breezy.commands.register_command or
+plugin_cmds.register_lazy.</p>
+</div>
+<div class="section" id="get-missing-command">
+<h3>get_missing_command<a class="headerlink" href="#get-missing-command" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.17</p>
+<p>Called when creating a single command if no command could be found.
+Called with (command_name). get_missing_command should either return
+None, or a Command object to be used for the command.</p>
+</div>
+<div class="section" id="list-commands">
+<h3>list_commands<a class="headerlink" href="#list-commands" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.17</p>
+<p>Called when enumerating commands. Called with a set of cmd_name
+strings for all the commands found so far. This set  is safe to mutate
+- e.g. to remove a command. list_commands should return the updated
+set of command names.</p>
+</div>
+<div class="section" id="post-command">
+<h3>post_command<a class="headerlink" href="#post-command" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.6</p>
+<p>Called after executing a command. Called with the command object.</p>
+</div>
+<div class="section" id="pre-command">
+<h3>pre_command<a class="headerlink" href="#pre-command" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.6</p>
+<p>Called prior to executing a command. Called with the command object.</p>
+</div>
+</div>
+<div class="section" id="confighooks">
+<h2>_ConfigHooks<a class="headerlink" href="#confighooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="get">
+<h3>get<a class="headerlink" href="#get" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.4</p>
+<p>Invoked when a config option is read. The signature is (stack, name,
+value).</p>
+</div>
+<div class="section" id="load">
+<h3>load<a class="headerlink" href="#load" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.4</p>
+<p>Invoked when a config store is loaded. The signature is (store).</p>
+</div>
+<div class="section" id="remove">
+<h3>remove<a class="headerlink" href="#remove" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.4</p>
+<p>Invoked when a config option is removed. The signature is (stack,
+name).</p>
+</div>
+<div class="section" id="save">
+<h3>save<a class="headerlink" href="#save" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.4</p>
+<p>Invoked when a config store is saved. The signature is (store).</p>
+</div>
+<div class="section" id="set">
+<h3>set<a class="headerlink" href="#set" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.4</p>
+<p>Invoked when a config option is set. The signature is (stack, name,
+value).</p>
+</div>
+</div>
+<div class="section" id="controldirhooks">
+<h2>ControlDirHooks<a class="headerlink" href="#controldirhooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="post-repo-init">
+<h3>post_repo_init<a class="headerlink" href="#post-repo-init" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.2</p>
+<p>Invoked after a repository has been initialized. post_repo_init is
+called with a breezy.controldir.RepoInitHookParams.</p>
+</div>
+<div class="section" id="pre-open">
+<h3>pre_open<a class="headerlink" href="#pre-open" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.14</p>
+<p>Invoked before attempting to open a ControlDir with the transport that
+the open will use.</p>
+</div>
+</div>
+<div class="section" id="infohooks">
+<h2>InfoHooks<a class="headerlink" href="#infohooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="repository">
+<h3>repository<a class="headerlink" href="#repository" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.15</p>
+<p>Invoked when displaying the statistics for a repository. repository is
+called with a statistics dictionary as returned by the repository and
+a file-like object to write to.</p>
+</div>
+</div>
+<div class="section" id="lockhooks">
+<h2>LockHooks<a class="headerlink" href="#lockhooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="lock-acquired">
+<h3>lock_acquired<a class="headerlink" href="#lock-acquired" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.8</p>
+<p>Called with a breezy.lock.LockResult when a physical lock is acquired.</p>
+</div>
+<div class="section" id="lock-broken">
+<h3>lock_broken<a class="headerlink" href="#lock-broken" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.15</p>
+<p>Called with a breezy.lock.LockResult when a physical lock is broken.</p>
+</div>
+<div class="section" id="lock-released">
+<h3>lock_released<a class="headerlink" href="#lock-released" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.8</p>
+<p>Called with a breezy.lock.LockResult when a physical lock is released.</p>
+</div>
+</div>
+<div class="section" id="mergehooks">
+<h2>MergeHooks<a class="headerlink" href="#mergehooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="merge-file-content">
+<h3>merge_file_content<a class="headerlink" href="#merge-file-content" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.1</p>
+<p>Called with a breezy.merge.Merger object to create a per file merge
+object when starting a merge. Should return either None or a subclass
+of <code class="docutils literal notranslate"><span class="pre">breezy.merge.AbstractPerFileMerger</span></code>. Such objects will then be
+called per file that needs to be merged (including when one side has
+deleted the file and the other has changed it). See the
+AbstractPerFileMerger API docs for details on how it is used by merge.</p>
+</div>
+<div class="section" id="post-merge">
+<h3>post_merge<a class="headerlink" href="#post-merge" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.5</p>
+<p>Called after a merge. Receives a Merger object as the single argument.
+The return value is ignored.</p>
+</div>
+<div class="section" id="pre-merge">
+<h3>pre_merge<a class="headerlink" href="#pre-merge" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.5</p>
+<p>Called before a merge. Receives a Merger object as the single
+argument.</p>
+</div>
+</div>
+<div class="section" id="mergedirectivehooks">
+<h2>MergeDirectiveHooks<a class="headerlink" href="#mergedirectivehooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="merge-request-body">
+<h3>merge_request_body<a class="headerlink" href="#merge-request-body" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.15.0</p>
+<p>Called with a MergeRequestBodyParams when a body is needed for a merge
+request.  Callbacks must return a body.  If more than one callback is
+registered, the output of one callback is provided to the next.</p>
+</div>
+</div>
+<div class="section" id="messageeditorhooks">
+<h2>MessageEditorHooks<a class="headerlink" href="#messageeditorhooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="commit-message-template">
+<h3>commit_message_template<a class="headerlink" href="#commit-message-template" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.10</p>
+<p>Called when a commit message is being generated.
+commit_message_template is called with the breezy.commit.Commit object
+and the message that is known so far. commit_message_template must
+return a new message to use (which could be the same as it was given).
+When there are multiple hooks registered for commit_message_template,
+they are chained with the result from the first passed into the
+second, and so on.</p>
+</div>
+<div class="section" id="set-commit-message">
+<h3>set_commit_message<a class="headerlink" href="#set-commit-message" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.4</p>
+<p>Set a fixed commit message. set_commit_message is called with the
+breezy.commit.Commit object (so you can also change e.g. revision
+properties by editing commit.builder._revprops) and the message so
+far. set_commit_message must return the message to use or None if it
+should use the message editor as normal.</p>
+</div>
+</div>
+<div class="section" id="mutabletreehooks">
+<h2>MutableTreeHooks<a class="headerlink" href="#mutabletreehooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="post-build-tree">
+<h3>post_build_tree<a class="headerlink" href="#post-build-tree" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.5</p>
+<p>Called after a completely new tree is built. The hook is called with
+the tree as its only argument.</p>
+</div>
+<div class="section" id="id1">
+<h3>post_commit<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.0</p>
+<p>Called after a commit is performed on a tree. The hook is called with
+a breezy.mutabletree.PostCommitHookParams object. The mutable tree the
+commit was performed on is available via the mutable_tree attribute of
+that object.</p>
+</div>
+<div class="section" id="post-transform">
+<h3>post_transform<a class="headerlink" href="#post-transform" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.5</p>
+<p>Called after a tree transform has been performed on a tree. The hook
+is called with the tree that is being transformed and the transform.</p>
+</div>
+<div class="section" id="pre-transform">
+<h3>pre_transform<a class="headerlink" href="#pre-transform" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.5</p>
+<p>Called before a tree transform on this tree. The hook is called with
+the tree that is being transformed and the transform.</p>
+</div>
+<div class="section" id="start-commit">
+<h3>start_commit<a class="headerlink" href="#start-commit" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.4</p>
+<p>Called before a commit is performed on a tree. The start commit hook
+is able to change the tree before the commit takes place. start_commit
+is called with the breezy.mutabletree.MutableTree that the commit is
+being performed on.</p>
+</div>
+</div>
+<div class="section" id="statushooks">
+<h2>StatusHooks<a class="headerlink" href="#statushooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="post-status">
+<h3>post_status<a class="headerlink" href="#post-status" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.3</p>
+<p>Called with argument StatusHookParams after Bazaar has displayed the
+status. StatusHookParams has the attributes (old_tree, new_tree,
+to_file, versioned, show_ids, short, verbose). The last four arguments
+correspond to the command line options specified by the user for the
+status command. to_file is the output stream for writing.</p>
+</div>
+<div class="section" id="pre-status">
+<h3>pre_status<a class="headerlink" href="#pre-status" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.3</p>
+<p>Called with argument StatusHookParams before Bazaar displays the
+status. StatusHookParams has the attributes (old_tree, new_tree,
+to_file, versioned, show_ids, short, verbose). The last four arguments
+correspond to the command line options specified by the user for the
+status command. to_file is the output stream for writing.</p>
+</div>
+</div>
+<div class="section" id="transporthooks">
+<h2>TransportHooks<a class="headerlink" href="#transporthooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="post-connect">
+<h3>post_connect<a class="headerlink" href="#post-connect" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 2.5</p>
+<p>Called after a new connection is established or a reconnect occurs.
+The sole argument passed is either the connected transport or smart
+medium instance.</p>
+</div>
+</div>
+<div class="section" id="rioversioninfobuilderhooks">
+<h2>RioVersionInfoBuilderHooks<a class="headerlink" href="#rioversioninfobuilderhooks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="revision">
+<h3>revision<a class="headerlink" href="#revision" title="Permalink to this headline">¶</a></h3>
+<p>Introduced in: 1.15</p>
+<p>Invoked when adding information about a revision to the RIO stanza
+that is printed. revision is called with a revision object and a RIO
+stanza.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="glossary-help.html" title="Glossary"
+              >previous</a> |
+            <a href="location-alias-help.html" title="Location aliases"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/hooks-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

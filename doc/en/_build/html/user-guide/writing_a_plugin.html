@@ -1,0 +1,154 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Writing a plugin &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Licence" href="licence.html" />
+    <link rel="prev" title="Serving Breezy with Apache" href="http_smart_server.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="http_smart_server.html" title="Serving Breezy with Apache"
+             accesskey="P">previous</a> |
+          <a href="licence.html" title="Licence"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="writing-a-plugin">
+<h1>Writing a plugin<a class="headerlink" href="#writing-a-plugin" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>Plugins are very similar to brz core functionality.  They can import
+anything in breezy.  A plugin may simply override standard functionality,
+but most plugins supply new commands.</p>
+</div>
+<div class="section" id="creating-a-new-command">
+<h2>Creating a new command<a class="headerlink" href="#creating-a-new-command" title="Permalink to this headline">¶</a></h2>
+<p>To create a command, make a new object that derives from
+<code class="docutils literal notranslate"><span class="pre">breezy.commands.Command</span></code>, and name it <code class="docutils literal notranslate"><span class="pre">cmd_foo</span></code>, where foo is the name of
+your command.  If you create a command whose name contains an underscore,
+it will appear in the UI with the underscore turned into a hyphen.  For
+example, <cite>cmd_baz_import</cite> will appear as <cite>baz-import</cite>.  For examples of how
+to write commands, please see <code class="docutils literal notranslate"><span class="pre">builtins.py</span></code>.</p>
+<p>Once you’ve created a command you must register the command with
+<code class="docutils literal notranslate"><span class="pre">breezy.commands.register_command(cmd_foo)</span></code>.  You must register the
+command when your file is imported, otherwise brz will not see it.</p>
+</div>
+<div class="section" id="installing-a-hook">
+<h2>Installing a hook<a class="headerlink" href="#installing-a-hook" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference external" href="hooks.txt">Using hooks</a>.</p>
+<blockquote>
+<div></div></blockquote>
+</div>
+<div class="section" id="specifying-a-plugin-version-number">
+<h2>Specifying a plugin version number<a class="headerlink" href="#specifying-a-plugin-version-number" title="Permalink to this headline">¶</a></h2>
+<p>Simply define <code class="docutils literal notranslate"><span class="pre">version_info</span></code> to be a tuple defining the current version
+number of your plugin. eg.
+<code class="docutils literal notranslate"><span class="pre">version_info</span> <span class="pre">=</span> <span class="pre">(0,</span> <span class="pre">9,</span> <span class="pre">0)</span></code>
+<code class="docutils literal notranslate"><span class="pre">version_info</span> <span class="pre">=</span> <span class="pre">(0,</span> <span class="pre">9,</span> <span class="pre">0,</span> <span class="pre">'dev',</span> <span class="pre">0)</span></code></p>
+</div>
+<div class="section" id="plugin-searching-rules">
+<h2>Plugin searching rules<a class="headerlink" href="#plugin-searching-rules" title="Permalink to this headline">¶</a></h2>
+<p>Breezy will scan <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/plugins</span></code>  and <code class="docutils literal notranslate"><span class="pre">breezy/plugins</span></code> for
+plugins by default.  You can override this with  <code class="docutils literal notranslate"><span class="pre">BRZ_PLUGIN_PATH</span></code>
+(see <a class="reference external" href="../user-reference/configuration-help.html#brz-plugin-path">User Reference</a> for details).</p>
+<p>Plugins may be either modules or packages.  If your plugin is a single
+file, you can structure it as a module.  If it has multiple files, or if
+you want to distribute it as a brz branch, you should structure it as a
+package, i.e. a directory with an <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> file.</p>
+</div>
+<div class="section" id="more-information">
+<h2>More information<a class="headerlink" href="#more-information" title="Permalink to this headline">¶</a></h2>
+<p>Please feel free to contribute your plugin to Breezy, if you think it
+would be useful to other people.</p>
+<p>See the <a class="reference external" href="../developer-guide/HACKING.html">Breezy Developer Guide</a> for details on Breezy’s development
+guidelines and policies.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="http_smart_server.html" title="Serving Breezy with Apache"
+              >previous</a> |
+            <a href="licence.html" title="Licence"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/writing_a_plugin.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,354 @@
+============
+Repositories
+============
+
+Status
+======
+
+:Date: 2007-07-08
+
+This document describes the services repositories offer and need to offer
+within breezy.
+
+
+.. contents::
+
+
+Motivation
+==========
+
+To provide clarity to API and performance tradeoff decisions by
+centralising the requirements placed upon repositories.
+
+
+Terminology
+===========
+
+A **repository** is a store of historical data for Breezy.
+
+
+Command Requirements
+====================
+
+==================  ====================
+Command             Needed services
+==================  ====================
+Add                 None
+Annotate            Annotated file texts, revision details
+Branch              Fetch, Revision parents, Inventory contents, All file texts
+Bundle              Maximally compact diffs (file and inventory), Revision graph
+                    difference, Revision texts.
+Commit              Insert new texts, insert new inventory via delta, insert
+                    revision, insert signature
+Fetching            Revision graph difference, ghost identification, stream data
+                    introduced by a set of revisions in some cheap form, insert
+                    data from a stream, validate data during insertion.
+Garbage Collection  Exclusive lock the repository preventing readers.
+Revert              Delta from working tree to historical tree, and then
+                    arbitrary file access to obtain the texts of differing
+                    files.
+Uncommit            Revision graph access.
+Status              Revision graph access, revision text access, file
+                    fingerprint information, inventory differencing.
+Diff                As status but also file text access.
+Merge               As diff but needs up to twice as many file texts -
+                    base and other for each changed file. Also an initial
+                    fetch is needed.
+Log                 Revision graph (entire at the moment) access,
+                    sometimes status between adjacent revisions. Log of a
+                    file needs per-file-graph. Dominator caching or
+                    similar tools may be needed to prevent entire graph
+                    access.
+Missing             Revision graph access, and revision texts to show
+                    output.
+Update              As for merge, but twice.
+==================  ====================
+
+Data access patterns
+====================
+
+Ideally we can make our data access for commands such as branch to
+dovetail well with the native storage in the repository, in the common
+case. Doing this may require choosing the behaviour of some commands to
+allow us to have a smaller range of access patterns which we can optimise
+more heavily. Alternatively if each command is very predicable in its
+data access pattern we may be able to hint to the low level layers which
+pattern is needed on a per command basis to get efficient behaviour.
+
+===================  ===================================================
+Command              Data access pattern
+===================  ===================================================
+Annotate-cached      Find text name in an inventory, Recreate one text,
+                     recreate annotation regions
+Annotate-on demand   Find file id from name, then breadth-first pre-order
+                     traversal of versions-of-the-file until the annotation
+                     is complete.
+Branch               Fetch, possibly taking a copy of any file present in a
+                     nominated revision when it is validated during fetch.
+Bundle               Revision-graph as for fetch; then inventories for
+                     selected revision_ids to determine file texts, then
+                     mp-parent deltas for all determined file texts.
+Commit               Something like basis-inventories read to determine
+                     per-file graphs, insertion of new texts (which may
+                     be delta compressed), generation of annotation
+                     regions if the repository is configured to do so,
+                     finalisation of the inventory pointing at all the new
+                     texts and finally a revision and possibly signature.
+Fetching             Revision-graph searching to find the graph difference.
+                     Scan the inventory data introduced during the selected
+                     revisions, and grab the on disk data for the found
+                     file texts, annotation region data, per-file-graph
+                     data, piling all this into a stream.
+Garbage Collection   Basically a mass fetch of all the revisions which
+                     branches point at, then a bait and switch with the old
+                     repository thus removing unreferenced data.
+Revert               Revision graph access for the revision being reverted
+                     to, inventory extraction of that revision,
+                     dirblock-order file text extract for files that were
+                     different.
+Uncommit             Revision graph access to synthesise pending-merges
+                     linear access down left-hand-side, with is_ancestor
+                     checks between all the found non-left-hand-side
+                     parents.
+Status               Lookup the revisions added by pending merges and their
+                     commit messages. Then an inventory difference between
+                     the trees involved, which may include a working tree.
+                     If there is a working tree involved then the file
+                     fingerprint for cache-misses on files will be needed.
+                     Note that dirstate caches most of this making
+                     repository performance largely irrelevant: but if it
+                     was fast enough dirstate might be able to be simpler/
+Diff                 As status but also file text access for every file
+                     that is different - either one text (working tree
+                     diff) or a diff of two (revision to revision diff).
+Merge                As diff but needs up to twice as many file texts -
+                     base and other for each changed file. Also an initial
+                     fetch is needed. Note that the access pattern is
+                     probably id-based at the moment, but that may be
+                     'fixed' with the iter_changes based merge. Also note
+                     that while the texts from OTHER are the ones accessed,
+                     this is equivalent to the **newest** form of each text
+                     changed from BASE to OTHER. And as the repository
+                     looks at when data is introduced, this should be the
+                     pattern we focus on for merge.
+Log                  Revision graph (entire at the moment) access, log of a
+                     file wants a per-file-graph. Log -v will want
+                     newest-first inventory deltas between revisions.
+Missing              Revision graph access, breadth-first pre-order.
+Update               As for merge, but twice.
+===================  ===================================================
+
+Patterns used
+-------------
+
+Note that these are able to be changed by changing what we store. For
+instance if the repository satisfies mpdiff requests, then bundle can be
+defined in terms of mpdiff lookups rather than file text lookups
+appropriate to create mpdiffs. If the repository satisfies full text
+requests only, then you need the topological access to build up the
+desired mpdiffs.
+
+=========================================== =========
+Pattern                                     Commands
+=========================================== =========
+Single file text                            annotate, diff
+Files present in one revision               branch
+Newest form of files altered by revisions   merge, update?
+Topological access to file versions/deltas  annotate-uncached
+Stream all data required to recreate revs   branch (lightweight)
+Stream file texts in topological order      bundle
+Write full versions of files, inv, rev, sig commit
+Write deltas of files, inv for one tree     commit
+Stream all data introduced by revs          fetch
+Regenerate/combine deltas of many trees     fetch, pack
+Reconstruct all texts and validate trees    check, fetch
+Revision graph walk                         fetch, pack, uncommit,
+                                            annotate-uncached,
+                                            merge, log, missing
+Top down access multiple invs concurrently  status, diff, merge?, update?
+Concurrent access to N file texts           diff, merge
+Iteration of inventory deltas               log -v, fetch?
+=========================================== =========
+
+Facilities to scale well
+========================
+
+Indices
+-------
+
+We want < linear access to all data in the repository. This suggests
+everything is indexed to some degree.
+
+Often we know the kind of data we are accessing; which allows us to
+partition our indices if that will help (e.g. by reducing the total index
+size for queries that only care about the revision graph).
+
+Indices that support our data access patterns will usually display
+increased locality of reference, reducing the impact of a large indices
+without needing careful page size management or other tricks.
+
+We need repository wide indices. For the current repositories this is
+achieved by dividing the keyspace (revisions, signatures, inventories,
+per-fileid) and then having an append only index within each keyspace.
+For pack based repositories we will want some means to query the index of
+each component pack, presumably as a single logical index.
+
+It would be nice if indexing was made cleanly separate from storage. So
+that suggests indices don't know the meaning of the lookup; indices which
+offer particular ordering, or graph walking facilities will clearly need
+that information, but perhaps they don't need to know the semantics ?
+
+Index size
+~~~~~~~~~~
+
+Smaller indexes are good. We could go with one big index, or a different
+index for different operation styles. As multiple indices will occupy more
+space in total we should consider carefully about adding indices.
+
+Index ordering
+~~~~~~~~~~~~~~
+
+Looking at the data access patterns some operations such as graph walking
+can clearly be made more efficient by offering direct iteration rather
+than repeated reentry into the index - so having indices that support
+iteration in such a style would be useful eventually.
+
+Changing our current indexes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We can consider introducing cleaner indices in advance of a full pack
+based repository.
+
+There are many possibilities for this, but I've chosen one that seems ok
+to me for illustration.
+
+A key element is to consider when indices are updated. I think that the
+update style proposed for pack based repositories - write once, then when
+we group data again rewrite a new single index - is sufficent.
+
+Replace .kndx
+^^^^^^^^^^^^^
+
+We could discard the per-knit .kndx by writing a new index at the end of
+every Breezy transaction indexing the new data introduced by the Breezy
+operation. e.g. at the end of fetch. This can be based on the new
+``GraphIndex`` index type.
+
+Encoding a knit entry into a ``GraphIndex`` can be done as follows:
+
+* Change the key to include a prefix of the knit name, to allow filtering
+  out of data from different knits.
+* Encode the parents from the knit as the zeroth node reference list.
+* If the knit hunk was delta compressed encode the node it was delta
+  compressed against as the 1st node reference list (otherwise the 1st
+  node reference list will be empty to indicate no compression parents).
+* For the value encode similarly to the current knit format the byte
+  offset for the data record in the knit, the byte length for the data
+  record in the knit and the no-end-of-line flag.
+
+It's important to note that knit repositories cannot be regenerated by
+scanning .knits, so a mapped index is still irreplaceable and must be
+transmitted on push/pull.
+
+A potential improvement exists by specialising this further to not record
+data that is not needed - e.g. an index of revisions does not need to
+support a pointer to a parent compressed text as revisions.knit is not
+delta-compressed ever. Likewise signatures do not need the parent pointers
+at all as there is no 'signature graph'.
+
+Data
+----
+
+Moving to pack based repositories
+---------------------------------
+
+We have a number of challenges to solve.
+
+Naming of files
+~~~~~~~~~~~~~~~
+
+As long as the file name is unique it does not really matter. It might be
+interesting to have it be deterministic based on content, but there are no
+specific problems we have solved by doing that, and doing so would require
+hashing the full file. OTOH hashing the full file is a cheap way to detect
+bit-errors in transfer (such as windows corruption). Non-reused file names
+are required for data integrity, as clients having read an index will
+readv at arbitrary times later.
+
+Discovery of files
+~~~~~~~~~~~~~~~~~~
+
+With non-listable transports how should the collection of pack/index files
+be found ? Initially record a list of all the pack/index files from
+write actions. (Require writable transports to be listable). We can then
+use a heuristic to statically combine pack/index files later.
+
+Housing files
+~~~~~~~~~~~~~
+
+Combining indices on demand
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Merging data on push
+~~~~~~~~~~~~~~~~~~~~
+
+A trivial implementation would be to make a pack which has just the data
+needed for the push, then send that. More sophisticated things would be
+streaming single-pass creation, and also using this as an opportunity to
+increase the packedness of the local repo.
+
+Choosing compression/delta support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Caching and writeing of data
+============================
+
+Repositories try to provide a consistent view of the data within them
+within a 'lock context'.
+
+Locks
+-----
+
+Locks come in two flavours - read locks and write locks. Read locks allow
+data to be read from the repository. Write locks allow data to be read and
+signal that you intend to write data at some point. The actual writing of
+data must take place within a Write Group.
+
+Write locks provide a cache of repository data during the period of the
+write lock, and allow write_groups to be acquired. For some repositories
+the presence of a write lock is exclusive to a single client, for others
+which are lock free or use server side locks (e.g.  svn), the write lock
+simply provides the cache context.
+
+Write Groups
+------------
+
+Write groups are the only allowed means for inserting data into a
+repository.  These are created by ``start_write_group``, and concluded by
+either ``commit_write_group`` or ``abort_write_group``.  A write lock must
+be held on the repository for the entire duration.  At most one write
+group can be active on a repository at a time.
+
+Write groups signal to the repository the window during which data is
+actively being inserted. Several write groups could be committed during a
+single lock.
+
+There is no guarantee that data inserted during a write group will be
+invisible in the repository if the write group is not committed.
+Specifically repositories without atomic insertion facilities will be
+writing data as it is inserted within the write group, and may not be able
+to revert that data - e.g. in the event of a dropped SFTP connection in a
+knit repository, inserted file data will be visible in the repository. Some
+repositories have an atomic insertion facility, and for those
+all-or-nothing will apply.
+
+The precise meaning of a write group is format specific. For instance a
+knit based repository treats the write group methods as dummy calls,
+simply meeting the api that clients will use. A pack based repository will
+open a new pack container at the start of a write group, and rename it
+into place at commit time.
+
+
+..
+   vim: ft=rst tw=74 ai
+

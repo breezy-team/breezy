@@ -1,0 +1,26 @@
+###################################
+Breezy System Administrator's Guide
+###################################
+
+.. Please mark sections in included files as following:
+..   level 1 ========
+..   level 2 --------
+..   level 3 ~~~~~~~~
+..   level 4 ^^^^^^^^ (it is better not to use nesting deeper than 3 levels)
+
+
+.. toctree::
+   :maxdepth: 2
+
+   introduction
+   simple-setups
+   other-setups
+   migration
+   hooks-plugins
+   code-browsing
+   integration
+   security
+   backup
+   upgrade
+   advanced
+   licence

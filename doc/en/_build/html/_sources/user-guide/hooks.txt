@@ -1,0 +1,115 @@
+Using hooks
+===========
+
+What is a hook?
+---------------
+
+One way to customize Breezy's behaviour is with *hooks*.  Hooks allow you to
+perform actions before or after certain Breezy operations.  The operations
+include ``commit``, ``push``, ``pull``, and ``uncommit``.
+For a complete list of hooks and their parameters, see `Hooks
+<../user-reference/index.html#hooks>`_ in the User Reference.
+
+Most hooks are run on the client, but a few are run on the server.  (Also
+see the `push-and-update plugin`_ that handles one special case of
+server-side operations.)
+
+.. _push-and-update plugin: http://doc.bazaar.canonical.com/plugins/en/push-and-update-plugin.html
+
+Using hooks
+-----------
+
+To use a hook, you should `write a plugin`_.  Instead of
+creating a new command, this plugin will define and install the hook.  Here's
+an example::
+
+    from breezy import branch
+
+
+    def post_push_hook(push_result):
+        print "The new revno is %d" % push_result.new_revno
+
+
+    branch.Branch.hooks.install_named_hook('post_push', post_push_hook,
+                                     'My post_push hook')
+
+.. _write a plugin: ../../developers/plugin-development.html
+
+To use this example, create a file named ``push_hook.py``, and stick it in
+``plugins`` subdirectory of your configuration directory.  (If you have never
+installed any plugins, you may need to create the ``plugins`` directory).
+
+That's it!  The next time you push, it should show "The new revno is...".
+Of course, hooks can be much more elaborate than this, because you have the
+full power of Python at your disposal.  Now that you know how to use hooks,
+what you do with them is up to you.
+
+The plugin code does two things.  First, it defines a function that will be
+run after ``push`` completes.  (It could instead use an instance method or
+a callable object.)  All push hooks take a single argument, the
+``push_result``.
+
+Second, the plugin installs the hook.  The first argument ``'post_push'``
+identifies where to install the hook.  The second argument is the hook
+itself.  The third argument is a name ``'My post_push hook'``, which can be
+used in progress messages and error messages.
+
+To reduce the start-up time of Breezy it is also possible to "lazily" install hooks,
+using the ``breezy.hooks.install_lazy_named_hook`` function. This removes the need
+to load the module that contains the hook point just to install the hook. Here's lazy
+version of the example above::
+
+    from breezy import hooks
+
+    def post_push_hook(push_result):
+        print "The new revno is %d" % push_result.new_revno
+
+
+    hooks.install_lazy_named_hook('breezy.branch', 'Branch.hooks',
+        'post_push', post_push_hook, 'My post_push hook')
+
+Debugging hooks
+---------------
+
+To get a list of installed hooks (and available hook points), use the hidden
+``hooks`` command::
+
+    brz hooks
+
+
+Example: a merge plugin
+-----------------------
+
+Here's a complete plugin that demonstrates the ``Merger.merge_file_content``
+hook.  It installs a hook that forces any merge of a file named ``*.xml``
+to be a conflict, even if Breezy thinks it can merge it cleanly.
+
+``merge_xml.py``::
+
+  """Custom 'merge' logic for *.xml files.
+  
+  Always conflicts if both branches have changed the file.
+  """
+  
+  from breezy.merge import PerFileMerger, Merger
+  
+  def merge_xml_files_hook(merger):
+      """Hook to merge *.xml files"""
+      return AlwaysConflictXMLMerger(merger)
+  
+  class AlwaysConflictXMLMerger(PerFileMerger):
+  
+      def file_matches(self, params):
+          filename = self.get_filename(params, self.merger.this_tree)
+          return filename.endswith('.xml')
+  
+      def merge_matching(self, params):
+          return 'conflicted', params.this_lines
+  
+  Merger.hooks.install_named_hook(
+      'merge_file_content', merge_xml_files_hook, '*.xml file merge')
+
+``merge_file_content`` hooks are executed for each file to be merged.  For
+a more a complex example look at the ``news_merge`` plugin that's bundled with
+Breezy in the ``breezy/plugins`` directory.
+

@@ -1,0 +1,312 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-1-17">
+<h2>bzr 1.17<a class="headerlink" href="#bzr-1-17" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Codename:</th><td class="field-body">so-late-its-brunch</td>
+</tr>
+<tr class="field-even field"><th class="field-name">1.17rc1:</th><td class="field-body">2009-07-13</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">1.17:</th><td class="field-body">2009-07-20</td>
+</tr>
+</tbody>
+</table>
+<p>Bazaar continues to blaze a straight and shining path to the 2.0 release and
+the elevation of the <code class="docutils literal notranslate"><span class="pre">2a</span></code> beta format to the full glory of “supported and
+stable”.</p>
+<p>Highlights in this release include greatly reduced memory consumption during
+commits, faster <code class="docutils literal notranslate"><span class="pre">ls</span></code>, faster <code class="docutils literal notranslate"><span class="pre">annotate</span></code>, faster network operations if
+you’re specifying a revision number and the final destruction of those
+annoying progress bar artifacts.</p>
+<div class="section" id="changes-from-1-17rc1-to-1-17final">
+<h3>Changes from 1.17rc1 to 1.17final<a class="headerlink" href="#changes-from-1-17rc1-to-1-17final" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Change an extension to call the python <code class="docutils literal notranslate"><span class="pre">frozenset()</span></code> rather than the C
+api <code class="docutils literal notranslate"><span class="pre">PyFrozenSet_New</span></code>. It turns out that python2.4 did not expose the
+C api. (John Arbash Meinel, #399366)</li>
+<li>Fixes for the Makefile and the rename of <code class="docutils literal notranslate"><span class="pre">generate_docs.py</span></code> to
+<code class="docutils literal notranslate"><span class="pre">tools/generate_docs.py</span></code> to allow everything to be built on Windows.
+(John Arbash Meinel, #399356)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">serve</span></code> once again applies a <code class="docutils literal notranslate"><span class="pre">ChrootServer</span></code> to the given
+directory before serving it. (Andrew Bennetts, #400535)</li>
+</ul>
+</div>
+<div class="section" id="compatibility-breaks">
+<h3>Compatibility Breaks<a class="headerlink" href="#compatibility-breaks" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">register-branch</span></code> from the Launchpad plugin now refers to “project”
+instead of “product” which is the correct Launchpad terminology.  The
+–product option is deprecated and users should switch to using –project.
+(Neil Martinsen-Burrell, #238764)</li>
+</ul>
+</div>
+<div class="section" id="new-features">
+<h3>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">push</span></code> now aborts if uncommitted changes (including pending merges)
+are present in the working tree (if one is present) and no revision is
+specified. The configuration option <code class="docutils literal notranslate"><span class="pre">push_strict</span></code> can be used to set the
+default for this behavior.  (Vincent Ladeuil, #284038, #322808, #65286)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">revno</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">revision-info</span></code> now have a <code class="docutils literal notranslate"><span class="pre">--tree</span></code> option to
+show revision info for the working tree instead of the branch.
+(Matthew Fuller, John Arbash Meinel)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">send</span></code> now aborts if uncommitted changes (including pending merges)
+are present in the working tree and no revision is specified. The
+configuration option <code class="docutils literal notranslate"><span class="pre">send_strict</span></code> can be used to set the default for this
+behavior.
+(Vincent Ladeuil, #206577)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">switch</span> <span class="pre">--create-branch/-b</span></code> can now be used to create and switch
+to a new branch. Supplying a name without a <code class="docutils literal notranslate"><span class="pre">/</span></code> will create the branch
+relative to the existing branch. (similar to how <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">switch</span> <span class="pre">name</span></code>
+works when the branch already exists.) (John Arbash Meinel)</li>
+</ul>
+</div>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Accept uppercase “Y/N” to prompts such as from break lock.
+(#335182, Tim Powell, Martin Pool)</li>
+<li>Add documentation about diverged branches and how to fix them in the
+centralized workflow with local commits.  Mention <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">help</span>
+<span class="pre">diverged-branches</span></code> when a push fails because the branches have
+diverged.  (Neil Martinsen-Burrell, #269477)</li>
+<li>Annotate would sometimes ‘latch on’ to trivial lines, causing important
+lines to be incorrectly annotated. (John Arbash Meinel, #387952)</li>
+<li>Automatic format upgrades triggered by default stacking policies on a
+1.16rc1 (or later) smart server work again.
+(Andrew Bennetts, #388675)</li>
+<li>Avoid progress bar artifacts being left behind on the screen.
+(Martin Pool, #321935)</li>
+<li>Better message in <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">split</span></code> error suggesting a rich root format.
+(Neil Martinsen-Burrell, #220067)</li>
+<li><code class="docutils literal notranslate"><span class="pre">Branch.set_append_revisions_only</span></code> now works with branches on a smart
+server. (Andrew Bennetts, #365865)</li>
+<li>By default, <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span></code> will fail if the target directory exists, but
+does not already have a control directory.  The flag <code class="docutils literal notranslate"><span class="pre">--use-existing-dir</span></code>
+will allow operation to proceed.  (Alexander Belchenko, #307554)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">ls</span> <span class="pre">DIR</span> <span class="pre">--from-root</span></code> now shows only things in DIR, not everything.
+(Ian Clatworthy)</li>
+<li>Fetch between repositories does not error if they have inconsistent data
+that should be irrelevant to the fetch operation. (Aaron Bentley)</li>
+<li>Fix <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> exception when reconfiguring lightweight checkout
+of a remote repository.
+(Jelmer Vernooij, #332194)</li>
+<li>Fix bug in decoding v3 smart server messages when receiving multiple
+lots of excess bytes after an end-of-message.
+(Andrew Bennetts)</li>
+<li>Force deletion of readonly files during merge, update and other tree
+transforms.
+(Craig Hewetson, Martin Pool, #218206)</li>
+<li>Force socket shutdown in threaded HTTP test servers to avoid client hangs
+(pycurl).  (Vincent Ladeuil, #383920).</li>
+<li><code class="docutils literal notranslate"><span class="pre">LRUCache</span></code> will maintain the linked list pointers even if a nodes
+cleanup function raises an exception. (John Arbash Meinel, #396838)</li>
+<li>Progress bars are now suppressed again when the environment variable
+<code class="docutils literal notranslate"><span class="pre">BZR_PROGRESS_BAR</span></code> is set to <code class="docutils literal notranslate"><span class="pre">none</span></code>.
+(Martin Pool, #339385)</li>
+<li>Reduced memory consumption during <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span></code> of large files. For
+pre 2a formats, should be down to ~3x the size of a file.
+For <code class="docutils literal notranslate"><span class="pre">--2a</span></code> format repositories, it is down to the size of the file
+content plus the size of the compressed text.  Related to bug #109114.
+(John Arbash Meinel)</li>
+<li>Set hidden attribute on .bzr directory below unicode path should never
+fail with error. The operation should succeed even if bzr unable to set
+the attribute.  (Alexander Belchenko, related to bug #335362).</li>
+<li>Stacking will no longer accept requests to stack on the same
+branch/repository. Existing branches that incorrectly reference the same
+repository in a stacking configuration will now raise
+UnstackableLocationError when the branch is opened. This can be fixed by
+removing the stacking location inside <code class="docutils literal notranslate"><span class="pre">.bzr/branch</span></code>.
+(Robert Collins, #376243)</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">log+</span></code> decorator, useful in debugging or profiling, could cause
+“AttributeError: ‘list’ object has no attribute ‘next’”.  This is now
+fixed.  The log decorator no longer shows the elapsed time or transfer
+rate because they’re available in the log prefixes and the transport
+activity display respectively.
+(Martin Pool, #340347)</li>
+<li>Unshelve works correctly when multiple zero-length files are present on
+the shelf. (Aaron Bentley, #363444)</li>
+<li>Progress bars no longer show the network transport scheme or direction.
+(Martin Pool)</li>
+<li>launchpad-login now respects the ‘verbose’ option.
+(Jonathan Lange, #217031)</li>
+</ul>
+</div>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.user_encoding</span></code> is now officially deprecated. It is not
+possible to write a deprecation wrapper, but the variable will be
+removed in the near future. Use <code class="docutils literal notranslate"><span class="pre">bzrlib.osutils.get_user_encoding()</span></code>
+instead. (Alexander Belchenko)</li>
+<li>Command lookup has had hooks added. <code class="docutils literal notranslate"><span class="pre">bzrlib.Command.hooks</span></code> has
+three new hook points: <code class="docutils literal notranslate"><span class="pre">get_command</span></code>, <code class="docutils literal notranslate"><span class="pre">get_missing_command</span></code> and
+<code class="docutils literal notranslate"><span class="pre">list_commands</span></code>, which allow just-in-time command name provision
+rather than requiring all command names be known a-priori.
+(Robert Collins)</li>
+<li><code class="docutils literal notranslate"><span class="pre">get_app_path</span></code> from win32utils.py now supports REG_EXPAND_SZ data type
+and can read path to wordpad.exe. (Alexander Belchenko, #392046)</li>
+<li><code class="docutils literal notranslate"><span class="pre">graph.KnownGraph</span></code> has been added. This is a class that can give
+answers to <code class="docutils literal notranslate"><span class="pre">heads()</span></code> very quickly. However, it has the assumption that
+the whole graph has already been loaded. This is true during
+<code class="docutils literal notranslate"><span class="pre">annotate</span></code> so it is used there with good success (as much as 2x faster
+for files with long ancestry and ‘cherrypicked’ changes.)
+(John Arbash Meinel, Vincent Ladeuil)</li>
+<li>OS file locks are now taken out using <code class="docutils literal notranslate"><span class="pre">CreateFile</span></code> rather than
+<code class="docutils literal notranslate"><span class="pre">LockFileEx</span></code> on Windows. The locking remains exclusive with
+<code class="docutils literal notranslate"><span class="pre">LockFileEx</span></code> but now it also works on older versions of Windows (such
+as Win98). (Martin &lt;gzlist&gt;)</li>
+<li>pack &lt;=&gt; pack fetching is now done via a <code class="docutils literal notranslate"><span class="pre">PackStreamSource</span></code> rather
+than the <code class="docutils literal notranslate"><span class="pre">Packer</span></code> code. The user visible change is that we now
+properly fetch the minimum number of texts for non-smart fetching.
+(John Arbash Meinel)</li>
+<li><code class="docutils literal notranslate"><span class="pre">VersionedFiles._add_text</span></code> is a new api that lets us insert text into
+the repository as a single string, rather than a list of lines. This can
+improve memory overhead and performance of committing large files.
+(Currently a private api, used only by commit). (John Arbash Meinel)</li>
+</ul>
+</div>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">annotate</span></code> can now be significantly faster. The time for
+<code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">annotate</span> <span class="pre">NEWS</span></code> is down to 7s from 22s in 1.16. Files with long
+histories and lots of ‘duplicate insertions’ will be improved more than
+others. (John Arbash Meinel, Vincent Ladeuil)</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">ls</span></code> is now faster. On OpenOffice.org, the time drops from 2.4
+to 1.1 seconds. The improvement for <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">ls</span> <span class="pre">-r-1</span></code> is more
+substantial dropping from 54.3 to 1.1 seconds. (Ian Clatworthy)</li>
+<li>Improve “Path(s) are not versioned” error reporting for some commands.
+(Benoît PIERRE)</li>
+<li>Initial commit performance in <code class="docutils literal notranslate"><span class="pre">--2a</span></code> repositories has been improved by
+making it cheaper to build the initial CHKMap. (John Arbash Meinel)</li>
+<li>Resolving a revno to a revision id on a branch accessed via <code class="docutils literal notranslate"><span class="pre">bzr://</span></code>
+or <code class="docutils literal notranslate"><span class="pre">bzr+ssh://</span></code> is now much faster and involves no VFS operations.
+This speeds up commands like <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pull</span> <span class="pre">-r</span> <span class="pre">123</span></code>.  (Andrew Bennetts)</li>
+<li><code class="docutils literal notranslate"><span class="pre">revision-info</span></code> now properly aligns the revnos/revids in the output
+and doesn’t traceback when given revisions not in the current branch.
+Performance is also significantly improved when requesting multiple revs
+at once.  (Matthew Fuller, John Arbash Meinel)</li>
+<li>Tildes are no longer escaped by Transports. (Andy Kilner)</li>
+</ul>
+</div>
+<div class="section" id="documentation">
+<h3>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Avoid bad text wrapping in generated documentation.  Slightly better
+formatting in the user reference.
+(Martin Pool, #249908)</li>
+<li>Minor clarifications to the help for End-Of-Line conversions.
+(Ian Clatworthy)</li>
+</ul>
+</div>
+<div class="section" id="api-changes">
+<h3>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Removed overspecific error class <code class="docutils literal notranslate"><span class="pre">InvalidProgressBarType</span></code>.
+(Martin Pool)</li>
+<li>The method <code class="docutils literal notranslate"><span class="pre">ProgressView._show_transport_activity</span></code> is now
+<code class="docutils literal notranslate"><span class="pre">show_transport_activity</span></code> because it’s part of the contract between
+this class and the UI.  (Martin Pool)</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-1.17.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,200 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Configuring email &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Serving Breezy with Apache" href="http_smart_server.html" />
+    <link rel="prev" title="Advanced shared repository layouts" href="shared_repository_layouts.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="shared_repository_layouts.html" title="Advanced shared repository layouts"
+             accesskey="P">previous</a> |
+          <a href="http_smart_server.html" title="Serving Breezy with Apache"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="configuring-email">
+<h1>Configuring email<a class="headerlink" href="#configuring-email" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="why-set-up-an-email-address-with-breezy">
+<h2>Why set up an email address with Breezy?<a class="headerlink" href="#why-set-up-an-email-address-with-breezy" title="Permalink to this headline">¶</a></h2>
+<p>Breezy stores the specified email address in revisions when they’re
+created so that people can tell who committed which revisions.  The
+email addresses are not verified, therefore they could be bogus, so
+you have to trust the people involved in your project.  Additionally,
+the email address in a revision gives others a way to contact the
+author of a revision for credit and/or blame.  :)</p>
+</div>
+<div class="section" id="how-to-set-up-your-email-address">
+<h2>How to set up your email address<a class="headerlink" href="#how-to-set-up-your-email-address" title="Permalink to this headline">¶</a></h2>
+<p>Breezy will try to guess an email address based on your username and the
+hostname if none is set.  This will probably not be what you want, so three
+ways exist to tell Breezy what email to use:</p>
+<p>You can set your email in one of several configuration files.  Like
+other configuration values, you can set it in <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> as a
+general setting.  If you want to override the value for a particular
+branch, or set of branches, you can use <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>.
+<code class="docutils literal notranslate"><span class="pre">.brz/branch/branch.conf</span></code> will also work, but will cause all commits
+to that branch to use the same email address, even if someone else
+does them.</p>
+<p>The order of precedence is</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>If the <code class="docutils literal notranslate"><span class="pre">BZR_EMAIL</span></code> environment variable is set.</li>
+<li>If an email is set for your current branch in the <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>
+file.</li>
+<li>If an email is set four your current branch in the
+<code class="docutils literal notranslate"><span class="pre">.brz/branch/branch.conf</span></code> file.</li>
+<li>If an email is set in the <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> default configuration file.</li>
+<li>If the <cite>EMAIL</cite> environment variable is set.</li>
+<li>Breezy will try to guess based on your username and the hostname.</li>
+</ol>
+</div></blockquote>
+<p>To check on what Breezy thinks your current email is, use the <code class="docutils literal notranslate"><span class="pre">whoami</span></code>
+(“who am i?”) command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">whoami</span>
+<span class="n">Joe</span> <span class="n">Cool</span> <span class="o">&lt;</span><span class="n">joe</span><span class="nd">@example</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="setting-email-via-the-whoami-command">
+<h2>Setting email via the ‘whoami’ command<a class="headerlink" href="#setting-email-via-the-whoami-command" title="Permalink to this headline">¶</a></h2>
+<p>You can use the whoami command to set your email globally:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">whoami</span> <span class="s2">&quot;Joe Cool &lt;joe@example.com&gt;&quot;</span>
+</pre></div>
+</div>
+<p>or only for the current branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">whoami</span> <span class="o">--</span><span class="n">branch</span> <span class="s2">&quot;Joe Cool &lt;joe@example.com&gt;&quot;</span>
+</pre></div>
+</div>
+<p>These modify your global <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> or branch <code class="docutils literal notranslate"><span class="pre">branch.conf</span></code> file, respectively.</p>
+</div>
+<div class="section" id="setting-email-via-default-configuration-file">
+<h2>Setting email via default configuration file<a class="headerlink" href="#setting-email-via-default-configuration-file" title="Permalink to this headline">¶</a></h2>
+<p>To use the default ini file, create or edit the <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> file (in
+<code class="docutils literal notranslate"><span class="pre">~/.config/breezy/</span></code> on Unix and in <code class="docutils literal notranslate"><span class="pre">%APPDATA%\breezy\2.0\</span></code> in Windows)
+and set an email address as shown below.  Please note that the word DEFAULT
+is case sensitive, and must be in upper-case.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">email</span><span class="o">=</span><span class="n">Your</span> <span class="n">Name</span> <span class="o">&lt;</span><span class="n">name</span><span class="nd">@isp</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>For more information on the ini file format, see <a class="reference external" href="../user-reference/index.html#configuration-settings">Configuration Settings</a> in
+the Breezy User Reference.</p>
+</div>
+<div class="section" id="setting-email-on-a-per-branch-basis">
+<h2>Setting email on a per-branch basis<a class="headerlink" href="#setting-email-on-a-per-branch-basis" title="Permalink to this headline">¶</a></h2>
+<p>The second approach is to set email on a branch by branch basis by
+using the <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> configuration file like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="o">/</span><span class="n">some</span><span class="o">/</span><span class="n">branch</span><span class="o">/</span><span class="n">location</span><span class="p">]</span>
+<span class="n">email</span><span class="o">=</span><span class="n">Your</span> <span class="n">Name</span> <span class="o">&lt;</span><span class="n">name</span><span class="nd">@other</span><span class="o">-</span><span class="n">isp</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>This will set your email address in the branch at <code class="docutils literal notranslate"><span class="pre">/some/branch/location</span></code>,
+overriding the default specified in the <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> above.</p>
+</div>
+<div class="section" id="setting-email-via-environment-variable">
+<h2>Setting email via environment variable<a class="headerlink" href="#setting-email-via-environment-variable" title="Permalink to this headline">¶</a></h2>
+<p>The final method Breezy will use is checking for the <code class="docutils literal notranslate"><span class="pre">BZR_EMAIL</span></code>
+and <code class="docutils literal notranslate"><span class="pre">EMAIL</span></code> environment variables.  Generally, you would use this
+method to override the email in a script context.  If you would like
+to set a general default, then please see the ini methods above.</p>
+</div>
+<div class="section" id="concerns-about-spam">
+<h2>Concerns about spam<a class="headerlink" href="#concerns-about-spam" title="Permalink to this headline">¶</a></h2>
+<p>Some people want to avoid sharing their email address so as not to get
+spam.  Breezy will never disclose your email address, unless you publish
+a branch or changeset in a public location.  It’s recommended that you
+<em>do</em> use a real address, so that people can contact you about your work,
+but it’s not required.  You can use an address which is obfuscated, which
+bounces, or which goes through an anti-spam service such as
+<cite>spamgourmet.com</cite>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="shared_repository_layouts.html" title="Advanced shared repository layouts"
+              >previous</a> |
+            <a href="http_smart_server.html" title="Serving Breezy with Apache"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/setting_up_email.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

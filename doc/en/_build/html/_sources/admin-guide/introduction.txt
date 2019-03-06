@@ -1,0 +1,54 @@
+Introduction
+============
+
+Welcome to the Bazaar Version Control System's guide for system
+administrators.  Bazaar is a flexible system that provides many possible
+options for serving projects in ways that will hopefully meet your needs.  If
+you have requirements that are not met by the current state of the Bazaar
+ecosystem, please let us know at bazaar@lists.canonical.com or on Launchpad at
+https://launchpad.net/bzr.
+
+Scope of this guide
+-------------------
+
+In this guide, we will discuss various techniques for making Bazaar projects
+available, migrating from other Version Control Systems, browsing code over
+the Web and combining Bazaar with other tools.  In many of these categories,
+multiple options exist and we will try to explains the costs and benefits of
+the various options.
+
+The intended audience for this guide is the individuals who administer the
+computers that will do the serving.  Much of the configuration that we will
+discuss requires administrator privileges and we will not necessarily indicate
+every point that those privileges are needed.  That said, reading this guide
+can also be very helpful for those who are interested in communicating to the
+system administrators about the requirements for making full use of Bazaar.
+
+What you need to run a Bazaar server
+------------------------------------
+
+Where possible, we will discuss both Unix (including GNU/Linux) and Windows server
+environments.  For the purposes of this document, we will consider Mac OS X as
+a type of Unix.
+
+In general, Bazaar requires only Python_ 2.6 or greater to run.
+If you would *optionally*
+like to be able to access branches using SFTP, you need `paramiko and
+pycrypto`_.
+
+.. _Python: http://www.python.org/
+.. _paramiko and pycrypto: http://www.lag.net/paramiko/
+
+For maximum performance, Bazaar can make use of compiled versions of some
+critical components of the code.  Pure Python alternatives exist for all of
+these components, but they may be considerably slower.  To compile these
+extensions, you need a C compiler and the relevant header files from the
+Python package.  On GNU/Linux, these may be in a separate package.  Other
+operating systems should have the required headers installed by default.
+
+If you are installing a development version of Bazaar, rather than a released
+version, you will need Pyrex_ to create the C extensions.  The release
+tarballs already have the Pyrex-created C files.
+
+.. _Pyrex: http://www.cosc.canterbury.ac.nz/greg.ewing/python/Pyrex/
+

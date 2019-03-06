@@ -1,0 +1,18 @@
+testament
+=========
+
+:Purpose: Show testament (signing-form) of a revision.
+:Usage:   brz testament [BRANCH]
+
+:Options:
+  -h, --help            Show help message.
+  --long                Produce long-format testament.
+  -q, --quiet           Only display errors and warnings.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --strict              Produce a strict-format testament.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+
+

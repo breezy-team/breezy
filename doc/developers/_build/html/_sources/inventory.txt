@@ -1,0 +1,613 @@
+===========
+Inventories
+===========
+
+.. contents::
+
+Overview
+========
+
+Inventories provide an abstraction for talking about the shape of a tree.
+Generally only tree object implementors should be concerned about entire
+inventory objects and their implementation. Other common exceptions are
+full-tree operations such as 'checkout', 'export' and 'import'.
+
+In memory inventories
+=====================
+
+In memory inventories are often used in diff and status operations between
+trees. We are working to reduce the number of times this occurs with 'full
+tree' inventory objects, and instead use more custom tailored data structures
+that allow operations on only a small amount of data regardless of the size of
+the tree.
+
+
+Serialization
+=============
+
+There are several variants of serialised tree shape in use by Breezy. To date
+these have been mostly XML-based, though plugins have offered non-XML versions.
+
+dirstate
+--------
+
+The dirstate file in a working tree includes many different tree shapes - one
+for the working tree and one for each parent tree, interleaved to allow
+efficient diff and status operations.
+
+XML
+---
+
+All the XML serialized forms write to and read from a single byte string, whose
+hash is then the inventory validator for the commit object.
+
+
+Serialization scaling and future designs
+========================================
+
+Overall efficiency and scaling is constrained by the bottom level structure
+that an inventory is stored as. We have a number of goals we want to achieve:
+
+ 1. Allow commit to write less than the full tree's data in to the repository
+    in the general case.
+ 2. Allow the data that is written to be calculated without examining every
+    versioned path in the tree.
+ 3. Generate the exact same representation for a given inventory regardless of
+    the amount of history available.
+ 4. Allow in memory deltas to be generated directly from the serialised form
+    without upcasting to a full in-memory representation or examining every
+    path in the tree. Ideally the work performed will be proportional to the
+    amount of changes between the trees being compared.
+ 5. Allow fetch to determine the file texts that need to be pulled to ensure
+    that the entire tree can be reconstructed without having to probe every
+    path in the tree.
+ 6. Allow Breezy to map paths to file ids without reading the entire serialised
+    form. This is something that is used by commands such as merge PATH and
+    diff -r X PATH.
+ 7. Let Breezy map file ids to paths without reading the entire serialised form.
+    This is used by commands that are presenting output to the user such as
+    loggerhead, brz-search, log FILENAME.
+ 8. We want a strong validator for inventories which is cheap to generate.
+    Specifically we should be able to create the generator for a new commit
+    without processing all the data of the basis commit.
+ 9. Testaments generation is currently size(tree), we would like to create a
+    new testament standard which requires less work so that signed commits
+    are not significantly slower than regular commits.
+
+
+We have current performance and memory bugs in log -v, merge, commit, diff -r,
+loggerhead and status -r which can be addressed by an inventory system
+meeting these goals.
+
+Current situation
+-----------------
+
+The XML-based implementation we use today layers the inventory as a bytestring
+which is stored under a single key; the bytestring is then compressed as a
+delta against the bytestring of its left hand parent by the knit code.
+
+Gap analysis:
+
+ 1. Succeeds
+ 2. Fails - generating a new XML representation needs full tree data.
+ 3. Succeeds - the inventory layer accesses the bytestring, which is
+    deterministic
+ 4. Fails - we have to reconstruct both inventories as trees and then delta
+    the resulting in memory objects.
+ 5. Partial success - the revision field in the inventory can be scanned for
+    in both text-delta and full-bytestring form; other revision values than
+    those revisions which are being pulled are by definition absent.
+ 6. Partially succeeds - with appropriate logic a path<->id map can be generated
+    just-in-time, but it is complex and still requires reconstructing the
+    entire byte-string.
+ 7. As for 6.
+ 8. Fails - we have to hash the entire tree in serialised form to generate
+    validators.
+ 9. Fails.
+
+Long term work
+--------------
+
+Some things are likely harder to fix incrementally than others. In particular,
+goal 3 (constant canonical form) is arguably only achieved if we remove all
+derived data such as the last-modified revision from the inventory itself. That
+said, the last-modified appears to be in a higher level than raw serialization.
+So in the medium term we will not alter the contents of inventories, only the
+way that the current contents are mapped to and from disk.
+
+
+Layering
+--------
+
+We desire clear and clean layers. Each layer should be as simple as we can make
+it to aid in debugging and performance tuning. So where we can choose to either
+write a complex layer and something simple on top of it, or two layers with
+neither being as complex - then we should consider the latter choice better in
+the absence of compelling reasons not to.
+
+Some key layers we have today and can look at using or tweaking are:
+
+ * Tree objects - the abstract interface breezy code works in
+ * VersionedFiles - the optionally delta compressing key->bytes storage
+   interface.
+ * Inventory - the abstract interface that many tree operations are written in.
+
+These layers are probably sufficient with minor tweaking. We may want to add
+additional modules/implementations of one or more layers, but that doesn't
+really require new layers to be exposed.
+
+Design elements to achieve the goals in a future inventory implementation
+-------------------------------------------------------------------------
+
+ * Split up the logical document into smaller serialised fragements. For
+   instance hash buckets or nodes in a tree of some sort. By serialising in
+   smaller units, we can increase the number of smaller units rather than
+   their size as the tree grows; as long as two similar trees have similar
+   serialised forms, the amount of different content should be quite high.
+
+ * Use fragment identifiers that are independent of revision id, so that
+   serialisation of two related trees generates overlap in the keyspace
+   for fragments without requiring explicit delta logic. Content Hash Keys
+   (e.g. ('sha1:ABCDEF0123456789...',) are useful here because of the ability
+   to assign them without reference to history.)
+
+ * Store the fragments in our existing VersionedFiles store. Adding an index
+   for them. Have the serialised form be uncompressed utf8, so that delta logic
+   in the VersionedFiles layer can be used. We may need to provide some sort
+   of hinting mechanism to get good compression - but the trivially available
+   zlib compression of knits-with-no-deltas is probably a good start.
+
+ * Item_keys_introduced_by is innately a history-using function; we can
+   reproduce the text-key finding logic by doing a tree diff between any tree
+   and an older tree - that will limit the amount of data we need to process
+   to something proportional to the difference and the size of each fragment.
+   When checking many versions we can track which fragments we have examined
+   and only look at new unique ones as each version is examined in turn.
+
+ * Working tree to arbitrary history revision deltas/comparisons can be scaled
+   up by doing a two-step (fixed at two!) delta combining - delta(tree, basis)
+   and then combine that with delta(basis, arbitrary_revision) using the
+   repositories ability to get a delta cheaply.
+
+ * The key primitives we need seem to be:
+   * canonical_form(inventory) -> fragments
+   * delta(inventory, inventory) -> inventory_delta
+   * apply(inventory_delta, canonical_form) -> fragments
+
+ * Having very many small fragments is likely to cause a high latency
+   multiplier unless we are careful.
+
+ * Possible designs to investigate - a hash bucket approach, radix trees,
+   B+ trees, directory trees (with splits inside a directory?).
+
+
+Hash bucket based inventories
+=============================
+
+Overview
+--------
+
+We store two maps - fileid:inventory_entry and path:fileid, in a stable
+hash trie, stored in densly packed fragments. We pack keys into the map
+densely up the tree, with a single canonical form for any given tree. This is
+more stable than simple fixed size buckets, which prevents corner cases where
+the tree size varies right on a bucket size border. (Note that such cases are
+not a fatal flaw - the two forms would both be present in the repository, so
+only a small amount of data would be written at each transition - but a full
+tree reprocess would be needed at each tree operation across the boundary, and
+thats undesirable.)
+
+Goal satisfaction
+-----------------
+
+ 1. Success
+ 2. Success
+ 3. Success
+ 4. Success, though each change will need its parents looked up as well
+    so it will be proportional to the changes + the directories above
+    the changed path.
+ 5. Success - looking at the difference against all parents we can determine
+    new keys without reference to the repository content will be inserted
+    into.
+ 6. This probably needs a path->id map, allowing a 2-step lookup.
+ 7. If we allocate buckets by hashing the id, then this is succeed, though,
+    as per 4 it will need recursive lookups.
+ 8. Success
+ 9. Fail - data beyond that currently included in testaments is included
+    in the strong validator.
+
+Issues
+------
+
+ 1. Tuning the fragment size needs doing.
+ 1. Testing.
+ 1. Writing code.
+ 1. Separate root node, or inline into revision?
+ 1. Cannot do 'ls' efficiently in the current design.
+ 1. Cannot detect invalid deltas easily.
+ 1. What about LCA merge of inventories?
+
+Canonical form
+--------------
+
+There are three fragment types for the canonical form. Each fragment is
+addressed using a Content Hash Key (CHK) - for instance
+"sha1:12345678901234567890".
+
+root_node: (Perhaps this should be inlined into the revision object).
+HASH_INVENTORY_SIGNATURE
+path_map: CHK to root of path to id map
+content_map: CHK to root of id to entry map
+
+map_node: INTERNAL_NODE or LEAF_NODE
+INTERNAL_NODE:
+INTERNAL_NODE_SIGNATURE
+hash_prefix: PREFIX
+prefix_width: INT
+PREFIX CHK TYPE SIZE
+PREFIX CHK TYPE SIZE ...
+
+(Where TYPE is I for internal or L for leaf).
+
+leaf_node:
+LEAF_NODE_SIGNATURE
+hash_prefix: PREFIX
+HASH\x00KEY\x00 VALUE
+
+For path maps, VALUE is::
+  fileid
+
+For content maps, VALUE::
+  fileid basename kind last-changed kind-specific-details
+
+
+The path and content maps are populated simply by serialising every inventory
+entry and inserting them into both the path map and the content map. The maps
+start with just a single leaf node with an empty prefix.
+
+
+Apply
+-----
+
+Given an inventory delta - a list of (old_path, new_path, InventoryEntry)
+items, with a None in new_path indicating a delete operation, and recursive
+deletes not being permitted - all entries to be deleted must be explicitly
+listed, we can transform a current inventory directly. We can't trivially
+detect an invalid delta though.
+
+To perform an application, naively we can just update both maps. For the path
+map we would remove all entries where the paths in the delta do not match, then
+insert those with a new_path again. For the content map we would just remove
+all the fileids in the delta, then insert those with a new_path that is not
+None.
+
+Delta
+-----
+
+To generate a delta between two inventories, we first generate a list of
+altered fileids, and then recursively look up their parents to generate their
+old and new file paths.
+
+To generate the list of altered file ids, we do an entry by entry comparison of
+the full contents of every leaf node that the two inventories do not have in
+common. To do this, we start at the root node, and follow every CHK pointer
+that is only in one tree. We can then bring in all the values from the leaf
+nodes and do a set difference to get the altered ones, which we would then
+parse.
+
+
+Radix tree based inventories
+============================
+
+Overview
+--------
+
+We store two maps - fileid:path and path:inventory_entry. The fileid:path map
+is a hash trie (as file ids have no useful locality of reference). The
+path:inventory_entry map is stored as a regular trie. As for hash tries we
+define a single canonical representation for regular tries similar to that
+defined above for hash tries.
+
+Goal satisfaction
+-----------------
+
+ 1. Success
+ 2. Success
+ 3. Success
+ 4. Success
+ 5. Success - looking at the difference against all parents we can determine
+    new keys without reference to the repository content will be inserted
+    into.
+ 6. Success
+ 7. Success
+ 8. Success
+ 9. Fail - data beyond that currently included in testaments is included
+    in the strong validator.
+
+Issues
+------
+
+ 1. Tuning the fragment size needs doing.
+ 1. Testing.
+ 1. Writing code.
+ 1. Separate root node, or inline into revision?
+ 1. What about LCA merge of inventories?
+
+Canonical form
+--------------
+
+There are five fragment types for the canonical form:
+
+The root node, hash trie internal and leaf nodes as previous.
+
+Then we have two more, the internal and leaf node for the radix tree.
+
+radix_node: INTERNAL_NODE or LEAF_NODE
+
+INTERNAL_NODE:
+INTERNAL_NODE_SIGNATURE
+prefix: PREFIX
+suffix CHK TYPE SIZE
+suffix CHK TYPE SIZE ...
+
+(Where TYPE is I for internal or L for leaf).
+
+LEAF_NODE:
+LEAF_NODE_SIGNATURE
+prefix: PREFIX
+suffix\x00VALUE
+
+For the content map we use the same value as for hashtrie inventories.
+
+
+Node splitting and joining in the radix tree are managed in the same fashion as
+as for the internal nodes of the hashtries.
+
+
+Apply
+-----
+
+Apply is implemented as for hashtries - we just remove and reinsert the
+fileid:paths map entries, and likewise for the path:entry map. We can however
+cheaply detect invalid deltas where a delete fails to include its children.
+
+Delta
+-----
+
+Delta generation is very similar to that with hash tries, except we get the
+path of nodes as part of the lookup process.
+
+
+Hash Trie details
+=================
+
+The canonical form for a hash trie is a tree of internal nodes leading down to
+leaf nodes, with no node exceeding some threshold size, and every node
+containing as much content as it can, but no leaf node containing less than
+its lower size threshold. (In the event that an imbalance in the hash function
+causes a tree where an internal node is needed, but any prefix generates a
+child with less than the lower threshold, the smallest prefix should be taken).
+An internal node holds some number of key prefixes, all with the same bit-width.
+A leaf node holds the actual values. As trees do not spring fully-formed, the
+canonical form is defined iteratively - by taking every item in a tree and
+inserting it into a new tree in order you can determine what canonical form
+would look like.  As that is an expensive operation, it should only be done
+rarely.
+
+Updates to a tree that is in canonical form can be done preserving canonical
+form if we can prove that our rules for insertion are order-independent,
+and that our rules for deletion generate the same tree as if we never
+inserted those nodes.
+
+Our hash tries are balanced vertically but not horizontally. That is, one leg
+of a tree can be arbitrarily deeper than adjacent legs. We require that each
+node along a path within the tree be densely packed, with the densest nodes
+near the top of the tree, and the least dense at the bottom. Except where the
+tree cannot support it, no node is smaller than a minimum_size, and none
+larger than maximum_size. The minimum size constraint is only applied when
+there are enough entries under a prefix to meet that minimum. The maximum
+size constraint is always applied except when a node with a single entry
+is larger than the maximum size. Loosely, the maximum size constraint wins
+over the minimum size constraint, and if the minimum size contraint is to
+be ignored, a deeper prefix can be chosen to pack the containing node more
+densely, as long as no additional minimum sizes checks on child nodes are
+violated.
+
+Insertion
+---------
+
+#. Hash the entry, and insert the entry in the leaf node with a matching
+   prefix, creating that node and linking it from the internal node containing
+   that prefix if there is no appropriate leaf node.
+#. Starting at the highest node altered, for all altered nodes, check if it has
+   transitioned across either size boundary - 0 < min_size < max_size. If it
+   has not, proceed to update the CHK pointers.
+#. If it increased above min_size, check the node above to see if it can be
+   more densely packed. To be below the min_size the node's parent must
+   have hit the max size constraint and been forced to split even though this
+   child did not have enough content to support a min_size node - so the prefix
+   chosen in the parent may be shorter than desirable and we may now be able
+   to more densely pack the parent by splitting the child nodes more. So if the
+   parent node can support a deeper prefix without hitting max_size, and the
+   count of under min_size nodes cannot be reduced, the parent should be given
+   a deeper prefix.
+#. If it increased above max_size, shrink the prefix width used to split out
+   new nodes until the node is below max_size (unless the prefix width is
+   already 1 - the minimum).
+   To shrink the prefix of an internal node, create new internal nodes for each
+   new prefix, and populate them with the content of the nodes which were
+   formerly linked. (This will normally bubble down due to keeping densely
+   packed nodes).
+   To shrink the prefix of a leaf node, create an internal node with the same
+   prefix, then choose a width for the internal node such that the contents
+   of the leaf all fit into new leaves obeying the min_size and max_size rules.
+   The largest prefix possible should be chosen, to obey the
+   higher-nodes-are-denser rule. That rule also gives room in leaf nodes for
+   growth without affecting the parent node packing.
+#. Update the CHK pointers - serialise every altered node to generate a CHK,
+   and update the CHK placeholder in the nodes parent; then reserialise the
+   parent. CHK pointer propagation can be done lazily when many updates are
+   expected.
+
+Multiple versions of nodes for the same PREFIX and internal prefix width should
+compress well for the same tree.
+
+
+Inventory deltas
+================
+
+An inventory is a serialization of the in-memory inventory delta.  To serialize
+an inventory delta, one takes an existing inventory delta and the revision_id
+of the revision it was created it against and the revision id of the inventory
+which should result by applying the delta to the parent.  We then serialize
+every item in the delta in a simple format:
+
+'format: bzr inventory delta v1 (1.14)' NL
+'parent:' SP BASIS_INVENTORY NL
+'version:' SP NULL_OR_REVISION NL
+'versioned_root:' SP BOOL NL
+'tree_references:' SP BOOL NL
+DELTA_LINES
+
+DELTA_LINES ::= (DELTA_LINE NL)*
+DELTA_LINE ::= OLDPATH NULL NEWPATH NULL file-id NULL PARENT_ID NULL LAST_MODIFIED NULL CONTENT
+SP ::= ' '
+BOOL ::= 'true' | 'false'
+NULL ::= \x00
+OLDPATH ::= NONE | PATH
+NEWPATH ::= NONE | PATH
+NONE ::= 'None'
+PATH ::= path
+PARENT_ID ::= FILE_ID | ''
+CONTENT ::= DELETED_CONTENT | FILE_CONTENT | DIR_CONTENT | TREE_CONTENT | LINK_CONTENT
+DELETED_CONTENT ::= 'deleted'
+FILE_CONTENT ::= 'file' NULL text_size NULL EXEC NULL text_sha1
+DIR_CONTENT ::= 'dir'
+TREE_CONTENT ::= 'tree' NULL tree-revision
+LINK_CONTENT ::= 'link' NULL link-target
+BASIS_INVENTORY ::= NULL_OR_REVISION
+LAST_MODIFIED ::= NULL_OR_REVISION
+NULL_OR_REVISION ::= 'null:' | REVISION
+REVISION ::= revision-id-in-utf8-no-whitespace
+EXEC ::= '' | 'Y'
+
+DELTA_LINES is lexicographically sorted.
+
+Some explanation is in order. When NEWPATH is 'None' a delete has been
+recorded, and because this inventory delta is not attempting to be a reversible
+delta, the only other valid fields are OLDPATH and 'file-id'. PARENT_ID is ''
+when a delete has been recorded or when recording a new root entry.
+
+
+Delta consistency
+=================
+
+Inventory deltas and more broadly changes between trees are a significant part
+of Breezy's core operations: they are key components in status, diff, commit,
+and merge (although merge uses tree transform, deltas contain the changes that
+are applied to the transform). Our ability to perform a given operation depends
+on us creating consistent deltas between trees. Inconsistent deltas lead to
+errors and bugs, or even just unexpected conflicts.
+
+An inventory delta is a transform to change an inventory A into another
+inventory B (in patch terms its a perfect patch). Sometimes, for instance in a
+regular commit, inventory B is known at the time we create the delta. Other
+times, B is not known because the user is requesting that some parts of the
+second inventory they have are masked out from consideration. When this happens
+we create a delta that when applied to A creates a B we haven't seen in total
+before. In this situation we need to ensure that B will be internally
+consistent. Deltas are unidirectional, a delta(A, B) creates B from A, but
+cannot be used to create A from B.
+
+Deltas are expressed as a list of (oldpath, newpath, fileid, entry) tuples. The
+fileid, entry elements are normative; the old and new paths are strong hints
+but not currently guaranteed to be accurate. (This is a shame and something we
+should tighten up). Deltas are required to list all removals explicitly -
+removing the parent of an entry doesn't remove the entry.
+
+Applying a delta to an inventory consists of:
+ - removing all fileids for which entry is None
+ - adding or replacing all other fileids
+ - detecting consistency errors
+
+An interesting aspect of delta inconsistencies is when we notice them:
+ - Silent errors which our application logic misses
+ - Visible errors we catch during application, so bad data isn't stored in
+   the system.
+
+The minimum safe level for our application logic would be to catch all errors
+during application. Making generation never generate inconsistent deltas is
+a seperate but necessary condition for robust code.
+
+An inconsistent delta is one which:
+ - after application to an inventory the inventory is an impossible state.
+ - has the same fileid, or oldpath(not-None), or newpath(not-None) multiple
+   times.
+ - has a fileid field different to the entry.fileid in the same item in the
+   delta.
+ - has an entry that is in an impossible state (e.g. a directory with a text
+   size)
+
+Forms of inventory inconsistency deltas can carry/cause:
+ - An entry newly introduced to a path without also removing or relocating any
+   existing entry at that path. (Duplicate paths)
+ - An entry whose parent id isn't present in the tree. (Missing parent).
+ - Having oldpath or newpath not be actual original path or resulting path.
+   (Wrong path)
+ - An entry whose parent is not a directory. (Under non-directory).
+ - An entry that is internally inconsistent.
+ - An entry that is already present in the tree (Duplicate id)
+
+Known causes of inconsistency:
+ - A 'new' entry which the inventory already has - when this is a directory
+   even arbitrary file ids under the 'new' entry are more likely to collide on
+   paths.
+ - Removing a directory without recursively removing its children - causes
+   Missing parent.
+ - Recording a change to an entry without including all changed entries found
+   following its parents up to and includin the root - can cause duplicate
+   paths, missing parents, wrong path, under non-directory.
+
+Avoiding inconsistent deltas
+----------------------------
+
+The simplest thing is to never create partial deltas, as it is trivial to
+be consistent when all data is examined every time. However users sometimes
+want to specify a subset of the changes in their tree when they do an operation
+which needs to create a delta - such as commit.
+
+We have a choice about handling user requests that can generate inconsistent
+deltas. We can alter or interpret the request in such a way that the delta will
+be consistent, but perhaps larger than the user had intended. Or we can
+identify problematic situations and abort, specifying to the user why we have
+aborted and likely things they can do to make their request generate a
+consistent delta.
+
+Currently we attempt to expand/interpret the request so that the user is not
+required to understand all the internal constraints of the system: if they
+request 'foo/bar' we automatically include foo. This works but can surprise
+the user sometimes when things they didn't explicitly request are committed.
+
+Different trees can use different algorithms to expand the request as long as
+they produce consistent deltas. As part of getting a consistent UI we require
+that all trees expand the paths requested downwards. Beyond that as long as
+the delta is consistent it is up to the tree.
+
+Given two trees, source and target, and a set of selected file ids to check for
+changes and if changed in a delta between them, we have to expand that set by
+the following rules, to get consistent deltas. The test for consistency is that
+if the resulting delta is applied to source, to create a third tree 'output',
+and the paths in the delta match the paths in source and output, only one file
+id is at each path in output, and no file ids are missing parents, then the
+delta is consistent.
+
+Firstly, the parent ids to the root for all of the file ids that have actually
+changed must be considered. Unless they are all examined the paths in the delta
+may be wrong.
+
+Secondly, when an item included in the delta has a new path which is the same
+as a path in source, the fileid of that path in source must be included.
+Failing to do this leads to multiple ids tryin to share a path in output.
+
+Thirdly, when an item changes its kind from 'directory' to anything else in the
+delta, all of the direct children of the directory in source must be included.

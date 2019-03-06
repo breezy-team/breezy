@@ -1,0 +1,186 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Content Filters &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Criss-Cross" href="criss-cross-help.html" />
+    <link rel="prev" title="Checkouts" href="checkouts-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="checkouts-help.html" title="Checkouts"
+             accesskey="P">previous</a> |
+          <a href="criss-cross-help.html" title="Criss-Cross"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="content-filters">
+<h1>Content Filters<a class="headerlink" href="#content-filters" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="content-formats">
+<h2>Content formats<a class="headerlink" href="#content-formats" title="Permalink to this headline">¶</a></h2>
+<p>Bazaar’s content filtering allows you to store files in a different
+format from the copy in your working tree.  This lets you, or your
+co-developers, use Windows development tools that expect CRLF files
+on projects that use other line-ending conventions. Among other things,
+content filters also let Unix developers more easily work on projects
+using Windows line-ending conventions, keyword expansion/compression,
+and trailing spaces on lines in text files to be implicitly stripped
+when committed.</p>
+<p>To generalize, there are two content formats supported by Bazaar:</p>
+<ul class="simple">
+<li>a canonical format - how files are stored internally</li>
+<li>a convenience format - how files are created in a working tree.</li>
+</ul>
+</div>
+<div class="section" id="format-conversion">
+<h2>Format conversion<a class="headerlink" href="#format-conversion" title="Permalink to this headline">¶</a></h2>
+<p>The conversion between these formats is done by content filters.
+A content filter has two parts:</p>
+<ul class="simple">
+<li>a read converter - converts from convenience to canonical format</li>
+<li>a write converter - converts from canonical to convenience format.</li>
+</ul>
+<p>Many of these converters will provide <em>round-trip</em> conversion,
+i.e. applying the read converter followed by the write converter
+gives back the original content. However, others may provide an
+asymmetric conversion. For example, a read converter might strip
+trailing whitespace off lines in source code while the matching
+write converter might pass content through unchanged.</p>
+</div>
+<div class="section" id="enabling-content-filters">
+<h2>Enabling content filters<a class="headerlink" href="#enabling-content-filters" title="Permalink to this headline">¶</a></h2>
+<p>Content filters are typically provided by plugins, so the first step
+in using them is to install the relevant plugins and read their
+documentation. Some plugins may be very specific about which files
+they filter, e.g. only files ending in <code class="docutils literal notranslate"><span class="pre">.java</span></code> or <code class="docutils literal notranslate"><span class="pre">.php</span></code>.
+In other cases, the plugin may leave it in the user’s hands to
+define which files are to be filtered. This is typically done
+using rule-based preferences. See <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">help</span> <span class="pre">rules</span></code> for general
+information about defining these.</p>
+</div>
+<div class="section" id="impact-on-commands">
+<h2>Impact on commands<a class="headerlink" href="#impact-on-commands" title="Permalink to this headline">¶</a></h2>
+<p>Read converters are only applied to commands that read content from
+a working tree, e.g. status, diff and commit. For example, <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span></code>
+will apply read converters to files in the working tree, then compare
+the results to the content last committed.</p>
+<p>Write converters are only applied by commands that <strong>create files in a
+working tree</strong>, e.g. branch, checkout, update. If you wish to see the
+canonical format of a file or tree, use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">cat</span></code> or <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">export</span></code>
+respectively.</p>
+<p>Note: <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">commit</span></code> does not implicitly apply write converters after
+comitting files. If this makes sense for a given plugin providing
+a content filter, the plugin can usually achieve this effect by using a
+<code class="docutils literal notranslate"><span class="pre">start_commit</span></code> or <code class="docutils literal notranslate"><span class="pre">post_commit</span></code> hook say. See <a class="reference internal" href="hooks-help.html"><span class="doc">Hooks</span></a>
+for more information on hooks.</p>
+</div>
+<div class="section" id="refreshing-your-working-tree">
+<h2>Refreshing your working tree<a class="headerlink" href="#refreshing-your-working-tree" title="Permalink to this headline">¶</a></h2>
+<p>For performance reasons, Bazaar caches the timestamps of files in
+a working tree, and assumes files are unchanged if their timestamps
+match the cached values. As a consequence, there are times when
+you may need to explicitly ask for content filtering to be reapplied
+in one or both directions, e.g. after installing or reconfiguring
+plugins providing it.</p>
+<p>Here are some general guidelines for doing this:</p>
+<blockquote>
+<div><ul class="simple">
+<li>To reapply read converters, <code class="docutils literal notranslate"><span class="pre">touch</span></code> files, i.e. update their
+timestamp. Operations like <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">status</span></code> should then reapply the
+relevant read converters and compare the end result with the
+canonical format.</li>
+<li>To reapply write converters, ensure there are no local changes,
+delete the relevant files and run <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">revert</span></code> on those files.</li>
+</ul>
+</div></blockquote>
+<p>Note: In the future, it is likely that additional options will be added
+to commands to make this refreshing process faster and safer.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="checkouts-help.html" title="Checkouts"
+              >previous</a> |
+            <a href="criss-cross-help.html" title="Criss-Cross"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/content-filters-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

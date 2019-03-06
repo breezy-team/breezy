@@ -1,0 +1,95 @@
+=================================
+Breezy Developer Document Catalog
+=================================
+
+
+Introduction
+============
+
+.. toctree::
+   :maxdepth: 1
+
+   contribution-quickstart
+
+
+Working on Breezy
+=================
+
+.. toctree::
+   :maxdepth: 1
+
+   profiling
+   bug-handling
+   HACKING
+   testing
+   code-review
+   code-style
+   documenting-changes
+
+* `Contributing to Breezy Documentation <http://wiki.bazaar.canonical.com/ContributingToTheDocs>`_ (wiki)
+
+
+Architecture overviews
+======================
+
+.. toctree::
+   :maxdepth: 1
+
+   configuration
+   fetch
+   transports
+   ui
+
+Releasing and Packaging
+=======================
+
+.. toctree::
+   :maxdepth: 1
+
+   releasing
+   ppa
+   ec2 
+
+
+Developing using breezy
+=======================
+
+.. toctree::
+   :maxdepth: 1
+
+   overview
+   integration
+
+* `Writing plugins for Breezy <plugin-development.txt>`_
+
+* `breezy API reference <api/index.txt>`_
+
+
+Other documents
+===============
+
+.. toctree::
+   :maxdepth: 1
+
+   principles
+   plans
+   specifications
+   implementation-notes
+   miscellaneous-notes
+
+
+Licence
+============
+
+Copyright 2005-2011 Canonical Ltd.
+Copyright 2018 Breezy Developers
+
+Breezy is free software, and you
+may use, modify and redistribute both Breezy and this document under
+the terms of the GNU General Public License version 2 or later.  See
+<http://www.gnu.org/licenses/>.
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

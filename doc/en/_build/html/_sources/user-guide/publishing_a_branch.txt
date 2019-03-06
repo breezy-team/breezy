@@ -1,0 +1,69 @@
+.. _publishing_a_branch:
+
+Publishing a branch
+===================
+
+Setting up a central repository
+-------------------------------
+
+While the centralized workflow can be used by socially nominating
+any branch on any computer as the central one, in practice most
+teams have a dedicated server for hosting central branches.
+
+Just as it's best practice to use a shared repository locally,
+it's advisable to put central branches in a shared repository.
+Note that central shared branches typically only want to
+store history, not working copies of files, so their enclosing
+repository is usually creating using the ``no-trees`` option, e.g.::
+
+  brz init-repo --no-trees bzr+ssh://centralhost/srv/brz/PROJECT
+
+You can think of this step as similar to setting up a new cvsroot or
+Subversion repository. However, Breezy gives you more flexibility
+in how branches may be organised in your repository. See
+`Advanced shared repository layouts <shared_repository_layouts.html>`_
+in the appendices for guidelines and examples.
+
+
+Starting a central branch
+-------------------------
+
+There are two ways of populating a central branch with some initial
+content:
+
+ 1. Making a local branch and pushing it to a central location
+ 2. Making an empty central branch then committing content to it.
+
+Here is an example of the first way::
+
+  brz init-repo PROJECT  (prepare local repository)
+  brz init PROJECT/trunk
+  cd PROJECT/trunk
+			 (copy development files)
+  cp -ar ~/PROJECT .     (copy files in using OS-specific tools)
+  brz add                (populate repository; start version control)
+  brz commit -m "Initial import"
+                         (publish to central repository)
+  brz push bzr+ssh://centralhost/srv/brz/PROJECT/trunk
+
+Here is an example of the second way::
+
+  brz init-repo PROJECT  (prepare local repository)
+  cd PROJECT
+  brz init bzr+ssh://centralhost/srv/brz/PROJECT/trunk
+  brz checkout bzr+ssh://centralhost/srv/brz/PROJECT/trunk
+  cd trunk
+  cp -ar ~/PROJECT .     (copy files in using OS-specific tools)
+  brz add                (populate repository; start version control)
+  brz commit -m "Initial import"
+                         (publish to central repository)
+
+Note that committing inside a working tree created using
+the ``checkout`` command implicitly commits the content to
+the central location as well as locally. Had we used the
+``branch`` command instead of ``checkout`` above, the
+content would have only been committed locally.
+
+Working trees that are tightly bound to a central location
+like this are called *checkouts*. The rest of this chapter
+explains their numerous features in more detail.

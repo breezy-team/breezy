@@ -1,0 +1,282 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Fetching data &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Developer guide to breezy transports" href="transports.html" />
+    <link rel="prev" title="Configuring Breezy" href="configuration.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="configuration.html" title="Configuring Breezy"
+             accesskey="P">previous</a> |
+          <a href="transports.html" title="Developer guide to breezy transports"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="fetching-data">
+<h1>Fetching data<a class="headerlink" href="#fetching-data" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview-of-a-fetch">
+<h2>Overview of a fetch<a class="headerlink" href="#overview-of-a-fetch" title="Permalink to this headline">¶</a></h2>
+<p>Inside bzr, a typical fetch happens like this:</p>
+<ul class="simple">
+<li>a user runs a command like <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span></code> or <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pull</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">Repository.fetch</span></code> is called (by a higher-level method such as
+<code class="docutils literal notranslate"><span class="pre">ControlDir.sprout</span></code>, <code class="docutils literal notranslate"><span class="pre">Branch.fetch</span></code>, etc).</li>
+<li>An <code class="docutils literal notranslate"><span class="pre">InterRepository</span></code> object is created.  The exact implementation of
+<code class="docutils literal notranslate"><span class="pre">InterRepository</span></code> chosen depends on the format/capabilities of the
+source and target repos.</li>
+<li>The source and target repositories are compared to determine which data
+needs to be transferred.</li>
+<li>The repository data is copied.  Often this is done by creating a
+<code class="docutils literal notranslate"><span class="pre">StreamSource</span></code> and <code class="docutils literal notranslate"><span class="pre">StreamSink</span></code> from the source and target
+repositories and feeding the stream from the source into the sink, but
+some <code class="docutils literal notranslate"><span class="pre">InterRepository</span></code> implementations do differently.</li>
+</ul>
+</div>
+<div class="section" id="how-objects-to-be-transferred-are-determined">
+<h2>How objects to be transferred are determined<a class="headerlink" href="#how-objects-to-be-transferred-are-determined" title="Permalink to this headline">¶</a></h2>
+<p>See <code class="docutils literal notranslate"><span class="pre">InterRepository._walk_to_common_revisions</span></code>.  The basic idea is to
+do a breadth-first search in the source repository’s revision graph
+(starting from the head or heads the caller asked for), and look in the
+target repository to see if those revisions are already present.
+Eventually this will find the common ancestors in both graphs, and thus
+the set of revisions to be copied has been identified.</p>
+<p>All inventories for the copied revisions need to be present (and all
+parent inventories at the stacking boundary too, to support stacking).</p>
+<p>All texts versions introduced by those inventories need to be transferred
+(but see also stacking constraints).</p>
+</div>
+<div class="section" id="fetch-specs">
+<h2>Fetch specs<a class="headerlink" href="#fetch-specs" title="Permalink to this headline">¶</a></h2>
+<p>The most <code class="docutils literal notranslate"><span class="pre">fetch</span></code> methods accept a <code class="docutils literal notranslate"><span class="pre">fetch_spec</span></code> parameter.  This is how
+the caller controls what is fetched: e.g. all revisions for a given head
+(that aren’t already present in the target), the full ancestry for one or
+more heads, or even the full contents of the source repository.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">fetch_spec</span></code> parameter is an object that implements the interface
+defined by <code class="docutils literal notranslate"><span class="pre">AbstractSearchResult</span></code> in <code class="docutils literal notranslate"><span class="pre">bzrlib.graph</span></code>.  It describes
+which keys should be fetched.  Current implementations are
+<code class="docutils literal notranslate"><span class="pre">SearchResult</span></code>, <code class="docutils literal notranslate"><span class="pre">PendingAncestryResult</span></code>, <code class="docutils literal notranslate"><span class="pre">EmptySearchResult</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">EverythingResult</span></code>.  Some have options controlling if missing revisions
+cause errors or not, etc.</p>
+<p>There are also some “search” objects, which can be used to conveniently
+construct a search result for common cases: <code class="docutils literal notranslate"><span class="pre">EverythingNotInOther</span></code> and
+<code class="docutils literal notranslate"><span class="pre">NotInOtherForRevs</span></code>.  They provide an <code class="docutils literal notranslate"><span class="pre">execute</span></code> method that performs
+the search and returns a search result.</p>
+<p>Also, <code class="docutils literal notranslate"><span class="pre">Graph._make_breadth_first_searcher</span></code> returns an object with a
+<code class="docutils literal notranslate"><span class="pre">get_result</span></code> method that returns a search result.</p>
+</div>
+<div class="section" id="streams">
+<h2>Streams<a class="headerlink" href="#streams" title="Permalink to this headline">¶</a></h2>
+<p>A <strong>stream</strong> is an iterable of (substream type, substream) pairs.
+The <strong>substream type</strong> is a <code class="docutils literal notranslate"><span class="pre">str</span></code> that will be one of <code class="docutils literal notranslate"><span class="pre">texts</span></code>,
+<code class="docutils literal notranslate"><span class="pre">inventories</span></code>, <code class="docutils literal notranslate"><span class="pre">inventory-deltas</span></code>, <code class="docutils literal notranslate"><span class="pre">chk_bytes</span></code>, <code class="docutils literal notranslate"><span class="pre">revisions</span></code> or
+<code class="docutils literal notranslate"><span class="pre">signatures</span></code>.  A <strong>substream</strong> is a record stream.  The format of those
+records depends on the repository format being streamed, except for
+<code class="docutils literal notranslate"><span class="pre">inventory-deltas</span></code> records which are format-independent.</p>
+<p>A stream source can be constructed with <code class="docutils literal notranslate"><span class="pre">repo._get_source(to_format)</span></code>,
+and it provides a <code class="docutils literal notranslate"><span class="pre">get_stream(search)</span></code> method (among others).  A stream
+sink can be constructed with <code class="docutils literal notranslate"><span class="pre">repo._get_sink()</span></code>, and provides an
+<code class="docutils literal notranslate"><span class="pre">insert_stream(stream,</span> <span class="pre">src_format,</span> <span class="pre">resume_tokens)</span></code> method (among
+others).</p>
+</div>
+<div class="section" id="stacking-constraints">
+<h2>Stacking constraints<a class="headerlink" href="#stacking-constraints" title="Permalink to this headline">¶</a></h2>
+<p><strong>In short the rule is:</strong> “repositories must hold revisions’ parent
+inventories and their new texts (or else all texts for those revisions).”</p>
+<p>This is sometimes called “the stacking invariant.”</p>
+<div class="section" id="why-that-rule">
+<h3>Why that rule?<a class="headerlink" href="#why-that-rule" title="Permalink to this headline">¶</a></h3>
+<p>A stacked repository needs to be capable of generating a complete stream
+for the revisions it does hold without access to its fallback
+repositories <a class="footnote-reference" href="#id3" id="id1">[1]</a>.  “Complete” here means that the stream for a revision (or
+set of revisions) can be inserted into a repository that already contains
+the parent(s) of that revision, and that repository will have a fully
+usable copy of that revision: a working tree can be built for that
+revision, etc.</p>
+<p>Assuming for a moment the stream has the necessary inventory, signature
+and CHK records to have a usable revision, what texts are required to have
+a usable revision?  The simple way to satisfy the requirement is to have
+<em>every</em> text for every revision at the stacking boundary.  Thus the
+revisions at the stacking boundary and all their descendants have their
+texts present and so can be fully reconstructed.  But this is expensive:
+it implies each stacked repository much contain <em>O(tree)</em> data even for a
+single revision of a 1-line change, and also implies transferring
+<em>O(tree)</em> data to fetch that revision.</p>
+<p>Because the goal is a usable revision <em>when added to a repository with the
+parent revision(s)</em> most of those texts will be redundant.  The minimal
+set that is needed is just those texts that are new in the revisions in
+our repository.  However, we need enough inventory data to be able to
+determine that set of texts.  So to make this possible every revision must
+have its parent inventories present so that the inventory delta between
+revisions can be calculated, and of course the CHK pages associated with
+that delta.  In fact the entire inventory does not need to be present,
+just enough of it to find the delta (assuming a repository format, like
+2a, that allows only part of an inventory to be stored).  Thus the stacked
+repository can contain only <em>O(changes)</em> data <a class="footnote-reference" href="#id4" id="id2">[2]</a> and still deliver
+complete streams of that data.</p>
+<p>What about revisions at the stacking boundary with more than one parent?
+All of the parent inventories must be present, as a client may ask for a
+stream up to any parent, not just the left-hand parent.  If any parent is
+absent then all texts must be present instead.  Otherwise there will be
+the strange situation where some fetches of a revision will succeed and
+others fail depending the precise details of the fetch.</p>
+</div>
+<div class="section" id="implications-for-fetching">
+<h3>Implications for fetching<a class="headerlink" href="#implications-for-fetching" title="Permalink to this headline">¶</a></h3>
+<p>Fetches must retrieve the records necessary to satisfy that rule.  The
+stream source will attempt to send the necessary records, and the stream
+sink will check for any missing records and make a second fetch for just
+those missing records before committing the write group.</p>
+<p>Our repository implementations check this constraint is satisfied before
+committing a write group, to prevent a bad stream from creating a corrupt
+repository.  So a fetch from a bad source (e.g. a damaged repository, or a
+buggy foreign-format import) may trigger <code class="docutils literal notranslate"><span class="pre">BzrCheckError</span></code> during
+<code class="docutils literal notranslate"><span class="pre">commit_write_group</span></code>.</p>
+<p>To fetch from a stacked repository via a smart server, the smart client:</p>
+<ul class="simple">
+<li>first fetches a stream of as many of the requested revisions as possible
+from the initial repository,</li>
+<li>then while there are still missing revisions and untried fallback
+repositories fetches the outstanding revisions from the next fallback
+until either all revisions have been found (success) or the list of
+fallbacks has been exhausted (failure).</li>
+</ul>
+<table class="docutils footnote" frame="void" id="id3" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>This is not just a theoretical concern.  The smart server always
+opens repositories without opening fallbacks, as it cannot assume it
+can access the fallbacks that the client can.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id4" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Actually <em>O(changes)</em> isn’t quite right in practice.  In the
+current implementation the fulltext of a changed file must be
+transferred, not just a delta, so a 1-line change to a 10MB file will
+still transfer 10MB of text data.  This is because current formats
+require records’ compression parents to be present in the same
+repository.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="configuration.html" title="Configuring Breezy"
+              >previous</a> |
+            <a href="transports.html" title="Developer guide to breezy transports"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/fetch.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

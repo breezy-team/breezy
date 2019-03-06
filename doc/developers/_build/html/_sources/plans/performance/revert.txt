@@ -1,0 +1,26 @@
+Revert
+======
+
+Change users selected paths to be the same as those in a given revision making
+backups of any paths that bzr did not set the last contents itself.
+
+Least work we can hope to perform
+---------------------------------
+
+We should be able to do work proportional to the scope the user is reverting
+and the amount of changes between the working tree and the revision being
+reverted to.
+
+This depends on being able to compare unchanged subtrees without recursing so that the mapping of paths to revert to ids to revert can be done efficiently. Specifically we should be able to avoid getting the transitive closure of directory contents when mapping back to paths from ids at the start of revert.
+
+One way this might work is to:
+for the selected scopes, for each element in the wt:
+
+ 1. get hash tree data for that scope.
+ 1. get 'new enough' hash data for the siblings of the scope: it can be out of date as long as it's not older than the last move or rename out of that siblings scope.
+ 1. Use the hash tree data to tune the work done in finding matching paths/ids which are different in the two trees.
+
+For each thing that needs to change - group by target directory?
+
+ 1. Extract new content.
+ 1. Backup old content or replace-in-place (except windows where we move and replace).

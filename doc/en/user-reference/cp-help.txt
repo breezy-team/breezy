@@ -1,0 +1,27 @@
+cp
+==
+
+:Purpose: Copy a file.
+:Usage:
+    brz cp OLDNAME NEWNAME
+
+    brz cp SOURCE... DESTINATION
+
+
+:Options:
+  -h, --help     Show help message.
+  -q, --quiet    Only display errors and warnings.
+  --usage        Show usage message and options.
+  -v, --verbose  Display more information.
+
+:Description:
+  If the last argument is a versioned directory, all the other names
+  are copied into it.  Otherwise, there must be exactly two arguments
+  and the file is copied to a new name.
+  
+  Files cannot be copied between branches. Only files can be copied
+  at the moment.
+
+:Aliases:  copy
+
+

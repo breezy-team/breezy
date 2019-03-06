@@ -1,0 +1,105 @@
+Running a smart server
+======================
+
+Breezy does not require a specialised server because it operates over HTTP, FTP
+or SFTP.  There is an optional smart server that can be invoked over SSH, from
+inetd, or in a dedicated mode.
+
+Dumb servers
+------------
+
+We describe HTTP, FTP, SFTP and HTTP-WebDAV as "dumb" servers because they do
+not offer any assistance to Breezy.  If you make a Breezy repository available
+over any of these protocols, Breezy will allow you to read it remotely.  Just
+enter the URL to the branch in the Breezy command you are running.::
+
+    brz log http://bazaar.launchpad.net/~brz-pqm/brz/brz.dev
+
+Breezy supports writing over FTP, SFTP and (via a plugin) over HTTP-WebDAV.
+
+High-performance smart server
+-----------------------------
+
+The high-performance smart server (hpss) performs certain operations much faster
+than dumb servers are capable of.  In future releases, the range of operations
+that are improved by using the smart server will increase as we continue to
+tune performance.
+
+To maintain the highest security possible, the current
+smart server provides read-only access by default.  To
+enable read-write access, run it with ``--allow-writes``. When using
+the SSH access method, brz automatically runs with the
+``--allow-writes`` option.
+
+The alternative ways of configuring a smart server are explained below.
+
+SSH
+~~~
+
+Using Breezy over SSH requires no special configuration on the server; so long
+as Breezy is installed on the server you can use ``bzr+ssh`` URLs, e.g.::
+
+    brz log bzr+ssh://host/path/to/branch
+
+If `brz` is not installed system-wide on the server you may need to explicitly
+tell the local `brz` where to find the remote `brz`::
+
+    BZR_REMOTE_PATH=~/bin/brz brz log bzr+ssh://host/path/to/branch
+
+The ``BZR_REMOTE_PATH`` environment variable adjusts how `brz` will be
+invoked on the remote system.  By default, just `brz` will be invoked,
+which requires the `brz` executable to be on the default search path.  You can
+also set this permanently per-location in ``locations.conf``.
+
+Like SFTP, paths starting with ``~`` are relative to your home directory, e.g.
+``bzr+ssh://example.com/~/code/proj``.  Additionally, paths starting with
+``~user`` will be relative to that user's home directory.
+
+inetd
+~~~~~
+
+This example shows how to run `brz` with a dedicated user `brzuser`
+for a shared repository in ``/srv/brz/repo`` which has a branch at
+``/srv/brz/repo/branchname``.
+
+Running a Breezy server from inetd requires an inetd.conf entry::
+
+    4155  stream  TCP  nowait  brzuser  /usr/bin/brz /usr/bin/brz serve --inet --directory=/srv/brz/repo
+
+When running client commands, the URL you supply is a `bzr://` URL relative to
+the ``--directory`` option given in inetd.conf::
+
+    brz log bzr://host/branchname
+
+If possible, paths starting with ``~`` and ``~user`` will be expanded as for
+``bzr+ssh``.  Home directories outside the ``--directory`` specified to ``brz
+serve`` will not be accessible.
+
+Dedicated
+~~~~~~~~~
+
+This mode has the same path and URL behaviour as the inetd mode.  To
+run as a specific user, you should use ``su`` or login as that user.
+
+This example runs brz on its official port number of `4155` and listens on all
+interfaces. This allows connections from anywhere in the world that can reach
+your machine on port `4155`.
+
+server::
+
+    brz serve --directory=/srv/brz/repo
+
+client::
+
+    brz log bzr://host/branchname
+
+This example runs ``brz serve`` on `localhost` port `1234`.
+
+server::
+
+    brz serve --listen=localhost --port=1234 --directory=/srv/brz/repo
+
+client::
+
+    brz log bzr://localhost:1234/branchname
+

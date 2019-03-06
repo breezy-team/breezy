@@ -1,0 +1,46 @@
+Revision Properties
+===================
+
+Bazaar repositories support setting of a key/value pairs for each revision.
+Applications can use these properties to store additional information
+about the revision.
+
+Usage
+-----
+
+In general, revision properties are set by passing keyword argument
+``revprops`` to method ``MutableTree.commit``. For example::
+
+ properties = {}
+ properties['my-property'] = 'test'
+ tree.commit(message, revprops=properties)
+
+Properties can be retrieved via the attribute ``properties`` of
+instances of the class ``Revision``::
+
+ if 'my-property' in revision.properties:
+     my_property = revision.properties['my-property']
+     ...
+
+Well-known properties
+---------------------
+
+At the moment, three standardized revision properties are recognized and used
+by breezy:
+
+ * ``authors`` - Authors of the change. This value is a "\\n" separated set
+   of values in the same format as the committer-id. This property can be
+   set by passing a list to the keyword argument ``authors`` of the function
+   ``MutableTree.commit``.
+ * ``author`` - Single author of the change. This property is deprecated in
+   favour of ``authors``. It should no longer be set by any code, but will
+   still be read. It is ignored if ``authors`` is set in the same revision.
+ * ``branch-nick`` - Nickname of the branch. This can be specified by the user,
+   but it defaults to the colocated branch name or the branch's directory name.
+   The value is set automatically in ``MutableTree.commit``.
+ * ``bugs`` - A list of bug URLs and their statuses. The list is separated
+   by the new-line character (\\n) and each entry is in format
+   '<URL> <status>'. Currently, breezy uses only status 'fixed'. See
+   `Bug Trackers`_ for more details about using this feature.
+
+.. _Bug Trackers: ../en/user-guide/index.html#bug-trackers

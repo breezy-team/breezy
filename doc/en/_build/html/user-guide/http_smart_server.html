@@ -1,0 +1,367 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Serving Breezy with Apache &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Writing a plugin" href="writing_a_plugin.html" />
+    <link rel="prev" title="Configuring email" href="setting_up_email.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="setting_up_email.html" title="Configuring email"
+             accesskey="P">previous</a> |
+          <a href="writing_a_plugin.html" title="Writing a plugin"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="serving-breezy-with-apache">
+<h1>Serving Breezy with Apache<a class="headerlink" href="#serving-breezy-with-apache" title="Permalink to this headline">¶</a></h1>
+<p>This document describes one way to set up a Breezy HTTP smart server,
+using Apache 2.0 and FastCGI or mod_python or mod_wsgi.</p>
+<p>For more information on the smart server, and other ways to configure it
+see the main <a class="reference external" href="server.html">smart server documentation</a>.</p>
+<div class="section" id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
+<p>You have a webserver already publishing <cite>/srv/example.com/www/code</cite> as
+<cite>http://example.com/code/…</cite> with plain HTTP.  It contains branches and
+directories like <cite>/srv/example.com/www/code/branch-one</cite> and
+<cite>/srv/example.com/www/code/my-repo/branch-two</cite>.  You want to provide read-only
+smart server access to these directories in addition to the existing HTTP
+access.</p>
+</div>
+<div class="section" id="configuring-apache-2-0">
+<h2>Configuring Apache 2.0<a class="headerlink" href="#configuring-apache-2-0" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="fastcgi">
+<h3>FastCGI<a class="headerlink" href="#fastcgi" title="Permalink to this headline">¶</a></h3>
+<p>First, configure mod_fastcgi, e.g. by adding lines like these to your
+httpd.conf:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">LoadModule</span> <span class="n">fastcgi_module</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">apache2</span><span class="o">/</span><span class="n">modules</span><span class="o">/</span><span class="n">mod_fastcgi</span><span class="o">.</span><span class="n">so</span>
+<span class="n">FastCgiIpcDir</span> <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">apache2</span><span class="o">/</span><span class="n">fastcgi</span>
+</pre></div>
+</div>
+<p>In our example, we’re already serving <cite>/srv/example.com/www/code</cite> at
+<cite>http://example.com/code</cite>, so our existing Apache configuration would look
+like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Alias</span> <span class="o">/</span><span class="n">code</span> <span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">www</span><span class="o">/</span><span class="n">code</span>
+<span class="o">&lt;</span><span class="n">Directory</span> <span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">www</span><span class="o">/</span><span class="n">code</span><span class="o">&gt;</span>
+    <span class="n">Options</span> <span class="n">Indexes</span>
+    <span class="c1"># ...</span>
+<span class="o">&lt;/</span><span class="n">Directory</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>We need to change it to handle all requests for URLs ending in <cite>.brz/smart</cite>.  It
+will look like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Alias /code /srv/example.com/www/code
+&lt;Directory /srv/example.com/www/code&gt;
+    Options Indexes FollowSymLinks
+    RewriteEngine On
+    RewriteBase /code
+    RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/brz-smart.fcgi
+&lt;/Directory&gt;
+
+# brz-smart.fcgi isn&#39;t under the DocumentRoot, so Alias it into the URL
+# namespace so it can be executed.
+Alias /srv/example.com/scripts/brz-smart.fcgi /srv/example.com/scripts/brz-smart.fcgi
+&lt;Directory /srv/example.com/scripts&gt;
+    Options ExecCGI
+    &lt;Files brz-smart.fcgi&gt;
+        SetHandler fastcgi-script
+    &lt;/Files&gt;
+&lt;/Directory&gt;
+</pre></div>
+</div>
+<p>This instructs Apache to hand requests for any URL ending with <cite>/.brz/smart</cite>
+inside <cite>/code</cite> to a Breezy smart server via FastCGI.</p>
+<p>Refer to the <a class="reference external" href="http://httpd.apache.org/docs/2.0/mod/mod_rewrite.html">mod_rewrite</a> and <a class="reference external" href="http://www.fastcgi.com/mod_fastcgi/docs/mod_fastcgi.html">mod_fastcgi</a> documentation for further
+information.</p>
+</div>
+<div class="section" id="mod-python">
+<h3>mod_python<a class="headerlink" href="#mod-python" title="Permalink to this headline">¶</a></h3>
+<p>First, configure mod_python, e.g. by adding lines like these to your
+httpd.conf:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">LoadModule</span> <span class="n">python_module</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">lib</span><span class="o">/</span><span class="n">apache2</span><span class="o">/</span><span class="n">modules</span><span class="o">/</span><span class="n">mod_python</span><span class="o">.</span><span class="n">so</span>
+</pre></div>
+</div>
+<p>Define the rewrite rules with mod_rewrite the same way as for FastCGI, except
+change:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/brz-smart.fcgi
+</pre></div>
+</div>
+<p>to:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/brz-smart.py
+</pre></div>
+</div>
+<p>Like with mod_fastcgi, we also define how our script is to be handled:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Alias</span> <span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">scripts</span><span class="o">/</span><span class="n">brz</span><span class="o">-</span><span class="n">smart</span><span class="o">.</span><span class="n">py</span> <span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">scripts</span><span class="o">/</span><span class="n">brz</span><span class="o">-</span><span class="n">smart</span><span class="o">.</span><span class="n">py</span>
+<span class="o">&lt;</span><span class="n">Directory</span> <span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">scripts</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">Files</span> <span class="n">brz</span><span class="o">-</span><span class="n">smart</span><span class="o">.</span><span class="n">py</span><span class="o">&gt;</span>
+        <span class="n">PythonPath</span> <span class="s2">&quot;sys.path+[&#39;/srv/example.com/scripts&#39;]&quot;</span>
+        <span class="n">AddHandler</span> <span class="n">python</span><span class="o">-</span><span class="n">program</span> <span class="o">.</span><span class="n">py</span>
+        <span class="n">PythonHandler</span> <span class="n">brz</span><span class="o">-</span><span class="n">smart</span><span class="p">::</span><span class="n">handler</span>
+    <span class="o">&lt;/</span><span class="n">Files</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">Directory</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>This instructs Apache to hand requests for any URL ending with <cite>/.brz/smart</cite>
+inside <cite>/code</cite> to a Breezy smart server via mod_python.</p>
+<p>NOTE: If you don’t have breezy in your PATH, you will be need to change the
+following line:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">PythonPath</span> <span class="s2">&quot;sys.path+[&#39;/srv/example.com/scripts&#39;]&quot;</span>
+</pre></div>
+</div>
+<p>To:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">PythonPath</span> <span class="s2">&quot;[&#39;/path/to/brz&#39;]+sys.path+[&#39;/srv/example.com/scripts&#39;]&quot;</span>
+</pre></div>
+</div>
+<p>Refer to the <a class="reference external" href="http://www.modpython.org/">mod_python</a> documentation for further information.</p>
+</div>
+<div class="section" id="mod-wsgi">
+<h3>mod_wsgi<a class="headerlink" href="#mod-wsgi" title="Permalink to this headline">¶</a></h3>
+<p>First, configure mod_wsgi, e.g. enabling the mod with a2enmod wsgi.
+We need to change it to handle all requests for URLs ending in <cite>.brz/smart</cite>.  It
+will look like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>WSGIScriptAliasMatch ^/code/.*/\.bzr/smart$ /srv/example.com/scripts/brz.wsgi
+
+#The three next lines allow regular GETs to work too
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/code/.*/\.bzr/smart$
+RewriteRule ^/code/(.*/\.bzr/.*)$ /srv/example.com/www/code/$1 [L]
+
+&lt;Directory /srv/example.com/www/code&gt;
+    WSGIApplicationGroup %{GLOBAL}
+&lt;/Directory&gt;
+</pre></div>
+</div>
+<p>This instructs Apache to hand requests for any URL ending with <cite>/.brz/smart</cite>
+inside <cite>/code</cite> to a Breezy smart server via WSGI, and any other URL inside
+<cite>/code</cite> to be served directly by Apache.</p>
+<p>Refer to the <a class="reference external" href="http://code.google.com/p/modwsgi/">mod_wsgi</a> documentation for further information.</p>
+</div>
+</div>
+<div class="section" id="configuring-breezy">
+<h2>Configuring Breezy<a class="headerlink" href="#configuring-breezy" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id3">
+<h3>FastCGI<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p>We’ve configured Apache to run the smart server at
+<cite>/srv/example.com/scripts/brz-smart.fcgi</cite>.  This is just a simple script we need
+to write to configure a smart server, and glue it to the FastCGI gateway.
+Here’s what it looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">fcgi</span>
+<span class="kn">from</span> <span class="nn">breezy.transport.http</span> <span class="k">import</span> <span class="n">wsgi</span>
+
+<span class="n">smart_server_app</span> <span class="o">=</span> <span class="n">wsgi</span><span class="o">.</span><span class="n">make_app</span><span class="p">(</span>
+    <span class="n">root</span><span class="o">=</span><span class="s1">&#39;/srv/example.com/www/code&#39;</span><span class="p">,</span>
+    <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;/code/&#39;</span><span class="p">,</span>
+    <span class="n">path_var</span><span class="o">=</span><span class="s1">&#39;REQUEST_URI&#39;</span><span class="p">,</span>
+    <span class="n">readonly</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">load_plugins</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">enable_logging</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">fcgi</span><span class="o">.</span><span class="n">WSGIServer</span><span class="p">(</span><span class="n">smart_server_app</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The <cite>fcgi</cite> module can be found at <a class="reference external" href="http://svn.saddi.com/py-lib/trunk/fcgi.py">http://svn.saddi.com/py-lib/trunk/fcgi.py</a>.  It
+is part of <a class="reference external" href="http://www.saddi.com/software/flup/">flup</a>.</p>
+</div>
+<div class="section" id="id4">
+<h3>mod_python<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>We’ve configured Apache to run the smart server at
+<cite>/srv/example.com/scripts/brz-smart.py</cite>.  This is just a simple script we need
+to write to configure a smart server, and glue it to the mod_python gateway.
+Here’s what it looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">modpywsgi</span>
+<span class="kn">from</span> <span class="nn">breezy.transport.http</span> <span class="k">import</span> <span class="n">wsgi</span>
+
+<span class="n">smart_server_app</span> <span class="o">=</span> <span class="n">wsgi</span><span class="o">.</span><span class="n">make_app</span><span class="p">(</span>
+    <span class="n">root</span><span class="o">=</span><span class="s1">&#39;/srv/example.com/www/code&#39;</span><span class="p">,</span>
+    <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;/code/&#39;</span><span class="p">,</span>
+    <span class="n">path_var</span><span class="o">=</span><span class="s1">&#39;REQUEST_URI&#39;</span><span class="p">,</span>
+    <span class="n">readonly</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">load_plugins</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">enable_logging</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">handler</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Handle a single request.&quot;&quot;&quot;</span>
+    <span class="n">wsgi_server</span> <span class="o">=</span> <span class="n">modpywsgi</span><span class="o">.</span><span class="n">WSGIServer</span><span class="p">(</span><span class="n">smart_server_app</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wsgi_server</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <cite>modpywsgi</cite> module can be found at
+<a class="reference external" href="http://ice.usq.edu.au/svn/ice/trunk/apps/ice-server/modpywsgi.py">http://ice.usq.edu.au/svn/ice/trunk/apps/ice-server/modpywsgi.py</a>. It was
+part of <a class="reference external" href="http://dev.pocoo.org/projects/pocoo/">pocoo</a>. You sould make sure you place modpywsgi.py in the same
+directory as brz-smart.py (ie. /srv/example.com/scripts/).</p>
+</div>
+<div class="section" id="id5">
+<h3>mod_wsgi<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p>We’ve configured Apache to run the smart server at
+<cite>/srv/example.com/scripts/brz.wsgi</cite>.  This is just a simple script we need
+to write to configure a smart server, and glue it to the WSGI gateway.
+Here’s what it looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">breezy.transport.http</span> <span class="k">import</span> <span class="n">wsgi</span>
+
+<span class="k">def</span> <span class="nf">application</span><span class="p">(</span><span class="n">environ</span><span class="p">,</span> <span class="n">start_response</span><span class="p">):</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">wsgi</span><span class="o">.</span><span class="n">make_app</span><span class="p">(</span>
+        <span class="n">root</span><span class="o">=</span><span class="s2">&quot;/srv/example.com/www/code/&quot;</span><span class="p">,</span>
+        <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/code&quot;</span><span class="p">,</span>
+        <span class="n">readonly</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">enable_logging</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">app</span><span class="p">(</span><span class="n">environ</span><span class="p">,</span> <span class="n">start_response</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="clients">
+<h2>Clients<a class="headerlink" href="#clients" title="Permalink to this headline">¶</a></h2>
+<p>Now you can use <cite>brz+http://</cite> URLs or just <cite>http://</cite> URLs, e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="n">brz</span><span class="o">+</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">code</span><span class="o">/</span><span class="n">my</span><span class="o">-</span><span class="n">branch</span>
+</pre></div>
+</div>
+<p>Plain HTTP access should continue to work:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">code</span><span class="o">/</span><span class="n">my</span><span class="o">-</span><span class="n">branch</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="advanced-configuration">
+<h2>Advanced configuration<a class="headerlink" href="#advanced-configuration" title="Permalink to this headline">¶</a></h2>
+<p>Because the Breezy HTTP smart server is a WSGI application, it can be used with
+any 3rd-party WSGI middleware or server that conforms the WSGI standard.  The
+only requirements are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>to construct a <cite>SmartWSGIApp</cite>, you need to specify a <strong>root transport</strong> that it
+will serve.</li>
+<li>each request’s <cite>environ</cite> dict must have a <strong>‘breezy.relpath’</strong> variable set.</li>
+</ul>
+</div></blockquote>
+<p>The <cite>make_app</cite> helper used in the example constructs a <cite>SmartWSGIApp</cite> with a
+transport based on the <cite>root</cite> path given to it, and calculates the
+‘breezy.relpath` for each request based on the <cite>prefix</cite> and <cite>path_var</cite>
+arguments.  In the example above, it will take the ‘REQUEST_URI’ (which is set
+by Apache), strip the ‘/code/’ prefix and the ‘/.brz/smart’ suffix, and set that
+as the ‘breezy.relpath’, so that a request for ‘/code/foo/bar/.brz/smart’ will
+result in a ‘breezy.relpath’ of ‘foo/brz’.</p>
+<p>It’s possible to configure a smart server for a non-local transport, or that
+does arbitrary path translations, etc, by constructing a <cite>SmartWSGIApp</cite>
+directly.  Refer to the docstrings of <cite>breezy.transport.http.wsgi</cite> and the <a class="reference external" href="http://www.python.org/dev/peps/pep-0333/">WSGI
+standard</a> for further information.</p>
+<div class="section" id="pushing-over-the-http-smart-server">
+<h3>Pushing over the HTTP smart server<a class="headerlink" href="#pushing-over-the-http-smart-server" title="Permalink to this headline">¶</a></h3>
+<p>It is possible to allow pushing data over the HTTP smart server. The
+easiest way to do this, is to just supply <code class="docutils literal notranslate"><span class="pre">readonly=False</span></code> to the
+<code class="docutils literal notranslate"><span class="pre">wsgi.make_app()</span></code> call. But be careful, because the smart protocol does
+not contain any Authentication. So if you enable write support, you will
+want to restrict access to <code class="docutils literal notranslate"><span class="pre">.brz/smart</span></code> URLs to restrict who can
+actually write data on your system, e.g. in apache it looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">Location</span> <span class="o">/</span><span class="n">code</span><span class="o">&gt;</span>
+    <span class="n">AuthType</span> <span class="n">Basic</span>
+    <span class="n">AuthName</span> <span class="s2">&quot;example&quot;</span>
+    <span class="n">AuthUserFile</span> <span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">conf</span><span class="o">/</span><span class="n">auth</span><span class="o">.</span><span class="n">passwd</span>
+    <span class="o">&lt;</span><span class="n">LimitExcept</span> <span class="n">GET</span><span class="o">&gt;</span>
+        <span class="n">Require</span> <span class="n">valid</span><span class="o">-</span><span class="n">user</span>
+    <span class="o">&lt;/</span><span class="n">LimitExcept</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">Location</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>At this time, it is not possible to allow some people to have read-only
+access and others to have read-write access to the same URLs. Because at
+the HTTP layer (which is doing the Authenticating), everything is just a
+POST request.  However, it would certainly be possible to have HTTPS
+require authentication and use a writable server, and plain HTTP allow
+read-only access.</p>
+<p>If brz gives an error like this when accessing your HTTPS site:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span><span class="p">:</span> <span class="n">ERROR</span><span class="p">:</span> <span class="n">Connection</span> <span class="n">error</span><span class="p">:</span> <span class="n">curl</span> <span class="n">connection</span> <span class="n">error</span> <span class="p">(</span><span class="n">server</span> <span class="n">certificate</span> <span class="n">verification</span> <span class="n">failed</span><span class="o">.</span>
+<span class="n">CAfile</span><span class="p">:</span><span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">ssl</span><span class="o">/</span><span class="n">certs</span><span class="o">/</span><span class="n">ca</span><span class="o">-</span><span class="n">certificates</span><span class="o">.</span><span class="n">crt</span> <span class="n">CRLfile</span><span class="p">:</span> <span class="n">none</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can workaround it by using <code class="docutils literal notranslate"><span class="pre">https+urllib</span></code> rather than <code class="docutils literal notranslate"><span class="pre">http</span></code> in your
+URL, or by uninstalling pycurl.  See <a class="reference external" href="https://bugs.launchpad.net/bzr/+bug/82086">bug 82086</a> for more details.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="setting_up_email.html" title="Configuring email"
+              >previous</a> |
+            <a href="writing_a_plugin.html" title="Writing a plugin"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/http_smart_server.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

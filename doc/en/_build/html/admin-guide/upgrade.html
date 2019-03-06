@@ -1,0 +1,170 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Upgrades &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Advanced Topics" href="advanced.html" />
+    <link rel="prev" title="Back-up and Restore" href="backup.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="backup.html" title="Back-up and Restore"
+             accesskey="P">previous</a> |
+          <a href="advanced.html" title="Advanced Topics"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="upgrades">
+<h1>Upgrades<a class="headerlink" href="#upgrades" title="Permalink to this headline">¶</a></h1>
+<p>Bazaar has a strong commitment to inter-version compatibility both on disk and
+over the network.  Newer clients should be able to interact with older
+versions on the server (although perhaps not at optimal speed) and older
+clients should also be able to communicate with newer versions of Bazaar on
+the server.  Divergences from this rule are considered bugs and are fixed in
+later versions.</p>
+<p>That said, Bazaar is constantly improving and the most recent versions are the
+most featureful and have better performance.  In particular, the Bazaar
+versions 2.0 and later have significant advantages over earlier versions,
+including a more compact disk format, faster network operations and overall
+performance improvements.  With the 2.0 release, Bazaar has moved to a
+stable/development release model where the 2.x series is maintained with
+bugfixes releases for six months, while simultaneously the 2.(x+1) series is
+being developed with monthly beta releases that are suitable for everyday use.
+Bazaar development has a stable trunk with an extensive test suite, so there
+is no reason to fear using the development series for everyday use, it simply
+changes more often than the stable series.  Many users do run the development
+version of Bazaar and update it regularly, including most of the Bazaar
+developers themselves.</p>
+<div class="section" id="software-upgrades">
+<h2>Software upgrades<a class="headerlink" href="#software-upgrades" title="Permalink to this headline">¶</a></h2>
+<p>Upgrading the Bazaar software is as simple as re-installing the Python package
+using either the latest binary package for Windows or Mac OS X, the binary
+package provided by your GNU/Linux distribution, or installing from the source
+release.  See <a class="reference external" href="http://wiki.bazaar.canonical.com/Downloads">http://wiki.bazaar.canonical.com/Downloads</a> for the latest
+releases for all supported platforms.</p>
+<p>Bazaar’s later versions support all of the earlier disk formats (back to the
+very first one), so there is no need to upgrade the branches on the disk when
+upgrading the software.  To make use of particular new features that might
+need updated versions on both the server and developer’s machines, it does not
+matter if the clients or the servers are upgraded first.</p>
+</div>
+<div class="section" id="disk-format-upgrades">
+<h2>Disk format upgrades<a class="headerlink" href="#disk-format-upgrades" title="Permalink to this headline">¶</a></h2>
+<p>In its evolution, Bazaar has used a sequence of disk formats for improved
+storage efficiency and speed.  With the new disk format released in version
+2.0, there is a commitment to keep that disk format until version 3.0 is
+released, which has not even been planned yet.  (Bazaar 2.0 was released
+almost two years after Bazaar 1.0.)  As a result, disk format upgrades should
+be extremely infrequent.</p>
+<p>If there are existing branches in an older format that you would like to
+upgrade to the latest format, you can see the <a class="reference external" href="../upgrade-guide/index.html">2.0 Upgrade Guide</a> for more information.  From the system
+administration perspective, it is important to coordinate the timing of
+various upgrades in the process.  First, the central branches on the server
+should be upgraded.  Next, any local mirrors that developers have should be
+upgraded.  Finally, developers’ local branches should be upgraded.  These
+upgrades will require an appropriate version of the software whenever they are
+performed.  (It is possible to upgrade branches remotely over the network, but
+it may be much slower.)</p>
+</div>
+<div class="section" id="plugin-upgrades">
+<h2>Plugin upgrades<a class="headerlink" href="#plugin-upgrades" title="Permalink to this headline">¶</a></h2>
+<p>When Bazaar does update its version, plugins that use the Bazaar API may need
+to be upgraded to reflect changes in that API.  Some plugins have strict
+version dependencies on the version of the Bazaar API that they will accept.
+If this is the case, then you should ensure that the plugins you depend on
+have been updated <em>before</em> you upgrade your Bazaar version to avoid a
+situation where your plugins won’t work with the installed version of Bazaar.
+If this does happen, then the solution is simply to reinstall the previous
+version of Bazaar that <em>did</em> work with the plugins.  For installations that
+depend on a large number of plugins, this sort of version upgrade should be
+tested in a safe sandbox to ensure that the entire collection of Bazaar and
+its plugins can all work together.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="backup.html" title="Back-up and Restore"
+              >previous</a> |
+            <a href="advanced.html" title="Advanced Topics"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/admin-guide/upgrade.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

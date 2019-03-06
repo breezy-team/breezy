@@ -1,0 +1,171 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Specifications &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Revision Properties" href="revision-properties.html" />
+    <link rel="prev" title="Breezy Design Principles" href="principles.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="principles.html" title="Breezy Design Principles"
+             accesskey="P">previous</a> |
+          <a href="revision-properties.html" title="Revision Properties"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="specifications">
+<h1>Specifications<a class="headerlink" href="#specifications" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<ul class="simple">
+<li><a class="reference external" href="revision-properties.html">Revision Properties</a> — An application
+can set arbitrary per-revision key/value pairs to store app-specific
+data.</li>
+<li><a class="reference external" href="api-versioning.html">API versioning</a> — breezy API versioning.</li>
+<li><a class="reference external" href="apport.html">Apport error reporting</a> — Capture data to report
+bugs.</li>
+<li><a class="reference external" href="authentication-ring.html">Authentication ring</a> — Configuring
+authentication.</li>
+<li><a class="reference external" href="bundles.html">Bundles</a> — All about bzr bundles.</li>
+<li><a class="reference external" href="container-format.html">Container format</a> — Notes on a container format
+for streaming and storing Bazaar data.</li>
+<li><a class="reference external" href="groupcompress-design.html">Groupcompress</a> — Notes on the compression
+technology used in CHK repositories.</li>
+<li><a class="reference external" href="indices.html">Indices</a> — The index facilities available within breezy.</li>
+<li><a class="reference external" href="inventory.html">Inventories</a> — Tree shape abstraction.</li>
+<li><a class="reference external" href="lca-merge.html">LCA merge</a> — A nice new merge algorithm.</li>
+<li><a class="reference external" href="network-protocol.html">Network protocol</a> — Custom network protocol.</li>
+<li><a class="reference external" href="plugin-api.html">Plugin APIs</a> — APIs plugins should use.</li>
+<li><a class="reference external" href="repository.html">Repositories</a> — What repositories do and are used for.</li>
+<li><a class="reference external" href="repository-stream.html">Repository stream</a> — Notes on streaming data
+for repositories (a layer above the container format).</li>
+<li><a class="reference external" href="case-insensitive-file-systems.html">Bazaar and case-insensitive file systems</a>
+— How Bazaar operates on case-insensitive file systems such as commonly
+found on Windows, USB sticks, etc.</li>
+<li><a class="reference external" href="development-repo.html">Development repository formats</a> — How to
+work with repository formats that are still under development.
+Contains instructions for those implementing new formats, of course,
+but also for (bleeding-edge) end users of those formats.</li>
+<li><a class="reference external" href="packrepo.html">Knit pack repositories</a> — KnitPack repositories
+(new in Bazaar 0.92).</li>
+<li><a class="reference external" href="feature-flags.html">Format feature flags</a> — Allow extending
+formats with optional features.  (new in Bazaar 2.5).</li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bug-handling.html">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="principles.html" title="Breezy Design Principles"
+              >previous</a> |
+            <a href="revision-properties.html" title="Revision Properties"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/specifications.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

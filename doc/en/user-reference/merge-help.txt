@@ -1,0 +1,121 @@
+merge
+=====
+
+:Purpose: Perform a three-way merge.
+:Usage:   brz merge [LOCATION]
+
+:Options:
+  -c ARG, --change=ARG  Select changes introduced by the specified revision.
+                        See also "help revisionspec".
+  -d ARG, --directory=ARG
+                        Branch to merge into, rather than the one containing
+                        the working directory.
+  --force               Merge even if the destination tree has uncommitted
+                        changes.
+  -h, --help            Show help message.
+  -i, --interactive     Select changes interactively.
+  --preview             Instead of merging, show a diff of the merge.
+  --pull                If the destination is already completely merged into
+                        the source, pull from the source rather than merging.
+                        When this happens, you do not need to commit the
+                        result.
+  -q, --quiet           Only display errors and warnings.
+  --remember            Remember the specified location as a default.
+  --reprocess           Reprocess to reduce spurious conflicts.
+  -r ARG, --revision=ARG
+                        See "help revisionspec" for details.
+  --show-base           Show base revision text in conflicts.
+  --uncommitted         Apply uncommitted changes from a working copy, instead
+                        of branch changes.
+  --usage               Show usage message and options.
+  -v, --verbose         Display more information.
+
+  Merge algorithm:
+    --merge-type=ARG    Select a particular merge algorithm.
+    --diff3             Merge using external diff3.
+    --lca               LCA-newness merge.
+    --merge3            Native diff3-style merge.
+    --weave             Weave-based merge.
+
+:Description:
+  The source of the merge can be specified either in the form of a branch,
+  or in the form of a path to a file containing a merge directive generated
+  with brz send. If neither is specified, the default is the upstream branch
+  or the branch most recently merged using --remember.  The source of the
+  merge may also be specified in the form of a path to a file in another
+  branch:  in this case, only the modifications to that file are merged into
+  the current working tree.
+  
+  When merging from a branch, by default brz will try to merge in all new
+  work from the other branch, automatically determining an appropriate base
+  revision.  If this fails, you may need to give an explicit base.
+  
+  To pick a different ending revision, pass "--revision OTHER".  brz will
+  try to merge in all new work up to and including revision OTHER.
+  
+  If you specify two values, "--revision BASE..OTHER", only revisions BASE
+  through OTHER, excluding BASE but including OTHER, will be merged.  If this
+  causes some revisions to be skipped, i.e. if the destination branch does
+  not already contain revision BASE, such a merge is commonly referred to as
+  a "cherrypick". Unlike a normal merge, Breezy does not currently track
+  cherrypicks. The changes look like a normal commit, and the history of the
+  changes from the other branch is not stored in the commit.
+  
+  Revision numbers are always relative to the source branch.
+  
+  Merge will do its best to combine the changes in two branches, but there
+  are some kinds of problems only a human can fix.  When it encounters those,
+  it will mark a conflict.  A conflict means that you need to fix something,
+  before you can commit.
+  
+  Use brz resolve when you have fixed a problem.  See also brz conflicts.
+  
+  If there is no default branch set, the first merge will set it (use
+  --no-remember to avoid setting it). After that, you can omit the branch
+  to use the default.  To change the default, use --remember. The value will
+  only be saved if the remote location can be accessed.
+  
+  The results of the merge are placed into the destination working
+  directory, where they can be reviewed (with brz diff), tested, and then
+  committed to record the result of the merge.
+  
+  merge refuses to run if there are any uncommitted changes, unless
+  --force is given.  If --force is given, then the changes from the source
+  will be merged with the current working tree, including any uncommitted
+  changes in the tree.  The --force option can also be used to create a
+  merge revision which has more than two parents.
+  
+  If one would like to merge changes from the working tree of the other
+  branch without merging any committed revisions, the --uncommitted option
+  can be given.
+  
+  To select only some changes to merge, use "merge -i", which will prompt
+  you to apply each diff hunk and file change, similar to "shelve".
+
+:Examples:
+    To merge all new revisions from brz.dev::
+
+        brz merge ../brz.dev
+
+    To merge changes up to and including revision 82 from brz.dev::
+
+        brz merge -r 82 ../brz.dev
+
+    To merge the changes introduced by 82, without previous changes::
+
+        brz merge -r 81..82 ../brz.dev
+
+    To apply a merge directive contained in /tmp/merge::
+
+        brz merge /tmp/merge
+
+    To create a merge revision with three parents from two branches
+    feature1a and feature1b:
+
+        brz merge ../feature1a
+        brz merge ../feature1b --force
+        brz commit -m 'revision with three parents'
+
+:See also: :doc:`remerge <remerge-help>`, :doc:`send <send-help>`, :doc:`status-flags <status-flags-help>`, :doc:`update <update-help>`
+
+

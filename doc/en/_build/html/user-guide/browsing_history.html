@@ -1,0 +1,201 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Browsing history &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Releasing a project" href="releasing_a_project.html" />
+    <link rel="prev" title="Recording changes" href="recording_changes.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="recording_changes.html" title="Recording changes"
+             accesskey="P">previous</a> |
+          <a href="releasing_a_project.html" title="Releasing a project"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="browsing-history">
+<h1>Browsing history<a class="headerlink" href="#browsing-history" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="brz-log">
+<h2>brz log<a class="headerlink" href="#brz-log" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">log</span></code> command shows a list of previous revisions.</p>
+<p>As with <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span></code>, <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">log</span></code> supports the <code class="docutils literal notranslate"><span class="pre">-r</span></code> argument:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">log</span> <span class="o">-</span><span class="n">r</span> <span class="mf">1000.</span><span class="o">.</span>          <span class="c1"># Revision 1000 and everything after it</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">log</span> <span class="o">-</span><span class="n">r</span> <span class="o">..</span><span class="mi">1000</span>          <span class="c1"># Everything up to and including r1000</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">log</span> <span class="o">-</span><span class="n">r</span> <span class="mf">1000.</span><span class="o">.</span><span class="mi">1100</span>      <span class="c1"># changes from 1000 to 1100</span>
+<span class="o">%</span> <span class="n">brz</span> <span class="n">log</span> <span class="o">-</span><span class="n">r</span> <span class="mi">1000</span>            <span class="c1"># The changes in only revision 1000</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="viewing-merged-revisions">
+<h2>Viewing merged revisions<a class="headerlink" href="#viewing-merged-revisions" title="Permalink to this headline">¶</a></h2>
+<p>As distributed VCS tools like Breezy make merging much easier than
+it is in central VCS tools, the history of a branch may often contain
+lines of development splitting off the mainline and merging back
+in at a later time. Technically, the relationship between the
+numerous revision nodes is known as a Directed Acyclic Graph or
+DAG for short.</p>
+<p>In many cases, you typically want to see the mainline first and drill
+down from there. The default behaviour of log is therefore to show
+the mainline and indicate which revisions have nested merged revisions.
+To explore the merged revisions for revision X, use the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="o">-</span><span class="n">n0</span> <span class="o">-</span><span class="n">rX</span>
+</pre></div>
+</div>
+<p>To see all revisions and all their merged revisions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="o">-</span><span class="n">n0</span>
+</pre></div>
+</div>
+<p>Note that the -n option is used to indicate the number of levels to display
+where 0 means all. If that is too noisy, you can easily adjust the number
+to only view down so far. For example, if your project is structured with
+a top level gatekeeper merging changes from team gatekeepers, <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">log</span></code>
+shows what the top level gatekeeper did while <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">log</span> <span class="pre">-n2</span></code> shows what
+the team gatekeepers did. In the vast majority of cases though, <code class="docutils literal notranslate"><span class="pre">-n0</span></code>
+is fine.</p>
+</div>
+<div class="section" id="tuning-the-output">
+<h2>Tuning the output<a class="headerlink" href="#tuning-the-output" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">log</span></code> command has several options that are useful for tuning
+the output. These include:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--forward</span></code> presents the log in chronological order, i.e. the
+most recent revisions are displayed last.</li>
+<li>the <code class="docutils literal notranslate"><span class="pre">--limit</span></code> option controls the maximum number of revisions displayed.</li>
+</ul>
+</div></blockquote>
+<p>See the online help for the log command or the User Reference for more
+information on tuning the output.</p>
+</div>
+<div class="section" id="viewing-the-history-for-a-file">
+<h2>Viewing the history for a file<a class="headerlink" href="#viewing-the-history-for-a-file" title="Permalink to this headline">¶</a></h2>
+<p>It is often useful to filter the history so that it only
+applies to a given file. To do this, provide the filename
+to the <code class="docutils literal notranslate"><span class="pre">log</span></code> command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">log</span> <span class="n">foo</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="viewing-an-old-version-of-a-file">
+<h2>Viewing an old version of a file<a class="headerlink" href="#viewing-an-old-version-of-a-file" title="Permalink to this headline">¶</a></h2>
+<p>To get the contents of a file at a given version, use the
+<code class="docutils literal notranslate"><span class="pre">cat</span></code> command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">cat</span> <span class="o">-</span><span class="n">r</span> <span class="n">X</span> <span class="n">file</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">X</span></code> is the revision identifier and <code class="docutils literal notranslate"><span class="pre">file</span></code> is
+the filename. This will send output to the standard output
+stream so you’ll typically want to pipe the output through
+a viewing tool (like <code class="docutils literal notranslate"><span class="pre">less</span></code> or <code class="docutils literal notranslate"><span class="pre">more</span></code>) or redirect it
+like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">cat</span> <span class="o">-</span><span class="n">r</span> <span class="o">-</span><span class="mi">2</span> <span class="n">foo</span><span class="o">.</span><span class="n">py</span> <span class="o">|</span> <span class="n">less</span>
+<span class="n">brz</span> <span class="n">cat</span> <span class="o">-</span><span class="n">r</span> <span class="mi">1</span> <span class="n">foo</span><span class="o">.</span><span class="n">py</span> <span class="o">&gt;</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">foo</span><span class="o">-</span><span class="mi">1</span><span class="n">st</span><span class="o">-</span><span class="n">version</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="graphical-history-viewers">
+<h2>Graphical history viewers<a class="headerlink" href="#graphical-history-viewers" title="Permalink to this headline">¶</a></h2>
+<p>History browsing is one area where GUI tools really make life easier.
+Breezy has numerous plug-ins that provide this capability including
+QBzr and brz-gtk. See <a class="reference external" href="plugins.html">Using plugins</a> for details on how to install
+these if they are not already installed.</p>
+<p>To use the graphical viewer from QBzr:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">qlog</span>
+</pre></div>
+</div>
+<p>To use the graphical viewer from brz-gtk:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">viz</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">viz</span></code> is actually a built-in alias for <code class="docutils literal notranslate"><span class="pre">visualize</span></code> so use the longer
+command name if you prefer.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="recording_changes.html" title="Recording changes"
+              >previous</a> |
+            <a href="releasing_a_project.html" title="Releasing a project"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/browsing_history.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

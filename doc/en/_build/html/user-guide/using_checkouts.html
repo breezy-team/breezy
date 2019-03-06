@@ -1,0 +1,192 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Using checkouts &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Working offline on a central branch" href="working_offline_central.html" />
+    <link rel="prev" title="Publishing a branch" href="publishing_a_branch.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="publishing_a_branch.html" title="Publishing a branch"
+             accesskey="P">previous</a> |
+          <a href="working_offline_central.html" title="Working offline on a central branch"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="using-checkouts">
+<h1>Using checkouts<a class="headerlink" href="#using-checkouts" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="turning-a-branch-into-a-checkout">
+<h2>Turning a branch into a checkout<a class="headerlink" href="#turning-a-branch-into-a-checkout" title="Permalink to this headline">¶</a></h2>
+<p>If you have a local branch and wish to make it a checkout, use the
+<code class="docutils literal notranslate"><span class="pre">bind</span></code> command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">bind</span> <span class="n">bzr</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">PROJECT</span><span class="o">/</span><span class="n">trunk</span>
+</pre></div>
+</div>
+<p>This is necessary, for example, after creating a central branch using
+<code class="docutils literal notranslate"><span class="pre">push</span></code> as illustrated in the previous section.</p>
+<p>After this, commits will be applied to the bound branch before
+being applied locally.</p>
+</div>
+<div class="section" id="turning-a-checkout-into-a-branch">
+<h2>Turning a checkout into a branch<a class="headerlink" href="#turning-a-checkout-into-a-branch" title="Permalink to this headline">¶</a></h2>
+<p>If you have a checkout and wish to make it a normal branch, use the
+<code class="docutils literal notranslate"><span class="pre">unbind</span></code> command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">unbind</span>
+</pre></div>
+</div>
+<p>After this, commits will only be applied locally.</p>
+</div>
+<div class="section" id="getting-a-checkout">
+<h2>Getting a checkout<a class="headerlink" href="#getting-a-checkout" title="Permalink to this headline">¶</a></h2>
+<p>When working in a team using a central branch, one person needs
+to provide some initial content as shown in the previous section.
+After that, each person should use the <code class="docutils literal notranslate"><span class="pre">checkout</span></code> command to
+create their local checkout, i.e. the sandbox in which they
+will make their changes.</p>
+<p>Unlike Subversion and CVS, in Breezy the <code class="docutils literal notranslate"><span class="pre">checkout</span></code> command creates a
+local full copy of history in addition to creating a working tree holding
+the latest content. This means that operations such as <code class="docutils literal notranslate"><span class="pre">diff</span></code> and <code class="docutils literal notranslate"><span class="pre">log</span></code>
+are fast and can still be used when disconnected from the central location.</p>
+</div>
+<div class="section" id="getting-a-lightweight-checkout">
+<h2>Getting a lightweight checkout<a class="headerlink" href="#getting-a-lightweight-checkout" title="Permalink to this headline">¶</a></h2>
+<p>While Breezy does its best to efficiently store version history, there
+are occasions when the history is simply not wanted. For example, if your
+team is managing the content of a web site using Breezy with a
+central repository, then your release process might be as simple as
+updating a checkout of the content on the public web server. In this
+case, you probably don’t want the history downloaded to that location
+as doing so:</p>
+<blockquote>
+<div><ul class="simple">
+<li>wastes disk space holding history that isn’t needed there</li>
+<li>exposes a Breezy branch that you may want kept private.</li>
+</ul>
+</div></blockquote>
+<p>To get a history-less checkout in Breezy, use the <code class="docutils literal notranslate"><span class="pre">--lightweight</span></code>
+option like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">checkout</span> <span class="o">--</span><span class="n">lightweight</span> <span class="n">bzr</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">PROJECT</span><span class="o">/</span><span class="n">trunk</span>
+</pre></div>
+</div>
+<p>Of course, many of the benefits of a normal checkout are lost by doing
+this but that’s a tradeoff you can make if and when it makes sense.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">--lightweight</span></code> option only applies to checkouts, not to all branches.</p>
+<p>Note: If your code base is really large and disk space on your computer
+is limited, lightweight checkouts may be the right choice for you.
+Be sure to consider all your options though including
+<a class="reference external" href="branching_a_project.html#a-reminder-about-shared-repositories">shared repositories</a>,
+<a class="reference external" href="stacked.html">stacked branches</a>, and
+<a class="reference external" href="reusing_a_checkout.html">reusing a checkout</a>.</p>
+</div>
+<div class="section" id="updating-to-the-latest-content">
+<h2>Updating to the latest content<a class="headerlink" href="#updating-to-the-latest-content" title="Permalink to this headline">¶</a></h2>
+<p>One of the important aspects of working in lockstep with others is
+keeping your checkout up to date with the latest changes made to
+the central branch. Just as you would in Subversion or CVS, you do
+this in Breezy by using the <code class="docutils literal notranslate"><span class="pre">update</span></code> command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">update</span>
+</pre></div>
+</div>
+<p>This gets any new revisions available in the bound branch and
+merges your local changes, if any.</p>
+</div>
+<div class="section" id="handling-commit-failures">
+<h2>Handling commit failures<a class="headerlink" href="#handling-commit-failures" title="Permalink to this headline">¶</a></h2>
+<p>Note that your checkout <em>must</em> be up to date with the bound branch
+before running <code class="docutils literal notranslate"><span class="pre">commit</span></code>. Breezy is actually stricter about this
+than Subversion or CVS - you need to be up to date with the full
+tree, not just for the files you’ve changed. Breezy will ask you
+to run <code class="docutils literal notranslate"><span class="pre">update</span></code> if it detects that a revision has been added to
+the central location since you last updated.</p>
+<p>If the network connection to the bound branch is lost, the commit will
+fail. Some alternative ways of working around that are outlined next.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="publishing_a_branch.html" title="Publishing a branch"
+              >previous</a> |
+            <a href="working_offline_central.html" title="Working offline on a central branch"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/using_checkouts.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

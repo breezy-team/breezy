@@ -1,0 +1,799 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bazaar Release Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bazaar-release-notes">
+<h1>Bazaar Release Notes<a class="headerlink" href="#bazaar-release-notes" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="bzr-0-1-1">
+<h2>bzr 0.1.1<a class="headerlink" href="#bzr-0-1-1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-10-12</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="bug-fixes">
+<h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix problem in pulling over HTTP from machines that do not
+allow directories to be listed.</li>
+<li>Avoid harmless warning about invalid hash cache after
+upgrading branch format.</li>
+</ul>
+</div>
+<div class="section" id="performance">
+<h3>Performance<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Avoid some unnecessary HTTP operations in branch and pull.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-1">
+<h2>bzr 0.1<a class="headerlink" href="#bzr-0-1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-10-11</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="notes">
+<h3>Notes<a class="headerlink" href="#notes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>‘bzr branch’ over HTTP initially gives a very high estimate
+of completion time but it should fall as the first few
+revisions are pulled in.  branch is still slow on
+high-latency connections.</li>
+</ul>
+</div>
+<div class="section" id="id1">
+<h3>Bug Fixes<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>bzr-man.py has been updated to work again. Contributed by
+Rob Weir.</li>
+<li>Locking is now done with fcntl.lockf which works with NFS
+file systems. Contributed by Harald Meland.</li>
+<li>When a merge encounters a file that has been deleted on
+one side and modified on the other, the old contents are
+written out to foo.BASE and foo.SIDE, where SIDE is this
+or OTHER. Contributed by Aaron Bentley.</li>
+<li>Export was choosing incorrect file paths for the content of
+the tarball, this has been fixed by Aaron Bentley.</li>
+<li>Commit will no longer commit without a log message, an
+error is returned instead. Contributed by Jelmer Vernooij.</li>
+<li>If you commit a specific file in a sub directory, any of its
+parent directories that are added but not listed will be
+automatically included. Suggested by Michael Ellerman.</li>
+<li>bzr commit and upgrade did not correctly record new revisions
+for files with only a change to their executable status.
+bzr will correct this when it encounters it. Fixed by
+Robert Collins</li>
+<li>HTTP tests now force off the use of <code class="docutils literal notranslate"><span class="pre">http_proxy</span></code> for the duration.
+Contributed by Gustavo Niemeyer.</li>
+<li>Fix problems in merging weave-based branches that have
+different partial views of history.</li>
+<li>Symlink support: working with symlinks when not in the root of a
+bzr tree was broken, patch from Scott James Remnant.</li>
+</ul>
+</div>
+<div class="section" id="improvements">
+<h3>Improvements<a class="headerlink" href="#improvements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>‘branch’ now accepts a –basis parameter which will take advantage
+of local history when making a new branch. This allows faster
+branching of remote branches. Contributed by Aaron Bentley.</li>
+<li>New tree format based on weave files, called version 5.
+Existing branches can be upgraded to this format using
+‘bzr upgrade’.</li>
+<li>Symlinks are now versionable. Initial patch by
+Erik Toubro Nielsen, updated to head by Robert Collins.</li>
+<li>Executable bits are tracked on files. Patch from Gustavo
+Niemeyer.</li>
+<li>‘bzr status’ now shows unknown files inside a selected directory.
+Patch from Heikki Paajanen.</li>
+<li>Merge conflicts are recorded in .bzr. Two new commands ‘conflicts’
+and ‘resolve’ have needed added, which list and remove those
+merge conflicts respectively. A conflicted tree cannot be committed
+in. Contributed by Aaron Bentley.</li>
+<li>‘rm’ is now an alias for ‘remove’.</li>
+<li>Stores now split out their content in a single byte prefixed hash,
+dropping the density of files per directory by 256. Contributed by
+Gustavo Niemeyer.</li>
+<li>‘bzr diff -r branch:URL’ will now perform a diff between two branches.
+Contributed by Robert Collins.</li>
+<li>‘bzr log’ with the default formatter will show merged revisions,
+indented to the right. Initial implementation contributed by Gustavo
+Niemeyer, made incremental by Robert Collins.</li>
+</ul>
+</div>
+<div class="section" id="internals">
+<h3>Internals<a class="headerlink" href="#internals" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Test case failures have the exception printed after the log
+for your viewing pleasure.</li>
+<li>InventoryEntry is now an abstract base class, use one of the
+concrete InventoryDirectory etc classes instead.</li>
+<li>Branch raises an UnsupportedFormatError when it detects a
+bzr branch it cannot understand. This allows for precise
+handling of such circumstances.</li>
+<li>Remove RevisionReference class; <code class="docutils literal notranslate"><span class="pre">Revision.parent_ids</span></code> is now simply a
+list of their ids and <code class="docutils literal notranslate"><span class="pre">parent_sha1s</span></code> is a list of their corresponding
+sha1s (for old branches only at the moment.)</li>
+<li>New method-object style interface for Commit() and Fetch().</li>
+<li>Renamed <code class="docutils literal notranslate"><span class="pre">Branch.last_patch()</span></code> to <code class="docutils literal notranslate"><span class="pre">Branch.last_revision()</span></code>, since
+we call them revisions not patches.</li>
+<li>Move <code class="docutils literal notranslate"><span class="pre">copy_branch</span></code> to <code class="docutils literal notranslate"><span class="pre">bzrlib.clone.copy_branch</span></code>.  The destination
+directory is created if it doesn’t exist.</li>
+<li>Inventories now identify the files which were present by
+giving the revision <em>of that file</em>.</li>
+<li>Inventory and Revision XML contains a version identifier.
+This must be consistent with the overall branch version
+but allows for more flexibility in future upgrades.</li>
+</ul>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Removed testsweet module so that tests can be run after
+bzr installed by ‘bzr selftest’.</li>
+<li>‘bzr selftest’ command-line arguments can now be partial ids
+of tests to run, e.g. <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">selftest</span> <span class="pre">test_weave</span></code></li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-0-9">
+<h2>bzr 0.0.9<a class="headerlink" href="#bzr-0-0-9" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-09-23</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="id2">
+<h3>Bug Fixes<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fixed “branch -r” option.</li>
+<li>Fix remote access to branches containing non-compressed history.
+(Robert Collins).</li>
+<li>Better reliability of HTTP server tests.  (John Arbash-Meinel)</li>
+<li>Merge graph maximum distance calculation fix.  (Aaron Bentley)</li>
+<li>Various minor bug in windows support have been fixed, largely in the
+test suite. Contributed by Alexander Belchenko.</li>
+</ul>
+</div>
+<div class="section" id="id3">
+<h3>Improvements<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Status now accepts a -r argument to give status between chosen
+revisions. Contributed by Heikki Paajanen.</li>
+<li>Revision arguments no longer use +/-/= to control ranges, instead
+there is a ‘before’ namespace, which limits the successive namespace.
+For example ‘$ bzr log -r date:yesterday..before:date:today’ will
+select everything from yesterday and before today. Contributed by
+Robey Pointer</li>
+<li>There is now a bzr.bat file created by distutils when building on
+Windows. Contributed by Alexander Belchenko.</li>
+</ul>
+</div>
+<div class="section" id="id4">
+<h3>Internals<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Removed uuid() as it was unused.</li>
+<li>Improved ‘fetch’ code for pulling revisions from one branch into
+another (used by pull, merged, etc.)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-0-8">
+<h2>bzr 0.0.8<a class="headerlink" href="#bzr-0-0-8" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-09-20</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="id5">
+<h3>Improvements<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Adding a file whose parent directory is not versioned will
+implicitly add the parent, and so on up to the root. This means
+you should never need to explictly add a directory, they’ll just
+get added when you add a file in the directory.  Contributed by
+Michael Ellerman.</li>
+<li>Ignore <code class="docutils literal notranslate"><span class="pre">.DS_Store</span></code> (contains Mac metadata) by default.
+(Nir Soffer)</li>
+<li>If you set <code class="docutils literal notranslate"><span class="pre">BZR_EDITOR</span></code> in the environment, it is checked in
+preference to EDITOR and the config file for the interactive commit
+editing program. Related to this is a bugfix where a missing program
+set in EDITOR would cause editing to fail, now the fallback program
+for the operating system is still tried.</li>
+<li>Files that are not directories/symlinks/regular files will no longer
+cause bzr to fail, it will just ignore them by default. You cannot add
+them to the tree though - they are not versionable.</li>
+</ul>
+</div>
+<div class="section" id="id6">
+<h3>Internals<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Refactor XML packing/unpacking.</li>
+</ul>
+</div>
+<div class="section" id="id7">
+<h3>Bug Fixes<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fixed ‘bzr mv’ by Ollie Rutherfurd.</li>
+<li>Fixed strange error when trying to access a nonexistent HTTP
+branch.</li>
+<li>Make sure that the hashcache gets written out if it can’t be
+read.</li>
+</ul>
+</div>
+<div class="section" id="portability">
+<h3>Portability<a class="headerlink" href="#portability" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Various Windows fixes from Ollie Rutherfurd.</li>
+<li>Quieten warnings about locking; patch from Matt Lavin.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-0-7">
+<h2>bzr-0.0.7<a class="headerlink" href="#bzr-0-0-7" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-09-02</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="new-features">
+<h3>New Features<a class="headerlink" href="#new-features" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">shell-complete</span></code> command contributed by Clint Adams to
+help with intelligent shell completion.</li>
+<li>New expert command <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">find-merge-base</span></code> for debugging merges.</li>
+</ul>
+</div>
+<div class="section" id="enhancements">
+<h3>Enhancements<a class="headerlink" href="#enhancements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Much better merge support.</li>
+<li>merge3 conflicts are now reported with markers like ‘&lt;&lt;&lt;&lt;&lt;&lt;&lt;’
+(seven characters) which is the same as CVS and pleases things
+like emacs smerge.</li>
+</ul>
+</div>
+<div class="section" id="id8">
+<h3>Bug Fixes<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">upgrade</span></code> no longer fails when trying to fix trees that
+mention revisions that are not present.</li>
+<li>Fixed bugs in listing plugins from <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">plugins</span></code>.</li>
+<li>Fix case of $EDITOR containing options for the editor.</li>
+<li>Fix log -r refusing to show the last revision.
+(Patch from Goffredo Baroncelli.)</li>
+</ul>
+</div>
+<div class="section" id="changes">
+<h3>Changes<a class="headerlink" href="#changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span> <span class="pre">--show-ids</span></code> shows the revision ids of all parents.</li>
+<li>Externally provided commands on your $BZRPATH no longer need
+to recognize –bzr-usage to work properly, and can just handle
+–help themselves.</li>
+</ul>
+</div>
+<div class="section" id="library">
+<h3>Library<a class="headerlink" href="#library" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Changed trace messages to go through the standard logging
+framework, so that they can more easily be redirected by
+libraries.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-0-6">
+<h2>bzr-0.0.6<a class="headerlink" href="#bzr-0-0-6" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-08-18</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="id9">
+<h3>New Features<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Python plugins, automatically loaded from the directories on
+<code class="docutils literal notranslate"><span class="pre">BZR_PLUGIN_PATH</span></code> or <code class="docutils literal notranslate"><span class="pre">~/.bzr.conf/plugins</span></code> by default.</li>
+<li>New ‘bzr mkdir’ command.</li>
+<li>Commit mesage is fetched from an editor if not given on the
+command line; patch from Torsten Marek.</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span> <span class="pre">-m</span> <span class="pre">FOO</span></code> displays commits whose message matches regexp
+FOO.</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">add</span></code> with no arguments adds everything under the current directory.</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">mv</span></code> does move or rename depending on its arguments, like
+the Unix command.</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">missing</span></code> command shows a summary of the differences
+between two trees.  (Merged from John Arbash-Meinel.)</li>
+<li>An email address for commits to a particular tree can be
+specified by putting it into .bzr/email within a branch.  (Based
+on a patch from Heikki Paajanen.)</li>
+</ul>
+</div>
+<div class="section" id="id10">
+<h3>Enhancements<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Faster working tree operations.</li>
+</ul>
+</div>
+<div class="section" id="id11">
+<h3>Changes<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>3rd-party modules shipped with bzr are copied within the bzrlib
+python package, so that they can be installed by the setup
+script without clashing with anything already existing on the
+system.  (Contributed by Gustavo Niemeyer.)</li>
+<li>Moved plugins directory to bzrlib/, so that there’s a standard
+plugin directory which is not only installed with bzr itself but
+is also available when using bzr from the development tree.
+<code class="docutils literal notranslate"><span class="pre">BZR_PLUGIN_PATH</span></code> and <code class="docutils literal notranslate"><span class="pre">DEFAULT_PLUGIN_PATH</span></code> are then added to the
+standard plugins directory.</li>
+<li>When exporting to a tarball with <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">export</span> <span class="pre">--format</span> <span class="pre">tgz</span></code>, put
+everything under a top directory rather than dumping it into the
+current directory.   This can be overridden with the <code class="docutils literal notranslate"><span class="pre">--root</span></code>
+option.  Patch from William Dodé and John Meinel.</li>
+<li>New <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">upgrade</span></code> command to upgrade the format of a branch,
+replacing <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">check</span> <span class="pre">--update</span></code>.</li>
+<li>Files within store directories are no longer marked readonly on
+disk.</li>
+<li>Changed <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span></code> output to a more compact form suggested by
+John A Meinel.  Old format is available with the <code class="docutils literal notranslate"><span class="pre">--long</span></code> or
+<code class="docutils literal notranslate"><span class="pre">-l</span></code> option, patched by William Dodé.</li>
+<li>By default the commit command refuses to record a revision with
+no changes unless the <code class="docutils literal notranslate"><span class="pre">--unchanged</span></code> option is given.</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">--no-plugins</span></code>, <code class="docutils literal notranslate"><span class="pre">--profile</span></code> and <code class="docutils literal notranslate"><span class="pre">--builtin</span></code> command
+line options must come before the command name because they
+affect what commands are available; all other options must come
+after the command name because their interpretation depends on
+it.</li>
+<li><code class="docutils literal notranslate"><span class="pre">branch</span></code> and <code class="docutils literal notranslate"><span class="pre">clone</span></code> added as aliases for <code class="docutils literal notranslate"><span class="pre">branch</span></code>.</li>
+<li>Default log format is back to the long format; the compact one
+is available with <code class="docutils literal notranslate"><span class="pre">--short</span></code>.</li>
+</ul>
+</div>
+<div class="section" id="id12">
+<h3>Bug Fixes<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix bugs in committing only selected files or within a subdirectory.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-0-5">
+<h2>bzr-0.0.5<a class="headerlink" href="#bzr-0-0-5" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-06-15</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="id13">
+<h3>Changes<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span></code> with no command now shows help rather than giving an
+error.  Suggested by Michael Ellerman.</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">status</span></code> output format changed, because svn-style output
+doesn’t really match the model of bzr.  Now files are grouped by
+status and can be shown with their IDs.  <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">status</span> <span class="pre">--all</span></code>
+shows all versioned files and unknown files but not ignored files.</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span></code> runs from most-recent to least-recent, the reverse
+of the previous order.  The previous behaviour can be obtained
+with the <code class="docutils literal notranslate"><span class="pre">--forward</span></code> option.</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">inventory</span></code> by default shows only filenames, and also ids
+if <code class="docutils literal notranslate"><span class="pre">--show-ids</span></code> is given, in which case the id is the second
+field.</li>
+</ul>
+</div>
+<div class="section" id="id14">
+<h3>Enhancements<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>New ‘bzr whoami –email’ option shows only the email component
+of the user identification, from Jo Vermeulen.</li>
+<li>New <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">ignore</span> <span class="pre">PATTERN</span></code> command.</li>
+<li>Nicer error message for broken pipe, interrupt and similar
+conditions that don’t indicate an internal error.</li>
+<li>Add <code class="docutils literal notranslate"><span class="pre">.*.sw[nop]</span> <span class="pre">.git</span> <span class="pre">.*.tmp</span> <span class="pre">*,v</span></code> to default ignore patterns.</li>
+<li>Per-branch locks keyed on <code class="docutils literal notranslate"><span class="pre">.bzr/branch-lock</span></code>, available in
+either read or write mode.</li>
+<li>New option <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span> <span class="pre">--show-ids</span></code> shows revision and file ids.</li>
+<li>New usage <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span> <span class="pre">FILENAME</span></code> shows only revisions that
+affected that file.</li>
+<li>Changed format for describing changes in <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span> <span class="pre">-v</span></code>.</li>
+<li>New option <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span> <span class="pre">--file</span></code> to take a message from a file,
+suggested by LarstiQ.</li>
+<li>New syntax <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">status</span> <span class="pre">[FILE...]</span></code> contributed by Bartosz
+Oler.  File may be in a branch other than the working directory.</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">root</span></code> can be given an HTTP URL instead of
+a filename.</li>
+<li>Commands can now be defined by external programs or scripts
+in a directory on $BZRPATH.</li>
+<li>New “stat cache” avoids reading the contents of files if they
+haven’t changed since the previous time.</li>
+<li>If the Python interpreter is too old, try to find a better one
+or give an error.  Based on a patch from Fredrik Lundh.</li>
+<li>New optional parameter <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">info</span> <span class="pre">[BRANCH]</span></code>.</li>
+<li>New form <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">commit</span> <span class="pre">SELECTED</span></code> to commit only selected files.</li>
+<li>New form <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">log</span> <span class="pre">-r</span> <span class="pre">FROM:TO</span></code> shows changes in selected
+range; contributed by John A Meinel.</li>
+<li>New option <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">diff</span> <span class="pre">--diff-options</span> <span class="pre">'OPTS'</span></code> allows passing
+options through to an external GNU diff.</li>
+<li>New option <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">add</span> <span class="pre">--no-recurse</span></code> to add a directory but not
+their contents.</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">--version</span></code> now shows more information if bzr is being run
+from a branch.</li>
+</ul>
+</div>
+<div class="section" id="id15">
+<h3>Bug Fixes<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fixed diff format so that added and removed files will be
+handled properly by patch.  Fix from Lalo Martins.</li>
+<li>Various fixes for files whose names contain spaces or other
+metacharacters.</li>
+</ul>
+</div>
+<div class="section" id="id16">
+<h3>Testing<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Converted black-box test suites from Bourne shell into Python;
+now run using <code class="docutils literal notranslate"><span class="pre">./testbzr</span></code>.  Various structural improvements to
+the tests.</li>
+<li>testbzr by default runs the version of bzr found in the same
+directory as the tests, or the one given as the first parameter.</li>
+<li>testbzr also runs the internal tests, so the only command
+required to check is just <code class="docutils literal notranslate"><span class="pre">./testbzr</span></code>.</li>
+<li>testbzr requires python2.4, but can be used to test bzr running
+under a different version.</li>
+<li>Tests added for many other changes in this release.</li>
+</ul>
+</div>
+<div class="section" id="internal">
+<h3>Internal<a class="headerlink" href="#internal" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Included ElementTree library upgraded to 1.2.6 by Fredrik Lundh.</li>
+<li>Refactor command functions into Command objects based on HCT by
+Scott James Remnant.</li>
+<li>Better help messages for many commands.</li>
+<li>Expose <code class="docutils literal notranslate"><span class="pre">bzrlib.open_tracefile()</span></code> to start the tracefile; until
+this is called trace messages are just discarded.</li>
+<li>New internal function <code class="docutils literal notranslate"><span class="pre">find_touching_revisions()</span></code> and hidden
+command touching-revisions trace the changes to a given file.</li>
+<li>Simpler and faster <code class="docutils literal notranslate"><span class="pre">compare_inventories()</span></code> function.</li>
+<li><code class="docutils literal notranslate"><span class="pre">bzrlib.open_tracefile()</span></code> takes a tracefilename parameter.</li>
+<li>New AtomicFile class.</li>
+<li>New developer commands <code class="docutils literal notranslate"><span class="pre">added</span></code>, <code class="docutils literal notranslate"><span class="pre">modified</span></code>.</li>
+</ul>
+</div>
+<div class="section" id="id17">
+<h3>Portability<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Cope on Windows on python2.3 by using the weaker random seed.
+2.4 is now only recommended.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-0-4">
+<h2>bzr-0.0.4<a class="headerlink" href="#bzr-0-0-4" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-04-22</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="id18">
+<h3>Enhancements<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>‘bzr diff’ optionally takes a list of files to diff.  Still a bit
+basic.  Patch from QuantumG.</li>
+<li>More default ignore patterns.</li>
+<li>New ‘bzr log –verbose’ shows a list of files changed in the
+changeset.  Patch from Sebastian Cote.</li>
+<li>Roll over ~/.bzr.log if it gets too large.</li>
+<li>Command abbreviations ‘ci’, ‘st’, ‘stat’, ‘?’ based on a patch
+by Jason Diamon.</li>
+<li>New ‘bzr help commands’ based on a patch from Denys Duchier.</li>
+</ul>
+</div>
+<div class="section" id="id19">
+<h3>Changes<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>User email is determined by looking at $BZREMAIL or ~/.bzr.email
+or $EMAIL.  All are decoded by the locale preferred encoding.
+If none of these are present <a class="reference external" href="mailto:user&#37;&#52;&#48;hostname">user<span>&#64;</span>hostname</a> is used.  The host’s
+fully-qualified name is not used because that tends to fail when
+there are DNS problems.</li>
+<li>New ‘bzr whoami’ command instead of username user-email.</li>
+</ul>
+</div>
+<div class="section" id="id20">
+<h3>Bug Fixes<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Make commit safe for hardlinked bzr trees.</li>
+<li>Some Unicode/locale fixes.</li>
+<li>Partial workaround for <code class="docutils literal notranslate"><span class="pre">difflib.unified_diff</span></code> not handling
+trailing newlines properly.</li>
+</ul>
+</div>
+<div class="section" id="id21">
+<h3>Internal<a class="headerlink" href="#id21" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Allow docstrings for help to be in PEP0257 format.  Patch from
+Matt Brubeck.</li>
+<li>More tests in test.sh.</li>
+<li>Write profile data to a temporary file not into working
+directory and delete it when done.</li>
+<li>Smaller .bzr.log with process ids.</li>
+</ul>
+</div>
+<div class="section" id="id22">
+<h3>Portability<a class="headerlink" href="#id22" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix opening of ~/.bzr.log on Windows.  Patch from Andrew
+Bennetts.</li>
+<li>Some improvements in handling paths on Windows, based on a patch
+from QuantumG.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-0-3">
+<h2>bzr-0.0.3<a class="headerlink" href="#bzr-0-0-3" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-04-06</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="id23">
+<h3>Enhancements<a class="headerlink" href="#id23" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>New “directories” internal command lists versioned directories
+in the tree.</li>
+<li>Can now say “bzr commit –help”.</li>
+<li>New “rename” command to rename one file to a different name
+and/or directory.</li>
+<li>New “move” command to move one or more files into a different
+directory.</li>
+<li>New “renames” command lists files renamed since base revision.</li>
+<li>New cat command contributed by janmar.</li>
+</ul>
+</div>
+<div class="section" id="id24">
+<h3>Changes<a class="headerlink" href="#id24" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>.bzr.log is placed in $HOME (not pwd) and is always written in
+UTF-8.  (Probably not a completely good long-term solution, but
+will do for now.)</li>
+</ul>
+</div>
+<div class="section" id="id25">
+<h3>Portability<a class="headerlink" href="#id25" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Workaround for difflib bug in Python 2.3 that causes an
+exception when comparing empty files.  Reported by Erik Toubro
+Nielsen.</li>
+</ul>
+</div>
+<div class="section" id="id26">
+<h3>Internal<a class="headerlink" href="#id26" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Refactored inventory storage to insert a root entry at the top.</li>
+</ul>
+</div>
+<div class="section" id="id27">
+<h3>Testing<a class="headerlink" href="#id27" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Start of shell-based black-box testing in test.sh.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-0-2-1">
+<h2>bzr-0.0.2.1<a class="headerlink" href="#bzr-0-0-2-1" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id28">
+<h3>Portability<a class="headerlink" href="#id28" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Win32 fixes from Steve Brown.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-0-2">
+<h2>bzr-0.0.2<a class="headerlink" href="#bzr-0-0-2" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Codename:</th><td class="field-body">“black cube”</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Released:</th><td class="field-body">2005-03-31</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="id29">
+<h3>Enhancements<a class="headerlink" href="#id29" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Default ignore list extended (see bzrlib/__init__.py).</li>
+<li>Patterns in .bzrignore are now added to the default ignore list,
+rather than replacing it.</li>
+<li>Ignore list isn’t reread for every file.</li>
+<li>More help topics.</li>
+<li>Reinstate the ‘bzr check’ command to check invariants of the
+branch.</li>
+<li>New ‘ignored’ command lists which files are ignored and why;
+‘deleted’ lists files deleted in the current working tree.</li>
+<li>Performance improvements.</li>
+<li>New global –profile option.</li>
+<li>Ignore patterns like ‘./config.h’ now correctly match files in
+the root directory only.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-0-1">
+<h2>bzr-0.0.1<a class="headerlink" href="#bzr-0-0-1" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-03-26</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="id30">
+<h3>Enhancements<a class="headerlink" href="#id30" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>More information from info command.</li>
+<li>Can now say “bzr help COMMAND” for more detailed help.</li>
+<li>Less file flushing and faster performance when writing logs and
+committing to stores.</li>
+<li>More useful verbose output from some commands.</li>
+</ul>
+</div>
+<div class="section" id="id31">
+<h3>Bug Fixes<a class="headerlink" href="#id31" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Fix inverted display of ‘R’ and ‘M’ during ‘commit -v’.</li>
+</ul>
+</div>
+<div class="section" id="id32">
+<h3>Portability<a class="headerlink" href="#id32" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Include a subset of ElementTree-1.2.20040618 to make
+installation easier.</li>
+<li>Fix time.localtime call to work with Python 2.3 (the minimum
+supported).</li>
+</ul>
+</div>
+</div>
+<div class="section" id="bzr-0-0-0-69">
+<h2>bzr-0.0.0.69<a class="headerlink" href="#bzr-0-0-0-69" title="Permalink to this headline">¶</a></h2>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Released:</th><td class="field-body">2005-03-22</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="id33">
+<h3>Enhancements<a class="headerlink" href="#id33" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>First public release.</li>
+<li>Storage of local versions: init, add, remove, rm, info, log,
+diff, status, etc.</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/release-notes/bzr-0.1.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

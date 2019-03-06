@@ -1,0 +1,204 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>revert &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="revno" href="revno-help.html" />
+    <link rel="prev" title="resolve" href="resolve-help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="resolve-help.html" title="resolve"
+             accesskey="P">previous</a> |
+          <a href="revno-help.html" title="revno"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="revert">
+<h1>revert<a class="headerlink" href="#revert" title="Permalink to this headline">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Set files in the working tree back to the contents of a previous revision.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz revert [FILE…]</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">--forget-merges</span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">Remove pending merge marker, without changing any
+files.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
+<td><p class="first last">Show help message.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--no-backup</span></kbd></td>
+<td><p class="first last">Do not save backups of reverted files.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
+<td><p class="first last">Only display errors and warnings.</p>
+</td></tr>
+<tr><td class="option-group" colspan="2">
+<kbd><span class="option">-r <var>ARG</var></span>, <span class="option">--revision=<var>ARG</var></span></kbd></td>
+</tr>
+<tr><td>&#160;</td><td><p class="first last">See “help revisionspec” for details.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">--usage</span></kbd></td>
+<td><p class="first last">Show usage message and options.</p>
+</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
+<td><p class="first last">Display more information.</p>
+</td></tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">Giving a list of files will revert only those files.  Otherwise, all files
+will be reverted.  If the revision is not specified with ‘–revision’, the
+working tree basis revision is used. A revert operation affects only the
+working tree, not any revision history like the branch and repository or
+the working tree basis revision.</p>
+<p>To remove only some changes, without reverting to a prior version, use
+merge instead.  For example, “merge . -r -2..-3” (don’t forget the “.”)
+will remove the changes introduced by the second last commit (-2), without
+affecting the changes introduced by the last commit (-1).  To remove
+certain changes on a hunk-by-hunk basis, see the shelve command.
+To update the branch to a specific revision or the latest revision and
+update the working tree accordingly while preserving local changes, see the
+update command.</p>
+<p>Uncommitted changes to files that are reverted will be discarded.
+However, by default, any files that have been manually changed will be
+backed up first.  (Files changed only by merge are not backed up.)  Backup
+files have ‘.~#~’ appended to their name, where # is a number.</p>
+<p>When you provide files, you can use their current pathname or the pathname
+from the target revision.  So you can use revert to “undelete” a file by
+name.  If you name a directory, all the contents of that directory will be
+reverted.</p>
+<p>If you have newly added files since the target revision, they will be
+removed.  If the files to be removed have been changed, backups will be
+created as above.  Directories containing unknown files will not be
+deleted.</p>
+<p>The working tree contains a list of revisions that have been merged but
+not yet committed. These revisions will be included as additional parents
+of the next commit.  Normally, using revert clears that list as well as
+reverting the files.  If any files are specified, revert leaves the list
+of uncommitted merges alone and reverts only the files.  Use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">revert</span>
+<span class="pre">.</span></code> in the tree root to revert all files but keep the recorded merges,
+and <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">revert</span> <span class="pre">--forget-merges</span></code> to clear the pending merge list without
+reverting any files.</p>
+<p>Using “brz revert –forget-merges”, it is possible to apply all of the
+changes from a branch in a single revision.  To do this, perform the merge
+as desired.  Then doing revert with the “–forget-merges” option will keep
+the content of the tree as it was, but it will clear the list of pending
+merges.  The next commit will then contain all of the changes that are
+present in the other branch, but without any other parent revisions.
+Because this technique forgets where these changes originated, it may
+cause additional conflicts on later merges involving the same source and
+target branches.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">See also:</th><td class="field-body"><p class="first last"><a class="reference internal" href="cat-help.html"><span class="doc">cat</span></a>, <a class="reference internal" href="export-help.html"><span class="doc">export</span></a>, <a class="reference internal" href="merge-help.html"><span class="doc">merge</span></a>, <a class="reference internal" href="shelve-help.html"><span class="doc">shelve</span></a></p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="resolve-help.html" title="resolve"
+              >previous</a> |
+            <a href="revno-help.html" title="revno"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-reference/revert-help.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

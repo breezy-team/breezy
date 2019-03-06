@@ -1,0 +1,216 @@
+Breezy Zen
+==========
+
+Grokking Breezy
+---------------
+
+While Breezy is similar to other VCS tools in many ways, there are
+some important differences that are not necessarily obvious at first
+glance.  This section attempts
+to explain some of the things users need to know in order to "grok" Breezy,
+i.e. to deeply understand it.
+
+Note: It isn't necessary to fully understand this section to use Breezy.
+You may wish to skim this section now and come back to it at a later time.
+
+Understanding revision numbers
+------------------------------
+
+All revisions in the mainline of a branch have a simple increasing
+integer. (First commit gets 1, 10th commit gets 10, etc.) This makes them
+fairly natural to use when you want to say "grab the 10th revision from my
+branch", or "fixed in revision 3050".
+
+For revisions which have been merged into a branch, a dotted notation is used
+(e.g., 3112.1.5). Dotted revision numbers have three numbers [#]_. The first
+number indicates what mainline revision change is derived from. The second
+number is the branch counter. There can be many branches derived from the
+same revision, so they all get a unique number. The third number is the
+number of revisions since the branch started. For example, 3112.1.5 is the
+first branch from revision 3112, the fifth revision on that branch.
+
+.. [#] Versions prior to brz 1.2 used a slightly different algorithm.
+   Some nested branches would get extra numbers (such as 1.1.1.1.1)
+   rather than the simpler 3-number system.
+
+Hierarchical history is good
+----------------------------
+
+Imagine a project with multiple developers contributing changes where
+many changes consist of a series of commits. To give a concrete example,
+consider the case where:
+
+ * The tip of the project's trunk is revision 100.
+ * Mary makes 3 changes to deliver feature X.
+ * Bill makes 4 changes to deliver feature Y.
+
+If the developers are working in parallel and using a traditional
+centralized VCS approach, the project history will most likely be linear
+with Mary's changes and Bill's changes interleaved. It might look like this::
+
+  107: Add documentation for Y
+  106: Fix bug found in testing Y
+  105: Fix bug found in testing X
+  104: Add code for Y
+  103: Add documentation for X
+  102: Add code and tests for X
+  101: Add tests for Y
+  100: ...
+
+Many teams use this approach because their tools make branching and merging
+difficult. As a consequence, developers update from and commit to the trunk
+frequently, minimizing integration pain by spreading it over every commit.
+If you wish, you can use Breezy exactly like this. Breezy does offer other
+ways though that you ought to consider.
+
+An alternative approach encouraged by distributed VCS tools is to create
+feature branches and to integrate those when they are ready. In this case,
+Mary's feature branch would look like this::
+
+  103: Fix bug found in testing X
+  102: Add documentation for X
+  101: Add code and tests for X
+  100: ...
+
+And Bill's would look like this::
+
+  104: Add documentation for Y
+  103: Fix bug found in testing Y
+  102: Add code for Y
+  101: Add tests for Y
+  100: ...
+
+If the features were independent and you wanted to keep linear history,
+the changes could be pushed back into the trunk in batches. (Technically,
+there are several ways of doing that but that's beyond the scope of
+this discussion.) The resulting history might look like this::
+
+  107: Fix bug found in testing X
+  106: Add documentation for X
+  105: Add code and tests for X
+  104: Add documentation for Y
+  103: Fix bug found in testing Y
+  102: Add code for Y
+  101: Add tests for Y
+  100: ...
+
+While this takes a bit more effort to achieve, it has some advantages over
+having revisions randomly intermixed. Better still though, branches can
+be merged together forming a non-linear history. The result might look
+like this::
+
+  102: Merge feature X
+       100.2.3: Fix bug found in testing X
+       100.2.2: Add documentation for X
+       100.2.1: Add code and tests for X
+  101: Merge feature Y
+       100.1.4: Add documentation for Y
+       100.1.3: Fix bug found in testing Y
+       100.1.2: Add code for Y
+       100.1.1: Add tests for Y
+  100: ...
+
+Or more likely this::
+
+  102: Merge feature X
+       100.2.3: Fix bug
+       100.2.2: Add documentation
+       100.2.1: Add code and tests
+  101: Merge feature Y
+       100.1.4: Add documentation
+       100.1.3: Fix bug found in testing
+       100.1.2: Add code
+       100.1.1: Add tests
+  100: ...
+
+This is considered good for many reasons:
+
+ * It makes it easier to understand the history of a project.
+   Related changes are clustered together and clearly partitioned.
+
+ * You can easily collapse history to see just the commits on the mainline
+   of a branch. When viewing the trunk history like this, you only see
+   high level commits (instead of a large number of commits uninteresting
+   at this level).
+
+ * If required, it makes backing out a feature much easier.
+
+ * Continuous integration tools can be used to ensure that
+   all tests still pass before committing a merge to the mainline.
+   (In many cases, it isn't appropriate to trigger CI tools after
+   every single commit as some tests will fail during development.
+   In fact, adding the tests first - TDD style - will guarantee it!)
+
+In summary, the important points are:
+
+  *Organize your work using branches.*
+
+  *Integrate changes using merge.*
+
+  *Ordered revision numbers and hierarchy make history easier to follow.*
+
+
+Each branch has its own view of history
+---------------------------------------
+
+As explained above, Breezy makes the distinction between:
+
+ * mainline revisions, i.e. ones you committed in your branch, and
+
+ * merged revisions, i.e. ones added as ancestors by committing a merge.
+
+Each branch effectively has its own view of history, i.e. different
+branches can give the same revision a different "local" revision number.
+Mainline revisions always get allocated single number revision numbers
+while merged revisions always get allocated dotted revision numbers.
+
+To extend the example above, here's what the revision history of
+Mary's branch would look like had she decided to merge the project
+trunk into her branch after completing her changes::
+
+  104: Merge mainline
+       100.2.1: Merge feature Y
+       100.1.4: Add documentation
+       100.1.3: Fix bug found in testing
+       100.1.2: Add code
+       100.1.1: Add tests
+  103: Fix bug found in testing X
+  102: Add documentation for X
+  101: Add code and tests for X
+  100: ...
+
+Once again, it's easy for Mary to look at just *her* top level of history
+to see the steps she has taken to develop this change. In this context,
+merging the trunk (and resolving any conflicts caused by doing that) is
+just one step as far as the history of this branch is concerned.
+
+It's important to remember that Breezy is not changing history here, nor
+is it changing the global revision identifiers. You can always use the
+latter if you really want to. In fact, you can use the branch specific
+revision numbers when communicating *as long as* you provide the branch
+URL as context. (In many Breezy projects, developers imply the central
+trunk branch if they exchange a revision number without a branch URL.)
+
+Merges do not change revision numbers in a branch, though they do
+allocate local revision numbers to newly merged revisions. The only time
+Breezy will change revision numbers in a branch is when you explicitly
+ask it to mirror another branch.
+
+Note: Revisions are numbered in a stable way: if two branches have
+the same revision in their mainline, all revisions in the ancestry of that
+revision will have the same revision numbers. For example, if Alice and Bob's
+branches agree on revision 10, they will agree on all revisions before
+that.
+
+Summary
+-------
+
+In general, if you follow the advice given earlier - organise
+your work in branches and use merge to collaborate - you'll find Breezy
+generally does what you expect.
+
+In coming chapters, we examine various ways of using Breezy beginning with
+the simplest: using Breezy for personal projects.
+
+..
+   vim: ft=rst tw=74 ai

@@ -1,0 +1,226 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Using plugins &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Breezy Zen" href="zen.html" />
+    <link rel="prev" title="Using aliases" href="using_aliases.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="using_aliases.html" title="Using aliases"
+             accesskey="P">previous</a> |
+          <a href="zen.html" title="Breezy Zen"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="using-plugins">
+<h1>Using plugins<a class="headerlink" href="#using-plugins" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="what-is-a-plugin">
+<h2>What is a plugin?<a class="headerlink" href="#what-is-a-plugin" title="Permalink to this headline">¶</a></h2>
+<p>A plugin is an external component for Breezy that is typically made by
+third parties. A plugin is capable of augmenting Breezy by adding new
+functionality.  A plugin can also change current Breezy behavior by
+replacing current functionality. Sample applications of plugins are:</p>
+<ul class="simple">
+<li>overriding commands</li>
+<li>adding new commands</li>
+<li>providing additional network transports</li>
+<li>customizing log output.</li>
+</ul>
+<p>The sky is the limit for the customization that can be done through plugins.
+In fact, plugins often work as a way for developers to test new features for
+Breezy prior to inclusion in the official codebase. Plugins are helpful
+at feature retirement time as well, e.g. deprecated file formats may one
+day be removed from the Breezy core and be made available as a plugin instead.</p>
+<p>Plugins are good for users, good for external developers and good for
+Breezy itself.</p>
+</div>
+<div class="section" id="where-to-find-plugins">
+<h2>Where to find plugins<a class="headerlink" href="#where-to-find-plugins" title="Permalink to this headline">¶</a></h2>
+<p>We keep our list of plugins on the <a class="reference external" href="http://wiki.bazaar.canonical.com/BzrPlugins">http://wiki.bazaar.canonical.com/BzrPlugins</a> page.</p>
+</div>
+<div class="section" id="how-to-install-a-plugin">
+<h2>How to install a plugin<a class="headerlink" href="#how-to-install-a-plugin" title="Permalink to this headline">¶</a></h2>
+<p>Installing a plugin is very easy! If not already created, create a
+<code class="docutils literal notranslate"><span class="pre">plugins</span></code> directory under your Breezy configuration directory,
+<code class="docutils literal notranslate"><span class="pre">~/.config/breezy/</span></code> on Unix and
+<code class="docutils literal notranslate"><span class="pre">C:\Documents</span> <span class="pre">and</span> <span class="pre">Settings\&lt;username&gt;\Application</span> <span class="pre">Data\Breezy\2.0\</span></code>
+on Windows. Within this directory (referred to as $BZR_HOME below),
+each plugin is placed in its own subdirectory.</p>
+<p>Plugins work particularly well with Breezy branches. For example, to
+install the brztools plugins for your main user account on GNU/Linux,
+one can perform the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">panoramicfeedback</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">opensource</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">brztools</span>
+<span class="o">~/.</span><span class="n">config</span><span class="o">/</span><span class="n">breezy</span><span class="o">/</span><span class="n">plugins</span><span class="o">/</span><span class="n">brztools</span>
+</pre></div>
+</div>
+<p>When installing plugins, the directories that you install them in must
+be valid python identifiers. This means that they can only contain
+certain characters, notably they cannot contain hyphens (<code class="docutils literal notranslate"><span class="pre">-</span></code>). Rather
+than installing <code class="docutils literal notranslate"><span class="pre">brz-gtk</span></code> to <code class="docutils literal notranslate"><span class="pre">$BZR_HOME/plugins/brz-gtk</span></code>, install it
+to <code class="docutils literal notranslate"><span class="pre">$BZR_HOME/plugins/gtk</span></code>.</p>
+</div>
+<div class="section" id="alternative-plugin-locations">
+<h2>Alternative plugin locations<a class="headerlink" href="#alternative-plugin-locations" title="Permalink to this headline">¶</a></h2>
+<p>If you have the necessary permissions, plugins can also be installed on a
+system-wide basis.  One can additionally override the personal plugins
+location by setting the environment variable <code class="docutils literal notranslate"><span class="pre">BZR_PLUGIN_PATH</span></code> (see <a class="reference external" href="../user-reference/configuration-help.html#brz-plugin-path">User
+Reference</a>
+for a detailed explanation).</p>
+</div>
+<div class="section" id="listing-the-installed-plugins">
+<h2>Listing the installed plugins<a class="headerlink" href="#listing-the-installed-plugins" title="Permalink to this headline">¶</a></h2>
+<p>To do this, use the plugins command like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">plugins</span>
+</pre></div>
+</div>
+<p>The name, location and version of each plugin installed will be displayed.</p>
+<p>New commands added by plugins can be seen by running <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">help</span> <span class="pre">commands</span></code>.
+The commands provided by a plugin are shown followed by the name of the
+plugin in brackets.</p>
+</div>
+<div class="section" id="popular-plugins">
+<h2>Popular plugins<a class="headerlink" href="#popular-plugins" title="Permalink to this headline">¶</a></h2>
+<p>Here is a sample of some of the more popular plugins.</p>
+<blockquote>
+<div><table border="1" class="docutils">
+<colgroup>
+<col width="24%" />
+<col width="25%" />
+<col width="51%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Category</th>
+<th class="head">Name</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>GUI</td>
+<td>QBzr</td>
+<td>Qt-based GUI tools</td>
+</tr>
+<tr class="row-odd"><td>GUI</td>
+<td>brz-gtk</td>
+<td>GTK-based GUI tools</td>
+</tr>
+<tr class="row-even"><td>GUI</td>
+<td>brz-eclipse</td>
+<td>Eclipse integration</td>
+</tr>
+<tr class="row-odd"><td>General</td>
+<td>brztools</td>
+<td>misc. enhancements including shelf</td>
+</tr>
+<tr class="row-even"><td>General</td>
+<td>difftools</td>
+<td>external diff tool helper</td>
+</tr>
+<tr class="row-odd"><td>General</td>
+<td>extmerge</td>
+<td>external merge tool helper</td>
+</tr>
+<tr class="row-even"><td>Integration</td>
+<td>brz-svn</td>
+<td>use Subversion as a repository</td>
+</tr>
+<tr class="row-odd"><td>Migration</td>
+<td>cvsps</td>
+<td>migrate CVS patch-sets</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>If you wish to write your own plugins, it is not difficult to do.
+See <a class="reference external" href="writingaplugin.html">Writing a plugin</a> in the appendices to get
+started.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="using_aliases.html" title="Using aliases"
+              >previous</a> |
+            <a href="zen.html" title="Breezy Zen"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/plugins.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

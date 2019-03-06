@@ -1,0 +1,183 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>GnuPG Signatures &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="brz-svn" href="svn_plugin.html" />
+    <link rel="prev" title="Exporting version information" href="version_info.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="version_info.html" title="Exporting version information"
+             accesskey="P">previous</a> |
+          <a href="svn_plugin.html" title="brz-svn"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="gnupg-signatures">
+<h1>GnuPG Signatures<a class="headerlink" href="#gnupg-signatures" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="reasons-to-sign-your-repository">
+<h2>Reasons to Sign Your Repository<a class="headerlink" href="#reasons-to-sign-your-repository" title="Permalink to this headline">¶</a></h2>
+<p>Breezy can sign revisions using GnuPG, a Free Software implementation of the
+OpenPGP digital signature format.  By signing commits a person wanting to
+make use of a branch can be confident where the code came from, assuming the
+GnuPG keys used can be verified.  This could for example prevent worry about
+compromised code in the case where a server hosting Breezy branches has been
+hacked into.  It could also be used to verify that all code is written by a
+select group of people, such as if contributor agreements are needed.</p>
+<p>Signatures are passed around with commits during branch, push, merge and other
+operations.</p>
+</div>
+<div class="section" id="setting-up-gnupg">
+<h2>Setting up GnuPG<a class="headerlink" href="#setting-up-gnupg" title="Permalink to this headline">¶</a></h2>
+<p>There are many guides to creating a digital signature key with GnuPG.  See
+for example the <a class="reference external" href="http://www.gnupg.org/gph/en/manual.html#AEN26">GnuPG Handbook</a> or the <a class="reference external" href="https://help.launchpad.net/YourAccount/ImportingYourPGPKey">Launchpad Wiki</a>.</p>
+</div>
+<div class="section" id="signing-commits">
+<h2>Signing Commits<a class="headerlink" href="#signing-commits" title="Permalink to this headline">¶</a></h2>
+<p>To sign commits as they are made turn on the <code class="docutils literal notranslate"><span class="pre">create_signatures</span></code>
+configuration option in your <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> or <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> file:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">create_signatures</span> <span class="o">=</span> <span class="n">always</span>
+</pre></div>
+</div>
+<p>When you next make a commit it will ask for the pass phrase for your GnuPG key.
+If you want GnuPG to remember your password ensure you have <code class="docutils literal notranslate"><span class="pre">gnupg-agent</span></code>
+installed.</p>
+<p>To sign previous commits to a branch use <code class="docutils literal notranslate"><span class="pre">sign-my-commits</span></code>.  This will go
+through all revisions in the branch and sign any which match your
+commit name.  You can also pass the name of a contributor to <code class="docutils literal notranslate"><span class="pre">sign-my-commits</span></code>
+to sign someone else’s commits or if your GnuPG key does not match your Breezy
+name and e-mail:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">sign</span><span class="o">-</span><span class="n">my</span><span class="o">-</span><span class="n">commits</span> <span class="o">.</span> <span class="s2">&quot;Amy Pond &lt;amy@example.com&gt;&quot;</span>
+</pre></div>
+</div>
+<p>It will not sign commits which already have a signature.</p>
+<p>To sign a single commit or a range of commits use the (hidden) command
+<code class="docutils literal notranslate"><span class="pre">re-sign</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">re</span><span class="o">-</span><span class="n">sign</span> <span class="o">-</span><span class="n">r</span> <span class="mi">24</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">re-sign</span></code> is also useful to change an existing signature.</p>
+<p>By default Breezy will tell GnuPG to use a key with the same user
+identity as the one set with <code class="docutils literal notranslate"><span class="pre">whoami</span></code>.  To override this set
+<code class="docutils literal notranslate"><span class="pre">gpg_signing_key</span></code> in breezy.conf or locations.conf.</p>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">gpg_signing_key=DD4D5088</span></code></p>
+<p><code class="docutils literal notranslate"><span class="pre">gpg_signing_key=amy&#64;example.com</span></code></p>
+</div></blockquote>
+</div>
+<div class="section" id="verifying-commits">
+<h2>Verifying Commits<a class="headerlink" href="#verifying-commits" title="Permalink to this headline">¶</a></h2>
+<p>Signatures can be verified with the <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">verify-signatures</span></code> command.  By
+default this will check all commits in the branch and notify that all commits
+are signed by known trusted signatures.  If not all commits have trusted
+signatures it will give a summary of the number of commits which are invalid,
+having missing keys or are not signed.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">verify-signatures</span></code> command can be given a comma separated list of key
+patters to specify a list of acceptable keys.  It can also take a range of
+commits to verify in the current branch.  Finally using the verbose option will
+list each key that is valid or authors for commits which failed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$brz verify-signatures -kamy -v -r 1..5
+1 commit with valid signature
+  Amy Pond &lt;amy@example.com&gt; signed 4 commits
+0 commits with unknown keys
+1 commit not valid
+  1 commit by author The Doctor &lt;doctor@example.com&gt;
+0 commits not signed
+</pre></div>
+</div>
+</div>
+<div class="section" id="work-in-progress">
+<h2>Work in Progress<a class="headerlink" href="#work-in-progress" title="Permalink to this headline">¶</a></h2>
+<p>There is still a number of digital signature related features which
+are hoped to be added to Breezy soon.  These include brz explorer
+integration and setting branches to require signatures.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="version_info.html" title="Exporting version information"
+              >previous</a> |
+            <a href="svn_plugin.html" title="brz-svn"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/gpg_signatures.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,10 @@
+Current Storage Formats
+=======================
+
+
+:2a:
+    (native) (default) Format for the bzr 2.0 series.
+
+
+See :doc:`formats-help` for more about storage formats.
+

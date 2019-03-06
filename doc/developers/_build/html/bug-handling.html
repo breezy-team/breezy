@@ -1,0 +1,396 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Tracking Bugs in Breezy &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Breezy Developer Guide" href="HACKING.html" />
+    <link rel="prev" title="Profiling" href="profiling.html" />
+<link rel="stylesheet" href="_static/brz-doc.css" type="text/css" />
+ 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="profiling.html" title="Profiling"
+             accesskey="P">previous</a> |
+          <a href="HACKING.html" title="Breezy Developer Guide"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="tracking-bugs-in-breezy">
+<h1>Tracking Bugs in Breezy<a class="headerlink" href="#tracking-bugs-in-breezy" title="Permalink to this headline">¶</a></h1>
+<p>This document describes the bug-tracking processes for developing Breezy
+itself.  Bugs in Breezy are recorded in Launchpad.</p>
+<p>See also:</p>
+<ul class="simple">
+<li><a class="reference external" href="index.html">Breezy Developer Documents</a>.</li>
+<li><a class="reference external" href="cycle.html">The Breezy Development Cycle</a>.</li>
+<li><a class="reference external" href="../en/user-guide/index.html">The Breezy User Guide</a> – for
+information on integrating Breezy with other bug trackers.</li>
+</ul>
+<div class="section" id="links">
+<h2>Links<a class="headerlink" href="#links" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="https://bugs.launchpad.net/brz">Breezy bugs home page</a>.</li>
+<li><a class="reference external" href="https://bugs.launchpad.net/brz/+bugs?search=Search&amp;field.importance=Critical&amp;field.status=New&amp;field.status=Incomplete&amp;field.status=Confirmed&amp;field.status=Triaged&amp;field.status=In+Progress&amp;field.status=Fix+Committed">Critical bugs</a>.</li>
+<li><a class="reference external" href="https://bugs.launchpad.net/brz/+bugs">Open bugs by importance</a>.</li>
+<li><a class="reference external" href="https://bugs.launchpad.net/brz/+bugs?field.searchtext=&amp;orderby=-date_last_updated&amp;search=Search&amp;field.status%3Alist=NEW&amp;field.status%3Alist=INCOMPLETE_WITH_RESPONSE&amp;field.status%3Alist=INCOMPLETE_WITHOUT_RESPONSE&amp;field.status%3Alist=CONFIRMED&amp;field.status%3Alist=TRIAGED&amp;field.status%3Alist=INPROGRESS&amp;field.status%3Alist=FIXCOMMITTED&amp;field.assignee=&amp;field.bug_reporter=&amp;field.omit_dupes=on&amp;field.has_patch=&amp;field.has_no_package=">Open bugs most recently changed first</a>.</li>
+<li><a class="reference external" href="http://tinyurl.com/brz-bugs-by-dupes">Most commonly duplicated bugs</a>.</li>
+</ul>
+</div>
+<div class="section" id="generalities">
+<h2>Generalities<a class="headerlink" href="#generalities" title="Permalink to this headline">¶</a></h2>
+<p>Anyone involved with Breezy is welcome to contribute to managing our bug
+reports.  <strong>Edit boldly</strong>: try to help users out, assess importance or improve
+the bug description or status.  Other people will see the bugs: it’s
+better to have 20 of them processed and later change the status of a
+couple than to leave them lie.</p>
+<p>When you file a bug as a Breezy developer or active user, if you feel
+confident in doing so, make an assessment of status and importance at the
+time you file it, rather than leaving it for someone else.  It’s more
+efficient to change the importance if someone else feels it’s higher or
+lower, than to have someone else edit all bugs.</p>
+<p>It’s more useful to actually ship bug fixes than to garden the bug
+database.  It’s more useful to take one bug through to a shipped fix than
+to partially investigate ten bugs.  You don’t get credit for a bug until
+the fix is shipped in a release.  Users like getting a response to their
+report, but they generally care more about getting bugs fixed.</p>
+<p>The aim of investigating bugs before starting concentrated work on them is
+therefore only to:</p>
+<ul class="simple">
+<li>determine if they are critical or high priority (and
+should displace existing work)</li>
+<li>garden sufficiently to keep the database usable: meaningful summaries,
+and duplicates removed</li>
+</ul>
+<p>It’s OK to fix some bugs that just annoy you, even if they’re not
+rationally high.</p>
+<p>You can use <code class="docutils literal notranslate"><span class="pre">--fixes</span> <span class="pre">lp:12345678</span></code> when committing to associate the
+commit with a particular bug.</p>
+<p>If there are multiple bugs with related fixes, putting “[master]” in the
+title of one of them helps find it</p>
+<p>It’s often fastest to find bugs just using the regular Google search
+engine, rather than Launchpad’s search.</p>
+<p>Martin Pitt says:</p>
+<blockquote>
+<div><div class="line-block">
+<div class="line">One of the things you should not do often is to start asking</div>
+<div class="line">questions/for more debug info and then forget about the bug. It’s just</div>
+<div class="line">a waste of the reporter’s and your time, and will create frustration</div>
+<div class="line">on the reporter side.</div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="priorities">
+<h2>Priorities<a class="headerlink" href="#priorities" title="Permalink to this headline">¶</a></h2>
+<p>The suggested priorities for bug work are:</p>
+<ol class="arabic simple">
+<li>Fix critical bugs.</li>
+<li>Get existing fixes through review and landed.</li>
+<li>Fix bugs that are already in progress.</li>
+<li>Look at bugs already assigned to you, and either start them, or change
+your mind and unassign them.</li>
+<li>Take new bugs from the top of the stack.</li>
+<li>Triage new bugs.</li>
+</ol>
+<p>It’s not strict and of course there is personal discretion but our work
+should be biased to the top of this hierarchy.</p>
+</div>
+<div class="section" id="clear-bugs">
+<h2>Clear Bugs<a class="headerlink" href="#clear-bugs" title="Permalink to this headline">¶</a></h2>
+<p>Bugs should have clear edges, so that you can make a clear statement about
+whether a bug is fixed or not.  (Sometimes reality is complicated, but aim
+for each bug to be clear.)</p>
+<p>Bugs on documentation, performance, or UI are fine as long as they’re
+clear bugs.</p>
+<p>Examples of good bugs:</p>
+<ul class="simple">
+<li>“ValueError in frob_foo when committing changed symlink” - although
+there may be many possible things that could cause a ValueError there,
+you should at least know when you’ve fixed the problem described in this
+bug.</li>
+<li>“Unclear message about incompatible repositories” - even though the user
+may not agree the new message is sufficiently clear, at least you know
+when you’ve tried to fix it.</li>
+</ul>
+<p>Examples of bad bugs:</p>
+<ul class="simple">
+<li>“Commit is too slow” - how fast is fast enough to close it?  “Commit
+reads the working tree twice” is clearer.</li>
+</ul>
+</div>
+<div class="section" id="bug-status">
+<h2>Bug Status<a class="headerlink" href="#bug-status" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>New</dt>
+<dd>The bug has just been filed and hasn’t been examined by a developer
+yet.</dd>
+<dt>Incomplete</dt>
+<dd><p class="first">The bug requires more information from the reporter to make progress.</p>
+<p class="last">Only set this state if it’s impossible or uneconomical to make
+progress on the bug without that information.  The bug will expire if
+it remains in this state for two months.</p>
+</dd>
+<dt>Confirmed</dt>
+<dd>This bug has been confirmed by at least one other person (developer or otherwise).</dd>
+<dt>Triaged</dt>
+<dd>The bug report has been seen by a developer and we agree it’s a bug.
+You don’t have to reproduce the bug to mark it Triaged.  (Generally
+it’s not a good idea for a developer to spend time reproducing the bug
+until they’re going to work on it.)</dd>
+<dt>In Progress</dt>
+<dd><p class="first">Someone has started working on this.  We can deliver the value of the
+work already done by finishing and shipping the fix.</p>
+<p class="last">The bug keeps this state from the time someone does non-trivial
+analysis, until the fix is merged to a release or trunk branch (when
+it is Fix Released), or until they give up on it (back to New or
+Confirmed) or decide it is Invalid or Incomplete.</p>
+</dd>
+<dt>Won’t Fix</dt>
+<dd>The behaviour complained about is intentional and we won’t fix it.
+Needless to say, be thoughtful before using this status, and consider if
+the user experience can be improved in some other way.</dd>
+<dt>Invalid</dt>
+<dd>The reporter was confused, and this is not actually a bug.
+Again, be sensitive in explaining this to the user.</dd>
+<dt>Fix Committed</dt>
+<dd>Don’t use this.  If set on old bug, it probably means In Progress,
+with the fix waiting for review.  See Launchpad <a class="reference external" href="https://bugs.launchpad.net/launchpad/+bug/163694">bug 163694</a>.</dd>
+<dt>Fix Released</dt>
+<dd><p class="first">The fix for this bug is now in the Breezy branch that this task is for.
+The branch for the default task on a bug is trunk.</p>
+<p>We use this value even though the fix may not have been been included
+in a release yet because all the developer activity around it is
+complete and we want to both avoid bug spam when releases happen, and
+keep the list of bugs that developers see when they look at the bug
+tracker trimmed to those that require action.</p>
+<p class="last">When setting a bug task to fix released, the bug target milestone
+should be set to the release the fix will be included in (or was
+included in, if you are updating an old bug). Don’t spend too much
+time updating this if you don’t immediately know: its not critical
+that it be set.</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="bug-importance">
+<h2>Bug Importance<a class="headerlink" href="#bug-importance" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>Critical</dt>
+<dd>This is a serious bug that could cause data loss, stop Breezy being
+usable in an important case, or represents a regression in something
+previously working.  We should fix critical bugs before doing other
+work, or seriously consider whether the bug is really critical
+or whether the other change is more urgent.</dd>
+<dt>High</dt>
+<dd>This is a bug that can seriously interfere with people’s use of
+Breezy.  We should seriously consider fixing these bugs before
+working on new features.</dd>
+<dt>Medium</dt>
+<dd>A regular bug.  We’d like to fix them, but there may be a long delay.</dd>
+<dt>Low</dt>
+<dd>Something suboptimal that may affect an unimportant case or have a
+fairly easy workaround.</dd>
+<dt>Wishlist</dt>
+<dd>These will basically never get done.</dd>
+</dl>
+<p>Bugs rated Medium or lower are unlikely to get fixed unless they either
+pique the interest of a developer or are escalated due eg to many users
+being affected.</p>
+<p>Not every existing bug is correctly rated according to this scale, and we
+don’t always follow this process, but we’d like to do it more.  But
+remember, fixing bugs is more helpful than gardening them.</p>
+</div>
+<div class="section" id="assignment">
+<h2>Assignment<a class="headerlink" href="#assignment" title="Permalink to this headline">¶</a></h2>
+<p>Assigning a bug to yourself, or someone else, indicates a real intention
+to work on that bug soon.</p>
+</div>
+<div class="section" id="targetting-bugs">
+<h2>Targetting Bugs<a class="headerlink" href="#targetting-bugs" title="Permalink to this headline">¶</a></h2>
+<p>It’s possible to target a bug to a milestone, eg
+&lt;<a class="reference external" href="https://bugs.launchpad.net/brz/+milestone/1.16">https://bugs.launchpad.net/brz/+milestone/1.16</a>&gt;.  We use this to help the
+release manager know what <strong>must</strong> be merged to make the release.</p>
+<p>Therefore, we don’t target bugs that we’d like to have fixed or that could
+be fixed in a particular release, we only target bugs that must be fixed
+and that will cause us to slip the release if they’re not fixed.  At any time,
+very few if any of the bugs targeted to a release should be still open.  By
+definition, these bugs should normally be Critical priority.</p>
+</div>
+<div class="section" id="backports">
+<h2>Backports<a class="headerlink" href="#backports" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes we’ll want to make a special point-release update (eg 1.15.1)
+off an already-released branch including a fix for a particular bug.  To
+represent this, create a new bug task (ie link in the status table on the
+bug page) by clicking the <a class="reference external" href="https://bugs.launchpad.net/bugs/132733">poorly-named</a> “Target to Release” link.
+Target it to the appropriate series (ie 1.15). If the bug should also
+prevent any point releases of that series then you should also target the
+new task to the appropriate milestone within that release. (See Targeting Bugs
+above)</p>
+<p>This bug task then has a separate status and importance to indicate the
+separate work to get it into that release.</p>
+</div>
+<div class="section" id="release-notes">
+<h2>Release Notes<a class="headerlink" href="#release-notes" title="Permalink to this headline">¶</a></h2>
+<p>Most bugs that are fixed should be mentioned in the <a class="reference external" href="../en/release-notes/">Release Notes</a> for the forthcoming version,
+including the bug number.
+(Exceptions might be bugs that are not at all user visible.)</p>
+</div>
+<div class="section" id="tags">
+<h2>Tags<a class="headerlink" href="#tags" title="Permalink to this headline">¶</a></h2>
+<p>Here are some bug tags we use.  In Launchpad Bugs tags are currently of limited use, so don’t feel obliged to tag bugs unless you’re finding it useful.</p>
+<dl class="docutils">
+<dt>authentication</dt>
+<dd>authenticating to servers</dd>
+<dt>backport</dt>
+<dd>candidate for backporting to an update of the previous release</dd>
+<dt>dirstate</dt>
+<dd>WorkingTree4</dd>
+<dt>easy</dt>
+<dd>should be possible to finish in an hour or two</dd>
+<dt>hpss</dt>
+<dd>bugs about the High-Performance Smart Server, i.e. bzr+ssh://, etc.</dd>
+<dt>hpssvfs</dt>
+<dd>bugs for causes of VFS methods of the smart server</dd>
+<dt>launchpad</dt>
+<dd>bugs about interactions with launchpad (typically this means breezy.plugins.launchpad).</dd>
+<dt>locale</dt>
+<dd>problems using locales other than English</dd>
+<dt>memory</dt>
+<dd>problems where we use too much memory for some reason</dd>
+<dt>newformat</dt>
+<dd>fixing this would need a new disk format</dd>
+<dt>performance</dt>
+<dd>bugs about performance problems.</dd>
+<dt>regression</dt>
+<dd>bugs which represent an aspect of Breezy becoming accidentally less good than it was.</dd>
+<dt>test</dt>
+<dd>needs changes to the test framework</dd>
+<dt>transport</dt>
+<dd>virtual filesystem for HTTP, SFTP, etc.</dd>
+<dt>trivial</dt>
+<dd>should be very easy to fix (10-20 minutes) and easily landed: typically
+just spelling errors and the like</dd>
+<dt>ui</dt>
+<dd>bugs relating to the Breezy user interface, e.g. confusing error messages.</dd>
+<dt>win32</dt>
+<dd>bugs that mainly affects Windows. Also there is cygwin and win98 tags for
+marking specific bugs.</dd>
+</dl>
+<p>You can see the full list of tags in use at
+&lt;<a class="reference external" href="https://bugs.launchpad.net/brz/+bugs">https://bugs.launchpad.net/brz/+bugs</a>&gt;.  As of September 2008 the
+list is on the right.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul>
+<li class="toctree-l1"><a class="reference internal" href="contribution-quickstart.html">Contributing to Breezy</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tracking Bugs in Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="HACKING.html">Breezy Developer Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Breezy Testing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-review.html">Reviewing proposed changes to Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-style.html">Breezy Code Style Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documenting-changes.html">Documenting Changes</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuring Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#breezy-conf">breezy.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#location-conf">location.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html#branch-conf">branch.conf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fetch.html">Fetching data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transports.html">Developer guide to breezy transports</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ui.html">Interacting with the user</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releasing.html">Releasing Breezy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ppa.html">Managing the Breezy PPA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ec2.html">Breezy Windows EC2 Server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Breezy Architectural Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration.html">Integrating with Breezy</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="principles.html">Breezy Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specifications.html">Specifications</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation-notes.html">Implementation notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="miscellaneous-notes.html">Miscellaneous notes</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="profiling.html" title="Profiling"
+              >previous</a> |
+            <a href="HACKING.html" title="Breezy Developer Guide"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="_sources/bug-handling.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

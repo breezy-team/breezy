@@ -1,0 +1,147 @@
+*****************
+Content Filtering
+*****************
+
+Content filtering is the feature by which Bazaar can do line-ending
+conversion or keyword expansion so that the files that appear in the
+working tree are not precisely the same as the files stored in the
+repository.
+
+This document describes the implementation; see the user guide for how to
+use it.
+
+
+We distinguish between the *canonical form* which is stored in the
+repository and the *convenient form* which is stored in the working tree.
+The convenient form will for example use OS-local newline conventions or
+have keywords expanded, and the canonical form will not.  We use these
+names rather than eg "filtered" and "unfiltered" because filters are
+applied when both reading and writing so those names might cause
+confusion.
+
+Content filtering is only active on working trees that support it, which
+is format 2a and later.
+
+Content filtering is configured by rules that match file patterns.
+
+Filters
+*******
+
+Filters come in pairs: a read filter (reading convenient->canonical) and
+a write filter.  There is no requirement that they be symmetric or that
+they be deterministic from the input, though in general both these
+properties will be true.  Filters are allowed to change the size of the
+content, and things like line-ending conversion commonly will.
+
+Filters are fed a sequence of byte chunks (so that they don't have to
+hold the whole file in memory).  There is no guarantee that the chunks
+will be aligned with line endings.  Write filters are passed a context
+object through which they can obtain some information about eg which
+file they're working on.  (See ``breezy.filters`` docstring.)
+
+These are at the moment strictly *content* filters: they can't make
+changes to the tree like changing the execute bit, file types, or
+adding/removing entries.
+
+Conventions
+***********
+
+breezy interfaces that aren't explicitly specified to deal with the
+convenient form should return the canonical form.  Whenever we have the
+SHA1 hash of a file, it's the hash of the canonical form.
+
+
+Dirstate interactions
+*********************
+
+The dirstate file should store, in the column for the working copy, the cached
+hash and size of the canonical form, and the packed stat fingerprint for
+which that cache is valid.  This implies that the stored size will
+in general be different to the size in the packed stat.  (However, it
+may not always do this correctly - see
+<https://bugs.launchpad.net/bzr/+bug/418439>.)
+
+The dirstate is given a SHA1Provider instance by its tree.  This class
+can calculate the (canonical) hash and size given a filename.  This
+provides a hook by which the working tree can make sure that when the
+dirstate needs to get the hash of the file, it takes the filters into
+account.
+
+
+User interface
+**************
+
+Most commands that deal with the text of files present the
+canonical form.  Some have options to choose.
+
+
+Performance considerations
+**************************
+
+Content filters can have serious performance implications.  For example,
+getting the size of (the canonical form of) a file is easy and fast when
+there are no content filters: we simply stat it.  However, when there
+are filters that might change the size of the file, determining the
+length of the canonical form requires reading in and filtering the whole
+file.
+
+Formats from 1.14 onwards support content filtering, so having fast
+paths for the case where content filtering is not possible is not
+generally worthwhile.  In fact, they're probably harmful by causing
+extra edges in test coverage and performance.
+
+We need to have things be fast even when filters are in use and then
+possibly do a bit less work when there are no filters configured.
+
+
+Future ideas and open issues
+****************************
+
+* We might benefit from having filters declare some of their properties
+  statically, for example that they're deterministic or can round-trip
+  or won't change the length of the file.  However, common cases like
+  crlf conversion are not guaranteed to round-trip and may change the
+  length, so perhaps adding separate cases will just complicate the code
+  and tests.  So overall this does not seem worthwhile.
+
+* In a future workingtree format, it might be better not to separately
+  store the working-copy hash and size, but rather just a stat fingerprint
+  at which point it was known to have the same canonical form as the
+  basis tree.
+
+* It may be worthwhile to have a virtual Tree-like object that does
+  filtering, so there's a clean separation of filtering from the on-disk
+  state and the meaning of any object is clear.  This would have some
+  risk of bugs where either code holds the wrong object, or their state
+  becomes inconsistent.
+
+  This would be useful in allowing you to get a filtered view of a
+  historical tree, eg to export it or diff it.  At the moment export
+  needs to have its own code to do the filtering.
+
+  The convenient-form tree would talk to disk, and the convenient-form
+  tree would sit on top of that and be used by most other bzr code.
+
+  If we do this, we'd need to handle the fact that the on-disk tree,
+  which generally deals with all of the IO and generally works entirely
+  in convenient form, would also need to be told the canonical hash to
+  store in the dirstate.  This can perhaps be handled by the
+  SHA1Provider or a similar hook.
+
+* Content filtering at the moment is a bit specific to on-disk trees:
+  for instance ``SHA1Provider`` goes directly to disk, but it seems like
+  this is not necessary.
+
+
+See also
+********
+
+* http://wiki.bazaar.canonical.com/LineEndings
+
+* http://wiki.bazaar.canonical.com/LineEndings/Roadmap
+
+* `Developer Documentation <index.html>`_
+
+* ``breezy.filters``
+
+.. vim: ft=rst tw=72

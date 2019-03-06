@@ -1,0 +1,21 @@
+Getting help
+============
+
+Breezy comes with a built-in on-line help system, accessed through::
+
+  brz help
+
+You can ask for help on a command, or on non-command topics.  To see a
+list of available help of each kind, use either::
+
+  brz help commands
+  brz help topics
+
+For help on a particular command, use either of these forms::
+
+  brz help status
+  brz status --help
+
+If you wish to search the help or read it as a larger document, the
+information is also available in the Breezy User Reference.
+

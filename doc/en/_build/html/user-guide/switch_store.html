@@ -1,0 +1,193 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Switch –store &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Shelving Changes" href="shelving_changes.html" />
+    <link rel="prev" title="Pseudo merging" href="adv_merging.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="adv_merging.html" title="Pseudo merging"
+             accesskey="P">previous</a> |
+          <a href="shelving_changes.html" title="Shelving Changes"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="switch-store">
+<h1>Switch –store<a class="headerlink" href="#switch-store" title="Permalink to this headline">¶</a></h1>
+<p>In workflows that a single working tree, like co-located branches, sometimes
+you want to switch while you have uncommitted changes.  By default, <code class="docutils literal notranslate"><span class="pre">switch</span></code>
+will apply your uncommitted changes to the new branch that you switch to.  But
+often you don’t want that.  You just want to do some work in the other branch,
+and eventually return to this branch and work some more.</p>
+<p>You could run <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">shelve</span> <span class="pre">--all</span></code> before switching, to store the changes
+safely.  So you have to know that there are uncommitted changes present, and
+you have to remember to run <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">shelve</span> <span class="pre">--all</span></code>.  Then when you switch back to
+the branch, you need to remember to unshelve the changes, and you need to know
+what their shelf-id was.</p>
+<p>Using <code class="docutils literal notranslate"><span class="pre">switch</span> <span class="pre">--store</span></code> takes care of all of this for you.  If there are any
+uncommitted changes in your tree, it stores them in your branch.  It then
+restores any uncommitted changes that were stored in the branch of your target
+tree.  It’s almost like having two working trees and using <code class="docutils literal notranslate"><span class="pre">cd</span></code> to switch
+between them.</p>
+<p>To take an example, first we’d set up a co-located branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz init foo
+Created a standalone tree (format: 2a)
+$ cd foo
+$ brz switch -b foo
+</pre></div>
+</div>
+<p>Now create committed and uncommitted changes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ touch committed
+$ brz add
+adding committed
+$ brz commit -m &quot;Add committed&quot;
+Committing to: /home/abentley/sandbox/foo/
+added committed
+Committed revision 1.
+$ touch uncommitted
+$ brz add
+adding uncommitted
+$ ls
+committed  uncommitted
+</pre></div>
+</div>
+<p>Now create a new branch using <code class="docutils literal notranslate"><span class="pre">--store</span></code>.  The uncommitted changes are stored
+in “foo”, but the committed changes are retained.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz switch -b --store bar
+Uncommitted changes stored in branch &quot;foo&quot;.
+Tree is up to date at revision 1.
+Switched to branch: /home/abentley/sandbox/foo/
+abentley@speedy:~/sandbox/foo$ ls
+committed
+</pre></div>
+</div>
+<p>Now, create uncommitted changes in “bar”:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ touch uncommitted-bar
+$ brz add
+adding uncommitted-bar
+</pre></div>
+</div>
+<p>Finally, switch back to “foo”:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz switch --store foo
+Uncommitted changes stored in branch &quot;bar&quot;.
+Tree is up to date at revision 1.
+Switched to branch: /home/abentley/sandbox/foo/
+$ ls
+committed  uncommitted
+</pre></div>
+</div>
+<p>Each branch holds only one set of stored changes.  If you try to store a second
+set, you get an error.  If you use <code class="docutils literal notranslate"><span class="pre">--store</span></code> all the time, this can’t happen.
+But if you use plain switch, then it won’t restore the uncommitted changes
+already present:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz switch bar
+Tree is up to date at revision 1.
+Switched to branch: /home/abentley/sandbox/foo/
+$ brz switch --store foo
+brz: ERROR: Cannot store uncommitted changes because this branch already
+stores uncommitted changes.
+</pre></div>
+</div>
+<p>If you’re working in a branch that already has stored changes, you can restore
+them with <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">switch</span> <span class="pre">.</span> <span class="pre">--store</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz shelve --all -m &quot;Uncommitted changes from foo&quot;
+Selected changes:
+-D  uncommitted
+Changes shelved with id &quot;1&quot;.
+$ brz switch . --store
+Tree is up to date at revision 1.
+Switched to branch: /home/abentley/sandbox/foo/
+$ ls
+committed  uncommitted-bar
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="adv_merging.html" title="Pseudo merging"
+              >previous</a> |
+            <a href="shelving_changes.html" title="Shelving Changes"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/switch_store.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

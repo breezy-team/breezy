@@ -1,0 +1,26 @@
+join
+====
+
+:Purpose: Combine a tree into its containing tree.
+:Usage:   brz join TREE
+
+:Options:
+  -h, --help      Show help message.
+  -q, --quiet     Only display errors and warnings.
+  --usage         Show usage message and options.
+  -v, --verbose   Display more information.
+
+:Description:
+  This command requires the target tree to be in a rich-root format.
+  
+  The TREE argument should be an independent tree, inside another tree, but
+  not part of it.  (Such trees can be produced by "brz split", but also by
+  running "brz branch" with the target inside a tree.)
+  
+  The result is a combined tree, with the subtree no longer an independent
+  part.  This is marked as a merge of the subtree into the containing tree,
+  and all history is preserved.
+
+:See also: :doc:`split <split-help>`
+
+

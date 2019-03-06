@@ -1,0 +1,184 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Reusing a checkout &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Distributed development" href="distributed_intro.html" />
+    <link rel="prev" title="Working offline on a central branch" href="working_offline_central.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="working_offline_central.html" title="Working offline on a central branch"
+             accesskey="P">previous</a> |
+          <a href="distributed_intro.html" title="Distributed development"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="reusing-a-checkout">
+<h1>Reusing a checkout<a class="headerlink" href="#reusing-a-checkout" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="motivation">
+<h2>Motivation<a class="headerlink" href="#motivation" title="Permalink to this headline">¶</a></h2>
+<p>At times, it can be useful to have a single checkout as your
+sandbox for working on multiple branches. Some possible reasons
+for this include:</p>
+<blockquote>
+<div><ul class="simple">
+<li>saving disk space when the working tree is large</li>
+<li>developing in a fixed location.</li>
+</ul>
+</div></blockquote>
+<p>In many cases, working tree disk usage swamps the size of the
+<code class="docutils literal notranslate"><span class="pre">.brz</span></code> directory. If you want to work on multiple branches
+but can’t afford the overhead of a full working tree for each,
+reusing a checkout across multiples branches is the way to go.</p>
+<p>On other occasions, the location of your sandbox might be
+configured into numerous development and testing tools. Once
+again, reusing a checkout across multiple branches can help.</p>
+</div>
+<div class="section" id="changing-where-a-branch-is-bound-to">
+<h2>Changing where a branch is bound to<a class="headerlink" href="#changing-where-a-branch-is-bound-to" title="Permalink to this headline">¶</a></h2>
+<p>To change where a checkout is bound to, follow these steps:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Make sure that any local changes have been committed
+centrally so that no work is lost.</li>
+<li>Use the <code class="docutils literal notranslate"><span class="pre">bind</span></code> command giving the URL of the new
+remote branch you wish to work on.</li>
+<li>Make your checkout a copy of the desired branch by using
+the <code class="docutils literal notranslate"><span class="pre">update</span></code> command followed by the <code class="docutils literal notranslate"><span class="pre">revert</span></code> command.</li>
+</ol>
+</div></blockquote>
+<p>Note that simply binding to a new branch and running <code class="docutils literal notranslate"><span class="pre">update</span></code>
+merges in your local changes, both committed and uncommitted. You need
+to decide whether to keep them or not by running either <code class="docutils literal notranslate"><span class="pre">revert</span></code>
+or <code class="docutils literal notranslate"><span class="pre">commit</span></code>.</p>
+<p>An alternative to the bind+update recipe is using the <code class="docutils literal notranslate"><span class="pre">switch</span></code>
+command. This is basically the same as removing the existing
+branch and running <code class="docutils literal notranslate"><span class="pre">checkout</span></code> again on the new location, except
+that any uncommitted changes in your tree are merged in.</p>
+<p>Note: As <code class="docutils literal notranslate"><span class="pre">switch</span></code> can potentially throw away committed changes in
+order to make a checkout an accurate cache of a different bound branch,
+it will fail by design if there are changes which have been committed
+locally but are not yet committed to the most recently bound branch.
+To truly abandon these changes, use the <code class="docutils literal notranslate"><span class="pre">--force</span></code> option.</p>
+</div>
+<div class="section" id="switching-a-lightweight-checkout">
+<h2>Switching a lightweight checkout<a class="headerlink" href="#switching-a-lightweight-checkout" title="Permalink to this headline">¶</a></h2>
+<p>With a lightweight checkout, there are no local commits and <code class="docutils literal notranslate"><span class="pre">switch</span></code>
+effectively changes which branch the working tree is associated with.
+One possible setup is to use a lightweight checkout in combination
+with a local tree-less repository. This lets you switch what you
+are working on with ease. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">init</span><span class="o">-</span><span class="n">repo</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">trees</span> <span class="n">PROJECT</span>
+<span class="n">cd</span> <span class="n">PROJECT</span>
+<span class="n">brz</span> <span class="n">branch</span> <span class="n">bzr</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">PROJECT</span><span class="o">/</span><span class="n">trunk</span>
+<span class="n">brz</span> <span class="n">checkout</span> <span class="o">--</span><span class="n">lightweight</span> <span class="n">trunk</span> <span class="n">my</span><span class="o">-</span><span class="n">sandbox</span>
+<span class="n">cd</span> <span class="n">my</span><span class="o">-</span><span class="n">sandbox</span>
+<span class="p">(</span><span class="n">hack</span> <span class="n">away</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that trunk in this example will have a <code class="docutils literal notranslate"><span class="pre">.brz</span></code> directory within it
+but there will be no working tree there as the branch was created in
+a tree-less repository. You can grab or create as many branches as you
+need there and switch between them as required. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">assuming</span> <span class="ow">in</span> <span class="n">my</span><span class="o">-</span><span class="n">sandbox</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">branch</span> <span class="n">bzr</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">centralhost</span><span class="o">/</span><span class="n">srv</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">PROJECT</span><span class="o">/</span><span class="n">PROJECT</span><span class="o">-</span><span class="mf">1.0</span> <span class="o">../</span><span class="n">PROJECT</span><span class="o">-</span><span class="mf">1.0</span>
+<span class="n">brz</span> <span class="n">switch</span> <span class="o">../</span><span class="n">PROJECT</span><span class="o">-</span><span class="mf">1.0</span>
+<span class="p">(</span><span class="n">fix</span> <span class="n">bug</span> <span class="ow">in</span> <span class="mf">1.0</span><span class="p">)</span>
+<span class="n">brz</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;blah, blah blah&quot;</span>
+<span class="n">brz</span> <span class="n">switch</span> <span class="o">../</span><span class="n">trunk</span>
+<span class="p">(</span><span class="n">go</span> <span class="n">back</span> <span class="n">to</span> <span class="n">working</span> <span class="n">on</span> <span class="n">the</span> <span class="n">trunk</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note: The branches may be local only or they may be bound to
+remote ones (by creating them with <code class="docutils literal notranslate"><span class="pre">checkout</span></code> or by using <code class="docutils literal notranslate"><span class="pre">bind</span></code>
+after creating them with <code class="docutils literal notranslate"><span class="pre">branch</span></code>).</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="working_offline_central.html" title="Working offline on a central branch"
+              >previous</a> |
+            <a href="distributed_intro.html" title="Distributed development"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/reusing_a_checkout.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,282 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 1.7.1
+#########
+
+:Released:  2008-10-01
+
+No changes from 1.7.1rc1.
+
+
+bzr 1.7.1rc1
+############
+
+:Released: 2008-09-24
+
+This release just includes an update to how the merge algorithm handles
+file paths when we encounter complex history.
+
+Features
+********
+
+* If we encounter a criss-cross in history, use information from
+  direct Least Common Ancestors to resolve inventory shape (locations
+  of files, adds, deletes, etc). This is similar in concept to using
+  ``--lca`` for merging file texts, only applied to paths.
+  (John Arbash Meinel)
+
+
+bzr 1.7
+#######
+
+:Released: 2008-09-23
+
+This release includes many bug fixes and a few performance and feature
+improvements.  ``bzr rm`` will now scan for missing files and remove them,
+like how ``bzr add`` scans for unknown files and adds them. A bit more
+polish has been applied to the stacking code. The b-tree indexing code has
+been brought in, with an eye on using it in a future repository format.
+There are only minor installer changes since bzr-1.7rc2.
+
+Features
+********
+
+* Some small updates to the win32 installer. Include localization
+  files found in plugins, and include the builtin distutils as part of
+  packaging qbzr. (Mark Hammond)
+
+
+bzr 1.7rc2
+##########
+
+:Released: 2008-09-17
+
+A few bug fixes from 1.7rc1. The biggest change is a new
+``RemoteBranch.get_stacked_on_url`` RPC. This allows clients that are
+trying to access a Stacked branch over the smart protocol, to properly
+connect to the stacked-on location.
+
+Bug Fixes
+*********
+
+* Branching from a shared repository on a smart server into a new
+  repository now preserves the repository format.
+  (Andrew Bennetts, #269214)
+
+* Branching from a stacked branch via ``bzr+ssh`` can properly connect
+  to the stacked-on branch.  (Martin Pool, #261315)
+
+* ``bzr init`` no longer re-opens the BzrDir multiple times.
+  (Vincent Ladeuil)
+
+* Fix '_in_buffer' AttributeError when using the -Dhpss debug flag.
+  (Andrew Bennetts)
+
+
+bzr 1.7rc1
+##########
+
+:Released: 2008-09-09
+
+This release candidate for bzr 1.7 has several bug fixes and a few
+performance and feature improvements.  ``bzr rm`` will now scan for
+missing files and remove them, like how ``bzr add`` scans for unknown
+files and adds them. A bit more polish has been applied to the stacking
+code. The b-tree indexing code has been brought in, with an eye on using
+it in a future repository format.
+
+
+Changes
+*******
+
+* ``bzr export`` can now export a subdirectory of a project.
+  (Robert Collins)
+
+* ``bzr remove-tree`` will now refuse to remove a tree with uncommitted
+  changes, unless the ``--force`` option is specified.
+  (Lukáš Lalinský, #74101)
+
+* ``bzr rm`` will now scan for files that are missing and remove just
+  them automatically, much as ``bzr add`` scans for new files that
+  are not ignored and adds them automatically. (Robert Collins)
+
+Features
+********
+
+* Support for GSSAPI authentication when using FTP as documented in
+  RFC2228. (Jelmer Vernooij, #49623)
+
+* Add support for IPv6 in the smart server. (Jelmer Vernooij, #165014)
+
+Improvements
+************
+
+* A URL like ``log+file:///tmp`` will log all access to that Transport
+  to ``.bzr.log``, which may help in debugging or profiling.
+  (Martin Pool)
+
+* ``bzr branch`` and ``bzr push`` use the default stacking policy if the
+  branch format supports it. (Aaron Bentley)
+
+* ``bzr init`` and ``bzr init-repo`` will now print out the same as
+  ``bzr info`` if it completed successfully.
+  (Marius Kruger)
+
+* ``bzr uncommit`` logs the old tip revision id, and displays how to
+  restore the branch to that tip using ``bzr pull``.  This allows you
+  to recover if you realize you uncommitted the wrong thing.
+  (John Arbash Meinel)
+
+* Fix problems in accessing stacked repositories over ``bzr://``.
+  (Martin Pool, #261315)
+
+* ``SFTPTransport.readv()`` was accidentally using ``list += string``,
+  which 'works', but adds each character separately to the list,
+  rather than using ``list.append(string)``. Fixing this makes the
+  SFTP transport a little bit faster (~20%) and use a bit less memory.
+  (John Arbash Meinel)
+
+* When reading index files, if we happen to read the whole file in a
+  single request treat it as a ``_buffer_all`` request. This happens
+  most often on small indexes over remote transports, where we default
+  to reading 64kB. It saves a round trip for each small index during
+  fetch operations. Also, if we have read more than 50% of an index
+  file, trigger a ``_buffer_all`` on the next request. This works
+  around some inefficiencies because reads don't fall neatly on page
+  boundaries, so we would ignore those bytes, but request them again
+  later. This could trigger a total read size of more than the whole
+  file. (John Arbash Meinel)
+
+Bug Fixes
+*********
+
+* ``bzr rm`` is now aliased to ``bzr del`` for the convenience of svn
+  users. (Robert Collins, #205416)
+
+* Catch the infamous "select/poll returned error" which occurs when
+  pycurl try to send a body request to an HTTP/1.0 server which has
+  already refused to handle the request. (Vincent Ladeuil, #225020)
+
+* Fix ``ObjectNotLocked`` errors when using various commands
+  (including ``bzr cat`` and ``bzr annotate``) in combination with a
+  smart server URL.  (Andrew Bennetts, #237067)
+
+* ``FTPTransport.stat()`` would return ``0000`` as the permission bits
+  for the containing ``.bzr/`` directory (it does not implement
+  permissions). This would cause us to set all subdirectories to
+  ``0700`` and files to ``0600`` rather than leaving them unmodified.
+  Now we ignore ``0000`` as the permissions and assume they are
+  invalid. (John Arbash Meinel, #259855)
+
+* Merging from a previously joined branch will no longer cause
+  a traceback. (Jelmer Vernooij, #203376)
+
+* Pack operations on windows network shares will work even with large
+  files. (Robert Collins, #255656)
+
+* Running ``bzr st PATH_TO_TREE`` will no longer suppress merge
+  status. Status is also about 7% faster on mozilla sized trees
+  when the path to the root of the tree has been given. Users of
+  the internal ``show_tree_status`` function should be aware that
+  the show_pending flag is now authoritative for showing pending
+  merges, as it was originally. (Robert Collins, #255204)
+
+* Set valid default _param_name for Option so that ListOption can embed
+  '-' in names. (Vincent Ladeuil, #263249)
+
+* Show proper error rather than traceback when an unknown revision
+  id is specified to ``bzr cat-revision``. (Jelmer Vernooij, #175569)
+
+* Trailing text in the dirstate file could cause the C dirstate parser
+  to try to allocate an invalid amount of memory. We now properly
+  check and test for parsing a dirstate with invalid trailing data.
+  (John Arbash Meinel, #186014)
+
+* Unexpected error responses from a smart server no longer cause the
+  client to traceback.  (Andrew Bennetts, #263527)
+
+* Use a Windows api function to get a Unicode host name, rather than
+  assuming the host name is ascii.
+  (Mark Hammond, John Arbash Meinel, #256550)
+
+* ``WorkingTree4`` trees will now correctly report missing-and-new
+  paths in the output of ``iter_changes``. (Robert Collins)
+
+Documentation
+*************
+
+* Updated developer documentation.  (Martin Pool)
+
+API Changes
+***********
+
+* Exporters now take 4 parameters. (Robert Collins)
+
+* ``Tree.iter_changes`` will now return False for the content change
+  field when a file is missing in the basis tree and not present in
+  the target tree. Previously it returned True unconditionally.
+  (Robert Collins)
+
+* The deprecated ``Branch.abspath`` and unimplemented
+  ``Branch.rename_one`` and ``Branch.move`` were removed. (Jelmer Vernooij)
+
+* BzrDir.clone_on_transport implementations must now accept a stacked_on
+  parameter.  (Aaron Bentley)
+
+* BzrDir.cloning_metadir implementations must now take a require_stacking
+  parameter.  (Aaron Bentley)
+
+Testing
+*******
+
+* ``addCleanup`` now takes ``*arguments`` and ``**keyword_arguments``
+  which are then passed to the cleanup callable as it is run. In
+  addition, addCleanup no longer requires that the callables passed to
+  it be unique. (Jonathan Lange)
+
+* Fix some tests that fail on Windows because files are deleted while
+  still in use.
+  (Mark Hammond)
+
+* ``selftest``'s ``--starting-with`` option can now use predefined
+  prefixes so that one can say ``bzr selftest -s bp.loom`` instead of
+  ``bzr selftest -s bzrlib.plugins.loom``. (Vincent Ladeuil)
+
+* ``selftest``'s ``--starting-with`` option now accepts multiple values.
+  (Vincent Ladeuil)
+
+Internals
+*********
+
+* A new plugin interface, ``bzrlib.log.log_adapters``, has been added.
+  This allows dynamic log output filtering by plugins.
+  (Robert Collins)
+
+* ``bzrlib.btree_index`` is now available, providing a b-tree index
+  layer. The design is memory conservative (limited memory cache),
+  faster to seek (approx 100 nodes per page, gives 100-way fan out),
+  and stores compressed pages allowing more keys per page.
+  (Robert Collins, John Arbash Meinel)
+
+* ``bzrlib.diff.DiffTree.show_diff`` now skips changes where the kind
+  is unknown in both source and target.
+  (Robert Collins, Aaron Bentley)
+
+* ``GraphIndexBuilder.add_node`` and ``BTreeBuilder`` have been
+  streamlined a bit. This should make creating large indexes faster.
+  (In benchmarking, it now takes less time to create a BTree index than
+  it takes to read the GraphIndex one.) (John Arbash Meinel)
+
+* Mail clients for `bzr send` are now listed in a registry.  This
+  allows plugins to add new clients by registering them with
+  ``bzrlib.mail_client.mail_client_registry``.  All of the built-in
+  clients now use this mechanism.  (Neil Martinsen-Burrell)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

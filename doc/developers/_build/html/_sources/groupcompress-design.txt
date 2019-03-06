@@ -1,0 +1,115 @@
+This document contains notes about the design for groupcompress, replacement
+VersionedFiles store for use in pack based repositories. The goal is to provide
+fast, history bounded text extraction.
+
+Overview
+++++++++
+
+The goal: Much tighter compression, maintained automatically. Considerations
+to weigh: The minimum IO to reconstruct a text with no other repository
+involved; The number of index lookups to plan a reconstruction. The minimum
+IO to reconstruct a text with another repositories assistance (affects
+network IO for fetch, which impacts incremental pulls and shallow branch
+operations).
+
+Current approach
+================
+
+Each delta is individually compressed against another text, and then entropy
+compressed. We index the pointers between these deltas.
+
+Solo reconstruction: Plan a readv via the index, read the deltas in forward
+IO, apply each delta. Total IO: sum(deltas) + deltacount*index overhead.
+Fetch/stacked reconstruction: Plan a readv via the index, using local basis
+texts where possible. Then readv locally and remote and apply deltas. Total IO
+as for solo reconstruction.
+
+Things to keep
+==============
+
+Reasonable sizes 'amount read' from remote machines to reconstruct an arbitrary
+text: Reading 5MB for a 100K plain text is not a good trade off. Reading (say)
+500K is probably acceptable. Reading ~100K is ideal. However, it's likely that
+some texts (e.g NEWS versions) can be stored for nearly-no space at all if we
+are willing to have unbounded IO. Profiling to set a good heuristic will be
+important. Also allowing users to choose to optimise for a server environment
+may make sense: paying more local IO for less compact storage may be useful.
+
+Things to remove
+================
+
+Index scatter gather IO. Doing hundreds or thousands of index lookups is very
+expensive, and doing that per file just adds insult to injury.
+
+Partioned compression amongst files.
+
+Scatter gather IO when reconstructing texts: linear forward IO is better.
+
+Thoughts
+========
+
+Merges combine texts from multiple versions to create a new version. Deltas
+add new text to existing files and remove some text from the same. Getting
+high compression means reading some base and then a chain of deltas (could
+be a tree) to gain access to the thing that the final delta was made against,
+and that delta. Rather than composing all these deltas, we can just just
+perform the final diff against the base text and the serialised invidual
+deltas. If the diff algorithm can reuse out of order lines from previous
+texts (e.g. storing AB -> BA as pointers rather than delete and add, then
+the presence of any previously stored line in a single chain can be reused.
+One such diff algorithm is xdelta, another reasonable one to consider is
+plain old zlib or lzma. We could also use bzip2. One advantage of using
+a generic compression engine is less python code. One advantage of
+preprocessing line based deltas is that we reduce the window size for the
+text repeated within lines, and that will help compression by a simple
+entropy compressor as a post processor.
+lzma appears fantastic at compression - 420MB of NEWS files down to 200KB.
+so window size appears to be a key determiner for efficiency.
+
+Delta strategy
+++++++++++++++
+
+Very big objects - no delta. I plan to kick this in at 5MB initially, but
+once the codebase is up and running, we can tweak this to
+
+Very small objects - no delta? If they are combined with a larger zlib object
+why not? (Answer: because zlib's window is really small)
+
+Other objects - group by fileid (gives related texts a chance, though using a
+file name would be better long term as e.g. COPYING and COPYING from different
+projects could combine). Then by reverse topological graph(as this places more
+recent texts at the front of a chain). Alternatively, group by size, though
+that should not matter with a large enough window.
+Finally, delta the texts against the current output of the compressor. This is
+essentially a somewhat typed form of sliding window dictionary compression. An
+alternative implementation would be to just use zlib, or lzma, or bzip2
+directory.
+
+Unfortunately, just using entropy compression forces a lot of data to be output
+by the decompressor - e.g. 420MB in the NEWS sample corpus. When we only want
+a single 55K text thats inefficient. (An initial test took several seconds with
+lzma.)
+
+The fastest to implement approach is probably just 'diff output to date and add
+to entropy compressor'. This should produce reasonable results. As delta
+chain length is not a concern (only one delta to apply ever), we can simply
+cap the chain when the total read size becomes unreasonable. Given older texts
+are smaller we probably want some weighted factor of plaintext size.
+
+In this approach, a single entropy compressed region is read as a unit, giving
+the lower bound for IO (and how much to read is an open question - what byte
+offset of compressed data is sufficient to ensue that the delta-stream contents
+we need are reconstructable. Flushing, while possible, degrades compression(and
+adds overhead - we'd be paying 4 bytes per record guaranteed). Again - tests
+will be needed.
+
+A nice possibility is to output mpdiff compatible records, which might enable
+some code reuse. This is more work than just diff (current_out, new_text), so
+can wait for the concept to be proven.
+
+Implementation Strategy
++++++++++++++++++++++++
+
+Bring up a VersionedFiles object that implements this, then stuff it into a
+repository format. zlib as a starting compressor, though bzip2 will probably
+do a good job.

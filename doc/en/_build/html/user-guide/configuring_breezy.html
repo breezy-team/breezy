@@ -1,0 +1,275 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Configuring Breezy &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Using aliases" href="using_aliases.html" />
+    <link rel="prev" title="Getting help" href="getting_help.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="getting_help.html" title="Getting help"
+             accesskey="P">previous</a> |
+          <a href="using_aliases.html" title="Using aliases"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="configuring-breezy">
+<h1>Configuring Breezy<a class="headerlink" href="#configuring-breezy" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="telling-breezy-about-yourself">
+<h2>Telling Breezy about yourself<a class="headerlink" href="#telling-breezy-about-yourself" title="Permalink to this headline">¶</a></h2>
+<p>One function of a version control system is to keep track of who changed
+what.  In a decentralized system, that requires an identifier for each
+author that is globally unique.  Most people already have one of these: an
+email address. Breezy is smart enough to automatically generate an email
+address by looking up your username and hostname. If you don’t like the
+guess that Breezy makes, then use the <code class="docutils literal notranslate"><span class="pre">whoami</span></code> command to set the
+identifier you want:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">whoami</span> <span class="s2">&quot;Your Name &lt;email@example.com&gt;&quot;</span>
+</pre></div>
+</div>
+<p>If <code class="docutils literal notranslate"><span class="pre">whoami</span></code> is used without an argument, the current value is displayed.</p>
+</div>
+<div class="section" id="using-a-network-proxy">
+<h2>Using a network proxy<a class="headerlink" href="#using-a-network-proxy" title="Permalink to this headline">¶</a></h2>
+<p>If your network requires that you use an HTTP proxy for outbound
+connections, you must set the <code class="docutils literal notranslate"><span class="pre">http_proxy</span></code> variable.  If the proxy is
+also required for https connections, you need to set <code class="docutils literal notranslate"><span class="pre">https_proxy</span></code> too.
+If you need these and don’t have them set, you may find that connections
+to Launchpad or other external servers fail or time out.</p>
+<p>On Unix you typically want to set these in <code class="docutils literal notranslate"><span class="pre">/etc/environment</span></code> or
+<code class="docutils literal notranslate"><span class="pre">~/.bash_profile</span></code> and on Windows in the user profile.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">http_proxy</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">proxy</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">3128</span><span class="o">/</span>
+<span class="n">https_proxy</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">proxy</span><span class="o">.</span><span class="n">example</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="mi">3128</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">no_proxy</span></code> variable can be set to a comma-separated list of hosts
+which shouldn’t be reached by the proxy.  (See
+&lt;<a class="reference external" href="http://docs.python.org/library/urllib.html">http://docs.python.org/library/urllib.html</a>&gt; for more details.)</p>
+</div>
+<div class="section" id="various-ways-to-configure">
+<h2>Various ways to configure<a class="headerlink" href="#various-ways-to-configure" title="Permalink to this headline">¶</a></h2>
+<p>As shown in the example above, there are various ways to
+configure Breezy, they all share some common properties though.
+An option has:</p>
+<ul class="simple">
+<li>a name which is generally a valid python identifier,</li>
+<li>a value which is a string. In some cases, Breezy will be able
+to recognize special values like ‘True’, ‘False’ to infer a
+boolean type, but basically, as a user, you will always specify
+a value as a string.</li>
+</ul>
+<p>Options are grouped in various contexts so the option name
+uniquely identifies it in this context. When needed, options can
+be made persistent by recording them in a configuration file.</p>
+</div>
+<div class="section" id="configuration-files">
+<h2>Configuration files<a class="headerlink" href="#configuration-files" title="Permalink to this headline">¶</a></h2>
+<p>Configuration files are located in <code class="docutils literal notranslate"><span class="pre">$HOME/.config/breezy</span></code> on Unix and
+<code class="docutils literal notranslate"><span class="pre">C:\Documents</span> <span class="pre">and</span> <span class="pre">Settings\&lt;username&gt;\Application</span> <span class="pre">Data\Breezy\2.0</span></code> on
+Windows. There are three primary configuration files in this location:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> describes default configuration options,</li>
+<li><code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> describes configuration information for
+specific branch locations,</li>
+<li><code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> describes credential information for
+remote servers.</li>
+</ul>
+<p>Each branch can also contain a configuration file that sets values specific
+to that branch. This file is found at <code class="docutils literal notranslate"><span class="pre">.brz/branch/branch.conf</span></code> within the
+branch. This file is visible to <strong>all users of a branch</strong>. If you wish to
+override one of the values for a branch with a setting that is specific to you,
+then you can do so in <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>.</p>
+<p>Here is sample content of <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> after setting an email address using
+the <code class="docutils literal notranslate"><span class="pre">whoami</span></code> command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+<span class="n">email</span> <span class="o">=</span> <span class="n">Your</span> <span class="n">Name</span> <span class="o">&lt;</span><span class="n">email</span><span class="nd">@example</span><span class="o">.</span><span class="n">com</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>For further details on the syntax and configuration settings supported, see
+<a class="reference external" href="../user-reference/index.html#configuration-settings">Configuration Settings</a>
+in the Breezy User Reference.</p>
+</div>
+<div class="section" id="looking-at-the-active-configuration">
+<h2>Looking at the active configuration<a class="headerlink" href="#looking-at-the-active-configuration" title="Permalink to this headline">¶</a></h2>
+<p>To look at all the currently defined options, you can use the following
+command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">config</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">brz</span></code> implements some rules to decide where to get the value of a
+configuration option.</p>
+<p>The current policy is to examine the existing configurations files in a
+given order for matching definitions.</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> is searched first for a section whose name matches the
+location considered (working tree, branch or remote branch),</li>
+<li>the current <code class="docutils literal notranslate"><span class="pre">branch.conf</span></code> is searched next,</li>
+<li><code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> is searched next,</li>
+<li>finally, some options can have default values generally defined in the
+code itself and not displayed by <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">config</span></code> (see <a class="reference external" href="../user-reference/index.html#configuration-settings">Configuration
+Settings</a>).</li>
+</ul>
+</div></blockquote>
+<p>This is better understood by using <code class="docutils literal notranslate"><span class="pre">`brz</span> <span class="pre">config</span></code> with no arguments, which
+will display some output of the form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">locations</span><span class="p">:</span>
+  <span class="n">post_commit_to</span> <span class="o">=</span> <span class="n">commits</span><span class="nd">@example</span><span class="o">.</span><span class="n">com</span>
+  <span class="n">news_merge_files</span> <span class="o">=</span> <span class="n">NEWS</span>
+<span class="n">branch</span><span class="p">:</span>
+  <span class="n">parent_location</span> <span class="o">=</span> <span class="n">bzr</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">bazaar</span><span class="o">.</span><span class="n">launchpad</span><span class="o">.</span><span class="n">net</span><span class="o">/+</span><span class="n">branch</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span>
+  <span class="n">nickname</span> <span class="o">=</span> <span class="n">config</span><span class="o">-</span><span class="n">modify</span>
+  <span class="n">push_location</span> <span class="o">=</span> <span class="n">bzr</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">bazaar</span><span class="o">.</span><span class="n">launchpad</span><span class="o">.</span><span class="n">net</span><span class="o">/~</span><span class="n">vila</span><span class="o">/</span><span class="n">brz</span><span class="o">/</span><span class="n">config</span><span class="o">-</span><span class="n">modify</span><span class="o">/</span>
+<span class="n">breezy</span><span class="p">:</span>
+  <span class="n">debug_flags</span> <span class="o">=</span> <span class="n">hpss</span><span class="p">,</span>
+</pre></div>
+</div>
+<p>Each configuration file is associated with a given scope whose name is
+displayed before each set of defined options.</p>
+<p>If you need to look at a specific option, you can use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">config</span> <span class="o">&lt;</span><span class="n">option</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>This will display only the option value and is intended to be used in
+scripts.</p>
+</div>
+<div class="section" id="modifying-the-active-configuration">
+<h2>Modifying the active configuration<a class="headerlink" href="#modifying-the-active-configuration" title="Permalink to this headline">¶</a></h2>
+<p>To set an option to a given value use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">config</span> <span class="n">opt</span><span class="o">=</span><span class="n">value</span>
+</pre></div>
+</div>
+<p>An option value can reference another option by enclosing it in curly
+braces:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">config</span> <span class="n">opt</span><span class="o">=</span><span class="p">{</span><span class="n">other_opt</span><span class="p">}</span><span class="o">/</span><span class="n">subdir</span>
+</pre></div>
+</div>
+<p>If <code class="docutils literal notranslate"><span class="pre">other_opt</span></code> is set to <code class="docutils literal notranslate"><span class="pre">'root</span></code>, <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">config</span> <span class="pre">opt</span></code> will display:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="o">/</span><span class="n">subdir</span>
+</pre></div>
+</div>
+<p>Note that when <code class="docutils literal notranslate"><span class="pre">--all</span></code> is used, the references are left as-is to better
+reflect the content of the config files and make it easier to organize them:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">config</span> <span class="o">--</span><span class="nb">all</span> <span class="o">.*</span><span class="n">opt</span>
+
+<span class="n">breezy</span><span class="p">:</span>
+  <span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
+  <span class="n">opt</span> <span class="o">=</span> <span class="p">{</span><span class="n">other_opt</span><span class="p">}</span><span class="o">/</span><span class="n">subdir</span>
+  <span class="n">other_opt</span> <span class="o">=</span> <span class="n">root</span>
+</pre></div>
+</div>
+<p>To remove an option use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">config</span> <span class="o">--</span><span class="n">remove</span> <span class="n">opt</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="rule-based-preferences">
+<h2>Rule-based preferences<a class="headerlink" href="#rule-based-preferences" title="Permalink to this headline">¶</a></h2>
+<p>Some commands and plugins provide custom processing on files matching
+certain patterns. Per-user rule-based preferences are defined in
+<code class="docutils literal notranslate"><span class="pre">BZR_HOME/rules</span></code>.</p>
+<p>For further information on how rules are searched and the detailed syntax of
+the relevant files, see <a class="reference external" href="../user-reference/index.html#rules">Rules</a>
+in the Breezy User Reference.</p>
+</div>
+<div class="section" id="escaping-command-lines">
+<h2>Escaping command lines<a class="headerlink" href="#escaping-command-lines" title="Permalink to this headline">¶</a></h2>
+<p>When you give a program name or command line in configuration, you can quote
+to include special characters or whitespace.  The same rules are used across
+all platforms.</p>
+<p>The rules are: strings surrounded by double-quotes are interpreted as single
+“words” even if they contain whitespace, and backslash may be used to quote
+quotation marks.  For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">BZR_EDITOR</span><span class="o">=</span><span class="s2">&quot;C:\Program Files\My Editor\myeditor.exe&quot;</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../admin-guide/index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="getting_help.html" title="Getting help"
+              >previous</a> |
+            <a href="using_aliases.html" title="Using aliases"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/user-guide/configuring_breezy.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>

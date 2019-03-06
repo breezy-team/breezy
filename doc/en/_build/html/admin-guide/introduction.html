@@ -1,0 +1,145 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Introduction &#8212; Breezy 3.0.0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Simple Setups" href="simple-setups.html" />
+    <link rel="prev" title="Breezy System Administrator’s Guide" href="index.html" /> 
+  </head><body>
+    <div class="header-wrapper" role="banner">
+      <div class="header">
+        <div class="headertitle"><a
+          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+        <div class="rel" role="navigation" aria-label="related navigation">
+          <a href="index.html" title="Breezy System Administrator’s Guide"
+             accesskey="P">previous</a> |
+          <a href="simple-setups.html" title="Simple Setups"
+             accesskey="N">next</a>
+        </div>
+       </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div class="document">
+            
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p>Welcome to the Bazaar Version Control System’s guide for system
+administrators.  Bazaar is a flexible system that provides many possible
+options for serving projects in ways that will hopefully meet your needs.  If
+you have requirements that are not met by the current state of the Bazaar
+ecosystem, please let us know at <a class="reference external" href="mailto:bazaar&#37;&#52;&#48;lists&#46;canonical&#46;com">bazaar<span>&#64;</span>lists<span>&#46;</span>canonical<span>&#46;</span>com</a> or on Launchpad at
+<a class="reference external" href="https://launchpad.net/bzr">https://launchpad.net/bzr</a>.</p>
+<div class="section" id="scope-of-this-guide">
+<h2>Scope of this guide<a class="headerlink" href="#scope-of-this-guide" title="Permalink to this headline">¶</a></h2>
+<p>In this guide, we will discuss various techniques for making Bazaar projects
+available, migrating from other Version Control Systems, browsing code over
+the Web and combining Bazaar with other tools.  In many of these categories,
+multiple options exist and we will try to explains the costs and benefits of
+the various options.</p>
+<p>The intended audience for this guide is the individuals who administer the
+computers that will do the serving.  Much of the configuration that we will
+discuss requires administrator privileges and we will not necessarily indicate
+every point that those privileges are needed.  That said, reading this guide
+can also be very helpful for those who are interested in communicating to the
+system administrators about the requirements for making full use of Bazaar.</p>
+</div>
+<div class="section" id="what-you-need-to-run-a-bazaar-server">
+<h2>What you need to run a Bazaar server<a class="headerlink" href="#what-you-need-to-run-a-bazaar-server" title="Permalink to this headline">¶</a></h2>
+<p>Where possible, we will discuss both Unix (including GNU/Linux) and Windows server
+environments.  For the purposes of this document, we will consider Mac OS X as
+a type of Unix.</p>
+<p>In general, Bazaar requires only <a class="reference external" href="http://www.python.org/">Python</a> 2.6 or greater to run.
+If you would <em>optionally</em>
+like to be able to access branches using SFTP, you need <a class="reference external" href="http://www.lag.net/paramiko/">paramiko and
+pycrypto</a>.</p>
+<p>For maximum performance, Bazaar can make use of compiled versions of some
+critical components of the code.  Pure Python alternatives exist for all of
+these components, but they may be considerably slower.  To compile these
+extensions, you need a C compiler and the relevant header files from the
+Python package.  On GNU/Linux, these may be in a separate package.  Other
+operating systems should have the required headers installed by default.</p>
+<p>If you are installing a development version of Bazaar, rather than a released
+version, you will need <a class="reference external" href="http://www.cosc.canterbury.ac.nz/greg.ewing/python/Pyrex/">Pyrex</a> to create the C extensions.  The release
+tarballs already have the Pyrex-created C files.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+        </div>
+        <div class="sidebar">
+          <h3>Table of Contents</h3>
+          <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../whats-new/whats-new-in-3.0.html">What’s New in Breezy 3.0?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/index.html">Breezy User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quick-reference/index.html">Quick Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes/index.html">Breezy Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../upgrade-guide/index.html">Breezy Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-reference/index.html">Breezy User Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Breezy System Administrator’s Guide</a></li>
+</ul>
+
+          <div role="search">
+            <h3 style="margin-top: 1.5em;">Search</h3>
+            <form class="search" action="../search.html" method="get">
+                <input type="text" name="q" />
+                <input type="submit" value="Go" />
+                <input type="hidden" name="check_keywords" value="yes" />
+                <input type="hidden" name="area" value="default" />
+            </form>
+          </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+    <div class="footer-wrapper">
+      <div class="footer">
+        <div class="left">
+          <div role="navigation" aria-label="related navigaton">
+            <a href="index.html" title="Breezy System Administrator’s Guide"
+              >previous</a> |
+            <a href="simple-setups.html" title="Simple Setups"
+              >next</a>
+          </div>
+          <div role="note" aria-label="source link">
+              <br/>
+              <a href="../_sources/admin-guide/introduction.txt"
+                rel="nofollow">Show Source</a>
+          </div>
+        </div>
+
+        <div class="right">
+          
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+    </div>
+        </div>
+        <div class="clearer"></div>
+      </div>
+    </div>
+
+  </body>
+</html>
