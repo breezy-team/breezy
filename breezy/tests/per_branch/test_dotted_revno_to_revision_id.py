@@ -17,6 +17,7 @@
 """Tests for Branch.dotted_revno_to_revision_id()"""
 
 from breezy import errors
+from breezy.tests import TestNotApplicable
 
 from breezy.tests.per_branch import TestCaseWithBranch
 
@@ -52,3 +53,18 @@ class TestDottedRevnoToRevisionId(TestCaseWithBranch):
         self.assertEqual(
             (1,),
             the_branch._partial_revision_id_to_revno_cache.get(revmap['1']))
+
+    def test_ghost_revision(self):
+        if not self.bzrdir_format.repository_format.supports_ghosts:
+            raise TestNotApplicable("repository format does not support ghosts")
+        builder = self.make_branch_builder('foo')
+        builder.start_series()
+        try:
+            revid1 = builder.build_snapshot([b'ghost'],
+                                   [('add', ('', b'ROOT_ID', 'directory', ''))],
+                                   allow_leftmost_as_ghost=True, revision_id=b'tip')
+        finally:
+            builder.finish_series()
+        b = builder.get_branch()
+        b.set_last_revision_info(4, revid1)
+        self.assertRaises(errors.GhostRevisionsHaveNoRevno, b.dotted_revno_to_revision_id, (2,))
