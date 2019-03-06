@@ -2214,6 +2214,30 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
                           branch.revision_id_to_dotted_revno, b'unknown')
         self.assertFinished(client)
 
+    def test_ghost_revid(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            b'Branch.get_stacked_on_url', (b'quack/',),
+            b'error', (b'NotStacked',),)
+        # Some older versions of bzr/brz didn't explicitly return
+        # GhostRevisionsHaveNoRevno
+        client.add_expected_call(
+            b'Branch.revision_id_to_revno', (b'quack/', b'revid'),
+            b'error', (b'error', b'GhostRevisionsHaveNoRevno',
+                b'The reivison {revid} was not found because there was a ghost at {ghost-revid}'))
+        client.add_expected_call(
+            b'Branch.revision_id_to_revno', (b'quack/', b'revid'),
+            b'error', (b'GhostRevisionsHaveNoRevno', b'revid', b'ghost-revid',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertRaises(errors.GhostRevisionsHaveNoRevno,
+                          branch.revision_id_to_dotted_revno, b'revid')
+        self.assertRaises(errors.GhostRevisionsHaveNoRevno,
+                          branch.revision_id_to_dotted_revno, b'revid')
+        self.assertFinished(client)
+
     def test_dotted_no_smart_verb(self):
         self.setup_smart_server_with_call_log()
         branch = self.make_branch('.')

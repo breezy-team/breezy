@@ -236,6 +236,10 @@ class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
             dotted_revno = branch.revision_id_to_dotted_revno(revid)
         except errors.NoSuchRevision:
             return FailedSmartServerResponse((b'NoSuchRevision', revid))
+        except errors.GhostRevisionsHaveNoRevno as e:
+            return FailedSmartServerResponse(
+                (b'GhostRevisionsHaveNoRevno', e.revision_id,
+                    e.ghost_revision_id))
         return SuccessfulSmartServerResponse(
             (b'ok', ) + tuple([b'%d' % x for x in dotted_revno]))
 

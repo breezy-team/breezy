@@ -18,6 +18,7 @@ from __future__ import absolute_import
 
 import bz2
 import os
+import re
 import sys
 import zlib
 
@@ -4032,6 +4033,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             except errors.UnknownSmartMethod:
                 self._ensure_real()
                 return self._real_branch.revision_id_to_dotted_revno(revision_id)
+            except errors.UnknownErrorFromSmartServer as e:
+                # Deal with older versions of bzr/brz that didn't explicitly
+                # wrap GhostRevisionsHaveNoRevno.
+                if e.error_tuple[1] == b'GhostRevisionsHaveNoRevno':
+                    (revid, ghost_revid) = re.findall(b"{([^}]+)}", e.error_tuple[2])
+                    raise errors.GhostRevisionsHaveNoRevno(
+                        revid, ghost_revid)
+                raise
             if response[0] == b'ok':
                 return tuple([int(x) for x in response[1:]])
             else:
