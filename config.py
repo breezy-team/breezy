@@ -71,6 +71,10 @@ class UpstreamMetadataConfig(object):
     if section == "BUILDDEB":
       if option == "upstream-branch":
         return self.metadata.get('Repository')
+      if option == "export-upstream-revision":
+        tag_prefix = self.metadata.get("Repository-Tag-Prefix")
+        if tag_prefix is not None:
+          return "tag:" + tag_prefix + "$UPSTREAM_VERSION"
     raise KeyError
 
   def __getitem__(self, key):

@@ -89,11 +89,13 @@ class DebBuildConfigTests(TestCaseWithTransport):
       ('debian/upstream/metadata',
         b'Name: example\n'
         b'Repository: http://example.com/foo\n'
+        b'Repository-Tag-Prefix: exampl-\n'
         )])
     self.tree.add(['debian', 'debian/upstream', 'debian/upstream/metadata'])
 
     cfg = DebBuildConfig([], tree=self.tree)
     self.assertEquals("http://example.com/foo", cfg.upstream_branch)
+    self.assertEquals("tag:exampl-$UPSTREAM_VERSION", cfg.export_upstream_revision)
 
 
 try:
