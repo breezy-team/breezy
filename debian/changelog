@@ -5,6 +5,7 @@ breezy (3.0.0-1) UNRELEASED; urgency=medium
    22_print_warnings, 23_homedir_location, 24_git_symlink_push,
    25_segmentsurl, 27_pkgimport_conf, 28_cat_revision_git,
    29_stacked_on_location, 30_git_fixes.
+  * Drop conflicts with pyftpdlib; Breezy no longer supports FTP.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 06 Mar 2019 21:44:24 +0000
 
