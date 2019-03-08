@@ -149,8 +149,7 @@ class my_install_scripts(install_scripts):
                 script_path = self._quoted_path(os.path.join(scripts_dir,
                                                              "brz"))
                 python_exe = self._quoted_path(sys.executable)
-                args = self._win_batch_args()
-                batch_str = "@%s %s %s" % (python_exe, script_path, args)
+                batch_str = "@%s %s %%*" % (python_exe, script_path)
                 batch_path = os.path.join(self.install_dir, "brz.bat")
                 with open(batch_path, "w") as f:
                     f.write(batch_str)
@@ -164,13 +163,6 @@ class my_install_scripts(install_scripts):
             return '"' + path + '"'
         else:
             return path
-
-    def _win_batch_args(self):
-        from breezy.win32utils import winver
-        if winver == 'Windows NT':
-            return '%*'
-        else:
-            return '%1 %2 %3 %4 %5 %6 %7 %8 %9'
 #/class my_install_scripts
 
 
