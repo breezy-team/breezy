@@ -1,4 +1,4 @@
-breezy (3.0.0-1) UNRELEASED; urgency=medium
+breezy (3.0.0-1) experimental; urgency=medium
 
   * New upstream release.
    + Drop various patches applied upstream: 21_lp_set_description,
