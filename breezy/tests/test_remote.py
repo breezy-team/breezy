@@ -2225,7 +2225,8 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
         client.add_expected_call(
             b'Branch.revision_id_to_revno', (b'quack/', b'revid'),
             b'error', (b'error', b'GhostRevisionsHaveNoRevno',
-                b'The reivison {revid} was not found because there was a ghost at {ghost-revid}'))
+                       b'The reivison {revid} was not found because there was '
+                       b'a ghost at {ghost-revid}'))
         client.add_expected_call(
             b'Branch.revision_id_to_revno', (b'quack/', b'revid'),
             b'error', (b'GhostRevisionsHaveNoRevno', b'revid', b'ghost-revid',))

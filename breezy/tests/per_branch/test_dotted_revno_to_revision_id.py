@@ -61,9 +61,9 @@ class TestDottedRevnoToRevisionId(TestCaseWithBranch):
         builder = self.make_branch_builder('foo')
         builder.start_series()
         try:
-            revid1 = builder.build_snapshot([b'ghost'],
-                                   [('add', ('', b'ROOT_ID', 'directory', ''))],
-                                   allow_leftmost_as_ghost=True, revision_id=b'tip')
+            revid1 = builder.build_snapshot(
+                [b'ghost'], [('add', ('', b'ROOT_ID', 'directory', ''))],
+                allow_leftmost_as_ghost=True, revision_id=b'tip')
         finally:
             builder.finish_series()
         b = builder.get_branch()
