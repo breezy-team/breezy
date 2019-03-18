@@ -102,8 +102,8 @@ def open_destination_directory(location, format=None, verbose=True):
         try:
             os.mkdir(location)
         except IOError as ex:
-            errors.BzrCommandError("Unable to create %s: %s" %
-                                   (location, ex))
+            raise errors.BzrCommandError(
+                "Unable to create %s: %s" % (location, ex))
 
     # Create a repository for the nominated format.
     trace.note("Creating destination repository ...")
