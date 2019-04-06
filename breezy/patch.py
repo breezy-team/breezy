@@ -119,19 +119,14 @@ def diff3(out_file, mine_path, older_path, yours_path):
     return status
 
 
-def patch_multi(tree, location, strip, quiet=False):
-    """Apply a patch to a branch, using patch(1).  URLs may be used."""
-    my_file = None
-    if location is None:
-        my_file = sys.stdin
-    else:
-        my_file = open_from_url(location)
-    patches = [my_file.read()]
-    return run_patch(tree.basedir, patches, strip, quiet=quiet)
+def patch_tree(tree, patches, strip=0, reverse=False, dry_run=False, quiet=False,
+               out=None):
+    return run_patch(tree.basedir, patches, strip, reverse, dry_run, quiet,
+                     out=out)
 
 
 def run_patch(directory, patches, strip=0, reverse=False, dry_run=False,
-              quiet=False, _patch_cmd='patch', target_file=None):
+              quiet=False, _patch_cmd='patch', target_file=None, out=None):
     args = [_patch_cmd, '-d', directory, '-s', '-p%d' % strip, '-f']
     if quiet:
         args.append('--quiet')
@@ -166,7 +161,10 @@ def run_patch(directory, patches, strip=0, reverse=False, dry_run=False,
 
     result = process.wait()
     if not dry_run:
-        sys.stdout.write(process.stdout.read())
+        if out is not None:
+            out.write(process.stdout.read())
+        else:
+            process.stdout.read()
     if result != 0:
         raise PatchFailed()
 

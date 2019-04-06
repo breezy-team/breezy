@@ -92,6 +92,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_non_ascii',
         'test_outside_wt',
         'test_pack',
+        'test_patch',
         'test_ping',
         'test_plugins',
         'test_pull',
