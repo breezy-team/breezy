@@ -153,7 +153,7 @@ def run_patch(directory, patches, strip=0, reverse=False, dry_run=False,
         raise PatchInvokeError(e)
     try:
         for patch in patches:
-            process.stdin.write(str(patch))
+            process.stdin.write(bytes(patch))
         process.stdin.close()
 
     except IOError as e:
