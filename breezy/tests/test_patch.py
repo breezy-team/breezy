@@ -1,4 +1,5 @@
 # Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2008 Aaron Bentley <aaron@aaronbentley.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from breezy.errors import BinaryFile
-from breezy.patch import diff3
+from breezy.patch import diff3, PatchInvokeError, run_patch
 from breezy.tests import TestCaseInTempDir
 
 
@@ -29,3 +30,10 @@ class TestPatch(TestCaseInTempDir):
         with open('base', 'wb') as f:
             f.write(b'\x00')
         self.assertRaises(BinaryFile, diff3, 'unused', 'this', 'other', 'base')
+
+
+class TestPatch(TestCaseInTempDir):
+
+    def test_missing_patch(self):
+        self.assertRaises(PatchInvokeError, run_patch, '.', [],
+                          _patch_cmd='/unlikely/to/exist')

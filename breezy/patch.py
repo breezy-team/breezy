@@ -1,4 +1,5 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2008 Aaron Bentley, 2006 Michael Ellerman
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,16 +17,30 @@
 
 from __future__ import absolute_import
 
+"""Diff and patch functionality"""
+
 import errno
 import os
 from subprocess import Popen, PIPE
+import sys
 
-from .errors import NoDiff3
+from .errors import NoDiff3, BzrError
 from .textfile import check_text_path
 
-"""Diff and patch functionality"""
+class PatchFailed(BzrError):
 
-__docformat__ = "restructuredtext"
+    _fmt = """Patch application failed"""
+
+
+class PatchInvokeError(BzrError):
+
+    _fmt = """Error invoking patch: %(errstr)s%(stderr)s"""
+    internal_error = False
+
+    def __init__(self, e, stderr=''):
+        self.exception = e
+        self.errstr = os.strerror(e.errno)
+        self.stderr = '\n' + stderr
 
 
 _do_close_fds = True
@@ -102,3 +117,57 @@ def diff3(out_file, mine_path, older_path, yours_path):
     finally:
         f.close()
     return status
+
+
+def patch_multi(tree, location, strip, quiet=False):
+    """Apply a patch to a branch, using patch(1).  URLs may be used."""
+    my_file = None
+    if location is None:
+        my_file = sys.stdin
+    else:
+        my_file = open_from_url(location)
+    patches = [my_file.read()]
+    return run_patch(tree.basedir, patches, strip, quiet=quiet)
+
+
+def run_patch(directory, patches, strip=0, reverse=False, dry_run=False,
+              quiet=False, _patch_cmd='patch', target_file=None):
+    args = [_patch_cmd, '-d', directory, '-s', '-p%d' % strip, '-f']
+    if quiet:
+        args.append('--quiet')
+
+    if sys.platform == "win32":
+        args.append('--binary')
+
+    if reverse:
+        args.append('-R')
+    if dry_run:
+        if sys.platform.startswith('freebsd'):
+            args.append('--check')
+        else:
+            args.append('--dry-run')
+        stderr = PIPE
+    else:
+        stderr = None
+    if target_file is not None:
+        args.append(target_file)
+
+    try:
+        process = Popen(args, stdin=PIPE, stdout=PIPE, stderr=stderr)
+    except OSError as e:
+        raise PatchInvokeError(e)
+    try:
+        for patch in patches:
+            process.stdin.write(str(patch))
+        process.stdin.close()
+
+    except IOError as e:
+        raise PatchInvokeError(e, process.stderr.read())
+
+    result = process.wait()
+    if not dry_run:
+        sys.stdout.write(process.stdout.read())
+    if result != 0:
+        raise PatchFailed()
+
+    return result
