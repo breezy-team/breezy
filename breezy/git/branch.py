@@ -1254,7 +1254,10 @@ class InterToGitBranch(branch.GenericInterBranch):
         if stop_revision is None:
             (stop_revno, stop_revision) = self.source.last_revision_info()
         elif stop_revno is None:
-            stop_revno = self.source.revision_id_to_revno(stop_revision)
+            try:
+                stop_revno = self.source.revision_id_to_revno(stop_revision)
+            except errors.NoSuchRevision:
+                stop_revno = None
         if not isinstance(stop_revision, bytes):
             raise TypeError(stop_revision)
         main_ref = self.target.ref

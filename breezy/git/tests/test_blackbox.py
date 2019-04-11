@@ -150,6 +150,22 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(b"", output)
         self.assertTrue(error.endswith(b"Created new branch.\n"))
 
+    def test_push_lossy_non_mainline(self):
+        self.run_bzr(['init', '--git', 'bla'])
+        self.run_bzr(['init', 'foo'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        self.run_bzr(['branch', 'foo', 'foo1'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo1'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        self.run_bzr(['merge', '-d', 'foo', 'foo1'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'merge', 'foo'])
+        output, error = self.run_bzr(['push', '--lossy', '-r1.1.1', '-d', 'foo', 'bla'])
+        self.assertEqual(b"", output)
+        self.assertEqual(
+            b'Pushing from a Bazaar to a Git repository. For better '
+            b'performance, push into a Bazaar repository.\n'
+            b'Pushed up to revision 2.\n', error)
+
     def test_log(self):
         # Smoke test for "bzr log" in a git repository.
         self.simple_commit()
