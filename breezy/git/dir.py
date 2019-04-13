@@ -182,6 +182,7 @@ class GitDir(ControlDir):
         result_branch = source_branch.sprout(
             result, revision_id=revision_id, repository=result_repo)
         if (create_tree_if_local and
+            result.open_branch(name="").name == result_branch.name and
             isinstance(target_transport, LocalTransport) and
                 (result_repo is None or result_repo.make_working_trees())):
             result.create_workingtree(
@@ -302,6 +303,18 @@ class GitDir(ControlDir):
             lossy=lossy)
         push_result.new_revid = push_result.branch_push_result.new_revid
         push_result.old_revid = push_result.branch_push_result.old_revid
+        try:
+            wt = self.open_workingtree()
+        except brz_errors.NoWorkingTree:
+            push_result.workingtree_updated = None
+        else:
+            if self.open_branch(name="").name == target.name:
+                wt._update_git_tree(
+                    old_revision=push_result.old_revid,
+                    new_revision=push_result.new_revid)
+                push_result.workingtree_updated = True
+            else:
+                push_result.workingtree_updated = False
         push_result.target_branch = target
         if source.get_push_location() is None or remember:
             source.set_push_location(push_result.target_branch.base)

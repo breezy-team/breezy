@@ -148,15 +148,12 @@ def _set_branch_location(control, to_branch, current_branch, force=False):
                     'Unable to connect to current master branch %(target)s: '
                     '%(error)s To switch anyway, use --force.') %
                     e.__dict__)
-            b.lock_write()
-            try:
+            with b.lock_write():
                 b.set_bound_location(None)
                 b.pull(to_branch, overwrite=True,
                        possible_transports=possible_transports)
                 b.set_bound_location(to_branch.base)
                 b.set_parent(b.get_master_branch().get_parent())
-            finally:
-                b.unlock()
         else:
             # If this is a standalone tree and the new branch
             # is derived from this one, create a lightweight checkout.

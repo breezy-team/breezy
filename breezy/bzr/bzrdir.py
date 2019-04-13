@@ -448,8 +448,9 @@ class BzrDir(controldir.ControlDir):
 
         # Create/update the result working tree
         if (create_tree_if_local and not result.has_workingtree()
-            and isinstance(target_transport, local.LocalTransport)
-                and (result_repo is None or result_repo.make_working_trees())):
+                and isinstance(target_transport, local.LocalTransport)
+                and (result_repo is None or result_repo.make_working_trees())
+                and result.open_branch(name="").name == result_branch.name):
             wt = result.create_workingtree(
                 accelerator_tree=accelerator_tree, hardlink=hardlink,
                 from_branch=result_branch)
