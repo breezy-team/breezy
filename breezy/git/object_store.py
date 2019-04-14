@@ -361,22 +361,11 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         if tree.kind(path) != 'directory':
             continue
 
-        obj = Tree()
-        for value in tree.iter_child_entries(path):
-            if value.name in BANNED_FILENAMES:
-                trace.warning('not exporting %s with banned filename %s',
-                              value.kind, value.name)
-                continue
-            child_path = osutils.pathjoin(path, value.name)
-            try:
-                mode = unusual_modes[child_path]
-            except KeyError:
-                mode = entry_mode(value)
-            hexsha = ie_to_hexsha(child_path, value)
-            if hexsha is not None:
-                obj.add(value.name.encode("utf-8"), mode, hexsha)
+        obj = directory_to_tree(
+            path, tree.iter_child_entries(path), ie_to_hexsha, unusual_modes,
+            dummy_file_name, path == '')
 
-        if len(obj) > 0:
+        if obj is not None:
             file_id = tree.path2id(path)
             if add_cache_entry is not None:
                 add_cache_entry(obj, (file_id, tree.get_revision_id()), path)
