@@ -20,6 +20,7 @@ from __future__ import absolute_import
 
 import os
 import shutil
+import stat
 
 from dulwich.objects import (
     Blob,
@@ -255,6 +256,60 @@ class TreeToObjectsTests(TestCaseWithTransport):
         self.addCleanup(revtree.lock_read().unlock)
         entries = list(_tree_to_objects(revtree, [], self.idmap, {}))
         self.assertEqual(['foo', ''], [p[0] for p in entries])
+
+    def test_merge(self):
+        basis_tree = self.make_branch_and_tree('base')
+        self.build_tree(['base/foo/'])
+        basis_tree.add(['foo'])
+        basis_rev = basis_tree.commit('foo')
+        basis_revtree = basis_tree.branch.repository.revision_tree(basis_rev)
+
+        tree_a = self.make_branch_and_tree('a')
+        tree_a.pull(basis_tree.branch)
+
+        self.build_tree(['a/foo/file1'])
+        self.build_tree(['a/foo/subdir-a/'])
+        os.symlink('.', 'a/foo/subdir-a/symlink')
+        tree_a.add(['foo/subdir-a', 'foo/subdir-a/symlink'])
+
+        tree_a.add(['foo/file1'])
+        rev_a = tree_a.commit('commit a')
+        revtree_a = tree_a.branch.repository.revision_tree(rev_a)
+
+        with revtree_a.lock_read():
+            entries = list(_tree_to_objects(revtree_a, [basis_revtree],
+                           self.idmap, {}))
+            objects = {path: obj for (path, obj, key) in entries}
+            subdir_a = objects[b'foo/subdir-a']
+
+        tree_b = self.make_branch_and_tree('b')
+        tree_b.pull(basis_tree.branch)
+        self.build_tree(['b/foo/subdir/'])
+        os.symlink('.', 'b/foo/subdir/symlink')
+        tree_b.add(['foo/subdir', 'foo/subdir/symlink'])
+        rev_b = tree_b.commit('commit b')
+        revtree_b = tree_b.branch.repository.revision_tree(rev_b)
+        self.addCleanup(revtree_b.lock_read().unlock)
+
+        with revtree_b.lock_read():
+            list(_tree_to_objects(revtree_b, [basis_revtree], self.idmap, {}))
+
+        with tree_a.lock_write():
+            tree_a.merge_from_branch(tree_b.branch)
+        rev_merge = tree_a.commit('merge')
+
+        revtree_merge = tree_a.branch.basis_tree()
+        self.addCleanup(revtree_merge.lock_read().unlock)
+
+        entries = list(_tree_to_objects(
+            revtree_merge,
+            [tree_a.branch.repository.revision_tree(r)
+             for r in revtree_merge.get_parent_ids()],
+            self.idmap, {}))
+        objects = {path: obj for (path, obj, key) in entries}
+        self.assertEqual(set(['', 'foo', 'foo/subdir']), set(objects))
+        self.assertEqual(
+            (stat.S_IFDIR, subdir_a.id), objects['foo'][b'subdir-a'])
 
 
 class DirectoryToTreeTests(TestCase):

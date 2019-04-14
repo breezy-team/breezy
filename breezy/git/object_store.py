@@ -332,13 +332,23 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         except KeyError:
             pass
         # FIXME: Should be the same as in parent
-        if ie.kind in ("file", "symlink"):
+        if ie.kind == "file":
             try:
                 return idmap.lookup_blob_id(ie.file_id, ie.revision)
             except KeyError:
                 # no-change merge ?
                 blob = Blob()
                 blob.data = tree.get_file_text(path)
+                if add_cache_entry is not None:
+                    add_cache_entry(blob, (ie.file_id, ie.revision), path)
+                return blob.id
+        elif ie.kind == "symlink":
+            try:
+                return idmap.lookup_blob_id(ie.file_id, ie.revision)
+            except KeyError:
+                # no-change merge ?
+                target = tree.get_symlink_target(path)
+                blob = symlink_to_blob(target)
                 if add_cache_entry is not None:
                     add_cache_entry(blob, (ie.file_id, ie.revision), path)
                 return blob.id
