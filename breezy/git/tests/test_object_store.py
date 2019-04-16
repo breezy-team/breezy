@@ -280,7 +280,7 @@ class TreeToObjectsTests(TestCaseWithTransport):
             entries = list(_tree_to_objects(revtree_a, [basis_revtree],
                            self.idmap, {}))
             objects = {path: obj for (path, obj, key) in entries}
-            subdir_a = objects[b'foo/subdir-a']
+            subdir_a = objects['foo/subdir-a']
 
         tree_b = self.make_branch_and_tree('b')
         tree_b.pull(basis_tree.branch)
