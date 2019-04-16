@@ -23,8 +23,7 @@ from __future__ import absolute_import
 import os
 
 from ..config import DebBuildConfig
-from ..errors import HookFailedError
-from ..hooks import run_hook
+from ..hooks import run_hook, HookFailedError
 from . import TestCaseInTempDir
 
 class MockTree:

@@ -89,13 +89,6 @@ class ImportError(BzrError):
         BzrError.__init__(self, reason=reason)
 
 
-class HookFailedError(BzrError):
-    _fmt = 'The "%(hook_name)s" hook failed.'
-
-    def __init__(self, hook_name):
-        BzrError.__init__(self, hook_name=hook_name)
-
-
 class OnlyImportSingleDsc(BzrError):
     _fmt = "You are only allowed to import one version in incremental mode."
 

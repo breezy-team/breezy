@@ -22,9 +22,15 @@ from __future__ import absolute_import
 
 import subprocess
 
+from ...errors import BzrError
 from ...trace import note
 
-from .errors import HookFailedError
+
+class HookFailedError(BzrError):
+    _fmt = 'The "%(hook_name)s" hook failed.'
+
+    def __init__(self, hook_name):
+        BzrError.__init__(self, hook_name=hook_name)
 
 
 def run_hook(tree, hook_name, config, wd="."):
