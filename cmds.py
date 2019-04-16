@@ -430,7 +430,6 @@ class cmd_builddeb(Command):
             quick=False, reuse=False, native=None,
             source=False, revision=None, package_merge=None,
             strict=False):
-        import subprocess
         from .builder import DebBuild
         from .errors import (
             NoPreviousUpload,
@@ -440,7 +439,6 @@ class cmd_builddeb(Command):
             dget_changes,
             find_changelog,
             find_previous_upload,
-            guess_build_type,
             tree_contains_upstream_source,
             )
 
@@ -1499,7 +1497,6 @@ class LocalTree(object):
 
 def _build_helper(local_tree, branch, target_dir, builder):
     # TODO(jelmer): Integrate this with cmd_builddeb
-    import subprocess
     from .hooks import run_hook
     from .builder import (
         DebBuild,
@@ -1524,8 +1521,8 @@ def _build_helper(local_tree, branch, target_dir, builder):
 
     bd = tempfile.mkdtemp()
     try:
-        build_source_dir = os.path.join(bd,
-                changelog.package + "-" + changelog.version.upstream_version)
+        build_source_dir = os.path.join(
+            bd, changelog.package + "-" + changelog.version.upstream_version)
         builder = DebBuild(
                 distiller, build_source_dir,
                 builder,
@@ -1536,12 +1533,14 @@ def _build_helper(local_tree, branch, target_dir, builder):
         run_hook(local_tree, 'pre-build', config, wd=build_source_dir)
         builder.build()
         run_hook(local_tree, 'post-build', config, wd=build_source_dir)
-        changes = changes_filename(changelog.package, changelog.version, 'source')
+        changes = changes_filename(
+            changelog.package, changelog.version, 'source')
         changes_path = os.path.join(bd, changes)
         if target_dir is not None:
             if not os.path.exists(changes_path):
-                raise BzrCommandError("Could not find the .changes "
-                        "file from the build: %s" % changes_path)
+                raise BzrCommandError(
+                    "Could not find the .changes "
+                    "file from the build: %s" % changes_path)
             return dget_changes(changes_path, target_dir)
     finally:
         shutil.rmtree(bd)
