@@ -30,11 +30,6 @@ class DebianError(BzrError):
         BzrError.__init__(self, cause=cause)
 
 
-class NoSourceDirError(BzrError):
-    _fmt = ("There is no existing source directory to use. Use "
-            "--export-only or --dont-purge to get one that can be used")
-
-
 class MissingUpstreamTarball(BzrError):
     _fmt = ("Unable to find the needed upstream tarball for package %(package)s, "
             "version %(version)s.")
@@ -48,10 +43,6 @@ class TarFailed(BzrError):
 
     def __init__(self, operation, tarball):
         BzrError.__init__(self, operation=operation, tarball=tarball)
-
-
-class BuildFailedError(BzrError):
-    _fmt = "The build failed."
 
 
 class UnparseableChangelog(BzrError):

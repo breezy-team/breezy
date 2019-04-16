@@ -23,19 +23,35 @@ from __future__ import absolute_import
 import shutil
 import subprocess
 import os
+import tempfile
 
+from ...errors import BzrError
 from ...trace import note
 
-from .errors import (
-    NoSourceDirError,
-    BuildFailedError,
-    )
+from .hooks import run_hook
 from .quilt import quilt_push_all
 from .util import (
     get_parent_dir,
     subprocess_setup,
     FORMAT_3_0_QUILT,
+    changes_filename,
+    dget_changes,
     )
+
+
+class ChangesFileMissing(BzrError):
+
+    _fmt = "Missing changes file: %(path)r"
+
+
+class NoSourceDirError(BzrError):
+
+    _fmt = ("There is no existing source directory to use. Use "
+            "--export-only or --dont-purge to get one that can be used")
+
+
+class BuildFailedError(BzrError):
+    _fmt = "The build failed."
 
 
 class DebBuild(object):
@@ -104,3 +120,31 @@ class DebBuild(object):
         """This removes the build directory."""
         note("Cleaning build dir: %s", self.target_dir)
         shutil.rmtree(self.target_dir)
+
+
+def do_build(package_name, version, distiller, local_tree, config,
+             build_command, target_dir=None):
+    """Actually run a build."""
+    bd = tempfile.mkdtemp()
+    try:
+        build_source_dir = os.path.join(
+            bd, package_name + "-" + version.upstream_version)
+        builder = DebBuild(
+                distiller, build_source_dir,
+                build_command,
+                use_existing=False)
+        builder.prepare()
+        run_hook(local_tree, 'pre-export', config)
+        builder.export()
+        run_hook(local_tree, 'pre-build', config, wd=build_source_dir)
+        builder.build()
+        run_hook(local_tree, 'post-build', config, wd=build_source_dir)
+        changes = changes_filename(
+            package_name, version, 'source')
+        changes_path = os.path.join(bd, changes)
+        if target_dir is not None:
+            if not os.path.exists(changes_path):
+                raise ChangesFileMissing(changes_path)
+            return dget_changes(changes_path, target_dir)
+    finally:
+        shutil.rmtree(bd)

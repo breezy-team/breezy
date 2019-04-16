@@ -800,3 +800,14 @@ def dput_changes(path):
 def debsign(path):
     (bd, changes_file) = os.path.split(path)
     subprocess.check_call(["debsign", changes_file], cwd=bd)
+
+
+def changes_filename(package, version, arch):
+    non_epoch_version = version.upstream_version
+    if version.debian_version is not None:
+        non_epoch_version += "-%s" % version.debian_version
+    return "%s_%s_%s.changes" % (package,
+            non_epoch_version, arch)
+
+
+

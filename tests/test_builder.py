@@ -25,8 +25,11 @@ import os
 from ....tests import (TestCaseInTempDir,
                           )
 
-from ..builder import DebBuild
-from .. import errors
+from ..builder import (
+    DebBuild,
+    BuildFailedError,
+    NoSourceDirError,
+    )
 
 
 class TestDebBuild(TestCaseInTempDir):
@@ -53,7 +56,7 @@ class TestDebBuild(TestCaseInTempDir):
     def test_use_existing_errors_if_not_present(self):
         self.build_tree(['target/'])
         builder = DebBuild(None, 'target/sub/', None, use_existing=True)
-        self.assertRaises(errors.NoSourceDirError, builder.prepare)
+        self.assertRaises(NoSourceDirError, builder.prepare)
         self.assertPathDoesNotExist('target/sub')
 
     def test_export(self):
@@ -73,7 +76,7 @@ class TestDebBuild(TestCaseInTempDir):
     def test_build_fails(self):
         builder = DebBuild(None, 'target', "false")
         self.build_tree(['target/'])
-        self.assertRaises(errors.BuildFailedError, builder.build)
+        self.assertRaises(BuildFailedError, builder.build)
 
     def test_clean(self):
         builder = DebBuild(None, 'target', None)

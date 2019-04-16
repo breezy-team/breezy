@@ -91,14 +91,6 @@ export_upstream_revision_opt = Option('export-upstream-revision',
     type=str, argname="REVISION")
 
 
-def changes_filename(package, version, arch):
-    non_epoch_version = version.upstream_version
-    if version.debian_version is not None:
-        non_epoch_version += "-%s" % version.debian_version
-    return "%s_%s_%s.changes" % (package,
-            non_epoch_version, arch)
-
-
 def _check_tree(tree, strict=False):
     if strict:
         for unknown in tree.unknowns():
@@ -440,6 +432,7 @@ class cmd_builddeb(Command):
             find_changelog,
             find_previous_upload,
             tree_contains_upstream_source,
+            changes_filename,
             )
 
         location, build_options, source = self._branch_and_build_options(
@@ -1171,13 +1164,11 @@ class cmd_builddeb_do(Command):
 
     def run(self, command_list=None):
         import subprocess
-        from .errors import (
-            BuildFailedError,
-            )
         from .source_distiller import (
             MergeModeDistiller,
             )
         from .builder import (
+            BuildFailedError,
             DebBuild,
             )
         from .upstream import (
@@ -1499,7 +1490,7 @@ def _build_helper(local_tree, branch, target_dir, builder):
     # TODO(jelmer): Integrate this with cmd_builddeb
     from .hooks import run_hook
     from .builder import (
-        DebBuild,
+        do_build,
         )
     from .util import (
         find_changelog,
@@ -1519,31 +1510,8 @@ def _build_helper(local_tree, branch, target_dir, builder):
             contains_upstream_source=contains_upstream_source,
             top_level=top_level)
 
-    bd = tempfile.mkdtemp()
-    try:
-        build_source_dir = os.path.join(
-            bd, changelog.package + "-" + changelog.version.upstream_version)
-        builder = DebBuild(
-                distiller, build_source_dir,
-                builder,
-                use_existing=False)
-        builder.prepare()
-        run_hook(local_tree, 'pre-export', config)
-        builder.export()
-        run_hook(local_tree, 'pre-build', config, wd=build_source_dir)
-        builder.build()
-        run_hook(local_tree, 'post-build', config, wd=build_source_dir)
-        changes = changes_filename(
-            changelog.package, changelog.version, 'source')
-        changes_path = os.path.join(bd, changes)
-        if target_dir is not None:
-            if not os.path.exists(changes_path):
-                raise BzrCommandError(
-                    "Could not find the .changes "
-                    "file from the build: %s" % changes_path)
-            return dget_changes(changes_path, target_dir)
-    finally:
-        shutil.rmtree(bd)
+    return do_build(changelog.package, changelog.version, distiller,
+                    local_tree, config, builder, target_dir)
 
 
 class cmd_debrelease(Command):
