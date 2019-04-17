@@ -286,8 +286,6 @@ class cmd_builddeb(Command):
     debian/rules binary'. It is overriden if --builder is passed. Using this
     and --reuse allows for fast rebuilds.
     """
-    working_tree_opt = Option('working-tree', help="This option has no effect.",
-                              short_name='w')
     export_only_opt = Option('export-only', help="Export only, don't build.",
                              short_name='e')
     use_existing_opt = Option('use-existing',
@@ -309,7 +307,7 @@ class cmd_builddeb(Command):
             "another source.")
     takes_args = ['branch_or_build_options*']
     aliases = ['bd', 'debuild']
-    takes_options = [working_tree_opt, export_only_opt,
+    takes_options = [export_only_opt,
         dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
         build_dir_opt, orig_dir_opt, split_opt,
         export_upstream_opt, export_upstream_revision_opt,
@@ -414,7 +412,6 @@ class cmd_builddeb(Command):
         return branch, build_options, source
 
     def run(self, branch_or_build_options_list=None, verbose=False,
-            working_tree=False,
             export_only=False, dont_purge=False, use_existing=False,
             result_dir=None, builder=None, merge=None, build_dir=None,
             export_upstream=None, export_upstream_revision=None,
