@@ -15,6 +15,7 @@ Depends: brz (>= 3.0.0~bzr7290), python3-breezy, python3-debian, python3-apt, ${
 Recommends: python3-launchpadlib, libalgorithm-merge-perl, python3-distro-info, python3-dulwich (>= 0.19.9)
 Suggests: python3-lzma
 Provides: brz-buildpackage
+Breaks: silver-platter (<= 0.1.0)
 Enhances: brz
 Description: breezy plugin for Debian package management
  brz-debian is a plugin for the breezy version control system that helps to
