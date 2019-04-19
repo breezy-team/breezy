@@ -179,9 +179,10 @@ class UScanSource(UpstreamSource):
             file = 'debian/' + name
         if not self.tree.has_filename(file):
             raise NoSuchFile(file, self.tree)
-        output_dir = os.path.join(directory, 'debian')
-        os.makedirs(output_dir)
-        output_path = os.path.join(output_dir, name)
+        output_path = os.path.join(directory, 'debian', name)
+        output_dir = os.path.dirname(output_path)
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
         with open(output_path, 'wb') as f:
             f.write(self.tree.get_file_text(file))
         return output_path
