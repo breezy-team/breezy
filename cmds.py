@@ -61,6 +61,7 @@ from .config import (
     )
 from .util import (
     debuild_config,
+    get_build_architecture,
     )
 
 dont_purge_opt = Option('dont-purge',
@@ -101,16 +102,6 @@ def _check_tree(tree, strict=False):
         raise BzrCommandError(
             "There are conflicts in the working tree. "
             "You must resolve these before building.")
-
-
-def _get_build_architecture():
-    import subprocess
-    try:
-        return subprocess.check_output(
-            ['dpkg-architecture', '-qDEB_BUILD_ARCH']).strip()
-    except subprocess.CalledProcessError as e:
-        raise BzrCommandError(
-            "Could not find the build architecture: %s" % e)
 
 
 def _get_changelog_info(tree, last_version=None, package=None, distribution=None):
@@ -493,7 +484,7 @@ class cmd_builddeb(Command):
                 if source:
                     arch = "source"
                 else:
-                    arch = _get_build_architecture()
+                    arch = get_build_architecture()
                 changes = changes_filename(changelog.package, changelog.version, arch)
                 changes_path = os.path.join(build_dir, changes)
                 if not os.path.exists(changes_path):

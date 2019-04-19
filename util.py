@@ -64,6 +64,7 @@ from .config import (
     BUILD_TYPE_NORMAL,
     )
 from .errors import (
+    BzrError,
     MissingChangelogError,
     AddChangelogError,
     InconsistentSourceFormatError,
@@ -810,4 +811,10 @@ def changes_filename(package, version, arch):
             non_epoch_version, arch)
 
 
-
+def get_build_architecture():
+    try:
+        return subprocess.check_output(
+            ['dpkg-architecture', '-qDEB_BUILD_ARCH']).strip().decode()
+    except subprocess.CalledProcessError as e:
+        raise BzrError(
+            "Could not find the build architecture: %s" % e)

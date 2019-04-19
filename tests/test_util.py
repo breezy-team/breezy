@@ -61,6 +61,7 @@ from ..util import (
     find_last_distribution,
     find_previous_upload,
     find_thanks,
+    get_build_architecture,
     get_commit_info_from_changelog,
     guess_build_type,
     lookup_distribution,
@@ -977,3 +978,9 @@ class TreeContainsUpstreamSourceTests(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertFalse(tree_contains_upstream_source(tree))
+
+
+class BuildArchitectureTests(TestCase):
+
+    def test_is_str(self):
+        self.assertIsInstance(get_build_architecture(), text_type)
