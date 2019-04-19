@@ -28,6 +28,8 @@ from base64 import standard_b64encode
 
 import bz2
 import os
+import shutil
+import tempfile
 import tarfile
 import zipfile
 
@@ -356,19 +358,27 @@ class UScanSourceTests(TestCaseWithTransport):
 
     def test_export_watchfile_none(self):
         src = UScanSource(self.tree, False)
-        self.assertRaises(NoSuchFile, src._export_file, 'watch')
+        self.assertRaises(NoSuchFile, src._export_file, 'watch', self.test_dir)
 
     def test_export_watchfile_top_level(self):
         src = UScanSource(self.tree, True)
         self.build_tree(['watch'])
         self.tree.add(['watch'])
-        self.assertIsNot(src._export_file('watch'), None)
+        tmpdir = tempfile.mkdtemp()
+        try:
+            self.assertIsNot(src._export_file('watch', tmpdir), None)
+        finally:
+            shutil.rmtree(tmpdir)
 
     def test_export_watchfile(self):
         src = UScanSource(self.tree, False)
         self.build_tree(['debian/', 'debian/watch'])
         self.tree.smart_add(['debian/watch'])
-        self.assertIsNot(src._export_file('watch'), None)
+        tmpdir = tempfile.mkdtemp()
+        try:
+            self.assertIsNot(src._export_file('watch', tmpdir), None)
+        finally:
+            shutil.rmtree(tmpdir)
 
     def test__xml_report_extract_upstream_version(self):
         self.assertEquals("1.2.9",

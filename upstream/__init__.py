@@ -25,8 +25,6 @@ import subprocess
 import tarfile
 import tempfile
 
-from debian.changelog import Version
-
 from ....errors import NoSuchFile
 from .... import osutils
 from ....export import export
@@ -174,18 +172,19 @@ class UScanSource(UpstreamSource):
         self.tree = tree
         self.top_level = top_level
 
-    def _export_file(self, name):
+    def _export_file(self, name, directory):
         if self.top_level:
             file = name
         else:
             file = 'debian/' + name
-        (tmp, tempfilename) = tempfile.mkstemp()
-        try:
-            tmp = os.fdopen(tmp, 'wb')
-            tmp.write(self.tree.get_file_text(file))
-        finally:
-            tmp.close()
-        return tempfilename
+        if not self.tree.has_filename(file):
+            raise NoSuchFile(file, self.tree)
+        output_dir = os.path.join(directory, 'debian')
+        os.makedirs(output_dir)
+        output_path = os.path.join(output_dir, name)
+        with open(output_path, 'wb') as f:
+            f.write(self.tree.get_file_text(file))
+        return output_path
 
     @staticmethod
     def _xml_report_extract_upstream_version(text):
@@ -205,52 +204,63 @@ class UScanSource(UpstreamSource):
         return upstream_version_tag.firstChild.wholeText
 
     def get_latest_version(self, package, current_version):
+        tmpdir = tempfile.mkdtemp()
         try:
-            watch_tempfilename = self._export_file('watch')
-        except NoSuchFile:
-            note("No watch file to use to check latest upstream release.")
-            return None
-        args = ["--package=%s" % package, "--report",
-                "--no-download", "--dehs",
-                "--upstream-version=%s" % current_version]
-        try:
+            try:
+                watch_tempfilename = self._export_file('watch', tmpdir)
+            except NoSuchFile:
+                note("No watch file to use to check latest upstream release.")
+                return None
+            args = ["--package=%s" % package, "--report",
+                    "--no-download", "--dehs",
+                    "--upstream-version=%s" % current_version]
             p = subprocess.Popen(
                 ["uscan", "--watchfile=%s" % watch_tempfilename] + args,
                 stdout=subprocess.PIPE)
             (stdout, stderr) = p.communicate()
         finally:
-            os.unlink(watch_tempfilename)
+            shutil.rmtree(tmpdir)
         return self._xml_report_extract_upstream_version(stdout)
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
         note("Using uscan to look for the upstream tarball.")
+        tmpdir = tempfile.mkdtemp()
         try:
-            watch_tempfilename = self._export_file('watch')
-        except NoSuchFile:
-            note("No watch file to use to retrieve upstream tarball.")
-            raise PackageVersionNotPresent(package, version, self)
-        args = ["--upstream-version=%s" % version,
-                "--force-download", "--rename", "--package=%s" % package,
-                "--check-dirname-level=0",
-                "--download", "--destdir=%s" % target_dir,
-                "--download-version=%s" % version]
-        try:
-            copyright_tempfilename = self._export_file('copyright')
-        except NoSuchFile:
-            note('No copyright file found.')
-            copyright_tempfilename = None
-        else:
-            args.append("--copyright-file=%s" % copyright_tempfilename)
-        try:
+            try:
+                watch_tempfilename = self._export_file('watch', tmpdir)
+            except NoSuchFile:
+                note("No watch file to use to retrieve upstream tarball.")
+                raise PackageVersionNotPresent(package, version, self)
+            args = ["--upstream-version=%s" % version,
+                    "--force-download", "--rename", "--package=%s" % package,
+                    "--check-dirname-level=0",
+                    "--download", "--destdir=%s" % target_dir,
+                    "--download-version=%s" % version]
+            try:
+                copyright_tempfilename = self._export_file('copyright', tmpdir)
+            except NoSuchFile:
+                note('No copyright file found.')
+                copyright_tempfilename = None
+            else:
+                args.append("--copyright-file=%s" % copyright_tempfilename)
+            # TODO(jelmer): Perhaps just export all of debian/ ?
+            for extra in [
+                    'upstream/signing-key.asc',
+                    'upstream-signing-key.asc', 'upstream/signing-key.pgp',
+                    'upstream-signing-key.pgp',
+                    'source/format', 'source/option']:
+                try:
+                    self._export_file(extra, tmpdir)
+                except NoSuchFile:
+                    pass
             r = subprocess.call(
-                ["uscan", "--watchfile=%s" % watch_tempfilename] + args)
+                ["uscan", "--watchfile=%s" % watch_tempfilename] + args,
+                cwd=tmpdir)
+            if r != 0:
+                note("uscan could not find the needed tarball.")
+                raise PackageVersionNotPresent(package, version, self)
         finally:
-            os.unlink(watch_tempfilename)
-            if copyright_tempfilename:
-                os.unlink(copyright_tempfilename)
-        if r != 0:
-            note("uscan could not find the needed tarball.")
-            raise PackageVersionNotPresent(package, version, self)
+            shutil.rmtree(tmpdir)
         orig_files = gather_orig_files(package, version, target_dir)
         if orig_files is None:
             note("the expected files generated by uscan could not be found in"
