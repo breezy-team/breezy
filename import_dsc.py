@@ -46,8 +46,8 @@ from ...export import (
     )
 from ...config import ConfigObj
 from ...errors import (
+    BzrError,
     AlreadyBranchError,
-    BzrCommandError,
     NotBranchError,
     NoWorkingTree,
     UnrelatedBranches,
@@ -82,6 +82,17 @@ from .util import (
 from .upstream.pristinetar import (
     PristineTarSource,
     )
+
+
+class PreviousVersionTagMissing(BzrError):
+
+    _fmt = ("Unable to find the tag for the "
+            "previous upstream version (%(version)s) in the branch: "
+            "%(tag_name)s")
+
+    def __init__(self, version, tag_name):
+        super(PreviousVersionTagMissing, self).__init__(
+            version=version, tag_name=tag_name)
 
 
 class DscCache(object):
@@ -1306,11 +1317,9 @@ class DistributionBranch(object):
             upstream_tips = self.pristine_upstream_source.version_as_revisions(
                     package, previous_version)
         except PackageVersionNotPresent:
-            raise BzrCommandError("Unable to find the tag for the "
-                    "previous upstream version (%s) in the branch: "
-                    "%s" % (
+            raise PreviousVersionTagMissing(
                 previous_version,
-                self.pristine_upstream_source.tag_name(previous_version)))
+                self.pristine_upstream_source.tag_name(previous_version))
         self.extract_upstream_tree(upstream_tips, tempdir)
 
     def has_merged_upstream_revisions(self, this_revision, upstream_repository, upstream_revisions):

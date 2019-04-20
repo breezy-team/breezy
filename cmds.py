@@ -649,6 +649,7 @@ class cmd_merge_upstream(Command):
         from .import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
+            PreviousVersionTagMissing,
             )
         from .util import (
             component_from_orig_tarball,
@@ -658,10 +659,13 @@ class cmd_merge_upstream(Command):
         dbs.add_branch(db)
         tarballs = [(p, component_from_orig_tarball(p, package, version)) for p
                 in tarball_filenames]
-        conflicts = db.merge_upstream(tarballs, package, version,
-                current_version, upstream_branch=upstream_branch,
-                upstream_revisions=upstream_revisions,
-                merge_type=merge_type, force=force)
+        try:
+            conflicts = db.merge_upstream(tarballs, package, version,
+                    current_version, upstream_branch=upstream_branch,
+                    upstream_revisions=upstream_revisions,
+                    merge_type=merge_type, force=force)
+        except PreviousVersionTagMissing as e:
+            raise BzrCommandError(str(e))
         return conflicts
 
     def _fetch_tarball(self, package, version, orig_dir, locations, v3):
