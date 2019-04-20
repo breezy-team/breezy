@@ -149,7 +149,7 @@ def make_pristine_tar_delta(dest, tarball_path):
             raise
     (stdout, stderr) = proc.communicate()
     if proc.returncode != 0:
-        if 'excessively large binary delta' in stderr:
+        if b'excessively large binary delta' in stderr:
             raise PristineTarDeltaTooLarge(stderr)
         else:
             raise PristineTarError("Generating delta from tar failed: %s" %
