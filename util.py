@@ -798,9 +798,13 @@ def dput_changes(path):
     subprocess.check_call(["dput", changes_file], cwd=bd)
 
 
-def debsign(path):
+def debsign(path, keyid=None):
     (bd, changes_file) = os.path.split(path)
-    subprocess.check_call(["debsign", changes_file], cwd=bd)
+    args = ["debsign"]
+    if keyid:
+        args.append("-k%s" % keyid)
+    args.append(changes_file)
+    subprocess.check_call(args, cwd=bd)
 
 
 def changes_filename(package, version, arch):
