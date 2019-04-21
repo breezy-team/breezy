@@ -35,6 +35,14 @@ from debian.changelog import Version
 from .errors import (
     DchError,
     )
+from .import_dsc import (
+    DistributionBranch,
+    DistributionBranchSet,
+    PreviousVersionTagMissing,
+    )
+from .util import (
+    component_from_orig_tarball,
+    )
 
 
 TAG_PREFIX = "upstream-"
@@ -103,3 +111,18 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
         raise DchError("Adding changelog entry failed: %s" % stderr)
     if create:
         tree.add(["debian/changelog"])
+
+
+def do_merge(tree, tarball_filenames, package, version,
+        current_version, upstream_branch, upstream_revisions, merge_type,
+        force):
+    db = DistributionBranch(tree.branch, tree.branch, tree=tree)
+    dbs = DistributionBranchSet()
+    dbs.add_branch(db)
+    tarballs = [(p, component_from_orig_tarball(p, package, version)) for p
+            in tarball_filenames]
+    conflicts = db.merge_upstream(tarballs, package, version,
+            current_version, upstream_branch=upstream_branch,
+            upstream_revisions=upstream_revisions,
+            merge_type=merge_type, force=force)
+    return conflicts

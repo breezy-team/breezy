@@ -643,31 +643,6 @@ class cmd_merge_upstream(Command):
                     'merge had completed failed. Add the new changelog '
                     'entry yourself, review the merge, and then commit.')
 
-    def _do_merge(self, tree, tarball_filenames, package, version,
-            current_version, upstream_branch, upstream_revisions, merge_type,
-            force):
-        from .import_dsc import (
-            DistributionBranch,
-            DistributionBranchSet,
-            PreviousVersionTagMissing,
-            )
-        from .util import (
-            component_from_orig_tarball,
-            )
-        db = DistributionBranch(tree.branch, tree.branch, tree=tree)
-        dbs = DistributionBranchSet()
-        dbs.add_branch(db)
-        tarballs = [(p, component_from_orig_tarball(p, package, version)) for p
-                in tarball_filenames]
-        try:
-            conflicts = db.merge_upstream(tarballs, package, version,
-                    current_version, upstream_branch=upstream_branch,
-                    upstream_revisions=upstream_revisions,
-                    merge_type=merge_type, force=force)
-        except PreviousVersionTagMissing as e:
-            raise BzrCommandError(str(e))
-        return conflicts
-
     def _fetch_tarball(self, package, version, orig_dir, locations, v3):
         from .repack_tarball import repack_tarball
         from .util import tarball_name
@@ -709,6 +684,7 @@ class cmd_merge_upstream(Command):
 
         from .errors import PackageVersionNotPresent
         from .hooks import run_hook
+        from .merge_upstream import do_merge
         from .upstream import (
             TarfileSource,
             UScanSource,
@@ -858,9 +834,12 @@ class cmd_merge_upstream(Command):
                 tarball_filenames = self._get_tarballs(config, tree, package,
                     version, upstream_branch, upstream_revisions, v3,
                     locations)
-                conflicts = self._do_merge(tree, tarball_filenames, package,
-                    version, current_version, upstream_branch, upstream_revisions,
-                    merge_type, force)
+                try:
+                    conflicts = do_merge(tree, tarball_filenames, package,
+                        version, current_version, upstream_branch, upstream_revisions,
+                        merge_type, force)
+                except PreviousVersionTagMissing as e:
+                    raise BzrCommandError(str(e))
             if (current_version is not None and
                 Version(current_version) >= Version(version)):
                 raise BzrCommandError(
