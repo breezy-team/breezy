@@ -650,39 +650,6 @@ class cmd_merge_upstream(Command):
                     'merge had completed failed. Add the new changelog '
                     'entry yourself, review the merge, and then commit.')
 
-    def _fetch_tarball(self, package, version, orig_dir, locations, v3):
-        from .repack_tarball import repack_tarball
-        from .util import tarball_name
-        ret = []
-        format = None
-        for location in locations:
-            if v3:
-                if location.endswith(".tar.bz2") or location.endswith(".tbz2"):
-                    format = "bz2"
-                elif location.endswith(".tar.xz"):
-                    format = "xz"
-            dest_name = tarball_name(package, version, None, format=format)
-            tarball_filename = os.path.join(orig_dir, dest_name)
-            try:
-                repack_tarball(location, dest_name, target_dir=orig_dir)
-            except FileExists:
-                raise BzrCommandError("The target file %s already exists, and is either "
-                                      "different to the new upstream tarball, or they "
-                                      "are of different formats. Either delete the target "
-                                      "file, or use it as the argument to import."
-                                      % dest_name)
-            ret.append(tarball_filename)
-        return ret
-
-    def _get_tarballs(self, config, tree, package, version, upstream_branch,
-            upstream_revision, v3, locations):
-        orig_dir = config.orig_dir or default_orig_dir
-        orig_dir = os.path.join(tree.basedir, orig_dir)
-        if not os.path.exists(orig_dir):
-            os.makedirs(orig_dir)
-        return self._fetch_tarball(package, version, orig_dir,
-            locations, v3)
-
     def run(self, location=None, upstream_branch=None, version=None,
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
@@ -691,7 +658,10 @@ class cmd_merge_upstream(Command):
 
         from .errors import PackageVersionNotPresent
         from .hooks import run_hook
-        from .merge_upstream import do_merge
+        from .merge_upstream import (
+            do_merge,
+            get_tarballs,
+            )
         from .upstream import (
             TarfileSource,
             UScanSource,
@@ -700,9 +670,6 @@ class cmd_merge_upstream(Command):
             UpstreamBranchSource,
             )
         from .util import (
-            FORMAT_3_0_QUILT,
-            FORMAT_3_0_NATIVE,
-            tree_get_source_format,
             guess_build_type,
             tree_contains_upstream_source,
             )
@@ -831,12 +798,18 @@ class cmd_merge_upstream(Command):
                             revisions=upstream_revisions)
                     else:
                         raise
-                source_format = tree_get_source_format(tree)
-                v3 = (source_format in [
-                    FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
-                tarball_filenames = self._get_tarballs(config, tree, package,
-                    version, upstream_branch, upstream_revisions, v3,
-                    locations)
+                orig_dir = config.orig_dir or default_orig_dir
+                try:
+                    tarball_filenames = get_tarballs(orig_dir, tree, package,
+                        version, upstream_branch, upstream_revisions,
+                        locations)
+                except FileExists:
+                    raise BzrCommandError(
+                        "The target file %s already exists, and is either "
+                        "different to the new upstream tarball, or they "
+                        "are of different formats. Either delete the target "
+                        "file, or use it as the argument to import."
+                        % dest_name)
                 try:
                     conflicts = do_merge(tree, tarball_filenames, package,
                         version, current_version, upstream_branch, upstream_revisions,

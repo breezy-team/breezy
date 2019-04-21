@@ -28,6 +28,7 @@
 
 from __future__ import absolute_import
 
+import os
 import subprocess
 
 from debian.changelog import Version
@@ -40,8 +41,13 @@ from .import_dsc import (
     DistributionBranchSet,
     PreviousVersionTagMissing,
     )
+from .repack_tarball import repack_tarball
 from .util import (
     component_from_orig_tarball,
+    tarball_name,
+    FORMAT_3_0_QUILT,
+    FORMAT_3_0_NATIVE,
+    tree_get_source_format,
     )
 
 
@@ -126,3 +132,29 @@ def do_merge(tree, tarball_filenames, package, version,
             upstream_revisions=upstream_revisions,
             merge_type=merge_type, force=force)
     return conflicts
+
+
+def fetch_tarball(package, version, orig_dir, locations, v3):
+    ret = []
+    format = None
+    for location in locations:
+        if v3:
+            if location.endswith(".tar.bz2") or location.endswith(".tbz2"):
+                format = "bz2"
+            elif location.endswith(".tar.xz"):
+                format = "xz"
+        dest_name = tarball_name(package, version, None, format=format)
+        tarball_filename = os.path.join(orig_dir, dest_name)
+        repack_tarball(location, dest_name, target_dir=orig_dir)
+        ret.append(tarball_filename)
+    return ret
+
+
+def get_tarballs(orig_dir, tree, package, version, upstream_branch,
+        upstream_revision, locations):
+    source_format = tree_get_source_format(tree)
+    v3 = (source_format in [FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
+    orig_dir = os.path.join(tree.basedir, orig_dir)
+    if not os.path.exists(orig_dir):
+        os.makedirs(orig_dir)
+    return fetch_tarball(package, version, orig_dir, locations, v3)
