@@ -104,6 +104,13 @@ def _check_tree(tree, strict=False):
             "You must resolve these before building.")
 
 
+def _check_uncommitted(tree):
+    if tree.changes_from(tree.basis_tree()).has_changed():
+      raise BzrCommandError(gettext("There are uncommitted "
+              "changes in the working tree. You must commit "
+              "before using this command"))
+
+
 def _get_changelog_info(tree, last_version=None, package=None, distribution=None):
     from .util import (
         find_changelog,
@@ -702,11 +709,7 @@ class cmd_merge_upstream(Command):
 
         tree, _ = WorkingTree.open_containing(directory)
         with tree.lock_write():
-            # Check for uncommitted changes.
-            if tree.changes_from(tree.basis_tree()).has_changed():
-                raise BzrCommandError("There are uncommitted changes in the "
-                        "working tree. You must commit before using this "
-                        "command.")
+            _check_uncommitted(tree)
             config = debuild_config(tree, tree)
             (current_version, package, distribution, distribution_name,
              changelog, top_level) = _get_changelog_info(tree, last_version,
@@ -938,10 +941,7 @@ class cmd_import_dsc(Command):
             raise BzrCommandError(gettext(
                 "There is no tree to import the packages in to"))
         with tree.lock_write():
-            if tree.changes_from(tree.basis_tree()).has_changed():
-                raise BzrCommandError(gettext("There are uncommitted "
-                        "changes in the working tree. You must commit "
-                        "before using this command"))
+            _check_uncommitted(tree)
             if files_list is None:
                 files_list = []
             if file is not None:
@@ -1260,10 +1260,7 @@ class cmd_mark_uploaded(Command):
             )
         t = WorkingTree.open_containing('.')[0]
         with t.lock_write():
-            if t.changes_from(t.basis_tree()).has_changed():
-              raise BzrCommandError(gettext("There are uncommitted "
-                      "changes in the working tree. You must commit "
-                      "before using this command"))
+            _check_uncommitted(t)
             config = debuild_config(t, t)
             if merge is None:
                 merge = (config.build_type == BUILD_TYPE_MERGE)
