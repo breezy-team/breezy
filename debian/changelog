@@ -5,6 +5,7 @@ breezy-debian (2.8.27) UNRELEASED; urgency=medium
   * builddeb: Drop unused -w option.
   * Export upstream keyrings when downloading new upstream releases with
     uscan.
+  * Support date-only git snapshot versions.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 06 Mar 2019 21:35:13 +0000
 
