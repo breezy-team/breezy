@@ -188,10 +188,10 @@ class UScanSource(UpstreamSource):
         return output_path
 
     @staticmethod
-    def _run_dehs_uscan(args):
+    def _run_dehs_uscan(args, cwd):
         p = subprocess.Popen(
             ["uscan", "--dehs"] + args,
-            stdout=subprocess.PIPE)
+            stdout=subprocess.PIPE, cwd=cwd)
         (stdout, stderr) = p.communicate()
         from xml.dom.minidom import parseString
         dom = parseString(stdout)
@@ -222,7 +222,7 @@ class UScanSource(UpstreamSource):
             args = ["--watchfile=%s" % watch_tempfilename,
                     "--package=%s" % package, "--report",
                     "--no-download", "--upstream-version=%s" % current_version]
-            dehs_tag, retcode = self._run_dehs_uscan(args)
+            dehs_tag, retcode = self._run_dehs_uscan(args, cwd=tmpdir)
         finally:
             shutil.rmtree(tmpdir)
         return self._xml_report_extract_upstream_version(dehs_tag)
@@ -238,7 +238,7 @@ class UScanSource(UpstreamSource):
                     "--check-dirname-level=0",
                     "--download", "--destdir=%s" % target_dir,
                     "--download-version=%s" % version]
-            dehs_tag, r = self._run_dehs_uscan(args)
+            dehs_tag, r = self._run_dehs_uscan(args, cwd=tmpdir)
             if r != 0:
                 note("uscan could not find the needed tarball.")
                 raise PackageVersionNotPresent(package, version, self)
