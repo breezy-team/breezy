@@ -661,6 +661,7 @@ class cmd_merge_upstream(Command):
         from .merge_upstream import (
             do_merge,
             get_tarballs,
+            PreviousVersionTagMissing,
             )
         from .upstream import (
             TarfileSource,
