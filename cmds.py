@@ -330,7 +330,6 @@ class cmd_builddeb(Command):
     def _get_build_tree(self, revision, tree, branch):
         if revision is None and tree is not None:
             note(gettext("Building using working tree"))
-            working_tree = True
         else:
             if revision is None:
                 revid = branch.last_revision()
@@ -342,8 +341,7 @@ class cmd_builddeb(Command):
                     'revision specifier.'))
             note(gettext("Building branch from revision %s"), revid)
             tree = branch.repository.revision_tree(revid)
-            working_tree = False
-        return tree, working_tree
+        return tree
 
     def _build_type(self, merge, native, split):
         if merge:
@@ -433,11 +431,11 @@ class cmd_builddeb(Command):
         location, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
         tree, branch, is_local, location = self._get_tree_and_branch(location)
-        tree, is_working_tree = self._get_build_tree(revision, tree, branch)
+        tree = self._get_build_tree(revision, tree, branch)
         _check_tree(tree, strict=strict)
 
         with tree.lock_read():
-            config = debuild_config(tree, is_working_tree)
+            config = debuild_config(tree)
             if reuse:
                 note(gettext("Reusing existing build dir"))
                 dont_purge = True
@@ -534,7 +532,7 @@ class cmd_get_orig_source(Command):
             find_changelog,
             )
         tree = WorkingTree.open_containing(directory)[0]
-        config = debuild_config(tree, tree)
+        config = debuild_config(tree)
 
         (changelog, larstiq) = find_changelog(tree, True)
         orig_dir = config.orig_dir
@@ -678,7 +676,7 @@ class cmd_merge_upstream(Command):
         tree, _ = WorkingTree.open_containing(directory)
         with tree.lock_write():
             _check_uncommitted(tree)
-            config = debuild_config(tree, tree)
+            config = debuild_config(tree)
             (current_version, package, distribution, distribution_name,
              changelog, top_level) = _get_changelog_info(tree, last_version,
                  package, distribution)
@@ -930,7 +928,7 @@ class cmd_import_dsc(Command):
                 raise BzrCommandError(gettext("You must give the location of "
                     "at least one source package to install, or use the "
                     "--file option."))
-            config = debuild_config(tree, tree)
+            config = debuild_config(tree)
             if config.build_type == BUILD_TYPE_MERGE:
                 raise BzrCommandError(
                     gettext("import-dsc in merge mode is not yet supported."))
@@ -1132,7 +1130,7 @@ class cmd_builddeb_do(Command):
             )
         t = WorkingTree.open_containing('.')[0]
         self.add_cleanup(t.lock_read().unlock)
-        config = debuild_config(t, t)
+        config = debuild_config(t)
         (changelog, top_level) = find_changelog(t, False, max_blocks=2)
 
         contains_upstream_source = tree_contains_upstream_source(t)
@@ -1235,7 +1233,7 @@ class cmd_mark_uploaded(Command):
         t = WorkingTree.open_containing('.')[0]
         with t.lock_write():
             _check_uncommitted(t)
-            config = debuild_config(t, t)
+            config = debuild_config(t)
             if merge is None:
                 merge = (config.build_type == BUILD_TYPE_MERGE)
             (changelog, top_level) = find_changelog(t, merge)
@@ -1380,7 +1378,7 @@ class cmd_dep3_patch(Command):
         origin = describe_origin(branch, revision_id)
         if packaging_tree is None:
             packaging_tree = packaging_branch.basis_tree()
-        builddeb_config = debuild_config(packaging_tree, True)
+        builddeb_config = debuild_config(packaging_tree)
         if not no_upstream_check and builddeb_config.upstream_branch:
             upstream_branch = Branch.open(builddeb_config.upstream_branch)
             applied_upstream = determine_applied_upstream(upstream_branch,
@@ -1443,7 +1441,7 @@ def _build_helper(local_tree, branch, target_dir, builder):
     (changelog, top_level) = find_changelog(
         local_tree, False, max_blocks=2)
 
-    config = debuild_config(local_tree, local_tree)
+    config = debuild_config(local_tree)
     contains_upstream_source = tree_contains_upstream_source(local_tree)
 
     distiller = _get_distiller(

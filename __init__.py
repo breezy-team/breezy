@@ -181,7 +181,7 @@ def debian_changelog_commit(commit, start_message):
     from .util import debuild_config, find_bugs_fixed
 
     t = commit.work_tree
-    config = debuild_config(t, False)
+    config = debuild_config(t)
     if config.commit_message_from_changelog == False:
         return None
 
@@ -207,7 +207,7 @@ def debian_tag_name(branch, revid):
         DistributionBranch, DistributionBranchSet)
     from .util import debuild_config, find_changelog
     t = branch.repository.revision_tree(revid)
-    config = debuild_config(t, False)
+    config = debuild_config(t)
     try:
         (changelog, top_level) = find_changelog(
             t, config.build_type == BUILD_TYPE_MERGE)
@@ -262,7 +262,7 @@ def pre_merge_quilt(merger):
         return
 
     from .util import debuild_config
-    config = debuild_config(merger.working_tree, merger.working_tree)
+    config = debuild_config(merger.working_tree)
     merger.debuild_config = config
     if not config.quilt_smart_merge:
         trace.mutter("skipping smart quilt merge, not enabled.")
@@ -329,7 +329,7 @@ def post_merge_quilt_cleanup(merger):
 
 def post_build_tree_quilt(tree):
     from .util import debuild_config
-    config = debuild_config(tree, tree)
+    config = debuild_config(tree)
     policy = config.quilt_tree_policy
     if policy is None:
         return
@@ -349,8 +349,8 @@ def pre_merge_fix_ancestry(merger):
     if (not merger.this_tree.is_versioned("debian/changelog") or
             not merger.other_tree.is_versioned("debian/changelog")):
         return
-    this_config = debuild_config(merger.this_tree, merger.this_tree)
-    other_config = debuild_config(merger.other_tree, merger.other_tree)
+    this_config = debuild_config(merger.this_tree)
+    other_config = debuild_config(merger.other_tree)
     if not (this_config.build_type == BUILD_TYPE_NATIVE or
             other_config.build_type == BUILD_TYPE_NATIVE):
         from ... import trace

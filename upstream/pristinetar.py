@@ -168,7 +168,7 @@ def make_pristine_tar_delta_from_tree(tree, tarball_path, subdir=None, exclude=N
         except PristineTarDeltaTooLarge:
             raise
         except PristineTarError: # I.e. not PristineTarDeltaTooLarge
-            conf = debuild_config(tree, True)
+            conf = debuild_config(tree)
             if conf.debug_pristine_tar:
                 revno, revid = tree.branch.last_revision_info()
                 preserved = osutils.pathjoin(osutils.dirname(tarball_path),

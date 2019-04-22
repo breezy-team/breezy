@@ -124,7 +124,7 @@ def post_process_quilt_patches(tree, old_patches, policy):
 
 
 def start_commit_quilt_patches(tree):
-    config = debuild_config(tree, False)
+    config = debuild_config(tree)
     policy = config.quilt_commit_policy
     applied_patches = quilt_applied(tree)
     unapplied_patches = quilt_unapplied(tree.basedir)

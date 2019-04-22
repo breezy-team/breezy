@@ -55,7 +55,7 @@ def _get_tree(package_name):
 
 def _get_tarballs(tree, tarball, package_name, version):
     from .repack_tarball import repack_tarball
-    config = util.debuild_config(tree, tree)
+    config = util.debuild_config(tree)
     orig_dir = config.orig_dir or default_orig_dir
     orig_dir = os.path.join(tree.basedir, orig_dir)
     if not os.path.exists(orig_dir):

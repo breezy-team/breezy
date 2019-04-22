@@ -194,6 +194,6 @@ def upstream_branch_alias(b):
     from .util import debuild_config
     with b.lock_read():
         tree = b.basis_tree()
-        config = debuild_config(tree, False)
+        config = debuild_config(tree)
         return directories.dereference(config.upstream_branch)
 

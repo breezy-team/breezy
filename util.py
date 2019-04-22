@@ -560,22 +560,21 @@ def subprocess_setup():
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
-def debuild_config(tree, working_tree):
+def debuild_config(tree):
     """Obtain the Debuild configuration object.
 
     :param tree: A Tree object, can be a WorkingTree or RevisionTree.
-    :param working_tree: Whether the tree is a working tree.
     """
     config_files = []
     user_config = None
-    if (working_tree and tree.has_filename(new_local_conf)):
+    if tree.has_filename(new_local_conf):
         if not tree.is_versioned(new_local_conf):
             config_files.append((tree.get_file(new_local_conf), True,
                         "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.',
                     new_local_conf)
-    if (working_tree and tree.has_filename(local_conf)):
+    if tree.has_filename(local_conf):
         if not tree.is_versioned(local_conf):
             config_files.append((tree.get_file(local_conf), True,
                         "local.conf"))
