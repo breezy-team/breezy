@@ -227,39 +227,16 @@ class UScanSource(UpstreamSource):
         note("Using uscan to look for the upstream tarball.")
         tmpdir = tempfile.mkdtemp()
         try:
-            try:
-                watch_tempfilename = self._export_file('watch', tmpdir)
-            except NoSuchFile:
-                note("No watch file to use to retrieve upstream tarball.")
-                raise PackageVersionNotPresent(package, version, self)
-            args = ["--upstream-version=%s" % version,
-                    "--force-download", "--rename", "--package=%s" % package,
+            # Just export all of debian/, since e.g. uupdate needs more of it.
+            export(self.tree, os.path.join(tmpdir, 'debian'), format='dir',
+                   subdir='debian')
+            args = ["uscan",
+                    "--upstream-version=%s" % version,
+                    "--force-download", "--rename",
                     "--check-dirname-level=0",
                     "--download", "--destdir=%s" % target_dir,
                     "--download-version=%s" % version]
-            try:
-                copyright_tempfilename = self._export_file('copyright', tmpdir)
-            except NoSuchFile:
-                note('No copyright file found.')
-                copyright_tempfilename = None
-            else:
-                args.append("--copyright-file=%s" % copyright_tempfilename)
-            # TODO(jelmer): Perhaps just export all of debian/ ?
-            for extra in [
-                    # Needed to verify upstream signatures
-                    'upstream/signing-key.asc',
-                    'upstream-signing-key.asc', 'upstream/signing-key.pgp',
-                    'upstream-signing-key.pgp',
-                    'source/format', 'source/options',
-                    # Needed by uupdate
-                    'changelog']:
-                try:
-                    self._export_file(extra, tmpdir)
-                except NoSuchFile:
-                    pass
-            r = subprocess.call(
-                ["uscan", "--watchfile=%s" % watch_tempfilename] + args,
-                cwd=tmpdir)
+            r = subprocess.call(args, cwd=tmpdir)
             if r != 0:
                 note("uscan could not find the needed tarball.")
                 raise PackageVersionNotPresent(package, version, self)
