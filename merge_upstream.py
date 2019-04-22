@@ -139,13 +139,12 @@ def do_merge(
     db = DistributionBranch(tree.branch, tree.branch, tree=tree)
     dbs = DistributionBranchSet()
     dbs.add_branch(db)
-    tarballs = [(p, component_from_orig_tarball(p, package, version)) for p
-            in tarball_filenames]
-    conflicts = db.merge_upstream(tarballs, package, version,
+    tarballs = [(p, component_from_orig_tarball(p, package, version))
+                for p in tarball_filenames]
+    return db.merge_upstream(tarballs, package, version,
             current_version, upstream_branch=upstream_branch,
             upstream_revisions=upstream_revisions,
             merge_type=merge_type, force=force)
-    return conflicts
 
 
 def fetch_tarball(package, version, orig_dir, locations, v3):
@@ -165,7 +164,7 @@ def fetch_tarball(package, version, orig_dir, locations, v3):
 
 
 def get_tarballs(orig_dir, tree, package, version, upstream_branch,
-        upstream_revision, locations):
+                 upstream_revision, locations):
     source_format = tree_get_source_format(tree)
     v3 = (source_format in [FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
     orig_dir = os.path.join(tree.basedir, orig_dir)
