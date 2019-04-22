@@ -804,13 +804,13 @@ class cmd_merge_upstream(Command):
                     tarball_filenames = get_tarballs(orig_dir, tree, package,
                         version, upstream_branch, upstream_revisions,
                         locations)
-                except FileExists:
+                except FileExists as e:
                     raise BzrCommandError(
                         "The target file %s already exists, and is either "
                         "different to the new upstream tarball, or they "
                         "are of different formats. Either delete the target "
                         "file, or use it as the argument to import."
-                        % dest_name)
+                        % e.path)
                 try:
                     conflicts = do_merge(tree, tarball_filenames, package,
                         version, current_version, upstream_branch, upstream_revisions,
