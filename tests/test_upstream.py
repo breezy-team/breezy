@@ -31,6 +31,7 @@ import os
 import shutil
 import tempfile
 import tarfile
+from xml.dom.minidom import parseString as parseXmlString
 import zipfile
 
 from ....revision import (
@@ -381,8 +382,7 @@ class UScanSourceTests(TestCaseWithTransport):
             shutil.rmtree(tmpdir)
 
     def test__xml_report_extract_upstream_version(self):
-        self.assertEquals("1.2.9",
-            UScanSource._xml_report_extract_upstream_version("""
+        dom = parseXmlString("""
 <dehs>
 <package>tdb</package>
 <debian-uversion>1.2.8</debian-uversion>
@@ -390,18 +390,25 @@ class UScanSourceTests(TestCaseWithTransport):
 <upstream-version>1.2.9</upstream-version>
 <upstream-url>ftp://ftp.samba.org/pub/tdb/tdb-1.2.9.tar.gz</upstream-url>
 <status>Newer version available</status>
-</dehs>"""))
+</dehs>""")
+        dehs_tag = dom.getElementsByTagName("dehs")[0]
+
+        self.assertEquals("1.2.9",
+            UScanSource._xml_report_extract_upstream_version(dehs_tag))
 
     def test__xml_report_extract_upstream_version_warnings(self):
-        self.assertIs(None,
-            UScanSource._xml_report_extract_upstream_version("""
+        dom = parseXmlString("""
 <dehs>
 <package>tdb</package>
 <warnings>uscan warning: Unable to determine current version
 in debian/watch, skipping:
 ftp://ftp.samba.org/pub/tdb/tdb-(.+).tar.gz</warnings>
 </dehs>
-"""))
+""")
+        dehs_tag = dom.getElementsByTagName("dehs")[0]
+        self.assertIs(
+            None,
+            UScanSource._xml_report_extract_upstream_version(dehs_tag))
 
 
 class GuessUpstreamRevspecTests(TestCase):
