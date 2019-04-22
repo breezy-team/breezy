@@ -65,7 +65,6 @@ from .config import (
     )
 from .errors import (
     BzrError,
-    MissingChangelogError,
     AddChangelogError,
     InconsistentSourceFormatError,
     NoPreviousUpload,
@@ -73,6 +72,14 @@ from .errors import (
     UnableToFindPreviousUpload,
     UnparseableChangelog,
     )
+
+
+class MissingChangelogError(BzrError):
+    _fmt = 'Could not find changelog at %(location)s in tree.'
+
+    def __init__(self, locations):
+        BzrError.__init__(self, location=locations)
+
 
 _DEBIAN_RELEASES = None
 _UBUNTU_RELEASES = None

@@ -202,10 +202,10 @@ def changelog_merge_hook_factory(merger):
 
 def debian_tag_name(branch, revid):
     from .config import BUILD_TYPE_MERGE
-    from .errors import MissingChangelogError
     from .import_dsc import (
         DistributionBranch, DistributionBranchSet)
-    from .util import debuild_config, find_changelog
+    from .util import (
+        debuild_config, find_changelog, MissingChangelogError)
     t = branch.repository.revision_tree(revid)
     config = debuild_config(t)
     try:

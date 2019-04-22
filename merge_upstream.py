@@ -119,9 +119,23 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
         tree.add(["debian/changelog"])
 
 
-def do_merge(tree, tarball_filenames, package, version,
-        current_version, upstream_branch, upstream_revisions, merge_type,
-        force):
+def do_merge(
+        tree, tarball_filenames, package, version,
+        current_version, upstream_branch, upstream_revisions, merge_type=None,
+        force=False):
+    """Actually execute a merge.
+
+    Args:
+      tree: Working tree to operate in
+      tarball_filenames: List of tarball filenames as tuples with (path,
+        component)
+      package: Package name
+      version: New upstream version to merge
+      current_version: Current upstream version in tree
+      upstream_branch: Optional upstream branch to merge from
+      upstream_revisions: Dictionary mapping versions to upstream revisions
+      merge_type: Merge type
+    """
     db = DistributionBranch(tree.branch, tree.branch, tree=tree)
     dbs = DistributionBranchSet()
     dbs.add_branch(db)

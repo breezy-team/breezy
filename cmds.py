@@ -116,8 +116,6 @@ def _get_changelog_info(tree, last_version=None, package=None, distribution=None
         find_changelog,
         find_last_distribution,
         lookup_distribution,
-        )
-    from .errors import (
         MissingChangelogError,
         )
     DEFAULT_FALLBACK_DISTRIBUTION = "debian"
@@ -896,9 +894,6 @@ class cmd_import_dsc(Command):
             db.import_package(os.path.join(orig_target, filename))
 
     def run(self, files_list, file=None):
-        from .errors import (
-            MissingChangelogError,
-            )
         from .import_dsc import (
             DistributionBranch,
             DistributionBranchSet,
@@ -906,6 +901,7 @@ class cmd_import_dsc(Command):
         from .util import (
             find_changelog,
             open_file,
+            MissingChangelogError,
             )
         try:
             tree = WorkingTree.open_containing('.')[0]

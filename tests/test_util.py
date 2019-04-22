@@ -38,7 +38,6 @@ from ..config import (
     BUILD_TYPE_NORMAL,
     )
 from ..errors import (
-    MissingChangelogError,
     AddChangelogError,
     InconsistentSourceFormatError,
     NoPreviousUpload,
@@ -75,6 +74,7 @@ from ..util import (
     tree_contains_upstream_source,
     tree_get_source_format,
     write_if_different,
+    MissingChangelogError,
     )
 
 from .... import errors as bzr_errors

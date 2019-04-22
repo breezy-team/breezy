@@ -27,7 +27,6 @@ from ...errors import (
 from ...revisionspec import RevisionSpec, RevisionInfo
 
 from .errors import (
-    MissingChangelogError,
     UnknownVersion,
     VersionNotSpecified,
     )
@@ -74,7 +73,10 @@ class RevisionSpec_upstream(RevisionSpec):
 
     def _match_on(self, branch, revs):
         from ...workingtree import WorkingTree
-        from .util import find_changelog
+        from .util import (
+            find_changelog,
+            MissingChangelogError,
+            )
         from .upstream.pristinetar import PristineTarSource
         from debian.changelog import Version
         tree = WorkingTree.open_containing('.')[0]

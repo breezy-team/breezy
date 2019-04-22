@@ -59,13 +59,6 @@ class StopBuild(BzrError):
         BzrError.__init__(self, reason=reason)
 
 
-class MissingChangelogError(BzrError):
-    _fmt = 'Could not find changelog at %(location)s in tree.'
-
-    def __init__(self, locations):
-        BzrError.__init__(self, location=locations)
-
-
 class AddChangelogError(BzrError):
     _fmt = 'Please add "%(changelog)s" to the branch using bzr add.'
 
