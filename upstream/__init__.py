@@ -234,8 +234,7 @@ class UScanSource(UpstreamSource):
             # Just export all of debian/, since e.g. uupdate needs more of it.
             export(self.tree, os.path.join(tmpdir, 'debian'), format='dir',
                    subdir='debian')
-            args = ["--upstream-version=%s" % version,
-                    "--force-download", "--rename",
+            args = ["--force-download", "--rename",
                     "--check-dirname-level=0",
                     "--download", "--destdir=%s" % target_dir,
                     "--download-version=%s" % version]
@@ -243,8 +242,7 @@ class UScanSource(UpstreamSource):
             if r != 0:
                 note("uscan could not find the needed tarball.")
                 raise PackageVersionNotPresent(package, version, self)
-            path_tags = dehs_tag.getElementsByTagName(
-                "target-path")
+            path_tags = dehs_tag.getElementsByTagName("target-path")
         finally:
             shutil.rmtree(tmpdir)
         orig_files = [path_tag.firstChild.wholeText for path_tag in path_tags]
