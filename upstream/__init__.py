@@ -217,7 +217,7 @@ class UScanSource(UpstreamSource):
                     "--upstream-version=%s" % current_version]
             p = subprocess.Popen(
                 ["uscan", "--watchfile=%s" % watch_tempfilename] + args,
-                stdout=subprocess.PIPE)
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (stdout, stderr) = p.communicate()
         finally:
             shutil.rmtree(tmpdir)
