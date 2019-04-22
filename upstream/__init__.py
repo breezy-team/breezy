@@ -246,10 +246,13 @@ class UScanSource(UpstreamSource):
                 args.append("--copyright-file=%s" % copyright_tempfilename)
             # TODO(jelmer): Perhaps just export all of debian/ ?
             for extra in [
+                    # Needed to verify upstream signatures
                     'upstream/signing-key.asc',
                     'upstream-signing-key.asc', 'upstream/signing-key.pgp',
                     'upstream-signing-key.pgp',
-                    'source/format', 'source/option']:
+                    'source/format', 'source/options',
+                    # Needed by uupdate
+                    'changelog']:
                 try:
                     self._export_file(extra, tmpdir)
                 except NoSuchFile:
