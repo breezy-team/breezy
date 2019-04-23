@@ -22,6 +22,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 
@@ -191,8 +192,12 @@ class UScanSource(UpstreamSource):
     def _run_dehs_uscan(args, cwd):
         p = subprocess.Popen(
             ["uscan", "--dehs"] + args,
-            stdout=subprocess.PIPE, cwd=cwd)
+            stdout=subprocess.PIPE, stderr=sys.stderr, cwd=cwd)
         (stdout, stderr) = p.communicate()
+        # lalala; dehs happily outputs unprotected ampersands
+        # and arrows (=>) before the first tag.
+        import re
+        stdout = re.sub(b'<dehs>([^<]*)<', b'<dehs><', stdout)
         from xml.dom.minidom import parseString
         dom = parseString(stdout)
         dehs_tags = dom.getElementsByTagName("dehs")
