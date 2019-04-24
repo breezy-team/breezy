@@ -76,11 +76,7 @@ class PristineTarDeltaAbsent(PristineTarError):
     _fmt = 'There is not delta present for %(version)s.'
 
 
-def git_store_pristine_tar(controldir, filename, tree_id, delta, force=False):
-    try:
-        branch = controldir.open_branch(name='pristine-tar')
-    except NotBranchError:
-        branch = controldir.create_branch(name='pristine-tar')
+def git_store_pristine_tar(branch, filename, tree_id, delta, force=False):
     tree = branch.create_memorytree()
     with tree.lock_write():
         id_filename = '%s.id' % filename
@@ -95,8 +91,8 @@ def git_store_pristine_tar(controldir, filename, tree_id, delta, force=False):
                 # Nothing to do.
                 return
             if not force:
-                raise PristineTarError("An existing pristine tar entry exists for %s" %
-                        filename)
+                raise PristineTarError(
+                    "An existing pristine tar entry exists for %s" % filename)
         tree.put_file_bytes_non_atomic(id_filename, tree_id + b'\n')
         tree.put_file_bytes_non_atomic(delta_filename, delta)
         tree.add([id_filename, delta_filename], [None, None], ['file', 'file'])
@@ -273,7 +269,7 @@ class PristineTarSource(UpstreamSource):
 
     def import_component_tarball(self, package, version, tree, parent_ids,
             component=None, md5=None, tarball=None, author=None, timestamp=None,
-            subdir=None, exclude=None):
+            subdir=None, exclude=None, force_pristine_tar=False):
         """Import a tarball.
 
         :param package: Package name
@@ -281,6 +277,8 @@ class PristineTarSource(UpstreamSource):
         :param parent_ids: Dictionary mapping component names to revision ids
         :param component: Component name (None for base)
         :param exclude: Exclude directories
+        :param force_pristine_tar: Whether to force creating a pristine-tar
+            branch if one does not exist.
         """
         if exclude is None:
             exclude = []
@@ -342,7 +340,7 @@ class PristineTarSource(UpstreamSource):
                            include_change(c)]
                 list(builder.record_iter_changes(tree, base_revid, changes))
                 builder.finish_inventory()
-            except:
+            except BaseException:
                 builder.abort()
                 raise
             revid = builder.commit(message)
@@ -352,8 +350,22 @@ class PristineTarSource(UpstreamSource):
         if git_delta is not None:
             revtree = tree.branch.repository.revision_tree(revid)
             tree_id = revtree._lookup_path(u'')[2]
-            git_store_pristine_tar(self.branch.controldir,
-                    os.path.basename(tarball), tree_id, git_delta)
+            try:
+                pristine_tar_branch = self.branch.controldir.open_branch(
+                    name='pristine-tar')
+            except NotBranchError:
+                if force_pristine_tar:
+                    note('Creating new pristine-tar branch.')
+                    pristine_tar_branch = self.branch.controldir.create_branch(
+                        name='pristine-tar')
+                else:
+                    note('Not storing pristine-tar metadata, '
+                         'since there is no pristine-tar branch.')
+                    pristine_tar_branch = None
+            if pristine_tar_branch:
+                git_store_pristine_tar(
+                    pristine_tar_branch, os.path.basename(tarball), tree_id,
+                    git_delta)
         mutter(
             'imported %s version %s component %r as revid %s, tagged %s',
             package, version, component, revid, tag_name)

@@ -192,7 +192,7 @@ class UScanSource(UpstreamSource):
     def _run_dehs_uscan(args, cwd):
         p = subprocess.Popen(
             ["uscan", "--dehs"] + args,
-            stdout=subprocess.PIPE, stderr=sys.stderr, cwd=cwd)
+            stdout=subprocess.PIPE, cwd=cwd)
         (stdout, stderr) = p.communicate()
         # lalala; dehs happily outputs unprotected ampersands
         # and arrows (=>) before the first tag.

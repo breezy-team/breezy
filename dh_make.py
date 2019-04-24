@@ -77,7 +77,7 @@ def _get_tarballs(tree, tarball, package_name, version):
     return ret
 
 
-def import_upstream(tarball, package_name, version):
+def import_upstream(tarball, package_name, version, use_pristine_tar=True):
     tree = _get_tree(package_name)
     if tree.branch.last_revision() != mod_revision.NULL_REVISION:
         parents = { None: [tree.branch.last_revision()] }
@@ -90,7 +90,7 @@ def import_upstream(tarball, package_name, version):
     dbs = import_dsc.DistributionBranchSet()
     dbs.add_branch(db)
     db.import_upstream_tarballs(tarball_filenames, package_name, version,
-        parents)
+        parents, force_pristine_tar=use_pristine_tar)
     return tree
 
 
