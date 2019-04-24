@@ -43,6 +43,7 @@ from .... import (
     osutils,
     revision as _mod_revision,
     )
+from ....commit import NullCommitReporter
 from ....errors import (
     BzrError,
     NoSuchRevision,
@@ -51,7 +52,6 @@ from ....errors import (
     NotBranchError,
     )
 from ....sixish import (
-    text_type,
     viewitems,
     )
 from ....trace import (
@@ -96,7 +96,11 @@ def git_store_pristine_tar(branch, filename, tree_id, delta, force=False):
         tree.put_file_bytes_non_atomic(id_filename, tree_id + b'\n')
         tree.put_file_bytes_non_atomic(delta_filename, delta)
         tree.add([id_filename, delta_filename], [None, None], ['file', 'file'])
-        tree.commit('Add pristine tar data for %s' % filename)
+        revid = tree.commit(
+            'Add pristine tar data for %s' % filename,
+            reporter=NullCommitReporter())
+        mutter('Added pristine tar data for %s: %s',
+               filename, revid)
 
 
 def reconstruct_pristine_tar(dest, delta, dest_filename):
