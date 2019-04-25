@@ -197,12 +197,17 @@ class UScanSource(UpstreamSource):
         return stdout, p.returncode
 
     @staticmethod
-    def _xml_report_extract_upstream_version(text):
-        # uscan --dehs's output isn't well-formed XML, so let's fall back to
-        # regexes instead..
+    def _xml_report_extract_warnings(text):
         from xml.sax.saxutils import unescape
         for m in re.finditer(b"<warnings>(.*)</warnings>", text):
             warning(unescape(m.group(1).decode()))
+
+    @staticmethod
+    def _xml_report_extract_upstream_version(text):
+        UScanSource._xml_report_extract_warnings(text)
+        from xml.sax.saxutils import unescape
+        # uscan --dehs's output isn't well-formed XML, so let's fall back to
+        # regexes instead..
         m = re.search(b'<upstream-version>(.*)</upstream-version>', text)
         if not m:
             return None
@@ -210,8 +215,7 @@ class UScanSource(UpstreamSource):
 
     @staticmethod
     def _xml_report_extract_target_paths(text):
-        for m in re.finditer(b"<warnings>(.*)</warnings>", text):
-            warning(unescape(m.group(1).decode()))
+        UScanSource._xml_report_extract_warnings(text)
         from xml.sax.saxutils import unescape
         return [
             unescape(m.group(1).decode())
