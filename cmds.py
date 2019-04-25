@@ -625,10 +625,15 @@ class cmd_merge_upstream(Command):
     launchpad_opt = Option('launchpad',
         help='Use Launchpad to find upstream locations.')
 
+    force_pristine_tar_opt = Option(
+        'force-pristine-tar', help=(
+            'Force the use of pristine-tar, even if no '
+            'pristine-tar branch exists'))
+
     takes_options = [package_opt, version_opt,
             distribution_opt, directory_opt, last_version_opt,
             force_opt, 'revision', 'merge-type',
-            snapshot_opt, launchpad_opt]
+            snapshot_opt, launchpad_opt, force_pristine_tar_opt]
 
     def _add_changelog_entry(self, tree, package, version, distribution_name,
             changelog):
@@ -649,7 +654,8 @@ class cmd_merge_upstream(Command):
     def run(self, location=None, upstream_branch=None, version=None,
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
-            last_version=None, force=None, snapshot=False, launchpad=False):
+            last_version=None, force=None, snapshot=False, launchpad=False,
+            force_pristine_tar=False):
         from debian.changelog import Version
 
         from .errors import PackageVersionNotPresent
@@ -810,7 +816,8 @@ class cmd_merge_upstream(Command):
                 try:
                     conflicts = do_merge(tree, tarball_filenames, package,
                         version, current_version, upstream_branch, upstream_revisions,
-                        merge_type, force)
+                        merge_type, force=force,
+                        force_pristine_tar=force_pristine_tar)
                 except PreviousVersionTagMissing as e:
                     raise BzrCommandError(str(e))
             if (current_version is not None and
@@ -998,11 +1005,17 @@ class cmd_import_upstream(Command):
     import and the tip of the upstream branch if you supply one.
     """
 
-    takes_options = ['revision']
+    takes_options = [
+        'revision',
+        Option(
+            'force-pristine-tar',
+            help=('Force creation of a new '
+                  'pristine-tar branch, even if one does not exist.'))]
 
     takes_args = ['version', 'location', 'upstream_branch?']
 
-    def run(self, version, location, upstream_branch=None, revision=None):
+    def run(self, version, location, upstream_branch=None, revision=None,
+            force_pristine_tar=False):
         from debian.changelog import Version
         from .import_dsc import (
             DistributionBranch,
@@ -1060,7 +1073,8 @@ class cmd_import_upstream(Command):
         tarballs = [(location, None, md5sum_filename(location))]
         for (component, tag_name, revid) in db.import_upstream_tarballs(
                 tarballs, None, version, parents, upstream_branch=upstream,
-                upstream_revisions={ None: upstream_revid }):
+                upstream_revisions={None: upstream_revid},
+                force_pristine_tar=force_pristine_tar):
             if component is None:
                 self.outf.write(gettext(
                     'Imported %(location)s as tag:%(tag)s.\n') % {
@@ -1281,18 +1295,22 @@ class cmd_dh_make(Command):
     takes_args = ['package_name', 'version', 'tarball']
 
     bzr_only_opt = Option('bzr-only', help="Don't run dh_make.")
+    use_pristine_tar_opt = Option(
+        'use-pristine-tar', help='Whether to use pristine-tar.')
 
     takes_options = [bzr_only_opt]
 
-    def run(self, package_name, version, tarball, bzr_only=None):
+    def run(self, package_name, version, tarball, bzr_only=None,
+            use_pristine_tar=True):
         from . import dh_make
-        tree = dh_make.import_upstream(tarball, package_name,
-            version.encode("utf-8"))
+        tree = dh_make.import_upstream(
+            tarball, package_name, version.encode("utf-8"),
+            use_pristine_tar=use_pristine_tar)
         if not bzr_only:
             with tree.lock_write():
                 dh_make.run_dh_make(tree, package_name, version)
         note(gettext('Package prepared in %s'),
-            urlutils.unescape_for_display(tree.basedir, self.outf.encoding))
+             urlutils.unescape_for_display(tree.basedir, self.outf.encoding))
 
 
 class cmd_dep3_patch(Command):

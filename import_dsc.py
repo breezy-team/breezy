@@ -791,7 +791,7 @@ class DistributionBranch(object):
     def import_upstream(self, upstream_part, package, version, upstream_parents,
             upstream_tarballs, upstream_branch=None,
             upstream_revisions=None, timestamp=None, author=None,
-            file_ids_from=None):
+            file_ids_from=None, force_pristine_tar=False):
         """Import an upstream part on to the upstream branch.
 
         This imports the upstream part of the code and places it on to
@@ -866,7 +866,7 @@ class DistributionBranch(object):
             (tag, revid) = self.pristine_upstream_source.import_component_tarball(
                 package, version, self.pristine_upstream_tree, parents,
                 component, md5, tarball, author=author, timestamp=timestamp,
-                exclude=exclude)
+                exclude=exclude, force_pristine_tar=force_pristine_tar)
             self.pristine_upstream_branch.generate_revision_history(revid)
             ret.append((component, tag, revid))
             self.branch.fetch(self.pristine_upstream_branch)
@@ -874,7 +874,7 @@ class DistributionBranch(object):
         return ret
 
     def import_upstream_tarballs(self, tarballs, package, version, parents,
-        upstream_branch=None, upstream_revisions=None):
+        upstream_branch=None, upstream_revisions=None, force_pristine_tar=False):
         """Import an upstream part to the upstream branch.
 
         :param tarballs: List of tarballs / components to extract
@@ -893,7 +893,8 @@ class DistributionBranch(object):
             return self.import_upstream(tarball_dir, package, version, parents,
                 tarballs,
                 upstream_branch=upstream_branch,
-                upstream_revisions=upstream_revisions)
+                upstream_revisions=upstream_revisions,
+                force_pristine_tar=force_pristine_tar)
         finally:
             shutil.rmtree(tarball_dir)
 
@@ -1091,7 +1092,7 @@ class DistributionBranch(object):
 
     def _import_normal_package(self, package, version, versions, debian_part, md5,
             upstream_part, upstream_tarballs, timestamp=None, author=None,
-            file_ids_from=None, pull_debian=True):
+            file_ids_from=None, pull_debian=True, force_pristine_tar=False):
         """Import a source package.
 
         :param package: Package name
@@ -1139,7 +1140,8 @@ class DistributionBranch(object):
                             upstream_parents,
                             upstream_tarballs=upstream_tarballs,
                             timestamp=timestamp, author=author,
-                            file_ids_from=file_ids_from)
+                            file_ids_from=file_ids_from,
+                            force_pristine_tar=force_pristine_tar)
                     self._fetch_upstream_to_branch(imported_revids)
             else:
                 mutter("We already have the needed upstream part")
@@ -1192,7 +1194,7 @@ class DistributionBranch(object):
         return versions
 
     def import_package(self, dsc_filename, use_time_from_changelog=True,
-            file_ids_from=None, pull_debian=True):
+            file_ids_from=None, pull_debian=True, force_pristine_tar=False):
         """Import a source package.
 
         :param dsc_filename: a path to a .dsc file for the version
@@ -1239,7 +1241,8 @@ class DistributionBranch(object):
                         extractor.upstream_tarballs,
                         timestamp=timestamp, author=author,
                         file_ids_from=file_ids_from,
-                        pull_debian=pull_debian)
+                        pull_debian=pull_debian,
+                        force_pristine_tar=force_pristine_tar)
             else:
                 self._import_native_package(dsc['Source'], version, versions,
                         extractor.extracted_debianised,
@@ -1330,7 +1333,7 @@ class DistributionBranch(object):
 
     def merge_upstream(self, tarball_filenames, package, version, previous_version,
             upstream_branch=None, upstream_revisions=None, merge_type=None,
-            force=False):
+            force=False, force_pristine_tar=False):
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
             if previous_version is not None:
@@ -1362,7 +1365,8 @@ class DistributionBranch(object):
                             package, version, parents,
                             upstream_tarballs=upstream_tarballs,
                             upstream_branch=upstream_branch,
-                            upstream_revisions=upstream_revisions)
+                            upstream_revisions=upstream_revisions,
+                            force_pristine_tar=force_pristine_tar)
                     self._fetch_upstream_to_branch(imported_revids)
                 finally:
                     shutil.rmtree(tarball_dir)

@@ -122,7 +122,7 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
 def do_merge(
         tree, tarball_filenames, package, version,
         current_version, upstream_branch, upstream_revisions, merge_type=None,
-        force=False):
+        force=False, force_pristine_tar=False):
     """Actually execute a merge.
 
     Args:
@@ -144,7 +144,8 @@ def do_merge(
     return db.merge_upstream(tarballs, package, version,
             current_version, upstream_branch=upstream_branch,
             upstream_revisions=upstream_revisions,
-            merge_type=merge_type, force=force)
+            merge_type=merge_type, force=force,
+            force_pristine_tar=force_pristine_tar)
 
 
 def fetch_tarball(package, version, orig_dir, locations, v3):
