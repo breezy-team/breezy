@@ -245,10 +245,10 @@ class UScanSource(UpstreamSource):
                     "--download", "--destdir=%s" % target_dir,
                     "--download-version=%s" % version]
             text, r = self._run_dehs_uscan(args, cwd=tmpdir)
-            if r != 0:
+            orig_files = self._xml_report_extract_target_paths(text)
+            if not orig_files:
                 note("uscan could not find the needed tarball.")
                 raise PackageVersionNotPresent(package, version, self)
-            orig_files = self._xml_report_extract_target_paths(text)
         finally:
             shutil.rmtree(tmpdir)
         if not orig_files:
