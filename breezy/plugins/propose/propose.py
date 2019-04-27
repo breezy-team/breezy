@@ -111,6 +111,14 @@ class MergeProposal(object):
         """Set the description of the merge proposal."""
         raise NotImplementedError(self.set_description)
 
+    def get_commit_message(self):
+        """Get the proposed commit message."""
+        raise NotImplementedError(self.get_commit_message)
+
+    def set_commit_message(self, commit_message):
+        """Set the propose commit message."""
+        raise NotImplementedError(self.set_commit_message)
+
     def get_source_branch_url(self):
         """Return the source branch."""
         raise NotImplementedError(self.get_source_branch_url)
@@ -174,6 +182,10 @@ class Hoster(object):
     # Does this hoster support arbitrary labels being attached to merge
     # proposals?
     supports_merge_proposal_labels = None
+
+    # Does this hoster support suggesting a commit message in the
+    # merge proposal?
+    supports_merge_proposal_commit_message = None
 
     # The base_url that would be visible to users. I.e. https://github.com/
     # rather than https://api.github.com/

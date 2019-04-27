@@ -145,6 +145,9 @@ class GitLabMergeProposal(MergeProposal):
         self._mr.description = description
         self._mr.save()
 
+    def get_commit_message(self):
+        return None
+
     def _branch_url_from_project(self, project_id, branch_name):
         project = self._mr.manager.gitlab.projects.get(project_id)
         return gitlab_url_to_bzr_url(project.http_url_to_repo, branch_name)
@@ -176,6 +179,7 @@ class GitLab(Hoster):
     """GitLab hoster implementation."""
 
     supports_merge_proposal_labels = True
+    supports_merge_proposal_commit_message = False
 
     def __repr__(self):
         return "<GitLab(%r)>" % self.gl.url

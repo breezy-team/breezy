@@ -142,6 +142,13 @@ class LaunchpadMergeProposal(MergeProposal):
         self._mp.description = description
         self._mp.lp_save()
 
+    def get_commit_message(self):
+        return self._mp.commit_message
+
+    def set_commit_message(self, commit_message):
+        self._mp.commit_message = commit_message
+        self._mp.lp_save()
+
     def close(self):
         self._mp.setStatus(status='Rejected')
 
@@ -153,6 +160,8 @@ class Launchpad(Hoster):
 
     # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
+
+    supports_merge_proposal_commit_message = True
 
     def __init__(self, staging=False):
         self._staging = staging

@@ -123,6 +123,9 @@ class GitHubMergeProposal(MergeProposal):
     def get_description(self):
         return self._pr.body
 
+    def get_commit_message(self):
+        return None
+
     def set_description(self, description):
         self._pr.edit(body=description, title=determine_title(description))
 
@@ -174,6 +177,7 @@ class GitHub(Hoster):
     name = 'github'
 
     supports_merge_proposal_labels = True
+    supports_merge_proposal_commit_message = False
 
     def __repr__(self):
         return "GitHub()"
