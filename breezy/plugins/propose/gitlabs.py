@@ -363,8 +363,8 @@ class GitLab(Hoster):
             (host, project, merge_id) = parse_gitlab_merge_request_url(url)
         except NotGitLabUrl:
             raise UnsupportedHoster(url)
-        except NotMergeRequestUrl:
-            if self.gl.url == ('https://%s' % host):
+        except NotMergeRequestUrl as e:
+            if self.gl.url == ('https://%s' % e.host):
                 raise
             else:
                 raise UnsupportedHoster(url)
