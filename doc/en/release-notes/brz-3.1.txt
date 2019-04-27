@@ -27,6 +27,10 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* A new ``--commit-message`` option has been added to
+  ``brz propose``, for hosting sites that support it.
+  (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 

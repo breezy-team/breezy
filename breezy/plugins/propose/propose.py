@@ -154,13 +154,14 @@ class MergeProposalBuilder(object):
         raise NotImplementedError(self.get_infotext)
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None):
+                        prerequisite_branch=None, commit_message=None):
         """Create a proposal to merge a branch for merging.
 
         :param description: Description for the merge proposal
         :param reviewers: Optional list of people to ask reviews from
         :param labels: Labels to attach to the proposal
         :param prerequisite_branch: Optional prerequisite branch
+        :param commit_message: Optional commit message
         :return: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)

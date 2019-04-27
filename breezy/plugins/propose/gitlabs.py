@@ -360,11 +360,13 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         return None
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None):
+                        prerequisite_branch=None, commit_message=None):
         """Perform the submission."""
+        # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
         import gitlab
+        # Note that commit_message is ignored, since Gitlab doesn't support it.
         # TODO(jelmer): Support reviewers
         self.gl.auth()
         source_project = self.gl.projects.get(self.source_project_name)
