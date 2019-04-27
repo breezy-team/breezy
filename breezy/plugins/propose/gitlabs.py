@@ -54,6 +54,16 @@ class NotGitLabUrl(errors.BzrError):
         self.url = url
 
 
+class NotMergeRequestUrl(errors.BzrError):
+
+    _fmt = "Not a merge proposal URL: %(url)s"
+
+    def __init__(self, host, url):
+        errors.BzrError.__init__(self)
+        self.host = host
+        self.url = url
+
+
 class DifferentGitLabInstances(errors.BzrError):
 
     _fmt = ("Can't create merge proposals across GitLab instances: "
@@ -127,6 +137,20 @@ def parse_gitlab_branch_url(branch):
     url = urlutils.split_segment_parameters(branch.user_url)[0]
     host, path = parse_gitlab_url(url)
     return host, path, branch.name
+
+
+def parse_gitlab_merge_request_url(url):
+    (scheme, user, password, host, port, path) = urlutils.parse_url(
+        url)
+    if scheme not in ('git+ssh', 'https', 'http'):
+        raise NotGitLabUrl(url)
+    if not host:
+        raise NotGitLabUrl(url)
+    path = path.strip('/')
+    parts = path.split('/')
+    if parts[-2] != 'merge_requests':
+        raise NotMergeRequestUrl(host, url)
+    return host, '/'.join(parts[:-2]), int(parts[-1])
 
 
 class GitLabMergeProposal(MergeProposal):
@@ -335,7 +359,20 @@ class GitLab(Hoster):
             yield GitLabMergeProposal(mp)
 
     def get_proposal_by_url(self, url):
-        raise UnsupportedHoster(url)
+        try:
+            (host, project, merge_id) = parse_gitlab_merge_request_url(url)
+        except NotGitLabUrl:
+            raise UnsupportedHoster(url)
+        except NotMergeRequestUrl:
+            if self.gl.url == ('https://%s' % host):
+                raise
+            else:
+                raise UnsupportedHoster(url)
+        if self.gl.url != ('https://%s' % host):
+            raise UnsupportedHoster(url)
+        project = self.gl.projects.get(project)
+        mr = project.mergerequests.get(merge_id)
+        return GitLabMergeProposal(mr)
 
 
 class GitlabMergeProposalBuilder(MergeProposalBuilder):
