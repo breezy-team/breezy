@@ -20,6 +20,8 @@
 from __future__ import absolute_import
 
 import re
+import shutil
+import tempfile
 
 from .propose import (
     Hoster,
@@ -144,6 +146,23 @@ class LaunchpadMergeProposal(MergeProposal):
 
     def close(self):
         self._mp.setStatus(status='Rejected')
+
+    def merge(self, commit_message=None):
+        target_branch = _mod_branch.Branch.open(
+            self.get_target_branch_url())
+        source_branch = _mod_branch.Branch.open(
+            self.get_source_branch_url())
+        # TODO(jelmer): Ideally this would use a memorytree, but merge doesn't
+        # support that yet.
+        # tree = target_branch.create_memorytree()
+        tmpdir = tempfile.mkdtemp()
+        try:
+            tree = target_branch.create_checkout(
+                to_location=tmpdir, lightweight=True)
+            tree.merge_from_branch(source_branch)
+            tree.commit(commit_message or self._mp.commit_message)
+        finally:
+            shutil.rmtree(tmpdir)
 
 
 class Launchpad(Hoster):
@@ -390,6 +409,19 @@ class Launchpad(Hoster):
         statuses = status_to_lp_mp_statuses(status)
         for mp in self.launchpad.me.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
+
+    def get_proposal_by_url(self, url):
+        # Launchpad doesn't have a way to find a merge proposal by URL.
+        (scheme, user, password, host, port, path) = urlutils.parse_url(
+            url)
+        # TODO(jelmer): Check if this is a launchpad URL. Otherwise, raise
+        # UnsupportedHoster
+        # See https://api.launchpad.net/devel/#branch_merge_proposal
+        # the syntax is:
+        # https://api.launchpad.net/devel/~<author.name>/<project.name>/<branch.name>/+merge/<id>
+        api_url = str(self.launchpad._root_uri) + path
+        mp = self.launchpad.load(api_url)
+        return LaunchpadMergeProposal(mp)
 
 
 class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):

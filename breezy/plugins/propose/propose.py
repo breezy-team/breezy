@@ -127,6 +127,10 @@ class MergeProposal(object):
         """Check whether this merge proposal has been merged."""
         raise NotImplementedError(self.is_merged)
 
+    def merge(self, commit_message=None):
+        """Merge this merge proposal."""
+        raise NotImplementedError(self.merge)
+
 
 class MergeProposalBuilder(object):
     """Merge proposal creator.
@@ -212,7 +216,7 @@ class Hoster(object):
         raise NotImplementedError(self.get_proposer)
 
     def iter_proposals(self, source_branch, target_branch, status='open'):
-        """Get a merge proposal for a specified branch tuple.
+        """Get the merge proposals for a specified branch tuple.
 
         :param source_branch: Source branch
         :param target_branch: Target branch
@@ -220,6 +224,15 @@ class Hoster(object):
         :return: Iterate over MergeProposal object
         """
         raise NotImplementedError(self.iter_proposals)
+
+    def get_proposal_by_url(self, url):
+        """Retrieve a branch proposal by URL.
+
+        :param url: Merge proposal URL.
+        :return: MergeProposal object
+        :raise UnsupportedHoster: Hoster does not support this URL
+        """
+        raise NotImplementedError(self.get_proposal_by_url)
 
     def hosts(self, branch):
         """Return true if this hoster hosts given branch."""
@@ -274,6 +287,16 @@ def get_hoster(branch, possible_hosters=None):
                 possible_hosters.append(hoster)
             return hoster
     raise UnsupportedHoster(branch)
+
+
+def get_proposal_by_url(url):
+    for name, hoster_cls in hosters.items():
+        for instance in hoster_cls.iter_instances():
+            try:
+                return instance.get_proposal_by_url(url)
+            except UnsupportedHoster:
+                pass
+    raise UnsupportedHoster(url)
 
 
 hosters = registry.Registry()

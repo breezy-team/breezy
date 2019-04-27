@@ -131,6 +131,10 @@ class GitHubMergeProposal(MergeProposal):
     def close(self):
         self._pr.edit(state='closed')
 
+    def merge(self, commit_message=None):
+        # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
+        self._pr.merge(commit_message=commit_message)
+
 
 def parse_github_url(url):
     (scheme, user, password, host, port, path) = urlutils.parse_url(
@@ -315,6 +319,10 @@ class GitHub(Hoster):
         query.append('author:%s' % self.gh.get_user().login)
         for issue in self.gh.search_issues(query=' '.join(query)):
             yield GitHubMergeProposal(issue.as_pull_request())
+
+    @convert_github_error
+    def get_proposal_by_url(self, url):
+        raise UnsupportedHoster(url)
 
 
 class GitHubMergeProposalBuilder(MergeProposalBuilder):

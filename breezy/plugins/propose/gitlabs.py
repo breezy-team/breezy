@@ -164,6 +164,10 @@ class GitLabMergeProposal(MergeProposal):
         self._mr.state_event = 'close'
         self._mr.save()
 
+    def merge(self, commit_message=None):
+        # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
+        self._mr.merge(merge_commit_message=commit_message)
+
 
 def gitlab_url_to_bzr_url(url, name):
     if not PY3:
@@ -329,6 +333,9 @@ class GitLab(Hoster):
         for mp in self.gl.mergerequests.list(
                 owner=self.gl.user.username, state=state):
             yield GitLabMergeProposal(mp)
+
+    def get_proposal_by_url(self, url):
+        raise UnsupportedHoster(url)
 
 
 class GitlabMergeProposalBuilder(MergeProposalBuilder):
