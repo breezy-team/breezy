@@ -414,6 +414,10 @@ class Launchpad(Hoster):
         # Launchpad doesn't have a way to find a merge proposal by URL.
         (scheme, user, password, host, port, path) = urlutils.parse_url(
             url)
+        LAUNCHPAD_CODE_DOMAINS = [
+            ('code.%s' % domain) for domain in lp_api.LAUNCHPAD_DOMAINS.values()]
+        if host not in LAUNCHPAD_CODE_DOMAINS:
+            raise UnsupportedHoster(url)
         # TODO(jelmer): Check if this is a launchpad URL. Otherwise, raise
         # UnsupportedHoster
         # See https://api.launchpad.net/devel/#branch_merge_proposal
