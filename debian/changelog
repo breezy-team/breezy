@@ -11,6 +11,8 @@ breezy-debian (2.8.27) UNRELEASED; urgency=medium
     repositories.
   * Use regexes for parsing 'uscan --dehs' output; it's not always well-
     formed XML.
+  * Support tildes being escaped to underscores when finding the tag for
+    upstream versions in Git repositories.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 06 Mar 2019 21:35:13 +0000
 

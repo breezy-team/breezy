@@ -898,6 +898,12 @@ class PristineTarSourceTests(TestCaseWithTransport):
             'upstream-ubuntu-3.3', 'upstream/3.3', 'upstream_3.3'],
             self.source.possible_tag_names("3.3", component=None))
 
+    def test_version_with_tilde(self):
+        self.assertEquals(['upstream-3.3~brz232', 'upstream-debian-3.3~brz232',
+            'upstream-ubuntu-3.3~brz232', 'upstream/3.3~brz232',
+            'upstream/3.3_brz232', 'upstream_3.3~brz232'],
+            self.source.possible_tag_names("3.3~brz232", component=None))
+
     def test_version_component(self):
         self.assertEquals(['upstream-3.3/extlib', 'upstream-debian-3.3/extlib',
             'upstream-ubuntu-3.3/extlib'],

@@ -240,9 +240,9 @@ class PristineTarSource(UpstreamSource):
         if getattr(self.branch.repository, '_git', None):
             # In git, the convention is to use a slash
             if distro is None:
-                name = "upstream/" + version
+                name = "upstream/" + version.replace('~', '_')
             else:
-                name = "upstream-%s/%s" % (distro, version)
+                name = "upstream-%s/%s" % (distro, version.replace('~', '_'))
         else:
             if distro is None:
                 name = "upstream-" + version
@@ -473,9 +473,11 @@ class PristineTarSource(UpstreamSource):
                 ]
         if component is None:
             # compatibility with git-buildpackage
-            tags += ["upstream/%s" % version]
+            tags.append("upstream/%s" % version)
+            if "~" in version:
+                tags.append("upstream/%s" % version.replace("~", "_"))
             # compatibility with svn-buildpackage
-            tags += ["upstream_%s" % version]
+            tags.append("upstream_%s" % version)
         return tags
 
     def get_pristine_tar_delta(self, package, version, dest_filename, revid=None):
@@ -555,6 +557,7 @@ def upstream_tag_version(tag):
             tag = tag[len('debian-'):]
         elif tag.startswith('ubuntu-'):
             tag = tag[len('ubuntu-'):]
+    tag = tag.replace('_', '~')
     if not '/' in tag:
         return (None, tag)
     (version, component) = tag.rsplit('/', 1)
