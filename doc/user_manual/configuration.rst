@@ -117,11 +117,6 @@ normal mode use the ``merge-upstream`` command.
 Committing
 ^^^^^^^^^^
 
-bzr-builddeb can set the commit message from debian/changelog.  To enable this,
-set::
-
-  * ``commit-message-from-changelog = true``
-
 When there are quilt patches applied in the current tree, ``bzr commit``
 will by default warn::
 

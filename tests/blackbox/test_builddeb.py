@@ -177,14 +177,11 @@ class TestBuilddeb(BuilddebTestCase):
     hooks.install_named_hook("set_commit_message",
       debian_changelog_commit, "Test builddeb set commit msg hook")
     tree = self.make_unpacked_source()
-    with open("debian/bzr-builddeb.conf", 'w') as f:
-      f.write("[BUILDDEB]\ncommit-message-from-changelog = true")
-    tree.add("debian/bzr-builddeb.conf")
     # The changelog is only used for commit message when it already exists and
     # is then changed, so need to clear it, commit, then set the contents.
     with open("debian/changelog", "w") as f:
       pass
-    tree.commit("Prepare for release", rev_id=b"prerel")
+    tree.commit("Prepare for release")
     # Would be nice to use debian.changelog to make one, but it's changed
     # across versions as to how it wants non-ascii bytes provided.
     with open("debian/changelog", "wb") as f:

@@ -9,6 +9,7 @@ breezy-debian (2.8.27) UNRELEASED; urgency=medium
   * By default, don't create a pristine-tar branch if one doesn't exist.
   * Be a bit quieter when adding pristine-tar metadata in git
     repositories.
+  * Drop commit-message-from-changelog setting; always default to True.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 06 Mar 2019 21:35:13 +0000
 

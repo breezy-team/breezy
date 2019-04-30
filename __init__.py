@@ -178,12 +178,7 @@ def debian_changelog_commit(commit, start_message):
     """hooked into breezy.msgeditor set_commit_message.
      Set the commit message from debian/changelog and set any LP: #1234 to bug
      fixed tags."""
-    from .util import debuild_config, find_bugs_fixed
-
-    t = commit.work_tree
-    config = debuild_config(t)
-    if config.commit_message_from_changelog == False:
-        return None
+    from .util import find_bugs_fixed
 
     changes = debian_changelog_commit_message(commit, start_message)
     if changes is None:
