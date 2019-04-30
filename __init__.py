@@ -32,6 +32,7 @@ from ...commands import plugin_cmds
 from ...sixish import (
     viewitems,
     )
+from ... import trace
 
 from .info import (
     bzr_plugin_version as version_info,
@@ -206,11 +207,12 @@ def start_commit_check_quilt(tree):
     from . import util
     this_source_format = util.tree_get_source_format(tree)
     if this_source_format != util.FORMAT_3_0_QUILT:
-        from ... import trace
         trace.mutter("skipping smart quilt merge, not a 3.0 (quilt) tree.")
         return
+    config = util.debuild_config(tree)
+    policy = config.quilt_commit_policy
     from .merge_quilt import start_commit_quilt_patches
-    start_commit_quilt_patches(tree)
+    start_commit_quilt_patches(tree, policy)
 
 
 def pre_merge(merger):
@@ -228,7 +230,6 @@ def pre_merge_quilt(merger):
         return
 
     from . import util
-    from ... import trace
     this_source_format = util.tree_get_source_format(merger.this_tree)
     if this_source_format != util.FORMAT_3_0_QUILT:
         trace.mutter("skipping smart quilt merge, not a 3.0 (quilt) tree.")
@@ -326,7 +327,6 @@ def pre_merge_fix_ancestry(merger):
     other_config = debuild_config(merger.other_tree)
     if not (this_config.build_type == BUILD_TYPE_NATIVE or
             other_config.build_type == BUILD_TYPE_NATIVE):
-        from ... import trace
         from .errors import PackageVersionNotPresent
         try:
             fix_ancestry_as_needed(

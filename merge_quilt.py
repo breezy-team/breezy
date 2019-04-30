@@ -42,7 +42,6 @@ from .quilt import (
     quilt_push_all,
     quilt_series,
     )
-from .util import debuild_config
 
 
 class NoUnapplyingMerger(_mod_merge.Merge3Merger):
@@ -84,7 +83,7 @@ def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
         trace.mutter("Applying quilt patches for %r in %s", orig_tree, target_dir)
         quilt_pop_all(working_dir=tree.basedir, force=force)
         return tree, target_dir
-    except:
+    except BaseException:
         shutil.rmtree(target_dir)
         raise
 
@@ -123,9 +122,7 @@ def post_process_quilt_patches(tree, old_patches, policy):
             quilt_pop(tree.basedir, p)
 
 
-def start_commit_quilt_patches(tree):
-    config = debuild_config(tree)
-    policy = config.quilt_commit_policy
+def start_commit_quilt_patches(tree, policy):
     applied_patches = quilt_applied(tree)
     unapplied_patches = quilt_unapplied(tree.basedir)
     if policy is None:

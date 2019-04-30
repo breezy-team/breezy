@@ -31,7 +31,6 @@ import os
 import shutil
 import tempfile
 import tarfile
-from xml.dom.minidom import parseString as parseXmlString
 import zipfile
 
 from ....revision import (
@@ -382,7 +381,7 @@ class UScanSourceTests(TestCaseWithTransport):
             shutil.rmtree(tmpdir)
 
     def test__xml_report_extract_upstream_version(self):
-        dom = parseXmlString("""
+        text = b"""
 <dehs>
 <package>tdb</package>
 <debian-uversion>1.2.8</debian-uversion>
@@ -390,25 +389,37 @@ class UScanSourceTests(TestCaseWithTransport):
 <upstream-version>1.2.9</upstream-version>
 <upstream-url>ftp://ftp.samba.org/pub/tdb/tdb-1.2.9.tar.gz</upstream-url>
 <status>Newer version available</status>
-</dehs>""")
-        dehs_tag = dom.getElementsByTagName("dehs")[0]
-
+</dehs>"""
         self.assertEquals("1.2.9",
-            UScanSource._xml_report_extract_upstream_version(dehs_tag))
+            UScanSource._xml_report_extract_upstream_version(text))
 
     def test__xml_report_extract_upstream_version_warnings(self):
-        dom = parseXmlString("""
+        text = b"""
 <dehs>
 <package>tdb</package>
 <warnings>uscan warning: Unable to determine current version
 in debian/watch, skipping:
 ftp://ftp.samba.org/pub/tdb/tdb-(.+).tar.gz</warnings>
 </dehs>
-""")
-        dehs_tag = dom.getElementsByTagName("dehs")[0]
+"""
         self.assertIs(
             None,
-            UScanSource._xml_report_extract_upstream_version(dehs_tag))
+            UScanSource._xml_report_extract_upstream_version(text))
+
+    def test__xml_report_extract_upstream_version_noise(self):
+        text = b"""
+<dehs>
+blahf =>
+<package>tdb</package>
+<debian-uversion>1.2.8</debian-uversion>
+<upstream-version>1.2.9</upstream-version>
+<warnings>uscan warning: Unable to determine current version
+in debian/watch, skipping:
+ftp://ftp.samba.org/pub/tdb/tdb-(.+).tar.gz</warnings>
+</dehs>
+"""
+        self.assertEquals("1.2.9",
+            UScanSource._xml_report_extract_upstream_version(text))
 
 
 class GuessUpstreamRevspecTests(TestCase):
@@ -886,6 +897,12 @@ class PristineTarSourceTests(TestCaseWithTransport):
         self.assertEquals(['upstream-3.3', 'upstream-debian-3.3',
             'upstream-ubuntu-3.3', 'upstream/3.3', 'upstream_3.3'],
             self.source.possible_tag_names("3.3", component=None))
+
+    def test_version_with_tilde(self):
+        self.assertEquals(['upstream-3.3~brz232', 'upstream-debian-3.3~brz232',
+            'upstream-ubuntu-3.3~brz232', 'upstream/3.3~brz232',
+            'upstream/3.3_brz232', 'upstream_3.3~brz232'],
+            self.source.possible_tag_names("3.3~brz232", component=None))
 
     def test_version_component(self):
         self.assertEquals(['upstream-3.3/extlib', 'upstream-debian-3.3/extlib',
