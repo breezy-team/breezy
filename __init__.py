@@ -140,31 +140,9 @@ def debian_changelog_commit_message(commit, start_message):
         return start_message
     if commit.specific_files and cl_path not in commit.specific_files:
         return start_message
-    changes = []
-    for change in commit.work_tree.iter_changes(
-            commit.work_tree.basis_tree(), specific_files=[cl_path]):
-        # Content not changed
-        if not change[2]:
-            return start_message
-        # Not versioned in new tree
-        if not change[3][1]:
-            return start_message
-        # Not a file in one tree
-        if change[6][0] != 'file' or change[6][1] != 'file':
-            return start_message
-        old_text = commit.work_tree.basis_tree().get_file(
-            change[1][0]).readlines()
-        new_text = commit.work_tree.get_file(change[1][1]).readlines()
-        import difflib
-        sequencematcher = difflib.SequenceMatcher
-        for group in sequencematcher(
-                None, old_text, new_text).get_grouped_opcodes(0):
-            j1, j2 = group[0][3], group[-1][4]
-            for line in new_text[j1:j2]:
-                if line.startswith(b"  "):
-                    # Debian Policy Manual states that debian/changelog must be
-                    # UTF-8
-                    changes.append(line.decode('utf-8'))
+    from .changelog import changelog_changes
+    changes = changelog_changes(
+        commit.work_tree, commit.work_tree.basis_tree(), cl_path)
     if not changes:
         return start_message
 
