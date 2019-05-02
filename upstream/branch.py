@@ -170,6 +170,10 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
     if m and gitid:
         return "%s%sgit%s.%s" % (m.group(1), m.group(2), gitdate, gitid)
 
+    m = re.match(r"^(.*)([\+~])git(\d{8})$", version_string)
+    if m and gitid:
+        return "%s%sgit%s" % (m.group(1), m.group(2), gitdate)
+
     svn_revno = extract_svn_revno(rev)
 
     m = re.match(r"^(.*)([\+~])svn(\d+)$", version_string)
