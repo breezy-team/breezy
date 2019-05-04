@@ -44,6 +44,7 @@ from .... import (
     revision as _mod_revision,
     )
 from ....commit import NullCommitReporter
+from ....config import ConfigObj
 from ....errors import (
     BzrError,
     NoSuchRevision,
@@ -222,11 +223,30 @@ def revision_pristine_tar_format(rev):
 class PristineTarSource(UpstreamSource):
     """Source that uses the pristine-tar revisions in the packaging branch."""
 
-    def __init__(self, branch):
+    def __init__(self, branch, tag_format=None, pristine_tar=None):
         self.branch = branch
+        self.tag_format = tag_format
+        self.pristine_tar = pristine_tar
 
     def __repr__(self):
         return "<%s at %s>" % (self.__class__.__name__, self.branch.base)
+
+    @classmethod
+    def from_tree(cls, branch, tree):
+        if tree and tree.has_filename('debian/gbp.conf'):
+            gbp_conf = ConfigObj(tree.get_file('debian/gbp.conf'))
+            try:
+                tag_format = gbp_conf['DEFAULT']['upstream-tag']
+            except KeyError:
+                tag_format = None
+            try:
+                pristine_tar = gbp_conf['DEFAULT'].as_bool('pristine-tar')
+            except KeyError:
+                pristine_tar = None
+        else:
+            tag_format = None
+            pristine_tar = None
+        return cls(branch, tag_format, pristine_tar)
 
     def tag_name(self, version, component=None, distro=None):
         """Gets the tag name for the upstream part of version.
@@ -237,6 +257,8 @@ class PristineTarSource(UpstreamSource):
         :param distro: Optional distribution name
         :return: a String with the name of the tag.
         """
+        if self.tag_format is not None:
+            return self.tag_format % {'version': version}
         if getattr(self.branch.repository, '_git', None):
             # In git, the convention is to use a slash
             if distro is None:

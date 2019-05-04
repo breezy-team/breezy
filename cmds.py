@@ -183,7 +183,7 @@ def _get_upstream_sources(local_tree, branch, build_type, config,
     from .upstream.branch import (
         LazyUpstreamBranchSource,
         )
-    yield PristineTarSource(branch)
+    yield PristineTarSource.from_tree(branch, local_tree)
     yield AptSource()
     if build_type == BUILD_TYPE_MERGE:
         upstream_branch_source = _get_upstream_branch_source(
@@ -542,7 +542,7 @@ class cmd_get_orig_source(Command):
 
         upstream_provider = UpstreamProvider(changelog.package,
                 str(version), orig_dir,
-                [PristineTarSource(tree.branch),
+                [PristineTarSource.from_tree(tree.branch, tree),
                  AptSource(),
                  UScanSource(tree, larstiq) ])
 
@@ -1174,7 +1174,7 @@ class cmd_builddeb_do(Command):
 
         upstream_provider = UpstreamProvider(changelog.package,
                 changelog.version.upstream_version, orig_dir,
-                [PristineTarSource(t.branch),
+                [PristineTarSource.from_tree(t.branch, t),
                  AptSource(),
                  UScanSource(t, top_level) ])
 

@@ -884,6 +884,19 @@ class PristineTarSourceTests(TestCaseWithTransport):
         root_id = self.tree.path2id("")
         self.source = PristineTarSource(self.tree.branch)
 
+    def test_gbp_tag_format(self):
+        self.build_tree_contents([
+            ('unstable/debian/', ),
+            ('unstable/debian/gbp.conf', """\
+[DEFAULT]
+upstream-tag = blah-%(version)s
+""")])
+        self.source = PristineTarSource.from_tree(
+            self.tree.branch, self.tree)
+        upstream_v_no = "0.1"
+        self.assertEqual(self.source.tag_name(upstream_v_no),
+                "blah-" + upstream_v_no)
+
     def test_upstream_tag_name(self):
         upstream_v_no = "0.1"
         self.assertEqual(self.source.tag_name(upstream_v_no),
