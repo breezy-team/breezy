@@ -496,6 +496,7 @@ class PristineTarSource(UpstreamSource):
         if component is None:
             # compatibility with git-buildpackage
             tags.append("upstream/%s" % version)
+            tags.append("upstream-%s" % version)
             if "~" in version:
                 tags.append("upstream/%s" % version.replace("~", "_"))
             # compatibility with svn-buildpackage
