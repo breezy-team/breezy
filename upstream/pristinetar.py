@@ -295,7 +295,8 @@ class PristineTarSource(UpstreamSource):
 
     def import_component_tarball(self, package, version, tree, parent_ids,
             component=None, md5=None, tarball=None, author=None, timestamp=None,
-            subdir=None, exclude=None, force_pristine_tar=False):
+            subdir=None, exclude=None, force_pristine_tar=False,
+            committer=None):
         """Import a tarball.
 
         :param package: Package name
@@ -305,6 +306,7 @@ class PristineTarSource(UpstreamSource):
         :param exclude: Exclude directories
         :param force_pristine_tar: Whether to force creating a pristine-tar
             branch if one does not exist.
+        :param committer: Committer identity to use
         """
         if exclude is None:
             exclude = []
@@ -360,7 +362,7 @@ class PristineTarSource(UpstreamSource):
         with tree.lock_write():
             builder = tree.branch.get_commit_builder(
                     parents=parent_ids, revprops=revprops, timestamp=timestamp,
-                    timezone=timezone)
+                    timezone=timezone, committer=committer)
             try:
                 changes = [c for c in tree.iter_changes(basis_tree) if
                            include_change(c)]
