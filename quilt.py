@@ -158,6 +158,10 @@ def quilt_push(working_dir, patch, patches_dir=None, series_file=None, quiet=Non
             patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
+def quilt_upgrade(working_dir):
+    return run_quilt(["upgrade"], working_dir=working_dir)
+
+
 def quilt_applied(tree):
     """Find the list of applied quilt patches.
 
