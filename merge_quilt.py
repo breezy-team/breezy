@@ -33,15 +33,9 @@ from ... import (
     )
 
 from . import gettext
-from .quilt.wrapper import (
-    quilt_applied,
-    quilt_unapplied,
-    quilt_pop,
-    quilt_pop_all,
-    quilt_push,
-    quilt_push_all,
-    quilt_series,
-    )
+from .quilt.quilt import (
+    QuiltPatches,
+)
 
 
 class NoUnapplyingMerger(_mod_merge.Merge3Merger):
@@ -60,7 +54,8 @@ def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
     """
     if orig_branch is None:
         orig_branch = orig_tree.branch
-    applied_patches = quilt_applied(orig_tree)
+    quilt = QuiltPatches(orig_tree, 'debian/patches')
+    applied_patches = quilt.applied()
     if not applied_patches:
         # No quilt patches
         return orig_tree, None
@@ -81,7 +76,8 @@ def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
             shutil.rmtree(target_dir)
             return orig_tree, None
         trace.mutter("Applying quilt patches for %r in %s", orig_tree, target_dir)
-        quilt_pop_all(working_dir=tree.basedir, force=force)
+        quilt = QuiltPatches(tree, 'debian/patches')
+        quilt.pop_all(force=force)
         return tree, target_dir
     except BaseException:
         shutil.rmtree(target_dir)
@@ -94,20 +90,21 @@ def post_process_quilt_patches(tree, old_patches, policy):
     :param tree: Working tree to work in
     :param old_patches: List of patches applied before the operation (usually a merge)
     """
-    new_patches = quilt_series(tree)
-    applied_patches = quilt_applied(tree)
+    quilt = QuiltPatches(tree, 'debian/patches')
+    new_patches = quilt.series()
+    applied_patches = quilt.applied()
     if policy == "applied":
         to_apply = []
         for p in new_patches:
             if p in old_patches:
                 continue
-            if not p in applied_patches:
+            if p not in applied_patches:
                 to_apply.append(p)
         if to_apply == []:
             return
         trace.note(gettext("Applying %d quilt patches."), len(to_apply))
         for p in to_apply:
-            quilt_push(tree.basedir, p)
+            quilt.push(p)
     elif policy == "unapplied":
         to_unapply = []
         for p in new_patches:
@@ -119,12 +116,13 @@ def post_process_quilt_patches(tree, old_patches, policy):
             return
         trace.note(gettext("Unapplying %d quilt patches."), len(to_unapply))
         for p in to_unapply:
-            quilt_pop(tree.basedir, p)
+            quilt.pop(p)
 
 
 def start_commit_quilt_patches(tree, policy):
-    applied_patches = quilt_applied(tree)
-    unapplied_patches = quilt_unapplied(tree.basedir)
+    quilt = QuiltPatches(tree, 'debian/patches')
+    applied_patches = quilt.applied()
+    unapplied_patches = quilt.unapplied()
     if policy is None:
         # No policy set - just warn about having both applied and unapplied
         # patches.
@@ -133,9 +131,9 @@ def start_commit_quilt_patches(tree, policy):
                 gettext("Committing with %d patches applied and %d patches unapplied."),
                 len(applied_patches), len(unapplied_patches))
     elif policy == "applied":
-        quilt_push_all(tree.basedir)
+        quilt.push_all()
     elif policy == "unapplied":
-        quilt_pop_all(tree.basedir)
+        quilt.pop_all()
     else:
-        raise errors.BzrError("Invalid setting %r for quilt-commit-policy" %
-                policy)
+        raise errors.BzrError(
+            "Invalid setting %r for quilt-commit-policy" % policy)

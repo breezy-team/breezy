@@ -104,7 +104,10 @@ class DebBuild(object):
             return
         with open(format_path, 'r') as f:
             if f.read().strip() == FORMAT_3_0_QUILT:
-                quilt_push_all(os.path.abspath(self.target_dir))
+                quilt_push_all(
+                    os.path.abspath(self.target_dir),
+                    patches_dir='debian/patches',
+                    series_file='debian/patches/series')
 
     def build(self):
         """This builds the package using the supplied command."""

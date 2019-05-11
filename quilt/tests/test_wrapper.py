@@ -48,24 +48,25 @@ class QuiltTests(TestCaseWithTransport):
 
     def make_empty_quilt_dir(self, path):
         source = self.make_branch_and_tree(path)
-        self.build_tree([os.path.join(path, n) for n in ['debian/',
-            'debian/patches/']])
+        self.build_tree(
+            [os.path.join(path, n) for n in ['patches/']])
         self.build_tree_contents([
-            (os.path.join(path, "debian/patches/series"), "\n")])
-        source.add(["debian", "debian/patches", "debian/patches/series"])
+            (os.path.join(path, "patches/series"), "\n")])
+        source.add(["patches", "patches/series"])
         return source
 
     def test_series_all_empty(self):
         source = self.make_empty_quilt_dir("source")
-        self.assertEquals([], quilt_series(source))
+        self.assertEquals([], quilt_series(source, 'patches/series'))
 
     def test_series_all(self):
         source = self.make_empty_quilt_dir("source")
         self.build_tree_contents([
-            ("source/debian/patches/series", "patch1.diff\n"),
-            ("source/debian/patches/patch1.diff", TRIVIAL_PATCH)])
-        source.smart_add(["source/debian"])
-        self.assertEquals(["patch1.diff"], quilt_series(source))
+            ("source/patches/series", "patch1.diff\n"),
+            ("source/patches/patch1.diff", TRIVIAL_PATCH)])
+        source.smart_add(["source"])
+        self.assertEquals(
+            ["patch1.diff"], quilt_series(source, 'patches/series'))
 
     def test_push_all_empty(self):
         self.make_empty_quilt_dir("source")
@@ -78,23 +79,22 @@ class QuiltTests(TestCaseWithTransport):
     def test_applied_empty(self):
         source = self.make_empty_quilt_dir("source")
         self.build_tree_contents([
-            ("source/debian/patches/series", "patch1.diff\n"),
-            ("source/debian/patches/patch1.diff", "foob ar")])
+            ("source/patches/series", "patch1.diff\n"),
+            ("source/patches/patch1.diff", "foob ar")])
         self.assertEquals([], quilt_applied(source))
 
     def test_unapplied(self):
         self.make_empty_quilt_dir("source")
         self.build_tree_contents([
-            ("source/debian/patches/series", "patch1.diff\n"),
-            ("source/debian/patches/patch1.diff", "foob ar")])
+            ("source/patches/series", "patch1.diff\n"),
+            ("source/patches/patch1.diff", "foob ar")])
         self.assertEquals(["patch1.diff"], quilt_unapplied("source"))
-
 
     def test_unapplied_multi(self):
         self.make_empty_quilt_dir("source")
         self.build_tree_contents([
-            ("source/debian/patches/series", "patch1.diff\npatch2.diff"),
-            ("source/debian/patches/patch1.diff", "foob ar"),
-            ("source/debian/patches/patch2.diff", "bazb ar")])
+            ("source/patches/series", "patch1.diff\npatch2.diff"),
+            ("source/patches/patch1.diff", "foob ar"),
+            ("source/patches/patch2.diff", "bazb ar")])
         self.assertEquals(["patch1.diff", "patch2.diff"],
-                          quilt_unapplied("source", "debian/patches"))
+                          quilt_unapplied("source", "patches"))

@@ -64,7 +64,7 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None,
     if patches_dir is not None:
         env["QUILT_PATCHES"] = patches_dir
     else:
-        env["QUILT_PATCHES"] = os.path.join(working_dir, "debian", "patches")
+        env["QUILT_PATCHES"] = os.path.join(working_dir, "patches")
     if series_file is not None:
         env["QUILT_SERIES"] = series_file
     else:
@@ -201,15 +201,15 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
         raise
 
 
-def quilt_series(tree):
+def quilt_series(tree, series_file):
     """Find the list of patches.
 
     :param tree: Tree to read from
     """
     try:
         return [patch.rstrip(b"\n").decode(osutils._fs_enc) for patch in
-            tree.get_file_lines("debian/patches/series")
-            if patch.strip() != b""]
+                tree.get_file_lines(series_file)
+                if patch.strip() != b""]
     except (IOError, OSError) as e:
         if e.errno == errno.ENOENT:
             # File has already been removed

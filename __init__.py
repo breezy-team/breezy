@@ -248,13 +248,14 @@ def pre_merge_quilt(merger):
         return
 
     from .errors import QuiltUnapplyError
-    from .quilt.wrapper import quilt_pop_all, quilt_series, QuiltError
+    from .quilt.quilt import QuiltPatches, QuiltError
+    quilt = QuiltPatches(merger.working_tree, 'debian/patches')
     from .merge_quilt import tree_unapply_patches
     trace.note("Unapplying quilt patches to prevent spurious conflicts")
     merger._quilt_tempdirs = []
-    merger._old_quilt_series = quilt_series(merger.working_tree)
+    merger._old_quilt_series = quilt.series()
     if merger._old_quilt_series:
-        quilt_pop_all(working_dir=merger.working_tree.basedir)
+        quilt.pop_all()
     try:
         merger.this_tree, this_dir = tree_unapply_patches(
             merger.this_tree, merger.this_branch, force=True)
