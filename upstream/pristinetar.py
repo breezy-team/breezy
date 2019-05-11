@@ -236,21 +236,32 @@ class PristineTarSource(UpstreamSource):
     @classmethod
     def from_tree(cls, branch, tree):
         if tree and tree.has_filename('debian/gbp.conf'):
-            parser = configparser.RawConfigParser(defaults={
-                'pristine-tar': False,
-                'upstream-tag': 'upstream/%(version)s'})
-            parser.read_file(
-                TextIOWrapper(tree.get_file('debian/gbp.conf'), 'utf-8'),
+            parser = configparser.ConfigParser(defaults={
+                'pristine-tar': 'false',
+                'upstream-tag': 'upstream/%(version)s'},
+                strict=False)
+            parser.read_string(
+                tree.get_file_text('debian/gbp.conf').decode(
+                    'utf-8', errors='replace'),
                 'debian/gbp.conf')
             try:
-                tag_format = parser.get('import-orig', 'upstream-tag')
-            except KeyError:
-                tag_format = None
+                tag_format = parser.get(
+                    'import-orig', 'upstream-tag', raw=True)
+            except configparser.Error:
+                try:
+                    tag_format = parser.get(
+                        'DEFAULT', 'upstream-tag', raw=True)
+                except configparser.Error:
+                    tag_format = None
             try:
                 pristine_tar = parser.getboolean(
                     'import-orig', 'pristine-tar')
-            except KeyError:
-                pristine_tar = None
+            except configparser.Error:
+                try:
+                    pristine_tar = parser.getboolean(
+                        'DEFAULT', 'pristine-tar')
+                except configparser.Error:
+                    pristine_tar = None
         else:
             tag_format = None
             pristine_tar = None
