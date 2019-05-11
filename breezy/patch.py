@@ -111,18 +111,15 @@ def diff3(out_file, mine_path, older_path, yours_path):
             raise
     if status not in (0, 1):
         raise Exception(stderr)
-    f = open(out_file, 'wb')
-    try:
+    with open(out_file, 'wb') as f:
         f.write(output)
-    finally:
-        f.close()
     return status
 
 
-def patch_tree(tree, patches, strip=0, reverse=False, dry_run=False, quiet=False,
-               out=None):
-    return run_patch(tree.basedir, patches, strip, reverse, dry_run, quiet,
-                     out=out)
+def patch_tree(tree, patches, strip=0, reverse=False, dry_run=False,
+               quiet=False, out=None):
+    return run_patch(tree.basedir, patches, strip, reverse, dry_run,
+                     quiet, out=out)
 
 
 def run_patch(directory, patches, strip=0, reverse=False, dry_run=False,
