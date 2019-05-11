@@ -23,7 +23,9 @@ from base64 import (
     standard_b64decode,
     standard_b64encode,
     )
+import configparser
 import errno
+from io import TextIOWrapper
 import os
 import shutil
 import subprocess
@@ -234,13 +236,19 @@ class PristineTarSource(UpstreamSource):
     @classmethod
     def from_tree(cls, branch, tree):
         if tree and tree.has_filename('debian/gbp.conf'):
-            gbp_conf = ConfigObj(tree.get_file('debian/gbp.conf'))
+            parser = configparser.RawConfigParser(defaults={
+                'pristine-tar': False,
+                'upstream-tag': 'upstream/%(version)s'})
+            parser.read_file(
+                TextIOWrapper(tree.get_file('debian/gbp.conf'), 'utf-8'),
+                'debian/gbp.conf')
             try:
-                tag_format = gbp_conf['DEFAULT']['upstream-tag']
+                tag_format = parser.get('import-orig', 'upstream-tag')
             except KeyError:
                 tag_format = None
             try:
-                pristine_tar = gbp_conf['DEFAULT'].as_bool('pristine-tar')
+                pristine_tar = parser.getboolean(
+                    'import-orig', 'pristine-tar')
             except KeyError:
                 pristine_tar = None
         else:
