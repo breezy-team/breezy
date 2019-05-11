@@ -118,6 +118,15 @@ def diff3(out_file, mine_path, older_path, yours_path):
 
 def patch_tree(tree, patches, strip=0, reverse=False, dry_run=False,
                quiet=False, out=None):
+    """Apply a patch to a tree.
+
+    Args:
+      tree: A MutableTree object
+      patches: list of patches as bytes
+      strip: Strip X segments of paths
+      reverse: Apply reversal of patch
+      dry_run: Dry run
+    """
     return run_patch(tree.basedir, patches, strip, reverse, dry_run,
                      quiet, out=out)
 
