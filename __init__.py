@@ -248,7 +248,7 @@ def pre_merge_quilt(merger):
         return
 
     from .errors import QuiltUnapplyError
-    from .quilt import quilt_pop_all, quilt_series, QuiltError
+    from .quilt.wrapper import quilt_pop_all, quilt_series, QuiltError
     from .merge_quilt import tree_unapply_patches
     trace.note("Unapplying quilt patches to prevent spurious conflicts")
     merger._quilt_tempdirs = []
@@ -375,4 +375,6 @@ install_lazy_named_hook(
 def load_tests(loader, basic_tests, pattern):
     basic_tests.addTest(
         loader.loadTestsFromModuleNames([__name__ + '.tests']))
+    basic_tests.addTest(
+        loader.loadTestsFromModuleNames([__name__ + '.quilt.tests']))
     return basic_tests

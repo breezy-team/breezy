@@ -23,8 +23,7 @@ from __future__ import absolute_import
 
 import os
 
-from . import ExecutableFeature
-from ..quilt import (
+from ..wrapper import (
     quilt_pop_all,
     quilt_applied,
     quilt_unapplied,
@@ -32,7 +31,8 @@ from ..quilt import (
     quilt_series,
     )
 
-from ....tests import TestCaseWithTransport
+from .....tests import TestCaseWithTransport
+from .....tests.features import ExecutableFeature
 
 quilt_feature = ExecutableFeature('quilt')
 

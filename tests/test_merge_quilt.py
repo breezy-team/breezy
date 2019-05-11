@@ -38,11 +38,11 @@ from .. import (
     post_merge_quilt_cleanup,
     start_commit_check_quilt,
     )
-from ..quilt import quilt_push_all
+from ..quilt.wrapper import quilt_push_all
 from ..merge_quilt import tree_unapply_patches
 from ..util import FORMAT_3_0_QUILT
 
-from .test_quilt import quilt_feature
+from ..quilt.tests.test_wrapper import quilt_feature
 
 from ....tests import (
     TestCaseWithTransport,

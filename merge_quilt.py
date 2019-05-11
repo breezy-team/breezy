@@ -33,7 +33,7 @@ from ... import (
     )
 
 from . import gettext
-from .quilt import (
+from .quilt.wrapper import (
     quilt_applied,
     quilt_unapplied,
     quilt_pop,

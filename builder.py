@@ -29,7 +29,7 @@ from ...errors import BzrError
 from ...trace import note
 
 from .hooks import run_hook
-from .quilt import quilt_push_all
+from .quilt.wrapper import quilt_push_all
 from .util import (
     get_parent_dir,
     subprocess_setup,
