@@ -67,7 +67,6 @@ from ..transport import (
     )
 from ..transport.http import (
     HttpTransport,
-    _urllib2_wrappers,
     )
 
 
@@ -226,7 +225,7 @@ class TestAuthHeader(tests.TestCase):
 
     def parse_header(self, header, auth_handler_class=None):
         if auth_handler_class is None:
-            auth_handler_class = _urllib2_wrappers.AbstractAuthHandler
+            auth_handler_class = http.AbstractAuthHandler
         self.auth_handler = auth_handler_class()
         return self.auth_handler._parse_auth_header(header)
 
@@ -247,7 +246,7 @@ class TestAuthHeader(tests.TestCase):
         self.assertEqual('realm="Thou should not pass"', remainder)
 
     def test_build_basic_header_with_long_creds(self):
-        handler = _urllib2_wrappers.BasicAuthHandler()
+        handler = http.BasicAuthHandler()
         user = 'user' * 10  # length 40
         password = 'password' * 5  # length 40
         header = handler.build_auth_header(
@@ -259,7 +258,7 @@ class TestAuthHeader(tests.TestCase):
     def test_basic_extract_realm(self):
         scheme, remainder = self.parse_header(
             'Basic realm="Thou should not pass"',
-            _urllib2_wrappers.BasicAuthHandler)
+            http.BasicAuthHandler)
         match, realm = self.auth_handler.extract_realm(remainder)
         self.assertTrue(match is not None)
         self.assertEqual(u'Thou should not pass', realm)
@@ -1130,13 +1129,13 @@ class TestHttpProxyWhiteBox(tests.TestCase):
     """
 
     def _proxied_request(self):
-        handler = _urllib2_wrappers.ProxyHandler()
-        request = _urllib2_wrappers.Request('GET', 'http://baz/buzzle')
+        handler = http.ProxyHandler()
+        request = http.Request('GET', 'http://baz/buzzle')
         handler.set_proxy(request, 'http')
         return request
 
     def assertEvaluateProxyBypass(self, expected, host, no_proxy):
-        handler = _urllib2_wrappers.ProxyHandler()
+        handler = http.ProxyHandler()
         self.assertEqual(expected,
                          handler.evaluate_proxy_bypass(host, no_proxy))
 
@@ -1328,29 +1327,29 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
             self.get_new_transport().get('a').read())
 
 
-class RedirectedRequest(_urllib2_wrappers.Request):
+class RedirectedRequest(http.Request):
     """Request following redirections. """
 
-    init_orig = _urllib2_wrappers.Request.__init__
+    init_orig = http.Request.__init__
 
     def __init__(self, method, url, *args, **kwargs):
         """Constructor.
 
         """
         # Since the tests using this class will replace
-        # _urllib2_wrappers.Request, we can't just call the base class __init__
+        # http.Request, we can't just call the base class __init__
         # or we'll loop.
         RedirectedRequest.init_orig(self, method, url, *args, **kwargs)
         self.follow_redirections = True
 
 
 def install_redirected_request(test):
-    test.overrideAttr(_urllib2_wrappers, 'Request', RedirectedRequest)
+    test.overrideAttr(http, 'Request', RedirectedRequest)
 
 
 def cleanup_http_redirection_connections(test):
     # Some sockets are opened but never seen by _urllib, so we trap them at
-    # the _urllib2_wrappers level to be able to clean them up.
+    # the http level to be able to clean them up.
     def socket_disconnect(sock):
         try:
             sock.shutdown(socket.SHUT_RDWR)
@@ -1362,13 +1361,13 @@ def cleanup_http_redirection_connections(test):
         test.http_connect_orig(connection)
         test.addCleanup(socket_disconnect, connection.sock)
     test.http_connect_orig = test.overrideAttr(
-        _urllib2_wrappers.HTTPConnection, 'connect', connect)
+        http.HTTPConnection, 'connect', connect)
 
     def connect(connection):
         test.https_connect_orig(connection)
         test.addCleanup(socket_disconnect, connection.sock)
     test.https_connect_orig = test.overrideAttr(
-        _urllib2_wrappers.HTTPSConnection, 'connect', connect)
+        http.HTTPSConnection, 'connect', connect)
 
 
 class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
@@ -1376,7 +1375,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     http implementations do not redirect silently anymore (they
     do not redirect at all in fact). The mechanism is still in
-    place at the _urllib2_wrappers.Request level and these tests
+    place at the http.Request level and these tests
     exercise it.
     """
 
@@ -1498,7 +1497,7 @@ class TestUrllib2AuthHandler(tests.TestCaseWithTransport):
         password = 'foo'
         _setup_authentication_config(scheme='http', host='localhost',
                                      user=user, password=password)
-        handler = _urllib2_wrappers.HTTPAuthHandler()
+        handler = http.HTTPAuthHandler()
         got_pass = handler.get_user_password(dict(
             user='joe',
             protocol='http',

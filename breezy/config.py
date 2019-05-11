@@ -2937,10 +2937,10 @@ option_registry.register(
            from_unicode=bool_from_store, invalid='warning',
            help='''Whether to validate signatures in brz log.'''))
 option_registry.register_lazy('ssl.ca_certs',
-                              'breezy.transport.http._urllib2_wrappers', 'opt_ssl_ca_certs')
+                              'breezy.transport.http', 'opt_ssl_ca_certs')
 
 option_registry.register_lazy('ssl.cert_reqs',
-                              'breezy.transport.http._urllib2_wrappers', 'opt_ssl_cert_reqs')
+                              'breezy.transport.http', 'opt_ssl_cert_reqs')
 
 
 class Section(object):
