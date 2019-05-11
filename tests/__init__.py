@@ -123,6 +123,7 @@ def load_tests(loader, basic_tests, pattern):
             'test_config',
             'test_dep3',
             'test_dh_make',
+            'test_extract',
             'test_hooks',
             'test_import_dsc',
             'test_merge_changelog',
