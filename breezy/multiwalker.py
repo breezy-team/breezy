@@ -108,6 +108,11 @@ class MultiWalker(object):
         dirname, basename = osutils.split(path)
         return (dirname.split(u'/'), basename)
 
+    def _lookup_by_master_path(self, extra_entries, other_tree, master_path):
+        return self._lookup_by_file_id(
+            extra_entries, other_tree,
+            self._master_tree.path2id(master_path))
+
     def _lookup_by_file_id(self, extra_entries, other_tree, file_id):
         """Lookup an inventory entry by file_id.
 
@@ -176,17 +181,16 @@ class MultiWalker(object):
             if not master_has_more:
                 break
 
-            file_id = master_ie.file_id
             other_values = []
             other_values_append = other_values.append
             next_other_entries = []
             next_other_entries_append = next_other_entries.append
             for idx, (other_has_more, other_path, other_ie) in enumerate(other_entries):
                 if not other_has_more:
-                    other_values_append(lookup_by_file_id(
-                        others_extra[idx], self._other_trees[idx], file_id))
+                    other_values_append(self._lookup_by_master_path(
+                        others_extra[idx], self._other_trees[idx], path))
                     next_other_entries_append((False, None, None))
-                elif file_id == other_ie.file_id:
+                elif master_ie.file_id == other_ie.file_id:
                     # This is the critical code path, as most of the entries
                     # should match between most trees.
                     other_values_append((other_path, other_ie))
@@ -203,7 +207,7 @@ class MultiWalker(object):
                             other_extra[other_file_id] = (other_path, other_ie)
                         other_has_more, other_path, other_ie = \
                             step_one(other_walker)
-                    if other_has_more and other_ie.file_id == file_id:
+                    if other_has_more and other_ie.file_id == master_ie.file_id:
                         # We ended up walking to this point, match and step
                         # again
                         other_values_append((other_path, other_ie))
@@ -212,14 +216,14 @@ class MultiWalker(object):
                     else:
                         # This record isn't in the normal order, see if it
                         # exists at all.
-                        other_values_append(lookup_by_file_id(
-                            other_extra, self._other_trees[idx], file_id))
+                        other_values_append(self._lookup_by_master_path(
+                            other_extra, self._other_trees[idx], path))
                     next_other_entries_append((other_has_more, other_path,
                                                other_ie))
             other_entries = next_other_entries
 
             # We've matched all the walkers, yield this datapoint
-            yield path, file_id, master_ie, other_values
+            yield path, master_ie.file_id, master_ie, other_values
         self._other_walkers = other_walkers
         self._other_entries = other_entries
         self._others_extra = others_extra
