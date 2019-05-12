@@ -37,6 +37,9 @@ class QuiltPatches(object):
             series_file = os.path.join(patches_dir, 'series')
         self.series_file = series_file
 
+    def upgrade(self):
+        return wrapper.quilt_upgrade(self.tree.basedir)
+
     def series(self):
         return wrapper.quilt_series(self.tree, self.series_file)
 
