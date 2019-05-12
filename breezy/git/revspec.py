@@ -49,9 +49,14 @@ def valid_git_sha1(hex):
 
 
 class RevisionSpec_git(RevisionSpec):
-    """Selects a revision using a Subversion revision number."""
+    """Selects a revision using a Git commit SHA1."""
 
-    help_txt = """Selects a revision using a Git revision sha1.
+    help_txt = """Selects a revision using a Git commit SHA1.
+
+    Selects a revision using a Git commit SHA1, short or long.
+
+    This works for both native Git repositories and Git revisions
+    imported into Bazaar repositories.
     """
 
     prefix = 'git:'
