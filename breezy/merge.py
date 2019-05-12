@@ -909,13 +909,11 @@ class Merge3Merger(object):
 
         base_inventory = self.base_tree.root_inventory
         this_inventory = self.this_tree.root_inventory
-        for path, file_id, other_ie, lca_values in walker.iter_all():
+        for other_path, file_id, other_ie, lca_values in walker.iter_all():
             # Is this modified at all from any of the other trees?
             if other_ie is None:
                 other_ie = _none_entry
                 other_path = None
-            else:
-                other_path = self.other_tree.id2path(file_id)
             if interesting_files is not None and other_path not in interesting_files:
                 continue
 

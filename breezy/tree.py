@@ -945,7 +945,8 @@ class InterTree(InterObject):
                                                    changed_file_ids):
                 yield result
 
-    def _get_entry(self, tree, path):
+    @staticmethod
+    def _get_entry(tree, path):
         """Get an inventory entry from a tree, with missing entries as None.
 
         If the tree raises NotImplementedError on accessing .inventory, then
