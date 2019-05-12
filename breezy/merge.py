@@ -904,7 +904,8 @@ class Merge3Merger(object):
         else:
             interesting_files = None
         result = []
-        walker = _mod_tree.MultiWalker(self.other_tree, self._lca_trees)
+        from .multiwalker import MultiWalker
+        walker = MultiWalker(self.other_tree, self._lca_trees)
 
         base_inventory = self.base_tree.root_inventory
         this_inventory = self.this_tree.root_inventory
