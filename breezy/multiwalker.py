@@ -132,8 +132,6 @@ class MultiWalker(object):
         """
         if file_id in extra_entries:
             return extra_entries.pop(file_id)
-        # TODO: Is id2path better as the first call, or is
-        #       inventory[file_id] better as a first check?
         try:
             cur_path = other_tree.id2path(file_id)
         except errors.NoSuchId:
@@ -142,7 +140,8 @@ class MultiWalker(object):
             return (None, None)
         else:
             self._out_of_order_processed.add(file_id)
-            cur_ie = other_tree.root_inventory.get_entry(file_id)
+            cur_ie = next(other_tree.iter_entries_by_dir(
+                specific_files=[cur_path]))[1]
             return (cur_path, cur_ie)
 
     def iter_all(self):
