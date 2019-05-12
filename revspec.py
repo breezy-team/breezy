@@ -44,7 +44,7 @@ class RevisionSpec_package(RevisionSpec):
     wants_revision_history = False
     prefix = 'package:'
 
-    def _match_on(self, branch, revs):
+    def _match_on(self, branch, revs=None):
         version_spec = self.spec
         dist_spec = None
 
@@ -71,7 +71,7 @@ class RevisionSpec_upstream(RevisionSpec):
     wants_revision_history = False
     prefix = 'upstream:'
 
-    def _match_on(self, branch, revs):
+    def _match_on(self, branch, revs=None):
         from ...workingtree import WorkingTree
         from .util import (
             find_changelog,
