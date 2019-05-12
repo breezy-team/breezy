@@ -945,20 +945,20 @@ class Merge3Merger(object):
                     lca_paths.append(lca_path)
 
             try:
-                base_ie = self.base_tree.root_inventory.get_entry(file_id)
-            except errors.NoSuchId:
-                base_ie = _none_entry
-                base_path = None
-            else:
                 base_path = self.base_tree.id2path(file_id)
+            except errors.NoSuchId:
+                base_path = None
+                base_ie = _none_entry
+            else:
+                base_ie = next(self.base_tree.iter_entries_by_dir(specific_files=[base_path]))[1]
 
             try:
-                this_ie = self.this_tree.root_inventory.get_entry(file_id)
+                this_path = self.this_tree.id2path(file_id)
             except errors.NoSuchId:
                 this_ie = _none_entry
                 this_path = None
             else:
-                this_path = self.this_tree.id2path(file_id)
+                this_ie = next(self.this_tree.iter_entries_by_dir(specific_files=[this_path]))[1]
 
             lca_kinds = []
             lca_parent_ids = []
@@ -1867,7 +1867,8 @@ class MergeIntoMergeType(Merge3Merger):
             # XXX: The error would be clearer if it gave the URL of the source
             # branch, but we don't have a reference to that here.
             raise PathNotInTree(self._source_subpath, "Source tree")
-        subdir = self.other_tree.root_inventory.get_entry(subdir_id)
+        subdir = next(self.other_tree.iter_entries_by_dir(
+            specific_files=[self._source_subpath]))[1]
         parent_in_target = osutils.dirname(self._target_subdir)
         target_id = self.this_tree.path2id(parent_in_target)
         if target_id is None:
