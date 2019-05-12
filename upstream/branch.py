@@ -170,6 +170,15 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
     if m and gitid:
         return "%s%sgit%s.%s" % (m.group(1), m.group(2), gitdate, gitid)
 
+    m = re.match(r"^(.*)([\+~])git(\d{8})\.(\d+)\.([a-f0-9]{7})$", version_string)
+    if m and gitid:
+        if gitdate == m.group(3):
+            snapshot = int(m.group(4)) + 1
+        else:
+            snapshot = 0
+        return "%s%sgit%s.%d.%s" % (
+            m.group(1), m.group(2), gitdate, snapshot, gitid)
+
     m = re.match(r"^(.*)([\+~])git(\d{8})$", version_string)
     if m and gitid:
         return "%s%sgit%s" % (m.group(1), m.group(2), gitdate)

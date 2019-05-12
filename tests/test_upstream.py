@@ -754,6 +754,14 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
             "1.0~git20180101",
             upstream_version_add_revision(
                 self, "1.0~git20160320", b"somegitrev"))
+        self.assertEquals(
+            "1.0~git20180101.1.e7f47cf",
+            upstream_version_add_revision(
+                self, "1.0~git20180101.0.11b1d57", b"somegitrev"))
+        self.assertEquals(
+            "1.0~git20180101.0.e7f47cf",
+            upstream_version_add_revision(
+                self, "1.0~git20170101.0.11b1d57", b"somegitrev"))
 
 
 class GetExportUpstreamRevisionTests(TestCase):
