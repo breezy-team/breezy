@@ -692,7 +692,6 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             `redirect_location` properties, and `read` is a consumable read
             method for the response data.
         """
-        from breezy.transport.http import Request
         headers['User-agent'] = user_agent_for_github()
         headers["Pragma"] = "no-cache"
         if allow_compression:
@@ -700,17 +699,14 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         else:
             headers["Accept-Encoding"] = "identity"
 
-        request = Request(
+        response = self.transport.request(
             ('GET' if data is None else 'POST'),
-            url, data, headers,
-            accepted_errors=[200, 404])
-        request.follow_redirections = True
+            body=data,
+            headers=headers, retries=8)
 
-        response = self.transport._perform(request)
-
-        if response.code == 404:
+        if response.status == 404:
             raise NotGitRepository()
-        elif response.code != 200:
+        elif response.status != 200:
             raise GitProtocolError("unexpected http resp %d for %s" %
                                    (response.code, url))
 

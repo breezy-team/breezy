@@ -160,10 +160,8 @@ class RemoteGitProber(Prober):
         headers = {"Content-Type": "application/x-git-upload-pack-request",
                    "Accept": "application/x-git-upload-pack-result",
                    }
-        req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
-                      headers=headers)
         (scheme, user, password, host, port,
-         path) = urlutils.parse_url(req.get_full_url())
+         path) = urlutils.parse_url(url)
         if host == "github.com":
             # GitHub requires we lie.
             # https://github.com/dulwich/dulwich/issues/562
@@ -171,9 +169,13 @@ class RemoteGitProber(Prober):
         elif host == "bazaar.launchpad.net":
             # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
             raise brz_errors.NotBranchError(transport.base)
-        resp = transport._perform(req)
-        if resp.code in (404, 405):
+        resp = transport.request('GET', url, headers=headers)
+        if resp.status in (404, 405):
             raise brz_errors.NotBranchError(transport.base)
+        else:
+            raise errors.InvalidHttpResponse(
+                url, 'Unable to handle http code %d' % resp.status)
+
         headers = resp.headers
         ct = headers.get("Content-Type")
         if ct is None:
