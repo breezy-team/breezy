@@ -189,10 +189,6 @@ class addinfourl(urllib_request.addinfourl):
     use the internal data structures of addinfourl.
     '''
 
-    @property
-    def status(self):
-        return self.code
-
     def getheader(self, name, default=None):
         if self.headers is None:
             raise http_client.ResponseNotReady()
@@ -1941,19 +1937,12 @@ class HttpTransport(ConnectedTransport):
                 'the fields argument is not yet supported')
         body = urlopen_kw.pop('body', None)
         self.follow_redirections = (urlopen_kw.pop('retries', 0) > 0)
-        if urlopen_kw is not None:
+        if urlopen_kw:
             raise NotImplementedError(
                 'unknown arguments: %r' % urlopen_kw.keys())
         if headers is None:
             headers = {}
         request = Request(method, url, body, headers)
-        return self._perform(request)
-
-    def _perform(self, request):
-        """Send the request to the server and handles common errors.
-
-        :returns: urllib2 Response object
-        """
         connection = self._get_connection()
         if connection is not None:
             # Give back shared info
@@ -1996,7 +1985,22 @@ class HttpTransport(ConnectedTransport):
             trace.mutter('redirected from: %s to: %s' % (request.get_full_url(),
                                                          request.redirected_to))
 
-        return response
+        class Urllib3LikeResponse(object):
+
+            def __init__(self, actual):
+                self._actual = actual
+
+            @property
+            def status(self):
+                return self._actual.code
+
+            def read(self, amt=None):
+                return self._actual.read(amt)
+
+            def readline(self, size=-1):
+                return self._actual.readline(size)
+
+        return Urllib3LikeResponse(response)
 
     def disconnect(self):
         connection = self._get_connection()
@@ -2008,7 +2012,7 @@ class HttpTransport(ConnectedTransport):
         """
         response = self._head(relpath)
 
-        code = response.code
+        code = response.status
         if code == 200:  # "ok",
             return True
         else:
@@ -2053,7 +2057,7 @@ class HttpTransport(ConnectedTransport):
             raise errors.InvalidHttpResponse(
                 abspath, 'Unexpected status %d' % response.status)
 
-        data = handle_response(abspath, response.status, response.info(), response)
+        data = handle_response(abspath, response.status, response._actual.info(), response)
         return response.status, data
 
     def _remote_path(self, relpath):
@@ -2284,7 +2288,7 @@ class HttpTransport(ConnectedTransport):
             raise errors.InvalidHttpResponse(
                 url, 'Unexpected status %d' % response.status)
         code = response.status
-        data = handle_response(abspath, code, response.info(), response)
+        data = handle_response(abspath, code, response._actual.info(), response)
         return code, data
 
     def _head(self, relpath):
