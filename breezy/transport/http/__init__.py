@@ -1905,8 +1905,6 @@ class HttpTransport(ConnectedTransport):
     # httplib, which use print :(
     _debuglevel = 0
 
-    _opener_class = Opener
-
     def __init__(self, base, _from_transport=None, ca_certs=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
@@ -1928,7 +1926,7 @@ class HttpTransport(ConnectedTransport):
             self._opener = _from_transport._opener
         else:
             self._range_hint = 'multi'
-            self._opener = self._opener_class(
+            self._opener = Opener(
                 report_activity=self._report_activity, ca_certs=ca_certs)
 
     def request(self, method, url, fields=None, headers=None, **urlopen_kw):
