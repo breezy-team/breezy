@@ -1990,7 +1990,7 @@ class HttpTransport(ConnectedTransport):
             def __init__(self, actual):
                 self._actual = actual
 
-            def getheader(self, header, default=None):
+            def getheader(self, name, default=None):
                 if self._actual.headers is None:
                     raise http_client.ResponseNotReady()
                 return self._actual.headers.getheader(name, default)
@@ -2067,7 +2067,8 @@ class HttpTransport(ConnectedTransport):
             raise errors.InvalidHttpResponse(
                 abspath, 'Unexpected status %d' % response.status)
 
-        data = handle_response(abspath, response.status, response._actual.info(), response)
+        data = handle_response(
+            abspath, response.status, response.getheader, response)
         return response.status, data
 
     def _remote_path(self, relpath):
@@ -2298,7 +2299,8 @@ class HttpTransport(ConnectedTransport):
             raise errors.InvalidHttpResponse(
                 url, 'Unexpected status %d' % response.status)
         code = response.status
-        data = handle_response(abspath, code, response._actual.info(), response)
+        data = handle_response(
+            abspath, code, response.getheader, response)
         return code, data
 
     def _head(self, relpath):

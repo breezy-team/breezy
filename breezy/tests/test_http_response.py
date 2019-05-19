@@ -725,14 +725,14 @@ class TestHandleResponse(tests.TestCase):
         # Get rid of the status line
         status_and_headers.readline()
         msg = parse_headers(status_and_headers)
-        return msg
+        return msg.getheader
 
     def get_response(self, a_response):
         """Process a supplied response, and return the result."""
         code, raw_headers, body = a_response
-        msg = self._build_HTTPMessage(raw_headers)
-        return response.handle_response('http://foo', code, msg,
-                                        BytesIO(a_response[2]))
+        getheader = self._build_HTTPMessage(raw_headers)
+        return response.handle_response(
+            'http://foo', code, getheader, BytesIO(a_response[2]))
 
     def test_full_text(self):
         out = self.get_response(_full_text_response)
@@ -783,29 +783,31 @@ class TestHandleResponse(tests.TestCase):
     def test_full_text_no_content_type(self):
         # We should not require Content-Type for a full response
         code, raw_headers, body = _full_text_response_no_content_type
-        msg = self._build_HTTPMessage(raw_headers)
-        out = response.handle_response('http://foo', code, msg, BytesIO(body))
+        getheader = self._build_HTTPMessage(raw_headers)
+        out = response.handle_response(
+            'http://foo', code, getheader, BytesIO(body))
         self.assertEqual(body, out.read())
 
     def test_full_text_no_content_length(self):
         code, raw_headers, body = _full_text_response_no_content_length
-        msg = self._build_HTTPMessage(raw_headers)
-        out = response.handle_response('http://foo', code, msg, BytesIO(body))
+        getheader = self._build_HTTPMessage(raw_headers)
+        out = response.handle_response(
+            'http://foo', code, getheader, BytesIO(body))
         self.assertEqual(body, out.read())
 
     def test_missing_content_range(self):
         code, raw_headers, body = _single_range_no_content_range
-        msg = self._build_HTTPMessage(raw_headers)
+        getheader = self._build_HTTPMessage(raw_headers)
         self.assertRaises(errors.InvalidHttpResponse,
                           response.handle_response,
-                          'http://bogus', code, msg, BytesIO(body))
+                          'http://bogus', code, getheader, BytesIO(body))
 
     def test_multipart_no_content_range(self):
         code, raw_headers, body = _multipart_no_content_range
-        msg = self._build_HTTPMessage(raw_headers)
+        getheader = self._build_HTTPMessage(raw_headers)
         self.assertRaises(errors.InvalidHttpResponse,
                           response.handle_response,
-                          'http://bogus', code, msg, BytesIO(body))
+                          'http://bogus', code, getheader, BytesIO(body))
 
     def test_multipart_no_boundary(self):
         out = self.get_response(_multipart_no_boundary)
