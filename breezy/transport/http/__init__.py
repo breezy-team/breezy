@@ -1936,13 +1936,13 @@ class HttpTransport(ConnectedTransport):
             raise NotImplementedError(
                 'the fields argument is not yet supported')
         body = urlopen_kw.pop('body', None)
-        self.follow_redirections = (urlopen_kw.pop('retries', 0) > 0)
-        if urlopen_kw:
-            raise NotImplementedError(
-                'unknown arguments: %r' % urlopen_kw.keys())
         if headers is None:
             headers = {}
         request = Request(method, url, body, headers)
+        request.follow_redirections = (urlopen_kw.pop('retries', 0) > 0)
+        if urlopen_kw:
+            raise NotImplementedError(
+                'unknown arguments: %r' % urlopen_kw.keys())
         connection = self._get_connection()
         if connection is not None:
             # Give back shared info
@@ -1989,6 +1989,16 @@ class HttpTransport(ConnectedTransport):
 
             def __init__(self, actual):
                 self._actual = actual
+
+            def getheader(self, header, default=None):
+                if self._actual.headers is None:
+                    raise http_client.ResponseNotReady()
+                return self._actual.headers.getheader(name, default)
+
+            def getheaders(self):
+                if self._actual.headers is None:
+                    raise http_client.ResponseNotReady()
+                return list(self._actual.headers.items())
 
             @property
             def status(self):
