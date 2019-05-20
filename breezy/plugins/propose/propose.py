@@ -229,10 +229,11 @@ class Hoster(object):
     def probe_from_branch(cls, branch):
         """Create a Hoster object if this hoster knows about a branch."""
         url = urlutils.split_segment_parameters(branch.user_url)[0]
-        return cls.probe_from_url(url)
+        return cls.probe_from_url(
+            url, possible_hosters=[branch.control_transport])
 
     @classmethod
-    def probe_from_url(cls, url):
+    def probe_from_url(cls, url, possible_hosters=None):
         """Create a Hoster object if this hoster knows about a URL."""
         raise NotImplementedError(cls.probe_from_url)
 

@@ -305,9 +305,9 @@ class cmd_gitlab_login(Command):
                  urlutils.join(url, "profile/personal_access_tokens"))
             private_token = ui.ui_factory.get_password(u'Private token')
         if not no_check:
-            from gitlab import Gitlab
-            gl = Gitlab(url=url, private_token=private_token)
-            gl.auth()
+            from breezy.transport import get_transport
+            from .gitlabs import GitLab
+            GitLab(get_transport(url), private_token=private_token)
         store_gitlab_token(name=name, url=url, private_token=private_token)
 
 

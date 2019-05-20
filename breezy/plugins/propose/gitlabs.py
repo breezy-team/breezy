@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+import os
+
 from ... import (
     branch as _mod_branch,
     controldir,
@@ -26,6 +28,7 @@ from ... import (
     )
 from ...git.urls import git_url_to_bzr_url
 from ...sixish import PY3
+from ...transport import get_transport
 
 from .propose import (
     Hoster,
@@ -36,6 +39,10 @@ from .propose import (
     PrerequisiteBranchUnsupported,
     UnsupportedHoster,
     )
+
+
+_DEFAULT_FILES = ['/etc/python-gitlab.cfg', '~/.python-gitlab.cfg']
+
 
 def mp_status_to_status(status):
     return {
@@ -90,24 +97,12 @@ def store_gitlab_token(name, url, private_token):
 
 def iter_tokens():
     import configparser
-    from gitlab.config import _DEFAULT_FILES
     config = configparser.ConfigParser()
-    config.read(_DEFAULT_FILES + [default_config_path()])
+    config.read(
+        [os.path.expanduser(p) for p in _DEFAULT_FILES] +
+        [default_config_path()])
     for name, section in config.items():
         yield name, section
-
-
-def connect_gitlab(host):
-    from gitlab import Gitlab, GitlabGetError
-    url = 'https://%s' % host
-    for name, section in iter_tokens():
-        if section.get('url') == url:
-            return Gitlab(**section)
-    else:
-        try:
-            return Gitlab(url)
-        except GitlabGetError:
-            raise GitLabLoginMissing()
 
 
 def parse_gitlab_url(url):
@@ -131,38 +126,39 @@ def parse_gitlab_branch_url(branch):
 
 class GitLabMergeProposal(MergeProposal):
 
-    def __init__(self, mr):
+    def __init__(self, gl, mr):
+        self.gl = gl
         self._mr = mr
 
     @property
     def url(self):
-        return self._mr.web_url
+        return self._mr['web_url']
 
     def get_description(self):
-        return self._mr.description
+        return self._mr['description']
 
     def set_description(self, description):
-        self._mr.description = description
-        self._mr.save()
+        self._mr['description'] = description
+        self.gl._update_merge_requests(self._mr)
 
     def _branch_url_from_project(self, project_id, branch_name):
-        project = self._mr.manager.gitlab.projects.get(project_id)
+        project = self.gl._get_project(project_id)
         return gitlab_url_to_bzr_url(project.http_url_to_repo, branch_name)
 
     def get_source_branch_url(self):
         return self._branch_url_from_project(
-            self._mr.source_project_id, self._mr.source_branch)
+            self._mr['source_project_id'], self._mr['source_branch'])
 
     def get_target_branch_url(self):
         return self._branch_url_from_project(
-            self._mr.target_project_id, self._mr.target_branch)
+            self._mr['target_project_id'], self._mr['target_branch'])
 
     def is_merged(self):
-        return (self._mr.state == 'merged')
+        return (self._mr['state'] == 'merged')
 
     def close(self):
-        self._mr.state_event = 'close'
-        self._mr.save()
+        self._mr['state_event'] = 'close'
+        self.gl._update_merge_requests(self._mr)
 
 
 def gitlab_url_to_bzr_url(url, name):
@@ -178,18 +174,82 @@ class GitLab(Hoster):
     supports_merge_proposal_labels = True
 
     def __repr__(self):
-        return "<GitLab(%r)>" % self.gl.url
+        return "<GitLab(%r)>" % self.base_url
 
     @property
     def base_url(self):
-        return self.gl.url
+        return self.transport.base
 
-    def __init__(self, gl):
-        self.gl = gl
+    def _api_request(self, method, path):
+        return self.transport.request(
+            method, urlutils.join(self.base_url, 'api', 'v4', path),
+            headers=self.headers)
+
+    def __init__(self, transport, private_token):
+        self.transport = transport
+        self.headers = {"Private-Token": private_token}
+        self.check()
+
+    def _get_project(self, project_name):
+        path = 'projects/:%s' % urlutils.quote(project_name, '')
+        response = self._api_request('GET', path)
+        if response.status == 404:
+            raise NoSuchProject(project_name)
+        if response.status == 200:
+            return response.json
+        raise InvalidHttpResponse(path, response.text)
+
+    def _fork_project(self, project_name):
+        path = 'projects/:%s/fork' % urlutils.quote(project_name, '')
+        response = self._api_request('POST', path)
+        if response != 200:
+            raise InvalidHttpResponse(path, response.text)
+        return response.json
+
+    def _get_logged_in_username(self):
+        return self._current_user['username']
+
+    def _list_mergerequests(self, owner=None, project=None, state=None):
+        if project is not None:
+            path = 'projects/:%s/merge_requests' % urlutils.quote(project_name, '')
+        else:
+            path = 'merge_requests'
+        parameters = {}
+        if state:
+            parameters['state'] = state
+        if owner:
+            parameters['owner_id'] = urlutils.quote(owner, '')
+        response = self._api_request(
+            'GET', path + '?' +
+            ';'.join(['%s=%s' % item for item in parameters.items()]))
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
+        if response.status == 200:
+            return response.json
+        raise InvalidHttpResponse(path, response.text)
+
+    def _create_mergerequest(
+            self, title, source_project_id, target_project_id,
+            source_branch_name, target_branch_name, description):
+        path = 'projects/:%s/merge_requests' % source_project_id
+        response = self._api_request(
+            'POST', path, fields={
+                'title': title,
+                'source_branch': source_branch_name,
+                'target_branch': target_branch_name,
+                'target_project_id': target_project_id,
+                'description': description})
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
+        if response.status == 409:
+            raise MergeProposalExists(self.source_branch.user_url)
+        if response.status == 200:
+            raise InvalidHttpResponse(path, response.text)
+        return response.json
 
     def get_push_url(self, branch):
         (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
-        project = self.gl.projects.get(project_name)
+        project = self._get_project(project_name)
         return gitlab_url_to_bzr_url(
             project.ssh_url_to_repo, branch_name)
 
@@ -198,25 +258,17 @@ class GitLab(Hoster):
                         allow_lossy=True):
         import gitlab
         (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
-        self.gl.auth()
-        try:
-            base_project = self.gl.projects.get(base_project)
-        except gitlab.GitlabGetError as e:
-            if e.response_code == 404:
-                raise NoSuchProject(base_project)
-            else:
-                raise
+        base_project = self._get_project(base_project)
         if owner is None:
-            owner = self.gl.user.username
+            owner = self._get_logged_in_username()
         if project is None:
             project = base_project.path
         try:
-            target_project = self.gl.projects.get('%s/%s' % (owner, project))
-        except gitlab.GitlabGetError as e:
-            if e.response_code == 404:
-                target_project = base_project.forks.create({})
-            else:
-                raise
+            target_project = self._get_project('%s/%s' % (owner, project))
+        except NoSuchProject:
+            target_project = self._fork_project(base_project)
+            # TODO(jelmer): Spin and wait until import_status for new project
+            # is complete.
         remote_repo_url = git_url_to_bzr_url(target_project.ssh_url_to_repo)
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         try:
@@ -234,106 +286,85 @@ class GitLab(Hoster):
         return push_result.target_branch, public_url
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
-        import gitlab
         (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
-        self.gl.auth()
-        try:
-            base_project = self.gl.projects.get(base_project)
-        except gitlab.GitlabGetError as e:
-            if e.response_code == 404:
-                raise NoSuchProject(base_project)
-            else:
-                raise
+        base_project = self._get_project(base_project)
         if owner is None:
             owner = self.gl.user.username
         if project is None:
             project = base_project.path
         try:
-            target_project = self.gl.projects.get('%s/%s' % (owner, project))
-        except gitlab.GitlabGetError as e:
-            if e.response_code == 404:
-                raise errors.NotBranchError('%s/%s/%s' % (self.gl.url, owner, project))
-            raise
+            target_project = self._get_project('%s/%s' % (owner, project))
+        except NoSuchProject:
+            raise errors.NotBranchError('%s/%s/%s' % (self.base_url, owner, project))
         return _mod_branch.Branch.open(gitlab_url_to_bzr_url(
             target_project.ssh_url_to_repo, name))
 
     def get_proposer(self, source_branch, target_branch):
-        return GitlabMergeProposalBuilder(self.gl, source_branch, target_branch)
+        return GitlabMergeProposalBuilder(self, source_branch, target_branch)
 
     def iter_proposals(self, source_branch, target_branch, status):
-        import gitlab
         (source_host, source_project_name, source_branch_name) = (
             parse_gitlab_branch_url(source_branch))
         (target_host, target_project_name, target_branch_name) = (
             parse_gitlab_branch_url(target_branch))
         if source_host != target_host:
             raise DifferentGitLabInstances(source_host, target_host)
-        self.gl.auth()
-        source_project = self.gl.projects.get(source_project_name)
-        target_project = self.gl.projects.get(target_project_name)
+        source_project = self._get_project(source_project_name)
+        target_project = self._get_project(target_project_name)
         state = mp_status_to_status(status)
-        try:
-            for mr in target_project.mergerequests.list(state=state):
-                if (mr.source_project_id != source_project.id or
-                        mr.source_branch != source_branch_name or
-                        mr.target_project_id != target_project.id or
-                        mr.target_branch != target_branch_name):
-                    continue
-                yield GitLabMergeProposal(mr)
-        except gitlab.GitlabListError as e:
-            if e.response_code == 403:
-                raise errors.PermissionDenied(e.error_message)
+        for mr in self.gl._list_mergerequests(project=target_project, state=state):
+            if (mr.source_project_id != source_project.id or
+                    mr.source_branch != source_branch_name or
+                    mr.target_project_id != target_project.id or
+                    mr.target_branch != target_branch_name):
+                continue
+            yield GitLabMergeProposal(self, mr)
 
     def hosts(self, branch):
         try:
             (host, project, branch_name) = parse_gitlab_branch_url(branch)
         except NotGitLabUrl:
             return False
-        return (self.gl.url == ('https://%s' % host))
+        return (self.base_url == ('https://%s' % host))
+
+    def check(self):
+        response = self._api_request('GET', 'user')
+        if response.status == 200:
+            self._current_user = response.json
+            return
+        if response == 401 and response.json == {"message": "401 Unauthorized"}:
+            raise GitLabLoginMissing()
+        raise UnsupportedHoster(url)
 
     @classmethod
-    def probe_from_url(cls, url):
+    def probe_from_url(cls, url, possible_transports=None):
         try:
             (host, project) = parse_gitlab_url(url)
         except NotGitLabUrl:
             raise UnsupportedHoster(url)
-        import gitlab
-        import requests.exceptions
-        try:
-            gl = connect_gitlab(host)
-            gl.auth()
-        except requests.exceptions.SSLError:
-            # Well, I guess it could be..
-            raise UnsupportedHoster(url)
-        except gitlab.GitlabGetError:
-            raise UnsupportedHoster(url)
-        except gitlab.GitlabHttpError as e:
-            if e.response_code in (404, 405, 503):
-                raise UnsupportedHoster(url)
-            else:
-                raise
-        return cls(gl)
+        transport = get_transport(
+            'https://%s' % host, possible_transports=possible_transports)
+        return cls(transport)
 
     @classmethod
     def iter_instances(cls):
-        from gitlab import Gitlab
         for name, credentials in iter_tokens():
             if 'url' not in credentials:
                 continue
-            gl = Gitlab(**credentials)
-            yield cls(gl)
+            yield cls(
+                get_transport(credentials['url']),
+                private_token=credentials.get('private_token'))
 
     def iter_my_proposals(self, status='open'):
         state = mp_status_to_status(status)
-        self.gl.auth()
-        for mp in self.gl.mergerequests.list(
-                owner=self.gl.user.username, state=state):
-            yield GitLabMergeProposal(mp)
+        for mp in self._list_mergerequests(
+                owner=self._get_logged_in_username(), state=state):
+            yield GitLabMergeProposal(self, mp)
 
 
 class GitlabMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, gl, source_branch, target_branch):
+    def __init__(self, l, source_branch, target_branch):
         self.gl = gl
         self.source_branch = source_branch
         (self.source_host, self.source_project_name, self.source_branch_name) = (
@@ -364,11 +395,9 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         """Perform the submission."""
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
-        import gitlab
         # TODO(jelmer): Support reviewers
-        self.gl.auth()
-        source_project = self.gl.projects.get(self.source_project_name)
-        target_project = self.gl.projects.get(self.target_project_name)
+        source_project = self.gl._get_project(self.source_project_name)
+        target_project = self.gl._get_project(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly
         title = description.splitlines()[0]
         # TODO(jelmer): Allow setting allow_collaboration field
@@ -376,21 +405,15 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         # TODO(jelmer): Allow setting squash field
         kwargs = {
             'title': title,
+            'source_project_id': source_project.id,
             'target_project_id': target_project.id,
             'source_branch': self.source_branch_name,
             'target_branch': self.target_branch_name,
             'description': description}
         if labels:
             kwargs['labels'] = ','.join(labels)
-        try:
-            merge_request = source_project.mergerequests.create(kwargs)
-        except gitlab.GitlabCreateError as e:
-            if e.response_code == 403:
-                raise errors.PermissionDenied(e.error_message)
-            if e.response_code == 409:
-                raise MergeProposalExists(self.source_branch.user_url)
-            raise
-        return GitLabMergeProposal(merge_request)
+        merge_request = self.gl._create_mergerequest(**kwargs)
+        return GitLabMergeProposal(self.gl, merge_request)
 
 
 def register_gitlab_instance(shortname, url):

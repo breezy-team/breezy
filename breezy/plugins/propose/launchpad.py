@@ -175,7 +175,7 @@ class Launchpad(Hoster):
         return plausible_launchpad_url(branch.user_url)
 
     @classmethod
-    def probe_from_url(cls, url):
+    def probe_from_url(cls, url, possible_transports=None):
         if plausible_launchpad_url(url):
             return Launchpad()
         raise UnsupportedHoster(url)

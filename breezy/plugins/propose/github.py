@@ -289,7 +289,7 @@ class GitHub(Hoster):
             return True
 
     @classmethod
-    def probe_from_url(cls, url):
+    def probe_from_url(cls, url, possible_transports=None):
         try:
             parse_github_url(url)
         except NotGitHubUrl:

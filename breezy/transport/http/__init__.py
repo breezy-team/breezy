@@ -2009,6 +2009,15 @@ class HttpTransport(ConnectedTransport):
                     self._data = self._actual.read()
                 return self._data
 
+            @property
+            def text(self):
+                return self.data.decode()
+
+            @property
+            def json(self):
+                from json import loads
+                return loads(self.data)
+
             def read(self, amt=None):
                 return self._actual.read(amt)
 
