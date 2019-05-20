@@ -156,7 +156,6 @@ class RemoteGitProber(Prober):
         url.user = url.quoted_user = None
         url.password = url.quoted_password = None
         url = urlutils.join(str(url), "info/refs") + "?service=git-upload-pack"
-        from ..transport.http import Request
         headers = {"Content-Type": "application/x-git-upload-pack-request",
                    "Accept": "application/x-git-upload-pack-result",
                    }
