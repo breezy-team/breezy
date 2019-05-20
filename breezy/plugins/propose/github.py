@@ -43,6 +43,7 @@ from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...sixish import PY3
 from ...trace import note
+from ...transport.http import default_user_agent
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from github import Github
@@ -83,8 +84,7 @@ class GitHubLoginRequired(HosterLoginRequired):
 def connect_github():
     """Connect to GitHub.
     """
-    user_agent = "Breezy/%s" % breezy_version
-
+    user_agent = default_user_agent()
     auth = AuthenticationConfig()
 
     credentials = auth.get_credentials('https', 'github.com')
