@@ -1987,6 +1987,7 @@ class HttpTransport(ConnectedTransport):
 
             def __init__(self, actual):
                 self._actual = actual
+                self._data = None
 
             def getheader(self, name, default=None):
                 if self._actual.headers is None:
@@ -2001,6 +2002,12 @@ class HttpTransport(ConnectedTransport):
             @property
             def status(self):
                 return self._actual.code
+
+            @property
+            def data(self):
+                if self._data is None:
+                    self._data = self._actual.read()
+                return self._data
 
             def read(self, amt=None):
                 return self._actual.read(amt)

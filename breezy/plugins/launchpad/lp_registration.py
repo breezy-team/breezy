@@ -16,7 +16,7 @@
 
 from __future__ import absolute_import
 
-
+from io import BytesIO
 import os
 import socket
 try:
@@ -46,7 +46,7 @@ from ... import (
     urlutils,
     __version__ as _breezy_version,
     )
-from ...transport import http
+from ...transport import http, get_transport
 
 from .lp_api import (
     DEFAULT_INSTANCE,
@@ -87,21 +87,21 @@ class XMLRPCTransport(Transport):
     def __init__(self, scheme):
         Transport.__init__(self)
         self._scheme = scheme
-        self._opener = http.Opener()
         self.verbose = 0
+        self._possible_bzr_transports = []
 
     def request(self, host, handler, request_body, verbose=0):
         self.verbose = verbose
         url = self._scheme + "://" + host + handler
-        request = http.Request("POST", url, request_body)
-        request.add_header("User-Agent", self.user_agent)
-        request.add_header("Content-Type", "text/xml")
+        transport = get_transport(
+            url, possible_transports=self._possible_bzr_transports)
+        response = transport.request("POST", url, body=request_body, headers={
+            "Content-Type": "text/xml"})
 
-        response = self._opener.open(request)
-        if response.code != 200:
-            raise ProtocolError(host + handler, response.code,
-                                response.msg, response.info())
-        return self.parse_response(response)
+        if response.status != 200:
+            raise ProtocolError(url, response.status,
+                                response.text, response.headers)
+        return self.parse_response(BytesIO(response.data))
 
 
 class LaunchpadService(object):
@@ -129,8 +129,6 @@ class LaunchpadService(object):
         if transport is None:
             uri_type = urlutils.parse_url(self.service_url)[0]
             transport = XMLRPCTransport(uri_type)
-            transport.user_agent = 'Breezy/%s (xmlrpc/%s)' \
-                % (_breezy_version, xmlrpc_version)
         self.transport = transport
 
     @property
