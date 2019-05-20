@@ -151,7 +151,7 @@ class GitLabMergeProposal(MergeProposal):
 
     def _branch_url_from_project(self, project_id, branch_name):
         project = self.gl._get_project(project_id)
-        return gitlab_url_to_bzr_url(project.http_url_to_repo, branch_name)
+        return gitlab_url_to_bzr_url(project['http_url_to_repo'], branch_name)
 
     def get_source_branch_url(self):
         return self._branch_url_from_project(
@@ -199,7 +199,7 @@ class GitLab(Hoster):
         self.check()
 
     def _get_project(self, project_name):
-        path = 'projects/:%s' % urlutils.quote(project_name, '')
+        path = 'projects/:%s' % urlutils.quote(str(project_name), '')
         response = self._api_request('GET', path)
         if response.status == 404:
             raise NoSuchProject(project_name)
@@ -208,7 +208,7 @@ class GitLab(Hoster):
         raise InvalidHttpResponse(path, response.text)
 
     def _fork_project(self, project_name):
-        path = 'projects/:%s/fork' % urlutils.quote(project_name, '')
+        path = 'projects/:%s/fork' % urlutils.quote(str(project_name), '')
         response = self._api_request('POST', path)
         if response != 200:
             raise InvalidHttpResponse(path, response.text)
@@ -219,7 +219,7 @@ class GitLab(Hoster):
 
     def _list_mergerequests(self, owner=None, project=None, state=None):
         if project is not None:
-            path = 'projects/:%s/merge_requests' % urlutils.quote(project_name, '')
+            path = 'projects/:%s/merge_requests' % urlutils.quote(str(project_name), '')
         else:
             path = 'merge_requests'
         parameters = {}
@@ -238,7 +238,8 @@ class GitLab(Hoster):
 
     def _create_mergerequest(
             self, title, source_project_id, target_project_id,
-            source_branch_name, target_branch_name, description):
+            source_branch_name, target_branch_name, description,
+            labels=None):
         path = 'projects/:%s/merge_requests' % source_project_id
         response = self._api_request(
             'POST', path, fields={
@@ -246,7 +247,8 @@ class GitLab(Hoster):
                 'source_branch': source_branch_name,
                 'target_branch': target_branch_name,
                 'target_project_id': target_project_id,
-                'description': description})
+                'description': description,
+                'labels': labels})
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
@@ -259,25 +261,23 @@ class GitLab(Hoster):
         (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
         project = self._get_project(project_name)
         return gitlab_url_to_bzr_url(
-            project.ssh_url_to_repo, branch_name)
+            project['ssh_url_to_repo'], branch_name)
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True):
-        import gitlab
         (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
-        base_project = self._get_project(base_project)
         if owner is None:
             owner = self._get_logged_in_username()
         if project is None:
-            project = base_project.path
+            project = self._get_project(base_project)['path']
         try:
             target_project = self._get_project('%s/%s' % (owner, project))
         except NoSuchProject:
             target_project = self._fork_project(base_project)
             # TODO(jelmer): Spin and wait until import_status for new project
             # is complete.
-        remote_repo_url = git_url_to_bzr_url(target_project.ssh_url_to_repo)
+        remote_repo_url = git_url_to_bzr_url(target_project['ssh_url_to_repo'])
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         try:
             push_result = remote_dir.push_branch(
@@ -290,22 +290,21 @@ class GitLab(Hoster):
                 local_branch, revision_id=revision_id, overwrite=overwrite,
                 name=name, lossy=True)
         public_url = gitlab_url_to_bzr_url(
-            target_project.http_url_to_repo, name)
+            target_project['http_url_to_repo'], name)
         return push_result.target_branch, public_url
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
-        base_project = self._get_project(base_project)
         if owner is None:
-            owner = self.gl.user.username
+            owner = self._get_logged_in_username()
         if project is None:
-            project = base_project.path
+            project = self._get_project(base_project)['path']
         try:
             target_project = self._get_project('%s/%s' % (owner, project))
         except NoSuchProject:
             raise errors.NotBranchError('%s/%s/%s' % (self.base_url, owner, project))
         return _mod_branch.Branch.open(gitlab_url_to_bzr_url(
-            target_project.ssh_url_to_repo, name))
+            target_project['ssh_url_to_repo'], name))
 
     def get_proposer(self, source_branch, target_branch):
         return GitlabMergeProposalBuilder(self, source_branch, target_branch)
@@ -320,11 +319,12 @@ class GitLab(Hoster):
         source_project = self._get_project(source_project_name)
         target_project = self._get_project(target_project_name)
         state = mp_status_to_status(status)
-        for mr in self.gl._list_mergerequests(project=target_project, state=state):
-            if (mr.source_project_id != source_project.id or
-                    mr.source_branch != source_branch_name or
-                    mr.target_project_id != target_project.id or
-                    mr.target_branch != target_branch_name):
+        for mr in self.gl._list_mergerequests(
+                project=target_project['id'], state=state):
+            if (mr['source_project_id'] != source_project['id'] or
+                    mr['source_branch'] != source_branch_name or
+                    mr['target_project_id'] != target_project['id'] or
+                    mr['target_branch'] != target_branch_name):
                 continue
             yield GitLabMergeProposal(self, mr)
 
@@ -416,8 +416,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         # TODO(jelmer): Allow setting squash field
         kwargs = {
             'title': title,
-            'source_project_id': source_project.id,
-            'target_project_id': target_project.id,
+            'source_project_id': source_project['id'],
+            'target_project_id': target_project['id'],
             'source_branch': self.source_branch_name,
             'target_branch': self.target_branch_name,
             'description': description}
