@@ -76,6 +76,14 @@ class GitLabLoginMissing(errors.BzrError):
     _fmt = ("Please log into GitLab")
 
 
+class GitlabLoginError(errors.BzrError):
+
+    _fmt = ("Error logging in: %(error)s")
+
+    def __init__(self, error):
+        self.error = error
+
+
 def default_config_path():
     from breezy.config import config_dir
     import os
@@ -332,8 +340,11 @@ class GitLab(Hoster):
         if response.status == 200:
             self._current_user = response.json
             return
-        if response == 401 and response.json == {"message": "401 Unauthorized"}:
-            raise GitLabLoginMissing()
+        if response == 401:
+            if response.json == {"message": "401 Unauthorized"}:
+                raise GitLabLoginMissing()
+            else:
+                raise GitlabLoginError(response.text)
         raise UnsupportedHoster(url)
 
     @classmethod

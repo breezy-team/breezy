@@ -230,7 +230,7 @@ class Hoster(object):
         """Create a Hoster object if this hoster knows about a branch."""
         url = urlutils.split_segment_parameters(branch.user_url)[0]
         return cls.probe_from_url(
-            url, possible_hosters=[branch.control_transport])
+            url, possible_transports=[branch.control_transport])
 
     @classmethod
     def probe_from_url(cls, url, possible_hosters=None):
