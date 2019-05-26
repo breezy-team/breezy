@@ -7022,8 +7022,9 @@ class cmd_resolve_location(Command):
 
     def run(self, location):
         from .location import location_to_url
-        self.outf.write('%s\n' % location_to_url(location))
-
+        url = location_to_url(location)
+        display_url = urlutils.unescape_for_display(url, self.outf.encoding)
+        self.outf.write('%s\n' % url)
 
 
 def _register_lazy_builtins():
