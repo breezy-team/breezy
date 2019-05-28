@@ -692,7 +692,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             `redirect_location` properties, and `read` is a consumable read
             method for the response data.
         """
-        from breezy.transport.http._urllib2_wrappers import Request
+        from breezy.transport.http import Request
         headers['User-agent'] = user_agent_for_github()
         headers["Pragma"] = "no-cache"
         if allow_compression:

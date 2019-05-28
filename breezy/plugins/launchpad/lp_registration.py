@@ -46,7 +46,7 @@ from ... import (
     urlutils,
     __version__ as _breezy_version,
     )
-from ...transport.http import _urllib2_wrappers
+from ...transport import http
 
 from .lp_api import (
     DEFAULT_INSTANCE,
@@ -87,13 +87,13 @@ class XMLRPCTransport(Transport):
     def __init__(self, scheme):
         Transport.__init__(self)
         self._scheme = scheme
-        self._opener = _urllib2_wrappers.Opener()
+        self._opener = http.Opener()
         self.verbose = 0
 
     def request(self, host, handler, request_body, verbose=0):
         self.verbose = verbose
         url = self._scheme + "://" + host + handler
-        request = _urllib2_wrappers.Request("POST", url, request_body)
+        request = http.Request("POST", url, request_body)
         request.add_header("User-Agent", self.user_agent)
         request.add_header("Content-Type", "text/xml")
 

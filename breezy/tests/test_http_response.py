@@ -56,7 +56,7 @@ from ..sixish import (
     )
 from ..transport.http import (
     response,
-    _urllib2_wrappers,
+    HTTPConnection,
     )
 from .file_utils import (
     FakeReadFile,
@@ -73,10 +73,10 @@ class ReadSocket(object):
         return self.readfile
 
 
-class FakeHTTPConnection(_urllib2_wrappers.HTTPConnection):
+class FakeHTTPConnection(HTTPConnection):
 
     def __init__(self, sock):
-        _urllib2_wrappers.HTTPConnection.__init__(self, 'localhost')
+        HTTPConnection.__init__(self, 'localhost')
         # Set the socket to bypass the connection
         self.sock = sock
 
