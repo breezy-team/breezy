@@ -94,10 +94,10 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file,
     if sequence_matcher is None:
         sequence_matcher = patiencediff.PatienceSequenceMatcher
     ud = unified_diff_bytes(
-            oldlines, newlines,
-            fromfile=old_label.encode( path_encoding, 'replace'),
-            tofile=new_label.encode(path_encoding, 'replace'),
-            n=context_lines, sequencematcher=sequence_matcher)
+        oldlines, newlines,
+        fromfile=old_label.encode(path_encoding, 'replace'),
+        tofile=new_label.encode(path_encoding, 'replace'),
+        n=context_lines, sequencematcher=sequence_matcher)
 
     ud = list(ud)
     if len(ud) == 0:  # Identical contents, nothing to do
