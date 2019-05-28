@@ -517,14 +517,12 @@ class Request(urllib_request.Request):
 
     def __init__(self, method, url, data=None, headers={},
                  origin_req_host=None, unverifiable=False,
-                 connection=None, parent=None,
-                 accepted_errors=None):
+                 connection=None, parent=None):
         urllib_request.Request.__init__(
             self, url, data, headers,
             origin_req_host, unverifiable)
         self.method = method
         self.connection = connection
-        self.accepted_errors = accepted_errors
         # To handle redirections
         self.parent = parent
         self.redirected_to = None
@@ -1820,7 +1818,10 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
 
     accepted_errors = [200,  # Ok
                        206,  # Partial content
+                       400,
+                       403,
                        404,  # Not found
+                       416,
                        ]
     """The error codes the caller will handle.
 
@@ -1831,11 +1832,7 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
     def http_response(self, request, response):
         code, msg, hdrs = response.code, response.msg, response.info()
 
-        accepted_errors = request.accepted_errors
-        if accepted_errors is None:
-            accepted_errors = self.accepted_errors
-
-        if code not in accepted_errors:
+        if code not in self.accepted_errors:
             response = self.parent.error('http', request, response,
                                          code, msg, hdrs)
         return response
@@ -1908,8 +1905,6 @@ class HttpTransport(ConnectedTransport):
     # httplib, which use print :(
     _debuglevel = 0
 
-    _opener_class = Opener
-
     def __init__(self, base, _from_transport=None, ca_certs=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
@@ -1931,14 +1926,21 @@ class HttpTransport(ConnectedTransport):
             self._opener = _from_transport._opener
         else:
             self._range_hint = 'multi'
-            self._opener = self._opener_class(
+            self._opener = Opener(
                 report_activity=self._report_activity, ca_certs=ca_certs)
 
-    def _perform(self, request):
-        """Send the request to the server and handles common errors.
-
-        :returns: urllib2 Response object
-        """
+    def request(self, method, url, fields=None, headers=None, **urlopen_kw):
+        if fields is not None:
+            raise NotImplementedError(
+                'the fields argument is not yet supported')
+        body = urlopen_kw.pop('body', None)
+        if headers is None:
+            headers = {}
+        request = Request(method, url, body, headers)
+        request.follow_redirections = (urlopen_kw.pop('retries', 0) > 0)
+        if urlopen_kw:
+            raise NotImplementedError(
+                'unknown arguments: %r' % urlopen_kw.keys())
         connection = self._get_connection()
         if connection is not None:
             # Give back shared info
@@ -1981,7 +1983,42 @@ class HttpTransport(ConnectedTransport):
             trace.mutter('redirected from: %s to: %s' % (request.get_full_url(),
                                                          request.redirected_to))
 
-        return response
+        class Urllib3LikeResponse(object):
+
+            def __init__(self, actual):
+                self._actual = actual
+                self._data = None
+
+            def getheader(self, name, default=None):
+                if self._actual.headers is None:
+                    raise http_client.ResponseNotReady()
+                if PY3:
+                    return self._actual.headers.get(name, default)
+                else:
+                    return self._actual.headers.getheader(name, default)
+
+            def getheaders(self):
+                if self._actual.headers is None:
+                    raise http_client.ResponseNotReady()
+                return list(self._actual.headers.items())
+
+            @property
+            def status(self):
+                return self._actual.code
+
+            @property
+            def data(self):
+                if self._data is None:
+                    self._data = self._actual.read()
+                return self._data
+
+            def read(self, amt=None):
+                return self._actual.read(amt)
+
+            def readline(self, size=-1):
+                return self._actual.readline(size)
+
+        return Urllib3LikeResponse(response)
 
     def disconnect(self):
         connection = self._get_connection()
@@ -1993,7 +2030,7 @@ class HttpTransport(ConnectedTransport):
         """
         response = self._head(relpath)
 
-        code = response.code
+        code = response.status
         if code == 200:  # "ok",
             return True
         else:
@@ -2019,31 +2056,28 @@ class HttpTransport(ConnectedTransport):
         """
         abspath = self._remote_path(relpath)
         headers = {}
-        accepted_errors = [200, 404]
         if offsets or tail_amount:
             range_header = self._attempted_range_header(offsets, tail_amount)
             if range_header is not None:
-                accepted_errors.append(206)
-                accepted_errors.append(400)
-                accepted_errors.append(416)
                 bytes = 'bytes=' + range_header
                 headers = {'Range': bytes}
 
-        request = Request('GET', abspath, None, headers,
-                          accepted_errors=accepted_errors)
-        response = self._perform(request)
+        response = self.request('GET', abspath, headers=headers)
 
-        code = response.code
-        if code == 404:  # not found
+        if response.status == 404:  # not found
             raise errors.NoSuchFile(abspath)
-        elif code in (400, 416):
+        elif response.status in (400, 416):
             # We don't know which, but one of the ranges we specified was
             # wrong.
             raise errors.InvalidHttpRange(abspath, range_header,
-                                          'Server return code %d' % code)
+                                          'Server return code %d' % response.status)
+        elif response.status not in (200, 206):
+            raise errors.InvalidHttpResponse(
+                abspath, 'Unexpected status %d' % response.status)
 
-        data = handle_response(abspath, code, response.info(), response)
-        return code, data
+        data = handle_response(
+            abspath, response.status, response.getheader, response)
+        return response.status, data
 
     def _remote_path(self, relpath):
         """See ConnectedTransport._remote_path.
@@ -2266,14 +2300,15 @@ class HttpTransport(ConnectedTransport):
         # an interface that allows streaming via POST when possible (and
         # degrades to a local buffer when not).
         abspath = self._remote_path('.bzr/smart')
-        # We include 403 in accepted_errors so that send_http_smart_request can
-        # handle a 403.  Otherwise a 403 causes an unhandled TransportError.
-        response = self._perform(
-            Request('POST', abspath, body_bytes,
-                    {'Content-Type': 'application/octet-stream'},
-                    accepted_errors=[200, 403]))
-        code = response.code
-        data = handle_response(abspath, code, response.info(), response)
+        response = self.request(
+            'POST', abspath, body=body_bytes,
+            headers={'Content-Type': 'application/octet-stream'})
+        if response.status not in (200, 403):
+            raise errors.InvalidHttpResponse(
+                url, 'Unexpected status %d' % response.status)
+        code = response.status
+        data = handle_response(
+            abspath, code, response.getheader, response)
         return code, data
 
     def _head(self, relpath):
@@ -2282,9 +2317,10 @@ class HttpTransport(ConnectedTransport):
         Performs the request and leaves callers handle the results.
         """
         abspath = self._remote_path(relpath)
-        request = Request('HEAD', abspath,
-                          accepted_errors=[200, 404])
-        response = self._perform(request)
+        response = self.request('HEAD', abspath)
+        if response.status not in (200, 404):
+            raise errors.InvalidHttpResponse(
+                abspath, 'Unexpected status %d' % response.status)
 
         return response
 

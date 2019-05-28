@@ -1403,16 +1403,16 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
     def test_one_redirection(self):
         t = self.get_old_transport()
-        req = RedirectedRequest('GET', t._remote_path('a'))
         new_prefix = 'http://%s:%s' % (self.new_server.host,
                                        self.new_server.port)
         self.old_server.redirections = \
             [('(.*)', r'%s/1\1' % (new_prefix), 301), ]
-        self.assertEqual(b'redirected once', t._perform(req).read())
+        self.assertEqual(
+            b'redirected once',
+            t.request('GET', t._remote_path('a'), retries=1).read())
 
     def test_five_redirections(self):
         t = self.get_old_transport()
-        req = RedirectedRequest('GET', t._remote_path('a'))
         old_prefix = 'http://%s:%s' % (self.old_server.host,
                                        self.old_server.port)
         new_prefix = 'http://%s:%s' % (self.new_server.host,
@@ -1424,7 +1424,9 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
             ('/4(.*)', r'%s/5\1' % (new_prefix), 301),
             ('(/[^/]+)', r'%s/1\1' % (old_prefix), 301),
             ]
-        self.assertEqual(b'redirected 5 times', t._perform(req).read())
+        self.assertEqual(
+            b'redirected 5 times',
+            t.request('GET', t._remote_path('a'), retries=6).read())
 
 
 class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
@@ -2234,12 +2236,13 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         self.new_server.add_user('joe', 'foo')
         ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n')
         t = self.old_transport
-        req = RedirectedRequest('GET', t.abspath('a'))
         new_prefix = 'http://%s:%s' % (self.new_server.host,
                                        self.new_server.port)
         self.old_server.redirections = [
             ('(.*)', r'%s/1\1' % (new_prefix), 301), ]
-        self.assertEqual(b'redirected once', t._perform(req).read())
+        self.assertEqual(
+            b'redirected once',
+            t.request('GET', t.abspath('a'), retries=3).read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
