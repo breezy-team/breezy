@@ -197,9 +197,9 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(['diff', '--format=git'], retcode=1)
         self.assertEqual(error, '')
         self.assertEqual(output,
-                         'diff --git /dev/null b/a\n'
-                         'old mode 0\n'
-                         'new mode 100644\n'
+                         'diff --git a/a b/a\n'
+                         'old file mode 0\n'
+                         'new file mode 100644\n'
                          'index 0000000..c197bd8 100644\n'
                          '--- /dev/null\n'
                          '+++ b/a\n'
