@@ -25,6 +25,10 @@
 #ifndef _BZR_PYTHON_COMPAT_H
 #define _BZR_PYTHON_COMPAT_H
 
+#ifdef _MSC_VER
+#define inline __inline
+#endif
+
 #if PY_MAJOR_VERSION >= 3
 
 #define PyInt_FromSsize_t PyLong_FromSsize_t
