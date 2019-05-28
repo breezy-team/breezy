@@ -5,6 +5,70 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 3.0.1
+#########
+
+:3.0.1: NOT RELEASED YET
+
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+None.
+
+Improvements
+************
+
+None.
+
+
+Bug Fixes
+*********
+
+* Fix compatibility with newer versions of Dulwich (>= 0.19.12).
+  (Jelmer Vernooĳ)
+
+* Fix a nasty corner case merging changes into a tree with changed
+  symlinks when pushing from bzr into git.
+  (Jelmer Vernooĳ)
+
+* Fix installation on Windows. (Raoul Snyman, #1818947)
+
+* Fix switching between branches while preserving uncommitted changes in git.
+  (Jelmer Vernooĳ, #1820606)
+
+Documentation
+*************
+
+None.
+
+API Changes
+***********
+
+None.
+
+Internals
+*********
+
+None.
+
+Changed Behaviour
+*****************
+
+None.
+
+Testing
+*******
+
+None.
+
+
+
 brz 3.0.0
 #########
 
