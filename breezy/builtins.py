@@ -7018,6 +7018,24 @@ class cmd_grep(Command):
             grep.versioned_grep(opts)
 
 
+class cmd_resolve_location(Command):
+    __doc__ = """Expand a location to a full URL.
+
+    :Examples:
+        Look up a Launchpad URL.
+
+            brz resolve-location lp:brz
+    """
+    takes_args = ['location']
+    hidden = True
+
+    def run(self, location):
+        from .location import location_to_url
+        url = location_to_url(location)
+        display_url = urlutils.unescape_for_display(url, self.outf.encoding)
+        self.outf.write('%s\n' % url)
+
+
 def _register_lazy_builtins():
     # register lazy builtins from other modules; called at startup and should
     # be only called once.
