@@ -53,6 +53,7 @@ from .. import (
     )
 from ..sixish import (
     BytesIO,
+    PY3,
     )
 from ..transport.http import (
     response,
@@ -725,7 +726,10 @@ class TestHandleResponse(tests.TestCase):
         # Get rid of the status line
         status_and_headers.readline()
         msg = parse_headers(status_and_headers)
-        return msg.getheader
+        if PY3:
+            return msg.get
+        else:
+            return msg.getheader
 
     def get_response(self, a_response):
         """Process a supplied response, and return the result."""

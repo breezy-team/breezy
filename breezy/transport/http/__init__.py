@@ -1992,7 +1992,10 @@ class HttpTransport(ConnectedTransport):
             def getheader(self, name, default=None):
                 if self._actual.headers is None:
                     raise http_client.ResponseNotReady()
-                return self._actual.headers.getheader(name, default)
+                if PY3:
+                    return self._actual.headers.get(name, default)
+                else:
+                    return self._actual.headers.getheader(name, default)
 
             def getheaders(self):
                 if self._actual.headers is None:
