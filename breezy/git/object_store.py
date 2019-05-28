@@ -359,7 +359,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             continue
 
         if tree.kind(path) != 'directory':
-            raise AssertionError
+            continue
 
         obj = Tree()
         for value in tree.iter_child_entries(path):
@@ -589,7 +589,7 @@ class BazaarObjectStore(BaseObjectStore):
         for (file_id, revision, expected_sha), chunks in stream:
             blob = Blob()
             blob.chunked = chunks
-            if blob.id != expected_sha and blob.data == "":
+            if blob.id != expected_sha and blob.data == b"":
                 # Perhaps it's a symlink ?
                 tree = self.tree_cache.revision_tree(revision)
                 path = tree.id2path(file_id)

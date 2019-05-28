@@ -22,6 +22,7 @@ import re
 from breezy import (
     branch,
     controldir,
+    directory_service,
     errors,
     osutils,
     tests,
@@ -491,6 +492,25 @@ class TestPush(tests.TestCaseWithTransport):
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
         # we publish branch_tree with a reference to the mainline.
         out, err = self.run_bzr(['push', '--stacked-on', trunk_tree.branch.base,
+                                 self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
+        self.assertEqual('Created new stacked branch referring to %s.\n' %
+                         trunk_tree.branch.base, err)
+        self.assertPublished(branch_tree.last_revision(),
+                             trunk_tree.branch.base)
+
+    def test_push_new_branch_stacked_on(self):
+        """Pushing a new branch with --stacked-on can use directory URLs."""
+        trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
+        class FooDirectory(object):
+            def look_up(self, name, url, purpose=None):
+                if url == 'foo:':
+                    return trunk_tree.branch.base
+                return url
+        directory_service.directories.register('foo:', FooDirectory, 'Foo directory')
+        self.addCleanup(directory_service.directories.remove, 'foo:')
+        # we publish branch_tree with a reference to the mainline.
+        out, err = self.run_bzr(['push', '--stacked-on', 'foo:',
                                  self.get_url('published')], working_dir='branch')
         self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %

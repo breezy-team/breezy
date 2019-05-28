@@ -78,6 +78,15 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(output, '')
         self.assertFileEqual("foo\n", ".gitignore")
 
+    def test_cat_revision(self):
+        self.simple_commit()
+        output, error = self.run_bzr(['cat-revision', '-r-1'], retcode=3)
+        self.assertContainsRe(
+            error,
+            'brz: ERROR: Repository .* does not support access to raw '
+            'revision texts')
+        self.assertEqual(output, '')
+
     def test_branch(self):
         os.mkdir("gitbranch")
         GitRepo.init(os.path.join(self.test_dir, "gitbranch"))
@@ -188,9 +197,9 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(['diff', '--format=git'], retcode=1)
         self.assertEqual(error, '')
         self.assertEqual(output,
-                         'diff --git /dev/null b/a\n'
-                         'old mode 0\n'
-                         'new mode 100644\n'
+                         'diff --git a/a b/a\n'
+                         'old file mode 0\n'
+                         'new file mode 100644\n'
                          'index 0000000..c197bd8 100644\n'
                          '--- /dev/null\n'
                          '+++ b/a\n'

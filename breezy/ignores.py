@@ -33,7 +33,7 @@ from breezy import (
     )
 """)
 
-# ~/.bazaar/ignore will be filled out using
+# ~/.config/breezy/ignore will be filled out using
 # this ignore list, if it does not exist
 # please keep these sorted (in C locale order) to aid merging
 USER_DEFAULTS = [

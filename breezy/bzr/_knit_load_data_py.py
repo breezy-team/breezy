@@ -64,7 +64,6 @@ def _load_data_py(kndx, fp):
             raise KnitCorrupt(kndx._filename, "line %r: %s" % (rec, e))
 
         version_id, options, pos, size = rec[:4]
-        version_id = version_id
         try:
             pos = int(pos)
         except ValueError as e:

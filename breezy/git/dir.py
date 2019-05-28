@@ -273,10 +273,10 @@ class GitDir(ControlDir):
         for ref in self.get_refs_container().keys():
             try:
                 branch_name = ref_to_branch_name(ref)
-            except ValueError:
-                continue
             except UnicodeDecodeError:
                 trace.warning("Ignoring branch %r with unicode error ref", ref)
+                continue
+            except ValueError:
                 continue
             ret[branch_name] = self.open_branch(ref=ref)
         return ret

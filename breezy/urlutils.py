@@ -162,11 +162,11 @@ else:
 unquote = urlparse.unquote
 
 
-def escape(relpath):
+def escape(relpath, safe='/~'):
     """Escape relpath to be a valid url."""
     if not isinstance(relpath, str) and sys.version_info[0] == 2:
         relpath = relpath.encode('utf-8')
-    return quote(relpath, safe='/~')
+    return quote(relpath, safe=safe)
 
 
 def file_relpath(base, path):
@@ -561,7 +561,10 @@ def split_segment_parameters(url):
     (base_url, subsegments) = split_segment_parameters_raw(url)
     parameters = {}
     for subsegment in subsegments:
-        (key, value) = subsegment.split("=", 1)
+        try:
+            (key, value) = subsegment.split("=", 1)
+        except ValueError:
+            raise InvalidURL(url, "missing = in subsegment")
         if not isinstance(key, str):
             raise TypeError(key)
         if not isinstance(value, str):

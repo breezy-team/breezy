@@ -46,7 +46,7 @@ and go ahead and commit in there.  Normally you should fix only one bug or
 closely-related cluster of bugs per branch, to make reviews and merges
 flow more smoothly.
 
-You probably want this configuration in ``~/.bazaar/locations.conf``::
+You probably want this configuration in ``~/.config/breezy/locations.conf``::
 
     [/home/USER/brz]
     push_location = lp:~LAUNCHPAD_USER/brz/{branchname}

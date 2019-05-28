@@ -73,7 +73,7 @@ def plausible_launchpad_url(url):
     if url.startswith('lp:'):
         return True
     regex = re.compile('([a-z]*\+)*(bzr\+ssh|http|ssh|git|https)'
-                       '://(bazaar|git).*.launchpad.net')
+                       '://(bazaar|git).*\.launchpad\.net')
     return bool(regex.match(url))
 
 
@@ -140,6 +140,7 @@ class LaunchpadMergeProposal(MergeProposal):
 
     def set_description(self, description):
         self._mp.description = description
+        self._mp.lp_save()
 
     def close(self):
         self._mp.setStatus(status='Rejected')
@@ -174,10 +175,10 @@ class Launchpad(Hoster):
         return plausible_launchpad_url(branch.user_url)
 
     @classmethod
-    def probe(cls, branch):
-        if plausible_launchpad_url(branch.user_url):
+    def probe_from_url(cls, url):
+        if plausible_launchpad_url(url):
             return Launchpad()
-        raise UnsupportedHoster(branch)
+        raise UnsupportedHoster(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
         url, params = urlutils.split_segment_parameters(branch.user_url)
@@ -482,7 +483,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                         prerequisite_branch=None):
         """Perform the submission."""
         if labels:
-            raise LabelsUnsupported()
+            raise LabelsUnsupported(self)
         if prerequisite_branch is not None:
             prereq = self.launchpad.branches.getByUrl(
                 url=prerequisite_branch.user_url)
@@ -611,7 +612,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                         prerequisite_branch=None):
         """Perform the submission."""
         if labels:
-            raise LabelsUnsupported()
+            raise LabelsUnsupported(self)
         if prerequisite_branch is not None:
             (prereq_repo_lp, prereq_branch_lp) = (
                 self.lp_host._get_lp_git_ref_from_branch(prerequisite_branch))

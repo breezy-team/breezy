@@ -39,9 +39,12 @@ Some properties are common to all kinds:
 
 try:
     import http.client as http_client
-    parse_headers = http_client.parse_headers
-except ImportError:  # python < 3
+except ImportError:  # python < 3 without future
     import httplib as http_client
+
+try:
+    parse_headers = http_client.parse_headers
+except AttributeError:  # python 2
     parse_headers = http_client.HTTPMessage
 
 from .. import (

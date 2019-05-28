@@ -680,9 +680,6 @@ class KnitAnnotateFactory(_KnitFactory):
         lines = (tuple(line.split(b' ', 1)) for line in content)
         return AnnotatedKnitContent(lines)
 
-    def parse_line_delta_iter(self, lines):
-        return iter(self.parse_line_delta(lines))
-
     def parse_line_delta(self, lines, version_id, plain=False):
         """Convert a line based delta into internal representation.
 
