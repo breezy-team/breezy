@@ -332,10 +332,31 @@ class TestSource(TestSourceHelper):
         new_path.insert(
             0, os.path.join(os.path.dirname(__file__), '..', '..', 'tools'))
         self.overrideAttr(sys, 'path', new_path)
-        from flake8.api import legacy as flake8
-        style_guide = flake8.get_style_guide(config=u'setup.cfg', jobs="1")
-        report = style_guide.check_files(list(self.get_source_files()))
-        self.assertEqual([], report.get_statistics(''))
+        from flake8.main.application import Application
+        from flake8.formatting.base import BaseFormatter
+        app = Application()
+        app.config = u'setup.cfg'
+        app.jobs = 1
+
+        class Formatter(BaseFormatter):
+
+            def __init__(self):
+                self.errors = []
+
+            def start(self):
+                pass
+
+            def stop(self):
+                app.file_checker_manager.report()
+
+            def handle(self, error):
+                self.errors.append(error)
+
+        app.formatter = Formatter()
+        app.initialize([])
+        app.run_checks()
+        app.report()
+        self.assertEqual(app.formatter.errors, [])
 
     def test_no_asserts(self):
         """bzr shouldn't use the 'assert' statement."""

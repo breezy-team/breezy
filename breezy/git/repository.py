@@ -68,31 +68,6 @@ from dulwich.object_store import (
     )
 
 
-class RepoReconciler(object):
-    """Reconciler that reconciles a repository.
-
-    """
-
-    def __init__(self, repo, other=None, thorough=False):
-        """Construct a RepoReconciler.
-
-        :param thorough: perform a thorough check which may take longer but
-                         will correct non-data loss issues such as incorrect
-                         cached data.
-        """
-        self.repo = repo
-
-    def reconcile(self):
-        """Perform reconciliation.
-
-        After reconciliation the following attributes document found issues:
-        inconsistent_parents: The number of revisions in the repository whose
-                              ancestry was being reported incorrectly.
-        garbage_inventories: The number of inventory objects without revisions
-                             that were garbage collected.
-        """
-
-
 class GitCheck(check.Check):
 
     def __init__(self, repository, check_repo=True):
@@ -241,9 +216,10 @@ class GitRepository(ForeignRepository):
 
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
-        reconciler = RepoReconciler(self, thorough=thorough)
-        reconciler.reconcile()
-        return reconciler
+        from ..reconcile import ReconcileResult
+        ret = ReconcileResult()
+        ret.aborted = False
+        return ret
 
     def supports_rich_root(self):
         return True
@@ -372,9 +348,9 @@ class LocalGitRepository(GitRepository):
             o = self._git.object_store[sha]
             if not isinstance(o, Commit):
                 continue
-            rev, roundtrip_revid, verifiers = mapping.import_commit(
-                o, mapping.revision_id_foreign_to_bzr)
-            yield o.id, rev.revision_id, roundtrip_revid
+            revid = mapping.revision_id_foreign_to_bzr(o)
+            roundtrip_revid = mapping.get_revision_id(o)
+            yield o.id, revid, (roundtrip_revid if revid != roundtrip_revid else None)
 
     def all_revision_ids(self):
         ret = set()
@@ -478,13 +454,9 @@ class LocalGitRepository(GitRepository):
         commit = self._git.object_store.peel_sha(foreign_revid)
         if not isinstance(commit, Commit):
             raise NotCommitError(commit.id)
-        rev, roundtrip_revid, verifiers = mapping.import_commit(
-            commit, mapping.revision_id_foreign_to_bzr)
+        revid = mapping.get_revision_id(commit)
         # FIXME: check testament before doing this?
-        if roundtrip_revid:
-            return roundtrip_revid
-        else:
-            return rev.revision_id
+        return revid
 
     def has_signature_for_revision_id(self, revision_id):
         """Check whether a GPG signature is present for this revision.

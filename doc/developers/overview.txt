@@ -425,7 +425,7 @@ Signature store
 Stores cryptographic signatures of revision contents.  The keys match
 those of the revision store.
 
-.. _Core Concepts: http://doc.bazaar.canonical.com/latest/en/user-guide/core_concepts.html
+.. _Core Concepts: https://www.breezy-vcs.org/doc/en/user-guide/core_concepts.html
 
 ..
    vim: ft=rst tw=74 ai

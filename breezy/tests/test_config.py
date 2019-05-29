@@ -4597,7 +4597,7 @@ class StubCredentialStore(config.CredentialStore):
     def get_credentials(self, scheme, host, port=None, user=None,
                         path=None, realm=None):
         key = (scheme, host)
-        if not key in self._username:
+        if key not in self._username:
             return None
         return {"scheme": scheme, "host": host, "port": port,
                 "user": self._username[key], "password": self._password[key]}

@@ -26,6 +26,7 @@ from ..bzr.index import GraphIndex
 from .. import (
     controldir,
     errors,
+    gpg,
     osutils,
     repository,
     revision as _mod_revision,
@@ -298,6 +299,28 @@ class TestPackRepository(TestCaseWithTransport):
             self.assertEqual(
                 combined_indices.difference([combined_index]),
                 combined_index._sibling_indices)
+
+    def test_pack_with_signatures(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('.', format=format)
+        trans = tree.branch.repository.controldir.get_repository_transport(
+            None)
+        revid1 = tree.commit('start')
+        revid2 = tree.commit('more work')
+        strategy = gpg.LoopbackGPGStrategy(None)
+        repo = tree.branch.repository
+        self.addCleanup(repo.lock_write().unlock)
+        repo.start_write_group()
+        repo.sign_revision(revid1, strategy)
+        repo.commit_write_group()
+        repo.start_write_group()
+        repo.sign_revision(revid2, strategy)
+        repo.commit_write_group()
+        tree.branch.repository.pack()
+        # there should be 1 pack:
+        index = self.index_class(trans, 'pack-names', None)
+        self.assertEqual(1, len(list(index.iter_all_entries())))
+        self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
 
     def test_pack_after_two_commits_packs_everything(self):
         format = self.get_format()

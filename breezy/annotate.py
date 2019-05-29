@@ -32,8 +32,10 @@ import time
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+
+import patiencediff
+
 from breezy import (
-    patiencediff,
     tsort,
     )
 """)
@@ -54,7 +56,7 @@ from .revision import (
 
 def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
                        show_ids=False, branch=None):
-    """Annotate file_id in a tree.
+    """Annotate path in a tree.
 
     The tree should already be read_locked() when annotate_file_tree is called.
 

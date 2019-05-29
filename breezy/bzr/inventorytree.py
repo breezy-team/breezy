@@ -197,7 +197,7 @@ class InventoryTree(Tree):
                 inventory_file_ids = []
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
-                    if not inventory is self.root_inventory:  # for now
+                    if inventory is not self.root_inventory:  # for now
                         raise AssertionError("%r != %r" % (
                             inventory, self.root_inventory))
                     inventory_file_ids.append(inv_file_id)
@@ -207,7 +207,7 @@ class InventoryTree(Tree):
             return self.root_inventory.iter_entries_by_dir(
                 specific_file_ids=inventory_file_ids)
 
-    def iter_child_entries(self, path, file_id=None):
+    def iter_child_entries(self, path):
         with self.lock_read():
             ie = self._path2ie(path)
             if ie.kind != 'directory':
@@ -755,10 +755,10 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
                 return
         entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
         if inv.root is not None and not include_root and from_dir is None:
-            # skip the root for compatability with the current apis.
+            # skip the root for compatibility with the current apis.
             next(entries)
         for path, entry in entries:
-            yield path, 'V', entry.kind, entry.file_id, entry
+            yield path, 'V', entry.kind, entry
 
     def get_symlink_target(self, path):
         # Inventories store symlink targets in unicode
@@ -917,9 +917,9 @@ class InterCHKRevisionTree(InterTree):
             changed_file_ids = set(changed_file_ids)
             for relpath, entry in self.target.root_inventory.iter_entries():
                 if (specific_file_ids is not None and
-                        not entry.file_id in specific_file_ids):
+                        entry.file_id not in specific_file_ids):
                     continue
-                if not entry.file_id in changed_file_ids:
+                if entry.file_id not in changed_file_ids:
                     yield (entry.file_id,
                            (relpath, relpath),  # Not renamed
                            False,  # Not modified

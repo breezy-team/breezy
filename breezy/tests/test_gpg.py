@@ -342,13 +342,13 @@ sha1: 6411f9bdf6571200357140c9ce7c0f50106ac9a4
         self.import_keys()
         content = b"""-----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
- 
+
 bazaar-ng testament short form 1
 revision-id: test@example.com-20110801100657-f1dr1nompeex723z
 sha1: 59ab434be4c2d5d646dee84f514aa09e1b72feeb
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.4.10 (GNU/Linux)
- 
+
 iJwEAQECAAYFAk42esUACgkQHOJve0+NFRPc5wP7BoZkzBU8JaHMLv/LmqLr0sUz
 zuE51ofZZ19L7KVtQWsOi4jFy0fi4A5TFwO8u9SOfoREGvkw292Uty9subSouK5/
 mFmDOYPQ+O83zWgYZsBmMJWYDZ+X9I6XXZSbPtV/7XyTjaxtl5uRnDVJjg+AzKvD

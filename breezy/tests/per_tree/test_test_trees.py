@@ -141,10 +141,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
-        if tree.has_versioned_directories() or not tree.has_filename('b'):
-            self.assertEqual([], list(tree.unknowns()))
-        else:
-            self.assertEqual(['b'], list(tree.unknowns()))
+        self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         expected_paths = (
             ['', 'a']
@@ -169,11 +166,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
-        if tree.has_versioned_directories() or not tree.has_filename('1top-dir/1dir-in-1topdir'):
-            self.assertEqual([], list(tree.unknowns()))
-        else:
-            self.assertEqual(['1top-dir/1dir-in-1topdir'],
-                             list(tree.unknowns()))
+        self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         tree_root = tree.path2id('')
         try:
@@ -227,11 +220,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
-        if tree.has_versioned_directories() or not tree.has_filename('1top-dir/1dir-in-1topdir'):
-            self.assertEqual([], list(tree.unknowns()))
-        else:
-            self.assertEqual(['1top-dir/1dir-in-1topdir'],
-                             list(tree.unknowns()))
+        self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         tree_root = tree.path2id('')
         if tree.has_versioned_directories():

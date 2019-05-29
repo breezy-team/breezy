@@ -443,6 +443,13 @@ class BzrBranch(Branch, _RelockDebugMixin):
         super(BzrBranch, self)._clear_cached_state()
         self._tags_bytes = None
 
+    def reconcile(self, thorough=True):
+        """Make sure the data stored in this branch is consistent."""
+        from .reconcile import BranchReconciler
+        with self.lock_write():
+            reconciler = BranchReconciler(self, thorough=thorough)
+            return reconciler.reconcile()
+
 
 class BzrBranch8(BzrBranch):
     """A branch that stores tree-reference locations."""
@@ -970,12 +977,12 @@ class BranchReferenceFormat(BranchFormatMetadir):
 
     def _write_reference(self, a_controldir, transport, to_branch):
         to_url = to_branch.user_url
-        if a_controldir.control_url == to_branch.controldir.control_url:
-            # Write relative paths for colocated branches, but absolute
-            # paths for everything else. This is for the benefit
-            # of older bzr versions that don't support relative paths.
-            to_url = urlutils.relative_url(
-                a_controldir.user_url, to_branch.user_url)
+        # Ideally, we'd write a relative path here for the benefit of colocated
+        # branches - so that moving a control directory doesn't break
+        # any references to colocated branches. Unfortunately, bzr
+        # does not support relative URLs. See pad.lv/1803845 -- jelmer
+        # to_url = urlutils.relative_url(
+        #    a_controldir.user_url, to_branch.user_url)
         transport.put_bytes('location', to_url.encode('utf-8'))
 
     def set_reference(self, a_controldir, name, to_branch):

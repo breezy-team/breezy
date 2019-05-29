@@ -660,7 +660,7 @@ class KnitPacker(Packer):
             pack_readv_requests = []
             for key, value in items:
                 # ---- KnitGraphIndex.get_position
-                bits = value[1:].split(' ')
+                bits = value[1:].split(b' ')
                 offset, length = int(bits[0]), int(bits[1])
                 pack_readv_requests.append((offset, length, (key, value[0:1])))
             # linear scan up the pack
@@ -685,7 +685,7 @@ class KnitPacker(Packer):
                     df, _ = knit._parse_record_header(key, raw_data)
                     df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
-                write_index.add_node(key, eol_flag + "%d %d" % (pos, size))
+                write_index.add_node(key, eol_flag + b"%d %d" % (pos, size))
                 pb.update("Copied record", record_index)
                 record_index += 1
 

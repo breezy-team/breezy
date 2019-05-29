@@ -75,6 +75,7 @@ from . import (
     errors,
     registry,
     revisionspec,
+    trace,
     )
 from .osutils import (
     format_date,
@@ -1522,7 +1523,11 @@ class LogFormatter(object):
         """
         lines = self._foreign_info_properties(revision)
         for key, handler in properties_handler_registry.iteritems():
-            lines.extend(self._format_properties(handler(revision)))
+            try:
+                lines.extend(self._format_properties(handler(revision)))
+            except Exception:
+                trace.log_exception_quietly()
+                trace.print_exception(sys.exc_info(), self.to_file)
         return lines
 
     def _foreign_info_properties(self, rev):
@@ -2156,21 +2161,21 @@ properties_handler_registry = registry.Registry()
 
 
 def _bugs_properties_handler(revision):
+    fixed_bug_urls = []
+    related_bug_urls = []
+    for bug_url, status in revision.iter_bugs():
+        if status == 'fixed':
+            fixed_bug_urls.append(bug_url)
+        elif status == 'related':
+            related_bug_urls.append(bug_url)
     ret = {}
-    if 'bugs' in revision.properties:
-        bug_lines = revision.properties['bugs'].split('\n')
-        bug_rows = [line.split(' ', 1) for line in bug_lines]
-        fixed_bug_urls = [row[0] for row in bug_rows if
-                          len(row) > 1 and row[1] == 'fixed']
-        related_bug_urls = [row[0] for row in bug_rows if
-                            len(row) > 1 and row[1] == 'related']
-        if fixed_bug_urls:
-            text = ngettext('fixes bug', 'fixes bugs', len(fixed_bug_urls))
-            ret[text] = ' '.join(fixed_bug_urls)
-        if related_bug_urls:
-            text = ngettext('related bug', 'related bugs',
-                            len(related_bug_urls))
-            ret[text] = ' '.join(related_bug_urls)
+    if fixed_bug_urls:
+        text = ngettext('fixes bug', 'fixes bugs', len(fixed_bug_urls))
+        ret[text] = ' '.join(fixed_bug_urls)
+    if related_bug_urls:
+        text = ngettext('related bug', 'related bugs',
+                        len(related_bug_urls))
+        ret[text] = ' '.join(related_bug_urls)
     return ret
 
 

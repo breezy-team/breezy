@@ -109,11 +109,11 @@ class ShelfCreator(object):
             # Also don't shelve deletion of tree root.
             if kind[1] is None and names[0] == '':
                 continue
-            if kind[0] is None or versioned[0] == False:
+            if kind[0] is None or versioned[0] is False:
                 self.creation[file_id] = (kind[1], names[1], parents[1],
                                           versioned)
                 yield ('add file', file_id, kind[1], paths[1])
-            elif kind[1] is None or versioned[0] == False:
+            elif kind[1] is None or versioned[0] is False:
                 self.deletion[file_id] = (kind[0], names[0], parents[0],
                                           versioned)
                 yield ('delete file', file_id, kind[0], paths[0])
@@ -150,7 +150,7 @@ class ShelfCreator(object):
     def shelve_all(self):
         """Shelve all changes.
 
-        :return: True if changes were shelved, False if there were no changes.
+        :return: ``True`` if changes were shelved, otherwise ``False``.
         """
         change = None
         for change in self.iter_shelvable():

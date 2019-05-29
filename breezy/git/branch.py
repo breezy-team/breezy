@@ -76,7 +76,10 @@ from .refs import (
 from .unpeel_map import (
     UnpeelMap,
     )
-from .urls import git_url_to_bzr_url
+from .urls import (
+    git_url_to_bzr_url,
+    bzr_url_to_git_url,
+    )
 
 
 class GitPullResult(branch.PullResult):
@@ -139,14 +142,14 @@ class GitTags(tag.BasicTags):
             if target_repo._git.refs.get(ref_name) == unpeeled:
                 pass
             elif overwrite or ref_name not in target_repo._git.refs:
-                target_repo._git.refs[ref_name] = unpeeled or peeled
                 try:
                     updates[tag_name] = (
-                        self.repository.lookup_foreign_revision_id(peeled))
+                        target_repo.lookup_foreign_revision_id(peeled))
                 except KeyError:
                     trace.warning('%s does not point to a valid object',
                                   tag_name)
                     continue
+                target_repo._git.refs[ref_name] = unpeeled or peeled
             else:
                 try:
                     source_revid = self.repository.lookup_foreign_revision_id(
@@ -464,49 +467,76 @@ class GitBranch(ForeignBranch):
         # Git doesn't do stacking (yet...)
         raise branch.UnstackableBranchFormat(self._format, self.base)
 
-    def _get_parent_location(self):
-        """See Branch.get_parent()."""
-        # FIXME: Set "origin" url from .git/config ?
-        cs = self.repository._git.get_config_stack()
+    def _get_push_origin(self, cs):
+        """Get the name for the push origin.
+
+        The exact behaviour is documented in the git-config(1) manpage.
+        """
         try:
-            location = cs.get((b"remote", b'origin'), b"url")
+            return cs.get((b'branch', self.name.encode('utf-8')), b'pushRemote')
+        except KeyError:
+            try:
+                return cs.get((b'branch', ), b'remote')
+            except KeyError:
+                try:
+                    return cs.get((b'branch', self.name.encode('utf-8')), b'remote')
+                except KeyError:
+                    return b'origin'
+
+    def _get_origin(self, cs):
+        try:
+            return cs.get((b'branch', self.name.encode('utf-8')), b'remote')
+        except KeyError:
+            return b'origin'
+
+    def _get_related_push_branch(self, cs):
+        remote = self._get_push_origin(cs)
+        try:
+            location = cs.get((b"remote", remote), b"url")
         except KeyError:
             return None
 
-        params = {}
+        return git_url_to_bzr_url(location.decode('utf-8'), ref=self.ref)
+
+    def _get_related_merge_branch(self, cs):
+        remote = self._get_origin(cs)
         try:
-            ref = cs.get((b"remote", b"origin"), b"merge")
+            location = cs.get((b"remote", remote), b"url")
         except KeyError:
-            pass
-        else:
-            if ref != b'HEAD':
-                try:
-                    params['branch'] = urlutils.escape(ref_to_branch_name(ref))
-                except ValueError:
-                    params['ref'] = urlutils.quote_from_bytes(ref)
+            return None
 
-        url = git_url_to_bzr_url(location.decode('utf-8'))
-        return urlutils.join_segment_parameters(url, params)
+        try:
+            ref = cs.get((b"branch", remote), b"merge")
+        except KeyError:
+            ref = self.ref
 
-    def set_parent(self, location):
-        # FIXME: Set "origin" url in .git/config ?
-        cs = self.repository._git.get_config()
-        this_url = urlutils.split_segment_parameters(self.user_url)[0]
-        target_url, target_params = urlutils.split_segment_parameters(location)
-        location = urlutils.relative_url(this_url, target_url)
-        cs.set((b"remote", b"origin"), b"url", location)
-        if 'branch' in target_params:
-            cs.set((b"remote", b"origin"), b"merge",
-                   branch_name_to_ref(target_params['branch']))
-        elif 'ref' in target_params:
-            cs.set((b"remote", b"origin"), b"merge",
-                   target_params['ref'])
-        else:
-            # TODO(jelmer): Maybe unset rather than setting to HEAD?
-            cs.set((b"remote", b"origin"), b"merge", 'HEAD')
+        return git_url_to_bzr_url(location.decode('utf-8'), ref=ref)
+
+    def _get_parent_location(self):
+        """See Branch.get_parent()."""
+        cs = self.repository._git.get_config_stack()
+        return self._get_related_merge_branch(cs)
+
+    def _write_git_config(self, cs):
         f = BytesIO()
         cs.write_to_file(f)
         self.repository._git._put_named_file('config', f.getvalue())
+
+    def set_parent(self, location):
+        cs = self.repository._git.get_config()
+        remote = self._get_origin(cs)
+        this_url = urlutils.split_segment_parameters(self.user_url)[0]
+        target_url, branch, ref = bzr_url_to_git_url(location)
+        location = urlutils.relative_url(this_url, target_url)
+        cs.set((b"remote", remote), b"url", location)
+        if branch:
+            cs.set((b"branch", remote), b"merge", branch_name_to_ref(branch))
+        elif ref:
+            cs.set((b"branch", remote), b"merge", ref)
+        else:
+            # TODO(jelmer): Maybe unset rather than setting to HEAD?
+            cs.set((b"branch", remote), b"merge", b'HEAD')
+        self._write_git_config(cs)
 
     def break_lock(self):
         raise NotImplementedError(self.break_lock)
@@ -594,6 +624,32 @@ class GitBranch(ForeignBranch):
             if self._tag_refs is None:
                 self._tag_refs = list(self._iter_tag_refs())
             return self._tag_refs
+
+    def import_last_revision_info_and_tags(self, source, revno, revid,
+                                           lossy=False):
+        """Set the last revision info, importing from another repo if necessary.
+
+        This is used by the bound branch code to upload a revision to
+        the master branch first before updating the tip of the local branch.
+        Revisions referenced by source's tags are also transferred.
+
+        :param source: Source branch to optionally fetch from
+        :param revno: Revision number of the new tip
+        :param revid: Revision id of the new tip
+        :param lossy: Whether to discard metadata that can not be
+            natively represented
+        :return: Tuple with the new revision number and revision id
+            (should only be different from the arguments when lossy=True)
+        """
+        push_result = source.push(
+            self, stop_revision=revid, lossy=lossy, _stop_revno=revno)
+        return (push_result.new_revno, push_result.new_revid)
+
+    def reconcile(self, thorough=True):
+        """Make sure the data stored in this branch is consistent."""
+        from ..reconcile import ReconcileResult
+        # Nothing to do here
+        return ReconcileResult()
 
 
 class LocalGitBranch(GitBranch):
@@ -694,7 +750,10 @@ class LocalGitBranch(GitBranch):
     def get_push_location(self):
         """See Branch.get_push_location."""
         push_loc = self.get_config_stack().get('push_location')
-        return push_loc
+        if push_loc is not None:
+            return push_loc
+        cs = self.repository._git.get_config_stack()
+        return self._get_related_push_branch(cs)
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
@@ -1188,12 +1247,13 @@ class InterToGitBranch(branch.GenericInterBranch):
         return (not isinstance(source, GitBranch) and
                 isinstance(target, GitBranch))
 
-    def _get_new_refs(self, stop_revision=None, fetch_tags=None):
+    def _get_new_refs(self, stop_revision=None, fetch_tags=None,
+                      stop_revno=None):
         if not self.source.is_locked():
             raise errors.ObjectNotLocked(self.source)
         if stop_revision is None:
             (stop_revno, stop_revision) = self.source.last_revision_info()
-        else:
+        elif stop_revno is None:
             stop_revno = self.source.revision_id_to_revno(stop_revision)
         if not isinstance(stop_revision, bytes):
             raise TypeError(stop_revision)
@@ -1285,13 +1345,13 @@ class InterToGitBranch(branch.GenericInterBranch):
             raise errors.NoRoundtrippingSupport(self.source, self.target)
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
-             possible_transports=None, run_hooks=True):
+             possible_transports=None, run_hooks=True, _stop_revno=None):
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
         with self.source.lock_read(), self.target.lock_write():
             new_refs, main_ref, stop_revinfo = self._get_new_refs(
-                stop_revision)
+                stop_revision, stop_revno=_stop_revno)
 
             def update_refs(old_refs):
                 return self._update_refs(result, old_refs, new_refs, overwrite)
@@ -1314,7 +1374,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         return result
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
-             _override_hook_source_branch=None):
+             _override_hook_source_branch=None, _stop_revno=None):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -1322,7 +1382,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         result.master_branch = result.target_branch
         with self.source.lock_read(), self.target.lock_write():
             new_refs, main_ref, stop_revinfo = self._get_new_refs(
-                stop_revision)
+                stop_revision, stop_revno=_stop_revno)
 
             def update_refs(old_refs):
                 return self._update_refs(result, old_refs, new_refs, overwrite)

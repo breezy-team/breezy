@@ -30,8 +30,8 @@ class TestListFiles(TestCaseWithTree):
                     ('b/c', 'V', 'file', tree.path2id('b/c')),
                     ]
         with tree.lock_read():
-            actual = [(path, status, kind, file_id)
-                      for path, status, kind, file_id, ie in
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
                       tree.list_files(include_root=True)]
         self.assertEqual(expected, actual)
 
@@ -43,8 +43,8 @@ class TestListFiles(TestCaseWithTree):
                     ('b/c', 'V', 'file', tree.path2id('b/c')),
                     ]
         with tree.lock_read():
-            actual = [(path, status, kind, file_id)
-                      for path, status, kind, file_id, ie in
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
                       tree.list_files()]
         self.assertEqual(expected, actual)
 
@@ -57,8 +57,8 @@ class TestListFiles(TestCaseWithTree):
         expected.append(
             ('b', 'V', 'directory', tree.path2id('b')))
         with tree.lock_read():
-            actual = [(path, status, kind, file_id)
-                      for path, status, kind, file_id, ie in
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
                       tree.list_files(include_root=True, recursive=False)]
         self.assertEqual(expected, actual)
 
@@ -69,8 +69,8 @@ class TestListFiles(TestCaseWithTree):
         expected.append(
             ('b', 'V', 'directory', tree.path2id('b')))
         with tree.lock_read():
-            actual = [(path, status, kind, file_id)
-                      for path, status, kind, file_id, ie in
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
                       tree.list_files(recursive=False)]
         self.assertEqual(expected, actual)
 
@@ -80,8 +80,8 @@ class TestListFiles(TestCaseWithTree):
         expected = [('c', 'V', 'file', tree.path2id('b/c')),
                     ]
         with tree.lock_read():
-            actual = [(path, status, kind, file_id)
-                      for path, status, kind, file_id, ie in
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
                       tree.list_files(from_dir=u'b')]
         self.assertEqual(expected, actual)
 
@@ -94,7 +94,7 @@ class TestListFiles(TestCaseWithTree):
             ('b', 'V', 'directory', tree.path2id('b')))
 
         with tree.lock_read():
-            actual = [(path, status, kind, file_id)
-                      for path, status, kind, file_id, ie in
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
                       tree.list_files(from_dir='', recursive=False)]
         self.assertEqual(expected, actual)

@@ -73,14 +73,14 @@ class TestBadRevisionParents(TestCaseWithBrokenRevisionIndex):
         make sure we safely detect this problem.
         """
         repo = self.make_repo_with_extra_ghost_index()
-        reconciler = repo.reconcile(thorough=True)
-        self.assertTrue(reconciler.aborted,
+        result = repo.reconcile(thorough=True)
+        self.assertTrue(result.aborted,
                         "reconcile should have aborted due to bad parents.")
 
     def test_does_not_abort_on_clean_repo(self):
         repo = self.make_repository('.')
-        reconciler = repo.reconcile(thorough=True)
-        self.assertFalse(reconciler.aborted,
+        result = repo.reconcile(thorough=True)
+        self.assertFalse(result.aborted,
                          "reconcile should not have aborted on an unbroken repository.")
 
 
@@ -147,11 +147,11 @@ class TestsNeedingReweave(TestReconcile):
         self.make_repository('empty')
         d = BzrDir.open(self.get_url('empty'))
         # calling on a empty repository should do nothing
-        reconciler = d.find_repository().reconcile(**kwargs)
+        result = d.find_repository().reconcile(**kwargs)
         # no inconsistent parents should have been found
-        self.assertEqual(0, reconciler.inconsistent_parents)
+        self.assertEqual(0, result.inconsistent_parents)
         # and no garbage inventories
-        self.assertEqual(0, reconciler.garbage_inventories)
+        self.assertEqual(0, result.garbage_inventories)
         # and no backup weave should have been needed/made.
         self.checkNoBackupInventory(d)
 
@@ -187,11 +187,11 @@ class TestsNeedingReweave(TestReconcile):
         if not repo._reconcile_does_inventory_gc:
             raise TestSkipped('Irrelevant test')
         self.checkUnreconciled(d, repo.reconcile())
-        reconciler = repo.reconcile(thorough=True)
+        result = repo.reconcile(thorough=True)
         # no bad parents
-        self.assertEqual(0, reconciler.inconsistent_parents)
+        self.assertEqual(0, result.inconsistent_parents)
         # and one garbage inventory
-        self.assertEqual(1, reconciler.garbage_inventories)
+        self.assertEqual(1, result.garbage_inventories)
         self.check_missing_was_removed(repo)
 
     def check_thorough_reweave_missing_revision(self, aBzrDir, reconcile,
@@ -241,8 +241,7 @@ class TestsNeedingReweave(TestReconcile):
 
         def reconcile():
             reconciler = Reconciler(d)
-            reconciler.reconcile()
-            return reconciler
+            return reconciler.reconcile()
         self.check_thorough_reweave_missing_revision(d, reconcile)
 
     def test_reweave_inventory_without_revision_and_ghost(self):

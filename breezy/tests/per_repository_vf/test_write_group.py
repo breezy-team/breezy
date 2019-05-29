@@ -70,9 +70,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         tree.add([''], [b'TREE_ROOT'], ['directory'])
         tree.add(['dir'], [b'dir-id'], ['directory'])
         tree.add(['filename'], [b'file-id'], ['file'])
-        tree.put_file_bytes_non_atomic(
-            'filename', b'content\n',
-            file_id=b'file-id')
+        tree.put_file_bytes_non_atomic('filename', b'content\n')
         tree.commit('Trunk commit', rev_id=b'rev-0')
         tree.commit('Trunk commit', rev_id=b'rev-1')
         tree.unlock()

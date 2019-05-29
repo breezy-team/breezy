@@ -16,7 +16,7 @@
 
 """Tests for bazaar control directories that do not support colocated branches.
 
-Colocated branch support is optional, and when it is not supported the methods 
+Colocated branch support is optional, and when it is not supported the methods
 and attributes colocated branch support added should fail in known ways.
 """
 

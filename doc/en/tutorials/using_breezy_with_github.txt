@@ -1,0 +1,71 @@
+========================
+Using Breezy with GitHub
+========================
+
+GitHub: the largest code-hosting site
+-------------------------------------
+
+This tutorial looks at how Breezy and GitHub can be used together.
+
+Accessing code in GitHub using Breezy
+========================================
+
+Getting the code for a project
+------------------------------
+
+Breezy users can grab code from GitHub using regular GitHub URLs:
+
+  brz branch git://github.com/owner/name
+
+where `owner` is the name of the owner and `name` is the repository name. Here are some examples::
+
+  brz branch https://github.com/inkscape/inkscape
+  brz branch git://github.com/KDE/amarok
+  brz branch https://github.com/python/cpython
+
+You can then browse the code locally using your favorite editor or IDE and
+change the code if you wish.
+
+To access a non-default branch, specify the 'branch' segment parameter::
+
+  brz branch https://github.com/inkscape/inkscape,branch=backports
+
+Publishing your changes
+-----------------------
+
+Having fixed that annoying bug or added that cool feature you've always
+wanted, it's time to impress your friends and make the world a better
+place by making your code available to others. As explained earlier,
+GitHub is a code hosting service so you can push your
+branch to it and others can access your code from there.
+
+In the GitHub web UI, you can create a "fork" of an upstream repository. For
+example, if user "jelmer" forked the inkscape repository at
+https://github.com/inkscape/inkscape then the fork would be at
+https://github.com/jelmer/inkscape.
+
+You can then push your changes to a branch like this::
+
+  brz push git+ssh://github.com/jelmer/inkscape,branch=my-branch
+
+Others can then download your code like this::
+
+  brz branch git://github.com/jelmer/inkscape,branch=my-branch
+
+
+Associating branches with GitHub issues
+---------------------------------------
+
+The standard Breezy bugtracking functionality can also be used for GitHub
+issues.
+
+When you commit using Breezy, use the --fixes option like this::
+
+  brz commit --fixes github:inkscape/inkscape/1234
+
+where 1234 is the bug ID. This will add some metadata to the commit message.
+
+You can also define a short name for a specific project, by adding an alias for
+a project. For example, to add an alias for dulwich::
+
+  brz config bugtracker_dulwich_url=https://github.com/dulwich/dulwich/issues/{id}

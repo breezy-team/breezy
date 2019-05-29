@@ -19,9 +19,13 @@
 
 from __future__ import absolute_import
 
+try:
+    from collections.abc import deque
+except ImportError:  # python < 3.7
+    from collections import deque
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import collections
 
 from breezy import (
     conflicts as _mod_conflicts,
@@ -66,12 +70,16 @@ class TreeEntry(object):
         return (isinstance(other, TreeEntry)
                 and other.__class__ == self.__class__)
 
+    kind = None
+
     def kind_character(self):
         return "???"
 
 
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
+
+    kind = 'directory'
 
     def kind_character(self):
         return "/"
@@ -80,6 +88,8 @@ class TreeDirectory(TreeEntry):
 class TreeFile(TreeEntry):
     """See TreeEntry. This is a regular file in a working tree."""
 
+    kind = 'file'
+
     def kind_character(self):
         return ''
 
@@ -87,12 +97,16 @@ class TreeFile(TreeEntry):
 class TreeLink(TreeEntry):
     """See TreeEntry. This is a symlink in a working tree."""
 
+    kind = 'symlink'
+
     def kind_character(self):
         return ''
 
 
 class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
+
+    kind = 'tree-reference'
 
     def kind_character(self):
         return '+'
@@ -258,8 +272,8 @@ class Tree(object):
         :param include_root: Whether to include the entry for the tree root
         :param from_dir: Directory under which to list files
         :param recursive: Whether to list files recursively
-        :return: iterator over tuples of (path, versioned, kind, file_id,
-            inventory entry)
+        :return: iterator over tuples of
+            (path, versioned, kind, inventory entry)
         """
         raise NotImplementedError(self.list_files)
 
@@ -290,7 +304,7 @@ class Tree(object):
         :param path: A relative path within the tree.
         :return: A tuple containing kind, size, exec, sha1-or-link.
             Kind is always present (see tree.kind()).
-            size is present if kind is file and the size of the 
+            size is present if kind is file and the size of the
                 canonical form can be cheaply determined, None otherwise.
             exec is None unless kind is file and the platform supports the 'x'
                 bit.
@@ -732,7 +746,7 @@ class InterTree(InterObject):
         elif source_kind == 'tree-reference':
             if (self.source.get_reference_revision(source_path)
                     != self.target.get_reference_revision(target_path)):
-                    changed_content = True
+                changed_content = True
         parent = (source_parent, target_parent)
         name = (source_name, target_name)
         executable = (source_executable, target_executable)
@@ -840,9 +854,9 @@ class InterTree(InterObject):
                                       self.target.extras()
                                       if specific_files is None or
                                       osutils.is_inside_any(specific_files, p)])
-            all_unversioned = collections.deque(all_unversioned)
+            all_unversioned = deque(all_unversioned)
         else:
-            all_unversioned = collections.deque()
+            all_unversioned = deque()
         to_paths = {}
         from_entries_by_dir = list(self.source.iter_entries_by_dir(
             specific_files=source_specific_files))
@@ -1352,25 +1366,22 @@ def get_canonical_path(tree, path, normalize):
     :return: The canonical path
     """
     # go walkin...
-    cur_id = tree.get_root_id()
     cur_path = ''
     bit_iter = iter(path.split("/"))
     for elt in bit_iter:
         lelt = normalize(elt)
         new_path = None
         try:
-            for child in tree.iter_child_entries(cur_path, cur_id):
+            for child in tree.iter_child_entries(cur_path):
                 try:
                     if child.name == elt:
                         # if we found an exact match, we can stop now; if
                         # we found an approximate match we need to keep
                         # searching because there might be an exact match
                         # later.
-                        cur_id = child.file_id
                         new_path = osutils.pathjoin(cur_path, child.name)
                         break
                     elif normalize(child.name) == lelt:
-                        cur_id = child.file_id
                         new_path = osutils.pathjoin(cur_path, child.name)
                 except errors.NoSuchId:
                     # before a change is committed we can see this error...

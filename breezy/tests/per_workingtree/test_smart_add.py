@@ -57,7 +57,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
 
         with tree.lock_read():
             files = [(path, status, kind)
-                     for path, status, kind, file_id, parent_id
+                     for path, status, kind, parent_id
                      in tree.list_files(include_root=True)]
         self.assertEqual([('', 'V', 'directory'), ('a', 'V', 'file')],
                          files)

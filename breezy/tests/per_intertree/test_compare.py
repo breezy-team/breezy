@@ -477,15 +477,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
             else:
                 # Neither tree can be used
                 return
-        tree1.lock_read()
-        try:
-            tree2.lock_read()
-            try:
-                return tree2.has_changes(tree1)
-            finally:
-                tree2.unlock()
-        finally:
-            tree1.unlock()
+        with tree1.lock_read(), tree2.lock_read():
+            return tree2.has_changes(tree1)
 
     def mutable_trees_to_locked_test_trees(self, tree1, tree2):
         """Convert the working trees into test trees.
@@ -806,14 +799,14 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.mkdir('changing/unchanging', b'mid-id')
         tree1.add(['changing/unchanging/file'], [b'file-id'], ['file'])
         tree1.put_file_bytes_non_atomic(
-            'changing/unchanging/file', b'a file', file_id=b'file-id')
+            'changing/unchanging/file', b'a file')
         tree2 = self.make_to_branch_and_tree('2')
         tree2.set_root_id(tree1.get_root_id())
         tree2.mkdir('changed', b'parent-id')
         tree2.mkdir('changed/unchanging', b'mid-id')
         tree2.add(['changed/unchanging/file'], [b'file-id'], ['file'])
         tree2.put_file_bytes_non_atomic(
-            'changed/unchanging/file', b'changed content', file_id=b'file-id')
+            'changed/unchanging/file', b'changed content')
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         # parent-id has changed, as has file-id
         root_id = tree1.path2id('')
@@ -832,16 +825,14 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.mkdir('changed', b'parent-id')
         tree1.mkdir('changed/unchanging', b'mid-id')
         tree1.add(['changed/unchanging/file'], [b'file-id'], ['file'])
-        tree1.put_file_bytes_non_atomic(
-            'changed/unchanging/file', b'a file',
-            b'file-id')
+        tree1.put_file_bytes_non_atomic('changed/unchanging/file', b'a file')
         tree2 = self.make_to_branch_and_tree('2')
         tree2.set_root_id(b'new')
         tree2.mkdir('changed', b'parent-id')
         tree2.mkdir('changed/unchanging', b'mid-id')
         tree2.add(['changed/unchanging/file'], [b'file-id'], ['file'])
         tree2.put_file_bytes_non_atomic(
-            'changed/unchanging/file', b'changed content', file_id=b'file-id')
+            'changed/unchanging/file', b'changed content')
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         # old is gone, new is added, parent-id has changed(reparented), as has
         # file-id(content)
@@ -1761,14 +1752,24 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.not_applicable_if_cannot_represent_unversioned(tree2)
 
-        expected = self.sorted([
-            self.unversioned(tree2, u'a/file'),
-            self.unversioned(tree2, u'a/dir'),
-            ])
-        self.assertEqual(expected,
-                         self.do_iter_changes(tree1, tree2,
-                                              require_versioned=False,
-                                              want_unversioned=True))
+        if tree2.has_versioned_directories():
+            expected = self.sorted([
+                self.unversioned(tree2, u'a/file'),
+                self.unversioned(tree2, u'a/dir'),
+                ])
+            self.assertEqual(expected,
+                             self.do_iter_changes(tree1, tree2,
+                                                  require_versioned=False,
+                                                  want_unversioned=True))
+        else:
+            expected = self.sorted([
+                self.unversioned(tree2, u'a/file'),
+                self.unversioned(tree2, u'a/dir/subfile'),
+                ])
+            self.assertEqual(expected,
+                             self.do_iter_changes(tree1, tree2,
+                                                  require_versioned=False,
+                                                  want_unversioned=True))
 
     def test_rename_over_deleted(self):
         tree1 = self.make_branch_and_tree('tree1')

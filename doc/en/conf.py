@@ -66,14 +66,17 @@ brz_documents = [
      brz_title(u'Breezy in five minutes'), brz_team, 'howto'),
     ('tutorials/tutorial', 'brz-%s-tutorial' % (brz_locale,),
      brz_title(u'Breezy Tutorial'), brz_team, 'howto'),
+    ('tutorials/using_breezy_with_github',
+     'brz-%s-tutorial-with-github' % (brz_locale,),
+     brz_title(u'Using Breezy With GitHub'), brz_team, 'howto'),
     ('tutorials/using_breezy_with_launchpad',
      'brz-%s-tutorial-with-launchpad' % (brz_locale,),
      brz_title(u'Using Breezy With Launchpad'), brz_team, 'howto'),
     ('tutorials/centralized_workflow',
      'brz-%s-tutorial-centralized' % (brz_locale,),
      brz_title(u'Centralized Workflow Tutorial'), brz_team, 'howto'),
-    ('whats-new/whats-new-in-2.1', 'brz-%s-whats-new' % (brz_locale,),
-     brz_title(u"What's New in Breezy 2.1?"), brz_team, 'howto'),
+    ('whats-new/whats-new-in-3.0', 'brz-%s-whats-new' % (brz_locale,),
+     brz_title(u"What's New in Breezy 3.0?"), brz_team, 'howto'),
 ]
 
 latex_documents = [
@@ -103,4 +106,3 @@ unused_docs = [
     # Miscellaneous
     'user-reference/readme',
 ]
-

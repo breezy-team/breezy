@@ -59,7 +59,8 @@ class TestSourceStream(tests.TestCase):
         self.assertIsNot(b"bla", stream.read())
 
 
-fast_export_baseline_data = """commit refs/heads/master
+fast_export_baseline_data1 = """reset refs/heads/master
+commit refs/heads/master
 mark :1
 committer
 data 15
@@ -71,6 +72,42 @@ test 3
 M 644 inline c
 data 6
 test 4
+commit refs/heads/master
+mark :2
+committer
+data 14
+modify a again
+from :1
+M 644 inline a
+data 20
+test 1
+test 3
+test 5
+commit refs/heads/master
+mark :3
+committer
+data 5
+add d
+from :2
+M 644 inline d
+data 6
+test 6
+"""
+
+
+fast_export_baseline_data2 = """reset refs/heads/master
+commit refs/heads/master
+mark :1
+committer
+data 15
+add c, remove b
+M 644 inline c
+data 6
+test 4
+M 644 inline a
+data 13
+test 1
+test 3
 commit refs/heads/master
 mark :2
 committer
@@ -107,17 +144,16 @@ class TestFastExport(ExternalBase):
         tree.commit("pointless")
         data = self.run_bzr("fast-export br")[0]
         self.assertTrue(data.startswith(
-            'commit refs/heads/master\nmark :1\ncommitter'))
+            'reset refs/heads/master\n'
+            'commit refs/heads/master\n'
+            'mark :1\ncommitter'), data)
 
     def test_file(self):
         tree = self.make_branch_and_tree("br")
         tree.commit("pointless")
         data = self.run_bzr("fast-export br br.fi")[0]
         self.assertEquals("", data)
-        try:
-            self.assertPathExists("br.fi")
-        except AttributeError:  # bzr < 2.4
-            self.failUnlessExists("br.fi")
+        self.assertPathExists("br.fi")
 
     def test_tag_rewriting(self):
         tree = self.make_branch_and_tree("br")
@@ -188,7 +224,7 @@ class TestFastExport(ExternalBase):
         # followed by the deltas for 4 and 5
         data = self.run_bzr("fast-export --baseline -r 3.. bl")[0]
         data = re.sub('committer.*', 'committer', data)
-        self.assertEquals(fast_export_baseline_data, data)
+        self.assertIn(data, (fast_export_baseline_data1, fast_export_baseline_data2))
 
         # Also confirm that --baseline with no args is identical to full export
         data1 = self.run_bzr("fast-export --baseline bl")[0]

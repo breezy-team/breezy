@@ -24,7 +24,7 @@ def _add_log_tail(report):
         if line == '\n':
             blanks += 1
         brz_log_tail.append(line)
-        if blanks >= 2: 
+        if blanks >= 2:
             break
 
     brz_log_tail.reverse()
@@ -36,7 +36,7 @@ def add_info(report):
     if 'BrzPlugins' not in report:
         # may already be present in-process
         report['BrzPlugins'] = command_output(['brz', 'plugins', '-v'])
-        
+
     # by default assume brz crashes are upstream bugs; this relies on
     # having a brz entry under /etc/apport/crashdb.conf.d/
     report['CrashDB'] = 'brz'
@@ -49,5 +49,5 @@ def add_info(report):
     #attach_file_if_exists(report,
     #	os.path.join(dot_brz, 'locations.conf', 'BrzLocations')
 
-        
+
 # vim: expandtab shiftwidth=4

@@ -49,8 +49,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_finish_inventory_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             builder = tree.branch.get_commit_builder([])
             try:
                 list(builder.record_iter_changes(tree, tree.last_revision(),
@@ -61,13 +60,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 raise
             repo = tree.branch.repository
             repo.commit_write_group()
-        finally:
-            tree.unlock()
 
     def test_abort_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             builder = tree.branch.get_commit_builder([])
             try:
                 basis = tree.basis_tree()
@@ -77,56 +73,44 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 builder.finish_inventory()
             finally:
                 builder.abort()
-        finally:
-            tree.unlock()
 
     def test_commit_lossy(self):
         tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             builder = tree.branch.get_commit_builder([], lossy=True)
             list(builder.record_iter_changes(tree, tree.last_revision(),
                                              tree.iter_changes(tree.basis_tree())))
             builder.finish_inventory()
             rev_id = builder.commit('foo bar blah')
-        finally:
-            tree.unlock()
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
     def test_commit_message(self):
         tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             builder = tree.branch.get_commit_builder([])
             list(builder.record_iter_changes(tree, tree.last_revision(),
                                              tree.iter_changes(tree.basis_tree())))
             builder.finish_inventory()
             rev_id = builder.commit('foo bar blah')
-        finally:
-            tree.unlock()
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
     def test_updates_branch(self):
         tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             builder = tree.branch.get_commit_builder([])
             list(builder.record_iter_changes(tree, tree.last_revision(),
                                              tree.iter_changes(tree.basis_tree())))
             builder.finish_inventory()
             will_update_branch = builder.updates_branch
             rev_id = builder.commit('might update the branch')
-        finally:
-            tree.unlock()
         actually_updated_branch = (tree.branch.last_revision() == rev_id)
         self.assertEqual(actually_updated_branch, will_update_branch)
 
     def test_commit_with_revision_id_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             # use a unicode revision id to test more corner cases.
             # The repository layer is meant to handle this.
             revision_id = u'\xc8abc'.encode('utf8')
@@ -150,20 +134,18 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 builder.abort()
                 raise
             self.assertEqual(revision_id, builder.commit('foo bar'))
-        finally:
-            tree.unlock()
         self.assertTrue(tree.branch.repository.has_revision(revision_id))
         # the revision id must be set on the inventory when saving it. This
         # does not precisely test that - a repository that wants to can add it
         # on deserialisation, but thats all the current contract guarantees
         # anyway.
-        self.assertEqual(revision_id,
-                         tree.branch.repository.revision_tree(revision_id).get_revision_id())
+        self.assertEqual(
+            revision_id,
+            tree.branch.repository.revision_tree(revision_id).get_revision_id())
 
     def test_commit_without_root_errors(self):
         tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             builder = tree.branch.get_commit_builder([])
 
             def do_commit():
@@ -177,8 +159,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 else:
                     builder.commit("msg")
             self.assertRaises(errors.RootMissing, do_commit)
-        finally:
-            tree.unlock()
 
     def test_commit_unchanged_root_record_iter_changes(self):
         tree = self.make_branch_and_tree(".")
@@ -210,8 +190,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree.add(["foo"])
         foo_id = tree.path2id('foo')
         rev_id = tree.commit("added foo")
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             builder = tree.branch.get_commit_builder([rev_id])
             try:
                 delete_change = (foo_id, ('foo', None), True, (True, False),
@@ -228,8 +207,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             except:
                 builder.abort()
                 raise
-        finally:
-            tree.unlock()
         rev_tree = builder.revision_tree()
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
@@ -462,7 +439,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertFileGraph(expected_graph, tree, (file_id, rev2))
 
     def mini_commit_record_iter_changes(self, tree, name, new_name,
-                                        records_version=True, delta_against_basis=True, expect_fs_hash=False):
+                                        records_version=True,
+                                        delta_against_basis=True,
+                                        expect_fs_hash=False):
         """Perform a miniature commit looking for record entry results.
 
         This version uses the record_iter_changes interface.
@@ -498,10 +477,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                         tree_file_stat[0].close()
                         self.assertLength(1, result)
                         result = result[0]
-                        self.assertEqual(result[:2], (file_id, new_name))
+                        self.assertEqual(result[0], new_name)
                         self.assertEqual(
-                            result[2][0], tree.get_file_sha1(new_name))
-                        self.assertEqualStat(result[2][1], tree_file_stat[1])
+                            result[1][0], tree.get_file_sha1(new_name))
+                        self.assertEqualStat(result[1][1], tree_file_stat[1])
                     else:
                         self.assertEqual([], result)
                 builder.finish_inventory()
@@ -600,9 +579,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev2 = self._rename_in_tree(tree1, name, 'rev2')
         rev3 = self._rename_in_tree(tree2, name, 'rev3')
         tree1.merge_from_branch(tree2.branch)
-        rev4 = self.mini_commit_record_iter_changes(tree1, 'new_' + name, 'new_' + name,
-                                                    expect_fs_hash=expect_fs_hash,
-                                                    delta_against_basis=tree1.supports_rename_tracking())
+        rev4 = self.mini_commit_record_iter_changes(
+            tree1, 'new_' + name, 'new_' + name,
+            expect_fs_hash=expect_fs_hash,
+            delta_against_basis=tree1.supports_rename_tracking())
         tree3, = self._get_revtrees(tree1, [rev4])
         expected_graph = {}
         if tree1.supports_rename_tracking():
@@ -873,8 +853,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.overrideAttr(config, '_auto_user_id',
                           lambda: (None, None))
         tree = self.make_branch_and_tree(".")
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             # Make sure no username is available.
             self.assertRaises(config.NoWhoami, tree.branch.get_commit_builder,
                               [])
@@ -889,5 +868,3 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 raise
             repo = tree.branch.repository
             repo.commit_write_group()
-        finally:
-            tree.unlock()

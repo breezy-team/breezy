@@ -91,8 +91,8 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         b = branch.Branch.open('b')
         self.assertEqual(
             dict(b.tags.get_reverse_tag_dict()),
-            {target_revid1: ['tag-name'],
-             target_revid2: ['other-name'],
+            {target_revid1: set(['tag-name']),
+             target_revid2: set(['other-name']),
              })
 
     def test_ghost_tag(self):

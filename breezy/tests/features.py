@@ -404,9 +404,8 @@ subunit = ModuleAvailableFeature('subunit')
 testtools = ModuleAvailableFeature('testtools')
 flake8 = ModuleAvailableFeature('flake8.api.legacy')
 
-compiled_patiencediff_feature = ModuleAvailableFeature(
-    'breezy._patiencediff_c')
 lsprof_feature = ModuleAvailableFeature('breezy.lsprof')
+pkg_resources_feature = ModuleAvailableFeature('pkg_resources')
 
 
 class _BackslashDirSeparatorFeature(Feature):
@@ -567,3 +566,17 @@ class _BackslashFilenameFeature(Feature):
 
 
 BackslashFilenameFeature = _BackslashFilenameFeature()
+
+
+class PathFeature(Feature):
+    """Feature testing whether a particular path exists."""
+
+    def __init__(self, path):
+        super(PathFeature, self).__init__()
+        self.path = path
+
+    def _probe(self):
+        return os.path.exists(self.path)
+
+    def feature_name(self):
+        return "%s exists" % self.path

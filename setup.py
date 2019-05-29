@@ -16,6 +16,14 @@ if sys.version_info < (2, 7):
     sys.stderr.write("[ERROR] Not a supported Python version. Need 2.7+\n")
     sys.exit(1)
 
+
+try:
+    import setuptools
+except ImportError:
+    sys.stderr.write("[ERROR] Please install setuptools\n")
+    sys.exit(1)
+
+
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
 # './setup.py' or the equivalent with another path, should always be at the
 # start of the path, so this should find the right one...
@@ -32,13 +40,13 @@ def get_long_description():
 # META INFORMATION FOR SETUP
 # see http://docs.python.org/dist/meta-data.html
 META_INFO = {
-    'name':         'breezy',
-    'version':      breezy.__version__,
-    'maintainer':   'Breezy Developers',
-    'maintainer_email':   'team@breezy-vcs.org',
-    'url':          'https://www.breezy-vcs.org/',
-    'description':  'Friendly distributed version control system',
-    'license':      'GNU GPL v2',
+    'name': 'breezy',
+    'version': breezy.__version__,
+    'maintainer': 'Breezy Developers',
+    'maintainer_email': 'team@breezy-vcs.org',
+    'url': 'https://www.breezy-vcs.org/',
+    'description': 'Friendly distributed version control system',
+    'license': 'GNU GPL v2',
     'download_url': 'https://launchpad.net/brz/+download',
     'long_description': get_long_description(),
     'classifiers': [
@@ -57,14 +65,16 @@ META_INFO = {
     'install_requires': [
         'configobj',
         'six>=1.9.0',
+        'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
         'fastimport>=0.9.8',
-        'dulwich>=0.19.1',
+        'dulwich>=0.19.11',
         ],
     'extras_require': {
         'fastimport': [],
         'git': [],
+        'launchpad': ['launchpadlib>=1.6.3'],
         },
     'tests_require': [
         'testtools',
@@ -117,8 +127,7 @@ def get_breezy_packages():
 BREEZY['packages'] = get_breezy_packages()
 
 
-from distutils import log
-from distutils.core import setup
+from setuptools import setup
 from distutils.version import LooseVersion
 from distutils.command.install_scripts import install_scripts
 from distutils.command.install_data import install_data
@@ -210,8 +219,17 @@ except ImportError:
     print("")
     from distutils.command.build_ext import build_ext
 else:
-    have_cython = True
+    minimum_cython_version = '0.29'
     cython_version_info = LooseVersion(cython_version)
+    if cython_version_info < LooseVersion(minimum_cython_version):
+        print("Version of Cython is too old. "
+              "Current is %s, need at least %s."
+              % (cython_version, minimum_cython_version))
+        print("If the .c files are available, they will be built,"
+              " but modifying the .pyx files will not rebuild them.")
+        have_cython = False
+    else:
+        have_cython = True
 
 
 class build_ext_if_possible(build_ext):
@@ -317,8 +335,6 @@ else:
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx')
     add_cython_extension('breezy._readdir_pyx')
 add_cython_extension('breezy.bzr._chk_map_pyx')
-ext_modules.append(Extension('breezy._patiencediff_c',
-                             ['breezy/_patiencediff_c.c']))
 add_cython_extension('breezy.bzr._btree_serializer_pyx')
 
 
@@ -382,9 +398,9 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # tbzrcache executables - a "console" version for debugging and a
     # GUI version that is generally used.
     tbzrcache = dict(
-        script = os.path.join(tbzr_root, "scripts", "tbzrcache.py"),
-        icon_resources = icon_resources,
-        other_resources = other_resources,
+        script=os.path.join(tbzr_root, "scripts", "tbzrcache.py"),
+        icon_resources=icon_resources,
+        other_resources=other_resources,
     )
     console_targets.append(tbzrcache)
 
@@ -395,9 +411,9 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
 
     # ditto for the tbzrcommand tool
     tbzrcommand = dict(
-        script = os.path.join(tbzr_root, "scripts", "tbzrcommand.py"),
-        icon_resources = icon_resources,
-        other_resources = other_resources,
+        script=os.path.join(tbzr_root, "scripts", "tbzrcommand.py"),
+        icon_resources=icon_resources,
+        other_resources=other_resources,
     )
     console_targets.append(tbzrcommand)
     tbzrcommandw = tbzrcommand.copy()
@@ -561,17 +577,18 @@ elif 'py2exe' in sys.argv:
             self.outfiles.extend([f + 'o' for f in compile_names])
     # end of class install_data_with_bytecompile
 
-    target = py2exe.build_exe.Target(script = "brz",
-                                     dest_base = "brz",
-                                     icon_resources = [(0, 'brz.ico')],
-                                     name = META_INFO['name'],
-                                     version = version_str,
-                                     description = META_INFO['description'],
-                                     author = META_INFO['author'],
-                                     copyright = "(c) Canonical Ltd, 2005-2010",
-                                     company_name = "Canonical Ltd.",
-                                     comments = META_INFO['description'],
-                                     )
+    target = py2exe.build_exe.Target(
+        script="brz",
+        dest_base="brz",
+        icon_resources=[(0, 'brz.ico')],
+        name=META_INFO['name'],
+        version=version_str,
+        description=META_INFO['description'],
+        author=META_INFO['author'],
+        copyright="(c) Canonical Ltd, 2005-2010",
+        company_name="Canonical Ltd.",
+        comments=META_INFO['description'],
+    )
     gui_target = copy.copy(target)
     gui_target.dest_base = "bzrw"
 
@@ -743,7 +760,7 @@ elif 'py2exe' in sys.argv:
 else:
     # ad-hoc for easy_install
     DATA_FILES = []
-    if not 'bdist_egg' in sys.argv:
+    if 'bdist_egg' not in sys.argv:
         # generate and install brz.1 only with plain install, not the
         # easy_install one
         DATA_FILES = [('man/man1', ['brz.1', 'breezy/git/git-remote-bzr.1'])]

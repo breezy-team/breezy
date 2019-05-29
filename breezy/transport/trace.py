@@ -36,7 +36,7 @@ class TransportTraceDecorator(decorator.TransportDecorator):
     operation please add a test to the tests of this transport, for the logging
     of the operation you want logged.
 
-    See also TransportLogDecorator, that records a machine-readable log in 
+    See also TransportLogDecorator, that records a machine-readable log in
     memory for eg testing.
     """
 

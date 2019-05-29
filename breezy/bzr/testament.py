@@ -73,13 +73,13 @@ from __future__ import absolute_import
 
 from copy import copy
 
-from .osutils import (
+from ..osutils import (
     contains_whitespace,
     contains_linebreaks,
     sha_strings,
     )
-from .sixish import text_type
-from .tree import Tree
+from ..sixish import text_type
+from ..tree import Tree
 
 
 class Testament(object):
@@ -157,7 +157,7 @@ class Testament(object):
         return [line.encode('utf-8') for line in r]
 
     def _get_entries(self):
-        return ((path, ie) for (path, versioned, kind, file_id, ie) in
+        return ((path, ie) for (path, file_class, kind, ie) in
                 self.tree.list_files(include_root=self.include_root))
 
     def _escape_path(self, path):

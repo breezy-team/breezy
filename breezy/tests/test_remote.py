@@ -2042,6 +2042,29 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         branch.unlock()
         self.assertFinished(client)
 
+    def test_set_option_with_bool(self):
+        client = FakeClient()
+        client.add_expected_call(
+            b'Branch.get_stacked_on_url', (b'memory:///',),
+            b'error', (b'NotStacked',),)
+        client.add_expected_call(
+            b'Branch.lock_write', (b'memory:///', b'', b''),
+            b'success', (b'ok', b'branch token', b'repo token'))
+        client.add_expected_call(
+            b'Branch.set_config_option', (b'memory:///', b'branch token',
+                                          b'repo token', b'True', b'foo', b''),
+            b'success', ())
+        client.add_expected_call(
+            b'Branch.unlock', (b'memory:///', b'branch token', b'repo token'),
+            b'success', (b'ok',))
+        transport = MemoryTransport()
+        branch = self.make_remote_branch(transport, client)
+        branch.lock_write()
+        config = branch._get_config()
+        config.set_option(True, 'foo')
+        branch.unlock()
+        self.assertFinished(client)
+
     def test_backwards_compat_set_option(self):
         self.setup_smart_server_with_call_log()
         branch = self.make_branch('.')

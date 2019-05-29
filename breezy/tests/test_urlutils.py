@@ -599,6 +599,9 @@ class TestUrlToPath(TestCase):
         self.assertEqual(("foo/base,key1=val1/other/elements",
                           {"key2": "val2"}), split_segment_parameters(
             "foo/base,key1=val1/other/elements,key2=val2"))
+        self.assertRaises(
+            urlutils.InvalidURL, split_segment_parameters,
+            "foo/base,key1")
         # TODO: Check full URLs as well as relative references
 
     def test_win32_strip_local_trailing_slash(self):
@@ -1100,7 +1103,12 @@ class QuoteTests(TestCase):
         self.assertEqual('abc/def', urlutils.quote('abc/def', safe='/'))
 
     def test_quote_tildes(self):
-        self.assertEqual('%7Efoo', urlutils.quote('~foo'))
+        # Whether ~ is quoted by default depends on the python version
+        if sys.version_info[:2] >= (3, 7):
+            # https://docs.python.org/3/whatsnew/3.7.html#urllib-parse
+            self.assertEqual('~foo', urlutils.quote('~foo'))
+        else:
+            self.assertEqual('%7Efoo', urlutils.quote('~foo'))
         self.assertEqual('~foo', urlutils.quote('~foo', safe='/~'))
 
     def test_unquote(self):

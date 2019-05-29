@@ -36,7 +36,7 @@ class TransportLogDecorator(decorator.TransportDecorator):
 
     Not all operations are logged yet.
 
-    See also TransportTraceDecorator, that records a machine-readable log in 
+    See also TransportTraceDecorator, that records a machine-readable log in
     memory for eg testing.
     """
 

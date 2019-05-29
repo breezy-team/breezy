@@ -30,6 +30,7 @@ from . import (
 from .. import (
     errors,
     hashcache,
+    osutils,
     revision as _mod_revision,
     trace,
     transform,
@@ -80,7 +81,8 @@ class PreDirStateWorkingTree(InventoryWorkingTree):
                 #       warning might be sufficient to let the user know what
                 #       is going on.
                 trace.mutter('Could not write hashcache for %s\nError: %s',
-                             self._hashcache.cache_file_name(), e)
+                             self._hashcache.cache_file_name(),
+                             osutils.safe_unicode(e.args[1]))
 
     def get_file_sha1(self, path, stat_value=None):
         with self.lock_read():

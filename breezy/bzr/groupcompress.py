@@ -1628,7 +1628,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         """See VersionedFiles.get_sha1s()."""
         result = {}
         for record in self.get_record_stream(keys, 'unordered', True):
-            if record.sha1 != None:
+            if record.sha1 is not None:
                 result[record.key] = record.sha1
             else:
                 if record.storage_kind != 'absent':

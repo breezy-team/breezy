@@ -106,6 +106,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_remove_tree',
         'test_repair_workingtree',
         'test_resolve',
+        'test_resolve_location',
         'test_revert',
         'test_revno',
         'test_revision_history',

@@ -145,7 +145,7 @@ class ForeignVcs(object):
         """Serialize a foreign revision id for this VCS.
 
         :param foreign_revid: Foreign revision id
-        :return: Bytestring with serialized revid, will not contain any 
+        :return: Bytestring with serialized revid, will not contain any
             newlines.
         """
         raise NotImplementedError(self.serialize_foreign_revid)

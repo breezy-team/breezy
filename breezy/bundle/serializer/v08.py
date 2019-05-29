@@ -35,7 +35,7 @@ from breezy.bundle.bundle_data import (
 from breezy.diff import internal_diff
 from breezy.revision import NULL_REVISION
 from breezy.sixish import text_type
-from breezy.testament import StrictTestament
+from breezy.bzr.testament import StrictTestament
 from breezy.timestamp import (
     format_highres_date,
     )
@@ -78,10 +78,7 @@ class Action(object):
             if len(prop) == 1:
                 p_texts.append(prop[0])
             else:
-                try:
-                    p_texts.append('%s:%s' % prop)
-                except:
-                    raise repr(prop)
+                p_texts.append('%s:%s' % prop)
         text = ['=== ']
         text.append(' // '.join(p_texts))
         text_line = ''.join(text).encode('utf-8')

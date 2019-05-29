@@ -248,7 +248,9 @@ class Globster(object):
             # the combined pattern we sent to regex. Instead we indicate to
             # the user that an ignore file needs fixing.
             mutter('Invalid pattern found in regex: %s.', e.msg)
-            e.msg = "File ~/.bazaar/ignore or .bzrignore contains error(s)."
+            e.msg = (
+                "File ~/.config/breezy/ignore or "
+                ".bzrignore contains error(s).")
             bad_patterns = ''
             for _, patterns in self._regex_patterns:
                 for p in patterns:
@@ -297,9 +299,9 @@ class ExceptionGlobster(object):
     """A Globster that supports exception patterns.
 
     Exceptions are ignore patterns prefixed with '!'.  Exception
-    patterns take precedence over regular patterns and cause a 
-    matching filename to return None from the match() function.  
-    Patterns using a '!!' prefix are highest precedence, and act 
+    patterns take precedence over regular patterns and cause a
+    matching filename to return None from the match() function.
+    Patterns using a '!!' prefix are highest precedence, and act
     as regular ignores. '!!' patterns are useful to establish ignores
     that apply under paths specified by '!' exception patterns.
     """

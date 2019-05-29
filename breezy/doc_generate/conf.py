@@ -21,7 +21,13 @@ from __future__ import absolute_import
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.ifconfig', ]
+extensions = [
+    'sphinx.ext.ifconfig',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
+    'sphinx_epytext',
+    # 'sphinxcontrib.napoleon', # TODO: for Google docstrings
+    ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -37,7 +43,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Breezy'
-copyright = u'2009-2011 Canonical Ltd'
+copyright = u'2009-2011 Canonical Ltd, 2017-2018 Breezy Developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -91,7 +97,7 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-html_theme = 'default'
+html_theme = 'agogo'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -107,15 +113,15 @@ html_theme_options = {
     # * blue: darkblue, mediumblue, darkslateblue, cornflowerblue, royalblue,
     #   midnightblue
     # * gray: dimgray, slategray, lightslategray
-    'sidebarbgcolor': "cornflowerblue",
-    'sidebarlinkcolor': "midnightblue",
-    'relbarbgcolor': "darkblue",
-    'footerbgcolor': "lightslategray",
+    #'sidebarbgcolor': "cornflowerblue",
+    #'sidebarlinkcolor': "midnightblue",
+    #'relbarbgcolor': "darkblue",
+    #'footerbgcolor': "lightslategray",
 
     # Text, heading and code colouring
-    'codebgcolor': "lightyellow",
-    'codetextcolor': "firebrick",
-    'linkcolor': "mediumblue",
+    #'codebgcolor': "lightyellow",
+    #'codetextcolor': "firebrick",
+    #'linkcolor': "mediumblue",
     }
 
 # Add any paths that contain custom themes here, relative to this directory.
@@ -216,3 +222,10 @@ latex_documents = []
 
 # Authors of the documents
 brz_team = u'Breezy Developers'
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'testtools': ('https://testtools.readthedocs.io/en/latest', None),
+    'configobj': ('https://configobj.readthedocs.io/en/latest', None),
+    'dulwich': ('https://dulwich.readthedocs.io/en/latest', None),
+}

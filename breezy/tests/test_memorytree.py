@@ -46,21 +46,17 @@ class TestMemoryTree(TestCaseWithTransport):
         rev_id = tree.commit('first post')
         tree.unlock()
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_read()
-        self.assertEqual([rev_id], tree.get_parent_ids())
-        with tree.get_file('foo') as f:
-            self.assertEqual(b'contents of foo\n', f.read())
-        tree.unlock()
+        with tree.lock_read():
+            self.assertEqual([rev_id], tree.get_parent_ids())
+            with tree.get_file('foo') as f:
+                self.assertEqual(b'contents of foo\n', f.read())
 
     def test_get_root_id(self):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree.add([''])
             self.assertIsNot(None, tree.get_root_id())
-        finally:
-            tree.unlock()
 
     def test_lock_tree_write(self):
         """Check we can lock_tree_write and unlock MemoryTrees."""
@@ -73,9 +69,8 @@ class TestMemoryTree(TestCaseWithTransport):
         """Check that we error when trying to upgrade a read lock to write."""
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_read()
-        self.assertRaises(errors.ReadOnlyError, tree.lock_tree_write)
-        tree.unlock()
+        with tree.lock_read():
+            self.assertRaises(errors.ReadOnlyError, tree.lock_tree_write)
 
     def test_lock_write(self):
         """Check we can lock_write and unlock MemoryTrees."""
@@ -88,58 +83,63 @@ class TestMemoryTree(TestCaseWithTransport):
         """Check that we error when trying to upgrade a read lock to write."""
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_read()
-        self.assertRaises(errors.ReadOnlyError, tree.lock_write)
-        tree.unlock()
+        with tree.lock_read():
+            self.assertRaises(errors.ReadOnlyError, tree.lock_write)
 
     def test_add_with_kind(self):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_write()
-        tree.add(['', 'afile', 'adir'], None,
-                 ['directory', 'file', 'directory'])
-        self.assertEqual('afile', tree.id2path(tree.path2id('afile')))
-        self.assertEqual('adir', tree.id2path(tree.path2id('adir')))
-        self.assertFalse(tree.has_filename('afile'))
-        self.assertFalse(tree.has_filename('adir'))
-        tree.unlock()
+        with tree.lock_write():
+            tree.add(['', 'afile', 'adir'], None,
+                     ['directory', 'file', 'directory'])
+            self.assertEqual('afile', tree.id2path(tree.path2id('afile')))
+            self.assertEqual('adir', tree.id2path(tree.path2id('adir')))
+            self.assertFalse(tree.has_filename('afile'))
+            self.assertFalse(tree.has_filename('adir'))
 
     def test_put_new_file(self):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_write()
-        tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
-                 kinds=['directory', 'file'])
-        tree.put_file_bytes_non_atomic('foo', b'barshoom')
-        self.assertEqual(b'barshoom', tree.get_file('foo').read())
-        tree.unlock()
+        with tree.lock_write():
+            tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
+                     kinds=['directory', 'file'])
+            tree.put_file_bytes_non_atomic('foo', b'barshoom')
+            with tree.get_file('foo') as f:
+                self.assertEqual(b'barshoom', f.read())
 
     def test_put_existing_file(self):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_write()
-        tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
-                 kinds=['directory', 'file'])
-        tree.put_file_bytes_non_atomic('foo', b'first-content')
-        tree.put_file_bytes_non_atomic('foo', b'barshoom')
-        self.assertEqual(b'barshoom', tree.get_file('foo').read())
-        tree.unlock()
+        with tree.lock_write():
+            tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
+                     kinds=['directory', 'file'])
+            tree.put_file_bytes_non_atomic('foo', b'first-content')
+            tree.put_file_bytes_non_atomic('foo', b'barshoom')
+            self.assertEqual(b'barshoom', tree.get_file('foo').read())
 
     def test_add_in_subdir(self):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        tree.add([''], [b'root-id'], ['directory'])
-        # Unfortunately, the only way to 'mkdir' is to call 'tree.mkdir', but
-        # that *always* adds the directory as well. So if you want to create a
-        # file in a subdirectory, you have to split out the 'mkdir()' calls
-        # from the add and put_file_bytes_non_atomic calls. :(
-        tree.mkdir('adir', b'dir-id')
-        tree.add(['adir/afile'], [b'file-id'], ['file'])
-        self.assertEqual('adir/afile', tree.id2path(b'file-id'))
-        self.assertEqual('adir', tree.id2path(b'dir-id'))
-        tree.put_file_bytes_non_atomic('adir/afile', b'barshoom')
+        with tree.lock_write():
+            tree.add([''], [b'root-id'], ['directory'])
+            # Unfortunately, the only way to 'mkdir' is to call 'tree.mkdir', but
+            # that *always* adds the directory as well. So if you want to create a
+            # file in a subdirectory, you have to split out the 'mkdir()' calls
+            # from the add and put_file_bytes_non_atomic calls. :(
+            tree.mkdir('adir', b'dir-id')
+            tree.add(['adir/afile'], [b'file-id'], ['file'])
+            self.assertEqual('adir/afile', tree.id2path(b'file-id'))
+            self.assertEqual('adir', tree.id2path(b'dir-id'))
+            tree.put_file_bytes_non_atomic('adir/afile', b'barshoom')
+
+    def test_add_symlink(self):
+        branch = self.make_branch('branch')
+        tree = MemoryTree.create_on_branch(branch)
+        with tree.lock_write():
+            tree._file_transport.symlink('bar', 'foo')
+            tree.add(['', 'foo'])
+            self.assertEqual('symlink', tree.kind('foo'))
+            self.assertEqual('bar', tree.get_symlink_target('foo'))
 
     def test_commit_trivial(self):
         """Smoke test for commit on a MemoryTree.
@@ -149,40 +149,35 @@ class TestMemoryTree(TestCaseWithTransport):
         """
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_write()
-        tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
-                 kinds=['directory', 'file'])
-        tree.put_file_bytes_non_atomic('foo', b'barshoom')
-        revision_id = tree.commit('message baby')
-        # the parents list for the tree should have changed.
-        self.assertEqual([revision_id], tree.get_parent_ids())
-        tree.unlock()
+        with tree.lock_write():
+            tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
+                     kinds=['directory', 'file'])
+            tree.put_file_bytes_non_atomic('foo', b'barshoom')
+            revision_id = tree.commit('message baby')
+            # the parents list for the tree should have changed.
+            self.assertEqual([revision_id], tree.get_parent_ids())
         # and we should have a revision that is accessible outside the tree lock
         revtree = tree.branch.repository.revision_tree(revision_id)
-        revtree.lock_read()
-        self.addCleanup(revtree.unlock)
-        with revtree.get_file('foo') as f:
+        with revtree.lock_read(), revtree.get_file('foo') as f:
             self.assertEqual(b'barshoom', f.read())
 
     def test_unversion(self):
         """Some test for unversion of a memory tree."""
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
-        tree.lock_write()
-        tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
-                 kinds=['directory', 'file'])
-        tree.unversion(['foo'])
-        self.assertFalse(tree.is_versioned('foo'))
-        self.assertFalse(tree.has_id(b'foo-id'))
-        tree.unlock()
+        with tree.lock_write():
+            tree.add(['', 'foo'], ids=[b'root-id', b'foo-id'],
+                     kinds=['directory', 'file'])
+            tree.unversion(['foo'])
+            self.assertFalse(tree.is_versioned('foo'))
+            self.assertFalse(tree.has_id(b'foo-id'))
 
     def test_last_revision(self):
         """There should be a last revision method we can call."""
         tree = self.make_branch_and_memory_tree('branch')
-        tree.lock_write()
-        tree.add('')
-        rev_id = tree.commit('first post')
-        tree.unlock()
+        with tree.lock_write():
+            tree.add('')
+            rev_id = tree.commit('first post')
         self.assertEqual(rev_id, tree.last_revision())
 
     def test_rename_file(self):

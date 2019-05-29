@@ -28,7 +28,7 @@ are not - this is done for clarity of reading. All string data is in utf8.
     WHOLE_NUMBER = {digit}, digit;
     BOOLEAN = "y" | "n";
     REVISION_ID = a non-empty utf8 string;
-    
+
     dirstate format = header line, full checksum, row count, parent details,
      ghost_details, entries;
     header line = "#bazaar dirstate flat format 3", NL;
@@ -3578,7 +3578,7 @@ class ProcessEntryPython(object):
         """Compare an entry and real disk to generate delta information.
 
         :param path_info: top_relpath, basename, kind, lstat, abspath for
-            the path of entry. If None, then the path is considered absent in 
+            the path of entry. If None, then the path is considered absent in
             the target (Perhaps we should pass in a concrete entry for this ?)
             Basename is returned as a utf8 string because we expect this
             tuple will be ignored, and don't want to take the time to

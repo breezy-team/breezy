@@ -204,12 +204,12 @@ Examples:
         """Concise help text excludes the descriptive sections."""
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command.
- 
+
             Blah blah blah.
 
             :Examples:
                 Example 1::
- 
+
                     cmd arg1
             """
         cmd = cmd_Demo()
@@ -429,7 +429,7 @@ zz{{:See also: gam}}
         # The help formatter expect the class name to start with 'cmd_'
         class cmd_Demo(commands.Command):
             __doc__ = """A sample command.
- 
+
             Blah blah blah.
 
             :Formats:
@@ -437,7 +437,7 @@ zz{{:See also: gam}}
 
             :Examples:
               Example 1::
- 
+
                 cmd arg1
 
             :Tips:
@@ -455,18 +455,18 @@ zz{{:Options:
 }}
 Description:
   zz{{zz{{Blah blah blah.}}
- 
+
 }}:Formats:
   zz{{Interesting stuff about formats.}}
- 
+
 Examples:
   zz{{Example 1::}}
- 
+
     zz{{cmd arg1}}
- 
+
 Tips:
   zz{{Clever things to keep in mind.}}
- 
+
 ''',
                            cmd_Demo())
 

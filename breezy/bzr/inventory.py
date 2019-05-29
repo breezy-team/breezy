@@ -29,22 +29,25 @@ from __future__ import absolute_import
 # created, but it's not for now.
 ROOT_ID = b"TREE_ROOT"
 
+try:
+    from collections.abc import deque
+except ImportError:  # python < 3.7
+    from collections import deque
+
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
-import collections
 
-from breezy import (
-    generate_ids,
-    osutils,
-    )
 from breezy.bzr import (
     chk_map,
+    generate_ids,
     )
 """)
 
 from .. import (
     errors,
     lazy_regex,
+    osutils,
     trace,
     )
 from ..sixish import (
@@ -690,7 +693,7 @@ class CommonInventory(object):
             for name, ie in children:
                 yield name, ie
             return
-        children = collections.deque(children)
+        children = deque(children)
         stack = [(u'', children)]
         while stack:
             from_dir_relpath, children = stack[-1]
@@ -711,7 +714,7 @@ class CommonInventory(object):
 
                 # But do this child first
                 new_children = sorted(viewitems(ie.children))
-                new_children = collections.deque(new_children)
+                new_children = deque(new_children)
                 stack.append((path, new_children))
                 # Break out of inner loop, so that we start outer loop with child
                 break
@@ -1480,7 +1483,7 @@ class CHKInventory(CommonInventory):
 
         if given [foo-id] we will include
             TREE_ROOT as interesting parents
-        and 
+        and
             foo-id, baz-id, frob-id, fringle-id
         As interesting ids.
         """
@@ -1559,7 +1562,7 @@ class CHKInventory(CommonInventory):
             # parent_to_children with at least the tree root.)
             return other
         cache = self._fileid_to_entry_cache
-        remaining_children = collections.deque(
+        remaining_children = deque(
             parent_to_children[self.root_id])
         while remaining_children:
             file_id = remaining_children.popleft()

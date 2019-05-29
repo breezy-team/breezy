@@ -18,7 +18,7 @@
 """BzrDir implementation tests for colocated branch support.
 
 These tests check the conformance of the colocated branches support.
-All bzrdir formats are tested - those that do not suppport colocated branches 
+All bzrdir formats are tested - those that do not suppport colocated branches
 have the test_unsupported tests run; the others have the test_supported tests
 run.
 """

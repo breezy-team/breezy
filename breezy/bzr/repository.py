@@ -135,7 +135,7 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         control_files = self._create_control_files(a_bzrdir)
         control_files.lock_write()
         transport = control_files._transport
-        if shared == True:
+        if shared is True:
             utf8_files += [('shared-storage', b'')]
         try:
             for dir in dirs:

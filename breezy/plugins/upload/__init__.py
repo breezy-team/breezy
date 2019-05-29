@@ -32,7 +32,7 @@ If you would like to upload a specific revision, you just do:
 
     brz upload -r X  sftp://user@host/location/on/webserver
 
-bzr-upload, just as brz does, will remember the location where you upload the 
+bzr-upload, just as brz does, will remember the location where you upload the
 first time, so you don't need to specify it every time.
 
 If you need to re-upload the whole working tree for some reason, you can:
@@ -107,7 +107,7 @@ Upload from Remote Location
 It is possible to upload to a remote location from another remote location by
 specifying it with the --directory option:
 
-    brz upload sftp://public.example.com --directory sftp://private.example.com 
+    brz upload sftp://public.example.com --directory sftp://private.example.com
 
 This, together with --auto, can be used to upload when you push to your
 central branch, rather than when you commit to your local branch.

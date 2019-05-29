@@ -54,6 +54,7 @@ from breezy import (
     symbol_versioning,
     timestamp,
     transport,
+    tree as _mod_tree,
     ui,
     urlutils,
     views,
@@ -205,13 +206,13 @@ def iter_sibling_branches(control_dir, possible_transports=None):
     try:
         reference = control_dir.get_branch_reference()
     except errors.NotBranchError:
-        # There is no active branch, just return the colocated branches.
-        for name, branch in viewitems(control_dir.get_branches()):
-            yield name, branch
-        return
+        reference = None
     if reference is not None:
-        ref_branch = Branch.open(
-            reference, possible_transports=possible_transports)
+        try:
+            ref_branch = Branch.open(
+                reference, possible_transports=possible_transports)
+        except errors.NotBranchError:
+            ref_branch = None
     else:
         ref_branch = None
     if ref_branch is None or ref_branch.name:
@@ -347,7 +348,7 @@ class cmd_status(Command):
         Not versioned and not matching an ignore pattern.
 
     Additionally for directories, symlinks and files with a changed
-    executable bit, Bazaar indicates their type using a trailing
+    executable bit, Breezy indicates their type using a trailing
     character: '/', '@' or '*' respectively. These decorations can be
     disabled using the '--no-classify' option.
 
@@ -453,11 +454,11 @@ class cmd_cat_revision(Command):
 
         b = controldir.ControlDir.open_containing_tree_or_branch(directory)[1]
 
-        revisions = b.repository.revisions
+        revisions = getattr(b.repository, "revisions", None)
         if revisions is None:
             raise errors.BzrCommandError(
                 gettext('Repository %r does not support '
-                        'access to raw revision texts'))
+                        'access to raw revision texts') % b.repository)
 
         with b.repository.lock_read():
             # TODO: jam 20060112 should cat-revision always output utf-8?
@@ -1343,6 +1344,7 @@ class cmd_push(Command):
             use_existing_dir=False, directory=None, stacked_on=None,
             stacked=False, strict=None, no_tree=False,
             overwrite_tags=False, lossy=False):
+        from .location import location_to_url
         from .push import _show_push_branch
 
         if overwrite:
@@ -1370,6 +1372,7 @@ class cmd_push(Command):
                 more_warning='Uncommitted changes will not be pushed.')
         # Get the stacked_on branch, if any
         if stacked_on is not None:
+            stacked_on = location_to_url(stacked_on, 'read')
             stacked_on = urlutils.normalize_url(stacked_on)
         elif stacked:
             parent_url = br_from.get_parent()
@@ -1479,7 +1482,7 @@ class cmd_branch(Command):
             revision_id = br_from.last_revision()
         if to_location is None:
             to_location = urlutils.derive_to_location(from_location)
-        to_transport = transport.get_transport(to_location)
+        to_transport = transport.get_transport(to_location, purpose='write')
         try:
             to_transport.mkdir('.')
         except errors.FileExists:
@@ -1573,7 +1576,7 @@ class cmd_branches(Command):
 
     def run(self, location=".", recursive=False):
         if recursive:
-            t = transport.get_transport(location)
+            t = transport.get_transport(location, purpose='read')
             if not t.listable():
                 raise errors.BzrCommandError(
                     "Can't scan this type of location.")
@@ -1727,7 +1730,7 @@ class cmd_update(Command):
     If the tree's branch is bound to a master branch, brz will also update
     the branch from the master.
 
-    You cannot update just a single file or directory, because each Bazaar
+    You cannot update just a single file or directory, because each Breezy
     working tree has just a single basis revision.  If you want to restore a
     file that has been removed locally, use 'brz revert' instead of 'brz
     update'.  If you want to restore a file to its state in a previous
@@ -1870,11 +1873,11 @@ class cmd_info(Command):
 class cmd_remove(Command):
     __doc__ = """Remove files or directories.
 
-    This makes Bazaar stop tracking changes to the specified files. Bazaar will
+    This makes Breezy stop tracking changes to the specified files. Breezy will
     delete them if they can easily be recovered using revert otherwise they
     will be backed up (adding an extension of the form .~#~). If no options or
-    parameters are given Bazaar will scan for files that are being tracked by
-    Bazaar but missing in your tree and stop tracking them for you.
+    parameters are given Breezy will scan for files that are being tracked by
+    Breezy but missing in your tree and stop tracking them for you.
     """
     takes_args = ['file*']
     takes_options = ['verbose',
@@ -1920,50 +1923,6 @@ class cmd_remove(Command):
         tree.remove(file_list, verbose=verbose, to_file=self.outf,
                     keep_files=file_deletion_strategy == 'keep',
                     force=(file_deletion_strategy == 'no-backup'))
-
-
-class cmd_file_id(Command):
-    __doc__ = """Print file_id of a particular file or directory.
-
-    The file_id is assigned when the file is first added and remains the
-    same through all revisions where the file exists, even when it is
-    moved or renamed.
-    """
-
-    hidden = True
-    _see_also = ['inventory', 'ls']
-    takes_args = ['filename']
-
-    @display_command
-    def run(self, filename):
-        tree, relpath = WorkingTree.open_containing(filename)
-        file_id = tree.path2id(relpath)
-        if file_id is None:
-            raise errors.NotVersionedError(filename)
-        else:
-            self.outf.write(file_id.decode('utf-8') + '\n')
-
-
-class cmd_file_path(Command):
-    __doc__ = """Print path of file_ids to a file or directory.
-
-    This prints one line for each directory down to the target,
-    starting at the branch root.
-    """
-
-    hidden = True
-    takes_args = ['filename']
-
-    @display_command
-    def run(self, filename):
-        tree, relpath = WorkingTree.open_containing(filename)
-        fid = tree.path2id(relpath)
-        if fid is None:
-            raise errors.NotVersionedError(filename)
-        segments = osutils.splitpath(relpath)
-        for pos in range(1, len(segments) + 1):
-            path = osutils.joinpath(segments[:pos])
-            self.outf.write("%s\n" % tree.path2id(path))
 
 
 class cmd_reconcile(Command):
@@ -2101,7 +2060,7 @@ class cmd_init(Command):
         if location is None:
             location = u'.'
 
-        to_transport = transport.get_transport(location)
+        to_transport = transport.get_transport(location, purpose='write')
 
         # The path has to exist to initialize a
         # branch inside of it.
@@ -2221,7 +2180,7 @@ class cmd_init_repository(Command):
         if location is None:
             location = '.'
 
-        to_transport = transport.get_transport(location)
+        to_transport = transport.get_transport(location, purpose='write')
 
         if format.fixed_components:
             repo_format_name = None
@@ -2485,7 +2444,7 @@ class cmd_added(Command):
 class cmd_root(Command):
     __doc__ = """Show the tree root directory.
 
-    The root is the nearest enclosing directory with a .bzr control
+    The root is the nearest enclosing directory with a control
     directory."""
 
     takes_args = ['filename?']
@@ -3058,8 +3017,8 @@ class cmd_ls(Command):
                 note(gettext("Ignoring files outside view. View is %s") % view_str)
 
         self.add_cleanup(tree.lock_read().unlock)
-        for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
-                                                         from_dir=relpath, recursive=recursive):
+        for fp, fc, fkind, entry in tree.list_files(
+                include_root=False, from_dir=relpath, recursive=recursive):
             # Apply additional masking
             if not all and not selection[fc]:
                 continue
@@ -3083,20 +3042,20 @@ class cmd_ls(Command):
             ui.ui_factory.clear_term()
             if verbose:
                 outstring = '%-8s %s' % (fc, outstring)
-                if show_ids and fid is not None:
-                    outstring = "%-50s %s" % (outstring, fid.decode('utf-8'))
+                if show_ids and getattr(entry, 'file_id', None) is not None:
+                    outstring = "%-50s %s" % (outstring, entry.file_id.decode('utf-8'))
                 self.outf.write(outstring + '\n')
             elif null:
                 self.outf.write(fp + '\0')
                 if show_ids:
-                    if fid is not None:
-                        self.outf.write(fid.decode('utf-8'))
+                    if getattr(entry, 'file_id', None) is not None:
+                        self.outf.write(entry.file_id.decode('utf-8'))
                     self.outf.write('\0')
                 self.outf.flush()
             else:
                 if show_ids:
-                    if fid is not None:
-                        my_id = fid.decode('utf-8')
+                    if getattr(entry, 'file_id', None) is not None:
+                        my_id = entry.file_id.decode('utf-8')
                     else:
                         my_id = ''
                     self.outf.write('%-50s %s\n' % (outstring, my_id))
@@ -3134,9 +3093,10 @@ class cmd_ignore(Command):
     using this command or directly by using an editor, be sure to commit
     it.
 
-    Bazaar also supports a global ignore file ~/.bazaar/ignore. On Windows
-    the global ignore file can be found in the application data directory as
-    C:\\Documents and Settings\\<user>\\Application Data\\Bazaar\\2.0\\ignore.
+    Breezy also supports a global ignore file ~/.config/breezy/ignore. On
+    Windows the global ignore file can be found in the application data
+    directory as
+    C:\\Documents and Settings\\<user>\\Application Data\\Breezy\\3.0\\ignore.
     Global ignores are not touched by this command. The global ignore file
     can be edited directly using an editor.
 
@@ -3234,10 +3194,9 @@ class cmd_ignore(Command):
         ignored = globbing.Globster(name_pattern_list)
         matches = []
         self.add_cleanup(tree.lock_read().unlock)
-        for entry in tree.list_files():
-            id = entry[3]
+        for filename, fc, fkind, entry in tree.list_files():
+            id = getattr(entry, 'file_id', None)
             if id is not None:
-                filename = entry[0]
                 if ignored.match(filename):
                     matches.append(filename)
         if len(matches) > 0:
@@ -3266,7 +3225,7 @@ class cmd_ignored(Command):
     def run(self, directory=u'.'):
         tree = WorkingTree.open_containing(directory)[0]
         self.add_cleanup(tree.lock_read().unlock)
-        for path, file_class, kind, file_id, entry in tree.list_files():
+        for path, file_class, kind, entry in tree.list_files():
             if file_class != 'I':
                 continue
             # XXX: Slightly inefficient since this was already calculated
@@ -3432,38 +3391,37 @@ class cmd_cat(Command):
         rev_tree = _get_one_revision_tree('cat', revision, branch=b)
         self.add_cleanup(rev_tree.lock_read().unlock)
 
-        old_file_id = rev_tree.path2id(relpath)
-
-        # TODO: Split out this code to something that generically finds the
-        # best id for a path across one or more trees; it's like
-        # find_ids_across_trees but restricted to find just one. -- mbp
-        # 20110705.
         if name_from_revision:
             # Try in revision if requested
-            if old_file_id is None:
+            if not rev_tree.is_versioned(relpath):
                 raise errors.BzrCommandError(gettext(
                     "{0!r} is not present in revision {1}").format(
                         filename, rev_tree.get_revision_id()))
-            else:
-                actual_file_id = old_file_id
+            rev_tree_path = relpath
         else:
-            cur_file_id = tree.path2id(relpath)
-            if cur_file_id is not None and rev_tree.has_id(cur_file_id):
-                actual_file_id = cur_file_id
-            elif old_file_id is not None:
-                actual_file_id = old_file_id
-            else:
-                raise errors.BzrCommandError(gettext(
-                    "{0!r} is not present in revision {1}").format(
-                        filename, rev_tree.get_revision_id()))
-        relpath = rev_tree.id2path(actual_file_id)
+            try:
+                rev_tree_path = _mod_tree.find_previous_path(
+                    tree, rev_tree, relpath)
+            except errors.NoSuchFile:
+                rev_tree_path = None
+
+            if rev_tree_path is None:
+                # Path didn't exist in working tree
+                if not rev_tree.is_versioned(relpath):
+                    raise errors.BzrCommandError(gettext(
+                        "{0!r} is not present in revision {1}").format(
+                            filename, rev_tree.get_revision_id()))
+                else:
+                    # Fall back to the same path in the basis tree, if present.
+                    rev_tree_path = relpath
+
         if filtered:
             from .filter_tree import ContentFilterTree
             filter_tree = ContentFilterTree(
                 rev_tree, rev_tree._content_filter_stack)
-            fileobj = filter_tree.get_file(relpath)
+            fileobj = filter_tree.get_file(rev_tree_path)
         else:
-            fileobj = rev_tree.get_file(relpath)
+            fileobj = rev_tree.get_file(rev_tree_path)
         shutil.copyfileobj(fileobj, self.outf)
         self.cleanup_now()
 
@@ -3524,7 +3482,7 @@ class cmd_commit(Command):
 
     :Things to note:
 
-      If you accidentially commit the wrong changes or make a spelling
+      If you accidentally commit the wrong changes or make a spelling
       mistake in the commit message say, you can use the uncommit command
       to undo it. See ``brz help uncommit`` for details.
 
@@ -3777,7 +3735,7 @@ class cmd_check(Command):
     unreferenced ancestors
         Texts that are ancestors of other texts, but
         are not properly referenced by the revision ancestry.  This is a
-        subtle problem that Bazaar can work around.
+        subtle problem that Breezy can work around.
 
     unique file texts
         This is the total number of unique file contents
@@ -3789,7 +3747,7 @@ class cmd_check(Command):
         entries are modified, but the file contents are not.  It does not
         indicate a problem.
 
-    If no restrictions are specified, all Bazaar data that is found at the given
+    If no restrictions are specified, all data that is found at the given
     location will be checked.
 
     :Examples:
@@ -3831,10 +3789,10 @@ class cmd_upgrade(Command):
     __doc__ = """Upgrade a repository, branch or working tree to a newer format.
 
     When the default format has changed after a major new release of
-    Bazaar, you may be informed during certain operations that you
+    Bazaar/Breezy, you may be informed during certain operations that you
     should upgrade. Upgrading to a newer format may improve performance
     or make new features available. It may however limit interoperability
-    with older repositories or with older versions of Bazaar.
+    with older repositories or with older versions of Bazaar or Breezy.
 
     If you wish to upgrade to a particular format rather than the
     current default, that can be specified using the --format option.
@@ -3856,8 +3814,8 @@ class cmd_upgrade(Command):
     If the conversion of a branch fails, remaining branches are still
     tried.
 
-    For more information on upgrades, see the Bazaar Upgrade Guide,
-    http://doc.bazaar.canonical.com/latest/en/upgrade-guide/.
+    For more information on upgrades, see the Breezy Upgrade Guide,
+    https://www.breezy-vcs.org/doc/en/upgrade-guide/.
     """
 
     _see_also = ['check', 'reconcile', 'formats']
@@ -4357,7 +4315,7 @@ class cmd_merge(Command):
     through OTHER, excluding BASE but including OTHER, will be merged.  If this
     causes some revisions to be skipped, i.e. if the destination branch does
     not already contain revision BASE, such a merge is commonly referred to as
-    a "cherrypick". Unlike a normal merge, Bazaar does not currently track
+    a "cherrypick". Unlike a normal merge, Breezy does not currently track
     cherrypicks. The changes look like a normal commit, and the history of the
     changes from the other branch is not stored in the commit.
 
@@ -4843,7 +4801,7 @@ class cmd_revert(Command):
     update command.
 
     Uncommitted changes to files that are reverted will be discarded.
-    Howver, by default, any files that have been manually changed will be
+    However, by default, any files that have been manually changed will be
     backed up first.  (Files changed only by merge are not backed up.)  Backup
     files have '.~#~' appended to their name, where # is a number.
 
@@ -5178,8 +5136,8 @@ class cmd_plugins(Command):
 
     --verbose shows the path where each plugin is located.
 
-    A plugin is an external component for Bazaar that extends the
-    revision control system, by adding or replacing code in Bazaar.
+    A plugin is an external component for Breezy that extends the
+    revision control system, by adding or replacing code in Breezy.
     Plugins can do a variety of things, including overriding commands,
     adding new commands, providing additional network transports and
     customizing log output.
@@ -5211,7 +5169,7 @@ class cmd_testament(Command):
 
     @display_command
     def run(self, branch=u'.', revision=None, long=False, strict=False):
-        from .testament import Testament, StrictTestament
+        from .bzr.testament import Testament, StrictTestament
         if strict is True:
             testament_class = StrictTestament
         else:
@@ -5269,17 +5227,15 @@ class cmd_annotate(Command):
         tree = _get_one_revision_tree('annotate', revision, branch=branch)
         self.add_cleanup(tree.lock_read().unlock)
         if wt is not None and revision is None:
-            file_id = wt.path2id(relpath)
-        else:
-            file_id = tree.path2id(relpath)
-        if file_id is None:
-            raise errors.NotVersionedError(filename)
-        if wt is not None and revision is None:
+            if not wt.is_versioned(relpath):
+                raise errors.NotVersionedError(relpath)
             # If there is a tree and we're not annotating historical
             # versions, annotate the working tree's content.
             annotate_file_tree(wt, relpath, self.outf, long, all,
                                show_ids=show_ids)
         else:
+            if not tree.is_versioned(relpath):
+                raise errors.NotVersionedError(relpath)
             annotate_file_tree(tree, relpath, self.outf, long, all,
                                show_ids=show_ids, branch=branch)
 
@@ -5467,10 +5423,10 @@ class cmd_uncommit(Command):
         else:
             self.add_cleanup(b.lock_write().unlock)
         return self._run(b, tree, dry_run, verbose, revision, force,
-                         local, keep_tags)
+                         local, keep_tags, location)
 
     def _run(self, b, tree, dry_run, verbose, revision, force, local,
-             keep_tags):
+             keep_tags, location):
         from .log import log_formatter, show_log
         from .uncommit import uncommit
 
@@ -5524,10 +5480,16 @@ class cmd_uncommit(Command):
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local, keep_tags=keep_tags)
-        self.outf.write(
-            gettext('You can restore the old tip by running:\n'
-                    '  brz pull . -r revid:%s\n')
-            % last_rev_id.decode('utf-8'))
+        if location != '.':
+            self.outf.write(
+                gettext('You can restore the old tip by running:\n'
+                        '  brz pull -d %s %s -r revid:%s\n')
+                % (location, location, last_rev_id.decode('utf-8')))
+        else:
+            self.outf.write(
+                gettext('You can restore the old tip by running:\n'
+                        '  brz pull . -r revid:%s\n')
+                % last_rev_id.decode('utf-8'))
 
 
 class cmd_break_lock(Command):
@@ -5545,7 +5507,7 @@ class cmd_break_lock(Command):
     :Examples:
         brz break-lock
         brz break-lock brz+ssh://example.com/brz/foo
-        brz break-lock --conf ~/.bazaar
+        brz break-lock --conf ~/.config/breezy
     """
 
     takes_args = ['location?']
@@ -5626,12 +5588,12 @@ class cmd_serve(Command):
 
     def run(self, listen=None, port=None, inet=False, directory=None,
             allow_writes=False, protocol=None, client_timeout=None):
-        from . import transport
+        from . import location, transport
         if directory is None:
             directory = osutils.getcwd()
         if protocol is None:
             protocol = transport.transport_server_registry.get()
-        url = transport.location_to_url(directory)
+        url = location.location_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
         t = transport.get_transport_from_url(url)
@@ -5836,7 +5798,7 @@ class cmd_send(Command):
     branch containing submit_branch in its ancestory without needing access to
     the source branch.
 
-    If --no-bundle is specified, then Bazaar doesn't send the contents of the
+    If --no-bundle is specified, then Breezy doesn't send the contents of the
     revisions, but only a structured request to merge from the
     public_location.  In that case the public_branch is needed and it must be
     up-to-date and accessible to the recipient.  The public_branch is always
@@ -6365,8 +6327,15 @@ class cmd_switch(Command):
         if had_explicit_nick:
             branch = control_dir.open_branch()  # get the new branch!
             branch.nick = to_branch.nick
-        note(gettext('Switched to branch: %s'),
-             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+        if to_branch.name:
+            if to_branch.controldir.control_url != control_dir.control_url:
+                note(gettext('Switched to branch %s at %s'),
+                     to_branch.name, urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+            else:
+                note(gettext('Switched to branch %s'), to_branch.name)
+        else:
+            note(gettext('Switched to branch at %s'),
+                 urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
 
 class cmd_view(Command):
@@ -6871,6 +6840,202 @@ class cmd_fetch_ghosts(Command):
             cmd_reconcile().run(".")
 
 
+class cmd_grep(Command):
+    """Print lines matching PATTERN for specified files and revisions.
+
+    This command searches the specified files and revisions for a given
+    pattern.  The pattern is specified as a Python regular expressions[1].
+
+    If the file name is not specified, the revisions starting with the
+    current directory are searched recursively. If the revision number is
+    not specified, the working copy is searched. To search the last committed
+    revision, use the '-r -1' or '-r last:1' option.
+
+    Unversioned files are not searched unless explicitly specified on the
+    command line. Unversioned directores are not searched.
+
+    When searching a pattern, the output is shown in the 'filepath:string'
+    format. If a revision is explicitly searched, the output is shown as
+    'filepath~N:string', where N is the revision number.
+
+    --include and --exclude options can be used to search only (or exclude
+    from search) files with base name matches the specified Unix style GLOB
+    pattern.  The GLOB pattern an use *, ?, and [...] as wildcards, and \\
+    to quote wildcard or backslash character literally. Note that the glob
+    pattern is not a regular expression.
+
+    [1] http://docs.python.org/library/re.html#regular-expression-syntax
+    """
+
+    encoding_type = 'replace'
+    takes_args = ['pattern', 'path*']
+    takes_options = [
+        'verbose',
+        'revision',
+        Option('color', type=text_type, argname='when',
+               help='Show match in color. WHEN is never, always or auto.'),
+        Option('diff', short_name='p',
+               help='Grep for pattern in changeset for each revision.'),
+        ListOption('exclude', type=text_type, argname='glob', short_name='X',
+                   help="Skip files whose base name matches GLOB."),
+        ListOption('include', type=text_type, argname='glob', short_name='I',
+                   help="Search only files whose base name matches GLOB."),
+        Option('files-with-matches', short_name='l',
+               help='Print only the name of each input file in '
+               'which PATTERN is found.'),
+        Option('files-without-match', short_name='L',
+               help='Print only the name of each input file in '
+               'which PATTERN is not found.'),
+        Option('fixed-string', short_name='F',
+               help='Interpret PATTERN is a single fixed string (not regex).'),
+        Option('from-root',
+               help='Search for pattern starting from the root of the branch. '
+               '(implies --recursive)'),
+        Option('ignore-case', short_name='i',
+               help='Ignore case distinctions while matching.'),
+        Option('levels',
+               help='Number of levels to display - 0 for all, 1 for collapsed '
+               '(1 is default).',
+               argname='N',
+               type=_parse_levels),
+        Option('line-number', short_name='n',
+               help='Show 1-based line number.'),
+        Option('no-recursive',
+               help="Don't recurse into subdirectories. (default is --recursive)"),
+        Option('null', short_name='Z',
+               help='Write an ASCII NUL (\\0) separator '
+               'between output lines rather than a newline.'),
+        ]
+
+    @display_command
+    def run(self, verbose=False, ignore_case=False, no_recursive=False,
+            from_root=False, null=False, levels=None, line_number=False,
+            path_list=None, revision=None, pattern=None, include=None,
+            exclude=None, fixed_string=False, files_with_matches=False,
+            files_without_match=False, color=None, diff=False):
+        from breezy import _termcolor
+        from . import grep
+        import re
+        if path_list is None:
+            path_list = ['.']
+        else:
+            if from_root:
+                raise errors.BzrCommandError(
+                    'cannot specify both --from-root and PATH.')
+
+        if files_with_matches and files_without_match:
+            raise errors.BzrCommandError(
+                'cannot specify both '
+                '-l/--files-with-matches and -L/--files-without-matches.')
+
+        global_config = _mod_config.GlobalConfig()
+
+        if color is None:
+            color = global_config.get_user_option('grep_color')
+
+        if color is None:
+            color = 'never'
+
+        if color not in ['always', 'never', 'auto']:
+            raise errors.BzrCommandError('Valid values for --color are '
+                                         '"always", "never" or "auto".')
+
+        if levels is None:
+            levels = 1
+
+        print_revno = False
+        if revision is not None or levels == 0:
+            # print revision numbers as we may be showing multiple revisions
+            print_revno = True
+
+        eol_marker = '\n'
+        if null:
+            eol_marker = '\0'
+
+        if not ignore_case and grep.is_fixed_string(pattern):
+            # if the pattern isalnum, implicitly use to -F for faster grep
+            fixed_string = True
+        elif ignore_case and fixed_string:
+            # GZ 2010-06-02: Fall back to regexp rather than lowercasing
+            #                pattern and text which will cause pain later
+            fixed_string = False
+            pattern = re.escape(pattern)
+
+        patternc = None
+        re_flags = re.MULTILINE
+        if ignore_case:
+            re_flags |= re.IGNORECASE
+
+        if not fixed_string:
+            patternc = grep.compile_pattern(
+                pattern.encode(grep._user_encoding), re_flags)
+
+        if color == 'always':
+            show_color = True
+        elif color == 'never':
+            show_color = False
+        elif color == 'auto':
+            show_color = _termcolor.allow_color()
+
+        opts = grep.GrepOptions()
+
+        opts.verbose = verbose
+        opts.ignore_case = ignore_case
+        opts.no_recursive = no_recursive
+        opts.from_root = from_root
+        opts.null = null
+        opts.levels = levels
+        opts.line_number = line_number
+        opts.path_list = path_list
+        opts.revision = revision
+        opts.pattern = pattern
+        opts.include = include
+        opts.exclude = exclude
+        opts.fixed_string = fixed_string
+        opts.files_with_matches = files_with_matches
+        opts.files_without_match = files_without_match
+        opts.color = color
+        opts.diff = False
+
+        opts.eol_marker = eol_marker
+        opts.print_revno = print_revno
+        opts.patternc = patternc
+        opts.recursive = not no_recursive
+        opts.fixed_string = fixed_string
+        opts.outf = self.outf
+        opts.show_color = show_color
+
+        if diff:
+            # options not used:
+            # files_with_matches, files_without_match
+            # levels(?), line_number, from_root
+            # include, exclude
+            # These are silently ignored.
+            grep.grep_diff(opts)
+        elif revision is None:
+            grep.workingtree_grep(opts)
+        else:
+            grep.versioned_grep(opts)
+
+
+class cmd_resolve_location(Command):
+    __doc__ = """Expand a location to a full URL.
+
+    :Examples:
+        Look up a Launchpad URL.
+
+            brz resolve-location lp:brz
+    """
+    takes_args = ['location']
+    hidden = True
+
+    def run(self, location):
+        from .location import location_to_url
+        url = location_to_url(location)
+        display_url = urlutils.unescape_for_display(url, self.outf.encoding)
+        self.outf.write('%s\n' % url)
+
+
 def _register_lazy_builtins():
     # register lazy builtins from other modules; called at startup and should
     # be only called once.
@@ -6879,6 +7044,8 @@ def _register_lazy_builtins():
             ('cmd_bundle_info', [], 'breezy.bundle.commands'),
             ('cmd_config', [], 'breezy.config'),
             ('cmd_dump_btree', [], 'breezy.bzr.debug_commands'),
+            ('cmd_file_id', [], 'breezy.bzr.debug_commands'),
+            ('cmd_file_path', [], 'breezy.bzr.debug_commands'),
             ('cmd_version_info', [], 'breezy.cmd_version_info'),
             ('cmd_resolve', ['resolved'], 'breezy.conflicts'),
             ('cmd_conflicts', [], 'breezy.conflicts'),

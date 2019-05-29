@@ -24,7 +24,7 @@ from breezy import (
     tests,
     )
 from breezy.controldir import ControlDir
-from breezy.testament import Testament
+from breezy.bzr.testament import Testament
 
 
 class ReSign(tests.TestCaseInTempDir):

@@ -422,7 +422,7 @@ class cmd_bash_completion(commands.Command):
     This command generates a shell function which can be used by bash to
     automatically complete the currently typed command when the user presses
     the completion key (usually tab).
-    
+
     Commonly used like this:
         eval "`brz bash-completion`"
     """

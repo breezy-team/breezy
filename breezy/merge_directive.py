@@ -31,9 +31,11 @@ from breezy import (
     registry,
     revision as _mod_revision,
     rio,
-    testament,
     timestamp,
     trace,
+    )
+from breezy.bzr import (
+    testament,
     )
 from breezy.bundle import (
     serializer as bundle_serializer,

@@ -26,6 +26,7 @@ class TestRemove(TestCaseWithWorkingTree):
     files = ['a', 'b/', 'b/c', 'd/']
     rfiles = ['b/c', 'b', 'a', 'd']
     backup_files = ['a.~1~', 'b.~1~/', 'b.~1~/c.~1~', 'd.~1~/']
+    backup_files_no_version_dirs = ['a.~1~', 'b.~1~/', 'b.~1~/c.~1~']
 
     def get_tree(self, files):
         tree = self.make_branch_and_tree('.')
@@ -84,7 +85,10 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.add(TestRemove.files)
         tree.remove(TestRemove.files, keep_files=False)
         self.assertNotInWorkingTree(TestRemove.files)
-        self.assertPathExists(TestRemove.backup_files)
+        if tree.has_versioned_directories():
+            self.assertPathExists(TestRemove.backup_files)
+        else:
+            self.assertPathExists(TestRemove.backup_files_no_version_dirs)
         tree._validate()
 
     def test_remove_changed_file(self):
@@ -134,7 +138,8 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.remove(rfilesx, keep_files=False)
         self.assertNotInWorkingTree(rfilesx)
         self.assertPathExists(['bx.~1~/cx.~1~', 'bx.~1~', 'ax.~1~'])
-        if tree.supports_rename_tracking():
+        if (tree.supports_rename_tracking() or
+                not tree.has_versioned_directories()):
             self.assertPathDoesNotExist('dx.~1~')  # unchanged file
         else:
             self.assertPathExists('dx.~1~')  # renamed, so appears changed
@@ -155,7 +160,10 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_tree(TestRemove.files)
         tree.remove(TestRemove.files, keep_files=False)
         self.assertRemovedAndDeleted(TestRemove.files)
-        self.assertPathExists(TestRemove.backup_files)
+        if tree.has_versioned_directories():
+            self.assertPathExists(TestRemove.backup_files)
+        else:
+            self.assertPathExists(TestRemove.backup_files_no_version_dirs)
         tree._validate()
 
     def test_remove_nonexisting_files(self):

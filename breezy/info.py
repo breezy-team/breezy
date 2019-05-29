@@ -108,7 +108,15 @@ def gather_location_info(repository=None, branch=None, working=None,
             else:
                 locs['checkout root'] = branch_path
         if working_path != master_path:
-            locs['checkout of branch'] = master_path
+            (master_path_base, params) = urlutils.split_segment_parameters(
+                master_path)
+            if working_path == master_path_base:
+                locs['checkout of co-located branch'] = params['branch']
+            elif 'branch' in params:
+                locs['checkout of branch'] = "%s, branch %s" (
+                    master_path_base, params['branch'])
+            else:
+                locs['checkout of branch'] = master_path
         elif repository.is_shared():
             locs['repository branch'] = branch_path
         elif branch_path is not None:
@@ -138,9 +146,9 @@ def gather_location_info(repository=None, branch=None, working=None,
         locs['shared repository'] = repository.user_url
     order = ['control directory', 'light checkout root',
              'repository checkout root', 'checkout root',
-             'checkout of branch', 'shared repository',
-             'repository', 'repository branch', 'branch root',
-             'bound to branch']
+             'checkout of branch', 'checkout of co-located branch',
+             'shared repository', 'repository', 'repository branch',
+             'branch root', 'bound to branch']
     return [(n, locs[n]) for n in order if n in locs]
 
 

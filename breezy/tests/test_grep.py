@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from __future__ import absolute_import
 
@@ -20,11 +20,11 @@ import os
 import re
 import unicodedata as ud
 
-from ... import tests, osutils
-from ...sixish import PY3
-from ..._termcolor import color_string, FG
+from .. import tests, osutils
+from ..sixish import PY3
+from .._termcolor import color_string, FG
 
-from ...tests.features import (
+from ..tests.features import (
     UnicodeFilenameFeature,
     )
 
@@ -2429,13 +2429,13 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         self.assertEqualDiff(subst_dates(out), '''\
 === revno:3 ===
   === modified file 'hello'
-    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
-    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    --- hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
     +hello world!
 === revno:1 ===
   === added file 'hello'
-    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
-    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    --- hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
 ''')
 
     def test_grep_diff_revision(self):
@@ -2448,8 +2448,8 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         self.assertEqualDiff(subst_dates(out), '''\
 === revno:3 ===
   === modified file 'hello'
-    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
-    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    --- hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
     +hello world!
 ''')
 
@@ -2470,16 +2470,16 @@ class TestGrepDiff(tests.TestCaseWithTransport):
         self.assertEqualDiff(subst_dates(out), '''\
 === revno:5 ===
   === modified file 'hello'
-    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
-    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    --- hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
     +hello world!3
 === revno:4 ===
   === added file 'blah'
     +hello world!2
 === revno:3 ===
   === modified file 'hello'
-    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
-    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    --- hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
     +hello world!1
 ''')
 
@@ -2496,8 +2496,8 @@ class TestGrepDiff(tests.TestCaseWithTransport):
             "  === modified file 'hello'", fg=FG.BOLD_MAGENTA) + '\n'
         redhello = color_string('hello', fg=FG.BOLD_RED)
         diffstr = '''\
-    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
-    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    --- hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
     +hello world!
 '''
         diffstr = diffstr.replace('hello', redhello)

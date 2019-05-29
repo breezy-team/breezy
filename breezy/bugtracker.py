@@ -186,6 +186,14 @@ class InvalidLineInBugsProperty(errors.BzrError):
         self.line = line
 
 
+class InvalidBugUrl(errors.BzrError):
+
+    _fmt = "Invalid bug URL: %(url)s"
+
+    def __init__(self, url):
+        self.url = url
+
+
 class InvalidBugStatus(errors.BzrError):
 
     _fmt = ("Invalid bug status: '%(status)s'")
@@ -420,4 +428,25 @@ def encode_fixes_bug_urls(bug_urls):
     :return: A string that will be set as the 'bugs' property of a revision
         as part of a commit.
     """
-    return '\n'.join(('%s %s' % (url, tag)) for (url, tag) in bug_urls)
+    lines = []
+    for (url, tag) in bug_urls:
+        if ' ' in url:
+            raise InvalidBugUrl(url)
+        lines.append('%s %s' % (url, tag))
+    return '\n'.join(lines)
+
+
+def decode_bug_urls(bug_text):
+    """Decode a bug property text.
+
+    :param bug_text: Contents of a bugs property
+    :return: iterator over (url, status) tuples
+    """
+    for line in bug_text.splitlines():
+        try:
+            url, status = line.split(None, 2)
+        except ValueError:
+            raise InvalidLineInBugsProperty(line)
+        if status not in ALLOWED_BUG_STATUSES:
+            raise InvalidBugStatus(status)
+        yield url, status

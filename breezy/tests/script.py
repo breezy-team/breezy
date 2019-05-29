@@ -142,7 +142,7 @@ def _scan_redirection_options(args):
 
     :param args: The command line arguments
 
-    :return: A tuple containing: 
+    :return: A tuple containing:
         - The file name redirected from or None
         - The file name redirected to or None
         - The mode to open the output file or None

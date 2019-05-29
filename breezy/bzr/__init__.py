@@ -306,7 +306,7 @@ register_metadir(
          'from pack-0.92-subtree (and anything compatible with '
          'pack-0.92-subtree) format repositories. Repositories and branches in '
          'this format can only be read by bzr.dev. Please read '
-         'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
+         'https://www.breezy-vcs.org/developers/development-repo.html '
          'before use.',
     branch_format='breezy.bzr.branch.BzrBranchFormat8',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
@@ -320,7 +320,7 @@ register_metadir(
     'from pack-0.92-subtree (and anything compatible with '
     'pack-0.92-subtree) format repositories. Repositories and branches in '
     'this format can only be read by bzr.dev. Please read '
-    'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
+    'https://www.breezy-vcs.org/developers/development-repo.html '
     'before use.',
     branch_format='breezy.bzr.branch.BzrBranchFormat7',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',

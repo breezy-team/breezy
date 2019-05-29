@@ -205,10 +205,10 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
                     parent_revids = []
                 else:
                     parent_revids = [parent_revid]
-                builder = self.target.get_commit_builder(parent_revids,
-                                                         self.target.get_config_stack(), rev.timestamp,
-                                                         rev.timezone, rev.committer, rev.properties,
-                                                         new_revid)
+                builder = self.target.get_commit_builder(
+                    parent_revids, self.target.get_config_stack(), rev.timestamp,
+                    rev.timezone, rev.committer, rev.properties,
+                    new_revid)
                 try:
                     parent_tree = self.target.repository.revision_tree(
                         parent_revid)

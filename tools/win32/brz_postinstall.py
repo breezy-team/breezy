@@ -239,7 +239,7 @@ def main():
                     _winreg.SetValueEx(hkey, 'Path', 0, type_, path_u)
                     _winreg.FlushKey(hkey)
 
-        if not hkey is None:
+        if hkey is not None:
             _winreg.CloseKey(hkey)
 
     if (add_path or delete_path) and winver == 'Windows 98':
@@ -283,7 +283,7 @@ def main():
                             f.write(i)
             else:
                 print('*** Remove line <%s> from autoexec.bat' % pattern)
-                    
+
         elif add_path and not found:
             backup_autoexec_bat(abat, abak, dry_run)
             if not dry_run:
@@ -305,7 +305,7 @@ def main():
                             'EnvironmentError',
                             MB_OK | MB_ICONERROR)
 
-        if not hkey is None:
+        if hkey is not None:
             _winreg.SetValue(hkey, '', _winreg.REG_SZ, 'Brz Here')
             hkey2 = _winreg.CreateKey(hkey, 'command')
             _winreg.SetValue(hkey2, '', _winreg.REG_SZ,

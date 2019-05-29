@@ -304,7 +304,7 @@ class MutableTree(tree.Tree):
         :return: None
         """
 
-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
+    def put_file_bytes_non_atomic(self, path, bytes):
         """Update the content of a file in the tree.
 
         Note that the file is written in-place rather than being

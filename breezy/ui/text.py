@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 import codecs
+import io
 import os
 import sys
 import warnings
@@ -668,9 +669,16 @@ def _unwrap_stream(stream):
 def _wrap_in_stream(stream, encoding=None, errors='replace'):
     if encoding is None:
         encoding = _get_stream_encoding(stream)
-    encoded_stream = codecs.getreader(encoding)(stream, errors=errors)
-    encoded_stream.encoding = encoding
-    return encoded_stream
+    # Attempt to wrap using io.open if possible, since that can do
+    # line-buffering.
+    try:
+        fileno = stream.fileno()
+    except io.UnsupportedOperation:
+        encoded_stream = codecs.getreader(encoding)(stream, errors=errors)
+        encoded_stream.encoding = encoding
+        return encoded_stream
+    else:
+        return io.open(fileno, encoding=encoding, errors=errors, mode='r', buffering=1)
 
 
 def _wrap_out_stream(stream, encoding=None, errors='replace'):

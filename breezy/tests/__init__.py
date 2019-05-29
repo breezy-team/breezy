@@ -3990,6 +3990,7 @@ test_prefix_alias_registry.register('breezy', 'breezy')
 test_prefix_alias_registry.register('bd', 'breezy.doc')
 test_prefix_alias_registry.register('bu', 'breezy.utils')
 test_prefix_alias_registry.register('bt', 'breezy.tests')
+test_prefix_alias_registry.register('bgt', 'breezy.git.tests')
 test_prefix_alias_registry.register('bb', 'breezy.tests.blackbox')
 test_prefix_alias_registry.register('bp', 'breezy.plugins')
 
@@ -4107,6 +4108,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_globbing',
         'breezy.tests.test_gpg',
         'breezy.tests.test_graph',
+        'breezy.tests.test_grep',
         'breezy.tests.test_groupcompress',
         'breezy.tests.test_hashcache',
         'breezy.tests.test_help',
@@ -4127,6 +4129,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_lazy_import',
         'breezy.tests.test_lazy_regex',
         'breezy.tests.test_library_state',
+        'breezy.tests.test_location',
         'breezy.tests.test_lock',
         'breezy.tests.test_lockable_files',
         'breezy.tests.test_lockdir',
@@ -4545,7 +4548,7 @@ def _rmtree_temp_dir(dirname, test_id=None):
         # We don't want to fail here because some useful display will be lost
         # otherwise. Polluting the tmp dir is bad, but not giving all the
         # possible info to the test runner is even worse.
-        if test_id != None:
+        if test_id is not None:
             ui.ui_factory.clear_term()
             sys.stderr.write('\nWhile running: %s\n' % (test_id,))
         # Ugly, but the last thing we want here is fail, so bear with it.
