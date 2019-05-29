@@ -114,6 +114,7 @@ Appendices
 .. include:: setting_up_email.txt
 .. include:: http_smart_server.txt
 .. include:: writing_a_plugin.txt
+.. include:: git_limitations.txt
 .. include:: licence.txt
 
 .. |--| unicode:: U+2014

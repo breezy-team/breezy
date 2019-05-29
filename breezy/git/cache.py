@@ -613,11 +613,9 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
 
     def open(self, transport):
         try:
-            basepath = transport.local_abspath(".").encode(osutils._fs_enc)
+            basepath = transport.local_abspath(".")
         except bzr_errors.NotLocalUrl:
             basepath = get_cache_dir()
-        if not isinstance(basepath, str):
-            raise TypeError(basepath)
         try:
             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
         except ImportError:

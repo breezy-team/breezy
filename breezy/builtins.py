@@ -348,7 +348,7 @@ class cmd_status(Command):
         Not versioned and not matching an ignore pattern.
 
     Additionally for directories, symlinks and files with a changed
-    executable bit, Bazaar indicates their type using a trailing
+    executable bit, Breezy indicates their type using a trailing
     character: '/', '@' or '*' respectively. These decorations can be
     disabled using the '--no-classify' option.
 
@@ -454,11 +454,11 @@ class cmd_cat_revision(Command):
 
         b = controldir.ControlDir.open_containing_tree_or_branch(directory)[1]
 
-        revisions = b.repository.revisions
+        revisions = getattr(b.repository, "revisions", None)
         if revisions is None:
             raise errors.BzrCommandError(
                 gettext('Repository %r does not support '
-                        'access to raw revision texts'))
+                        'access to raw revision texts') % b.repository)
 
         with b.repository.lock_read():
             # TODO: jam 20060112 should cat-revision always output utf-8?
@@ -1344,6 +1344,7 @@ class cmd_push(Command):
             use_existing_dir=False, directory=None, stacked_on=None,
             stacked=False, strict=None, no_tree=False,
             overwrite_tags=False, lossy=False):
+        from .location import location_to_url
         from .push import _show_push_branch
 
         if overwrite:
@@ -1371,6 +1372,7 @@ class cmd_push(Command):
                 more_warning='Uncommitted changes will not be pushed.')
         # Get the stacked_on branch, if any
         if stacked_on is not None:
+            stacked_on = location_to_url(stacked_on, 'read')
             stacked_on = urlutils.normalize_url(stacked_on)
         elif stacked:
             parent_url = br_from.get_parent()
@@ -1728,7 +1730,7 @@ class cmd_update(Command):
     If the tree's branch is bound to a master branch, brz will also update
     the branch from the master.
 
-    You cannot update just a single file or directory, because each Bazaar
+    You cannot update just a single file or directory, because each Breezy
     working tree has just a single basis revision.  If you want to restore a
     file that has been removed locally, use 'brz revert' instead of 'brz
     update'.  If you want to restore a file to its state in a previous
@@ -1871,11 +1873,11 @@ class cmd_info(Command):
 class cmd_remove(Command):
     __doc__ = """Remove files or directories.
 
-    This makes Bazaar stop tracking changes to the specified files. Bazaar will
+    This makes Breezy stop tracking changes to the specified files. Breezy will
     delete them if they can easily be recovered using revert otherwise they
     will be backed up (adding an extension of the form .~#~). If no options or
-    parameters are given Bazaar will scan for files that are being tracked by
-    Bazaar but missing in your tree and stop tracking them for you.
+    parameters are given Breezy will scan for files that are being tracked by
+    Breezy but missing in your tree and stop tracking them for you.
     """
     takes_args = ['file*']
     takes_options = ['verbose',
@@ -3091,9 +3093,10 @@ class cmd_ignore(Command):
     using this command or directly by using an editor, be sure to commit
     it.
 
-    Bazaar also supports a global ignore file ~/.bazaar/ignore. On Windows
-    the global ignore file can be found in the application data directory as
-    C:\\Documents and Settings\\<user>\\Application Data\\Bazaar\\2.0\\ignore.
+    Breezy also supports a global ignore file ~/.config/breezy/ignore. On
+    Windows the global ignore file can be found in the application data
+    directory as
+    C:\\Documents and Settings\\<user>\\Application Data\\Breezy\\3.0\\ignore.
     Global ignores are not touched by this command. The global ignore file
     can be edited directly using an editor.
 
@@ -3732,7 +3735,7 @@ class cmd_check(Command):
     unreferenced ancestors
         Texts that are ancestors of other texts, but
         are not properly referenced by the revision ancestry.  This is a
-        subtle problem that Bazaar can work around.
+        subtle problem that Breezy can work around.
 
     unique file texts
         This is the total number of unique file contents
@@ -3744,7 +3747,7 @@ class cmd_check(Command):
         entries are modified, but the file contents are not.  It does not
         indicate a problem.
 
-    If no restrictions are specified, all Bazaar data that is found at the given
+    If no restrictions are specified, all data that is found at the given
     location will be checked.
 
     :Examples:
@@ -3786,10 +3789,10 @@ class cmd_upgrade(Command):
     __doc__ = """Upgrade a repository, branch or working tree to a newer format.
 
     When the default format has changed after a major new release of
-    Bazaar, you may be informed during certain operations that you
+    Bazaar/Breezy, you may be informed during certain operations that you
     should upgrade. Upgrading to a newer format may improve performance
     or make new features available. It may however limit interoperability
-    with older repositories or with older versions of Bazaar.
+    with older repositories or with older versions of Bazaar or Breezy.
 
     If you wish to upgrade to a particular format rather than the
     current default, that can be specified using the --format option.
@@ -3811,7 +3814,7 @@ class cmd_upgrade(Command):
     If the conversion of a branch fails, remaining branches are still
     tried.
 
-    For more information on upgrades, see the Bazaar Upgrade Guide,
+    For more information on upgrades, see the Breezy Upgrade Guide,
     https://www.breezy-vcs.org/doc/en/upgrade-guide/.
     """
 
@@ -4312,7 +4315,7 @@ class cmd_merge(Command):
     through OTHER, excluding BASE but including OTHER, will be merged.  If this
     causes some revisions to be skipped, i.e. if the destination branch does
     not already contain revision BASE, such a merge is commonly referred to as
-    a "cherrypick". Unlike a normal merge, Bazaar does not currently track
+    a "cherrypick". Unlike a normal merge, Breezy does not currently track
     cherrypicks. The changes look like a normal commit, and the history of the
     changes from the other branch is not stored in the commit.
 
@@ -5133,8 +5136,8 @@ class cmd_plugins(Command):
 
     --verbose shows the path where each plugin is located.
 
-    A plugin is an external component for Bazaar that extends the
-    revision control system, by adding or replacing code in Bazaar.
+    A plugin is an external component for Breezy that extends the
+    revision control system, by adding or replacing code in Breezy.
     Plugins can do a variety of things, including overriding commands,
     adding new commands, providing additional network transports and
     customizing log output.
@@ -5420,10 +5423,10 @@ class cmd_uncommit(Command):
         else:
             self.add_cleanup(b.lock_write().unlock)
         return self._run(b, tree, dry_run, verbose, revision, force,
-                         local, keep_tags)
+                         local, keep_tags, location)
 
     def _run(self, b, tree, dry_run, verbose, revision, force, local,
-             keep_tags):
+             keep_tags, location):
         from .log import log_formatter, show_log
         from .uncommit import uncommit
 
@@ -5477,10 +5480,16 @@ class cmd_uncommit(Command):
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local, keep_tags=keep_tags)
-        self.outf.write(
-            gettext('You can restore the old tip by running:\n'
-                    '  brz pull . -r revid:%s\n')
-            % last_rev_id.decode('utf-8'))
+        if location != '.':
+            self.outf.write(
+                gettext('You can restore the old tip by running:\n'
+                        '  brz pull -d %s %s -r revid:%s\n')
+                % (location, location, last_rev_id.decode('utf-8')))
+        else:
+            self.outf.write(
+                gettext('You can restore the old tip by running:\n'
+                        '  brz pull . -r revid:%s\n')
+                % last_rev_id.decode('utf-8'))
 
 
 class cmd_break_lock(Command):
@@ -5498,7 +5507,7 @@ class cmd_break_lock(Command):
     :Examples:
         brz break-lock
         brz break-lock brz+ssh://example.com/brz/foo
-        brz break-lock --conf ~/.bazaar
+        brz break-lock --conf ~/.config/breezy
     """
 
     takes_args = ['location?']
@@ -5789,7 +5798,7 @@ class cmd_send(Command):
     branch containing submit_branch in its ancestory without needing access to
     the source branch.
 
-    If --no-bundle is specified, then Bazaar doesn't send the contents of the
+    If --no-bundle is specified, then Breezy doesn't send the contents of the
     revisions, but only a structured request to merge from the
     public_location.  In that case the public_branch is needed and it must be
     up-to-date and accessible to the recipient.  The public_branch is always

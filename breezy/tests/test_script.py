@@ -322,12 +322,12 @@ class TestCat(script.TestCaseWithTransportAndScript):
     def test_cat_input_to_file(self):
         retcode, out, err = self.run_command(['cat', '>file'],
                                              'content\n', None, None)
-        self.assertFileEqual(b'content\n', 'file')
+        self.assertFileEqual('content\n', 'file')
         self.assertEqual(None, out)
         self.assertEqual(None, err)
         retcode, out, err = self.run_command(['cat', '>>file'],
                                              'more\n', None, None)
-        self.assertFileEqual(b'content\nmore\n', 'file')
+        self.assertFileEqual('content\nmore\n', 'file')
         self.assertEqual(None, out)
         self.assertEqual(None, err)
 

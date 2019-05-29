@@ -140,6 +140,7 @@ class LaunchpadMergeProposal(MergeProposal):
 
     def set_description(self, description):
         self._mp.description = description
+        self._mp.lp_save()
 
     def close(self):
         self._mp.setStatus(status='Rejected')
