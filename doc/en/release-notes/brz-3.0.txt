@@ -38,6 +38,10 @@ Bug Fixes
 
 * Fix installation on Windows. (Raoul Snyman, #1818947)
 
+* Return consist errors from ``Branch.get_revid`` and
+  ``Repository.get_revid_for_revno`` when the revision
+  number is invalid. (Jelmer Vernooĳ, #701953)
+
 Documentation
 *************
 

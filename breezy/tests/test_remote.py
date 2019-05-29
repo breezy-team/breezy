@@ -2991,6 +2991,31 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
             repo.get_rev_id_for_revno, 5, (42, b'rev-foo'))
         self.assertFinished(client)
 
+    def test_outofbounds(self):
+        repo, client = self.setup_fake_client_and_repository('quack')
+        client.add_expected_call(
+            b'Repository.get_rev_id_for_revno', (b'quack/',
+                                                 43, (42, b'rev-foo')),
+            b'error', (b'revno-outofbounds', 43, 0, 42))
+        self.assertRaises(
+            errors.RevnoOutOfBounds,
+            repo.get_rev_id_for_revno, 43, (42, b'rev-foo'))
+        self.assertFinished(client)
+
+    def test_outofbounds_old(self):
+        # Older versions of bzr didn't support RevnoOutOfBounds
+        repo, client = self.setup_fake_client_and_repository('quack')
+        client.add_expected_call(
+            b'Repository.get_rev_id_for_revno', (b'quack/',
+                                                 43, (42, b'rev-foo')),
+            b'error', (
+                b'error', b'ValueError',
+                b'requested revno (43) is later than given known revno (42)'))
+        self.assertRaises(
+            errors.RevnoOutOfBounds,
+            repo.get_rev_id_for_revno, 43, (42, b'rev-foo'))
+        self.assertFinished(client)
+
     def test_branch_fallback_locking(self):
         """RemoteBranch.get_rev_id takes a read lock, and tries to call the
         get_rev_id_for_revno verb.  If the verb is unknown the VFS fallback
@@ -3916,6 +3941,12 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         err = errors.ErrorFromSmartServer((b'error', b'KeyError', b"1"))
         translated_error = self.translateErrorFromSmartServer(err)
         expected_error = errors.UnknownErrorFromSmartServer(err)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_RevnoOutOfBounds(self):
+        translated_error = self.translateTuple(
+            ((b'revno-outofbounds', 5, 0, 3)), path=b'path')
+        expected_error = errors.RevnoOutOfBounds(5, (0, 3))
         self.assertEqual(expected_error, translated_error)
 
 
