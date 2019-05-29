@@ -75,4 +75,3 @@ def allow_color():
         return curses.tigetnum('colors') > 2
     except curses.error:
         return False
-

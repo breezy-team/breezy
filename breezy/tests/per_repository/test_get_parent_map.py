@@ -39,12 +39,12 @@ class TestGetParentMap(TestCaseWithRepository):
         repo = tree.branch.repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertEqual({rev3:(rev1, rev2)},
+        self.assertEqual({rev3: (rev1, rev2)},
                          repo.get_parent_map([rev3]))
         self.assertEqual({rev1: (revision.NULL_REVISION,),
                           rev2: (rev1,),
                           rev3: (rev1, rev2),
-                         }, repo.get_parent_map([rev1, rev2, rev3]))
+                          }, repo.get_parent_map([rev1, rev2, rev3]))
 
     def test_no_parents(self):
         tree = self.make_branch_and_tree('.')
@@ -52,7 +52,7 @@ class TestGetParentMap(TestCaseWithRepository):
         repo = tree.branch.repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertEqual({rev1:(revision.NULL_REVISION,)},
+        self.assertEqual({rev1: (revision.NULL_REVISION,)},
                          repo.get_parent_map([rev1]))
 
     def test_none(self):
@@ -69,5 +69,5 @@ class TestGetParentMap(TestCaseWithRepository):
         repo = tree.branch.repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertEqual({revision.NULL_REVISION:()},
+        self.assertEqual({revision.NULL_REVISION: ()},
                          repo.get_parent_map([revision.NULL_REVISION]))

@@ -36,7 +36,7 @@ def simple_parse_lines(lines):
 
 def simple_parse(content):
     """Returns blocks, where each block is a 2-tuple (kind, text).
-    
+
     :kind: one of 'heading', 'release', 'section', 'empty' or 'text'.
     :text: a str, including newlines.
     """

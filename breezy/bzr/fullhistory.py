@@ -40,7 +40,8 @@ class FullHistoryBzrBranch(BzrBranch):
 
     def set_last_revision_info(self, revno, revision_id):
         if not revision_id or not isinstance(revision_id, bytes):
-            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
+            raise errors.InvalidRevisionId(
+                revision_id=revision_id, branch=self)
         revision_id = _mod_revision.ensure_null(revision_id)
         with self.lock_write():
             # this old format stores the full history, but this api doesn't
@@ -114,7 +115,7 @@ class FullHistoryBzrBranch(BzrBranch):
         destination._set_revision_history(new_history)
 
     def generate_revision_history(self, revision_id, last_rev=None,
-        other_branch=None):
+                                  other_branch=None):
         """Create a new revision history that will finish with revision_id.
 
         :param revision_id: the new tip to use.
@@ -125,7 +126,7 @@ class FullHistoryBzrBranch(BzrBranch):
         """
         with self.lock_write():
             self._set_revision_history(self._lefthand_history(revision_id,
-                last_rev, other_branch))
+                                                              last_rev, other_branch))
 
 
 class BzrBranch5(FullHistoryBzrBranch):
@@ -172,6 +173,3 @@ class BzrBranchFormat5(BranchFormatMetadir):
 
     def supports_tags(self):
         return False
-
-
-

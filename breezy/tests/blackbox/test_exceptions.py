@@ -38,11 +38,12 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
         # we must use a subprocess, because the normal in-memory mechanism
         # allows errors to propagate up through the test suite
         out, err = self.run_bzr_subprocess(['assert-fail'],
-            universal_newlines=True,
-            retcode=errors.EXIT_INTERNAL_ERROR)
+                                           universal_newlines=True,
+                                           retcode=errors.EXIT_INTERNAL_ERROR)
         self.assertEqual(4, errors.EXIT_INTERNAL_ERROR)
         self.assertContainsRe(err, br'\nAssertionError: always fails\n')
-        self.assertContainsRe(err, br'Bazaar has encountered an internal error')
+        self.assertContainsRe(
+            err, br'Bazaar has encountered an internal error')
 
     def test_undecodable_argv(self):
         """A user error must be reported if argv is not in the locale encoding
@@ -53,13 +54,15 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
         if os.name != "posix":
             raise tests.TestNotApplicable("Needs system beholden to C locales")
         if PY3:
-            raise tests.TestNotApplicable("Unable to pass argv to subprocess as bytes")
+            raise tests.TestNotApplicable(
+                "Unable to pass argv to subprocess as bytes")
         out, err = self.run_bzr_subprocess([b"\xa0"],
-            env_changes={"LANG": "C", "LC_ALL": "C"},
-            universal_newlines=True,
-            retcode=errors.EXIT_ERROR)
+                                           env_changes={
+                                               "LANG": "C", "LC_ALL": "C"},
+                                           universal_newlines=True,
+                                           retcode=errors.EXIT_ERROR)
         self.assertContainsRe(err, br"^brz: ERROR: .*'\\xa0'.* unsupported",
-            flags=re.MULTILINE)
+                              flags=re.MULTILINE)
         self.assertEqual(out, b"")
 
     def test_utf8_default_fs_enc(self):
@@ -67,7 +70,7 @@ class TestExceptionReporting(tests.TestCaseInTempDir):
         if os.name != "posix":
             raise tests.TestNotApplicable("Needs system beholden to C locales")
         out, err = self.run_bzr_subprocess(["init", "file:%C2%A7"],
-            env_changes={"LANG": "C", "LC_ALL": "C"})
+                                           env_changes={"LANG": "C", "LC_ALL": "C"})
         self.assertContainsRe(out, b"^Created a standalone tree .*$")
 
 
@@ -105,15 +108,15 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
     def setUp(self):
         super(TestDeprecationWarning, self).setUp()
         self.addCleanup(repository.format_registry.remove,
-            TestObsoleteRepoFormat)
+                        TestObsoleteRepoFormat)
         repository.format_registry.register(TestObsoleteRepoFormat)
         self.addCleanup(controldir.format_registry.remove, "testobsolete")
         bzr.register_metadir(controldir.format_registry, "testobsolete",
-            "breezy.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
-            branch_format='breezy.bzr.branch.BzrBranchFormat7',
-            tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
-            deprecated=True,
-            help='Same as 2a, but with an obsolete repo format.')
+                             "breezy.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
+                             branch_format='breezy.bzr.branch.BzrBranchFormat7',
+                             tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat6',
+                             deprecated=True,
+                             help='Same as 2a, but with an obsolete repo format.')
         self.disable_deprecation_warning()
 
     def enable_deprecation_warning(self, repo=None):

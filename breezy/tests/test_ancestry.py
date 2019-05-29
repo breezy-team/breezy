@@ -29,8 +29,8 @@ class TestAncestry(TestCaseWithMemoryTransport):
         rev_id_two = builder.build_commit()
         branch = builder.get_branch()
         self.assertThat([rev_id_one, rev_id_two],
-            MatchesAncestry(branch.repository, rev_id_two))
+                        MatchesAncestry(branch.repository, rev_id_two))
         self.assertThat([rev_id_one],
-            MatchesAncestry(branch.repository, rev_id_one))
+                        MatchesAncestry(branch.repository, rev_id_one))
 
 # TODO: check that ancestry is updated to include indirectly merged revisions

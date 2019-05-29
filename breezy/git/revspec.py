@@ -21,7 +21,6 @@ from __future__ import absolute_import
 # Please note that imports are delayed as much as possible here since
 # if DWIM revspecs are supported this module is imported by __init__.py.
 
-from .. import version_info as breezy_version
 from ..errors import (
     InvalidRevisionId,
     InvalidRevisionSpec,
@@ -41,12 +40,9 @@ def valid_git_sha1(hex):
     :param hex: Hex string to validate
     :return: Boolean
     """
-    import binascii
     try:
-        binascii.unhexlify(hex)
-    except TypeError:
-        return False
-    except binascii.Error:
+        int(hex, 16)
+    except ValueError:
         return False
     else:
         return True
@@ -70,7 +66,7 @@ class RevisionSpec_git(RevisionSpec):
             )
 
         bzr_revid = getattr(branch.repository, "lookup_foreign_revision_id",
-                              default_mapping.revision_id_foreign_to_bzr)(sha1)
+                            default_mapping.revision_id_foreign_to_bzr)(sha1)
         try:
             if branch.repository.has_revision(bzr_revid):
                 return RevisionInfo.from_revision_id(branch, bzr_revid)
@@ -110,7 +106,7 @@ class RevisionSpec_git(RevisionSpec):
 
     def _match_on(self, branch, revs):
         loc = self.spec.find(':')
-        git_sha1 = self.spec[loc+1:].encode("utf-8")
+        git_sha1 = self.spec[loc + 1:].encode("utf-8")
         if len(git_sha1) > 40 or not valid_git_sha1(git_sha1):
             raise InvalidRevisionSpec(self.user_spec, branch)
         from . import (

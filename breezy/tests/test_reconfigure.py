@@ -73,7 +73,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_checkout_to_branch(self):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout')
-        reconfiguration = reconfigure.Reconfigure.to_branch(checkout.controldir)
+        reconfiguration = reconfigure.Reconfigure.to_branch(
+            checkout.controldir)
         reconfiguration.apply()
         reconfigured = controldir.ControlDir.open('checkout').open_branch()
         self.assertIs(None, reconfigured.get_bound_location())
@@ -82,7 +83,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout', lightweight=True)
         checkout.commit('first commit', rev_id=b'rev1')
-        reconfiguration = reconfigure.Reconfigure.to_branch(checkout.controldir)
+        reconfiguration = reconfigure.Reconfigure.to_branch(
+            checkout.controldir)
         return reconfiguration, checkout
 
     def test_lightweight_checkout_to_branch(self):
@@ -107,7 +109,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def prepare_lightweight_checkout_to_checkout(self):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout', lightweight=True)
-        reconfiguration = reconfigure.Reconfigure.to_checkout(checkout.controldir)
+        reconfiguration = reconfigure.Reconfigure.to_checkout(
+            checkout.controldir)
         return reconfiguration, checkout
 
     def test_lightweight_checkout_to_checkout(self):
@@ -136,7 +139,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_branch_to_tree(self):
         branch = self.make_branch('branch')
-        reconfiguration=reconfigure.Reconfigure.to_tree(branch.controldir)
+        reconfiguration = reconfigure.Reconfigure.to_tree(branch.controldir)
         reconfiguration.apply()
         branch.controldir.open_workingtree()
 
@@ -309,7 +312,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             repo.controldir)
         self.assertRaises(reconfigure.NoBindLocation, reconfiguration.apply)
-        branch = self.make_branch('branch')
+        self.make_branch('branch')
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             repo.controldir, 'branch')
         reconfiguration.apply()
@@ -318,7 +321,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_unshared_repo_to_lightweight_checkout(self):
         repo = self.make_repository('repo', shared=False)
-        branch = self.make_branch('branch')
+        self.make_branch('branch')
         reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
             repo.controldir, 'branch')
         reconfiguration.apply()
@@ -331,7 +334,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('root/tree')
         tree.commit('Hello', rev_id=b'hello-id')
         repo = self.make_repository('root', shared=True)
-        reconfiguration = reconfigure.Reconfigure.to_use_shared(tree.controldir)
+        reconfiguration = reconfigure.Reconfigure.to_use_shared(
+            tree.controldir)
         reconfiguration.apply()
         tree = workingtree.WorkingTree.open('root/tree')
         self.assertTrue(repo.has_same_location(tree.branch.repository))
@@ -349,7 +353,8 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.add_dead_head(tree)
         tree.commit('Hello', rev_id=b'hello-id')
         repo = self.make_repository('root', shared=True)
-        reconfiguration = reconfigure.Reconfigure.to_use_shared(tree.controldir)
+        reconfiguration = reconfigure.Reconfigure.to_use_shared(
+            tree.controldir)
         reconfiguration.apply()
         tree = workingtree.WorkingTree.open('root/tree')
         message = repo.get_revision(b'dead-head-id').message
@@ -357,7 +362,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def make_repository_tree(self):
         self.build_tree(['root/'])
-        repo = self.make_repository('root', shared=True)
+        self.make_repository('root', shared=True)
         tree = self.make_branch_and_tree('root/tree')
         reconfigure.Reconfigure.to_use_shared(tree.controldir).apply()
         return workingtree.WorkingTree.open('root/tree')
@@ -429,23 +434,28 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_make_with_trees_already_with_trees(self):
         repo = self.make_repository_with_without_trees(True)
         e = self.assertRaises(reconfigure.AlreadyWithTrees,
-           reconfigure.Reconfigure.set_repository_trees, repo.controldir, True)
+                              reconfigure.Reconfigure.set_repository_trees, repo.controldir, True)
         self.assertContainsRe(str(e),
-            r"Shared repository '.*' already creates working trees.")
+                              r"Shared repository '.*' already creates working trees.")
 
     def test_make_without_trees_already_no_trees(self):
         repo = self.make_repository_with_without_trees(False)
-        e = self.assertRaises(reconfigure.AlreadyWithNoTrees,
-            reconfigure.Reconfigure.set_repository_trees, repo.controldir, False)
-        self.assertContainsRe(str(e),
+        e = self.assertRaises(
+            reconfigure.AlreadyWithNoTrees,
+            reconfigure.Reconfigure.set_repository_trees, repo.controldir,
+            False)
+        self.assertContainsRe(
+            str(e),
             r"Shared repository '.*' already doesn't create working trees.")
 
     def test_repository_tree_reconfiguration_not_supported(self):
         tree = self.make_branch_and_tree('tree')
-        e = self.assertRaises(reconfigure.ReconfigurationNotSupported,
-            reconfigure.Reconfigure.set_repository_trees, tree.controldir, None)
-        self.assertContainsRe(str(e),
-            r"Requested reconfiguration of '.*' is not supported.")
+        e = self.assertRaises(
+            reconfigure.ReconfigurationNotSupported,
+            reconfigure.Reconfigure.set_repository_trees, tree.controldir,
+            None)
+        self.assertContainsRe(
+            str(e), r"Requested reconfiguration of '.*' is not supported.")
 
     def test_lightweight_checkout_to_tree_preserves_reference_locations(self):
         format = controldir.format_registry.make_controldir('1.9')

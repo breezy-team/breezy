@@ -109,7 +109,8 @@ class TestUnshelvePreview(TestCaseWithTransport):
     def test_non_ascii(self):
         """Test that we can show a non-ascii diff that would result from unshelving"""
 
-        init_content = u'Initial: \u0418\u0437\u043d\u0430\u0447\n'.encode('utf-8')
+        init_content = u'Initial: \u0418\u0437\u043d\u0430\u0447\n'.encode(
+            'utf-8')
         more_content = u'More: \u0415\u0449\u0451\n'.encode('utf-8')
         next_content = init_content + more_content
         diff_part = b'@@ -1,1 +1,2 @@\n %s+%s' % (init_content, more_content)
@@ -120,7 +121,8 @@ class TestUnshelvePreview(TestCaseWithTransport):
         tree.commit(message='committed')
         self.build_tree_contents([('a_file', next_content)])
         self.run_bzr(['shelve', '--all'])
-        out, err = self.run_bzr_raw(['unshelve', '--preview'], encoding='latin-1')
+        out, err = self.run_bzr_raw(
+            ['unshelve', '--preview'], encoding='latin-1')
 
         self.assertContainsString(out, diff_part)
 

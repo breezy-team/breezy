@@ -33,5 +33,4 @@ class TestShelfManager(TestCaseWithWorkingTree):
         else:
             self.assertRaises(ShelvingUnsupported, tree.get_shelf_manager)
 
-
     # TODO(jelmer): Add more tests for shelf manager.

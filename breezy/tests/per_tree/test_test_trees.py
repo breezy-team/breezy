@@ -129,7 +129,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
             {'', 'd', 'b', 'b/c'},
             set(tree.all_versioned_paths()))
         self.assertEqual(
-            [(p, tree.path2id(p)) for p in ['', 'b', 'd',  'b/c']],
+            [(p, tree.path2id(p)) for p in ['', 'b', 'd', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff(b'bar\n', tree.get_file_text('d'))
         self.assertFalse(tree.is_executable('b/c'))
@@ -141,15 +141,12 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
-        if tree.has_versioned_directories() or not tree.has_filename('b'):
-            self.assertEqual([], list(tree.unknowns()))
-        else:
-            self.assertEqual(['b'], list(tree.unknowns()))
+        self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         expected_paths = (
-                ['', 'a'] +
-                (['b'] if tree.has_versioned_directories() else []) +
-                ['e'])
+            ['', 'a']
+            + (['b'] if tree.has_versioned_directories() else [])
+            + ['e'])
         self.assertEqual(
             set(expected_paths),
             set(tree.all_versioned_paths()))
@@ -169,18 +166,20 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
-        if tree.has_versioned_directories() or not tree.has_filename('1top-dir/1dir-in-1topdir'):
-            self.assertEqual([], list(tree.unknowns()))
-        else:
-            self.assertEqual(['1top-dir/1dir-in-1topdir'], list(tree.unknowns()))
+        self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         tree_root = tree.path2id('')
+        try:
+            all_file_ids = set(tree.all_file_ids())
+        except errors.UnsupportedOperation:
+            all_file_ids = None
         if tree.has_versioned_directories():
-            self.assertEqual(
-                {tree.path2id(p) for p in [
-                    '', '0file', '1top-dir', '1top-dir/1dir-in-1topdir',
-                    '1top-dir/0file-in-1topdir', 'symlink', u'2utf\u1234file']},
-                set(tree.all_file_ids()))
+            if all_file_ids is not None:
+                self.assertEqual(
+                    {tree.path2id(p) for p in [
+                        '', '0file', '1top-dir', '1top-dir/1dir-in-1topdir',
+                        '1top-dir/0file-in-1topdir', 'symlink', u'2utf\u1234file']},
+                    set(tree.all_file_ids()))
             # note that the order of the paths and fileids is deliberately
             # mismatched to ensure that the result order is path based.
             self.assertEqual(
@@ -193,11 +192,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                  ('1top-dir/1dir-in-1topdir', 'directory')],
                 [(path, node.kind) for path, node in tree.iter_entries_by_dir()])
         else:
-            self.assertEqual(
-                {tree.path2id(p) for p in [
-                    '', '0file', '1top-dir', 
-                    '1top-dir/0file-in-1topdir', 'symlink', u'2utf\u1234file']},
-                set(tree.all_file_ids()))
+            if all_file_ids is not None:
+                self.assertEqual(
+                    {tree.path2id(p) for p in [
+                        '', '0file', '1top-dir',
+                        '1top-dir/0file-in-1topdir', 'symlink',
+                        u'2utf\u1234file']},
+                    set(tree.all_file_ids()))
             # note that the order of the paths and fileids is deliberately
             # mismatched to ensure that the result order is path based.
             self.assertEqual(
@@ -213,15 +214,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         # currently this test tree requires unicode. It might be good
         # to have it simply stop having the single unicode file in it
         # when dealing with a non-unicode filesystem.
-        tree = self.get_tree_with_subdirs_and_all_supported_content_types(False)
+        tree = self.get_tree_with_subdirs_and_all_supported_content_types(
+            False)
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
-        if tree.has_versioned_directories() or not tree.has_filename('1top-dir/1dir-in-1topdir'):
-            self.assertEqual([], list(tree.unknowns()))
-        else:
-            self.assertEqual(['1top-dir/1dir-in-1topdir'], list(tree.unknowns()))
+        self.assertEqual([], list(tree.unknowns()))
         # __iter__ has no strongly defined order
         tree_root = tree.path2id('')
         if tree.has_versioned_directories():
@@ -265,14 +264,14 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                  u'fo\N{Euro Sign}o',
                  u'ba\N{Euro Sign}r/',
                  u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
-                ]
+                 ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
         file_ids = [b'TREE_ROOT',
                     b'fo\xe2\x82\xaco-id',
                     b'ba\xe2\x82\xacr-id',
                     b'ba\xe2\x82\xacz-id',
-                   ]
+                    ]
         self.build_tree(paths[1:])
         if tree.get_root_id() is None:
             # Some trees do not have a root yet.
@@ -313,12 +312,12 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                         (u'fo\N{Euro Sign}o', foo_id, root_id, revision_id),
                         (u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                          baz_id, bar_id, revision_id),
-                       ]
+                        ]
         with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir())
 
         for expected, (path, ie) in zip(path_and_ids, path_entries):
-            self.assertEqual(expected[0], path) # Paths should match
+            self.assertEqual(expected[0], path)  # Paths should match
             self.assertIsInstance(path, text_type)
             self.assertEqual(expected[1], ie.file_id)
             self.assertIsInstance(ie.file_id, bytes)
@@ -357,7 +356,8 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         else:
             tree2.commit(u'to m\xe9rge')
 
-        self.assertTrue(tree2.is_versioned(u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
+        self.assertTrue(tree2.is_versioned(
+            u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
         wt.merge_from_branch(tree2.branch)
         self.assertTrue(wt.is_versioned(u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'))
 
@@ -381,13 +381,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                          baz_id, bar_id, revision_id_1),
                         (u'ba\N{Euro Sign}r/qu\N{Euro Sign}x',
                          qux_id, bar_id, revision_id_2),
-                       ]
+                        ]
         with tree.lock_read():
             path_entries = list(tree.iter_entries_by_dir())
 
         for (epath, efid, eparent, erev), (path, ie) in zip(path_and_ids,
                                                             path_entries):
-            self.assertEqual(epath, path) # Paths should match
+            self.assertEqual(epath, path)  # Paths should match
             self.assertIsInstance(path, text_type)
             self.assertIsInstance(ie.file_id, bytes)
             if wt.supports_setting_file_ids():

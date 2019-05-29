@@ -23,7 +23,6 @@ import errno
 import os
 import sys
 import time
-import warnings
 
 from . import (
     archive,
@@ -66,6 +65,12 @@ def export(tree, dest, format=None, root=None, subdir=None,
 
     if not per_file_timestamps:
         force_mtime = time.time()
+        if getattr(tree, '_repository', None):
+            try:
+                force_mtime = tree._repository.get_revision(
+                    tree.get_revision_id()).timestamp
+            except errors.NoSuchRevision:
+                pass
     else:
         force_mtime = None
 
@@ -76,15 +81,16 @@ def export(tree, dest, format=None, root=None, subdir=None,
         # then we should stream a tar file and unpack that on the fly.
         with tree.lock_read():
             for unused in dir_exporter_generator(tree, dest, root, subdir,
-                    force_mtime):
+                                                 force_mtime):
                 pass
         return
 
     with tree.lock_read():
-        chunks = tree.archive(format, dest, root=root, subdir=subdir, force_mtime=force_mtime)
+        chunks = tree.archive(format, dest, root=root,
+                              subdir=subdir, force_mtime=force_mtime)
         if dest == '-':
             for chunk in chunks:
-                 getattr(sys.stdout, 'buffer', sys.stdout).write(chunk)
+                getattr(sys.stdout, 'buffer', sys.stdout).write(chunk)
         elif fileobj is not None:
             for chunk in chunks:
                 fileobj.write(chunk)
@@ -197,7 +203,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
             os.mkdir(fullpath)
         elif ie.kind == "symlink":
             try:
-                symlink_target = tree.get_symlink_target(tp, file_id)
+                symlink_target = tree.get_symlink_target(tp)
                 os.symlink(symlink_target, fullpath)
             except OSError as e:
                 raise errors.BzrError(
@@ -205,7 +211,7 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
                     % (fullpath, symlink_target, e))
         else:
             raise errors.BzrError("don't know how to export {%s} of kind %r" %
-               (tp, ie.kind))
+                                  (tp, ie.kind))
 
         yield
     # The data returned here can be in any order, but we've already created all
@@ -215,14 +221,14 @@ def dir_exporter_generator(tree, dest, root, subdir=None,
         fullpath = osutils.pathjoin(dest, relpath)
         # We set the mode and let the umask sort out the file info
         mode = 0o666
-        if tree.is_executable(treepath, file_id):
+        if tree.is_executable(treepath):
             mode = 0o777
         with os.fdopen(os.open(fullpath, flags, mode), 'wb') as out:
             out.writelines(chunks)
         if force_mtime is not None:
             mtime = force_mtime
         else:
-            mtime = tree.get_file_mtime(treepath, file_id)
+            mtime = tree.get_file_mtime(treepath)
         os.utime(fullpath, (mtime, mtime))
 
         yield

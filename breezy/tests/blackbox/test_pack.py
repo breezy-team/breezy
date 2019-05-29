@@ -28,9 +28,9 @@ class TestPack(tests.TestCaseWithTransport):
         self._make_file(path, line_prefix, total_lines, versioned=True)
 
     def _make_file(self, path, line_prefix, total_lines, versioned):
-        text=''
+        text = ''
         for i in range(total_lines):
-            text += line_prefix + str(i+1) + "\n"
+            text += line_prefix + str(i + 1) + "\n"
 
         with open(path, 'w') as f:
             f.write(text)

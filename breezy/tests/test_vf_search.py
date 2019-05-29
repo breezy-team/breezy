@@ -35,8 +35,11 @@ from .test_graph import TestGraphBase
 #   rev3  /
 #     |  /
 #   rev4
-ancestry_1 = {b'rev1': [NULL_REVISION], b'rev2a': [b'rev1'], b'rev2b': [b'rev1'],
-              b'rev3': [b'rev2a'], b'rev4': [b'rev3', b'rev2b']}
+ancestry_1 = {b'rev1': [NULL_REVISION],
+              b'rev2a': [b'rev1'],
+              b'rev2b': [b'rev1'],
+              b'rev3': [b'rev2a'],
+              b'rev4': [b'rev3', b'rev2b']}
 
 # Ancestry 2:
 #
@@ -49,8 +52,11 @@ ancestry_1 = {b'rev1': [NULL_REVISION], b'rev2a': [b'rev1'], b'rev2b': [b'rev1']
 # rev3a
 #   |
 # rev4a
-ancestry_2 = {b'rev1a': [NULL_REVISION], b'rev2a': [b'rev1a'],
-              b'rev1b': [NULL_REVISION], b'rev3a': [b'rev2a'], b'rev4a': [b'rev3a']}
+ancestry_2 = {b'rev1a': [NULL_REVISION],
+              b'rev2a': [b'rev1a'],
+              b'rev1b': [NULL_REVISION],
+              b'rev3a': [b'rev2a'],
+              b'rev4a': [b'rev3a']}
 
 
 # Extended history shortcut
@@ -71,7 +77,7 @@ extended_history_shortcut = {b'a': [NULL_REVISION],
                              b'd': [b'c'],
                              b'e': [b'd'],
                              b'f': [b'a', b'd'],
-                            }
+                             }
 
 
 class TestSearchResultRefine(tests.TestCase):
@@ -82,10 +88,11 @@ class TestSearchResultRefine(tests.TestCase):
     def test_refine(self):
         # Used when pulling from a stacked repository, so test some revisions
         # being satisfied from the stacking branch.
-        g = self.make_graph(
+        self.make_graph(
             {b"tip": [b"mid"], b"mid": [b"base"], b"tag": [b"base"],
-             b"base": [NULL_REVISION], NULL_REVISION:[]})
-        result = vf_search.SearchResult({b'tip', b'tag'},
+             b"base": [NULL_REVISION], NULL_REVISION: []})
+        result = vf_search.SearchResult(
+            {b'tip', b'tag'},
             {NULL_REVISION}, 4, {b'tip', b'mid', b'tag', b'base'})
         result = result.refine({b'tip'}, {b'mid'})
         recipe = result.get_recipe()
@@ -95,7 +102,7 @@ class TestSearchResultRefine(tests.TestCase):
         self.assertEqual({NULL_REVISION, b'tip'}, recipe[2])
         self.assertEqual(3, recipe[3])
         result = result.refine({b'mid', b'tag', b'base'},
-            {NULL_REVISION})
+                               {NULL_REVISION})
         recipe = result.get_recipe()
         # We should be starting from nothing (NULL was known as a cut point)
         self.assertEqual(set([]), recipe[1])
@@ -129,7 +136,7 @@ class TestSearchResultFromParentMap(TestGraphBase):
         self.assertSearchResult([b'rev1b', b'rev4a'], [NULL_REVISION],
                                 len(ancestry_2), ancestry_2)
         self.assertSearchResult([b'rev1b', b'rev4a'], [],
-                                len(ancestry_2)+1, ancestry_2,
+                                len(ancestry_2) + 1, ancestry_2,
                                 missing_keys=[NULL_REVISION])
 
     def test_partial_search(self):
@@ -167,7 +174,6 @@ class TestLimitedSearchResultFromParentMap(TestGraphBase):
         self.assertSearchResult([b'rev2a', b'rev2b'], [b'rev1'], 2,
                                 ancestry_1, (), [b'rev1'], 1)
 
-
     def test_multiple_heads(self):
         self.assertSearchResult([b'e', b'f'], [b'a'], 5,
                                 extended_history_shortcut, (), [b'a'], 10)
@@ -189,12 +195,12 @@ class TestPendingAncestryResultRefine(tests.TestCase):
         # being satisfied from the stacking branch.
         g = self.make_graph(
             {b"tip": [b"mid"], b"mid": [b"base"], b"tag": [b"base"],
-             b"base":[NULL_REVISION], NULL_REVISION:[]})
+             b"base": [NULL_REVISION], NULL_REVISION: []})
         result = vf_search.PendingAncestryResult([b'tip', b'tag'], None)
         result = result.refine({b'tip'}, {b'mid'})
         self.assertEqual({b'mid', b'tag'}, result.heads)
         result = result.refine({b'mid', b'tag', b'base'},
-            {NULL_REVISION})
+                               {NULL_REVISION})
         self.assertEqual({NULL_REVISION}, result.heads)
         self.assertTrue(result.is_empty())
 
@@ -228,7 +234,8 @@ class TestPendingAncestryResultGetKeys(tests.TestCaseWithMemoryTransport):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         result = vf_search.PendingAncestryResult([b'rev-2'], repo)
-        self.assertEqual(sorted([b'rev-1', b'rev-2']), sorted(result.get_keys()))
+        self.assertEqual(sorted([b'rev-1', b'rev-2']),
+                         sorted(result.get_keys()))
 
     def test_get_keys_excludes_null(self):
         # Make a 'graph' with an iter_ancestry that returns NULL_REVISION

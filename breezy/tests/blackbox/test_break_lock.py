@@ -58,7 +58,8 @@ class TestBreakLock(tests.TestCaseWithTransport):
         self.master_branch = controldir.ControlDir.create_branch_convenience(
             'master-repo/master-branch')
         controldir.ControlDir.create('repo').create_repository()
-        local_branch = controldir.ControlDir.create_branch_convenience('repo/branch')
+        local_branch = controldir.ControlDir.create_branch_convenience(
+            'repo/branch')
         local_branch.bind(self.master_branch)
         checkoutdir = controldir.ControlDir.create('checkout')
         checkoutdir.set_branch_reference(local_branch)
@@ -80,7 +81,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
         self.assertRaises(errors.LockBroken, self.master_branch.unlock)
 
     def test_break_lock_everything_locked(self):
-        ### if everything is locked, we should be able to unlock the lot.
+        # if everything is locked, we should be able to unlock the lot.
         # however, we dont test breaking the working tree because we
         # cannot accurately do so right now: the dirstate lock is held
         # by an os lock, and we need to spawn a separate process to lock it
@@ -132,7 +133,8 @@ class TestSmartServerBreakLock(tests.TestCaseWithTransport):
         t = self.make_branch_and_tree('branch')
         t.branch.lock_write()
         self.reset_smart_call_log()
-        out, err = self.run_bzr(['break-lock', '--force', self.get_url('branch')])
+        out, err = self.run_bzr(
+            ['break-lock', '--force', self.get_url('branch')])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have

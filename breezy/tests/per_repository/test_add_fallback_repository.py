@@ -31,7 +31,7 @@ class TestAddFallbackRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('branch')
         if not repo._format.supports_external_lookups:
             self.assertRaises(errors.UnstackableRepositoryFormat,
-                repo.add_fallback_repository, tree.branch.repository)
+                              repo.add_fallback_repository, tree.branch.repository)
             raise TestNotApplicable
         repo.add_fallback_repository(tree.branch.repository)
         # the repository has been added correctly if we can query against it.
@@ -43,16 +43,16 @@ class TestAddFallbackRepository(TestCaseWithRepository):
         # and can also query the parent map, either on the revisions
         # versionedfiles, which works in tuple keys...
         self.assertEqual({(revision_id,): ()},
-            repo.revisions.get_parent_map([(revision_id,)]))
+                         repo.revisions.get_parent_map([(revision_id,)]))
         # ... or on the repository directly...
         self.assertEqual({revision_id: (NULL_REVISION,)},
-            repo.get_parent_map([revision_id]))
+                         repo.get_parent_map([revision_id]))
         # ... or on the repository's graph.
         self.assertEqual({revision_id: (NULL_REVISION,)},
-            repo.get_graph().get_parent_map([revision_id]))
+                         repo.get_graph().get_parent_map([revision_id]))
         # ... or on the repository's graph, when there is an other repository.
         other = self.make_repository('other')
         other.lock_read()
         self.addCleanup(other.unlock)
         self.assertEqual({revision_id: (NULL_REVISION,)},
-            repo.get_graph(other).get_parent_map([revision_id]))
+                         repo.get_graph(other).get_parent_map([revision_id]))

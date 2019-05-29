@@ -62,7 +62,7 @@ class TestTransportLog(TestCaseWithMemoryTransport):
 
         result = logging_transport.readv('foo', [(0, 10)])
         self.assertEqual(list(result),
-            [(0, 'abcdefghij')])
+                         [(0, 'abcdefghij')])
 
 
 class DummyReadvTransport(object):

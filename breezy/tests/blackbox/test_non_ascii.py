@@ -44,7 +44,8 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.overrideAttr(osutils, '_cached_user_encoding', self.encoding)
         email = self.info['committer'] + ' <joe@foo.com>'
         if sys.version_info[0] == 2:
-            self.overrideEnv('BRZ_EMAIL', email.encode(osutils.get_user_encoding()))
+            self.overrideEnv('BRZ_EMAIL', email.encode(
+                osutils.get_user_encoding()))
         else:
             self.overrideEnv('BRZ_EMAIL', email)
         self.create_base()
@@ -62,7 +63,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
             encoding = osutils.get_user_encoding()
         try:
             out = self.run_bzr_raw(args, encoding=encoding,
-                               retcode=retcode, working_dir=working_dir)[0]
+                                   retcode=retcode, working_dir=working_dir)[0]
             return out.decode(encoding)
         except UnicodeError as e:
             if not fail:
@@ -148,7 +149,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         txt = self.run_bzr_decode('status', encoding='ascii')
         expected = u'modified:\n  %s\n' % (
-                    self.info['filename'].encode('ascii', 'replace').decode('ascii'),)
+            self.info['filename'].encode('ascii', 'replace').decode('ascii'),)
         self.assertEqual(expected, txt)
 
     def test_cat(self):
@@ -237,8 +238,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         txt = self.run_bzr_decode(['mv', fname1, fname2, dirname])
         self._check_OSX_can_roundtrip(self.info['filename'])
         self.assertEqual([u'%s => %s/%s' % (fname1, dirname, fname1),
-                          u'%s => %s/%s' % (fname2, dirname, fname2)]
-                         , txt.splitlines())
+                          u'%s => %s/%s' % (fname2, dirname, fname2)], txt.splitlines())
 
         # The rename should still succeed
         newpath = u'%s/%s' % (dirname, fname2)
@@ -270,7 +270,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         expected = osutils.pathjoin(osutils.getcwd(), dirname1)
         self.assertEqual(u'Using saved parent location: %s/\n'
-                'No revisions or tags to pull.\n' % (expected,), txt)
+                         'No revisions or tags to pull.\n' % (expected,), txt)
 
         self.build_tree_contents(
             [(osutils.pathjoin(dirname1, 'a'), b'and yet more\n')])
@@ -310,9 +310,9 @@ class TestNonAscii(tests.TestCaseWithTransport):
                             encoding='ascii')
 
         self.run_bzr_decode(['push', '--verbose', '--create-prefix',
-                            dirname + '4/' + dirname + '5'])
+                             dirname + '4/' + dirname + '5'])
         self.run_bzr_decode(['push', '--verbose', '--create-prefix',
-                            dirname + '6/' + dirname + '7'], encoding='ascii')
+                             dirname + '6/' + dirname + '7'], encoding='ascii')
 
     def test_renames(self):
         fname = self.info['filename'] + '2'
@@ -348,7 +348,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
             ('base/', ),
             (osutils.pathjoin('base', '%s/' % (dirname,)), )])
         self.wt.add('base')
-        self.wt.add('base/'+dirname)
+        self.wt.add('base/' + dirname)
         path = osutils.pathjoin('base', dirname, fname)
         self._check_OSX_can_roundtrip(self.info['filename'])
         self.wt.rename_one(fname, path)
@@ -386,7 +386,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.wt.remove(fname)
 
         txt = self.run_bzr_decode('deleted')
-        self.assertEqual(fname+'\n', txt)
+        self.assertEqual(fname + '\n', txt)
 
         txt = self.run_bzr_decode('deleted --show-ids')
         self.assertTrue(txt.startswith(fname))
@@ -402,7 +402,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         txt = self.run_bzr_decode('modified')
         self._check_OSX_can_roundtrip(self.info['filename'])
-        self.assertEqual('"'+fname+'"'+'\n', txt)
+        self.assertEqual('"' + fname + '"' + '\n', txt)
 
         self.run_bzr_decode('modified', encoding='ascii', fail=True)
 
@@ -412,7 +412,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.wt.add(fname)
 
         txt = self.run_bzr_decode('added')
-        self.assertEqual('"'+fname+'"'+'\n', txt)
+        self.assertEqual('"' + fname + '"' + '\n', txt)
 
         self.run_bzr_decode('added', encoding='ascii', fail=True)
 
@@ -424,7 +424,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.wt.controldir.sprout(url)
 
         txt = self.run_bzr_decode('root', working_dir=dirname)
-        self.assertTrue(txt.endswith(dirname+'\n'))
+        self.assertTrue(txt.endswith(dirname + '\n'))
 
         txt = self.run_bzr_decode('root', encoding='ascii', fail=True,
                                   working_dir=dirname)

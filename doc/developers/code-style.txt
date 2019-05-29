@@ -1,5 +1,5 @@
 ***********************
-Bazaar Code Style Guide
+Breezy Code Style Guide
 ***********************
 
 Code layout
@@ -77,11 +77,7 @@ keyword name and the value::
 Python versions
 ===============
 
-Bazaar supports Python from 2.6 through 2.7, and in the future we want to
-support Python 3.  Avoid using language features added in
-2.7, or features deprecated in Python 3.0.  (You can check v3
-compatibility using the ``-3`` option of Python2.6.)
-
+Breezy supports Python 2.7 and Python 3.5 or later.
 
 hasattr and getattr
 ===================
@@ -193,7 +189,7 @@ what can be done inside them.
    being leaked); merely having a del method inhibits Python gc; the
    warnings appear to users and upset them; they can also break tests that
    are checking what appears on stderr.
-  
+
 In short, just don't use ``__del__``.
 
 Cleanup methods
@@ -239,7 +235,7 @@ create an instance of ``FooBar``.  A factory method that might create a
 Registries
 ==========
 
-Several places in Bazaar use (or will use) a registry, which is a
+Several places in Breezy use (or will use) a registry, which is a
 mapping from names to objects or classes.  The registry allows for
 loading in registered code only when it's needed, and keeping
 associated information such as a help string or description.
@@ -395,8 +391,8 @@ In other words, exceptions should basically be value objects.
 Test coverage
 =============
 
-All code should be exercised by the test suite.  See the `Bazaar Testing
-Guide <http://doc.bazaar.canonical.com/developers/testing.html>`_ for detailed
+All code should be exercised by the test suite.  See the `Breezy Testing
+Guide <http://www.breezy-vcs.org/developers/testing.html>`_ for detailed
 information about writing tests.
 
 
@@ -409,7 +405,7 @@ AssertionError.
 
 Rationale:
 
-* It makes the behaviour vary depending on whether bzr is run with -O
+* It makes the behaviour vary depending on whether brz is run with -O
   or not, therefore giving a chance for bugs that occur in one case or
   the other, several of which have already occurred: assertions with
   side effects, code which can't continue unless the assertion passes,

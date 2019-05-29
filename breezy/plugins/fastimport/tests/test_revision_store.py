@@ -67,10 +67,11 @@ class Test_TreeShim(tests.TestCase):
 
     def test_id2path_with_delta(self):
         basis_inv = self.make_trivial_basis_inv()
-        foo_entry = inventory.make_entry('file', 'foo2', b'TREE_ROOT', b'foo-id')
+        foo_entry = inventory.make_entry(
+            'file', 'foo2', b'TREE_ROOT', b'foo-id')
         inv_delta = [('foo', 'foo2', b'foo-id', foo_entry),
                      ('bar/baz', None, b'baz-id', None),
-                    ]
+                     ]
 
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=inv_delta,
@@ -85,9 +86,7 @@ class Test_TreeShim(tests.TestCase):
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=[], content_provider=None)
         self.assertEqual(b'TREE_ROOT', shim.path2id(''))
-        # We don't want to ever give a wrong value, so for now we just raise
-        # NotImplementedError
-        self.assertRaises(NotImplementedError, shim.path2id, 'bar')
+        self.assertEqual(b'bar-id', shim.path2id('bar'))
 
     def test_get_file_with_stat_content_in_stream(self):
         basis_inv = self.make_trivial_basis_inv()
@@ -98,7 +97,7 @@ class Test_TreeShim(tests.TestCase):
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=[],
                                         content_provider=content_provider)
-        f_obj, stat_val = shim.get_file_with_stat('bar/baz', b'baz-id')
+        f_obj, stat_val = shim.get_file_with_stat('bar/baz')
         self.assertIs(None, stat_val)
         self.assertEqualDiff(b'content of\nbaz-id\n', f_obj.read())
 
@@ -113,7 +112,7 @@ class Test_TreeShim(tests.TestCase):
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=[], content_provider=None)
         self.assertEqual(u'link-target',
-                         shim.get_symlink_target('link', b'link-id'))
+                         shim.get_symlink_target('link'))
 
     def test_get_symlink_target_from_delta(self):
         basis_inv = self.make_trivial_basis_inv()
@@ -124,7 +123,7 @@ class Test_TreeShim(tests.TestCase):
                                         inv_delta=inv_delta,
                                         content_provider=None)
         self.assertEqual(u'link-target',
-                         shim.get_symlink_target('link', b'link-id'))
+                         shim.get_symlink_target('link'))
 
     def test__delta_to_iter_changes(self):
         basis_inv = self.make_trivial_basis_inv()
@@ -135,7 +134,7 @@ class Test_TreeShim(tests.TestCase):
         inv_delta = [('foo', 'bar/foo2', b'foo-id', foo_entry),
                      ('bar/baz', None, b'baz-id', None),
                      (None, 'link', b'link-id', link_entry),
-                    ]
+                     ]
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=inv_delta,
                                         content_provider=None)
@@ -149,8 +148,7 @@ class Test_TreeShim(tests.TestCase):
                     (b'link-id', (None, 'link'), True, (False, True),
                      (None, b'TREE_ROOT'), (None, 'link'),
                      (None, 'symlink'), (None, False)),
-                   ]
+                    ]
         # from pprint import pformat
         # self.assertEqualDiff(pformat(expected), pformat(changes))
         self.assertEqual(expected, changes)
-

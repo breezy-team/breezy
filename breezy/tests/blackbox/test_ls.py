@@ -85,15 +85,13 @@ class TestLS(tests.TestCaseWithTransport):
         self.build_tree(['subdir/'])
         self.ls_equals('?        .bzrignore\n'
                        'V        a\n'
-                       '?        subdir/\n'
-                       , '--verbose')
+                       '?        subdir/\n', '--verbose')
         self.build_tree(['subdir/b'])
         self.wt.add(['subdir/', 'subdir/b', '.bzrignore'])
         self.ls_equals('V        .bzrignore\n'
                        'V        a\n'
                        'V        subdir/\n'
-                       'V        subdir/b\n'
-                       , '--verbose')
+                       'V        subdir/b\n', '--verbose')
 
     def test_show_ids(self):
         self.build_tree(['subdir/'])
@@ -118,13 +116,11 @@ class TestLS(tests.TestCaseWithTransport):
 
         self.ls_equals('.bzrignore\n'
                        'a\n'
-                       'subdir/\n'
-                       , recursive=False)
+                       'subdir/\n', recursive=False)
 
         self.ls_equals('V        .bzrignore\n'
                        'V        a\n'
-                       'V        subdir/\n'
-                       , '--verbose', recursive=False)
+                       'V        subdir/\n', '--verbose', recursive=False)
 
         # Check what happens in a sub-directory
         self.ls_equals('b\n', working_dir='subdir')
@@ -167,8 +163,7 @@ class TestLS(tests.TestCaseWithTransport):
 
         # Check what happens when we supply a specific revision
         self.ls_equals('a\n', '--revision 1')
-        self.ls_equals('V        a\n'
-                       , '--verbose --revision 1')
+        self.ls_equals('V        a\n', '--verbose --revision 1')
 
         self.ls_equals('', '--revision 1', working_dir='subdir')
 
@@ -201,19 +196,14 @@ class TestLS(tests.TestCaseWithTransport):
                        'V        a\n'
                        '?        blah.py\n'
                        'I        blah.pyo\n'
-                       'I        user-ignore\n'
-                       , '--verbose')
+                       'I        user-ignore\n', '--verbose')
         self.ls_equals('blah.pyo\n'
-                       'user-ignore\n'
-                       , '--ignored')
-        self.ls_equals('blah.py\n'
-                       , '--unknown')
+                       'user-ignore\n', '--ignored')
+        self.ls_equals('blah.py\n', '--unknown')
         self.ls_equals('.bzrignore\n'
-                       'a\n'
-                       , '--versioned')
+                       'a\n', '--versioned')
         self.ls_equals('.bzrignore\n'
-                       'a\n'
-                       , '-V')
+                       'a\n', '-V')
 
     def test_kinds(self):
         self.build_tree(['subdir/'])

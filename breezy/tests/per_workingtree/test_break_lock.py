@@ -52,7 +52,7 @@ class TestBreakLock(TestCaseWithWorkingTree):
         if ui.ui_factory.responses == [True]:
             raise TestNotApplicable("repository does not physically lock.")
         self.assertRaises(errors.LockBroken,
-            self.workingtree.branch.repository.unlock)
+                          self.workingtree.branch.repository.unlock)
 
     def test_locked(self):
         # break_lock when locked should

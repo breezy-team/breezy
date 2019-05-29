@@ -38,7 +38,7 @@ from breezy.transport import memory
 
 
 def formats_to_scenarios(formats, transport_server, transport_readonly_server,
-    vfs_transport_factory=None):
+                         vfs_transport_factory=None):
     """Transform the input formats to a list of scenarios.
 
     :param formats: A list of (scenario_name_suffix, repo_format)
@@ -52,11 +52,11 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
         scenario_name = repository_format.__class__.__name__
         scenario_name += scenario_name_suffix
         scenario = (scenario_name,
-            {"transport_server": transport_server,
-             "transport_readonly_server": transport_readonly_server,
-             "bzrdir_format": repository_format._matchingcontroldir,
-             "repository_format": repository_format,
-             })
+                    {"transport_server": transport_server,
+                     "transport_readonly_server": transport_readonly_server,
+                     "bzrdir_format": repository_format._matchingcontroldir,
+                     "repository_format": repository_format,
+                     })
         # Only override the test's vfs_transport_factory if one was
         # specified, otherwise just leave the default in place.
         if vfs_transport_factory:

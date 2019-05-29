@@ -1,0 +1,35 @@
+Status
+======
+
+status: Open (Work In Progress) "wip"
+
+ More work is being done by the original author; changes have not been merged
+ and the merge proposal is not ready for review.
+
+status: Closed (Merged) "merged"
+
+ The change has been merged. No further actions are expected.
+
+ On Launchpad, this means that the merge proposal is frozen - the branch can
+ be reused.
+
+status: Closed (Rejected) "rejected"
+
+ The branch has been rejected. Changes were not merged. The branch and merge
+ proposal should be kept around so we don't create a new branch proposal
+ with the same changes.
+
+ Requires human follow-up.
+
+status: Closed (Obsolete) "obsolete"
+
+ Can happen e.g. when the changes are made independently by somebody else.
+
+status: Open (Waiting Review) "waiting-review"
+
+ The merge proposal is ready and waiting for review from a reviewer.
+
+status: Open (Waiting Follow-up) "waiting-followup"
+
+ The merge proposal is waiting for the original author to follow up to comments
+ from a reviewer.

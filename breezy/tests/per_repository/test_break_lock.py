@@ -42,7 +42,7 @@ class TestBreakLock(per_repository.TestCaseWithRepository):
         # break_lock when locked should
         self.repo.lock_write()
         self.assertEqual(self.repo.get_physical_lock_status(),
-            self.unused_repo.get_physical_lock_status())
+                         self.unused_repo.get_physical_lock_status())
         if not self.unused_repo.get_physical_lock_status():
             # 'lock_write' has not taken a physical mutex out.
             self.repo.unlock()

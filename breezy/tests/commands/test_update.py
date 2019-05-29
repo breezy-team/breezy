@@ -43,4 +43,3 @@ class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):
         # update calls it 'dir' where other commands calls it 'directory'
         update.run(dir='local')
         self.assertEqual(1, len(self.connections))
-

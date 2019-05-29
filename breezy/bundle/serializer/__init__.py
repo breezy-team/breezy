@@ -49,6 +49,7 @@ serializer_registry = registry.Registry()
 def _get_bundle_header(version):
     return b''.join([BUNDLE_HEADER, version.encode('ascii'), b'\n'])
 
+
 def _get_filename(f):
     return getattr(f, 'name', '<unknown>')
 
@@ -74,7 +75,7 @@ def read_bundle(f):
         if m:
             version = m.group('version')
             raise errors.BundleNotSupported(version,
-                'old format bundles not supported')
+                                            'old format bundles not supported')
 
     if version is None:
         raise errors.NotABundle('Did not find an opening header')
@@ -87,7 +88,7 @@ def get_serializer(version):
         serializer = serializer_registry.get(version)
     except KeyError:
         raise errors.BundleNotSupported(version,
-            'unknown bundle format')
+                                        'unknown bundle format')
 
     return serializer(version)
 
@@ -126,6 +127,7 @@ class BundleSerializer(object):
 
     Common functionality should be included here.
     """
+
     def __init__(self, version):
         self.version = version
 
@@ -158,8 +160,11 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
     base64.encode(temp, to_file)
     to_file.write(b'\n')
 
-serializer_registry.register_lazy('0.8', 'breezy.bundle.serializer.v08', 'BundleSerializerV08')
-serializer_registry.register_lazy('0.9', 'breezy.bundle.serializer.v09', 'BundleSerializerV09')
+
+serializer_registry.register_lazy(
+    '0.8', 'breezy.bundle.serializer.v08', 'BundleSerializerV08')
+serializer_registry.register_lazy(
+    '0.9', 'breezy.bundle.serializer.v09', 'BundleSerializerV09')
 serializer_registry.register_lazy('4', 'breezy.bundle.serializer.v4',
-              'BundleSerializerV4')
+                                  'BundleSerializerV4')
 serializer_registry.default_key = '4'

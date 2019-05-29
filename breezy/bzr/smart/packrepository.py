@@ -19,7 +19,6 @@ from __future__ import absolute_import
 """Server-side pack repository related request implmentations."""
 
 from .request import (
-    FailedSmartServerResponse,
     SuccessfulSmartServerResponse,
     )
 
@@ -40,5 +39,3 @@ class SmartServerPackRepositoryAutopack(SmartServerRepositoryRequest):
         with repository.lock_write():
             repository._pack_collection.autopack()
         return SuccessfulSmartServerResponse((b'ok',))
-
-

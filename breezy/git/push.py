@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Push implementation that simply prints message saying push is not supported."""
+"""Basic push implementation."""
 
 from __future__ import absolute_import
 
@@ -25,13 +25,14 @@ from .errors import (
     GitSmartRemoteNotSupported,
     )
 
+
 class GitPushResult(PushResult):
 
     def _lookup_revno(self, revid):
         from .branch import _quick_lookup_revno
         try:
             return _quick_lookup_revno(self.source_branch, self.target_branch,
-                revid)
+                                       revid)
         except GitSmartRemoteNotSupported:
             return None
 
@@ -79,13 +80,14 @@ class MissingObjectsIterator(object):
         tree = self._object_store.tree_cache.revision_tree(revid)
         rev = self.source.get_revision(revid)
         commit = None
-        for path, obj in self._object_store._revision_to_objects(rev, tree, lossy):
+        for path, obj in self._object_store._revision_to_objects(
+                rev, tree, lossy):
             if obj.type_name == b"commit":
                 commit = obj
             self._pending.append((obj, path))
         if commit is None:
             raise AssertionError("no commit object generated for revision %s" %
-                revid)
+                                 revid)
         return commit.id
 
     def __len__(self):

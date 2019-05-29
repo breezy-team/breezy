@@ -52,7 +52,7 @@ class TrivialTest(tests.TestCaseWithTransport):
         # an empty inventory with no revision will trigger reconciliation.
         repo = t.branch.repository
         inv = inventory.Inventory(revision_id=b'missing')
-        inv.root.revision=b'missing'
+        inv.root.revision = b'missing'
         repo.lock_write()
         with repo.lock_write(), WriteGroup(repo):
             repo.add_inventory(b'missing', inv, [])

@@ -184,7 +184,8 @@ class PatchesTester(TestCase):
                               b'Binary files bar\t.* and qux\t.* differ\n')
 
     def test_parse_binary_after_normal(self):
-        patches = list(parse_patches(self.data_lines("binary-after-normal.patch")))
+        patches = list(parse_patches(
+            self.data_lines("binary-after-normal.patch")))
         self.assertIs(BinaryPatch, patches[1].__class__)
         self.assertIs(Patch, patches[0].__class__)
         self.assertContainsRe(patches[1].oldname, b'^bar\t')
@@ -200,7 +201,7 @@ class PatchesTester(TestCase):
     def testInit(self):
         """Handle patches missing half the position, range tuple"""
         patchtext = \
-b"""--- orig/__vavg__.cl
+            b"""--- orig/__vavg__.cl
 +++ mod/__vavg__.cl
 @@ -1 +1,2 @@
  __qbpsbezng__ = "erfgehpgherqgrkg ra"
@@ -283,7 +284,7 @@ b"""--- orig/__vavg__.cl
     def testParsePatches(self):
         """Make sure file names can be extracted from tricky unified diffs"""
         patchtext = \
-b"""--- orig-7
+            b"""--- orig-7
 +++ mod-7
 @@ -1,10 +1,10 @@
  -- a

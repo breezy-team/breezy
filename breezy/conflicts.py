@@ -63,9 +63,9 @@ class cmd_conflicts(commands.Command):
     Use brz resolve when you have fixed a problem.
     """
     takes_options = [
-            'directory',
-            option.Option('text',
-                          help='List paths of files with text conflicts.'),
+        'directory',
+        option.Option('text',
+                      help='List paths of files with text conflicts.'),
         ]
     _see_also = ['resolve', 'conflict-types']
 
@@ -93,6 +93,7 @@ resolve_action_registry.register(
     'Resolve the conflict taking the merged version into account.')
 resolve_action_registry.default_key = 'done'
 
+
 class ResolveActionOption(option.RegistryOption):
 
     def __init__(self):
@@ -117,16 +118,17 @@ class cmd_resolve(commands.Command):
     aliases = ['resolved']
     takes_args = ['file*']
     takes_options = [
-            'directory',
-            option.Option('all', help='Resolve all conflicts in this tree.'),
-            ResolveActionOption(),
-            ]
+        'directory',
+        option.Option('all', help='Resolve all conflicts in this tree.'),
+        ResolveActionOption(),
+        ]
     _see_also = ['conflicts']
+
     def run(self, file_list=None, all=False, action=None, directory=None):
         if all:
             if file_list:
                 raise errors.BzrCommandError(gettext("If --all is specified,"
-                                             " no FILE may be provided"))
+                                                     " no FILE may be provided"))
             if directory is None:
                 directory = u'.'
             tree = workingtree.WorkingTree.open_containing(directory)[0]
@@ -151,8 +153,8 @@ class cmd_resolve(commands.Command):
                 un_resolved, resolved = tree.auto_resolve()
                 if len(un_resolved) > 0:
                     trace.note(ngettext('%d conflict auto-resolved.',
-                        '%d conflicts auto-resolved.', len(resolved)),
-                        len(resolved))
+                                        '%d conflicts auto-resolved.', len(resolved)),
+                               len(resolved))
                     trace.note(gettext('Remaining conflicts:'))
                     for conflict in un_resolved:
                         trace.note(text_type(conflict))
@@ -169,7 +171,7 @@ class cmd_resolve(commands.Command):
             before, after = resolve(tree, file_list, action=action)
             trace.note(ngettext('{0} conflict resolved, {1} remaining',
                                 '{0} conflicts resolved, {1} remaining',
-                                before-after).format(before - after, after))
+                                before - after).format(before - after, after))
 
 
 def resolve(tree, paths=None, ignore_misses=False, recursive=False,
@@ -503,7 +505,7 @@ class PathConflict(Conflict):
         path_to_create = None
         if winner == 'this':
             if self.path == '<deleted>':
-                return # Nothing to do
+                return  # Nothing to do
             if self.conflict_path == '<deleted>':
                 path_to_create = self.path
                 revid = tt._tree.get_parent_ids()[0]
@@ -542,7 +544,7 @@ class PathConflict(Conflict):
         possible_paths = []
         for p in (self.path, self.conflict_path):
             if p == '<deleted>':
-                # special hard-coded path 
+                # special hard-coded path
                 continue
             if p is not None:
                 possible_paths.append(p)
@@ -618,7 +620,7 @@ class ContentsConflict(PathConflict):
             # deleted the file either manually or when resolving a conflict on
             # the parent.  We may raise some exception to indicate that the
             # conflict doesn't exist anymore and as such doesn't need to be
-            # resolved ? -- vila 20110615 
+            # resolved ? -- vila 20110615
             this_tid = None
         else:
             this_tid = tt.trans_id_tree_path(this_path)
@@ -672,7 +674,8 @@ class TextConflict(Conflict):
         # Switch the paths to preserve the content
         tt.adjust_path(osutils.basename(self.path),
                        winner_parent_tid, winner_tid)
-        tt.adjust_path(osutils.basename(winner_path), item_parent_tid, item_tid)
+        tt.adjust_path(osutils.basename(winner_path),
+                       item_parent_tid, item_tid)
         # Associate the file_id to the right content
         tt.unversion_file(item_tid)
         tt.version_file(self.file_id, winner_tid)
@@ -898,6 +901,7 @@ def register_types(*conflict_types):
     global ctype
     for conflict_type in conflict_types:
         ctype[conflict_type.typestring] = conflict_type
+
 
 register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
                DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,

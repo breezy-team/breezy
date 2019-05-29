@@ -35,4 +35,4 @@ class TestPack(TestCaseWithRepository):
         rev3 = tree.commit('3')
         rev4 = tree.commit('4')
         tree.branch.repository.pack(
-                hint=[rev3.decode('utf-8'), rev4.decode('utf-8')])
+            hint=[rev3.decode('utf-8'), rev4.decode('utf-8')])

@@ -101,8 +101,8 @@ class TestGraph(TestCaseWithRepository):
         self.addCleanup(target_b.lock_write().unlock)
         self.setup_smart_server_with_call_log()
         res = target_b.repository.search_missing_revision_ids(
-                stacked_b.repository, revision_ids=[b'F'],
-                find_ghosts=False)
+            stacked_b.repository, revision_ids=[b'F'],
+            find_ghosts=False)
         self.assertParentMapCalls([
             # One call to stacked to start, which returns F=>E, and that E
             # itself is missing, so when we step, we won't look for it.
@@ -112,7 +112,8 @@ class TestGraph(TestCaseWithRepository):
             (b'extra/master/', [b'E']),
             # And then one get_parent_map call to the target, to see if it
             # already has any of these revisions.
-            (b'extra/target_repo/branch/', [b'A', b'B', b'C', b'D', b'E', b'F']),
+            (b'extra/target_repo/branch/',
+             [b'A', b'B', b'C', b'D', b'E', b'F']),
             ])
         # Before bug #388269 was fixed, there would be a bunch of extra calls
         # to 'extra/stacked', ['D'] then ['C'], then ['B'], then ['A'].

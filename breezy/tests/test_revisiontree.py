@@ -18,7 +18,6 @@
 """Tests for the RevisionTree class."""
 
 from breezy import (
-    errors,
     revision,
     )
 from breezy.tree import FileTimestampUnavailable
@@ -53,8 +52,8 @@ class TestTreeWithCommits(TestCaseWithTransport):
 
         # the parents for a revision_tree(NULL_REVISION) are []:
         self.assertEqual([],
-            self.t.branch.repository.revision_tree(
-                revision.NULL_REVISION).get_parent_ids())
+                         self.t.branch.repository.revision_tree(
+            revision.NULL_REVISION).get_parent_ids())
 
     def test_empty_no_root(self):
         null_tree = self.t.branch.repository.revision_tree(
@@ -62,8 +61,7 @@ class TestTreeWithCommits(TestCaseWithTransport):
         self.assertIs(None, null_tree.get_root_id())
 
     def test_get_file_revision_root(self):
-        self.assertEqual(self.rev_id,
-            self.rev_tree.get_file_revision(u'', self.rev_tree.get_root_id()))
+        self.assertEqual(self.rev_id, self.rev_tree.get_file_revision(u''))
 
     def test_get_file_revision(self):
         self.build_tree_contents([('a', b'initial')])
@@ -72,10 +70,11 @@ class TestTreeWithCommits(TestCaseWithTransport):
         revid2 = self.t.commit('another change', allow_pointless=True)
         tree = self.t.branch.repository.revision_tree(revid2)
         self.assertEqual(revid1,
-            tree.get_file_revision('a'))
+                         tree.get_file_revision('a'))
 
     def test_get_file_mtime_ghost(self):
         path = next(iter(self.rev_tree.all_versioned_paths()))
-        self.rev_tree.root_inventory.get_entry(self.rev_tree.path2id(path)).revision = b'ghostrev'
-        self.assertRaises(FileTimestampUnavailable, 
-            self.rev_tree.get_file_mtime, path)
+        self.rev_tree.root_inventory.get_entry(
+            self.rev_tree.path2id(path)).revision = b'ghostrev'
+        self.assertRaises(FileTimestampUnavailable,
+                          self.rev_tree.get_file_mtime, path)

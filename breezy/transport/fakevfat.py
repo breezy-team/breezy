@@ -103,4 +103,4 @@ class FakeVFATTransportDecorator(decorator.TransportDecorator):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from breezy.tests import test_server
-    return [(FakeVFATTransportDecorator, test_server.FakeVFATServer),]
+    return [(FakeVFATTransportDecorator, test_server.FakeVFATServer), ]

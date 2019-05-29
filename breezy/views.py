@@ -189,8 +189,8 @@ class PathBasedViews(_Views):
                 keywords = {}
             else:
                 keywords = {'current': self._current}
-            self.tree._transport.put_bytes('views',
-                self._serialize_view_content(keywords, self._views))
+            self.tree._transport.put_bytes(
+                'views', self._serialize_view_content(keywords, self._views))
 
     def _load_view_info(self):
         """Load the current view and dictionary of view definitions."""
@@ -198,7 +198,7 @@ class PathBasedViews(_Views):
             with self.tree.lock_read():
                 try:
                     view_content = self.tree._transport.get_bytes('views')
-                except errors.NoSuchFile as e:
+                except errors.NoSuchFile:
                     self._current, self._views = None, {}
                 else:
                     keywords, self._views = \
@@ -252,11 +252,11 @@ class PathBasedViews(_Views):
                     keywords[keyword] = value
                 else:
                     raise ValueError("failed to deserialize views line %s",
-                        text)
+                                     text)
             return keywords, views
         except ValueError as e:
             raise ValueError("failed to deserialize views content %r: %s"
-                % (view_content, e))
+                             % (view_content, e))
 
 
 class DisabledViews(_Views):
@@ -297,5 +297,5 @@ def check_path_in_view(tree, relpath):
     """If a working tree has a view enabled, check the path is within it."""
     if tree.supports_views():
         view_files = tree.views.lookup_view()
-        if  view_files and not osutils.is_inside_any(view_files, relpath):
+        if view_files and not osutils.is_inside_any(view_files, relpath):
             raise FileOutsideView(relpath, view_files)

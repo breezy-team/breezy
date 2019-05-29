@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Rule-based definition of preferences for selected files in selected branches.
+"""Rule-based definition of preferences for selected files in selected branches
 
 See ``bzr help rules`` for details.
 """
@@ -106,7 +106,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
                     self.pattern_to_section[fp] = s
         if len(patterns) < len(sections):
             unknowns = [s for s in sections
-                if not s.startswith(FILE_PREFS_PREFIX)]
+                        if not s.startswith(FILE_PREFS_PREFIX)]
             raise UnknownRules(unknowns)
         elif patterns:
             self._globster = globbing._OrderedGlobster(patterns)
@@ -170,5 +170,6 @@ def rules_filename():
 def reset_rules():
     global _per_user_searcher
     _per_user_searcher = _IniBasedRulesSearcher(rules_filename())
+
 
 reset_rules()

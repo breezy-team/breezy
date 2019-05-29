@@ -89,7 +89,7 @@ $ brz update checkout
 All changes applied successfully.
 Updated to revision 1 of branch %s
 """ % osutils.pathjoin(self.test_dir, 'branch',),
-                         err)
+            err)
         self.assertPathExists('branch/file')
 
     def test_update_out_of_date_light_checkout(self):
@@ -106,7 +106,7 @@ Updated to revision 1 of branch %s
 All changes applied successfully.
 Updated to revision 1 of branch %s
 ''' % osutils.pathjoin(self.test_dir, 'branch',),
-                         err)
+            err)
         self.assertEqual('', out)
 
     def test_update_conflicts_returns_2(self):
@@ -131,7 +131,7 @@ Text conflict in file
 1 conflicts encountered.
 Updated to revision 2 of branch %s
 ''' % osutils.pathjoin(self.test_dir, 'branch',),
-                         err)
+            err)
         self.assertEqual('', out)
 
     def test_smoke_update_checkout_bound_branch_local_commits(self):
@@ -173,7 +173,7 @@ All changes applied successfully.
 Updated to revision 2 of branch %s
 Your local commits will now show as pending merges with 'brz status', and can be committed with 'brz commit'.
 """ % osutils.pathjoin(self.test_dir, 'master',),
-                         err)
+            err)
         self.assertEqual([master_tip, child_tip], wt.get_parent_ids())
         self.assertPathExists('checkout/file')
         self.assertPathExists('checkout/file_b')
@@ -223,7 +223,7 @@ Your local commits will now show as pending merges with 'brz status', and can be
 All changes applied successfully.
 Updated to revision 2 of branch %s
 ''' % osutils.pathjoin(self.test_dir, 'master',),
-                         err)
+            err)
         # The pending merges should still be there
         self.assertEqual([b'o2'], checkout1.get_parent_ids()[1:])
 
@@ -272,7 +272,7 @@ Updated to revision 2 of branch %s
         self.assertEqualDiff('''All changes applied successfully.
 Updated to revision 2 of branch %s
 ''' % osutils.pathjoin(self.test_dir, 'master',),
-                         err)
+            err)
         # The pending merges should still be there
         self.assertEqual([], checkout1.get_parent_ids()[1:])
 
@@ -358,7 +358,7 @@ $ brz update -r revid:m2
 
         see https://bugs.launchpad.net/bzr/+bug/202374"""
 
-        tree=self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree('.')
 
         with open('hello', 'wt') as f:
             f.write('foo')
@@ -369,10 +369,10 @@ $ brz update -r revid:m2
             f.write('fee')
         tree.commit('fee')
 
-        #tree.update() gives no such revision, so ...
+        # tree.update() gives no such revision, so ...
         self.run_bzr(['update', '-r1'])
 
-        #create conflict
+        # create conflict
         with open('hello', 'wt') as f:
             f.write('fie')
 
@@ -412,7 +412,7 @@ $ brz update -r revid:m2
         self.build_tree_contents([('checkout/file',
                                    b'checkout local changes\n')])
 
-        # lightweight 
+        # lightweight
         self.build_tree_contents([('lightweight/file',
                                    b'lightweight local changes\n')])
 
@@ -447,7 +447,6 @@ master
 ''',
                              'lightweight/file')
 
-
     def test_no_upgrade_single_file(self):
         """There's one basis revision per tree.
 
@@ -458,7 +457,7 @@ master
         """
         self.make_branch_and_tree('.')
         self.build_tree_contents([('a/',),
-            ('a/file', b'content')])
+                                  ('a/file', b'content')])
         sr = ScriptRunner()
         sr.run_script(self, '''
             $ brz update ./a

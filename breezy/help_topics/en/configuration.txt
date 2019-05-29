@@ -649,13 +649,6 @@ push_strict
 If present, defines the ``--strict`` option default value for checking
 uncommitted changes before pushing.
 
-dpush_strict
-~~~~~~~~~~~~
-
-If present, defines the ``--strict`` option default value for checking
-uncommitted changes before pushing into a different VCS without any
-custom bzr metadata.
-
 bound_location
 ~~~~~~~~~~~~~~
 

@@ -34,10 +34,16 @@ from . import TestCase, TestCaseInTempDir
 # sample filter stacks
 def _swapcase(chunks, context=None):
     return [s.swapcase() for s in chunks]
+
+
 def _addjunk(chunks):
     return [b'junk\n'] + [s for s in chunks]
+
+
 def _deljunk(chunks, context):
     return [s for s in chunks[1:]]
+
+
 _stack_1 = [
     ContentFilter(_swapcase, _swapcase),
     ]
@@ -105,8 +111,8 @@ class TestFilteredSha(TestCaseInTempDir):
         expected_len = len(post_filtered_content)
         expected_sha = sha_string(post_filtered_content)
         self.assertEqual((expected_len, expected_sha),
-            internal_size_sha_file_byname('a',
-            [ContentFilter(_swapcase, _swapcase)]))
+                         internal_size_sha_file_byname('a',
+                                                       [ContentFilter(_swapcase, _swapcase)]))
 
 
 class TestFilterStackMaps(TestCase):
@@ -129,7 +135,7 @@ class TestFilterStackMaps(TestCase):
         self.assertEqual(['bar', 'foo'], _get_registered_names())
         # Test re-registration raises an error
         self.assertRaises(KeyError, self._register_map,
-            'foo', [], [])
+                          'foo', [], [])
 
     def test_get_filter_stack_for(self):
         # Save the current registry

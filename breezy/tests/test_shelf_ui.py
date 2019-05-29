@@ -228,7 +228,7 @@ class TestShelver(ShelfTestCase):
         shelver = ExpectShelver(tree, tree.basis_tree())
         self.addCleanup(shelver.finalize)
         shelver.expect('Shelve changing target of "baz" from "bar" to '
-                '"vax"?', 0)
+                       '"vax"?', 0)
         shelver.expect('Shelve 1 change(s)?', 0)
         shelver.run()
         self.assertEqual('bar', os.readlink('tree/baz'))
@@ -255,9 +255,9 @@ class TestShelver(ShelfTestCase):
         self.assertFileEqual(LINES_ZY, 'tree/foo')
 
     def test_shelve_all(self):
-        tree = self.create_shelvable_tree()
+        self.create_shelvable_tree()
         shelver = ExpectShelver.from_args(sys.stdout, all=True,
-            directory='tree')
+                                          directory='tree')
         try:
             shelver.run()
         finally:
@@ -439,7 +439,7 @@ class TestApplyReporter(ShelfTestCase):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
-                               reporter=shelf_ui.ApplyReporter())
+                                reporter=shelf_ui.ApplyReporter())
         self.addCleanup(shelver.finalize)
         shelver.expect('Change "foo" from directory to a file?', 0)
         shelver.expect('Apply 1 change(s)?', 0)
@@ -505,7 +505,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
     def test_unshelve_args_dry_run(self):
         tree = self.create_tree_with_shelf()
         unshelver = shelf_ui.Unshelver.from_args(directory='tree',
-            action='dry-run')
+                                                 action='dry-run')
         try:
             unshelver.run()
         finally:
@@ -570,12 +570,12 @@ class TestUnshelver(tests.TestCaseWithTransport):
         finally:
             shelf_file.close()
         self.assertRaises(shelf.InvalidShelfId,
-            shelf_ui.Unshelver.from_args, directory='tree',
-            action='delete-only', shelf_id='foo')
+                          shelf_ui.Unshelver.from_args, directory='tree',
+                          action='delete-only', shelf_id='foo')
 
 
-class TestUnshelveScripts(TestUnshelver, 
-                          script.TestCaseWithTransportAndScript): 
+class TestUnshelveScripts(TestUnshelver,
+                          script.TestCaseWithTransportAndScript):
 
     def test_unshelve_messages_keep(self):
         self.create_tree_with_shelf()

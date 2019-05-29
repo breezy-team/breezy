@@ -23,35 +23,35 @@ from ..revision import (
 from . import TestCase
 
 _working_revision_bencode1 = (b'l'
-    b'l6:formati10ee'
-    b'l9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>e'
-    b'l8:timezonei3600ee'
-    b'l10:propertiesd11:branch-nick6:+trunkee'
-    b'l9:timestamp14:1242300770.844e'
-    b'l11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tze'
-    b'l10:parent-ids'
-        b'l'
-        b'50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
-        b'48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeo'
-        b'ee'
-    b'l14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7e'
-    b'l7:message35:(Jelmer) Move dpush to InterBranch.e'
-    b'e')
+                              b'l6:formati10ee'
+                              b'l9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>e'
+                              b'l8:timezonei3600ee'
+                              b'l10:propertiesd11:branch-nick6:+trunkee'
+                              b'l9:timestamp14:1242300770.844e'
+                              b'l11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tze'
+                              b'l10:parent-ids'
+                              b'l'
+                              b'50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
+                              b'48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeo'
+                              b'ee'
+                              b'l14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7e'
+                              b'l7:message35:(Jelmer) Move dpush to InterBranch.e'
+                              b'e')
 
 _working_revision_bencode1_no_timezone = (b'l'
-    b'l6:formati10ee'
-    b'l9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>e'
-    b'l9:timestamp14:1242300770.844e'
-    b'l10:propertiesd11:branch-nick6:+trunkee'
-    b'l11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tze'
-    b'l10:parent-ids'
-        b'l'
-        b'50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
-        b'48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeo'
-        b'ee'
-    b'l14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7e'
-    b'l7:message35:(Jelmer) Move dpush to InterBranch.e'
-    b'e')
+                                          b'l6:formati10ee'
+                                          b'l9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>e'
+                                          b'l9:timestamp14:1242300770.844e'
+                                          b'l10:propertiesd11:branch-nick6:+trunkee'
+                                          b'l11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tze'
+                                          b'l10:parent-ids'
+                                          b'l'
+                                          b'50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
+                                          b'48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeo'
+                                          b'ee'
+                                          b'l14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7e'
+                                          b'l7:message35:(Jelmer) Move dpush to InterBranch.e'
+                                          b'e')
 
 
 class TestBEncodeSerializer1(TestCase):
@@ -60,23 +60,23 @@ class TestBEncodeSerializer1(TestCase):
     def test_unpack_revision(self):
         """Test unpacking a revision"""
         rev = chk_bencode_serializer.read_revision_from_string(
-                _working_revision_bencode1)
+            _working_revision_bencode1)
         self.assertEqual(rev.committer,
-           "Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>")
+                         "Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>")
         self.assertEqual(rev.inventory_sha1,
-           b"4a2c7fb50e077699242cf6eb16a61779c7b680a7")
+                         b"4a2c7fb50e077699242cf6eb16a61779c7b680a7")
         self.assertEqual([b"pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc",
-            b"jelmer@samba.org-20090510012654-jp9ufxquekaokbeo"],
-            rev.parent_ids)
+                          b"jelmer@samba.org-20090510012654-jp9ufxquekaokbeo"],
+                         rev.parent_ids)
         self.assertEqual("(Jelmer) Move dpush to InterBranch.", rev.message)
         self.assertEqual(b"pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz",
-           rev.revision_id)
+                         rev.revision_id)
         self.assertEqual({u"branch-nick": u"+trunk"}, rev.properties)
         self.assertEqual(3600, rev.timezone)
 
     def test_written_form_matches(self):
         rev = chk_bencode_serializer.read_revision_from_string(
-                _working_revision_bencode1)
+            _working_revision_bencode1)
         as_str = chk_bencode_serializer.write_revision_to_string(rev)
         self.assertEqualDiff(_working_revision_bencode1, as_str)
 

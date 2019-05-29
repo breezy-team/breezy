@@ -68,7 +68,6 @@ class TestMergeDirective(TestCaseWithRepository):
                                                 target_branch.base)
         self.assertIsInstance(directive, merge_directive.MergeDirective2)
 
-
     def test_create_and_install_directive(self):
         source_branch, target_branch = self.make_two_branches()
         directive = self.create_merge_directive(source_branch,
@@ -76,6 +75,5 @@ class TestMergeDirective(TestCaseWithRepository):
         chk_map.clear_cache()
         directive.install_revisions(target_branch.repository)
         rt = target_branch.repository.revision_tree(b'B')
-        rt.lock_read()
-        self.assertEqualDiff(b'new content\n', rt.get_file_text('f', b'f-id'))
-        rt.unlock()
+        with rt.lock_read():
+            self.assertEqualDiff(b'new content\n', rt.get_file_text('f'))

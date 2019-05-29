@@ -47,11 +47,11 @@ class VersionInfoBuilder(object):
     """A class which lets you build up information about a revision."""
 
     def __init__(self, branch, working_tree=None,
-                check_for_clean=False,
-                include_revision_history=False,
-                include_file_revisions=False,
-                template=None,
-                revision_id=None):
+                 check_for_clean=False,
+                 include_revision_history=False,
+                 include_file_revisions=False,
+                 template=None,
+                 revision_id=None):
         """Build up information about the given branch.
         If working_tree is given, it can be checked for changes.
 
@@ -83,7 +83,8 @@ class VersionInfoBuilder(object):
             self._tree = working_tree
             self._working_tree = working_tree
         else:
-            self._tree = self._branch.repository.revision_tree(self._revision_id)
+            self._tree = self._branch.repository.revision_tree(
+                self._revision_id)
             # the working tree is not relevant if an explicit revision was specified
             self._working_tree = None
 
@@ -99,7 +100,8 @@ class VersionInfoBuilder(object):
             #       a higher level, but this will do for now.
             self._working_tree.lock_read()
         else:
-            basis_tree = self._branch.repository.revision_tree(self._revision_id)
+            basis_tree = self._branch.repository.revision_tree(
+                self._revision_id)
 
         basis_tree.lock_read()
         try:
@@ -131,7 +133,8 @@ class VersionInfoBuilder(object):
             for (old_path, new_path, file_id,
                  kind, text_mod, meta_mod) in delta.renamed:
                 self._clean = False
-                self._file_revisions[new_path] = u'renamed from %s' % (old_path,)
+                self._file_revisions[new_path] = u'renamed from %s' % (
+                    old_path,)
             for path, file_id, kind, text_mod, meta_mod in delta.modified:
                 self._clean = False
                 self._file_revisions[path] = 'modified'
@@ -149,7 +152,7 @@ class VersionInfoBuilder(object):
 
         last_rev = self._get_revision_id()
 
-        repository =  self._branch.repository
+        repository = self._branch.repository
         with repository.lock_read():
             graph = repository.get_graph()
             revhistory = list(graph.iter_lefthand_ancestry(

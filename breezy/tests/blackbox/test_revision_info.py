@@ -47,9 +47,9 @@ class TestRevisionInfo(TestCaseWithTransport):
 
         # Expected return values
         values = {
-            '1'    : '1 a@r-0-1\n',
+            '1': '1 a@r-0-1\n',
             '1.1.1': '1.1.1 a@r-0-1.1.1\n',
-            '2'    : '2 a@r-0-2\n'
+            '2': '2 a@r-0-2\n'
         }
 
         # Make sure with no arg it defaults to the head
@@ -59,24 +59,24 @@ class TestRevisionInfo(TestCaseWithTransport):
         self.check_output(values['1'], 'revision-info 1')
         self.check_output(values['1.1.1'], 'revision-info 1.1.1')
         self.check_output(values['2'], 'revision-info 2')
-        self.check_output(values['1']+values['2'], 'revision-info 1 2')
-        self.check_output('    '+values['1']+
-                                 values['1.1.1']+
-                          '    '+values['2'],
+        self.check_output(values['1'] + values['2'], 'revision-info 1 2')
+        self.check_output('    ' + values['1']
+                          + values['1.1.1']
+                          + '    ' + values['2'],
                           'revision-info 1 1.1.1 2')
-        self.check_output(values['2']+values['1'], 'revision-info 2 1')
+        self.check_output(values['2'] + values['1'], 'revision-info 2 1')
 
         # Check as above, only using the '--revision' syntax
 
         self.check_output(values['1'], 'revision-info -r 1')
         self.check_output(values['1.1.1'], 'revision-info --revision 1.1.1')
         self.check_output(values['2'], 'revision-info -r 2')
-        self.check_output(values['1']+values['2'], 'revision-info -r 1..2')
-        self.check_output('    '+values['1']+
-                                 values['1.1.1']+
-                          '    '+values['2'],
+        self.check_output(values['1'] + values['2'], 'revision-info -r 1..2')
+        self.check_output('    ' + values['1']
+                          + values['1.1.1']
+                          + '    ' + values['2'],
                           'revision-info -r 1..1.1.1..2')
-        self.check_output(values['2']+values['1'], 'revision-info -r 2..1')
+        self.check_output(values['2'] + values['1'], 'revision-info -r 2..1')
 
         # Now try some more advanced revision specifications
 
@@ -113,7 +113,7 @@ class TestRevisionInfo(TestCaseWithTransport):
         out, err = self.run_bzr('revision-info --tree -d branch', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: No WorkingTree exists for "branch".\n',
-            err)
+                         err)
 
     def test_revision_info_not_in_history(self):
         builder = self.make_branch_builder('branch')

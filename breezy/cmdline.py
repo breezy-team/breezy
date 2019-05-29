@@ -93,7 +93,7 @@ class _Backslash(object):
             return self
         elif next_char in context.allowed_quote_chars:
             # 2N backslashes followed by a quote are N backslashes
-            context.token.append(u'\\' * (self.count//2))
+            context.token.append(u'\\' * (self.count // 2))
             # 2N+1 backslashes follwed by a quote are N backslashes followed by
             # the quote which should not be processed as the start or end of
             # the quoted arg
@@ -158,7 +158,7 @@ class Splitter(object):
             state = state.process(next_char, self)
             if state is None:
                 break
-        if not state is None and not getattr(state, 'finish', None) is None:
+        if state is not None and not getattr(state, 'finish', None) is None:
             state.finish(self)
         result = u''.join(self.token)
         if not self.quoted and result == '':

@@ -25,6 +25,8 @@ import codecs
 
 _utf8_encode = codecs.utf_8_encode
 _utf8_decode = codecs.utf_8_decode
+
+
 def _utf8_decode_with_None(bytestring, _utf8_decode=_utf8_decode):
     """wrap _utf8_decode to support None->None for optional strings.
 
@@ -35,6 +37,7 @@ def _utf8_decode_with_None(bytestring, _utf8_decode=_utf8_decode):
         return None
     else:
         return _utf8_decode(bytestring)[0]
+
 
 # Map revisions from and to utf8 encoding
 # Whenever we do an encode/decode operation, we save the result, so that

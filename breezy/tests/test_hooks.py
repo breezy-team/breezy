@@ -38,12 +38,12 @@ class TestErrors(tests.TestCase):
     def test_unknown_hook(self):
         error = UnknownHook("branch", "foo")
         self.assertEqualDiff("The branch hook 'foo' is unknown in this version"
-            " of breezy.",
-            str(error))
+                             " of breezy.",
+                             str(error))
         error = UnknownHook("tree", "bar")
         self.assertEqualDiff("The tree hook 'bar' is unknown in this version"
-            " of breezy.",
-            str(error))
+                             " of breezy.",
+                             str(error))
 
 
 class TestHooks(tests.TestCase):
@@ -55,13 +55,13 @@ class TestHooks(tests.TestCase):
         hooks = MyHooks("breezy.tests.test_hooks", "some_hooks")
         hooks['legacy'] = []
         hooks.add_hook('post_tip_change',
-            "Invoked after the tip of a branch changes. Called with "
-            "a ChangeBranchTipParams object.", (1, 4))
+                       "Invoked after the tip of a branch changes. Called with "
+                       "a ChangeBranchTipParams object.", (1, 4))
         hooks.add_hook('pre_tip_change',
-            "Invoked before the tip of a branch changes. Called with "
-            "a ChangeBranchTipParams object. Hooks should raise "
-            "TipChangeRejected to signal that a tip change is not permitted.",
-            (1, 6), None)
+                       "Invoked before the tip of a branch changes. Called with "
+                       "a ChangeBranchTipParams object. Hooks should raise "
+                       "TipChangeRejected to signal that a tip change is not permitted.",
+                       (1, 6), None)
         self.assertEqualDiff(
             "MyHooks\n"
             "-------\n"
@@ -128,7 +128,7 @@ class TestHooks(tests.TestCase):
         hooks = Hooks("breezy.tests.test_hooks", "some_hooks")
         hooks.add_hook('set_rh', "Set revision hsitory", (2, 0))
         self.assertRaises(KeyError, hooks.uninstall_named_hook, "set_rh",
-            "demo")
+                          "demo")
 
     def test_uninstall_named_hook_raises_unknown_hook(self):
         hooks = Hooks("breezy.tests.test_hooks", "some_hooks")
@@ -139,7 +139,7 @@ class TestHooks(tests.TestCase):
         hooks["set_rh"] = []
         hooks.install_named_hook('set_rh', None, "demo")
         self.assertRaises(errors.UnsupportedOperation,
-            hooks.uninstall_named_hook, "set_rh", "demo")
+                          hooks.uninstall_named_hook, "set_rh", "demo")
 
     hooks = Hooks("breezy.tests.test_hooks", "TestHooks.hooks")
 
@@ -147,9 +147,10 @@ class TestHooks(tests.TestCase):
         # When the hook points are not yet registered the hook is
         # added to the _lazy_hooks dictionary in breezy.hooks.
         self.hooks.add_hook('set_rh', "doc", (0, 15))
-        set_rh = lambda: None
+
+        def set_rh(): return None
         install_lazy_named_hook('breezy.tests.test_hooks',
-            'TestHooks.hooks', 'set_rh', set_rh, "demo")
+                                'TestHooks.hooks', 'set_rh', set_rh, "demo")
         set_rh_lazy_hooks = _mod_hooks._lazy_hooks[
             ('breezy.tests.test_hooks', 'TestHooks.hooks', 'set_rh')]
         self.assertEqual(1, len(set_rh_lazy_hooks))
@@ -157,13 +158,13 @@ class TestHooks(tests.TestCase):
         self.assertEqual("demo", set_rh_lazy_hooks[0][1])
         self.assertEqual(list(TestHooks.hooks['set_rh']), [set_rh])
 
-    set_rh = lambda: None
+    def set_rh(): return None
 
     def test_install_named_hook_lazy(self):
         hooks = Hooks("breezy.tests.hooks", "some_hooks")
         hooks['set_rh'] = HookPoint("set_rh", "doc", (0, 15), None)
         hooks.install_named_hook_lazy('set_rh', 'breezy.tests.test_hooks',
-            'TestHooks.set_rh', "demo")
+                                      'TestHooks.set_rh', "demo")
         self.assertEqual(list(hooks['set_rh']), [TestHooks.set_rh])
 
     def test_install_named_hook_lazy_old(self):
@@ -172,9 +173,9 @@ class TestHooks(tests.TestCase):
         hooks = Hooks("breezy.tests.hooks", "some_hooks")
         hooks['set_rh'] = []
         self.assertRaises(errors.UnsupportedOperation,
-            hooks.install_named_hook_lazy,
-            'set_rh', 'breezy.tests.test_hooks', 'TestHooks.set_rh',
-            "demo")
+                          hooks.install_named_hook_lazy,
+                          'set_rh', 'breezy.tests.test_hooks', 'TestHooks.set_rh',
+                          "demo")
 
     def test_valid_lazy_hooks(self):
         # Make sure that all the registered lazy hooks are referring to existing
@@ -192,7 +193,7 @@ class TestHook(tests.TestCase):
 
     def test___init__(self):
         doc = ("Invoked after changing the tip of a branch object. Called with"
-            "a breezy.branch.PostChangeBranchTipParams object")
+               "a breezy.branch.PostChangeBranchTipParams object")
         hook = HookPoint("post_tip_change", doc, (0, 15), None)
         self.assertEqual(doc, hook.__doc__)
         self.assertEqual("post_tip_change", hook.name)
@@ -202,18 +203,19 @@ class TestHook(tests.TestCase):
 
     def test_docs(self):
         doc = ("Invoked after changing the tip of a branch object. Called with"
-            " a breezy.branch.PostChangeBranchTipParams object")
+               " a breezy.branch.PostChangeBranchTipParams object")
         hook = HookPoint("post_tip_change", doc, (0, 15), None)
         self.assertEqual("post_tip_change\n"
-            "~~~~~~~~~~~~~~~\n"
-            "\n"
-            "Introduced in: 0.15\n"
-            "\n"
-            "Invoked after changing the tip of a branch object. Called with a\n"
-            "breezy.branch.PostChangeBranchTipParams object\n", hook.docs())
+                         "~~~~~~~~~~~~~~~\n"
+                         "\n"
+                         "Introduced in: 0.15\n"
+                         "\n"
+                         "Invoked after changing the tip of a branch object. Called with a\n"
+                         "breezy.branch.PostChangeBranchTipParams object\n", hook.docs())
 
     def test_hook(self):
         hook = HookPoint("foo", "no docs", None, None)
+
         def callback():
             pass
         hook.hook(callback, "my callback")
@@ -245,6 +247,7 @@ class TestHook(tests.TestCase):
     def test___repr(self):
         # The repr should list all the callbacks, with names.
         hook = HookPoint("foo", "no docs", None, None)
+
         def callback():
             pass
         hook.hook(callback, "my callback")
@@ -264,7 +267,7 @@ class TestHookRegistry(tests.TestCase):
         # isolation and prevent tests failing spuriously.
         for key, factory in known_hooks.items():
             self.assertTrue(callable(factory),
-                "The factory(%r) for %r is not callable" % (factory, key))
+                            "The factory(%r) for %r is not callable" % (factory, key))
             obj = known_hooks_key_to_object(key)
             self.assertIsInstance(obj, Hooks)
             new_hooks = factory()
@@ -274,12 +277,12 @@ class TestHookRegistry(tests.TestCase):
 
     def test_known_hooks_key_to_object(self):
         self.assertIs(branch.Branch.hooks,
-            known_hooks_key_to_object(('breezy.branch', 'Branch.hooks')))
+                      known_hooks_key_to_object(('breezy.branch', 'Branch.hooks')))
 
     def test_known_hooks_key_to_parent_and_attribute(self):
         self.assertEqual((branch.Branch, 'hooks'),
-            known_hooks.key_to_parent_and_attribute(
+                         known_hooks.key_to_parent_and_attribute(
             ('breezy.branch', 'Branch.hooks')))
         self.assertEqual((branch, 'Branch'),
-            known_hooks.key_to_parent_and_attribute(
+                         known_hooks.key_to_parent_and_attribute(
             ('breezy.branch', 'Branch')))

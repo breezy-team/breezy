@@ -45,31 +45,31 @@ class TestExport(TestCaseWithTransport):
     # On Windows, if we fail to set the binary bit, and a '\r' or '\n'
     # ends up in the data stream, we will get corruption. Add a fair amount
     # of random data, to help ensure there is at least one.
-    _file_content = (b'!\r\n\t\n \r'
-        + b'r29trp9i1r8k0e24c2o7mcx2isrlaw7toh1hv2mtst3o1udkl36v9xn2z8kt\n'
-          b'tvjn7e3i9cj1qs1rw9gcye9w72cbdueiufw8nky7bs08lwggir59d62knecp\n'
-          b'7s0537r8sg3e8hdnidji49rswo47c3j8190nh8emef2b6j1mf5kdq45nt3f5\n'
-          b'1sz9u7fuzrm4w8bebre7p62sh5os2nkj2iiyuk9n0w0pjpdulu9k2aajejah\n'
-          b'ini90ny40qzs12ajuy0ua6l178n93lvy2atqngnntsmtlmqx7yhp0q9a1xr4\n'
-          b'1n69kgbo6qu9osjpqq83446r00jijtcstzybfqwm1lnt9spnri2j07bt7bbh\n'
-          b'rf3ejatdxta83te2s0pt9rc4hidgy3d2pc53p4wscdt2b1dfxdj9utf5m17f\n'
-          b'f03oofcau950o090vyx6m72vfkywo7gp3ajzi6uk02dwqwtumq4r44xx6ho7\n'
-          b'nhynborjdjep5j53f9548msb7gd3x9a1xveb4s8zfo6cbdw2kdngcrbakwu8\n'
-          b'ql5a8l94gplkwr7oypw5nt1gj5i3xwadyjfr3lb61tfkz31ba7uda9knb294\n'
-          b'1azhfta0q3ry9x36lxyanvhp0g5z0t5a0i4wnoc8p4htexi915y1cnw4nznn\n'
-          b'aj70dvp88ifiblv2bsp98hz570teinj8g472ddxni9ydmazfzwtznbf3hrg6\n'
-          b'84gigirjt6n2yagf70036m8d73cz0jpcighpjtxsmbgzbxx7nb4ewq6jbgnc\n'
-          b'hux1b0qtsdi0zfhj6g1otf5jcldmtdvuon8y1ttszkqw3ograwi25yl921hy\n'
-          b'izgscmfha9xdhxxabs07b40secpw22ah9iwpbmsns6qz0yr6fswto3ft2ez5\n'
-          b'ngn48pdfxj1pw246drmj1y2ll5af5w7cz849rapzd9ih7qvalw358co0yzrs\n'
-          b'xan9291d1ivjku4o5gjrsnmllrqwxwy86pcivinbmlnzasa9v3o22lgv4uyd\n'
-          b'q8kw77bge3hr5rr5kzwjxk223bkmo3z9oju0954undsz8axr3kb3730otrcr\n'
-          b'9cwhu37htnizdwxmpoc5qmobycfm7ubbykfumv6zgkl6b8zlslwl7a8b81vz\n'
-          b'3weqkvv5csfza9xvwypr6lo0t03fwp0ihmci3m1muh0lf2u30ze0hjag691j\n'
-          b'27fjtd3e3zbiin5n2hq21iuo09ukbs73r5rt7vaw6axvoilvdciir9ugjh2c\n'
-          b'na2b8dr0ptftoyhyxv1iwg661y338e28fhz4xxwgv3hnoe98ydfa1oou45vj\n'
-          b'ln74oac2keqt0agbylrqhfscin7ireae2bql7z2le823ksy47ud57z8ctomp\n'
-          b'31s1vwbczdjwqp0o2jc7mkrurvzg8mj2zwcn2iily4gcl4sy4fsh4rignlyz\n')
+    _file_content = (b'!\r\n\t\n \r' +
+                     b'r29trp9i1r8k0e24c2o7mcx2isrlaw7toh1hv2mtst3o1udkl36v9xn2z8kt\n'
+                     b'tvjn7e3i9cj1qs1rw9gcye9w72cbdueiufw8nky7bs08lwggir59d62knecp\n'
+                     b'7s0537r8sg3e8hdnidji49rswo47c3j8190nh8emef2b6j1mf5kdq45nt3f5\n'
+                     b'1sz9u7fuzrm4w8bebre7p62sh5os2nkj2iiyuk9n0w0pjpdulu9k2aajejah\n'
+                     b'ini90ny40qzs12ajuy0ua6l178n93lvy2atqngnntsmtlmqx7yhp0q9a1xr4\n'
+                     b'1n69kgbo6qu9osjpqq83446r00jijtcstzybfqwm1lnt9spnri2j07bt7bbh\n'
+                     b'rf3ejatdxta83te2s0pt9rc4hidgy3d2pc53p4wscdt2b1dfxdj9utf5m17f\n'
+                     b'f03oofcau950o090vyx6m72vfkywo7gp3ajzi6uk02dwqwtumq4r44xx6ho7\n'
+                     b'nhynborjdjep5j53f9548msb7gd3x9a1xveb4s8zfo6cbdw2kdngcrbakwu8\n'
+                     b'ql5a8l94gplkwr7oypw5nt1gj5i3xwadyjfr3lb61tfkz31ba7uda9knb294\n'
+                     b'1azhfta0q3ry9x36lxyanvhp0g5z0t5a0i4wnoc8p4htexi915y1cnw4nznn\n'
+                     b'aj70dvp88ifiblv2bsp98hz570teinj8g472ddxni9ydmazfzwtznbf3hrg6\n'
+                     b'84gigirjt6n2yagf70036m8d73cz0jpcighpjtxsmbgzbxx7nb4ewq6jbgnc\n'
+                     b'hux1b0qtsdi0zfhj6g1otf5jcldmtdvuon8y1ttszkqw3ograwi25yl921hy\n'
+                     b'izgscmfha9xdhxxabs07b40secpw22ah9iwpbmsns6qz0yr6fswto3ft2ez5\n'
+                     b'ngn48pdfxj1pw246drmj1y2ll5af5w7cz849rapzd9ih7qvalw358co0yzrs\n'
+                     b'xan9291d1ivjku4o5gjrsnmllrqwxwy86pcivinbmlnzasa9v3o22lgv4uyd\n'
+                     b'q8kw77bge3hr5rr5kzwjxk223bkmo3z9oju0954undsz8axr3kb3730otrcr\n'
+                     b'9cwhu37htnizdwxmpoc5qmobycfm7ubbykfumv6zgkl6b8zlslwl7a8b81vz\n'
+                     b'3weqkvv5csfza9xvwypr6lo0t03fwp0ihmci3m1muh0lf2u30ze0hjag691j\n'
+                     b'27fjtd3e3zbiin5n2hq21iuo09ukbs73r5rt7vaw6axvoilvdciir9ugjh2c\n'
+                     b'na2b8dr0ptftoyhyxv1iwg661y338e28fhz4xxwgv3hnoe98ydfa1oou45vj\n'
+                     b'ln74oac2keqt0agbylrqhfscin7ireae2bql7z2le823ksy47ud57z8ctomp\n'
+                     b'31s1vwbczdjwqp0o2jc7mkrurvzg8mj2zwcn2iily4gcl4sy4fsh4rignlyz\n')
 
     def make_basic_tree(self):
         tree = self.make_branch_and_tree('tree')
@@ -184,7 +184,8 @@ class TestExport(TestCaseWithTransport):
         mode = 'r|%s' % (tarfile_flags,)
         ball = tarfile.open(fname, mode=mode)
         self.assertTarANameAndContent(ball, root='test/')
-        content = self.run_bzr_raw('export -d tree --format=%s -' % (extension,))[0]
+        content = self.run_bzr_raw(
+            'export -d tree --format=%s -' % (extension,))[0]
         ball = tarfile.open(mode=mode, fileobj=BytesIO(content))
         self.assertTarANameAndContent(ball, root='')
 
@@ -447,12 +448,13 @@ class TestSmartServerExport(TestCaseWithTransport):
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()
-        out, err = self.run_bzr(['export', "foo.tar.gz", self.get_url('branch')])
+        out, err = self.run_bzr(
+            ['export', "foo.tar.gz", self.get_url('branch')])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(7, self.hpss_calls)
+        self.assertLength(8, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

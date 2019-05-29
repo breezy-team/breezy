@@ -106,4 +106,4 @@ class TestCanonicalPaths(TestCaseWithWorkingTree):
         self.addCleanup(test_tree.unlock)
 
         self.assertEqual(['', 'Test', 'test', 'test/file'],
-            [p for p, e in test_tree.iter_entries_by_dir()])
+                         [p for p, e in test_tree.iter_entries_by_dir()])

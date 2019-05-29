@@ -33,11 +33,11 @@ class TestHasRevisions(TestCaseWithRepository):
         rev2 = tree.commit('2')
         rev3 = tree.commit('3')
         self.assertEqual({rev1, rev3},
-            repo.has_revisions([rev1, rev3, b'foobar:']))
+                         repo.has_revisions([rev1, rev3, b'foobar:']))
 
     def test_NULL(self):
         # NULL_REVISION is always present. So for
         # compatibility with 'has_revision' we make this work.
         repo = self.make_repository('.')
         self.assertEqual({NULL_REVISION},
-            repo.has_revisions([NULL_REVISION]))
+                         repo.has_revisions([NULL_REVISION]))

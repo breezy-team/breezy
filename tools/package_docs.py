@@ -48,8 +48,8 @@ def package_docs(section, src_build, dest_html, dest_downloads):
 
     # Copy across the PDF docs, if any, including the quick ref card
     pdf_files = []
-    quick_ref = os.path.join(src_html,
-        '_static/%s/brz-%s-quick-reference.pdf' % (section, section))
+    quick_ref = os.path.join(
+        src_html, '_static/%s/brz-%s-quick-reference.pdf' % (section, section))
     if os.path.exists(quick_ref):
         pdf_files.append(quick_ref)
     src_pdf = os.path.join(src_build, 'latex')

@@ -23,14 +23,14 @@ import codecs
 
 from breezy import errors
 from breezy.revision import (
-   NULL_REVISION,
-   )
+    NULL_REVISION,
+    )
 from breezy.lazy_regex import lazy_compile
 from breezy.sixish import PY3
 from breezy.version_info_formats import (
-   create_date_str,
-   VersionInfoBuilder,
-   )
+    create_date_str,
+    VersionInfoBuilder,
+    )
 
 
 class MissingTemplateVariable(errors.BzrError):

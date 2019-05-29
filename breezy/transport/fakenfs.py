@@ -67,4 +67,4 @@ class FakeNFSTransportDecorator(decorator.TransportDecorator):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from breezy.tests import test_server
-    return [(FakeNFSTransportDecorator, test_server.FakeNFSServer),]
+    return [(FakeNFSTransportDecorator, test_server.FakeNFSServer), ]

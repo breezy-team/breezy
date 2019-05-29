@@ -24,6 +24,7 @@ from breezy import (
 from breezy.tag import (
     BasicTags,
     DisabledTags,
+    MemoryTags,
     )
 from breezy.tests import (
     TestCase,
@@ -81,9 +82,9 @@ class TestTagMerging(TestCaseWithTransport):
         new_branch = self.make_branch_supporting_tags('new')
         # just to make sure this test is valid
         self.assertFalse(old_branch.supports_tags(),
-            "%s is expected to not support tags but does" % old_branch)
+                         "%s is expected to not support tags but does" % old_branch)
         self.assertTrue(new_branch.supports_tags(),
-            "%s is expected to support tags but does not" % new_branch)
+                        "%s is expected to support tags but does not" % new_branch)
         # there are no tags in the old one, and we can merge from it into the
         # new one
         old_branch.tags.merge_to(new_branch.tags)
@@ -95,7 +96,7 @@ class TestTagMerging(TestCaseWithTransport):
         new_branch.tags.set_tag(u'\u2040tag', b'revid')
         old_branch.tags.merge_to(new_branch.tags)
         self.assertRaises(errors.TagsNotSupported,
-            new_branch.tags.merge_to, old_branch.tags)
+                          new_branch.tags.merge_to, old_branch.tags)
 
     def test_merge_to(self):
         a = self.make_branch_supporting_tags('a')
@@ -137,7 +138,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         # deleting a tag updates the master too
         child.tags.delete_tag('foo')
         self.assertRaises(errors.NoSuchTag,
-            master.tags.lookup_tag, 'foo')
+                          master.tags.lookup_tag, 'foo')
 
     def test_tag_copied_by_initial_checkout(self):
         # https://bugs.launchpad.net/bzr/+bug/93860
@@ -145,7 +146,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         master.tags.set_tag('foo', b'rev-1')
         co_tree = master.create_checkout('checkout')
         self.assertEqual(b'rev-1',
-            co_tree.branch.tags.lookup_tag('foo'))
+                         co_tree.branch.tags.lookup_tag('foo'))
 
     def test_update_updates_tags(self):
         # https://bugs.launchpad.net/bzr/+bug/93856
@@ -170,9 +171,9 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         # and deletion of tags should also propagate
         master.tags.delete_tag('foo')
         self.knownFailure("tag deletion does not propagate: "
-            "https://bugs.launchpad.net/bzr/+bug/138802")
+                          "https://bugs.launchpad.net/bzr/+bug/138802")
         self.assertRaises(errors.NoSuchTag,
-            child.tags.lookup_tag, 'foo')
+                          child.tags.lookup_tag, 'foo')
 
 
 class DisabledTagsTests(TestCaseWithTransport):
@@ -189,4 +190,64 @@ class DisabledTagsTests(TestCaseWithTransport):
         self.assertEqual(self.tags.get_reverse_tag_dict(), {})
 
 
+class MemoryTagsTests(TestCase):
 
+    def setUp(self):
+        super(MemoryTagsTests, self).setUp()
+        self.tags = MemoryTags({})
+
+    def test_set_tag(self):
+        self.tags.set_tag('foo', b'revid1')
+        self.assertEqual({'foo': b'revid1'}, self.tags.get_tag_dict())
+
+    def test_reverse_tag_dict(self):
+        self.tags.set_tag('foo', b'revid1')
+        self.tags.set_tag('bar', b'revid2')
+        self.tags.set_tag('blah', b'revid1')
+        self.assertEqual({
+            b'revid1': set(['foo', 'blah']),
+            b'revid2': set(['bar'])},
+            self.tags.get_reverse_tag_dict())
+
+    def test_lookup_tag(self):
+        self.tags.set_tag('foo', b'revid1')
+        self.assertEqual(b'revid1', self.tags.lookup_tag('foo'))
+        self.assertRaises(errors.NoSuchTag, self.tags.lookup_tag, 'bar')
+
+    def test_delete_tag(self):
+        self.tags.set_tag('foo', b'revid1')
+        self.assertEqual(b'revid1', self.tags.lookup_tag('foo'))
+        self.tags.delete_tag('foo')
+        self.assertRaises(errors.NoSuchTag, self.tags.lookup_tag, 'foo')
+        self.assertRaises(errors.NoSuchTag, self.tags.delete_tag, 'foo')
+
+    def test_has_tag(self):
+        self.tags.set_tag('foo', b'revid1')
+        self.assertTrue(self.tags.has_tag('foo'))
+        self.assertFalse(self.tags.has_tag('bar'))
+
+    def test_rename_revisions(self):
+        self.tags.set_tag('foo', b'revid1')
+        self.assertEqual({'foo': b'revid1'}, self.tags.get_tag_dict())
+        self.tags.rename_revisions({b'revid1': b'revid2'})
+        self.assertEqual({'foo': b'revid2'}, self.tags.get_tag_dict())
+
+    def test_merge_to(self):
+        other_tags = MemoryTags({})
+        other_tags.set_tag('tag-1', b'x')
+        self.tags.set_tag('tag-2', b'y')
+        other_tags.merge_to(self.tags)
+        self.assertEqual(b'x', self.tags.lookup_tag('tag-1'))
+        self.assertEqual(b'y', self.tags.lookup_tag('tag-2'))
+        self.assertRaises(errors.NoSuchTag, other_tags.lookup_tag, 'tag-2')
+        # conflicting merge
+        other_tags.set_tag('tag-2', b'z')
+        updates, conflicts = other_tags.merge_to(self.tags)
+        self.assertEqual({}, updates)
+        self.assertEqual(list(conflicts), [('tag-2', b'z', b'y')])
+        self.assertEqual(b'y', self.tags.lookup_tag('tag-2'))
+        # overwrite conflicts
+        updates, conflicts = other_tags.merge_to(self.tags, overwrite=True)
+        self.assertEqual(list(conflicts), [])
+        self.assertEqual({u'tag-2': b'z'}, updates)
+        self.assertEqual(b'z', self.tags.lookup_tag('tag-2'))

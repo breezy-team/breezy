@@ -33,6 +33,7 @@ from ..server import (
     BzrTCPGitServer,
     )
 
+
 class TestPresent(TestCase):
 
     def test_present(self):
@@ -98,5 +99,3 @@ class TestPlainFetch(GitServerTestCase):
         self.assertEqual(
             set(result.refs.keys()),
             set([b"refs/tags/atag", b"HEAD"]))
-
-

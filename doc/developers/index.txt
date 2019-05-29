@@ -51,7 +51,7 @@ Releasing and Packaging
    ec2 
 
 
-Developing using bzrlib
+Developing using breezy
 =======================
 
 .. toctree::
@@ -60,10 +60,9 @@ Developing using bzrlib
    overview
    integration
 
-* `Writing plugins for Breezy <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_ (web link)
+* `Writing plugins for Breezy <plugin-development.txt>`_
 
-* `bzrlib API reference <http://people.canonical.com/~mwh/bzrlibapi/>`_
-  (web link)
+* `breezy API reference <api/index.txt>`_
 
 
 Other documents
@@ -82,7 +81,10 @@ Other documents
 Licence
 ============
 
-Copyright 2005-2011 Canonical Ltd. Breezy is free software, and you
+Copyright 2005-2011 Canonical Ltd.
+Copyright 2018 Breezy Developers
+
+Breezy is free software, and you
 may use, modify and redistribute both Breezy and this document under
 the terms of the GNU General Public License version 2 or later.  See
 <http://www.gnu.org/licenses/>.

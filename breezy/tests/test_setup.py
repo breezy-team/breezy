@@ -30,6 +30,7 @@ from .. import tests
 #
 # TODO: Check that the version numbers are in sync.  (Or avoid this...)
 
+
 class TestSetup(tests.TestCaseInTempDir):
 
     def test_build_and_install(self):

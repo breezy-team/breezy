@@ -61,7 +61,7 @@ class TestBranchCheck(TestCaseWithBranch):
         ui.ui_factory = tests.TestUIFactory(stdout=BytesIO())
         result.report_results(True)
         self.assertContainsRe(b'revno does not match len',
-            ui.ui_factory.stdout.getvalue())
+                              ui.ui_factory.stdout.getvalue())
 
     def test_check_branch_report_results(self):
         """Checking a branch produces results which can be printed"""

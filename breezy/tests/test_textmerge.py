@@ -17,6 +17,8 @@
 # Author: Aaron Bentley <aaron.bentley@utoronto.ca>
 from breezy.textmerge import Merge2
 from breezy.tests import TestCase
+
+
 class TestMerge2(TestCase):
     def test_agreed(self):
         lines = "a\nb\nc\nd\ne\nf\n".splitlines(True)
@@ -29,9 +31,9 @@ class TestMerge2(TestCase):
         expected = "<\na\n=\nz\n>\nb\n<\nc\n=\nx\n>\nd\ne\n<\n=\ne\n>\nf\n"\
                    "g\n<\nh\n=\ny\n>\n"
         m2 = Merge2(lines_a, lines_b, '<\n', '>\n', '=\n')
-        mlines= m2.merge_lines()[0]
+        mlines = m2.merge_lines()[0]
         self.assertEqualDiff(''.join(mlines), expected)
-        mlines= m2.merge_lines(reprocess=True)[0]
+        mlines = m2.merge_lines(reprocess=True)[0]
         self.assertEqualDiff(''.join(mlines), expected)
 
     def test_reprocess(self):

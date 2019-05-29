@@ -129,6 +129,7 @@ class TestPermissions(tests.TestCaseWithTransport):
         bzrdir = ControlDir.open('.')
         # Monkey patch the transport
         _orig_stat = bzrdir.transport.stat
+
         def null_perms_stat(*args, **kwargs):
             result = _orig_stat(*args, **kwargs)
             return _NullPermsStat(result)

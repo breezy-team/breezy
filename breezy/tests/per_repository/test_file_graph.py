@@ -34,5 +34,5 @@ class TestPerFileGraph(TestCaseWithRepository):
         self.addCleanup(tree.lock_read().unlock)
         graph = tree.branch.repository.get_file_graph()
         self.assertEqual({
-            (fileid, revid2): ((fileid, revid1),), (fileid, revid1):()},
+            (fileid, revid2): ((fileid, revid1),), (fileid, revid1): ()},
             graph.get_parent_map([(fileid, revid2), (fileid, revid1)]))

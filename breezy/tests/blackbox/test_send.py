@@ -42,9 +42,12 @@ class TestSendMixin(object):
     _default_wd = 'branch'
 
     def run_send(self, args, cmd=None, rc=0, wd=None, err_re=None):
-        if cmd is None: cmd = self._default_command
-        if wd is None: wd = self._default_wd
-        if err_re is None: err_re = []
+        if cmd is None:
+            cmd = self._default_command
+        if wd is None:
+            wd = self._default_wd
+        if err_re is None:
+            err_re = []
         return self.run_bzr(cmd + args, retcode=rc,
                             working_dir=wd,
                             error_regexes=err_re)
@@ -74,7 +77,8 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         parent_tree = parent_bzrdir.open_workingtree()
         parent_tree.commit('next commit', rev_id=b'rev2')
 
-        branch_tree = parent_tree.controldir.sprout('branch').open_workingtree()
+        branch_tree = parent_tree.controldir.sprout(
+            'branch').open_workingtree()
         self.build_tree_contents([('branch/file1', b'branch')])
         branch_tree.commit('last commit', rev_id=b'rev3')
 
@@ -159,7 +163,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertIsNot(None, md.patch)
 
         md = self.get_MD(['--no-bundle', '--format=0.9', '../parent',
-                                  '.'])
+                          '.'])
         self.assertIs(None, md.bundle)
         self.assertIsNot(None, md.patch)
 
@@ -197,7 +201,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         b.get_config_stack().set('mail_client', 'editor')
         self.run_bzr_error(
             ('No mail-to address \\(--mail-to\\) or output \\(-o\\) specified',
-            ), 'send -f branch')
+             ), 'send -f branch')
         b.get_config_stack().set('mail_client', 'bogus')
         self.run_send([])
         self.run_bzr_error(('Bad value "bogus" for option "mail_client"',),
@@ -213,7 +217,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         parent = branch.Branch.open('parent')
         parent.get_config_stack().set('child_submit_to', 'somebody@example.org')
         self.run_bzr_error(('Bad value "bogus" for option "mail_client"',),
-                'send -f branch')
+                           'send -f branch')
 
     def test_format(self):
         md = self.get_MD(['--format=4'])
@@ -228,7 +232,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertIs(merge_directive.MergeDirective, md.__class__)
 
         self.run_bzr_error(['Bad value .* for option .format.'],
-                            'send -f branch -o- --format=0.999')[0]
+                           'send -f branch -o- --format=0.999')[0]
 
     def test_format_child_option(self):
         br = branch.Branch.open('parent')
@@ -247,7 +251,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
 
         conf.set('child_submit_format', '0.999')
         self.run_bzr_error(["No such send format '0.999'"],
-                            'send -f branch -o-')[0]
+                           'send -f branch -o-')[0]
 
     def test_message_option(self):
         self.run_bzr('send', retcode=3)
@@ -290,7 +294,7 @@ class TestSendStrictMixin(TestSendMixin):
     _default_wd = 'local'
     _default_sent_revs = [b'local']
     _default_errors = ['Working tree ".*/local/" has uncommitted '
-                       'changes \\(See brz status\\)\\.',]
+                       'changes \\(See brz status\\)\\.', ]
     _default_additional_error = 'Use --no-strict to force the send.\n'
     _default_additional_warning = 'Uncommitted changes will not be sent.'
 
@@ -311,7 +315,7 @@ class TestSendStrictMixin(TestSendMixin):
             revs = self._default_sent_revs
         out, err = self.run_send(args, err_re=err_re)
         if len(revs) == 1:
-            bundling_revs = 'Bundling %d revision.\n'% len(revs)
+            bundling_revs = 'Bundling %d revision.\n' % len(revs)
         else:
             bundling_revs = 'Bundling %d revisions.\n' % len(revs)
         if with_warning:
@@ -319,7 +323,8 @@ class TestSendStrictMixin(TestSendMixin):
             self.assertEndsWith(err, bundling_revs)
         else:
             self.assertEqual(bundling_revs, err)
-        md = merge_directive.MergeDirective.from_lines(BytesIO(out.encode('utf-8')))
+        md = merge_directive.MergeDirective.from_lines(
+            BytesIO(out.encode('utf-8')))
         self.assertEqual(b'parent', md.base_revision_id)
         br = serializer.read_bundle(BytesIO(md.get_raw_bundle()))
         self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
@@ -369,7 +374,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
          dict(_changes_type='_out_of_sync_trees')),
         ]
 
-    _changes_type = None # Set by load_tests
+    _changes_type = None  # Set by load_tests
 
     def setUp(self):
         super(TestSendStrictWithChanges, self).setUp()
@@ -404,7 +409,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         # Exercise commands from the checkout directory
         self._default_wd = 'checkout'
         self._default_errors = ["Working tree is out of date, please run"
-                                " 'brz update'\\.",]
+                                " 'brz update'\\.", ]
         self._default_sent_revs = [b'modified-in-local', b'local']
 
     def test_send_default(self):

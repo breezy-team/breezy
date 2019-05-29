@@ -184,7 +184,7 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
         """Get the format that should be used when cloning from this dir.
 
         New in 1.13.
-        
+
         :return: on success, a 3-tuple of network names for (control,
             repository, branch) directories, where '' signifies "not present".
             If this BzrDir contains a branch reference then this will fail with
@@ -209,14 +209,14 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
         control_name = control_format.network_name()
         if not control_format.fixed_components:
             branch_name = (b'branch',
-                control_format.get_branch_format().network_name())
+                           control_format.get_branch_format().network_name())
             repository_name = control_format.repository_format.network_name()
         else:
             # Only MetaDir has delegated formats today.
             branch_name = (b'branch', b'')
             repository_name = b''
         return SuccessfulSmartServerResponse((control_name, repository_name,
-            branch_name))
+                                              branch_name))
 
 
 class SmartServerBzrDirRequestCheckoutMetaDir(SmartServerRequestBzrDir):
@@ -284,11 +284,11 @@ class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
         branch_format = result._format.network_name()
         repo_format = result.repository._format.network_name()
         repo_path = self._repo_relpath(bzrdir.root_transport,
-            result.repository)
+                                       result.repository)
         # branch format, repo relpath, rich_root, tree_ref, external_lookup,
         # repo_network_name
         return SuccessfulSmartServerResponse((b'ok', branch_format, repo_path,
-            rich_root, tree_ref, external_lookup, repo_format))
+                                              rich_root, tree_ref, external_lookup, repo_format))
 
 
 class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
@@ -321,7 +321,7 @@ class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
         rich_root, tree_ref, external_lookup = self._format_to_capabilities(
             result._format)
         return SuccessfulSmartServerResponse((b'ok', rich_root, tree_ref,
-            external_lookup, result._format.network_name()))
+                                              external_lookup, result._format.network_name()))
 
 
 class SmartServerRequestFindRepository(SmartServerRequestBzrDir):
@@ -439,7 +439,7 @@ class SmartServerBzrDirRequestGetBranches(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self):
         """Get the branches in a control directory.
-        
+
         The body is a bencoded dictionary, with values similar to the return
         value of the open branch request.
         """
@@ -496,8 +496,8 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
         return b'True'
 
     def do(self, bzrdir_network_name, path, use_existing_dir, create_prefix,
-        force_new_repo, stacked_on, stack_on_pwd, repo_format_name,
-        make_working_trees, shared_repo):
+           force_new_repo, stacked_on, stack_on_pwd, repo_format_name,
+           make_working_trees, shared_repo):
         """Initialize a bzrdir at path as per
         BzrDirFormat.initialize_on_transport_ex.
 
@@ -523,10 +523,10 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
         repo_format_name = self.parse_NoneBytestring(repo_format_name)
         repo, bzrdir, stacking, repository_policy = \
             format.initialize_on_transport_ex(target_transport,
-            use_existing_dir=use_existing_dir, create_prefix=create_prefix,
-            force_new_repo=force_new_repo, stacked_on=stacked_on,
-            stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
-            make_working_trees=make_working_trees, shared_repo=shared_repo)
+                                              use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+                                              force_new_repo=force_new_repo, stacked_on=stacked_on,
+                                              stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
+                                              make_working_trees=make_working_trees, shared_repo=shared_repo)
         if repo is None:
             repo_path = ''
             repo_name = b''
@@ -568,10 +568,11 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             final_stack_pwd = '.'
 
         return SuccessfulSmartServerResponse((repo_path.encode('utf-8'),
-            rich_root, tree_ref, external_lookup, repo_name, repo_bzrdir_name,
-            bzrdir._format.network_name(),
-            self._serialize_NoneTrueFalse(stacking), final_stack.encode('utf-8'),
-            final_stack_pwd.encode('utf-8'), repo_lock_token))
+                                              rich_root, tree_ref, external_lookup, repo_name, repo_bzrdir_name,
+                                              bzrdir._format.network_name(),
+                                              self._serialize_NoneTrueFalse(
+                                                  stacking), final_stack.encode('utf-8'),
+                                              final_stack_pwd.encode('utf-8'), repo_lock_token))
 
 
 class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
@@ -607,7 +608,7 @@ class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self):
         """Open a branch at path and return the reference or format.
-        
+
         This version introduced in 2.1.
 
         Differences to SmartServerRequestOpenBranchV2:
@@ -634,4 +635,3 @@ class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
                     detail = detail[2:]
                 resp += (detail.encode('utf-8'),)
             return FailedSmartServerResponse(resp)
-

@@ -28,15 +28,15 @@ class TestRepositoryFormat(TestCase):
 
     def test_format_string(self):
         self.assertRaises(NotImplementedError,
-            self.repository_format.get_format_string)
+                          self.repository_format.get_format_string)
 
     def test_network_name(self):
         self.assertIsInstance(self.repository_format.network_name(),
-            bytes)
+                              bytes)
 
     def test_format_description(self):
         self.assertIsInstance(self.repository_format.get_format_description(),
-            str)
+                              str)
 
 
 class ForeignRepositoryFactory(object):
@@ -59,7 +59,8 @@ class ForeignRepositoryTests(TestCaseWithTransport):
     # XXX: Some of these tests could be moved into a common testcase for
     # both native and foreign repositories.
 
-    repository_factory = None # Set to an instance of ForeignRepositoryFactory by the scenario
+    # Set to an instance of ForeignRepositoryFactory by the scenario
+    repository_factory = None
 
     def make_repository(self):
         return self.repository_factory.make_repository(self.get_transport())

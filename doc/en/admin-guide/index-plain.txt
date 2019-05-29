@@ -1,5 +1,5 @@
 ###################################
-Bazaar System Administrator's Guide
+Breezy System Administrator's Guide
 ###################################
 
 .. Please mark sections in included files as following:

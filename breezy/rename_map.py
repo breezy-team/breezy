@@ -30,6 +30,7 @@ from .sixish import (
     )
 from .ui import ui_factory
 
+
 class RenameMap(object):
     """Determine a mapping of renames."""
 
@@ -48,7 +49,7 @@ class RenameMap(object):
         """
         modulus = 1024 * 1024 * 10
         for n in range(len(lines)):
-            yield hash(tuple(lines[n:n+2])) % modulus
+            yield hash(tuple(lines[n:n + 2])) % modulus
 
     def add_edge_hashes(self, lines, tag):
         """Update edge_hashes to include the given lines.
@@ -68,7 +69,7 @@ class RenameMap(object):
         desired_files = [(tree.id2path(f), f) for f in file_ids]
         with ui_factory.nested_progress_bar() as task:
             for num, (file_id, contents) in enumerate(
-                tree.iter_files_bytes(desired_files)):
+                    tree.iter_files_bytes(desired_files)):
                 task.update(gettext('Calculating hashes'), num, len(file_ids))
                 s = BytesIO()
                 s.writelines(contents)
@@ -180,11 +181,12 @@ class RenameMap(object):
                  kind, executable) in iterator:
                 if kind[1] is None and versioned[1]:
                     if not self.tree.has_filename(self.tree.id2path(parent[0])):
-                        missing_parents.setdefault(parent[0], set()).add(file_id)
+                        missing_parents.setdefault(
+                            parent[0], set()).add(file_id)
                     if kind[0] == 'file':
                         missing_files.add(file_id)
                     else:
-                        #other kinds are not handled
+                        # other kinds are not handled
                         pass
                 if versioned == (False, False):
                     if self.tree.is_ignored(paths[1]):
@@ -230,7 +232,7 @@ class RenameMap(object):
             pp.next_phase()
             delta = rn._make_inventory_delta(matches)
             for old, new, file_id, entry in delta:
-                trace.note( gettext("{0} => {1}").format(old, new) )
+                trace.note(gettext("{0} => {1}").format(old, new))
             if not dry_run:
                 to_tree.add(required_parents)
                 to_tree.apply_inventory_delta(delta)
@@ -252,7 +254,8 @@ class RenameMap(object):
             if parent_id is None:
                 parent_id = self.tree.path2id(parent_path)
                 if parent_id is None:
-                    added, ignored = self.tree.smart_add([parent_path], recurse=False)
+                    added, ignored = self.tree.smart_add(
+                        [parent_path], recurse=False)
                     if len(ignored) > 0 and ignored[0] == parent_path:
                         continue
                     else:

@@ -83,15 +83,15 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
 
         # Create an empty trunk
         builder.build_snapshot(None, [
-                ('add', ('', b'root-id', 'directory', ''))],
-                revision_id=b'1')
+            ('add', ('', b'root-id', 'directory', ''))],
+            revision_id=b'1')
         builder.build_snapshot([b'1'], [
-                ('add', ('dir', b'dir-id', 'directory', '')),
-                ('add', ('file', b'file-id', 'file', b'trunk content\n')),],
-                revision_id=b'2')
+            ('add', ('dir', b'dir-id', 'directory', '')),
+            ('add', ('file', b'file-id', 'file', b'trunk content\n')), ],
+            revision_id=b'2')
         builder.build_snapshot([b'2'], [
-                ('unversion', 'dir'),],
-                revision_id=b'3')
+            ('unversion', 'dir'), ],
+            revision_id=b'3')
         builder.finish_series()
         return builder.get_branch()
 
@@ -99,9 +99,10 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         if not self.workingtree_format.missing_parent_conflicts:
             raise tests.TestSkipped(
                 '%r does not support missing parent conflicts' %
-                    self.workingtree_format)
+                self.workingtree_format)
         trunk = self.make_branch_deleting_dir('trunk')
-        work = trunk.controldir.sprout('work', revision_id=b'2').open_workingtree()
+        work = trunk.controldir.sprout(
+            'work', revision_id=b'2').open_workingtree()
         work.branch.get_config_stack().set(
             'transform.orphan_policy', 'move')
         # Add some unversioned files in dir

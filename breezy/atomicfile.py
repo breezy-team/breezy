@@ -19,7 +19,6 @@ from __future__ import absolute_import
 import os
 
 import stat
-import warnings
 
 from breezy import (
     errors,

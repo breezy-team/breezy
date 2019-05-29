@@ -118,14 +118,14 @@ class ReconfigureStackedOn(object):
         # it may be a path relative to the cwd or a url; the branch wants
         # a path relative to itself...
         on_url = urlutils.relative_url(branch.base,
-            urlutils.normalize_url(stacked_on_url))
+                                       urlutils.normalize_url(stacked_on_url))
         branch.lock_write()
         try:
             branch.set_stacked_on_url(on_url)
             if not trace.is_quiet():
                 ui.ui_factory.note(gettext(
                     "{0} is now stacked on {1}\n").format(
-                      branch.base, branch.get_stacked_on_url()))
+                    branch.base, branch.get_stacked_on_url()))
         finally:
             branch.unlock()
 
@@ -273,8 +273,8 @@ class Reconfigure(object):
             raise ReconfigurationNotSupported(reconfiguration.controldir)
         if with_trees and reconfiguration.repository.make_working_trees():
             raise AlreadyWithTrees(controldir)
-        elif (not with_trees
-              and not reconfiguration.repository.make_working_trees()):
+        elif (not with_trees and
+              not reconfiguration.repository.make_working_trees()):
             raise AlreadyWithNoTrees(controldir)
         else:
             reconfiguration._repository_trees = with_trees
@@ -292,7 +292,7 @@ class Reconfigure(object):
                 self._create_repository = True
         else:
             if want_reference and (
-                self.repository.user_url == self.controldir.user_url):
+                    self.repository.user_url == self.controldir.user_url):
                 if not self.repository.is_shared():
                     self._destroy_repository = True
         if self.referenced_branch is None:
@@ -332,19 +332,19 @@ class Reconfigure(object):
 
     def changes_planned(self):
         """Return True if changes are planned, False otherwise"""
-        return (self._unbind or self._bind or self._destroy_tree
-                or self._create_tree or self._destroy_reference
-                or self._create_branch or self._create_repository
-                or self._create_reference or self._destroy_repository)
+        return (self._unbind or self._bind or self._destroy_tree or
+                self._create_tree or self._destroy_reference or
+                self._create_branch or self._create_repository or
+                self._create_reference or self._destroy_repository)
 
     def _check(self):
         """Raise if reconfiguration would destroy local changes"""
         if self._destroy_tree and self.tree.has_changes():
-                raise errors.UncommittedChanges(self.tree)
+            raise errors.UncommittedChanges(self.tree)
         if self._create_reference and self.local_branch is not None:
             reference_branch = branch.Branch.open(self._select_bind_location())
-            if (reference_branch.last_revision() !=
-                self.local_branch.last_revision()):
+            if (reference_branch.last_revision()
+                    != self.local_branch.last_revision()):
                 raise UnsyncedBranches(self.controldir, reference_branch)
 
     def _select_bind_location(self):

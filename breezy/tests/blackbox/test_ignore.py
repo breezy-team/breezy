@@ -122,9 +122,9 @@ class TestCommands(TestCaseWithTransport):
         # test a single versioned file
         out, err = self.run_bzr('ignore a')
         self.assertEqual(out,
-                         "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\na\n"\
-                         "These files will continue to be version controlled"\
+                         "Warning: the following files are version controlled"
+                         " and match your ignore pattern:\na\n"
+                         "These files will continue to be version controlled"
                          " unless you 'brz remove' them.\n")
 
         # test a single unversioned file
@@ -135,9 +135,9 @@ class TestCommands(TestCaseWithTransport):
         tree.add('b')
         out, err = self.run_bzr('ignore *')
         self.assertEqual(out,
-                         "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\n.bzrignore\na\nb\n"\
-                         "These files will continue to be version controlled"\
+                         "Warning: the following files are version controlled"
+                         " and match your ignore pattern:\n.bzrignore\na\nb\n"
+                         "These files will continue to be version controlled"
                          " unless you 'brz remove' them.\n")
 
     def test_ignored_versioned_file_matching_new_pattern(self):
@@ -150,9 +150,9 @@ class TestCommands(TestCaseWithTransport):
         # this case.
         out, err = self.run_bzr('ignore b')
         self.assertEqual(out,
-                         "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\nb\n"\
-                         "These files will continue to be version controlled"\
+                         "Warning: the following files are version controlled"
+                         " and match your ignore pattern:\nb\n"
+                         "These files will continue to be version controlled"
                          " unless you 'brz remove' them.\n")
 
     def test_ignore_directory(self):
@@ -172,7 +172,6 @@ class TestCommands(TestCaseWithTransport):
         out, err = self.run_bzr(['ignore', 'RE:*.cpp', 'foo', 'RE:['], 3)
         self.assertEqual(out, '')
         self.assertContainsRe(err,
-            r'Invalid ignore pattern.*RE:\*\.cpp.*RE:\[', re.DOTALL)
+                              r'Invalid ignore pattern.*RE:\*\.cpp.*RE:\[', re.DOTALL)
         self.assertNotContainsRe(err, 'foo', re.DOTALL)
         self.assertFalse(os.path.isfile('.bzrignore'))
-

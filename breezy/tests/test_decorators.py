@@ -33,7 +33,7 @@ class SampleUnlockError(Exception):
 class TestOnlyRaisesDecorator(TestCase):
 
     def raise_ZeroDivisionError(self):
-        1/0
+        1 / 0
 
     def test_raises_approved_error(self):
         decorator = decorators.only_raises(ZeroDivisionError)

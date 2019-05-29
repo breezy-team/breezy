@@ -17,7 +17,6 @@
 from .. import (
     add,
     cache_utf8,
-    osutils,
     tests,
     )
 from ..bzr import (
@@ -49,7 +48,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
                          'base/dir/', 'base/dir/a',
                          'base/dir/subdir/',
                          'base/dir/subdir/b',
-                        ])
+                         ])
         self.base_tree.add(['a', 'b', 'dir', 'dir/a',
                             'dir/subdir', 'dir/subdir/b'])
         self.base_tree.commit('creating initial tree.')
@@ -78,7 +77,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
                  'dir/', 'dir/a',
                  'dir/subdir/',
                  'dir/subdir/b',
-                ]
+                 ]
         self.build_tree(['new/' + fn for fn in files])
         self.add_helper(self.base_tree, '', new_tree, ['new'])
 
@@ -159,5 +158,5 @@ class TestAddActions(tests.TestCase):
         action = add.AddAction(to_file=stdout, should_print=bool(output))
 
         self.apply_redirected(None, stdout, None, action, inv, None,
-            'path', 'file')
+                              'path', 'file')
         self.assertEqual(stdout.getvalue(), output)

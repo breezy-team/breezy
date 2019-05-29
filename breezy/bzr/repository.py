@@ -27,7 +27,6 @@ from .. import (
     lockable_files,
     revision as _mod_revision,
     )
-from ..decorators import only_raises
 from ..repository import (
     format_registry,
     Repository,
@@ -46,7 +45,8 @@ class MetaDirRepository(Repository):
     """
 
     def __init__(self, _format, a_bzrdir, control_files):
-        super(MetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
+        super(MetaDirRepository, self).__init__(
+            _format, a_bzrdir, control_files)
         self._transport = control_files._transport
 
     def is_shared(self):
@@ -70,8 +70,8 @@ class MetaDirRepository(Repository):
                     pass
             else:
                 self._transport.put_bytes(
-                        'no-working-trees', b'',
-                        mode=self.controldir._get_file_mode())
+                    'no-working-trees', b'',
+                    mode=self.controldir._get_file_mode())
 
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
@@ -85,7 +85,8 @@ class MetaDirRepository(Repository):
         """
         with self.lock_write():
             self._format._update_feature_flags(updated_flags)
-            self.control_transport.put_bytes('format', self._format.as_string())
+            self.control_transport.put_bytes(
+                'format', self._format.as_string())
 
     def _find_parent_ids_of_revisions(self, revision_ids):
         """Find all parent ids that are mentioned in the revision graph.
@@ -94,7 +95,7 @@ class MetaDirRepository(Repository):
             not part of revision_ids themselves
         """
         parent_ids = set(itertools.chain.from_iterable(viewvalues(
-                self.get_parent_map(revision_ids))))
+            self.get_parent_map(revision_ids))))
         parent_ids.difference_update(revision_ids)
         parent_ids.discard(_mod_revision.NULL_REVISION)
         return parent_ids
@@ -125,7 +126,7 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         # NB: no need to escape relative paths that are url safe.
         repository_transport = a_bzrdir.get_repository_transport(self)
         control_files = lockable_files.LockableFiles(repository_transport,
-                                'lock', lockdir.LockDir)
+                                                     'lock', lockdir.LockDir)
         control_files.create_lock()
         return control_files
 
@@ -134,17 +135,17 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         control_files = self._create_control_files(a_bzrdir)
         control_files.lock_write()
         transport = control_files._transport
-        if shared == True:
+        if shared is True:
             utf8_files += [('shared-storage', b'')]
         try:
             for dir in dirs:
                 transport.mkdir(dir, mode=a_bzrdir._get_dir_mode())
             for (filename, content_stream) in files:
                 transport.put_file(filename, content_stream,
-                    mode=a_bzrdir._get_file_mode())
+                                   mode=a_bzrdir._get_file_mode())
             for (filename, content_bytes) in utf8_files:
                 transport.put_bytes_non_atomic(filename, content_bytes,
-                    mode=a_bzrdir._get_file_mode())
+                                               mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
 
@@ -164,10 +165,9 @@ class RepositoryFormatMetaDir(bzrdir.BzrFormat, RepositoryFormat):
         return klass._find_format(format_registry, 'repository', format_string)
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-            basedir=None):
+                             basedir=None):
         RepositoryFormat.check_support_status(self,
-            allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
-            basedir=basedir)
+                                              allow_unsupported=allow_unsupported, recommend_upgrade=recommend_upgrade,
+                                              basedir=basedir)
         bzrdir.BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
-            recommend_upgrade=recommend_upgrade, basedir=basedir)
-
+                                              recommend_upgrade=recommend_upgrade, basedir=basedir)

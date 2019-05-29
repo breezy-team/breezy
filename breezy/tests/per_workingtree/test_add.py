@@ -68,8 +68,8 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.unversion(['a'])
         tree.add(['b'], [file_id])
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b', 'a')])
 
     def test_add_one_list(self):
         tree = self.make_branch_and_tree('.')

@@ -34,17 +34,17 @@ class TestParseIgnoreFile(TestCase):
 
     def test_parse_fancy(self):
         ignored = ignores.parse_ignore_file(BytesIO(
-                b'./rootdir\n'
-                b'randomfile*\n'
-                b'path/from/ro?t\n'
-                b'unicode\xc2\xb5\n' # u'\xb5'.encode('utf8')
-                b'dos\r\n'
-                b'\n' # empty line
-                b'#comment\n'
-                b' xx \n' # whitespace
-                b'!RE:^\\.z.*\n'
-                b'!!./.zcompdump\n'
-                ))
+            b'./rootdir\n'
+            b'randomfile*\n'
+            b'path/from/ro?t\n'
+            b'unicode\xc2\xb5\n'  # u'\xb5'.encode('utf8')
+            b'dos\r\n'
+            b'\n'  # empty line
+            b'#comment\n'
+            b' xx \n'  # whitespace
+            b'!RE:^\\.z.*\n'
+            b'!!./.zcompdump\n'
+            ))
         self.assertEqual({u'./rootdir',
                           u'randomfile*',
                           u'path/from/ro?t',
@@ -53,23 +53,23 @@ class TestParseIgnoreFile(TestCase):
                           u' xx ',
                           u'!RE:^\\.z.*',
                           u'!!./.zcompdump',
-                         }, ignored)
+                          }, ignored)
 
     def test_parse_empty(self):
         ignored = ignores.parse_ignore_file(BytesIO(b''))
         self.assertEqual(set([]), ignored)
-        
+
     def test_parse_non_utf8(self):
         """Lines with non utf 8 characters should be discarded."""
         ignored = ignores.parse_ignore_file(BytesIO(
-                b'utf8filename_a\n'
-                b'invalid utf8\x80\n'
-                b'utf8filename_b\n'
-                ))
+            b'utf8filename_a\n'
+            b'invalid utf8\x80\n'
+            b'utf8filename_b\n'
+            ))
         self.assertEqual({
-                        u'utf8filename_a',
-                        u'utf8filename_b',
-                       }, ignored)
+            u'utf8filename_a',
+            u'utf8filename_b',
+            }, ignored)
 
 
 class TestUserIgnores(TestCaseInTempDir):
@@ -127,7 +127,7 @@ class TestUserIgnores(TestCaseInTempDir):
 
         in_patterns = ['foo/', 'bar/', 'baz\\']
         added = ignores.add_unique_user_ignores(in_patterns)
-        out_patterns = [ x.rstrip('/\\') for x in in_patterns ]
+        out_patterns = [x.rstrip('/\\') for x in in_patterns]
         self.assertEqual(out_patterns, added)
         self.assertEqual(set(out_patterns), ignores.get_user_ignores())
 
@@ -140,7 +140,7 @@ class TestUserIgnores(TestCaseInTempDir):
             ['xxx', './bar', 'xxx', 'dir1/', 'dir2/', 'dir3\\'])
         self.assertEqual(['xxx', 'dir2'], added)
         self.assertEqual({'foo', './bar', u'b\xe5z',
-                              'xxx', 'dir1', 'dir2', 'dir3'},
+                          'xxx', 'dir1', 'dir2', 'dir3'},
                          ignores.get_user_ignores())
 
 

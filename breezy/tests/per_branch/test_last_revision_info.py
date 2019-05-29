@@ -41,7 +41,7 @@ class TestLastRevisionInfo(TestCaseWithTransport):
         revid = tree1.commit('2st post', allow_pointless=True)
         branch2 = self.make_branch('branch2')
         self.assertEqual((2, revid),
-            branch2.import_last_revision_info_and_tags(tree1.branch, 2, revid))
+                         branch2.import_last_revision_info_and_tags(tree1.branch, 2, revid))
         self.assertEqual((2, revid), branch2.last_revision_info())
         self.assertTrue(branch2.repository.has_revision(revid))
 
@@ -52,7 +52,7 @@ class TestLastRevisionInfo(TestCaseWithTransport):
         revid = tree1.commit('2st post', allow_pointless=True)
         branch2 = self.make_branch('branch2')
         ret = branch2.import_last_revision_info_and_tags(tree1.branch, 2,
-            revid, lossy=True)
+                                                         revid, lossy=True)
         self.assertIsInstance(ret, tuple)
         self.assertIsInstance(ret[0], int)
         self.assertIsInstance(ret[1], bytes)

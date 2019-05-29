@@ -128,6 +128,7 @@ class TestBzrProfiler(tests.TestCase):
         # When profiler_block is 0, reentrant profile requests fail.
         self.overrideAttr(lsprof.BzrProfiler, 'profiler_block', 0)
         inner_calls = []
+
         def inner():
             profiler = lsprof.BzrProfiler()
             self.assertRaises(errors.BzrError, profiler.start)
@@ -145,8 +146,10 @@ class TestBzrProfiler(tests.TestCase):
         # to be confident regressions would be caught. Alternatively, if this
         # is flakey, a fake Lock object can be used to trace the calls made.
         calls = []
+
         def profiled():
             calls.append('profiled')
+
         def do_profile():
             lsprof.profile(profiled)
             calls.append('after_profiled')

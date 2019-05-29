@@ -40,8 +40,8 @@ number of your plugin. eg.
 Plugin searching rules
 ----------------------
 
-Bzr will scan ``~/.bazaar/plugins``  and ``breezy/plugins`` for plugins
-by default.  You can override this with  ``BZR_PLUGIN_PATH``
+Breezy will scan ``~/.config/breezy/plugins``  and ``breezy/plugins`` for
+plugins by default.  You can override this with  ``BRZ_PLUGIN_PATH``
 (see `User Reference 
 <../user-reference/configuration-help.html#brz-plugin-path>`_ for details).
 
@@ -53,7 +53,7 @@ package, i.e. a directory with an ``__init__.py`` file.
 More information
 ----------------
 
-Please feel free to contribute your plugin to BzrTools, if you think it
+Please feel free to contribute your plugin to Breezy, if you think it
 would be useful to other people.
 
 See the `Breezy Developer Guide`_ for details on Breezy's development

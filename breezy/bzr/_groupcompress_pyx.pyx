@@ -22,22 +22,26 @@ from __future__ import absolute_import
 cdef extern from "python-compat.h":
     pass
 
+from libc.stdlib cimport (
+    free,
+    )
+from libc.string cimport (
+    memcpy,
+    )
 
-cdef extern from "Python.h":
-    ctypedef struct PyObject:
-        pass
-    int PyBytes_CheckExact(object)
-    char * PyBytes_AS_STRING(object)
-    Py_ssize_t PyBytes_GET_SIZE(object)
-    object PyBytes_FromStringAndSize(char *, Py_ssize_t)
-
-
-cdef extern from *:
-    ctypedef unsigned long size_t
-    void * malloc(size_t) nogil
-    void * realloc(void *, size_t) nogil
-    void free(void *) nogil
-    void memcpy(void *, void *, size_t) nogil
+from cpython.bytes cimport (
+    PyBytes_AS_STRING,
+    PyBytes_CheckExact,
+    PyBytes_FromStringAndSize,
+    PyBytes_GET_SIZE,
+    )
+from cpython.object cimport (
+    PyObject,
+    )
+from cpython.mem cimport (
+    PyMem_Free,
+    PyMem_Malloc,
+    )
 
 
 cdef extern from "delta.h":
@@ -78,29 +82,6 @@ cdef extern from "delta.h":
     unsigned int rabin_hash (unsigned char *data)
 
 
-cdef void *safe_malloc(size_t count) except NULL:
-    cdef void *result
-    result = malloc(count)
-    if result == NULL:
-        raise MemoryError('Failed to allocate %d bytes of memory' % (count,))
-    return result
-
-
-cdef void *safe_realloc(void * old, size_t count) except NULL:
-    cdef void *result
-    result = realloc(old, count)
-    if result == NULL:
-        raise MemoryError('Failed to reallocate to %d bytes of memory'
-                          % (count,))
-    return result
-
-
-cdef int safe_free(void **val) except -1:
-    assert val != NULL
-    if val[0] != NULL:
-        free(val[0])
-        val[0] = NULL
-
 def make_delta_index(source):
     return DeltaIndex(source)
 
@@ -130,10 +111,7 @@ def _rabin_hash(content):
 
 cdef class DeltaIndex:
 
-    # We need Pyrex 0.9.8+ to understand a 'list' definition, and this object
-    # isn't performance critical
-    # cdef readonly list _sources
-    cdef readonly object _sources
+    cdef readonly list _sources
     cdef source_info *_source_infos
     cdef delta_index *_index
     cdef public unsigned long _source_offset
@@ -144,8 +122,10 @@ cdef class DeltaIndex:
         self._sources = []
         self._index = NULL
         self._max_num_sources = 65000
-        self._source_infos = <source_info *>safe_malloc(sizeof(source_info)
-                                                        * self._max_num_sources)
+        self._source_infos = <source_info *>PyMem_Malloc(
+            sizeof(source_info) * self._max_num_sources)
+        if self._source_infos == NULL:
+            raise MemoryError('failed to allocate memory for DeltaIndex')
         self._source_offset = 0
         self._max_bytes_to_index = 0
         if max_bytes_to_index is not None:
@@ -157,18 +137,9 @@ cdef class DeltaIndex:
     def __sizeof__(self):
         # We want to track the _source_infos allocations, but the referenced
         # void* are actually tracked in _sources itself.
-        # XXX: Cython is capable of doing sizeof(class) and returning the size
-        #      of the underlying struct. Pyrex (<= 0.9.9) refuses, so we need
-        #      to do it manually. *sigh* Note that we might get it wrong
-        #      because of alignment issues.
-        cdef Py_ssize_t size
-        # PyObject start, vtable *, 3 object pointers, 2 C ints
-        size = ((sizeof(PyObject) + sizeof(void*) + 3*sizeof(PyObject*)
-                 + sizeof(unsigned long)
-                 + sizeof(unsigned int))
+        return (sizeof(DeltaIndex)
                 + (sizeof(source_info) * self._max_num_sources)
                 + sizeof_delta_index(self._index))
-        return size
 
     def __repr__(self):
         return '%s(%d, %d)' % (self.__class__.__name__,
@@ -178,7 +149,7 @@ cdef class DeltaIndex:
         if self._index != NULL:
             free_delta_index(self._index)
             self._index = NULL
-        safe_free(<void **>&self._source_infos)
+        PyMem_Free(self._source_infos)
 
     def _has_index(self):
         return (self._index != NULL)
@@ -326,10 +297,6 @@ cdef class DeltaIndex:
     cdef _expand_sources(self):
         raise RuntimeError('if we move self._source_infos, then we need to'
                            ' change all of the index pointers as well.')
-        self._max_num_sources = self._max_num_sources * 2
-        self._source_infos = <source_info *>safe_realloc(self._source_infos,
-                                                sizeof(source_info)
-                                                * self._max_num_sources)
 
     def make_delta(self, target_bytes, max_delta_size=0):
         """Create a delta from the current source to the target bytes."""
@@ -399,7 +366,7 @@ def apply_delta(source_bytes, delta_bytes):
     return _apply_delta(source, source_size, delta, delta_size)
 
 
-cdef unsigned char *_decode_copy_instruction(unsigned char *bytes,
+cdef unsigned char *_decode_copy_instruction(unsigned char *data,
     unsigned char cmd, unsigned int *offset,
     unsigned int *length) nogil: # cannot_raise
     """Decode a copy instruction from the next few bytes.
@@ -417,38 +384,41 @@ cdef unsigned char *_decode_copy_instruction(unsigned char *bytes,
     size = 0
     count = 0
     if (cmd & 0x01):
-        off = bytes[count]
+        off = data[count]
         count = count + 1
     if (cmd & 0x02):
-        off = off | (bytes[count] << 8)
+        off = off | (data[count] << 8)
         count = count + 1
     if (cmd & 0x04):
-        off = off | (bytes[count] << 16)
+        off = off | (data[count] << 16)
         count = count + 1
     if (cmd & 0x08):
-        off = off | (bytes[count] << 24)
+        off = off | (data[count] << 24)
         count = count + 1
     if (cmd & 0x10):
-        size = bytes[count]
+        size = data[count]
         count = count + 1
     if (cmd & 0x20):
-        size = size | (bytes[count] << 8)
+        size = size | (data[count] << 8)
         count = count + 1
     if (cmd & 0x40):
-        size = size | (bytes[count] << 16)
+        size = size | (data[count] << 16)
         count = count + 1
     if (size == 0):
         size = 0x10000
     offset[0] = off
     length[0] = size
-    return bytes + count
+    return data + count
 
 
 cdef object _apply_delta(char *source, Py_ssize_t source_size,
                          char *delta, Py_ssize_t delta_size):
     """common functionality between apply_delta and apply_delta_to_source."""
-    cdef unsigned char *data, *top
-    cdef unsigned char *dst_buf, *out, cmd
+    cdef unsigned char *data
+    cdef unsigned char *top
+    cdef unsigned char *dst_buf
+    cdef unsigned char *out
+    cdef unsigned char cmd
     cdef Py_ssize_t size
     cdef unsigned int cp_off, cp_size
     cdef int failed
@@ -510,7 +480,6 @@ cdef object _apply_delta(char *source, Py_ssize_t source_size,
         raise RuntimeError('Did not extract the number of bytes we expected'
             ' we were left with %d bytes in "size", and top - data = %d'
             % (size, <int>(top - data)))
-        return None
 
     # *dst_size = out - dst_buf;
     if (out - dst_buf) != PyBytes_GET_SIZE(result):
@@ -567,7 +536,7 @@ def encode_base128_int(val):
     return PyBytes_FromStringAndSize(<char *>c_bytes, count)
 
 
-def decode_base128_int(bytes):
+def decode_base128_int(data):
     """Decode an integer from a 7-bit lsb encoding."""
     cdef int offset
     cdef int val
@@ -579,11 +548,11 @@ def decode_base128_int(bytes):
     offset = 0
     val = 0
     shift = 0
-    if not PyBytes_CheckExact(bytes):
+    if not PyBytes_CheckExact(data):
         raise TypeError('bytes is not a string')
-    c_bytes = <unsigned char*>PyBytes_AS_STRING(bytes)
+    c_bytes = <unsigned char*>PyBytes_AS_STRING(data)
     # We take off 1, because we have to be able to decode the non-expanded byte
-    num_low_bytes = PyBytes_GET_SIZE(bytes) - 1
+    num_low_bytes = PyBytes_GET_SIZE(data) - 1
     while (c_bytes[offset] & 0x80) and offset < num_low_bytes:
         val = val | ((c_bytes[offset] & 0x7F) << shift)
         shift = shift + 7

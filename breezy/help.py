@@ -23,8 +23,6 @@ from __future__ import absolute_import
 
 # TODO: `help commands --all` should show hidden commands
 
-import sys
-
 from . import (
     commands as _mod_commands,
     errors,
@@ -39,7 +37,7 @@ from . import (
 class NoHelpTopic(errors.BzrError):
 
     _fmt = ("No help could be found for '%(topic)s'. "
-        "Please use 'brz help topics' to obtain a list of topics.")
+            "Please use 'brz help topics' to obtain a list of topics.")
 
     def __init__(self, topic):
         self.topic = topic
@@ -58,7 +56,7 @@ def help(topic=None, outfile=None):
         shadowed_terms = []
         for index, topic_obj in topics[1:]:
             shadowed_terms.append('%s%s' % (index.prefix,
-                topic_obj.get_help_topic()))
+                                            topic_obj.get_help_topic()))
         source = topics[0][1]
         outfile.write(source.get_help_text(shadowed_terms))
     except NoHelpTopic:
@@ -67,7 +65,7 @@ def help(topic=None, outfile=None):
 
     if alias is not None:
         outfile.write("'brz %s' is an alias for 'brz %s'.\n" % (topic,
-            " ".join(alias)))
+                                                                " ".join(alias)))
 
 
 def help_commands(outfile=None):
@@ -169,7 +167,8 @@ class HelpIndices(object):
         self._check_prefix_uniqueness()
         result = []
         for index in self.search_path:
-            result.extend([(index, _topic) for _topic in index.get_topics(topic)])
+            result.extend([(index, _topic)
+                           for _topic in index.get_topics(topic)])
         if not result:
             raise NoHelpTopic(topic)
         else:

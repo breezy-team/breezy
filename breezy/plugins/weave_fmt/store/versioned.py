@@ -42,8 +42,8 @@ class VersionedFileStore(TransportStore):
                  versionedfile_kwargs={},
                  escaped=False):
         super(VersionedFileStore, self).__init__(transport,
-                dir_mode=dir_mode, file_mode=file_mode,
-                prefixed=prefixed, compressed=False, escaped=escaped)
+                                                 dir_mode=dir_mode, file_mode=file_mode,
+                                                 prefixed=prefixed, compressed=False, escaped=escaped)
         self._precious = precious
         self._versionedfile_class = versionedfile_class
         self._versionedfile_kwargs = versionedfile_kwargs
@@ -66,7 +66,7 @@ class VersionedFileStore(TransportStore):
                     if file_id not in ids:
                         ids.add(file_id)
                         yield file_id
-                    break # only one suffix can match
+                    break  # only one suffix can match
 
     def has_id(self, file_id):
         suffixes = self._versionedfile_class.get_suffixes()
@@ -113,7 +113,7 @@ class VersionedFileStore(TransportStore):
             _filename = self.filename(file_id)
         if transaction.writeable():
             w = self._versionedfile_class(_filename, self._transport, self._file_mode,
-                get_scope=self.get_scope, **self._versionedfile_kwargs)
+                                          get_scope=self.get_scope, **self._versionedfile_kwargs)
         else:
             w = self._versionedfile_class(_filename,
                                           self._transport,
@@ -125,7 +125,7 @@ class VersionedFileStore(TransportStore):
         return w
 
     def _make_new_versionedfile(self, file_id, transaction,
-        known_missing=False, _filename=None):
+                                known_missing=False, _filename=None):
         """Make a new versioned file.
 
         :param _filename: filename that would be returned from self.filename for
@@ -140,7 +140,7 @@ class VersionedFileStore(TransportStore):
             # we try without making the directory first because thats optimising
             # for the common case.
             weave = self._versionedfile_class(_filename, self._transport, self._file_mode, create=True,
-                get_scope=self.get_scope, **self._versionedfile_kwargs)
+                                              get_scope=self.get_scope, **self._versionedfile_kwargs)
         except errors.NoSuchFile:
             if not self._prefixed:
                 # unexpected error - NoSuchFile is expected to be raised on a
@@ -166,7 +166,7 @@ class VersionedFileStore(TransportStore):
             return self.get_weave(file_id, transaction, _filename=_filename)
         except errors.NoSuchFile:
             weave = self._make_new_versionedfile(file_id, transaction,
-                known_missing=True, _filename=_filename)
+                                                 known_missing=True, _filename=_filename)
             return weave
 
     def _put_weave(self, file_id, weave, transaction):
@@ -177,5 +177,5 @@ class VersionedFileStore(TransportStore):
             'topological', False))
 
     def total_size(self):
-        count, bytes =  super(VersionedFileStore, self).total_size()
+        count, bytes = super(VersionedFileStore, self).total_size()
         return (count / len(self._versionedfile_class.get_suffixes())), bytes

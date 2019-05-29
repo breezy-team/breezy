@@ -16,6 +16,7 @@
 
 """Tests for breezy.export."""
 
+import gzip
 import os
 import tarfile
 import time
@@ -98,7 +99,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         wt.commit('1')
         self.build_tree(['target/', 'target/foo'])
         self.assertRaises(errors.BzrError,
-            export.export, wt, 'target', format="dir")
+                          export.export, wt, 'target', format="dir")
 
     def test_existing_single_file(self):
         self.build_tree([
@@ -177,7 +178,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         self.addCleanup(b.unlock)
         tree = b.basis_tree()
         export.export(tree, 'target', format='dir', subdir='subdir',
-            per_file_timestamps=True)
+                      per_file_timestamps=True)
         t = self.get_transport('target')
         self.assertEqual(foo_time, t.stat('foo.txt').st_mtime)
 
@@ -215,6 +216,18 @@ class TarExporterTests(tests.TestCaseWithTransport):
         tf = tarfile.open('target.tar.gz')
         self.assertEqual(["target/a"], tf.getnames())
 
+    def test_tgz_consistent_mtime(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        timestamp = 1547400500
+        revid = wt.commit("1", timestamp=timestamp)
+        revtree = wt.branch.repository.revision_tree(revid)
+        export.export(revtree, 'target.tar.gz', format="tgz")
+        with gzip.GzipFile('target.tar.gz', 'r') as f:
+            f.read()
+            self.assertEqual(int(f.mtime), timestamp)
+
     def test_tgz_ignores_dest_path(self):
         # The target path should not be a part of the target file.
         # (bug #102234)
@@ -225,9 +238,9 @@ class TarExporterTests(tests.TestCaseWithTransport):
         os.mkdir("testdir1")
         os.mkdir("testdir2")
         export.export(wt, 'testdir1/target.tar.gz', format="tgz",
-            per_file_timestamps=True)
+                      per_file_timestamps=True)
         export.export(wt, 'testdir2/target.tar.gz', format="tgz",
-            per_file_timestamps=True)
+                      per_file_timestamps=True)
         file1 = open('testdir1/target.tar.gz', 'rb')
         self.addCleanup(file1.close)
         file2 = open('testdir1/target.tar.gz', 'rb')
@@ -275,7 +288,7 @@ class ZipExporterTests(tests.TestCaseWithTransport):
         timestamp = 347151600
         tree.commit('setup', timestamp=timestamp)
         export.export(tree.basis_tree(), 'test.zip', format='zip',
-            per_file_timestamps=True)
+                      per_file_timestamps=True)
         zfile = zipfile.ZipFile('test.zip')
         info = zfile.getinfo("test/har")
         self.assertEqual(time.localtime(timestamp)[:6], info.date_time)
@@ -293,5 +306,5 @@ class RootNameTests(tests.TestCase):
         self.assertEqual('bzr-0.0.5', get_root_name('bzr-0.0.5'))
         self.assertEqual('mytar', get_root_name('a/long/path/mytar.tgz'))
         self.assertEqual('other',
-            get_root_name('../parent/../dir/other.tbz2'))
+                         get_root_name('../parent/../dir/other.tbz2'))
         self.assertEqual('', get_root_name('-'))

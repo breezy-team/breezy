@@ -65,7 +65,7 @@ class TestCorrectFormat(TestCaseWithExternalReferenceRepository):
         tree = self.make_branch_and_tree('repo')
         repo = self.make_referring('referring', tree.branch.repository)
         self.assertIsInstance(repo._format,
-            self.repository_format.__class__)
+                              self.repository_format.__class__)
 
 
 class TestIncompatibleStacking(TestCaseWithRepository):
@@ -85,7 +85,7 @@ class TestIncompatibleStacking(TestCaseWithRepository):
         # stack them.
         referring, fallback = self.make_repo_and_incompatible_fallback()
         self.assertRaises(errors.IncompatibleRepositories,
-                referring.add_fallback_repository, fallback)
+                          referring.add_fallback_repository, fallback)
 
     def test_add_fallback_doesnt_leave_fallback_locked(self):
         # Bug #835035. If the referring repository is locked, it wants to lock
@@ -98,7 +98,7 @@ class TestIncompatibleStacking(TestCaseWithRepository):
         self.assertFalse(fallback.is_locked())
         # Assert action.
         self.assertRaises(errors.IncompatibleRepositories,
-                referring.add_fallback_repository, fallback)
+                          referring.add_fallback_repository, fallback)
         # Assert postcondition.
         self.assertFalse(fallback.is_locked())
 
@@ -110,7 +110,7 @@ def external_reference_test_scenarios():
     for test_name, scenario_info in all_repository_format_scenarios():
         format = scenario_info['repository_format']
         if (isinstance(format, remote.RemoteRepositoryFormat)
-            or format.supports_external_lookups):
+                or format.supports_external_lookups):
             result.append((test_name, scenario_info))
     return result
 
@@ -136,4 +136,4 @@ def load_tests(loader, standard_tests, pattern):
     # Parameterize per_repository_reference test modules by format.
     standard_tests.addTests(loader.loadTestsFromModuleNames(module_list))
     return multiply_tests(standard_tests, external_reference_test_scenarios(),
-        loader.suiteClass())
+                          loader.suiteClass())

@@ -56,11 +56,11 @@ class TestAdd(tests.TestCaseWithTransport):
                           'adding dir',
                           'adding dir/sub.txt',
                           'adding top.txt'],
-                          results)
+                         results)
         out = self.run_bzr('add -v')[0]
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEqual(['ignored CVS matching "CVS"'],
-                          results)
+                         results)
 
     def test_add_quiet_is(self):
         """add -q does not print the names of added files."""
@@ -134,7 +134,7 @@ class TestAdd(tests.TestCaseWithTransport):
         # subdirectory
         self.run_bzr('add', working_dir='src')
         self.assertEqual('README\n',
-                          self.run_bzr('unknowns', working_dir='src')[0])
+                         self.run_bzr('unknowns', working_dir='src')[0])
         # reopen to see the new changes
         t = t.controldir.open_workingtree('src')
         versioned = [path for path, entry in t.iter_entries_by_dir()]
@@ -265,3 +265,16 @@ class TestAdd(tests.TestCaseWithTransport):
         out = self.run_bzr('add')[0]
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEqual(['adding big.txt'], results)
+
+    def test_add_backslash(self):
+        # pad.lv/165151
+        if os.path.sep == '\\':
+            # TODO(jelmer): Test that backslashes are appropriately
+            # ignored?
+            raise tests.TestNotApplicable(
+                'unable to add filenames with backslashes where '
+                ' it is the path separator')
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['\\'])
+        self.assertEqual('adding \\\n', self.run_bzr('add \\\\')[0])
+        self.assertEqual('\\\n', self.run_bzr('ls --versioned')[0])

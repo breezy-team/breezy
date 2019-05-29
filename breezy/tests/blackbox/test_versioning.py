@@ -129,6 +129,7 @@ class SubdirCommit(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         b = tree.branch
         self.build_tree(['a/', 'b/'])
+
         def set_contents(contents):
             self.build_tree_contents([
                 ('a/one', contents),

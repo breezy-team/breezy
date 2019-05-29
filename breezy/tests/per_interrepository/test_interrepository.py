@@ -91,7 +91,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         result = repo_b.search_missing_revision_ids(repo_a)
         self.assertEqual({self.rev2}, result.get_keys())
         self.assertEqual(('search', {self.rev2}, {self.rev1}, 1),
-            result.get_recipe())
+                         result.get_recipe())
 
     def test_absent_requested_raises(self):
         # Asking for missing revisions with a tip that is itself absent in the
@@ -103,11 +103,13 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertFalse(repo_b.has_revision(b'pizza'))
         # Asking specifically for an absent revision errors.
         self.assertRaises(errors.NoSuchRevision,
-            repo_b.search_missing_revision_ids, repo_a, revision_ids=[b'pizza'],
-            find_ghosts=True)
+                          repo_b.search_missing_revision_ids, repo_a, revision_ids=[
+                              b'pizza'],
+                          find_ghosts=True)
         self.assertRaises(errors.NoSuchRevision,
-            repo_b.search_missing_revision_ids, repo_a, revision_ids=[b'pizza'],
-            find_ghosts=False)
+                          repo_b.search_missing_revision_ids, repo_a, revision_ids=[
+                              b'pizza'],
+                          find_ghosts=False)
 
     def test_search_missing_rev_limited(self):
         # revision ids in repository A that are not referenced by the
@@ -119,7 +121,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
             repo_a, revision_ids=[self.rev1])
         self.assertEqual({self.rev1}, result.get_keys())
         self.assertEqual(('search', {self.rev1}, {NULL_REVISION}, 1),
-            result.get_recipe())
+                         result.get_recipe())
 
     def test_search_missing_revision_ids_limit(self):
         # The limit= argument makes fetch() limit
@@ -131,9 +133,10 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         try:
             result = repo_b.search_missing_revision_ids(repo_a, limit=1)
         except errors.FetchLimitUnsupported:
-            raise TestNotApplicable('interrepo does not support limited fetches')
+            raise TestNotApplicable(
+                'interrepo does not support limited fetches')
         self.assertEqual(('search', {self.rev1}, {b'null:'}, 1),
-            result.get_recipe())
+                         result.get_recipe())
 
     def test_fetch_fetches_signatures_too(self):
         if not self.repository_format.supports_revision_signatures:
@@ -144,9 +147,10 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
                 'to repository does not support signatures')
         # and sign 'rev2'
         tree_a = WorkingTree.open('a')
-        with tree_a.branch.repository.lock_write(), WriteGroup(tree_a.branch.repository):
-            tree_a.branch.repository.sign_revision(self.rev2,
-                breezy.gpg.LoopbackGPGStrategy(None))
+        with tree_a.branch.repository.lock_write(), \
+                WriteGroup(tree_a.branch.repository):
+            tree_a.branch.repository.sign_revision(
+                self.rev2, breezy.gpg.LoopbackGPGStrategy(None))
 
         from_repo = self.controldir.open_repository()
         from_signature = from_repo.get_signature_text(self.rev2)
@@ -169,7 +173,7 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # 'references' is present in both repositories, and 'tip' is present
         # just in has_ghost.
         # has_ghost       missing_ghost
-        #------------------------------
+        # ------------------------------
         # 'ghost'             -
         # 'references'    'references'
         # 'tip'               -
@@ -177,7 +181,7 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         has_ghost = self.make_repository('has_ghost')
         missing_ghost = self.make_repository('missing_ghost')
         if [True, True] != [repo._format.supports_ghosts for repo in
-            (has_ghost, missing_ghost)]:
+                            (has_ghost, missing_ghost)]:
             raise TestNotApplicable("Need ghost support.")
 
         def add_commit(repo, revision_id, parent_ids):
@@ -210,4 +214,4 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         inv = missing_ghost.get_inventory(b'ghost')
         # rev must not be corrupt now
         self.assertThat([b'ghost', b'references', b'tip'],
-            MatchesAncestry(missing_ghost, b'tip'))
+                        MatchesAncestry(missing_ghost, b'tip'))

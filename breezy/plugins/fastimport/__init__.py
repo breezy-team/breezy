@@ -66,12 +66,12 @@ def load_fastimport():
     except ImportError as e:
         from ...errors import DependencyNotPresent
         raise DependencyNotPresent("fastimport",
-            "fastimport requires the fastimport python module")
+                                   "fastimport requires the fastimport python module")
     if fastimport.__version__ < (0, 9, 8):
         from ...errors import DependencyNotPresent
         raise DependencyNotPresent("fastimport",
-            "fastimport requires at least version 0.9.8 of the "
-            "fastimport python module")
+                                   "fastimport requires at least version 0.9.8 of the "
+                                   "fastimport python module")
 
 
 def test_suite():
@@ -83,4 +83,5 @@ for name in [
         "fast_import",
         "fast_export",
         ]:
-    plugin_cmds.register_lazy("cmd_%s" % name, [], "breezy.plugins.fastimport.cmds")
+    plugin_cmds.register_lazy(
+        "cmd_%s" % name, [], "breezy.plugins.fastimport.cmds")
