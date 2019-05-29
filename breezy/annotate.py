@@ -32,8 +32,10 @@ import time
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+
+import patiencediff
+
 from breezy import (
-    patiencediff,
     tsort,
     )
 """)

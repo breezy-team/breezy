@@ -20,10 +20,12 @@ from __future__ import absolute_import
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+
+import patiencediff
+
 from breezy import (
     annotate, # Must be lazy to avoid circular importing
     graph as _mod_graph,
-    patiencediff,
     )
 """)
 from . import (
