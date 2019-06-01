@@ -73,7 +73,7 @@ def plausible_launchpad_url(url):
     if url.startswith('lp:'):
         return True
     regex = re.compile('([a-z]*\+)*(bzr\+ssh|http|ssh|git|https)'
-                       '://(bazaar|git).*.launchpad.net')
+                       '://(bazaar|git).*\.launchpad\.net')
     return bool(regex.match(url))
 
 
@@ -483,7 +483,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                         prerequisite_branch=None):
         """Perform the submission."""
         if labels:
-            raise LabelsUnsupported()
+            raise LabelsUnsupported(self)
         if prerequisite_branch is not None:
             prereq = self.launchpad.branches.getByUrl(
                 url=prerequisite_branch.user_url)
@@ -612,7 +612,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                         prerequisite_branch=None):
         """Perform the submission."""
         if labels:
-            raise LabelsUnsupported()
+            raise LabelsUnsupported(self)
         if prerequisite_branch is not None:
             (prereq_repo_lp, prereq_branch_lp) = (
                 self.lp_host._get_lp_git_ref_from_branch(prerequisite_branch))

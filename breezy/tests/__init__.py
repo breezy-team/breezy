@@ -3990,6 +3990,7 @@ test_prefix_alias_registry.register('breezy', 'breezy')
 test_prefix_alias_registry.register('bd', 'breezy.doc')
 test_prefix_alias_registry.register('bu', 'breezy.utils')
 test_prefix_alias_registry.register('bt', 'breezy.tests')
+test_prefix_alias_registry.register('bgt', 'breezy.git.tests')
 test_prefix_alias_registry.register('bb', 'breezy.tests.blackbox')
 test_prefix_alias_registry.register('bp', 'breezy.plugins')
 
@@ -4140,6 +4141,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_memorytree',
         'breezy.tests.test_merge',
         'breezy.tests.test_merge3',
+        'breezy.tests.test_mergeable',
         'breezy.tests.test_merge_core',
         'breezy.tests.test_merge_directive',
         'breezy.tests.test_mergetools',

@@ -33,7 +33,6 @@ import breezy
 from breezy import (
     branch as _mod_branch,
     bugtracker,
-    bundle,
     cache_utf8,
     controldir,
     directory_service,
@@ -46,6 +45,7 @@ from breezy import (
     lazy_regex,
     log,
     merge as _mod_merge,
+    mergeable as _mod_mergeable,
     merge_directive,
     osutils,
     reconfigure,
@@ -1210,8 +1210,8 @@ class cmd_pull(Command):
         possible_transports = []
         if location is not None:
             try:
-                mergeable = bundle.read_mergeable_from_url(location,
-                                                           possible_transports=possible_transports)
+                mergeable = _mod_mergeable.read_mergeable_from_url(
+                    location, possible_transports=possible_transports)
             except errors.NotABundle:
                 mergeable = None
 
@@ -4438,8 +4438,8 @@ class cmd_merge(Command):
         self.add_cleanup(tree.lock_write().unlock)
         if location is not None:
             try:
-                mergeable = bundle.read_mergeable_from_url(location,
-                                                           possible_transports=possible_transports)
+                mergeable = _mod_mergeable.read_mergeable_from_url(
+                    location, possible_transports=possible_transports)
             except errors.NotABundle:
                 mergeable = None
             else:
@@ -5260,29 +5260,18 @@ class cmd_re_sign(Command):
         return self._run(b, revision_id_list, revision)
 
     def _run(self, b, revision_id_list, revision):
+        from .repository import WriteGroup
         gpg_strategy = gpg.GPGStrategy(b.get_config_stack())
         if revision_id_list is not None:
-            b.repository.start_write_group()
-            try:
+            with WriteGroup(b.repository):
                 for revision_id in revision_id_list:
                     revision_id = cache_utf8.encode(revision_id)
                     b.repository.sign_revision(revision_id, gpg_strategy)
-            except BaseException:
-                b.repository.abort_write_group()
-                raise
-            else:
-                b.repository.commit_write_group()
         elif revision is not None:
             if len(revision) == 1:
                 revno, rev_id = revision[0].in_history(b)
-                b.repository.start_write_group()
-                try:
+                with WriteGroup(b.repository):
                     b.repository.sign_revision(rev_id, gpg_strategy)
-                except BaseException:
-                    b.repository.abort_write_group()
-                    raise
-                else:
-                    b.repository.commit_write_group()
             elif len(revision) == 2:
                 # are they both on rh- if so we can walk between them
                 # might be nice to have a range helper for arbitrary
@@ -5294,16 +5283,10 @@ class cmd_re_sign(Command):
                 if from_revno is None or to_revno is None:
                     raise errors.BzrCommandError(
                         gettext('Cannot sign a range of non-revision-history revisions'))
-                b.repository.start_write_group()
-                try:
+                with WriteGroup(b.repository):
                     for revno in range(from_revno, to_revno + 1):
                         b.repository.sign_revision(b.get_rev_id(revno),
                                                    gpg_strategy)
-                except BaseException:
-                    b.repository.abort_write_group()
-                    raise
-                else:
-                    b.repository.commit_write_group()
             else:
                 raise errors.BzrCommandError(
                     gettext('Please supply either one revision, or a range.'))
@@ -7022,6 +7005,7 @@ class cmd_patch(Command):
     """Apply a named patch to the current tree.
 
     """
+
     takes_args = ['filename?']
     takes_options = [Option('strip', type=int, short_name='p',
                             help=("Strip the smallest prefix containing num "
@@ -7040,6 +7024,24 @@ class cmd_patch(Command):
             my_file = open(filename, 'rb')
         patches = [my_file.read()]
         return patch_tree(wt, patches, strip, quiet=is_quiet(), out=self.outf)
+
+
+class cmd_resolve_location(Command):
+    __doc__ = """Expand a location to a full URL.
+
+    :Examples:
+        Look up a Launchpad URL.
+
+            brz resolve-location lp:brz
+    """
+    takes_args = ['location']
+    hidden = True
+
+    def run(self, location):
+        from .location import location_to_url
+        url = location_to_url(location)
+        display_url = urlutils.unescape_for_display(url, self.outf.encoding)
+        self.outf.write('%s\n' % display_url)
 
 
 def _register_lazy_builtins():

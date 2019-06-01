@@ -58,12 +58,12 @@ import os
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import patiencediff
 import gzip
 
 from breezy import (
     debug,
     diff,
-    patiencediff,
     static_tuple,
     trace,
     tsort,
@@ -679,9 +679,6 @@ class KnitAnnotateFactory(_KnitFactory):
         #       list back into tuples.
         lines = (tuple(line.split(b' ', 1)) for line in content)
         return AnnotatedKnitContent(lines)
-
-    def parse_line_delta_iter(self, lines):
-        return iter(self.parse_line_delta(lines))
 
     def parse_line_delta(self, lines, version_id, plain=False):
         """Convert a line based delta into internal representation.

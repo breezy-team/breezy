@@ -17,6 +17,7 @@
 """Tests for add_revision on a repository with external references."""
 
 from breezy import errors
+from breezy.repository import WriteGroup
 from breezy.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
@@ -35,20 +36,10 @@ class TestAddRevision(TestCaseWithExternalReferenceRepository):
         rev = tree.branch.repository.get_revision(revid)
         base = self.make_repository('base')
         repo = self.make_referring('referring', base)
-        repo.lock_write()
-        try:
-            repo.start_write_group()
-            try:
-                rev = tree.branch.repository.get_revision(revid)
-                repo.texts.add_lines((inv.root.file_id, revid), [], [])
-                repo.add_revision(revid, rev, inv=inv)
-            except:
-                repo.abort_write_group()
-                raise
-            else:
-                repo.commit_write_group()
-        finally:
-            repo.unlock()
+        with repo.lock_write(), WriteGroup(repo):
+            rev = tree.branch.repository.get_revision(revid)
+            repo.texts.add_lines((inv.root.file_id, revid), [], [])
+            repo.add_revision(revid, rev, inv=inv)
         rev2 = repo.get_revision(revid)
         self.assertEqual(rev, rev2)
         self.assertRaises(errors.NoSuchRevision, base.get_revision, revid)
