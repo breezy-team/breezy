@@ -21,6 +21,9 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+ * The 'patch' command is now bundled with brz.
+   Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
+
 Improvements
 ************
 

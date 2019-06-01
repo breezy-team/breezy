@@ -7001,6 +7001,30 @@ class cmd_grep(Command):
             grep.versioned_grep(opts)
 
 
+class cmd_patch(Command):
+    """Apply a named patch to the current tree.
+
+    """
+    takes_args = ['filename?']
+    takes_options = [Option('strip', type=int, short_name='p',
+                            help=("Strip the smallest prefix containing num "
+                                  "leading slashes from filenames.")),
+                     Option('silent', help='Suppress chatter.')]
+
+    def run(self, filename=None, strip=None, silent=False):
+        from .patch import patch_tree
+        wt = WorkingTree.open_containing('.')[0]
+        if strip is None:
+            strip = 1
+        my_file = None
+        if filename is None:
+            my_file = getattr(sys.stdin, 'buffer', sys.stdin)
+        else:
+            my_file = open(filename, 'rb')
+        patches = [my_file.read()]
+        return patch_tree(wt, patches, strip, quiet=is_quiet(), out=self.outf)
+
+
 class cmd_resolve_location(Command):
     __doc__ = """Expand a location to a full URL.
 
