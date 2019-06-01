@@ -905,6 +905,19 @@ class TestSmartServerBranchRequestRevisionIdToRevno(
         self.assertEqual(smart_req.SmartServerResponse((b'ok', b'0')),
                          request.execute(b'', b'null:'))
 
+    def test_ghost_revision(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestRevisionIdToRevno(
+            backing)
+        branch = self.make_branch('.')
+        def revision_id_to_dotted_revno(revid):
+            raise errors.GhostRevisionsHaveNoRevno(revid, b'ghost-revid')
+        self.overrideAttr(branch, 'revision_id_to_dotted_revno', revision_id_to_dotted_revno)
+        self.assertEqual(
+            smart_req.FailedSmartServerResponse(
+                (b'GhostRevisionsHaveNoRevno', b'revid', b'ghost-revid')),
+            request.do_with_branch(branch, b'revid'))
+
     def test_simple(self):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestRevisionIdToRevno(
