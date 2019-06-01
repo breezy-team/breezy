@@ -22,6 +22,7 @@ from . import (
     controldir,
     errors,
     gpg,
+    repository as _mod_repository,
     revision as _mod_revision,
     )
 from .commands import Command
@@ -66,8 +67,7 @@ class cmd_sign_my_commits(Command):
         count = 0
         with repo.lock_write():
             graph = repo.get_graph()
-            repo.start_write_group()
-            try:
+            with _mod_repository.WriteGroup(repo):
                 for rev_id, parents in graph.iter_ancestry(
                         [branch.last_revision()]):
                     if _mod_revision.is_null(rev_id):
@@ -86,11 +86,6 @@ class cmd_sign_my_commits(Command):
                     count += 1
                     if not dry_run:
                         repo.sign_revision(rev_id, gpg_strategy)
-            except BaseException:
-                repo.abort_write_group()
-                raise
-            else:
-                repo.commit_write_group()
         self.outf.write(
             ngettext('Signed %d revision.\n', 'Signed %d revisions.\n',
                      count) % count)
