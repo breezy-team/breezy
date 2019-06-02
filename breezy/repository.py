@@ -945,16 +945,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         partial_history = [known_revid]
         distance_from_known = known_revno - revno
         if distance_from_known < 0:
-            raise ValueError(
-                'requested revno (%d) is later than given known revno (%d)'
-                % (revno, known_revno))
+            raise errors.RevnoOutOfBounds(revno, (0, known_revno))
         try:
             _iter_for_revno(
                 self, partial_history, stop_index=distance_from_known)
         except errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
-                raise
+                raise errors.NoSuchRevision(self, known_revid)
             # This is a stacked repository with no fallbacks, or a there's a
             # left-hand ghost.  Either way, even though the revision named in
             # the error isn't in this repo, we know it's the next step in this
