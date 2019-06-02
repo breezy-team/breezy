@@ -71,7 +71,7 @@ install:
 
   - "build.cmd %PYTHON%\\python.exe setup.py develop"
 
-  - "pip install launchpadlib"
+  - "pip install launchpadlib github gitlab patiencediff"
 
 build_script:
   # Build the compiled extension
