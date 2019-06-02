@@ -22,7 +22,7 @@ These were formats present in pre-1.0 version of Bazaar.
 from __future__ import absolute_import
 
 # Since we are a built-in plugin we share the breezy version
-from ... import version_info
+from ... import version_info  # noqa: F401
 
 from ... import (
     branch as _mod_branch,
@@ -80,18 +80,18 @@ _mod_repository.format_registry.register_extra_lazy(
 # repository.py. MetaDir formats have their repository format network name
 # inferred from their disk format string.
 controldir.format_registry.register_lazy('weave',
-    "breezy.plugins.weave_fmt.bzrdir", "BzrDirFormat6",
-    'Pre-0.8 format.  Slower than knit and does not'
-    ' support checkouts or shared repositories.',
-    hidden=True,
-    deprecated=True)
+                                         "breezy.plugins.weave_fmt.bzrdir", "BzrDirFormat6",
+                                         'Pre-0.8 format.  Slower than knit and does not'
+                                         ' support checkouts or shared repositories.',
+                                         hidden=True,
+                                         deprecated=True)
 register_metadir(controldir.format_registry, 'metaweave',
-    'breezy.plugins.weave_fmt.repository.RepositoryFormat7',
-    'Transitional format in 0.8.  Slower than knit.',
-    branch_format='breezy.bzr.fullhistory.BzrBranchFormat5',
-    tree_format='breezy.bzr.workingtree_3.WorkingTreeFormat3',
-    hidden=True,
-    deprecated=True)
+                 'breezy.plugins.weave_fmt.repository.RepositoryFormat7',
+                 'Transitional format in 0.8.  Slower than knit.',
+                 branch_format='breezy.bzr.fullhistory.BzrBranchFormat5',
+                 tree_format='breezy.bzr.workingtree_3.WorkingTreeFormat3',
+                 hidden=True,
+                 deprecated=True)
 
 
 BzrProber.formats.register_lazy(
@@ -117,7 +117,8 @@ _mod_workingtree.format_registry.register_extra_lazy(
     'WorkingTreeFormat2')
 
 serializer.format_registry.register_lazy('4', 'breezy.plugins.weave_fmt.xml4',
-    'serializer_v4')
+                                         'serializer_v4')
+
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
@@ -127,5 +128,5 @@ def load_tests(loader, basic_tests, pattern):
         'test_workingtree',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
     return basic_tests

@@ -17,6 +17,7 @@
 """Tests for add_inventory on a repository with external references."""
 
 from breezy import errors
+from breezy.repository import WriteGroup
 from breezy.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
@@ -34,22 +35,14 @@ class TestAddInventory(TestCaseWithExternalReferenceRepository):
         self.addCleanup(tree.unlock)
         base = self.make_repository('base')
         repo = self.make_referring('referring', base)
-        repo.lock_write()
-        try:
-            repo.start_write_group()
-            try:
-                repo.add_inventory(revid, inv, [])
-            except:
-                repo.abort_write_group()
-                raise
-            else:
-                repo.commit_write_group()
-        finally:
-            repo.unlock()
+        with repo.lock_write(), WriteGroup(repo):
+            repo.add_inventory(revid, inv, [])
         repo.lock_read()
         self.addCleanup(repo.unlock)
         inv2 = repo.get_inventory(revid)
-        content1 = dict((file_id, inv.get_entry(file_id)) for file_id in inv.iter_all_ids())
-        content2 = dict((file_id, inv.get_entry(file_id)) for file_id in inv2.iter_all_ids())
+        content1 = dict((file_id, inv.get_entry(file_id))
+                        for file_id in inv.iter_all_ids())
+        content2 = dict((file_id, inv.get_entry(file_id))
+                        for file_id in inv2.iter_all_ids())
         self.assertEqual(content1, content2)
         self.assertRaises(errors.NoSuchRevision, base.get_inventory, revid)

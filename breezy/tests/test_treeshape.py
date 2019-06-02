@@ -41,4 +41,4 @@ class TestTreeShape(tests.TestCaseWithTransport):
         self.requireFeature(features.SymlinkFeature)
         self.build_tree_contents([('link@', 'target')])
         self.assertEqual('target',
-            os.readlink('link'))
+                         os.readlink('link'))

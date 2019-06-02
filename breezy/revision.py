@@ -74,14 +74,14 @@ class Revision(object):
         if not isinstance(other, Revision):
             return False
         return (
-                self.inventory_sha1 == other.inventory_sha1
-                and self.revision_id == other.revision_id
-                and self.timestamp == other.timestamp
-                and self.message == other.message
-                and self.timezone == other.timezone
-                and self.committer == other.committer
-                and self.properties == other.properties
-                and self.parent_ids == other.parent_ids)
+            self.inventory_sha1 == other.inventory_sha1
+            and self.revision_id == other.revision_id
+            and self.timestamp == other.timestamp
+            and self.message == other.message
+            and self.timezone == other.timezone
+            and self.committer == other.committer
+            and self.properties == other.properties
+            and self.parent_ids == other.parent_ids)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -107,7 +107,7 @@ class Revision(object):
         reversed_result = []
         while current_revision is not None:
             reversed_result.append(current_revision.revision_id)
-            if not len (current_revision.parent_ids):
+            if not len(current_revision.parent_ids):
                 reversed_result.append(None)
                 current_revision = None
             else:
@@ -147,15 +147,8 @@ class Revision(object):
         """Iterate over the bugs associated with this revision."""
         bug_property = self.properties.get('bugs', None)
         if bug_property is None:
-            return
-        for line in bug_property.splitlines():
-            try:
-                url, status = line.split(None, 2)
-            except ValueError:
-                raise bugtracker.InvalidLineInBugsProperty(line)
-            if status not in bugtracker.ALLOWED_BUG_STATUSES:
-                raise bugtracker.InvalidBugStatus(status)
-            yield url, status
+            return iter([])
+        return bugtracker.decode_bug_urls(bug_property)
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
@@ -189,7 +182,7 @@ def find_present_ancestors(revision_id, revision_source):
     """
     found_ancestors = {}
     anc_iter = enumerate(iter_ancestors(revision_id, revision_source,
-                         only_present=True))
+                                        only_present=True))
     for anc_order, (anc_id, anc_distance) in anc_iter:
         if anc_id not in found_ancestors:
             found_ancestors[anc_id] = (anc_order, anc_distance)

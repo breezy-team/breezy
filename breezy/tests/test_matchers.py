@@ -60,12 +60,12 @@ class TestReturnsUnlockable(TestCase):
     def test_match(self):
         stub_tree = StubTree(False)
         matcher = ReturnsUnlockable(stub_tree)
-        self.assertThat(matcher.match(lambda:FakeUnlockable()), Equals(None))
+        self.assertThat(matcher.match(lambda: FakeUnlockable()), Equals(None))
 
     def test_mismatch(self):
         stub_tree = StubTree(True)
         matcher = ReturnsUnlockable(stub_tree)
-        mismatch = matcher.match(lambda:FakeUnlockable())
+        mismatch = matcher.match(lambda: FakeUnlockable())
         self.assertNotEqual(None, mismatch)
         self.assertThat(mismatch.describe(), Equals("I am da tree is locked"))
 
@@ -167,17 +167,18 @@ class TestHasPathRelations(TestCaseWithTransport):
     def test__str__(self):
         t = self.make_branch_and_tree('.')
         matcher = HasPathRelations(t, [("a", "b")])
-        self.assertEqual("HasPathRelations(%r, %r)" % (t, [('a', 'b')]), str(matcher))
+        self.assertEqual("HasPathRelations(%r, %r)" %
+                         (t, [('a', 'b')]), str(matcher))
 
     def test_match(self):
         t = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/', 'b/c'])
         t.add(['a', 'b', 'b/c'])
         self.assertThat(t, HasPathRelations(t,
-            [('', ''),
-             ('a', 'a'),
-             ('b/', 'b/'),
-             ('b/c', 'b/c')]))
+                                            [('', ''),
+                                             ('a', 'a'),
+                                                ('b/', 'b/'),
+                                                ('b/c', 'b/c')]))
 
     def test_mismatch(self):
         t = self.make_branch_and_tree('.')
@@ -213,8 +214,8 @@ class TestContainsNoVfsCalls(TestCase):
         self.assertIsNot(None, mismatch)
         self.assertEqual([calls[0].call], mismatch.vfs_calls)
         self.assertIn(mismatch.describe(), [
-                "no VFS calls expected, got: b'append'(b'file')",
-                "no VFS calls expected, got: append('file')"])
+            "no VFS calls expected, got: b'append'(b'file')",
+            "no VFS calls expected, got: append('file')"])
 
 
 class TestRevisionHistoryMatches(TestCaseWithTransport):

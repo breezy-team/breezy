@@ -70,9 +70,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         tree.add([''], [b'TREE_ROOT'], ['directory'])
         tree.add(['dir'], [b'dir-id'], ['directory'])
         tree.add(['filename'], [b'file-id'], ['file'])
-        tree.put_file_bytes_non_atomic(
-                'filename', b'content\n',
-                file_id=b'file-id')
+        tree.put_file_bytes_non_atomic('filename', b'content\n')
         tree.commit('Trunk commit', rev_id=b'rev-0')
         tree.commit('Trunk commit', rev_id=b'rev-1')
         tree.unlock()
@@ -143,7 +141,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         rich_root = branch_repo._format.rich_root_data
         all_texts = [
             (ie.file_id, ie.revision) for ie in inv.iter_just_entries()
-             if rich_root or inv.id2path(ie.file_id) != '']
+            if rich_root or inv.id2path(ie.file_id) != '']
         repo.texts.insert_record_stream(
             branch_repo.texts.get_record_stream(all_texts, 'unordered', False))
         # Add inventory and revision for rev-2.
@@ -191,7 +189,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
                 [(b'rev-2',)], 'unordered', False))
         # There should be no missing compression parents
         self.assertEqual(set(),
-                repo.inventories.get_missing_compression_parent_keys())
+                         repo.inventories.get_missing_compression_parent_keys())
         self.assertEqual(
             {('inventories', b'rev-1')},
             repo.get_missing_parent_inventories())
@@ -235,7 +233,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         get_missing = repo.get_missing_parent_inventories
         if repo._format.supports_external_lookups:
             self.assertEqual({('inventories', b'ghost-parent-id')},
-                get_missing(check_for_missing_texts=False))
+                             get_missing(check_for_missing_texts=False))
             self.assertEqual(set(), get_missing(check_for_missing_texts=True))
             self.assertEqual(set(), get_missing())
         else:
@@ -247,13 +245,14 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
     def test_insert_stream_passes_resume_info(self):
         repo = self.make_repository('test-repo')
         if (not repo._format.supports_external_lookups or
-            isinstance(repo, remote.RemoteRepository)):
+                isinstance(repo, remote.RemoteRepository)):
             raise tests.TestNotApplicable(
                 'only valid for direct connections to resumable repos')
         # log calls to get_missing_parent_inventories, so that we can assert it
         # is called with the correct parameters
         call_log = []
         orig = repo.get_missing_parent_inventories
+
         def get_missing(check_for_missing_texts=True):
             call_log.append(check_for_missing_texts)
             return orig(check_for_missing_texts=check_for_missing_texts)
@@ -280,7 +279,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         stream = [('texts', [versionedfile.FulltextContentFactory(
             (b'file-id', b'rev-id'), (), None, b'lines\n')])]
         self.assertRaises(errors.ObjectNotLocked,
-            sink.insert_stream_without_locking, stream, repo._format)
+                          sink.insert_stream_without_locking, stream, repo._format)
 
     def test_insert_stream_without_locking_fails_without_write_group(self):
         repo = self.make_repository('test-repo')
@@ -289,7 +288,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         stream = [('texts', [versionedfile.FulltextContentFactory(
             (b'file-id', b'rev-id'), (), None, b'lines\n')])]
         self.assertRaises(errors.BzrError,
-            sink.insert_stream_without_locking, stream, repo._format)
+                          sink.insert_stream_without_locking, stream, repo._format)
 
     def test_insert_stream_without_locking(self):
         repo = self.make_repository('test-repo')
@@ -502,7 +501,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         self.assertEqual([text_key], list(same_repo.texts.keys()))
         self.assertEqual(
             b'lines', next(same_repo.texts.get_record_stream([text_key],
-                'unordered', True)).get_bytes_as('fulltext'))
+                                                             'unordered', True)).get_bytes_as('fulltext'))
         self.assertRaises(
             errors.UnresumableWriteGroup, same_repo.resume_write_group,
             wg_tokens)
@@ -526,10 +525,10 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             {first_key, second_key}, set(same_repo.texts.keys()))
         self.assertEqual(
             b'lines', next(same_repo.texts.get_record_stream([first_key],
-                'unordered', True)).get_bytes_as('fulltext'))
+                                                             'unordered', True)).get_bytes_as('fulltext'))
         self.assertEqual(
             b'more lines', next(same_repo.texts.get_record_stream([second_key],
-                'unordered', True)).get_bytes_as('fulltext'))
+                                                                  'unordered', True)).get_bytes_as('fulltext'))
 
     def make_source_with_delta_record(self):
         # Make a source repository with a delta record in it.
@@ -537,6 +536,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         source_repo.start_write_group()
         key_base = (b'file-id', b'base')
         key_delta = (b'file-id', b'delta')
+
         def text_stream():
             yield versionedfile.FulltextContentFactory(
                 key_base, (), None, b'lines\n')
@@ -569,7 +569,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             same_repo = self.reopen_repo(repo)
             same_repo.lock_read()
             record = next(same_repo.texts.get_record_stream([key_delta],
-                                                       'unordered', True))
+                                                            'unordered', True))
             self.assertEqual(b'more\nlines\n', record.get_bytes_as('fulltext'))
             return
         # Merely suspending and resuming doesn't make it commitable either.
@@ -613,7 +613,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             same_repo = self.reopen_repo(repo)
             same_repo.lock_read()
             record = next(same_repo.texts.get_record_stream([key_delta],
-                                                       'unordered', True))
+                                                            'unordered', True))
             self.assertEqual(b'more\nlines\n', record.get_bytes_as('fulltext'))
             return
         same_repo.abort_write_group()

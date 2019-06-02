@@ -14,13 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import features
-from . import TestCaseWithTransport
 from ..transport import Transport
 
 # SFTPTransport is the only bundled transport that properly counts connections
 # at the moment.
 from . import test_sftp_transport
+
 
 class TestCaseWithConnectionHookedTransport(test_sftp_transport.TestCaseWithSFTPServer):
 
@@ -30,7 +29,7 @@ class TestCaseWithConnectionHookedTransport(test_sftp_transport.TestCaseWithSFTP
 
     def start_logging_connections(self):
         Transport.hooks.install_named_hook('post_connect',
-            self.connections.append, None)
+                                           self.connections.append, None)
 
     def reset_connections(self):
         self.connections = []

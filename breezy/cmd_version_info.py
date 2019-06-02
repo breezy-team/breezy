@@ -45,9 +45,9 @@ def _parse_version_info_format(format):
         return version_info_formats.get_builder(format)
     except KeyError:
         formats = version_info_formats.get_builder_formats()
-        raise errors.BzrCommandError(gettext('No known version info format {0}.'
-                                     ' Supported types are: {1}').format(
-                                     format, formats))
+        raise errors.BzrCommandError(
+            gettext('No known version info format {0}.'
+                    ' Supported types are: {1}').format(format, formats))
 
 
 class cmd_version_info(Command):
@@ -75,17 +75,18 @@ class cmd_version_info(Command):
     """
 
     takes_options = [RegistryOption('format',
-                            'Select the output format.',
-                            value_switches=True,
-                            lazy_registry=('breezy.version_info_formats',
-                                           'format_registry')),
+                                    'Select the output format.',
+                                    value_switches=True,
+                                    lazy_registry=('breezy.version_info_formats',
+                                                   'format_registry')),
                      Option('all', help='Include all possible information.'),
                      Option('check-clean', help='Check if tree is clean.'),
                      Option('include-history',
                             help='Include the revision-history.'),
                      Option('include-file-revisions',
                             help='Include the last revision for each file.'),
-                     Option('template', type=text_type, help='Template for the output.'),
+                     Option('template', type=text_type,
+                            help='Template for the output.'),
                      'revision',
                      ]
     takes_args = ['location?']
@@ -132,8 +133,8 @@ class cmd_version_info(Command):
             revision_id = None
 
         builder = format(b, working_tree=wt,
-                check_for_clean=check_clean,
-                include_revision_history=include_history,
-                include_file_revisions=include_file_revisions,
-                template=template, revision_id=revision_id)
+                         check_for_clean=check_clean,
+                         include_revision_history=include_history,
+                         include_file_revisions=include_file_revisions,
+                         template=template, revision_id=revision_id)
         builder.generate(self.outf)

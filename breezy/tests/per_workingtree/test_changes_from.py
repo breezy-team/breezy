@@ -42,7 +42,7 @@ class TestChangesFrom(TestCaseWithWorkingTree):
     def test_unknown_specific_file(self):
         self.build_tree(['tree/unknown'])
         empty_tree = self.tree.branch.repository.revision_tree(
-                        revision.NULL_REVISION)
+            revision.NULL_REVISION)
 
         # If a specific_files list is present, even if none of the
         # files are versioned, only paths that are present in the list

@@ -66,7 +66,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree.add(['a1', 'sub1'])
         tree.commit('initial commit')
         self.assertEqual([('a1', 'sub1/a1')],
-            tree.move(['a1'], to_dir='sub1', after=False))
+                         tree.move(['a1'], to_dir='sub1', after=False))
         tree._validate()
 
     def test_move_correct_call_unnamed(self):
@@ -79,7 +79,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree.add(['a1', 'sub1'])
         tree.commit('initial commit')
         self.assertEqual([('a1', 'sub1/a1')],
-            tree.move(['a1'], 'sub1', after=False))
+                         tree.move(['a1'], 'sub1', after=False))
         tree._validate()
 
     def test_move_target_not_dir(self):
@@ -143,7 +143,7 @@ class TestMove(TestCaseWithWorkingTree):
         else:
             self.assertPathRelations(
                 tree.basis_tree(), tree,
-                [('', ''), ( 'a/', 'a/'), ('c', 'c'), ('d', 'd')])
+                [('', ''), ('a/', 'a/'), ('c', 'c'), ('d', 'd')])
         tree._validate()
 
     def test_move_over_deleted(self):
@@ -155,8 +155,8 @@ class TestMove(TestCaseWithWorkingTree):
         tree.remove(['a/b'], keep_files=False)
         self.assertEqual([('b', 'a/b')], tree.move(['b'], 'a'))
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a/', 'a/'), ('a/b', 'b')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a/', 'a/'), ('a/b', 'b')])
         tree._validate()
 
     def test_move_subdir(self):
@@ -165,13 +165,13 @@ class TestMove(TestCaseWithWorkingTree):
         tree.add(['a', 'b', 'b/c'])
         tree.commit('initial')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b/'), ('b/c', 'b/c')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b/', 'b/'), ('b/c', 'b/c')])
         a_contents = tree.get_file_text('a')
         self.assertEqual([('a', 'b/a')], tree.move(['a'], 'b'))
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/'), ('b/a', 'a'), ('b/c', 'b/c')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b/', 'b/'), ('b/a', 'a'), ('b/c', 'b/c')])
         self.assertPathDoesNotExist('a')
         self.assertFileEqual(a_contents, 'b/a')
         tree._validate()
@@ -183,10 +183,10 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial')
         c_contents = tree.get_file_text('b/c')
         self.assertEqual([('b/c', 'c')],
-            tree.move(['b/c'], ''))
+                         tree.move(['b/c'], ''))
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b/'), ('c', 'b/c')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b/', 'b/'), ('c', 'b/c')])
         self.assertPathDoesNotExist('b/c')
         self.assertFileEqual(c_contents, 'c')
         tree._validate()
@@ -203,13 +203,13 @@ class TestMove(TestCaseWithWorkingTree):
         # maintain a consistent state.
         if osutils.lexists('c'):
             self.assertPathRelations(
-                    tree.basis_tree(), tree,
-                    [('', ''), ('a', 'a'), ('b/', 'b/'), ('c', 'c')])
+                tree.basis_tree(), tree,
+                [('', ''), ('a', 'a'), ('b/', 'b/'), ('c', 'c')])
         else:
             self.assertPathExists('b/c')
             self.assertPathRelations(
-                    tree.basis_tree(), tree,
-                    [('', ''), ('a', 'a'), ('b/', 'b/'), ('b/c', 'c')])
+                tree.basis_tree(), tree,
+                [('', ''), ('a', 'a'), ('b/', 'b/'), ('b/c', 'c')])
         tree._validate()
 
     def test_move_onto_self(self):
@@ -240,15 +240,15 @@ class TestMove(TestCaseWithWorkingTree):
         os.rename('a', 'b/a')
 
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b/')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b/', 'b/')])
         # We don't need after=True as long as source is missing and target
         # exists.
         self.assertEqual([('a', 'b/a')],
-            tree.move(['a'], 'b'))
+                         tree.move(['a'], 'b'))
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/'), ('b/a', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b/', 'b/'), ('b/a', 'a')])
         tree._validate()
 
     def test_move_after_with_after(self):
@@ -259,13 +259,13 @@ class TestMove(TestCaseWithWorkingTree):
         os.rename('a', 'b/a')
 
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('a', 'a'), ('b/', 'b/')])
+            tree.basis_tree(), tree,
+            [('', ''), ('a', 'a'), ('b/', 'b/')])
         # Passing after=True should work as well
         self.assertEqual([('a', 'b/a')], tree.move(['a'], 'b', after=True))
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/'), ('b/a', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b/', 'b/'), ('b/a', 'a')])
         tree._validate()
 
     def test_move_after_no_target(self):
@@ -278,7 +278,7 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertRaises(errors.BzrMoveFailedError,
                           tree.move, ['a'], 'b', after=True)
 
-        self.assertTreeLayout(['', 'a','b/'], tree.basis_tree())
+        self.assertTreeLayout(['', 'a', 'b/'], tree.basis_tree())
         tree._validate()
 
     def test_move_after_source_and_dest(self):
@@ -302,10 +302,10 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertFileEqual(ba_text, 'b/a')
         # But you can pass after=True
         self.assertEqual([('a', 'b/a')],
-            tree.move(['a'], 'b', after=True))
+                         tree.move(['a'], 'b', after=True))
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('b/', 'b/'), ('b/a', 'a')])
+            tree.basis_tree(), tree,
+            [('', ''), ('b/', 'b/'), ('b/a', 'a')])
         # But it shouldn't actually move anything
         self.assertFileEqual(a_text, 'a')
         self.assertFileEqual(ba_text, 'b/a')
@@ -319,9 +319,9 @@ class TestMove(TestCaseWithWorkingTree):
 
         self.assertEqual([('a', 'e/a')], tree.move(['a'], 'e'))
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''), ('e/', 'e/'), ('e/a/', 'a/'), ('e/a/b', 'a/b'),
-                 ('e/a/c/', 'a/c/'), ('e/a/c/d', 'a/c/d')])
+            tree.basis_tree(), tree,
+            [('', ''), ('e/', 'e/'), ('e/a/', 'a/'), ('e/a/b', 'a/b'),
+             ('e/a/c/', 'a/c/'), ('e/a/c/d', 'a/c/d')])
         tree._validate()
 
     def test_move_directory_into_parent(self):
@@ -336,11 +336,11 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertEqual([('c/b', 'b')],
                          tree.move(['c/b'], ''))
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''),
-                 ('b/', 'c/b/'),
-                 ('c/', 'c/'),
-                 ('b/d/', 'c/b/d/')])
+            tree.basis_tree(), tree,
+            [('', ''),
+             ('b/', 'c/b/'),
+             ('c/', 'c/'),
+             ('b/d/', 'c/b/d/')])
         tree._validate()
 
     def test_move_directory_with_children_in_subdir(self):
@@ -399,14 +399,14 @@ class TestMove(TestCaseWithWorkingTree):
 
         self.assertEqual([('a', 'b/a')], tree.move(['a'], 'b'))
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''),
-                 ('b/', 'b/'),
-                 ('b/a/', 'a/'),
-                 ('b/a/b', None),
-                 ('b/a/c', 'a/c'),
-                 ('b/a/d', None),
-                 ])
+            tree.basis_tree(), tree,
+            [('', ''),
+             ('b/', 'b/'),
+             ('b/a/', 'a/'),
+             ('b/a/b', None),
+             ('b/a/c', 'a/c'),
+             ('b/a/d', None),
+             ])
         tree._validate()
 
     def test_move_directory_with_moved_children(self):
@@ -486,23 +486,23 @@ class TestMove(TestCaseWithWorkingTree):
         tree.rename_one('a/d', 'a/b')
         tree.rename_one('a/bb', 'a/d')
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''),
-                 ('a/', 'a/'),
-                 ('e/', 'e/'),
-                 ('a/b', 'a/d'),
-                 ('a/c', 'a/c'),
-                 ('a/d', 'a/b')])
+            tree.basis_tree(), tree,
+            [('', ''),
+             ('a/', 'a/'),
+             ('e/', 'e/'),
+             ('a/b', 'a/d'),
+             ('a/c', 'a/c'),
+             ('a/d', 'a/b')])
         self.assertEqual([('a', 'e/a')],
                          tree.move(['a'], 'e'))
         self.assertPathRelations(
-                tree.basis_tree(), tree,
-                [('', ''),
-                 ('e/', 'e/'),
-                 ('e/a/', 'a/'),
-                 ('e/a/b', 'a/d'),
-                 ('e/a/c', 'a/c'),
-                 ('e/a/d', 'a/b')])
+            tree.basis_tree(), tree,
+            [('', ''),
+             ('e/', 'e/'),
+             ('e/a/', 'a/'),
+             ('e/a/b', 'a/d'),
+             ('e/a/c', 'a/c'),
+             ('e/a/d', 'a/b')])
         tree._validate()
 
     def test_move_moved(self):
@@ -513,7 +513,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree.commit('initial')
 
         self.assertEqual([('a/b', 'c/b')],
-            tree.move(['a/b'], 'c'))
+                         tree.move(['a/b'], 'c'))
         self.assertPathRelations(
             tree.basis_tree(), tree,
             [('', ''), ('a/', 'a/'), ('c/', 'c/'), ('c/b', 'a/b')])
@@ -532,7 +532,7 @@ class TestMove(TestCaseWithWorkingTree):
         tree.add(["a"])
         if tree.has_versioned_directories():
             e = self.assertRaises(errors.BzrMoveFailedError,
-                tree.move, ["a"], u"\xA7")
+                                  tree.move, ["a"], u"\xA7")
             self.assertIsInstance(e.extra, errors.NotVersionedError)
             self.assertEqual(e.extra.path, u"\xA7")
         else:
@@ -545,6 +545,6 @@ class TestMove(TestCaseWithWorkingTree):
         self.build_tree([u"\xA7", "dir/"])
         tree.add("dir")
         e = self.assertRaises(errors.BzrMoveFailedError,
-            tree.move, [u"\xA7"], "dir")
+                              tree.move, [u"\xA7"], "dir")
         self.assertIsInstance(e.extra, errors.NotVersionedError)
         self.assertEqual(e.extra.path, u"\xA7")

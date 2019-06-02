@@ -40,14 +40,14 @@ class TestNestedSupport(TestCaseWithWorkingTree):
             raise TestNotApplicable('not an inventory tree')
         transform = TreeTransform(tree)
         trans_id = transform.new_directory('reference', transform.root,
-            b'subtree-id')
+                                           b'subtree-id')
         transform.set_tree_reference(b'subtree-revision', trans_id)
         transform.apply()
         tree = tree.controldir.open_workingtree()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(b'subtree-revision',
-            tree.root_inventory.get_entry(b'subtree-id').reference_revision)
+                         tree.root_inventory.get_entry(b'subtree-id').reference_revision)
 
     def test_extract_while_locked(self):
         tree = self.make_branch_and_tree('.')

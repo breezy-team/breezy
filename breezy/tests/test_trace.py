@@ -64,9 +64,9 @@ class TestTrace(TestCase):
         except NotImplementedError:
             err = _format_exception()
         self.assertContainsRe(err,
-                '^brz: ERROR: NotImplementedError: time travel')
+                              '^brz: ERROR: NotImplementedError: time travel')
         self.assertContainsRe(err,
-            'Bazaar has encountered an internal error.')
+                              'Bazaar has encountered an internal error.')
 
     def test_format_interrupt_exception(self):
         try:
@@ -81,7 +81,8 @@ class TestTrace(TestCase):
             raise MemoryError()
         except MemoryError:
             msg = _format_exception()
-        self.assertEqual(msg,
+        self.assertEqual(
+            msg,
             "brz: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
 
     def test_format_mem_dump(self):
@@ -92,7 +93,7 @@ class TestTrace(TestCase):
         except MemoryError:
             msg = _format_exception()
         self.assertStartsWith(msg,
-            "brz: out of memory\nMemory dumped to ")
+                              "brz: out of memory\nMemory dumped to ")
 
     def test_format_os_error(self):
         try:
@@ -111,21 +112,23 @@ class TestTrace(TestCase):
             msg = _format_exception()
         # Even though Windows and Linux differ for 'os.rmdir', they both give
         # 'No such file' for open()
-        # However it now gets translated so we can not test for a specific message
+        # However it now gets translated so we can not test for a specific
+        # message
         self.assertContainsRe(msg,
-            '^brz: ERROR: \\[Errno .*\\] .*nosuchfile')
+                              '^brz: ERROR: \\[Errno .*\\] .*nosuchfile')
 
     def test_format_pywintypes_error(self):
         self.requireFeature(features.pywintypes)
-        import pywintypes, win32file
+        import pywintypes
+        import win32file
         try:
             win32file.RemoveDirectory('nosuchfile22222')
         except pywintypes.error:
             msg = _format_exception()
         # GZ 2010-05-03: Formatting for pywintypes.error is basic, a 3-tuple
         #                with errno, function name, and locale error message
-        self.assertContainsRe(msg,
-            "^brz: ERROR: \\(2, 'RemoveDirectory[AW]?', .*\\)")
+        self.assertContainsRe(
+            msg, "^brz: ERROR: \\(2, 'RemoveDirectory[AW]?', .*\\)")
 
     def test_format_sockets_error(self):
         try:
@@ -136,7 +139,7 @@ class TestTrace(TestCase):
             msg = _format_exception()
 
         self.assertNotContainsRe(msg,
-            "Traceback \\(most recent call last\\):")
+                                 "Traceback \\(most recent call last\\):")
 
     def test_format_unicode_error(self):
         try:
@@ -162,21 +165,22 @@ class TestTrace(TestCase):
         """Short friendly message for missing system modules."""
         try:
             import ImaginaryModule
-        except ImportError as e:
+        except ImportError:
             msg = _format_exception()
         else:
             self.fail("somehow succeeded in importing %r" % ImaginaryModule)
-        self.assertContainsRe(msg,
+        self.assertContainsRe(
+            msg,
             "^brz: ERROR: No module named '?ImaginaryModule'?\n"
             "You may need to install this Python library separately.\n$")
 
     def test_report_import_syntax_error(self):
         try:
             raise ImportError("syntax error")
-        except ImportError as e:
+        except ImportError:
             msg = _format_exception()
         self.assertContainsRe(msg,
-            'Bazaar has encountered an internal error')
+                              'Bazaar has encountered an internal error')
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
@@ -206,7 +210,7 @@ class TestTrace(TestCase):
     def test_report_broken_pipe(self):
         try:
             raise IOError(errno.EPIPE, 'broken pipe foofofo')
-        except IOError as e:
+        except IOError:
             msg = _format_exception()
             self.assertEqual(msg, "brz: broken pipe\n")
         else:
@@ -216,7 +220,7 @@ class TestTrace(TestCase):
         """Assert log contains a line including log timestamp."""
         # Does not check absolute position in log as there may be kipple.
         self.assertContainsRe(log,
-            '(?m)^\\d+\\.\\d+  ' + re.escape(string))
+                              '(?m)^\\d+\\.\\d+  ' + re.escape(string))
 
     def test_mutter_callsite_1(self):
         """mutter_callsite can capture 1 level of stack frame."""
@@ -225,8 +229,8 @@ class TestTrace(TestCase):
         # begin with the message
         self.assertLogContainsLine(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
-        self.assertContainsRe(log,
-            'test_trace\\.py", line \\d+, in test_mutter_callsite_1\n')
+        self.assertContainsRe(
+            log, 'test_trace\\.py", line \\d+, in test_mutter_callsite_1\n')
         # this frame should be the final one
         self.assertEndsWith(log, ' "a string")\n')
 
@@ -237,8 +241,8 @@ class TestTrace(TestCase):
         # begin with the message
         self.assertLogContainsLine(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
-        self.assertContainsRe(log,
-            'test_trace.py", line \\d+, in test_mutter_callsite_2\n')
+        self.assertContainsRe(
+            log, 'test_trace.py", line \\d+, in test_mutter_callsite_2\n')
         # this frame should be the final one
         self.assertEndsWith(log, ' "a string")\n')
 
@@ -263,10 +267,10 @@ class TestTrace(TestCase):
         show_error('error1')
         show_error(u'error2 \xb5 blah')
         show_error('arg: %s', 'blah')
-        show_error('arg2: %(key)s', {'key':'stuff'})
+        show_error('arg2: %(key)s', {'key': 'stuff'})
         try:
             raise Exception("oops")
-        except:
+        except BaseException:
             show_error('kwarg', exc_info=True)
         log = self.get_log()
         self.assertContainsRe(log, 'error1')
@@ -275,7 +279,8 @@ class TestTrace(TestCase):
         self.assertContainsRe(log, 'arg2: stuff')
         self.assertContainsRe(log, 'kwarg')
         self.assertContainsRe(log, 'Traceback \\(most recent call last\\):')
-        self.assertContainsRe(log, 'File ".*test_trace.py", line .*, in test_show_error')
+        self.assertContainsRe(
+            log, 'File ".*test_trace.py", line .*, in test_show_error')
         self.assertContainsRe(log, 'raise Exception\\("oops"\\)')
         self.assertContainsRe(log, 'Exception: oops')
 
@@ -304,11 +309,11 @@ class TestTrace(TestCase):
             # as there's a timestamp at the front.
             tmp1.seek(0)
             self.assertContainsRe(tmp1.read(),
-                b"\\d+\\.\\d+  comment to file1\n"
-                b"\\d+\\.\\d+  again to file1\n")
+                                  b"\\d+\\.\\d+  comment to file1\n"
+                                  b"\\d+\\.\\d+  again to file1\n")
             tmp2.seek(0)
             self.assertContainsRe(tmp2.read(),
-                b"\\d+\\.\\d+  comment to file2\n")
+                                  b"\\d+\\.\\d+  comment to file2\n")
         finally:
             tmp1.close()
             tmp2.close()
@@ -395,8 +400,8 @@ class TestLogging(TestCase):
         logging.getLogger("brz").debug(b"\xa7")
         log = self.get_log()
         self.assertContainsString(log, "UnicodeDecodeError: ")
-        self.assertContainsRe(log,
-            "Logging record unformattable: b?'\\\\xa7' % \\(\\)\n")
+        self.assertContainsRe(
+            log, "Logging record unformattable: b?'\\\\xa7' % \\(\\)\n")
 
     def test_log_bytes_arg(self):
         logging.getLogger("brz").debug(b"%s", b"\xa7")
@@ -405,7 +410,8 @@ class TestLogging(TestCase):
             self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
         else:
             self.assertContainsString(log, "UnicodeDecodeError: ")
-            self.assertContainsRe(log,
+            self.assertContainsRe(
+                log,
                 "Logging record unformattable: ?'%s' % \\(b?'\\\\xa7',\\)\n")
 
     def test_log_mixed_strings(self):
@@ -415,7 +421,8 @@ class TestLogging(TestCase):
             self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
         else:
             self.assertContainsString(log, "UnicodeDecodeError: ")
-            self.assertContainsRe(log,
+            self.assertContainsRe(
+                log,
                 "Logging record unformattable: u'%s' % \\('\\\\xa7',\\)\n")
 
     def test_log_repr_broken(self):

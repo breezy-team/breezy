@@ -138,7 +138,7 @@ class TestLockDir(TestCaseWithTransport):
         except LockContention as e:
             self.assertEqual(e.lock, lf2)
             self.assertContainsRe(str(e),
-                    r'^Could not acquire.*test_lock.*$')
+                                  r'^Could not acquire.*test_lock.*$')
         lf1.unlock()
 
     def test_20_lock_peek(self):
@@ -151,7 +151,7 @@ class TestLockDir(TestCaseWithTransport):
         # lock is held, should get some info on it
         info1 = lf1.peek()
         self.assertEqual(set(info1.info_dict.keys()),
-            {'user', 'nonce', 'hostname', 'pid', 'start_time'})
+                         {'user', 'nonce', 'hostname', 'pid', 'start_time'})
         # should get the same info if we look at it through a different
         # instance
         info2 = LockDir(t, 'test_lock').peek()
@@ -193,16 +193,16 @@ class TestLockDir(TestCaseWithTransport):
             # it should only take about 0.4 seconds, but we allow more time in
             # case the machine is heavily loaded
             self.assertTrue(after - before <= 8.0,
-                "took %f seconds to detect lock contention" % (after - before))
+                            "took %f seconds to detect lock contention" % (after - before))
         finally:
             lf1.unlock()
         self.assertEqual(1, len(self._logged_reports))
         self.assertContainsRe(self._logged_reports[0][0],
-            r'Unable to obtain lock .* held by jrandom@example\.com on .*'
-            r' \(process #\d+\), acquired .* ago\.\n'
-            r'Will continue to try until \d{2}:\d{2}:\d{2}, unless '
-            r'you press Ctrl-C.\n'
-            r'See "brz help break-lock" for more.')
+                              r'Unable to obtain lock .* held by jrandom@example\.com on .*'
+                              r' \(process #\d+\), acquired .* ago\.\n'
+                              r'Will continue to try until \d{2}:\d{2}:\d{2}, unless '
+                              r'you press Ctrl-C.\n'
+                              r'See "brz help break-lock" for more.')
 
     def test_31_lock_wait_easy(self):
         """Succeed when waiting on a lock with no contention.
@@ -517,7 +517,7 @@ class TestLockDir(TestCaseWithTransport):
         formatted_info = info.to_readable_dict()
         self.assertEqual(
             dict(user='<unknown>', hostname='<unknown>', pid='<unknown>',
-                time_ago='(unknown)'),
+                 time_ago='(unknown)'),
             formatted_info)
 
     def test_corrupt_lockdir_info(self):
@@ -669,7 +669,7 @@ class TestLockHeldInfo(TestCaseInTempDir):
     def test_unicode(self):
         info = LockHeldInfo.for_this_process(None)
         self.assertContainsRe(text_type(info),
-            r'held by .* on .* \(process #\d+\), acquired .* ago')
+                              r'held by .* on .* \(process #\d+\), acquired .* ago')
 
     def test_is_locked_by_this_process(self):
         info = LockHeldInfo.for_this_process(None)
@@ -688,7 +688,7 @@ class TestLockHeldInfo(TestCaseInTempDir):
     def test_lock_holder_dead_process(self):
         """Detect that the holder (this process) is still running."""
         self.overrideAttr(lockdir, 'get_host_name',
-            lambda: 'aproperhostname')
+                          lambda: 'aproperhostname')
         info = LockHeldInfo.for_this_process(None)
         info.info_dict['pid'] = '123123123'
         self.assertTrue(info.is_lock_holder_known_dead())
@@ -716,7 +716,7 @@ class TestLockHeldInfo(TestCaseInTempDir):
         known for sure.
         """
         self.overrideAttr(lockdir, 'get_host_name',
-            lambda: 'localhost')
+                          lambda: 'localhost')
         info = LockHeldInfo.for_this_process(None)
         info.info_dict['pid'] = '123123123'
         self.assertFalse(info.is_lock_holder_known_dead())
@@ -734,31 +734,31 @@ class TestStaleLockDir(TestCaseWithTransport):
         This generates a warning but no other user interaction.
         """
         self.overrideAttr(lockdir, 'get_host_name',
-            lambda: 'aproperhostname')
+                          lambda: 'aproperhostname')
         # This is off by default at present; see the discussion in the bug.
         # If you change the default, don't forget to update the docs.
         config.GlobalStack().set('locks.steal_dead', True)
         # Create a lock pretending to come from a different nonexistent
         # process on the same machine.
         l1 = LockDir(self.get_transport(), 'a',
-            extra_holder_info={'pid': '12312313'})
+                     extra_holder_info={'pid': '12312313'})
         token_1 = l1.attempt_lock()
         l2 = LockDir(self.get_transport(), 'a')
         token_2 = l2.attempt_lock()
         # l1 will notice its lock was stolen.
         self.assertRaises(errors.LockBroken,
-            l1.unlock)
+                          l1.unlock)
         l2.unlock()
 
     def test_auto_break_stale_lock_configured_off(self):
         """Automatic breaking can be turned off"""
         l1 = LockDir(self.get_transport(), 'a',
-            extra_holder_info={'pid': '12312313'})
+                     extra_holder_info={'pid': '12312313'})
         token_1 = l1.attempt_lock()
         self.addCleanup(l1.unlock)
         l2 = LockDir(self.get_transport(), 'a')
         # This fails now, because dead lock breaking is off by default.
         self.assertRaises(LockContention,
-            l2.attempt_lock)
+                          l2.attempt_lock)
         # and it's in fact not broken
         l1.confirm()

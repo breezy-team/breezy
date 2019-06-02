@@ -47,4 +47,4 @@ def load_tests(loader, standard_tests, pattern):
     scenarios = make_scenarios(lock._lock_classes)
     # add the tests for the sub modules
     return tests.multiply_tests(submod_tests, scenarios,
-        standard_tests)
+                                standard_tests)

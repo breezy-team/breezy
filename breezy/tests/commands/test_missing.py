@@ -35,4 +35,3 @@ class TestMissing(TestCaseWithConnectionHookedTransport):
         cmd.outf = self.make_utf8_encoded_stringio()
         cmd.run(self.get_url('branch2'))
         self.assertEqual(1, len(self.connections))
-

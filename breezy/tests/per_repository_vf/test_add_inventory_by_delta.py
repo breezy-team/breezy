@@ -41,8 +41,8 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         repo = self._get_repo_in_write_group()
         try:
             self.assertRaises(errors.NoSuchRevision,
-                repo.add_inventory_by_delta, "missing-revision", [],
-                "new-revision", ["missing-revision"])
+                              repo.add_inventory_by_delta, "missing-revision", [],
+                              "new-revision", ["missing-revision"])
         finally:
             repo.abort_write_group()
 
@@ -51,7 +51,7 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         self.assertRaises(AssertionError, repo.add_inventory_by_delta,
-            "missing-revision", [], "new-revision", ["missing-revision"])
+                          "missing-revision", [], "new-revision", ["missing-revision"])
 
     def make_inv_delta(self, old, new):
         """Make an inventory delta from two inventories."""
@@ -73,11 +73,12 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         for file_id in deletes:
             delta.append((old.id2path(file_id), None, file_id, None))
         for file_id in adds:
-            delta.append((None, new.id2path(file_id), file_id, new.get_entry(file_id)))
+            delta.append((None, new.id2path(file_id),
+                          file_id, new.get_entry(file_id)))
         for file_id in common:
             if old.get_entry(file_id) != new.get_entry(file_id):
                 delta.append((old.id2path(file_id), new.id2path(file_id),
-                    file_id, new[file_id]))
+                              file_id, new[file_id]))
         return delta
 
     def test_same_validator(self):
@@ -88,11 +89,12 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         # tree.basis_tree() always uses a plain Inventory from the dirstate, we
         # want the same format inventory as we have in the repository
         revtree = tree.branch.repository.revision_tree(
-                    tree.branch.last_revision())
+            tree.branch.last_revision())
         tree.basis_tree()
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
-        old_inv = tree.branch.repository.revision_tree(revision.NULL_REVISION).root_inventory
+        old_inv = tree.branch.repository.revision_tree(
+            revision.NULL_REVISION).root_inventory
         new_inv = revtree.root_inventory
         delta = self.make_inv_delta(old_inv, new_inv)
         repo_direct = self._get_repo_in_write_group('direct')
@@ -108,4 +110,5 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         else:
             repo_delta.commit_write_group()
         self.assertEqual(add_validator, delta_validator)
-        self.assertEqual(list(new_inv.iter_entries()), list(inv.iter_entries()))
+        self.assertEqual(list(new_inv.iter_entries()),
+                         list(inv.iter_entries()))

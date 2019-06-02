@@ -22,6 +22,7 @@ See MemoryTree for more details.
 from __future__ import absolute_import
 
 import os
+import stat
 
 from . import (
     errors,
@@ -62,7 +63,15 @@ class MemoryTree(MutableInventoryTree):
         with self.lock_tree_write():
             for f, file_id, kind in zip(files, ids, kinds):
                 if kind is None:
-                    kind = 'file'
+                    st_mode = self._file_transport.stat(f).st_mode
+                    if stat.S_ISREG(st_mode):
+                        kind = 'file'
+                    elif stat.S_ISLNK(st_mode):
+                        kind = 'symlink'
+                    elif stat.S_ISDIR(st_mode):
+                        kind = 'directory'
+                    else:
+                        raise AssertionError('Unknown file kind')
                 if file_id is None:
                     self._inventory.add_path(f, kind=kind)
                 else:
@@ -85,11 +94,11 @@ class MemoryTree(MutableInventoryTree):
         missing files, so is a no-op.
         """
 
-    def get_file(self, path, file_id=None):
+    def get_file(self, path):
         """See Tree.get_file."""
         return self._file_transport.get(path)
 
-    def get_file_sha1(self, path, file_id=None, stat_value=None):
+    def get_file_sha1(self, path, stat_value=None):
         """See Tree.get_file_sha1()."""
         stream = self._file_transport.get(path)
         return sha_file(stream)
@@ -121,13 +130,13 @@ class MemoryTree(MutableInventoryTree):
             bytes = self._file_transport.get_bytes(path)
             size = len(bytes)
             executable = self._inventory[id].executable
-            sha1 = None # no stat cache
+            sha1 = None  # no stat cache
             return (kind, size, executable, sha1)
         elif kind == 'directory':
             # memory tree does not support nested trees yet.
             return kind, None, None, None
         elif kind == 'symlink':
-            raise NotImplementedError('symlink support')
+            return kind, None, None, self._inventory[id].symlink_target
         else:
             raise NotImplementedError('unknown kind')
 
@@ -144,13 +153,11 @@ class MemoryTree(MutableInventoryTree):
         """See Tree.has_filename()."""
         return self._file_transport.has(filename)
 
-    def is_executable(self, path, file_id=None):
-        return self._inventory[file_id].executable
+    def is_executable(self, path):
+        return self._inventory.get_entry_by_path(path).executable
 
-    def kind(self, path, file_id=None):
-        if file_id is None:
-            file_id = self.path2id(path)
-        return self._inventory[file_id].kind
+    def kind(self, path):
+        return self._inventory.get_entry_by_path(path).kind
 
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
@@ -177,7 +184,7 @@ class MemoryTree(MutableInventoryTree):
                 self._lock_mode = "r"
                 self._populate_from_branch()
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
 
@@ -191,7 +198,7 @@ class MemoryTree(MutableInventoryTree):
                 self._populate_from_branch()
             elif self._lock_mode == "r":
                 raise errors.ReadOnlyError(self)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
         return lock.LogicalLockResult(self.unlock)
@@ -207,7 +214,7 @@ class MemoryTree(MutableInventoryTree):
             elif self._lock_mode == "r":
                 raise errors.ReadOnlyError(self)
             return lock.LogicalLockResult(self.unlock)
-        except:
+        except BaseException:
             self._locks -= 1
             raise
 
@@ -228,13 +235,15 @@ class MemoryTree(MutableInventoryTree):
                 continue
             if entry.kind == 'directory':
                 self._file_transport.mkdir(path)
+            elif entry.kind == 'symlink':
+                self._file_transport.symlink(entry.symlink_target, path)
             elif entry.kind == 'file':
-                self._file_transport.put_file(path,
-                    self._basis_tree.get_file(path, entry.file_id))
+                self._file_transport.put_file(
+                    path, self._basis_tree.get_file(path))
             else:
                 raise NotImplementedError(self._populate_from_branch)
 
-    def put_file_bytes_non_atomic(self, path, bytes, file_id=None):
+    def put_file_bytes_non_atomic(self, path, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
         self._file_transport.put_bytes(path, bytes)
 
@@ -256,7 +265,7 @@ class MemoryTree(MutableInventoryTree):
         else:
             self._locks -= 1
 
-    def unversion(self, paths, file_ids=None):
+    def unversion(self, paths):
         """Remove the paths from the current versioned set.
 
         When a file_id is unversioned, all of its children are automatically
@@ -269,17 +278,12 @@ class MemoryTree(MutableInventoryTree):
             # XXX: This should be in mutabletree, but the inventory-save action
             # is not relevant to memory tree. Until that is done in unlock by
             # working tree, we cannot share the implementation.
-            if file_ids is None:
-                file_ids = set()
-                for path in paths:
-                    file_id = self.path2id(path)
-                    if file_id is None:
-                        raise errors.NoSuchFile(path)
-                    file_ids.add(file_id)
-            else:
-                for file_id in file_ids:
-                    if not self._inventory.has_id(file_id):
-                        raise errors.NoSuchId(self, file_id)
+            file_ids = set()
+            for path in paths:
+                file_id = self.path2id(path)
+                if file_id is None:
+                    raise errors.NoSuchFile(path)
+                file_ids.add(file_id)
             for file_id in file_ids:
                 if self._inventory.has_id(file_id):
                     self._inventory.remove_recursive_id(file_id)
@@ -308,12 +312,16 @@ class MemoryTree(MutableInventoryTree):
             else:
                 raise
 
+    def get_symlink_target(self, path):
+        with self.lock_read():
+            return self._file_transport.readlink(path)
+
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""
         if len(parents_list) == 0:
             self._parent_ids = []
             self._basis_tree = self.branch.repository.revision_tree(
-                                   _mod_revision.NULL_REVISION)
+                _mod_revision.NULL_REVISION)
         else:
             if parents_list[0][1] is None and not allow_leftmost_as_ghost:
                 # a ghost in the left most parent
@@ -321,7 +329,7 @@ class MemoryTree(MutableInventoryTree):
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
             if parents_list[0][1] is None or parents_list[0][1] == b'null:':
                 self._basis_tree = self.branch.repository.revision_tree(
-                                       _mod_revision.NULL_REVISION)
+                    _mod_revision.NULL_REVISION)
             else:
                 self._basis_tree = parents_list[0][1]
             self._branch_revision_id = parents_list[0][0]

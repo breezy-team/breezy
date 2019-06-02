@@ -53,9 +53,9 @@ class LaunchpadAccountTests(TestCaseInTempDir):
         # Test formatting of NoRegisteredSSHKeys exception
         error = account.NoRegisteredSSHKeys(user='test-user')
         self.assertEqualDiff('The user test-user has not registered any '
-            'SSH keys with Launchpad.\n'
-            'See <https://launchpad.net/people/+me>',
-            str(error))
+                             'SSH keys with Launchpad.\n'
+                             'See <https://launchpad.net/people/+me>',
+                             str(error))
 
     def test_set_lp_login_updates_authentication_conf(self):
         self.assertIs(None, account._get_auth_user())
@@ -93,7 +93,7 @@ class LaunchpadAccountTests(TestCaseInTempDir):
         e = self.assertRaises(account.MismatchedUsernames,
                               account.get_lp_login)
         self.assertEqual('breezy.conf and authentication.conf disagree about'
-            ' launchpad account name.  Please re-run launchpad-login.', str(e))
+                         ' launchpad account name.  Please re-run launchpad-login.', str(e))
 
 
 class CheckAccountTests(TestCaseWithMemoryTransport):

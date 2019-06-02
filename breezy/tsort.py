@@ -83,14 +83,14 @@ class TopoSorter(object):
         """
         return list(self.iter_topo_order())
 
-###        Useful if fiddling with this code.
-###        # cross check
+# Useful if fiddling with this code.
+# cross check
 ###        sorted_names = list(self.iter_topo_order())
-###        for index in range(len(sorted_names)):
+# for index in range(len(sorted_names)):
 ###            rev = sorted_names[index]
-###            for left_index in range(index):
-###                if rev in self.original_graph[sorted_names[left_index]]:
-###                    print "revision in parent list of earlier revision"
+# for left_index in range(index):
+# if rev in self.original_graph[sorted_names[left_index]]:
+# print "revision in parent list of earlier revision"
 ###                    import pdb;pdb.set_trace()
 
     def iter_topo_order(self):
@@ -182,7 +182,7 @@ def merge_sort(graph, branch_tip, mainline_revisions=None, generate_revno=False)
     Node identifiers can be any hashable object, and are typically strings.
     """
     return MergeSorter(graph, branch_tip, mainline_revisions,
-        generate_revno).sorted()
+                       generate_revno).sorted()
 
 
 class MergeSorter(object):
@@ -201,10 +201,10 @@ class MergeSorter(object):
                  '_revno_to_branch_count',
                  '_completed_node_names',
                  '_scheduled_nodes',
-                ]
+                 ]
 
     def __init__(self, graph, branch_tip, mainline_revisions=None,
-        generate_revno=False):
+                 generate_revno=False):
         """Merge-aware topological sorting of a graph.
 
         :param graph: sequence of pairs of node_name->parent_names_list.
@@ -410,9 +410,9 @@ class MergeSorter(object):
         self._left_subtree_pushed_stack = []
 
         # seed the search with the tip of the branch
-        if (branch_tip is not None and
-            branch_tip != _mod_revision.NULL_REVISION and
-            branch_tip != (_mod_revision.NULL_REVISION,)):
+        if (branch_tip is not None
+            and branch_tip != _mod_revision.NULL_REVISION
+                and branch_tip != (_mod_revision.NULL_REVISION,)):
             parents = self._graph.pop(branch_tip)
             self._push_node(branch_tip, 0, parents)
 
@@ -488,7 +488,7 @@ class MergeSorter(object):
                      completed_node_names_add=self._completed_node_names.add,
                      scheduled_nodes_append=scheduled_nodes.append,
                      revno_to_branch_count=self._revno_to_branch_count,
-                    ):
+                     ):
             """Pop the top node off the stack
 
             The node is appended to the sorted output.
@@ -539,7 +539,6 @@ class MergeSorter(object):
             completed_node_names_add(node_name)
             scheduled_nodes_append((node_name, merge_depth, revno))
             return node_name
-
 
         while node_name_stack:
             # loop until this call completes.
@@ -618,9 +617,9 @@ class MergeSorter(object):
             elif scheduled_nodes[-1][1] < merge_depth:
                 # the next node is to our left
                 end_of_merge = True
-            elif (scheduled_nodes[-1][1] == merge_depth and
-                  (scheduled_nodes[-1][0] not in
-                   original_graph[node_name])):
+            elif (scheduled_nodes[-1][1] == merge_depth
+                  and (scheduled_nodes[-1][0] not in
+                       original_graph[node_name])):
                 # the next node was part of a multiple-merge.
                 end_of_merge = True
             else:
@@ -709,5 +708,6 @@ class MergeSorter(object):
         # store the revno for this node for future reference
         self._revnos[node_name][0] = revno
         self._completed_node_names.add(node_name)
-        self._scheduled_nodes.append((node_name, merge_depth, self._revnos[node_name][0]))
+        self._scheduled_nodes.append(
+            (node_name, merge_depth, self._revnos[node_name][0]))
         return node_name

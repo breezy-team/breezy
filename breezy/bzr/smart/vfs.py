@@ -28,7 +28,6 @@ from __future__ import absolute_import
 
 import os
 
-from ... import errors
 from ... import urlutils
 from . import request
 
@@ -47,9 +46,9 @@ def vfs_enabled():
 
     the VFS is disabled when the BRZ_NO_SMART_VFS environment variable is set.
 
-    :return: True if it is enabled.
+    :return: ``True`` if it is enabled.
     """
-    return not 'BRZ_NO_SMART_VFS' in os.environ
+    return 'BRZ_NO_SMART_VFS' not in os.environ
 
 
 class VfsRequest(request.SmartServerRequest):
@@ -155,7 +154,8 @@ class PutRequest(VfsRequest):
         self._mode = _deserialise_optional_mode(mode)
 
     def do_body(self, body_bytes):
-        self._backing_transport.put_bytes(self._relpath, body_bytes, self._mode)
+        self._backing_transport.put_bytes(
+            self._relpath, body_bytes, self._mode)
         return request.SuccessfulSmartServerResponse((b'ok',))
 
 
@@ -171,10 +171,10 @@ class PutNonAtomicRequest(VfsRequest):
 
     def do_body(self, body_bytes):
         self._backing_transport.put_bytes_non_atomic(self._relpath,
-                body_bytes,
-                mode=self._mode,
-                create_parent_dir=self._create_parent,
-                dir_mode=self._dir_mode)
+                                                     body_bytes,
+                                                     mode=self._mode,
+                                                     create_parent_dir=self._create_parent,
+                                                     dir_mode=self._dir_mode)
         return request.SuccessfulSmartServerResponse((b'ok',))
 
 
@@ -188,7 +188,7 @@ class ReadvRequest(VfsRequest):
         """accept offsets for a readv request."""
         offsets = self._deserialise_offsets(body_bytes)
         backing_bytes = b''.join(bytes for offset, bytes in
-            self._backing_transport.readv(self._relpath, offsets))
+                                 self._backing_transport.readv(self._relpath, offsets))
         return request.SuccessfulSmartServerResponse((b'readv',), backing_bytes)
 
     def _deserialise_offsets(self, text):
@@ -228,4 +228,3 @@ class StatRequest(VfsRequest):
         stat = self._backing_transport.stat(relpath)
         return request.SuccessfulSmartServerResponse(
             (b'stat', str(stat.st_size).encode('ascii'), oct(stat.st_mode).encode('ascii')))
-

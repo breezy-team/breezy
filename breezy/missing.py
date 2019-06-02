@@ -22,13 +22,9 @@ from . import (
     errors,
     log,
     )
-from . import revision as _mod_revision
 
 
 def iter_log_revisions(revisions, revision_source, verbose, rev_tag_dict=None):
-    last_tree = revision_source.revision_tree(_mod_revision.NULL_REVISION)
-    last_rev_id = None
-
     if rev_tag_dict is None:
         rev_tag_dict = {}
     for revno, rev_id, merge_depth in revisions:
@@ -96,7 +92,7 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip, backward=True):
     """
     if ancestry is None:
         return None
-    if not ancestry: #Empty ancestry, no need to do any work
+    if not ancestry:  # Empty ancestry, no need to do any work
         return []
 
     # Optionally, we could make 1 call to graph.get_parent_map with all
@@ -110,8 +106,9 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip, backward=True):
         parent_map = graph.get_parent_map([cur])
         parents = parent_map.get(cur)
         if not parents:
-            break # Ghost, we are done
-        mainline.append((str(cur_revno) if cur_revno is not None else None, cur, 0))
+            break  # Ghost, we are done
+        mainline.append(
+            (str(cur_revno) if cur_revno is not None else None, cur, 0))
         cur = parents[0]
         if cur_revno is not None:
             cur_revno -= 1
@@ -136,7 +133,7 @@ def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip,
     """
     if ancestry is None:
         return None
-    if not ancestry: #Empty ancestry, no need to do any work
+    if not ancestry:  # Empty ancestry, no need to do any work
         return []
 
     merge_sorted_revisions = branch.iter_merge_sorted_revisions()
@@ -159,7 +156,7 @@ def _filter_revs(graph, revs, revid_range):
     if revid_range is None or revs is None:
         return revs
     return [rev for rev in revs
-        if graph.is_between(rev[1], revid_range[0], revid_range[1])]
+            if graph.is_between(rev[1], revid_range[0], revid_range[1])]
 
 
 def _find_unmerged(local_branch, remote_branch, restrict,
@@ -212,8 +209,8 @@ def _find_unmerged(local_branch, remote_branch, restrict,
                                      local_revision_id, backward)
         remotes = _enumerate_mainline(remote_extra, graph, remote_revno,
                                       remote_revision_id, backward)
-    return _filter_revs(graph, locals, local_revid_range), _filter_revs(graph,
-        remotes, remote_revid_range)
+    return _filter_revs(graph, locals, local_revid_range), _filter_revs(
+        graph, remotes, remote_revid_range)
 
 
 def sorted_revisions(revisions, history_map):

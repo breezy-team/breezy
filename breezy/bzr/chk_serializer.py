@@ -20,7 +20,7 @@ from __future__ import absolute_import
 
 from .. import lazy_import
 lazy_import.lazy_import(globals(),
-"""
+                        """
 from breezy.bzr import (
     xml_serializer,
     )
@@ -37,7 +37,6 @@ from . import (
 from ..sixish import (
     BytesIO,
     )
-
 
 
 def _validate_properties(props, _decode=cache_utf8._utf8_decode):
@@ -74,7 +73,7 @@ class BEncodeRevisionSerializer1(object):
                b'inventory-sha1': ('inventory_sha1', bytes, None),
                b'message': ('message', bytes, cache_utf8.decode),
                b'properties': ('properties', dict, _validate_properties),
-    }
+               }
 
     def write_revision_to_string(self, rev):
         encode_utf8 = cache_utf8._utf8_encode
@@ -159,8 +158,8 @@ class CHKSerializer(serializer.Serializer):
                           return_from_cache=False):
         """Construct from XML Element"""
         inv = xml_serializer.unpack_inventory_flat(elt, self.format_num,
-            xml_serializer.unpack_inventory_entry, entry_cache,
-            return_from_cache)
+                                                   xml_serializer.unpack_inventory_entry, entry_cache,
+                                                   return_from_cache)
         return inv
 
     def read_inventory_from_string(self, xml_string, revision_id=None,
@@ -191,7 +190,7 @@ class CHKSerializer(serializer.Serializer):
         try:
             try:
                 return self._unpack_inventory(self._read_element(f),
-                    revision_id=None)
+                                              revision_id=None)
             finally:
                 f.close()
         except xml_serializer.ParseError as e:
@@ -236,9 +235,9 @@ class CHKSerializer(serializer.Serializer):
             xml_serializer.encode_and_escape(inv.root.name),
             xml_serializer.encode_and_escape(inv.root.revision)))
         xml_serializer.serialize_inventory_flat(inv,
-            append,
-            root_id=None, supported_kinds=self.supported_kinds,
-            working=working)
+                                                append,
+                                                root_id=None, supported_kinds=self.supported_kinds,
+                                                working=working)
         if f is not None:
             f.writelines(output)
         return output

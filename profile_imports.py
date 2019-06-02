@@ -17,11 +17,11 @@
 
 """A custom importer and regex compiler which logs time spent."""
 
-import sys
-import time
-
+from __future__ import absolute_import
 
 import re
+import sys
+import time
 
 
 _parent_stack = []
@@ -43,7 +43,8 @@ def stack_add(name, frame_name, frame_lineno, scope_name=None):
         _total_stack[_parent_stack[-1]].append(this_stack)
     _total_stack[this_stack] = []
     _parent_stack.append(this_stack)
-    _info[this_stack] = [len(_parent_stack)-1, frame_name, frame_lineno, scope_name]
+    _info[this_stack] = [len(_parent_stack) - 1, frame_name, frame_lineno,
+                         scope_name]
 
     return this_stack
 
@@ -60,9 +61,10 @@ def stack_finish(this, cost):
 
 def log_stack_info(out_file, sorted=True, hide_fast=True):
     # Find all of the roots with import = 0
-    out_file.write('%5s %5s %-40s @ %s:%s\n'
-        % ('cum', 'inline', 'name', 'file', 'line'))
-    todo = [(value[-1], key) for key,value in _info.iteritems() if value[0] == 0]
+    out_file.write(
+        '%5s %5s %-40s @ %s:%s\n'
+        % ('cum', 'local', 'name', 'file', 'line'))
+    todo = [(value[-1], key) for key, value in _info.items() if value[0] == 0]
 
     if sorted:
         todo.sort()
@@ -86,10 +88,10 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 
         # indent, cum_time, mod_time, name,
         # scope_name, frame_name, frame_lineno
-        out_file.write('%5.1f %5.1f %-40s @ %s:%d\n'
-            % (info[-1]*1000., mod_time*1000.,
-               ('+'*info[0] + cur[1]),
-               info[1], info[2]))
+        out_file.write(
+            '%5.1f %5.1f %-40s @ %s:%d\n' % (
+                info[-1] * 1000., mod_time * 1000.,
+                ('+' * info[0] + cur[1]), info[1], info[2]))
 
         if sorted:
             c_times.sort()
@@ -100,12 +102,13 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 
 _real_import = __import__
 
-def timed_import(name, globals=None, locals=None, fromlist=None, level=-1):
+def timed_import(name, globals=None, locals=None, fromlist=None, level=0):
     """Wrap around standard importer to log import time"""
     # normally there are 4, but if this is called as __import__ eg by
     # /usr/lib/python2.6/email/__init__.py then there may be only one
     # parameter
-    # level is only passed by python2.6
+    # level has different default between Python 2 and 3, but codebase
+    # uses `from __future__ import absolute_import` so can just use 0.
 
     if globals is None:
         # can't determine the scope name afaics; we could peek up the stack to
@@ -120,10 +123,6 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=-1):
         else:
             # Trim out paths before breezy
             loc = scope_name.find('breezy')
-            if loc != -1:
-                scope_name = scope_name[loc:]
-            # For stdlib, trim out early paths
-            loc = scope_name.find('python2.4')
             if loc != -1:
                 scope_name = scope_name[loc:]
 
@@ -152,14 +151,14 @@ def timed_import(name, globals=None, locals=None, fromlist=None, level=-1):
         # Do the import
         return _real_import(name, globals, locals, fromlist, level=level)
     finally:
-        tload = _timer()-tstart
+        tload = _timer() - tstart
         stack_finish(this, tload)
 
 
 def _repr_regexp(pattern, max_len=30):
     """Present regexp pattern for logging, truncating if over max_len."""
     if len(pattern) > max_len:
-        return repr(pattern[:max_len-3]) + "..."
+        return repr(pattern[:max_len - 3]) + "..."
     return repr(pattern)
 
 
@@ -180,7 +179,7 @@ def timed_compile(*args, **kwargs):
         frame = sys._getframe(5)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
-    this = stack_add(extra+_repr_regexp(args[0]), frame_name, frame_lineno)
+    this = stack_add(extra + _repr_regexp(args[0]), frame_name, frame_lineno)
 
     tstart = _timer()
     try:
@@ -203,4 +202,3 @@ def uninstall():
     """Remove the import and regex compile timing hooks."""
     __builtins__['__import__'] = _real_import
     re._compile = _real_compile
-

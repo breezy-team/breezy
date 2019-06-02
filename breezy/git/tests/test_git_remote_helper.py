@@ -23,19 +23,20 @@ from __future__ import absolute_import
 
 from io import BytesIO
 import os
+import subprocess
+import sys
 
 from dulwich.repo import Repo
 
 from ...tests import (
     TestCaseWithTransport,
-    TestSkipped,
     )
+from ...tests.features import PathFeature
 
 from ..object_store import get_object_store
 from ..git_remote_helper import (
     RemoteHelper,
     open_local_dir,
-    fastexporter,
     fetch,
     )
 
@@ -46,6 +47,11 @@ def map_to_git_sha1(dir, bzr_revid):
     object_store = get_object_store(dir.open_repository())
     with object_store.lock_read():
         return object_store._lookup_revision_sha1(bzr_revid)
+
+
+git_remote_bzr_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', 'git-remote-bzr'))
+git_remote_bzr_feature = PathFeature(git_remote_bzr_path)
 
 
 class OpenLocalDirTests(TestCaseWithTransport):
@@ -64,7 +70,8 @@ class FetchTests(TestCaseWithTransport):
 
     def setUp(self):
         super(FetchTests, self).setUp()
-        self.local_dir = self.make_branch_and_tree('local', format='git').controldir
+        self.local_dir = self.make_branch_and_tree(
+            'local', format='git').controldir
         self.remote_tree = self.make_branch_and_tree('remote')
         self.remote_dir = self.remote_tree.controldir
         self.shortname = 'bzr'
@@ -87,26 +94,49 @@ class FetchTests(TestCaseWithTransport):
         self.assertEqual(out, b"\n")
         r = Repo('local')
         self.assertTrue(git_sha1 in r.object_store)
-        self.assertEqual({
-            }, r.get_refs())
+        self.assertEqual({}, r.get_refs())
+
+
+class ExecuteRemoteHelperTests(TestCaseWithTransport):
+
+    def test_run(self):
+        self.requireFeature(git_remote_bzr_feature)
+        local_dir = self.make_branch_and_tree('local', format='git').controldir
+        local_path = local_dir.control_transport.local_abspath('.')
+        remote_tree = self.make_branch_and_tree('remote')
+        remote_dir = remote_tree.controldir
+        shortname = 'bzr'
+        env = dict(os.environ)
+        env['GIT_DIR'] = local_path
+        env['PYTHONPATH'] = ':'.join(sys.path)
+        p = subprocess.Popen(
+            [sys.executable, git_remote_bzr_path, local_path, remote_dir.user_url],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env=env)
+        (out, err) = p.communicate(b'capabilities\n')
+        lines = out.splitlines()
+        self.assertIn(b'push', lines, "no 'push' in %r, error: %r" % (lines, err))
+        self.assertEqual(b'', err)
 
 
 class RemoteHelperTests(TestCaseWithTransport):
 
     def setUp(self):
         super(RemoteHelperTests, self).setUp()
-        self.local_dir = self.make_branch_and_tree('local', format='git').controldir
+        self.local_dir = self.make_branch_and_tree(
+            'local', format='git').controldir
         self.remote_tree = self.make_branch_and_tree('remote')
         self.remote_dir = self.remote_tree.controldir
         self.shortname = 'bzr'
-        self.helper = RemoteHelper(self.local_dir, self.shortname, self.remote_dir)
+        self.helper = RemoteHelper(
+            self.local_dir, self.shortname, self.remote_dir)
 
     def test_capabilities(self):
         f = BytesIO()
         self.helper.cmd_capabilities(f, [])
         capabs = f.getvalue()
         base = b"fetch\noption\npush\n"
-        self.assertTrue(capabs in (base+b"\n", base+b"import\n\n"), capabs)
+        self.assertTrue(capabs in (base + b"\n", base + b"import\n\n"), capabs)
 
     def test_option(self):
         f = BytesIO()
@@ -125,10 +155,11 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.build_tree_contents([("remote/afile", b"somecontent")])
         self.remote_tree.add(["afile"])
         self.remote_tree.commit(b"A commit message", timestamp=1330445983,
-            timezone=0, committer=b'Somebody <jrandom@example.com>')
+                                timezone=0, committer=b'Somebody <jrandom@example.com>')
         f = BytesIO()
         self.helper.cmd_import(f, ["import", "refs/heads/master"])
         self.assertEqual(
+            b'reset refs/heads/master\n'
             b'commit refs/heads/master\n'
             b'mark :1\n'
             b'committer Somebody <jrandom@example.com> 1330445983 +0000\n'

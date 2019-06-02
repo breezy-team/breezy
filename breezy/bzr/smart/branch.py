@@ -70,7 +70,7 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
         # XXX: write a test for LockContention
         with branch.repository.lock_write(token=repo_token), \
                 branch.lock_write(token=branch_token):
-                return self.do_with_locked_branch(branch, *args)
+            return self.do_with_locked_branch(branch, *args)
 
 
 class SmartServerBranchBreakLock(SmartServerBranchRequest):
@@ -115,9 +115,9 @@ class SmartServerBranchPutConfigFile(SmartServerBranchRequest):
 
     def do_body(self, body_bytes):
         with self._branch.repository.lock_write(token=self._repo_token), \
-             self._branch.lock_write(token=self._branch_token):
-                self._branch.control_transport.put_bytes(
-                    'branch.conf', body_bytes)
+                self._branch.lock_write(token=self._branch_token):
+            self._branch.control_transport.put_bytes(
+                'branch.conf', body_bytes)
         return SuccessfulSmartServerResponse((b'ok', ))
 
 
@@ -143,7 +143,7 @@ class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
         SmartServerLockedBranchRequest.__init__(
             self, backing_transport, root_client_path, jail_root)
         self.locked = False
-        
+
     def do_with_locked_branch(self, branch):
         """Call _set_tags_bytes for a branch.
 
@@ -177,7 +177,7 @@ class SmartServerBranchHeadsToFetch(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
         """Return the heads-to-fetch for a Branch as two bencoded lists.
-        
+
         See Branch.heads_to_fetch.
 
         New in 2.4.
@@ -220,7 +220,7 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
         """
         revno, last_revision = branch.last_revision_info()
         return SuccessfulSmartServerResponse(
-                (b'ok', str(revno).encode('ascii'), last_revision))
+            (b'ok', str(revno).encode('ascii'), last_revision))
 
 
 class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
@@ -262,14 +262,14 @@ class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
         if not section:
             section = None
         branch._get_config().set_option(
-                value.decode('utf-8'), name.decode('utf-8'),
-                section.decode('utf-8') if section is not None else None)
+            value.decode('utf-8'), name.decode('utf-8'),
+            section.decode('utf-8') if section is not None else None)
         return SuccessfulSmartServerResponse(())
 
 
 class SmartServerBranchRequestSetConfigOptionDict(SmartServerLockedBranchRequest):
     """Set an option in the branch configuration.
-    
+
     New in 2.2.
     """
 
@@ -302,7 +302,7 @@ class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
 class SmartServerBranchRequestSetLastRevisionEx(SmartServerSetTipRequest):
 
     def do_tip_change_with_locked_branch(self, branch, new_last_revision_id,
-            allow_divergence, allow_overwrite_descendant):
+                                         allow_divergence, allow_overwrite_descendant):
         """Set the last revision of the branch.
 
         New in 1.6.
@@ -355,7 +355,7 @@ class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
     """
 
     def do_tip_change_with_locked_branch(self, branch, new_revno,
-            new_last_revision_id):
+                                         new_last_revision_id):
         try:
             branch.set_last_revision_info(int(new_revno), new_last_revision_id)
         except errors.NoSuchRevision:
@@ -366,7 +366,7 @@ class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
 
 class SmartServerBranchRequestSetParentLocation(SmartServerLockedBranchRequest):
     """Set the parent location for a branch.
-    
+
     Takes a location to set, which must be utf8 encoded.
     """
 
@@ -399,7 +399,7 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
             return FailedSmartServerResponse((b'UnlockableTransport',))
         except errors.LockFailed as e:
             return FailedSmartServerResponse((b'LockFailed',
-                str(e.lock).encode('utf-8'), str(e.why).encode('utf-8')))
+                                              str(e.lock).encode('utf-8'), str(e.why).encode('utf-8')))
         if repo_token is None:
             repo_token = b''
         else:

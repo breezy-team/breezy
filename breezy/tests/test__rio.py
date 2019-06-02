@@ -29,13 +29,13 @@ from ..sixish import (
 
 def load_tests(loader, standard_tests, pattern):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
-        'breezy._rio_py', 'breezy._rio_pyx')
+                                                 'breezy._rio_py', 'breezy._rio_pyx')
     return suite
 
 
 class TestValidTag(tests.TestCase):
 
-    module = None # Filled in by test parameterization
+    module = None  # Filled in by test parameterization
 
     def test_ok(self):
         self.assertTrue(self.module._valid_tag("foo"))
@@ -68,7 +68,7 @@ class TestValidTag(tests.TestCase):
 
 class TestReadUTF8Stanza(tests.TestCase):
 
-    module = None # Filled in by test parameterization
+    module = None  # Filled in by test parameterization
 
     def assertReadStanza(self, result, line_iter):
         s = self.module._read_stanza_utf8(line_iter)
@@ -115,16 +115,16 @@ class TestReadUTF8Stanza(tests.TestCase):
     def test_large(self):
         value = b"bla" * 9000
         self.assertReadStanza(rio.Stanza(foo=value),
-            [b"foo: %s\n" % value])
+                              [b"foo: %s\n" % value])
 
     def test_non_ascii_char(self):
         self.assertReadStanza(rio.Stanza(foo=u"n\xe5me"),
-            [u"foo: n\xe5me\n".encode("utf-8")])
+                              [u"foo: n\xe5me\n".encode("utf-8")])
 
 
 class TestReadUnicodeStanza(tests.TestCase):
 
-    module = None # Filled in by test parameterization
+    module = None  # Filled in by test parameterization
 
     def assertReadStanza(self, result, line_iter):
         s = self.module._read_stanza_unicode(line_iter)
@@ -151,8 +151,8 @@ class TestReadUnicodeStanza(tests.TestCase):
         self.assertReadStanza(rio.Stanza(foo="bar"), [u"foo: bar\n", u""])
 
     def test_multi_line(self):
-        self.assertReadStanza(rio.Stanza(foo="bar\nbla"), 
-                [u"foo: bar\n", u"\tbla\n"])
+        self.assertReadStanza(rio.Stanza(foo="bar\nbla"),
+                              [u"foo: bar\n", u"\tbla\n"])
 
     def test_repeated(self):
         s = rio.Stanza()
@@ -172,7 +172,7 @@ class TestReadUnicodeStanza(tests.TestCase):
     def test_large(self):
         value = u"bla" * 9000
         self.assertReadStanza(rio.Stanza(foo=value),
-            [u"foo: %s\n" % value])
+                              [u"foo: %s\n" % value])
 
     def test_non_ascii_char(self):
         self.assertReadStanza(rio.Stanza(foo=u"n\xe5me"), [u"foo: n\xe5me\n"])

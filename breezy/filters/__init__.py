@@ -100,7 +100,7 @@ class ContentFilterContext(object):
         if self._revision_id is None:
             if self._tree is not None:
                 self._revision_id = self._tree.get_file_revision(
-                        self._relpath)
+                    self._relpath)
         return self._revision_id
 
     def revision(self):

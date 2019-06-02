@@ -30,7 +30,6 @@ from dulwich.repo import (
     )
 
 import os
-import urllib
 
 from ... import (
     errors,
@@ -113,11 +112,13 @@ class TestGitBranch(tests.TestCaseInTempDir):
         reva = self.simple_commit_a()
         self.build_tree(['b'])
         r = GitRepo(".")
+        self.addCleanup(r.close)
         r.stage("b")
         revb = r.do_commit(b"b", committer=b"Somebody <foo@example.com>")
 
         thebranch = Branch.open('.')
-        self.assertEqual((2, default_mapping.revision_id_foreign_to_bzr(revb)), thebranch.last_revision_info())
+        self.assertEqual((2, default_mapping.revision_id_foreign_to_bzr(
+            revb)), thebranch.last_revision_info())
 
     def test_tag_annotated(self):
         reva = self.simple_commit_a()
@@ -129,20 +130,21 @@ class TestGitBranch(tests.TestCaseInTempDir):
         o.tag_timezone = 0
         o.tag_time = 42
         r = GitRepo(".")
+        self.addCleanup(r.close)
         r.object_store.add_object(o)
         r[b'refs/tags/foo'] = o.id
         thebranch = Branch.open('.')
         self.assertEqual({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
-                          thebranch.tags.get_tag_dict())
+                         thebranch.tags.get_tag_dict())
 
     def test_tag(self):
         reva = self.simple_commit_a()
         r = GitRepo(".")
+        self.addCleanup(r.close)
         r.refs[b"refs/tags/foo"] = reva
         thebranch = Branch.open('.')
         self.assertEqual({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
-                          thebranch.tags.get_tag_dict())
-
+                         thebranch.tags.get_tag_dict())
 
 
 class TestWithGitBranch(tests.TestCaseWithTransport):
@@ -158,7 +160,7 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
 
     def test_get_stacked_on_url(self):
         self.assertRaises(UnstackableBranchFormat,
-            self.git_branch.get_stacked_on_url)
+                          self.git_branch.get_stacked_on_url)
 
     def test_get_physical_lock_status(self):
         self.assertFalse(self.git_branch.get_physical_lock_status())
@@ -171,7 +173,8 @@ class TestLocalGitBranchFormat(tests.TestCase):
         self.format = branch.LocalGitBranchFormat()
 
     def test_get_format_description(self):
-        self.assertEqual("Local Git Branch", self.format.get_format_description())
+        self.assertEqual("Local Git Branch",
+                         self.format.get_format_description())
 
     def test_get_network_name(self):
         self.assertEqual(b"git", self.format.network_name())
@@ -221,12 +224,26 @@ class BranchTests(tests.TestCaseInTempDir):
     def test_sprouted_tags(self):
         path, gitsha = self.make_onerev_branch()
         r = GitRepo(path)
+        self.addCleanup(r.close)
         r.refs[b"refs/tags/lala"] = r.head()
         oldrepo = Repository.open(path)
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         newbranch = self.clone_git_branch(path, "f")
         self.assertEqual({"lala": revid}, newbranch.tags.get_tag_dict())
         self.assertEqual([revid], newbranch.repository.all_revision_ids())
+
+    def test_sprouted_ghost_tags(self):
+        path, gitsha = self.make_onerev_branch()
+        r = GitRepo(path)
+        self.addCleanup(r.close)
+        r.refs[b"refs/tags/lala"] = b"aa" * 20
+        oldrepo = Repository.open(path)
+        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
+        warnings, newbranch = self.callCatchWarnings(
+            self.clone_git_branch, path, "f")
+        self.assertEqual({}, newbranch.tags.get_tag_dict())
+        # Dulwich raises a UserWarning for tags with invalid target
+        self.assertIn(('ref refs/tags/lala points at non-present sha ' + ("aa" * 20), ), [w.args for w in warnings])
 
     def test_interbranch_pull(self):
         path, (gitsha1, gitsha2) = self.make_tworev_branch()
@@ -260,6 +277,7 @@ class BranchTests(tests.TestCaseInTempDir):
     def test_interbranch_pull_with_tags(self):
         path, (gitsha1, gitsha2) = self.make_tworev_branch()
         gitrepo = GitRepo(path)
+        self.addCleanup(gitrepo.close)
         gitrepo.refs[b"refs/tags/sometag"] = gitsha2
         oldrepo = Repository.open(path)
         revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
@@ -271,6 +289,19 @@ class BranchTests(tests.TestCaseInTempDir):
         inter_branch.pull(stop_revision=revid1)
         self.assertEqual(revid1, newbranch.last_revision())
         self.assertTrue(newbranch.repository.has_revision(revid2))
+
+    def test_bzr_branch_bound_to_git(self):
+        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        wt = Branch.open(path).create_checkout('co')
+        self.build_tree_contents([('co/foobar', b'blah')])
+        self.assertRaises(
+            errors.NoRoundtrippingSupport, wt.commit,
+            'commit from bound branch.')
+        revid = wt.commit('commit from bound branch.', lossy=True)
+        self.assertEqual(revid, wt.branch.last_revision())
+        self.assertEqual(
+            revid,
+            wt.branch.get_master_branch().last_revision())
 
 
 class ForeignTestsBranchFactory(object):

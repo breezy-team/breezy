@@ -101,7 +101,8 @@ class ChunkWriter(object):
         :param chunk_size: The total byte count to emit at the end of the
             chunk.
         :param reserved: How many bytes to allow for reserved data. reserved
-            data space can only be written to via the write(..., reserved=True).
+            data space can only be written to via the write(...,
+            reserved=True).
         """
         self.chunk_size = chunk_size
         self.compressor = zlib.compressobj()
@@ -133,7 +134,7 @@ class ChunkWriter(object):
               could not fit.
             * num_nulls_needed: How many nulls are padded at the end
         """
-        self.bytes_in = None # Free the data cached so far, we don't need it
+        self.bytes_in = None  # Free the data cached so far, we don't need it
         out = self.compressor.flush(Z_FINISH)
         self.bytes_list.append(out)
         self.bytes_out_len += len(out)
@@ -275,4 +276,3 @@ class ChunkWriter(object):
                     self.bytes_list = bytes_out
                     self.bytes_out_len = this_len
         return False
-

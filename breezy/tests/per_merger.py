@@ -31,7 +31,6 @@ from .test_merge_core import MergeBuilder
 from ..transform import TreeTransform
 
 
-
 def load_tests(loader, standard_tests, pattern):
     """Multiply tests for tranport implementations."""
     result = loader.suiteClass()
@@ -47,7 +46,7 @@ class TestMergeImplementation(TestCaseWithTransport):
         merger = _mod_merge.Merger.from_revision_ids(
             target_tree, source_tree.last_revision(),
             other_branch=source_tree.branch)
-        merger.merge_type=self.merge_type
+        merger.merge_type = self.merge_type
         for name, value in kwargs.items():
             setattr(merger, name, value)
         merger.do_merge()
@@ -127,36 +126,37 @@ class TestMergeImplementation(TestCaseWithTransport):
         builder = self.make_branch_builder('test')
         builder.start_series()
         builder.build_snapshot(None,
-            [('add', ('', None, 'directory', None)),
-             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
-            ], revision_id=b'BASE-id')
+                               [('add', ('', None, 'directory', None)),
+                                ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
+                                ], revision_id=b'BASE-id')
         # Delete 'b\n'
         builder.build_snapshot([b'BASE-id'],
-            [('modify', ('foo', b'a\nc\nd\ne\n'))],
-            revision_id=b'OTHER-id')
+                               [('modify', ('foo', b'a\nc\nd\ne\n'))],
+                               revision_id=b'OTHER-id')
         # Modify 'b\n', add 'X\n'
         builder.build_snapshot([b'BASE-id'],
-            [('modify', ('foo', b'a\nb2\nc\nd\nX\ne\n'))],
-            revision_id=b'THIS-id')
+                               [('modify', ('foo', b'a\nb2\nc\nd\nX\ne\n'))],
+                               revision_id=b'THIS-id')
         builder.finish_series()
         branch = builder.get_branch()
         this_tree = branch.controldir.create_workingtree()
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
-        other_tree = this_tree.controldir.sprout('other', b'OTHER-id').open_workingtree()
+        other_tree = this_tree.controldir.sprout(
+            'other', b'OTHER-id').open_workingtree()
         self.do_merge(this_tree, other_tree)
         if self.merge_type is _mod_merge.LCAMerger:
             self.expectFailure("lca merge doesn't track deleted lines",
-                self.assertFileEqual,
-                    'a\n'
-                    '<<<<<<< TREE\n'
-                    'b2\n'
-                    '=======\n'
-                    '>>>>>>> MERGE-SOURCE\n'
-                    'c\n'
-                    'd\n'
-                    'X\n'
-                    'e\n', 'test/foo')
+                               self.assertFileEqual,
+                               'a\n'
+                               '<<<<<<< TREE\n'
+                               'b2\n'
+                               '=======\n'
+                               '>>>>>>> MERGE-SOURCE\n'
+                               'c\n'
+                               'd\n'
+                               'X\n'
+                               'e\n', 'test/foo')
         else:
             self.assertFileEqual(
                 b'a\n'
@@ -179,13 +179,13 @@ class TestMergeImplementation(TestCaseWithTransport):
     def test_merge_with_existing_limbo_empty(self):
         """Empty limbo dir is just cleaned up - see bug 427773"""
         wt = self.make_branch_and_tree('this')
-        (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
+        (limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
         os.mkdir(limbodir)
         self.do_merge(wt, wt)
 
     def test_merge_with_existing_limbo_non_empty(self):
         wt = self.make_branch_and_tree('this')
-        (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
+        (limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
         os.mkdir(limbodir)
         os.mkdir(os.path.join(limbodir, 'something'))
         self.assertRaises(errors.ExistingLimbo, self.do_merge, wt, wt)
@@ -193,17 +193,18 @@ class TestMergeImplementation(TestCaseWithTransport):
 
     def test_merge_with_pending_deletion_empty(self):
         wt = self.make_branch_and_tree('this')
-        (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
+        (limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
         os.mkdir(deletiondir)
         self.do_merge(wt, wt)
 
     def test_merge_with_pending_deletion_non_empty(self):
         """Also see bug 427773"""
         wt = self.make_branch_and_tree('this')
-        (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
+        (limbodir, deletiondir) = self.get_limbodir_deletiondir(wt)
         os.mkdir(deletiondir)
         os.mkdir(os.path.join(deletiondir, 'something'))
-        self.assertRaises(errors.ExistingPendingDeletion, self.do_merge, wt, wt)
+        self.assertRaises(errors.ExistingPendingDeletion,
+                          self.do_merge, wt, wt)
         self.assertRaises(errors.LockError, wt.unlock)
 
 
@@ -224,11 +225,13 @@ class TestHookMergeFileContent(TestCaseWithTransport):
 
     def install_hook_noop(self):
         test = self
+
         class HookNA(_mod_merge.AbstractPerFileMerger):
             def merge_contents(self, merge_params):
                 # This hook unconditionally does nothing.
                 test.hook_log.append(('no-op',))
                 return 'not_applicable', None
+
         def hook_na_factory(merger):
             return HookNA(merger)
         _mod_merge.Merger.hooks.install_named_hook(
@@ -236,12 +239,14 @@ class TestHookMergeFileContent(TestCaseWithTransport):
 
     def install_hook_success(self):
         test = self
+
         class HookSuccess(_mod_merge.AbstractPerFileMerger):
             def merge_contents(self, merge_params):
                 test.hook_log.append(('success',))
                 if merge_params.file_id == b'1':
                     return 'success', [b'text-merged-by-hook']
                 return 'not_applicable', None
+
         def hook_success_factory(merger):
             return HookSuccess(merger)
         _mod_merge.Merger.hooks.install_named_hook(
@@ -249,13 +254,15 @@ class TestHookMergeFileContent(TestCaseWithTransport):
 
     def install_hook_conflict(self):
         test = self
+
         class HookConflict(_mod_merge.AbstractPerFileMerger):
             def merge_contents(self, merge_params):
                 test.hook_log.append(('conflict',))
                 if merge_params.file_id == b'1':
                     return ('conflicted',
-                        [b'text-with-conflict-markers-from-hook'])
+                            [b'text-with-conflict-markers-from-hook'])
                 return 'not_applicable', None
+
         def hook_conflict_factory(merger):
             return HookConflict(merger)
         _mod_merge.Merger.hooks.install_named_hook(
@@ -263,12 +270,14 @@ class TestHookMergeFileContent(TestCaseWithTransport):
 
     def install_hook_delete(self):
         test = self
+
         class HookDelete(_mod_merge.AbstractPerFileMerger):
             def merge_contents(self, merge_params):
                 test.hook_log.append(('delete',))
                 if merge_params.file_id == b'1':
                     return 'delete', None
                 return 'not_applicable', None
+
         def hook_delete_factory(merger):
             return HookDelete(merger)
         _mod_merge.Merger.hooks.install_named_hook(
@@ -279,6 +288,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         versions of the file.
         """
         test = self
+
         class HookLogLines(_mod_merge.AbstractPerFileMerger):
             def merge_contents(self, merge_params):
                 test.hook_log.append((
@@ -288,6 +298,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
                     merge_params.base_lines,
                     ))
                 return 'not_applicable', None
+
         def hook_log_lines_factory(merger):
             return HookLogLines(merger)
         _mod_merge.Merger.hooks.install_named_hook(
@@ -415,4 +426,3 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         self.create_file_needing_contents_merge(builder, b"1")
         conflicts = builder.merge(self.merge_type)
         self.assertEqual([('delete',)], self.hook_log)
-

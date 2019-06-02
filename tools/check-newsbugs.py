@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Simple script that will check which bugs mentioned in NEWS 
+# Simple script that will check which bugs mentioned in NEWS
 # are not yet marked Fix Released in Launchpad
 
 import getopt, re, sys
@@ -20,8 +20,8 @@ options, args = getopt.gnu_getopt(sys.argv, "lw", ["launchpad", 'webbrowser'])
 options = dict(options)
 
 if len(args) == 1:
-    print ("Usage: check-newsbugs [--launchpad][--webbrowser] "
-           "doc/en/release-notes/brz-x.y.txt")
+    print("Usage: check-newsbugs [--launchpad][--webbrowser] "
+          "doc/en/release-notes/brz-x.y.txt")
     print("Options:")
     print("--launchpad     Print out Launchpad mail commands for closing bugs ")
     print("                that are already fixed.")

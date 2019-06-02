@@ -29,7 +29,8 @@ class Path2IdTests(TestCaseWithTree):
         if not work_a.supports_setting_file_ids():
             self.skipTest("working tree does not support setting file ids")
         self.build_tree(['wta/bla', 'wta/dir/', 'wta/dir/file'])
-        work_a.add(['bla', 'dir', 'dir/file'], [b'bla-id', b'dir-id', b'file-id'])
+        work_a.add(['bla', 'dir', 'dir/file'],
+                   [b'bla-id', b'dir-id', b'file-id'])
         work_a.commit('add files')
         self.tree_a = self.workingtree_to_test_tree(work_a)
 
@@ -53,6 +54,7 @@ class Path2IdTests(TestCaseWithTree):
         self.assertEqual('dir', self.tree_a.id2path(b'dir-id'))
         self.assertEqual('dir/file', self.tree_a.id2path(b'file-id'))
         self.assertRaises(errors.NoSuchId, self.tree_a.id2path, b'nonexistant')
+
 
 class Path2IdsTests(TestCaseWithTree):
 
@@ -82,4 +84,4 @@ class Path2IdsTests(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(set([]), tree.paths2ids(['file'],
-                         require_versioned=False))
+                                                 require_versioned=False))

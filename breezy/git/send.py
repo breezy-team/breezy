@@ -18,12 +18,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Support in "bzr send" for git-am style patches."""
+"""Support in "brz send" for git-am style patches."""
 
 from __future__ import absolute_import
 
 import time
-from .. import __version__ as bzr_version
+from .. import __version__ as brz_version
 from .. import (
     branch as _mod_branch,
     diff as _mod_diff,
@@ -34,9 +34,6 @@ from .. import (
 
 from ..merge_directive import BaseMergeDirective
 
-from . import (
-    version_info as bzr_git_version_info,
-    )
 from .mapping import (
     object_mode,
     )
@@ -53,8 +50,8 @@ from dulwich.objects import (
     )
 
 
-version_tail = "bzr %s, bzr-git %d.%d.%d, dulwich %d.%d.%d" % (
-    (bzr_version, ) + bzr_git_version_info[:3] + dulwich_version[:3])
+version_tail = "Breezy %s, dulwich %d.%d.%d" % (
+    (brz_version, ) + dulwich_version[:3])
 
 
 class GitDiffTree(_mod_diff.DiffTree):
@@ -62,17 +59,20 @@ class GitDiffTree(_mod_diff.DiffTree):
 
     def _show_diff(self, specific_files, extra_trees):
         from dulwich.patch import write_blob_diff
-        iterator = self.new_tree.iter_changes(self.old_tree,
-            specific_files=specific_files, extra_trees=extra_trees,
-            require_versioned=True)
+        iterator = self.new_tree.iter_changes(
+            self.old_tree, specific_files=specific_files,
+            extra_trees=extra_trees, require_versioned=True)
         has_changes = 0
+
         def get_encoded_path(path):
             if path is not None:
                 return path.encode(self.path_encoding, "replace")
+
         def get_file_mode(tree, path, kind, executable):
             if path is None:
                 return 0
             return object_mode(kind, executable)
+
         def get_blob(present, tree, path):
             if present:
                 with tree.get_file(path) as f:
@@ -100,8 +100,8 @@ class GitDiffTree(_mod_diff.DiffTree):
                     get_file_mode(trees[1], path_encoded[1],
                                   kind[1], executable[1]))
             write_blob_diff(self.to_file,
-                (path_encoded[0], mode[0], contents[0]),
-                (path_encoded[1], mode[1], contents[1]))
+                            (path_encoded[0], mode[0], contents[0]),
+                            (path_encoded[1], mode[1], contents[1]))
             has_changes |= (changed_content or renamed)
         return has_changes
 
@@ -117,11 +117,10 @@ class GitMergeDirective(BaseMergeDirective):
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, source_branch=None, message=None,
                  patches=None, local_target_branch=None):
-        super(GitMergeDirective, self).__init__(revision_id=revision_id,
-            testament_sha1=testament_sha1, time=time, timezone=timezone,
-            target_branch=target_branch, patch=None,
-            source_branch=source_branch, message=message,
-            bundle=None)
+        super(GitMergeDirective, self).__init__(
+            revision_id=revision_id, testament_sha1=testament_sha1, time=time,
+            timezone=timezone, target_branch=target_branch, patch=None,
+            source_branch=source_branch, message=message, bundle=None)
         self.patches = patches
 
     def to_lines(self):
@@ -144,8 +143,8 @@ class GitMergeDirective(BaseMergeDirective):
         tree_1 = repository.revision_tree(lhs_parent)
         tree_2 = repository.revision_tree(revision_id)
         contents = BytesIO()
-        differ = GitDiffTree.from_trees_options(tree_1, tree_2,
-                contents, 'utf8', None, 'a/', 'b/', None)
+        differ = GitDiffTree.from_trees_options(
+            tree_1, tree_2, contents, 'utf8', None, 'a/', 'b/', None)
         differ.show_diff(None, None)
         write_commit_patch(s, commit, contents.getvalue(), (num, total),
                            version_tail)
@@ -165,18 +164,21 @@ class GitMergeDirective(BaseMergeDirective):
             todo = graph.find_difference(submit_revision_id, revision_id)[1]
             total = len(todo)
             for i, revid in enumerate(graph.iter_topo_order(todo)):
-                patches.append(cls._generate_commit(repository, revid, i+1,
-                    total))
+                patches.append(cls._generate_commit(repository, revid, i + 1,
+                                                    total))
         return cls(revision_id, None, time, timezone,
-            target_branch=target_branch, source_branch=public_branch,
-            message=message, patches=patches)
+                   target_branch=target_branch, source_branch=public_branch,
+                   message=message, patches=patches)
 
 
-def send_git(branch, revision_id, submit_branch, public_branch, no_patch, no_bundle, message, base_revision_id, local_target_branch=None):
+def send_git(branch, revision_id, submit_branch, public_branch, no_patch,
+             no_bundle, message, base_revision_id, local_target_branch=None):
     if no_patch:
-        raise errors.BzrCommandError("no patch not supported for git-am style patches")
+        raise errors.BzrCommandError(
+            "no patch not supported for git-am style patches")
     if no_bundle:
-        raise errors.BzrCommandError("no bundle not supported for git-am style patches")
+        raise errors.BzrCommandError(
+            "no bundle not supported for git-am style patches")
     return GitMergeDirective.from_objects(
         branch.repository, revision_id, time.time(),
         osutils.local_time_offset(), submit_branch,

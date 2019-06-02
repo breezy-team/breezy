@@ -50,13 +50,13 @@ class TestCommitTemplate(TestCaseWithTransport):
         return message
 
     def enable_commitfromnews(self):
-        stack= config.GlobalStack()
+        stack = config.GlobalStack()
         stack.set("commit.template_from_files", ["NEWS"])
 
     def setup_capture(self):
         commitfromnews.register()
         msgeditor.hooks.install_named_hook('commit_message_template',
-            self.capture_template, 'commitfromnews test template')
+                                           self.capture_template, 'commitfromnews test template')
         self.messages = []
         self.commits = []
 
@@ -66,11 +66,11 @@ class TestCommitTemplate(TestCaseWithTransport):
         builder = self.make_branch_builder('test')
         builder.start_series()
         builder.build_snapshot(None,
-            [('add', ('', None, 'directory', None)),
-             ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
-             ],
-            message_callback=msgeditor.generate_commit_message_template,
-            revision_id=b'BASE-id')
+                               [('add', ('', None, 'directory', None)),
+                                ('add', ('foo', b'foo-id', 'file', b'a\nb\nc\nd\ne\n')),
+                                ],
+                               message_callback=msgeditor.generate_commit_message_template,
+                               revision_id=b'BASE-id')
         builder.finish_series()
         self.assertEqual([None], self.messages)
 
@@ -81,11 +81,11 @@ class TestCommitTemplate(TestCaseWithTransport):
         builder.start_series()
         content = INITIAL_NEWS_CONTENT
         builder.build_snapshot(None,
-            [('add', ('', None, 'directory', None)),
-             ('add', ('NEWS', b'foo-id', 'file', content)),
-             ],
-            message_callback=msgeditor.generate_commit_message_template,
-            revision_id=b'BASE-id')
+                               [('add', ('', None, 'directory', None)),
+                                ('add', ('NEWS', b'foo-id', 'file', content)),
+                                ],
+                               message_callback=msgeditor.generate_commit_message_template,
+                               revision_id=b'BASE-id')
         builder.finish_series()
         self.assertEqual([content.decode('utf-8')], self.messages)
 
@@ -114,13 +114,13 @@ IMPROVEMENTS
 
 """
         builder.build_snapshot(None,
-            [('add', ('', None, 'directory', None)),
-             ('add', ('NEWS', b'foo-id', 'file', orig_content)),
-             ], revision_id=b'BASE-id')
+                               [('add', ('', None, 'directory', None)),
+                                ('add', ('NEWS', b'foo-id', 'file', orig_content)),
+                                ], revision_id=b'BASE-id')
         builder.build_snapshot(None,
-            [('modify', ('NEWS', mod_content)),
-             ],
-            message_callback=msgeditor.generate_commit_message_template)
+                               [('modify', ('NEWS', mod_content)),
+                                ],
+                               message_callback=msgeditor.generate_commit_message_template)
         builder.finish_series()
         self.assertEqual([change_content], self.messages)
 
@@ -151,13 +151,13 @@ IMPROVEMENTS
 
 """
         builder.build_snapshot(None,
-            [('add', ('', None, 'directory', None)),
-             ('add', ('NEWS', b'foo-id', 'file', orig_content)),
-             ], revision_id=b'BASE-id')
+                               [('add', ('', None, 'directory', None)),
+                                ('add', ('NEWS', b'foo-id', 'file', orig_content)),
+                                ], revision_id=b'BASE-id')
         builder.build_snapshot(None,
-            [('modify', ('NEWS', mod_content)),
-             ],
-            message_callback=msgeditor.generate_commit_message_template)
+                               [('modify', ('NEWS', mod_content)),
+                                ],
+                               message_callback=msgeditor.generate_commit_message_template)
         builder.finish_series()
         self.assertEqual([change_content], self.messages)
         self.assertEqual(1, len(self.commits))

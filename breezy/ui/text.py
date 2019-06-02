@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 import codecs
+import io
 import os
 import sys
 import warnings
@@ -67,7 +68,7 @@ class _ChooseUI(object):
         """
         is_tty = self.ui.raw_stdin.isatty()
         if (os.environ.get('BRZ_TEXTUI_INPUT') != 'line-based' and
-                self.ui.raw_stdin == sys.stdin and is_tty):
+                self.ui.raw_stdin == _unwrap_stream(sys.stdin) and is_tty):
             self.line_based = False
             self.echo_back = True
         else:
@@ -123,9 +124,9 @@ class _ChooseUI(object):
 
     def _getchar(self):
         char = osutils.getchar()
-        if char == chr(3): # INTR
+        if char == chr(3):  # INTR
             raise KeyboardInterrupt
-        if char == chr(4): # EOF (^d, C-d)
+        if char == chr(4):  # EOF (^d, C-d)
             raise EOFError
         if isinstance(char, bytes):
             return char.decode('ascii', 'replace')
@@ -302,10 +303,10 @@ class TextUIFactory(UIFactory):
         if self.is_quiet():
             return NullProgressView()
         pb_type = config.GlobalStack().get('progress_bar')
-        if pb_type == 'none': # Explicit requirement
+        if pb_type == 'none':  # Explicit requirement
             return NullProgressView()
-        if (pb_type == 'text' # Explicit requirement
-            or progress._supports_progress(self.stderr)): # Guess
+        if (pb_type == 'text' or # Explicit requirement
+                progress._supports_progress(self.stderr)):  # Guess
             return TextProgressView(self.stderr)
         # No explicit requirement and no successful guess
         return NullProgressView()
@@ -332,6 +333,7 @@ class TextUIFactory(UIFactory):
         self.clear_term()
         self.stdout.flush()
         self.stderr.write(prompt)
+        self.stderr.flush()
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
@@ -340,7 +342,7 @@ class TextUIFactory(UIFactory):
         By default it does nothing.
         """
         self._progress_view.show_transport_activity(transport,
-            direction, byte_count)
+                                                    direction, byte_count)
 
     def log_transport_activity(self, display=False):
         """See UIFactory.log_transport_activity()"""
@@ -364,12 +366,12 @@ class TextUIFactory(UIFactory):
         """
         if not self._task_stack:
             warnings.warn("%r updated but no tasks are active" %
-                (task,))
+                          (task,))
         elif task != self._task_stack[-1]:
             # We used to check it was the top task, but it's hard to always
             # get this right and it's not necessarily useful: any actual
             # problems will be evident in use
-            #warnings.warn("%r is not the top progress task %r" %
+            # warnings.warn("%r is not the top progress task %r" %
             #     (task, self._task_stack[-1]))
             pass
         self._progress_view.show_progress(task)
@@ -461,13 +463,13 @@ class TextProgressView(object):
     def _render_bar(self):
         # return a string for the progress bar itself
         if self.enable_bar and (
-            (self._last_task is None) or self._last_task.show_bar):
+                (self._last_task is None) or self._last_task.show_bar):
             # If there's no task object, we show space for the bar anyhow.
             # That's because most invocations of bzr will end showing progress
             # at some point, though perhaps only after doing some initial IO.
             # It looks better to draw the progress bar initially rather than
             # to have what looks like an incomplete progress bar.
-            spin_str =  r'/-\|'[self._spin_pos % 4]
+            spin_str = r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
             cols = 20
             if self._last_task is None:
@@ -477,7 +479,7 @@ class TextProgressView(object):
                 completion_fraction = \
                     self._last_task._overall_completion_fraction() or 0
             if (completion_fraction < self._fraction and 'progress' in
-                debug.debug_flags):
+                    debug.debug_flags):
                 debug.set_trace()
             self._fraction = completion_fraction
             markers = int(round(float(cols) * completion_fraction)) - 1
@@ -485,7 +487,7 @@ class TextProgressView(object):
             return bar_str
         elif (self._last_task is None) or self._last_task.show_spinner:
             # The last task wanted just a spinner, no bar
-            spin_str =  r'/-\|'[self._spin_pos % 4]
+            spin_str = r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
             return spin_str + ' '
         else:
@@ -533,11 +535,12 @@ class TextProgressView(object):
         avail_width = self._avail_width()
         if avail_width is not None:
             # if terminal avail_width is unknown, don't truncate
-            current_len = len(bar_string) + len(trans) + len(task_part) + len(counter_part)
+            current_len = len(bar_string) + len(trans) + \
+                len(task_part) + len(counter_part)
             # GZ 2017-04-22: Should measure and truncate task_part properly
             gap = current_len - avail_width
             if gap > 0:
-                task_part = task_part[:-gap-2] + '..'
+                task_part = task_part[:-gap - 2] + '..'
         s = trans + bar_string + task_part + counter_part
         if avail_width is not None:
             if len(s) < avail_width:
@@ -603,11 +606,11 @@ class TextProgressView(object):
         elif now >= (self._transport_update_time + 0.5):
             # guard against clock stepping backwards, and don't update too
             # often
-            rate = (self._bytes_since_update
-                    / (now - self._transport_update_time))
+            rate = (self._bytes_since_update /
+                    (now - self._transport_update_time))
             # using base-10 units (see HACKING.txt).
             msg = ("%6dkB %5dkB/s " %
-                    (self._total_byte_count / 1000, int(rate) / 1000,))
+                   (self._total_byte_count / 1000, int(rate) / 1000,))
             self._transport_update_time = now
             self._last_repaint = now
             self._bytes_since_update = 0
@@ -630,7 +633,7 @@ class TextProgressView(object):
                   bps / 1000.,
                   self._bytes_by_direction['read'] / 1000.,
                   self._bytes_by_direction['write'] / 1000.,
-                 ))
+                  ))
         if self._bytes_by_direction['unknown'] > 0:
             msg += ' u:%.0fkB)' % (
                 self._bytes_by_direction['unknown'] / 1000.
@@ -666,9 +669,16 @@ def _unwrap_stream(stream):
 def _wrap_in_stream(stream, encoding=None, errors='replace'):
     if encoding is None:
         encoding = _get_stream_encoding(stream)
-    encoded_stream = codecs.getreader(encoding)(stream, errors=errors)
-    encoded_stream.encoding = encoding
-    return encoded_stream
+    # Attempt to wrap using io.open if possible, since that can do
+    # line-buffering.
+    try:
+        fileno = stream.fileno()
+    except io.UnsupportedOperation:
+        encoded_stream = codecs.getreader(encoding)(stream, errors=errors)
+        encoded_stream.encoding = encoding
+        return encoded_stream
+    else:
+        return io.open(fileno, encoding=encoding, errors=errors, mode='r', buffering=1)
 
 
 def _wrap_out_stream(stream, encoding=None, errors='replace'):

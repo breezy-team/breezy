@@ -33,7 +33,6 @@ from ..mapping import (
     BzrGitMappingExperimental,
     BzrGitMappingv1,
     )
-from ..errors import NoPushSupport
 from ..interrepo import (
     InterToGitRepository,
     )
@@ -44,7 +43,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
     def setUp(self):
         super(InterToGitRepositoryTests, self).setUp()
         self.git_repo = self.make_repository("git",
-                format=format_registry.make_controldir("git"))
+                                             format=format_registry.make_controldir("git"))
         self.bzr_repo = self.make_repository("bzr", shared=True)
 
     def _get_interrepo(self, mapping=None):
@@ -64,13 +63,17 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
 
     def test_pointless_fetch_refs(self):
         interrepo = self._get_interrepo(mapping=BzrGitMappingExperimental())
-        revidmap, old_refs, new_refs = interrepo.fetch_refs(lambda x: {}, lossy=False)
-        self.assertEqual(old_refs, {b'HEAD': (b'ref: refs/heads/master', None)})
+        revidmap, old_refs, new_refs = interrepo.fetch_refs(
+            lambda x: {}, lossy=False)
+        self.assertEqual(old_refs, {b'HEAD': (
+            b'ref: refs/heads/master', None)})
         self.assertEqual(new_refs, {})
 
     def test_pointless_lossy_fetch_refs(self):
-        revidmap, old_refs, new_refs = self._get_interrepo().fetch_refs(lambda x: {}, lossy=True)
-        self.assertEqual(old_refs, {b'HEAD': (b'ref: refs/heads/master', None)})
+        revidmap, old_refs, new_refs = self._get_interrepo(
+        ).fetch_refs(lambda x: {}, lossy=True)
+        self.assertEqual(old_refs, {b'HEAD': (
+            b'ref: refs/heads/master', None)})
         self.assertEqual(new_refs, {})
         self.assertEqual(revidmap, {})
 
@@ -85,7 +88,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         interrepo.source_store.lock_read()
         self.addCleanup(interrepo.source_store.unlock)
         self.assertEqual([],
-                list(interrepo.missing_revisions([(None, b"unknown")])))
+                         list(interrepo.missing_revisions([(None, b"unknown")])))
 
     def test_odd_rename(self):
         # Add initial revision to bzr branch.
@@ -103,7 +106,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
 
         # Push bzr branch to git branch.
         def decide(x):
-            return { b"refs/heads/master": (None, last_revid) }
+            return {b"refs/heads/master": (None, last_revid)}
         interrepo = self._get_interrepo()
         revidmap, old_refs, new_refs = interrepo.fetch_refs(decide, lossy=True)
         gitid = revidmap[last_revid][0]

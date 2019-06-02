@@ -127,7 +127,7 @@ class TestMergeCoreLogic(tests.TestCase):
         def guess_edits(new, deleted):
             #import pdb; pdb.set_trace()
             return changelog_merge.default_guess_edits(new, deleted,
-                    entry_as_str=lambda x: x)
+                                                       entry_as_str=lambda x: x)
         result_entries = changelog_merge.merge_entries(
             sample2_base_entries, sample2_this_entries, sample2_other_entries,
             guess_edits=guess_edits)
@@ -147,14 +147,14 @@ class TestMergeCoreLogic(tests.TestCase):
         # resolve.  (Ideally perhaps we'd generate a nice conflict file, but
         # for now we just give up.)
         self.assertRaises(changelog_merge.EntryConflict,
-            changelog_merge.merge_entries,
-            [(entry, ) for entry in sample2_base_entries],
-            [],
-            [(entry, ) for entry in sample2_other_entries])
+                          changelog_merge.merge_entries,
+                          [(entry, ) for entry in sample2_base_entries],
+                          [],
+                          [(entry, ) for entry in sample2_other_entries])
 
     def test_default_guess_edits(self):
         """default_guess_edits matches a new entry only once.
-        
+
         (Even when that entry is the best match for multiple old entries.)
         """
         new_in_other = [(b'AAAAA',), (b'BBBBB',)]
@@ -163,15 +163,15 @@ class TestMergeCoreLogic(tests.TestCase):
         result = changelog_merge.default_guess_edits(
             new_in_other, deleted_in_other)
         self.assertEqual(
-            ([(b'AAAAA',)], # new
-             [(b'DDDDD',), (b'BBBBBxx',)], # deleted
-             [((b'BBBBBx',), (b'BBBBB',))]), # edits
+            ([(b'AAAAA',)],  # new
+             [(b'DDDDD',), (b'BBBBBxx',)],  # deleted
+             [((b'BBBBBx',), (b'BBBBB',))]),  # edits
             result)
 
 
 class TestChangeLogMerger(tests.TestCaseWithTransport):
     """Tests for ChangeLogMerger class.
-    
+
     Most tests should be unit tests for merge_entries (and its helpers).
     This class is just to cover the handful of lines of code in ChangeLogMerger
     itself.
@@ -185,7 +185,7 @@ class TestChangeLogMerger(tests.TestCaseWithTransport):
     def make_changelog_merger(self, base_text, this_text, other_text):
         builder = self.make_builder()
         builder.add_file(b'clog-id', builder.tree_root, 'ChangeLog',
-            base_text, True)
+                         base_text, True)
         builder.change_contents(b'clog-id', other=other_text, this=this_text)
         merger = builder.make_merger(merge.Merge3Merger, [b'clog-id'])
         # The following can't use config stacks until the plugin itself does
@@ -194,8 +194,9 @@ class TestChangeLogMerger(tests.TestCaseWithTransport):
         merger.this_branch.get_config().set_user_option(
             'changelog_merge_files', 'ChangeLog')
         merge_hook_params = merge.MergeFileHookParams(merger, b'clog-id',
-                ['ChangeLog', 'ChangeLog', 'ChangeLog'], None,
-                'file', 'file', 'conflict')
+                                                      ['ChangeLog', 'ChangeLog',
+                                                          'ChangeLog'], None,
+                                                      'file', 'file', 'conflict')
         changelog_merger = changelog_merge.ChangeLogMerger(merger)
         return changelog_merger, merge_hook_params
 
@@ -222,4 +223,3 @@ class TestChangeLogMerger(tests.TestCaseWithTransport):
         self.assertEqual(
             ('success', [b'other text\n', b'this text\n']),
             (status, list(lines)))
-

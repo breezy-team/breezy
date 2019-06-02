@@ -41,22 +41,23 @@ class TestCatRevision(TestCaseWithTransport):
             revs = {}
             for i in (1, 2, 3):
                 revid = b"a@r-0-%d" % i
-                stream = r.revisions.get_record_stream([(revid,)], 'unordered', 
-                                                       False) 
+                stream = r.revisions.get_record_stream([(revid,)], 'unordered',
+                                                       False)
                 revs[i] = next(stream).get_bytes_as('fulltext')
 
         for i in [1, 2, 3]:
             self.assertEqual(revs[i],
-                self.run_bzr('cat-revision -r revid:a@r-0-%d' % i)[0].encode('utf-8'))
+                             self.run_bzr('cat-revision -r revid:a@r-0-%d' % i)[0].encode('utf-8'))
             self.assertEqual(revs[i],
-                self.run_bzr('cat-revision a@r-0-%d' % i)[0].encode('utf-8'))
+                             self.run_bzr('cat-revision a@r-0-%d' % i)[0].encode('utf-8'))
             self.assertEqual(revs[i],
-                self.run_bzr('cat-revision -r %d' % i)[0].encode('utf-8'))
+                             self.run_bzr('cat-revision -r %d' % i)[0].encode('utf-8'))
 
     def test_cat_no_such_revid(self):
         tree = self.make_branch_and_tree('.')
         err = self.run_bzr('cat-revision abcd', retcode=3)[1]
-        self.assertContainsRe(err, 'The repository .* contains no revision abcd.')
+        self.assertContainsRe(
+            err, 'The repository .* contains no revision abcd.')
 
     def test_cat_revision_directory(self):
         """Test --directory option"""

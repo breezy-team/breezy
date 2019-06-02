@@ -41,7 +41,7 @@ class SignMyCommits(tests.TestCaseWithTransport):
         wt.commit("base B", allow_pointless=True, rev_id=b'B')
         wt.commit("base C", allow_pointless=True, rev_id=b'C')
         wt.commit("base D", allow_pointless=True, rev_id=b'D',
-                committer='Alternate <alt@foo.com>')
+                  committer='Alternate <alt@foo.com>')
         wt.add_parent_tree_id(b"aghost")
         wt.commit("base E", allow_pointless=True, rev_id=b'E')
         return wt
@@ -55,7 +55,7 @@ class SignMyCommits(tests.TestCaseWithTransport):
         self.assertTrue(repo.has_signature_for_revision_id(revision_id))
 
     def test_sign_my_commits(self):
-        #Test re signing of data.
+        # Test re signing of data.
         wt = self.setup_tree()
         repo = wt.branch.repository
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2018 Jelmer Vernooij <jelmer@jelmer.uk>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,27 +12,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Print lines matching PATTERN for specified files and revisions."""
+"""Management of hosted branches."""
 
 from __future__ import absolute_import
 
-from ... import version_info
 from ...commands import plugin_cmds
 
-plugin_cmds.register_lazy("cmd_grep", [], "breezy.plugins.grep.cmds")
-
-def test_suite():
-    from ...tests import TestUtil
-
-    suite = TestUtil.TestSuite()
-    loader = TestUtil.TestLoader()
-    testmod_names = [
-        'test_grep',
-        ]
-
-    suite.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
-    return suite
-
+plugin_cmds.register_lazy("cmd_propose_merge", ["propose"], __name__ + ".cmds")
+plugin_cmds.register_lazy("cmd_publish_derived", ['publish'], __name__ + ".cmds")
+plugin_cmds.register_lazy("cmd_find_merge_proposal", ['find-proposal'], __name__ + ".cmds")
+plugin_cmds.register_lazy("cmd_github_login", ["gh-login"], __name__ + ".cmds")
+plugin_cmds.register_lazy("cmd_gitlab_login", ["gl-login"], __name__ + ".cmds")
+plugin_cmds.register_lazy(
+    "cmd_my_merge_proposals", ["my-proposals"],
+    __name__ + ".cmds")

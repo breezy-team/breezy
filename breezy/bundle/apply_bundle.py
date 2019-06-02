@@ -39,12 +39,12 @@ def install_bundle(repository, bundle_reader):
             if repository.has_revision(revision.revision_id):
                 continue
             cset_tree = bundle_reader.revision_tree(repository,
-                                                       revision.revision_id)
+                                                    revision.revision_id)
             install_revision(repository, revision, cset_tree)
 
 
 def merge_bundle(reader, tree, check_clean, merge_type,
-                    reprocess, show_base, change_reporter=None):
+                 reprocess, show_base, change_reporter=None):
     """Merge a revision bundle into the current tree."""
     with ui.ui_factory.nested_progress_bar() as pb:
         pp = ProgressPhase("Merge phase", 6, pb)

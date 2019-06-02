@@ -76,7 +76,6 @@ class IntSet(Exception):
         if values is not None:
             self.update(values)
 
-
     def __bool__(self):
         """IntSets are false if empty, otherwise True.
 
@@ -89,7 +88,6 @@ class IntSet(Exception):
         return bool(self._val)
 
     __nonzero__ = __bool__
-
 
     def __len__(self):
         """Number of elements in set.
@@ -104,7 +102,6 @@ class IntSet(Exception):
                 c += 1
             v = v >> 1
         return c
-
 
     def __and__(self, other):
         """Set intersection.
@@ -123,7 +120,6 @@ class IntSet(Exception):
             raise NotImplementedError(type(other))
         return IntSet(bitmask=(self._val & other._val))
 
-
     def __or__(self, other):
         """Set union.
 
@@ -134,7 +130,6 @@ class IntSet(Exception):
         if not isinstance(other, IntSet):
             raise NotImplementedError(type(other))
         return IntSet(bitmask=(self._val | other._val))
-
 
     def __eq__(self, other):
         """Comparison.
@@ -147,14 +142,11 @@ class IntSet(Exception):
         else:
             return False
 
-
     def __ne__(self, other):
         return not self.__eq__(other)
 
-
     def __contains__(self, i):
         return self._val & (1 << i)
-
 
     def __iter__(self):
         """Return contents of set.
@@ -173,7 +165,6 @@ class IntSet(Exception):
             v = v >> 1
             o = o + 1
 
-
     def update(self, to_add):
         """Add all the values from the sequence or intset to_add"""
         if isinstance(to_add, IntSet):
@@ -182,10 +173,8 @@ class IntSet(Exception):
             for i in to_add:
                 self._val |= (1 << i)
 
-
     def add(self, to_add):
         self._val |= (1 << to_add)
-
 
     def remove(self, to_remove):
         """Remove one value from the set.
@@ -226,4 +215,3 @@ class IntSet(Exception):
             return
         intersect = self._val & to_remove._val
         self._val ^= intersect
-

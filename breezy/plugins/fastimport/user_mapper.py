@@ -57,7 +57,7 @@ class UserMapper(object):
             # Parse each id into a name and email address
             old_name, old_email = self._parse_id(old)
             new_name, new_email = self._parse_id(new)
-            #print "found user map: %s => %s" % ((old_name, old_email), (new_name, new_email))
+            # print "found user map: %s => %s" % ((old_name, old_email), (new_name, new_email))
             self._user_map[(old_name, old_email)] = (new_name, new_email)
 
     def _parse_id(self, id):

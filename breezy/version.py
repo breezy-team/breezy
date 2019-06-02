@@ -57,7 +57,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     # but sys.executable point to brz.exe itself)
     # however, sys.frozen exists if running from brz.exe
     # see http://www.py2exe.org/index.cgi/Py2exeEnvironment
-    if getattr(sys, 'frozen', None) is None: # if not brz.exe
+    if getattr(sys, 'frozen', None) is None:  # if not brz.exe
         to_file.write(sys.executable + ' ')
     else:
         # pythonXY.dll
@@ -82,7 +82,8 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     else:
         to_file.write(breezy.__path__[0] + '\n')
     if show_config:
-        config_dir = osutils.normpath(config.config_dir())  # use native slashes
+        config_dir = osutils.normpath(
+            config.config_dir())  # use native slashes
         if not isinstance(config_dir, text_type):
             config_dir = config_dir.decode(osutils.get_user_encoding())
         to_file.write("  Breezy configuration: %s\n" % (config_dir,))
@@ -93,8 +94,10 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         to_file.write(breezy.__copyright__ + '\n')
         to_file.write("https://www.breezy-vcs.org/\n")
         to_file.write('\n')
-        to_file.write("brz comes with ABSOLUTELY NO WARRANTY.  brz is free software, and\n")
-        to_file.write("you may use, modify and redistribute it under the terms of the GNU\n")
+        to_file.write(
+            "brz comes with ABSOLUTELY NO WARRANTY.  brz is free software, and\n")
+        to_file.write(
+            "you may use, modify and redistribute it under the terms of the GNU\n")
         to_file.write("General Public License version 2 or later.\n")
     to_file.write('\n')
 

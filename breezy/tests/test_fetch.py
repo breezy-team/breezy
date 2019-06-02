@@ -44,7 +44,7 @@ def revision_history(branch):
     try:
         graph = branch.repository.get_graph()
         history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
-            [_mod_revision.NULL_REVISION]))
+                                                    [_mod_revision.NULL_REVISION]))
     finally:
         branch.unlock()
     history.reverse()
@@ -111,7 +111,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
     # construct.  One way would be to uncommit and gc the revision, but not
     # every branch supports that.  -- mbp 20070814
 
-    #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
+    # TODO: test that fetch correctly does reweaving when needed. RBC 20051008
     # Note that this means - updating the weave when ghosts are filled in to
     # add the right parents.
 
@@ -119,7 +119,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
 class TestFetch(TestCaseWithTransport):
 
     def test_fetch(self):
-        #highest indices a: 5, b: 7
+        # highest indices a: 5, b: 7
         br_a, br_b = make_branches(self, format='dirstate-tags')
         fetch_steps(self, br_a, br_b, br_a)
 
@@ -154,9 +154,9 @@ class TestFetch(TestCaseWithTransport):
         repo.lock_read()
         try:
             # Make sure fetch retrieved only what we requested
-            self.assertEqual({(b'tree-root', b'rev1'):()},
-                repo.texts.get_parent_map(
-                    [(b'tree-root', b'rev1'), (b'tree-root', b'rev2')]))
+            self.assertEqual({(b'tree-root', b'rev1'): ()},
+                             repo.texts.get_parent_map(
+                [(b'tree-root', b'rev1'), (b'tree-root', b'rev2')]))
         finally:
             repo.unlock()
         branch.pull(tree.branch)
@@ -165,21 +165,21 @@ class TestFetch(TestCaseWithTransport):
         repo.lock_read()
         try:
             # Make sure fetch retrieved only what we requested
-            self.assertEqual({(b'tree-root', b'rev2'):((b'tree-root', b'rev1'),)},
-                repo.texts.get_parent_map([(b'tree-root', b'rev2')]))
+            self.assertEqual({(b'tree-root', b'rev2'): ((b'tree-root', b'rev1'),)},
+                             repo.texts.get_parent_map([(b'tree-root', b'rev2')]))
         finally:
             repo.unlock()
 
     def test_fetch_incompatible(self):
         knit_tree = self.make_branch_and_tree('knit', format='knit')
         knit3_tree = self.make_branch_and_tree('knit3',
-            format='dirstate-with-subtree')
+                                               format='dirstate-with-subtree')
         knit3_tree.commit('blah')
         e = self.assertRaises(errors.IncompatibleRepositories,
                               knit_tree.branch.fetch, knit3_tree.branch)
         self.assertContainsRe(str(e),
-            r"(?m).*/knit.*\nis not compatible with\n.*/knit3/.*\n"
-            r"different rich-root support")
+                              r"(?m).*/knit.*\nis not compatible with\n.*/knit3/.*\n"
+                              r"different rich-root support")
 
 
 class TestMergeFetch(TestCaseWithTransport):
@@ -280,13 +280,13 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         tree.commit('one', rev_id=b'rev-one')
         source = tree.branch.repository
         source.texts = versionedfile.RecordingVersionedFilesDecorator(
-                        source.texts)
+            source.texts)
         source.signatures = versionedfile.RecordingVersionedFilesDecorator(
-                        source.signatures)
+            source.signatures)
         source.revisions = versionedfile.RecordingVersionedFilesDecorator(
-                        source.revisions)
+            source.revisions)
         source.inventories = versionedfile.RecordingVersionedFilesDecorator(
-                        source.inventories)
+            source.inventories)
         # precondition
         self.assertTrue(target._format._fetch_uses_deltas)
         target.fetch(source, revision_id=b'rev-one')
@@ -294,8 +294,8 @@ class TestKnitToPackFetch(TestCaseWithTransport):
                           target._format._fetch_order, False),
                          self.find_get_record_stream(source.texts.calls))
         self.assertEqual(('get_record_stream', [(b'rev-one',)],
-          target._format._fetch_order, False),
-          self.find_get_record_stream(source.inventories.calls, 2))
+                          target._format._fetch_order, False),
+                         self.find_get_record_stream(source.inventories.calls, 2))
         self.assertEqual(('get_record_stream', [(b'rev-one',)],
                           target._format._fetch_order, False),
                          self.find_get_record_stream(source.revisions.calls))
@@ -320,13 +320,13 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         tree.commit('one', rev_id=b'rev-one')
         source = tree.branch.repository
         source.texts = versionedfile.RecordingVersionedFilesDecorator(
-                        source.texts)
+            source.texts)
         source.signatures = versionedfile.RecordingVersionedFilesDecorator(
-                        source.signatures)
+            source.signatures)
         source.revisions = versionedfile.RecordingVersionedFilesDecorator(
-                        source.revisions)
+            source.revisions)
         source.inventories = versionedfile.RecordingVersionedFilesDecorator(
-                        source.inventories)
+            source.inventories)
         # XXX: This won't work in general, but for the dirstate format it does.
         self.overrideAttr(target._format, '_fetch_uses_deltas', False)
         target.fetch(source, revision_id=b'rev-one')
@@ -334,8 +334,8 @@ class TestKnitToPackFetch(TestCaseWithTransport):
                           target._format._fetch_order, True),
                          self.find_get_record_stream(source.texts.calls))
         self.assertEqual(('get_record_stream', [(b'rev-one',)],
-            target._format._fetch_order, True),
-            self.find_get_record_stream(source.inventories.calls, 2))
+                          target._format._fetch_order, True),
+                         self.find_get_record_stream(source.inventories.calls, 2))
         self.assertEqual(('get_record_stream', [(b'rev-one',)],
                           target._format._fetch_order, True),
                          self.find_get_record_stream(source.revisions.calls))
@@ -371,14 +371,14 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         source.lock_read()
         self.addCleanup(source.unlock)
         record = next(source.revisions.get_record_stream([(b'rev-two',)],
-            'unordered', False))
+                                                         'unordered', False))
         self.assertEqual('knit-delta-gz', record.storage_kind)
         target.fetch(tree.branch.repository, revision_id=b'rev-two')
         # The record should get expanded back to a fulltext
         target.lock_read()
         self.addCleanup(target.unlock)
         record = next(target.revisions.get_record_stream([(b'rev-two',)],
-            'unordered', False))
+                                                         'unordered', False))
         self.assertEqual('knit-ft-gz', record.storage_kind)
 
     def test_fetch_with_fallback_and_merge(self):
@@ -405,7 +405,8 @@ class TestKnitToPackFetch(TestCaseWithTransport):
             ('add', ('', b'TREE_ROOT', 'directory', None))]
         for i in range(10):
             fname = 'file%03d' % (i,)
-            fileid = ('%s-%s' % (fname, osutils.rand_chars(64))).encode('ascii')
+            fileid = ('%s-%s' %
+                      (fname, osutils.rand_chars(64))).encode('ascii')
             to_add.append(('add', (fname, fileid, 'file', b'content\n')))
         builder.build_snapshot(None, to_add, revision_id=b'A')
         builder.build_snapshot([b'A'], [], revision_id=b'B')
@@ -422,17 +423,17 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         source.lock_read()
         self.addCleanup(source.unlock)
         source.inventories = versionedfile.OrderingVersionedFilesDecorator(
-                        source.inventories,
-                        key_priority={(b'E',): 1, (b'D',): 2, (b'C',): 4,
-                                      (b'F',): 3})
+            source.inventories,
+            key_priority={(b'E',): 1, (b'D',): 2, (b'C',): 4,
+                          (b'F',): 3})
         # Ensure that the content is yielded in the proper order, and given as
         # the expected kinds
         records = [(record.key, record.storage_kind)
                    for record in source.inventories.get_record_stream(
-                        [(b'D',), (b'C',), (b'E',), (b'F',)], 'unordered', False)]
+            [(b'D',), (b'C',), (b'E',), (b'F',)], 'unordered', False)]
         self.assertEqual([((b'E',), 'knit-delta-gz'), ((b'D',), 'knit-delta-gz'),
                           ((b'F',), 'knit-delta-gz'), ((b'C',), 'knit-delta-gz')],
-                          records)
+                         records)
 
         target_branch.lock_write()
         self.addCleanup(target_branch.unlock)
@@ -480,7 +481,8 @@ class Test1To2Fetch(TestCaseWithTransport):
     def get_parents(self, file_id, revision_id):
         self.repo.lock_read()
         try:
-            parent_map = self.repo.texts.get_parent_map([(file_id, revision_id)])
+            parent_map = self.repo.texts.get_parent_map(
+                [(file_id, revision_id)])
             return parent_map[(file_id, revision_id)]
         finally:
             self.repo.unlock()
@@ -492,7 +494,7 @@ class Test1To2Fetch(TestCaseWithTransport):
         fork = self.tree.controldir.sprout('fork', b'null:').open_workingtree()
         fork.commit('not a ghost', rev_id=b'not-ghost-parent')
         self.tree.branch.repository.fetch(fork.branch.repository,
-                                     b'not-ghost-parent')
+                                          b'not-ghost-parent')
         self.tree.add_parent_tree_id(b'not-ghost-parent')
         self.tree.commit('second commit', rev_id=b'second-id')
         self.repo.fetch(self.tree.branch.repository, b'second-id')
@@ -522,4 +524,4 @@ class Test1To2Fetch(TestCaseWithTransport):
     def test_two_fetches(self):
         self.make_two_commits(change_root=False, fetch_twice=True)
         self.assertEqual(((b'TREE_ROOT', b'first-id'),),
-            self.get_parents(b'TREE_ROOT', b'second-id'))
+                         self.get_parents(b'TREE_ROOT', b'second-id'))

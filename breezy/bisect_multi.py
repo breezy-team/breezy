@@ -58,7 +58,7 @@ def bisect_multi_bytes(content_lookup, size, keys):
                 search_keys.append((location - delta, key))
             elif status == 1:
                 search_keys.append((location + delta, key))
-            elif status == False:
+            elif status is False:
                 # not present, stop searching
                 continue
             else:

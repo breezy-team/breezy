@@ -18,20 +18,18 @@
 
 from __future__ import absolute_import
 
-from dulwich.errors import (
-    NotTreeError,
-    )
 from dulwich.object_store import (
     tree_lookup_path,
     )
 
-from ..errors import UnavailableRepresentation
+from ..errors import (
+    NoSuchRevision,
+    UnavailableRepresentation,
+    )
 from ..graph import Graph
 from ..revision import (
     NULL_REVISION,
     )
-
-from .filegraph import GitFileLastChangeScanner
 
 
 class GitFulltextContentFactory(object):
@@ -64,7 +62,7 @@ class GitFulltextContentFactory(object):
         elif storage_kind == 'chunked':
             return self.store[self.blob_id].as_raw_chunks()
         raise UnavailableRepresentation(self.key, storage_kind,
-                'fulltext')
+                                        'fulltext')
 
 
 class GitAbsentContentFactory(object):
@@ -98,19 +96,23 @@ class AnnotateProvider(object):
         self.store = self.change_scanner.repository._git.object_store
 
     def _get_parents(self, path, text_revision):
-        commit_id, mapping = self.change_scanner.repository.lookup_bzr_revision_id(
-            text_revision)
+        commit_id, mapping = (
+            self.change_scanner.repository.lookup_bzr_revision_id(
+                text_revision))
         text_parents = []
         for commit_parent in self.store[commit_id].parents:
             try:
-                (path, text_parent) = self.change_scanner.find_last_change_revision(path.encode('utf-8'), commit_parent)
+                (path, text_parent) = (
+                    self.change_scanner.find_last_change_revision(
+                        path.encode('utf-8'), commit_parent))
             except KeyError:
                 continue
             if text_parent not in text_parents:
                 text_parents.append(text_parent)
-        return tuple([(path.decode('utf-8'),
-            self.change_scanner.repository.lookup_foreign_revision_id(p)) for p
-            in text_parents])
+        return tuple([
+            (path.decode('utf-8'),
+                self.change_scanner.repository.lookup_foreign_revision_id(p))
+            for p in text_parents])
 
     def get_parent_map(self, keys):
         ret = {}
@@ -132,9 +134,10 @@ class AnnotateProvider(object):
         store = self.change_scanner.repository._git.object_store
         for (path, text_revision) in keys:
             try:
-                commit_id, mapping = self.change_scanner.repository.lookup_bzr_revision_id(
-                    text_revision)
-            except errors.NoSuchRevision:
+                commit_id, mapping = (
+                    self.change_scanner.repository.lookup_bzr_revision_id(
+                        text_revision))
+            except NoSuchRevision:
                 yield GitAbsentContentFactory(store, path, text_revision)
                 continue
 
@@ -144,8 +147,10 @@ class AnnotateProvider(object):
                 yield GitAbsentContentFactory(store, path, text_revision)
                 continue
             try:
-                (mode, blob_sha) = tree_lookup_path(store.__getitem__, tree_id, path.encode('utf-8'))
+                (mode, blob_sha) = tree_lookup_path(
+                    store.__getitem__, tree_id, path.encode('utf-8'))
             except KeyError:
                 yield GitAbsentContentFactory(store, path, text_revision)
             else:
-                yield GitFulltextContentFactory(store, path, text_revision, blob_sha)
+                yield GitFulltextContentFactory(
+                    store, path, text_revision, blob_sha)

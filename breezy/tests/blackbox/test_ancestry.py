@@ -18,6 +18,7 @@ import os
 
 from breezy.tests import TestCaseWithTransport
 
+
 class TestAncestry(TestCaseWithTransport):
 
     def _build_branches(self):
@@ -34,7 +35,7 @@ class TestAncestry(TestCaseWithTransport):
         a_wt.commit('modified A/foo', rev_id=b'A2')
 
         a_wt.merge_from_branch(b_wt.branch, b_wt.last_revision(),
-            b_wt.branch.get_rev_id(1))
+                               b_wt.branch.get_rev_id(1))
         a_wt.commit('merged B into A', rev_id=b'A3')
         return a_wt, b_wt
 

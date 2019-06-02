@@ -64,10 +64,12 @@ def load_tests(loader, standard_tests, pattern):
         if isinstance(format, remote.RemoteRepositoryFormat):
             with_support = dict(scenario_info)
             with_support['repository_format'] = RepositoryFormat2a()
-            supported_scenarios.append((test_name + "(Supported)", with_support))
+            supported_scenarios.append(
+                (test_name + "(Supported)", with_support))
             no_support = dict(scenario_info)
             no_support['repository_format'] = RepositoryFormatKnitPack5()
-            unsupported_scenarios.append((test_name + "(Not Supported)", no_support))
+            unsupported_scenarios.append(
+                (test_name + "(Not Supported)", no_support))
         elif format.supports_chks:
             supported_scenarios.append((test_name, scenario_info))
         else:

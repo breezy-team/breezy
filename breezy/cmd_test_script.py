@@ -37,7 +37,7 @@ class cmd_test_script(commands.Command):
     takes_args = ['infile']
     takes_options = [
         option.Option('null-output',
-                       help='Null command outputs match any output.'),
+                      help='Null command outputs match any output.'),
         ]
 
     @commands.display_command
@@ -51,7 +51,7 @@ class cmd_test_script(commands.Command):
 
         class Test(TestCaseWithTransportAndScript):
 
-            script = None # Set before running
+            script = None  # Set before running
 
             def test_it(self):
                 self.run_script(script,

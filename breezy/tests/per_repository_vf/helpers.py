@@ -20,6 +20,7 @@ from ... import (
     osutils,
     revision as _mod_revision,
     )
+from ...repository import WriteGroup
 from ...bzr import (
     inventory,
     )
@@ -50,9 +51,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
                 "%s isn't a knit format" % self.repository_format)
 
         repo = self.make_repository('broken')
-        repo.lock_write()
-        repo.start_write_group()
-        try:
+        with repo.lock_write(), WriteGroup(repo):
             inv = inventory.Inventory(revision_id=b'revision-id')
             inv.root.revision = b'revision-id'
             inv_sha1 = repo.add_inventory(b'revision-id', inv, [])
@@ -60,24 +59,16 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
                 root_id = inv.root.file_id
                 repo.texts.add_lines((root_id, b'revision-id'), [], [])
             revision = _mod_revision.Revision(b'revision-id',
-                committer='jrandom@example.com', timestamp=0,
-                inventory_sha1=inv_sha1, timezone=0, message='message',
-                parent_ids=[])
+                                              committer='jrandom@example.com', timestamp=0,
+                                              inventory_sha1=inv_sha1, timezone=0, message='message',
+                                              parent_ids=[])
             # Manually add the revision text using the RevisionStore API, with
             # bad parents.
             rev_text = repo._serializer.write_revision_to_string(revision)
-            repo.revisions.add_lines((revision.revision_id,),
-                [(b'incorrect-parent',)],
+            repo.revisions.add_lines(
+                (revision.revision_id,), [(b'incorrect-parent',)],
                 osutils.split_lines(rev_text))
-        except:
-            repo.abort_write_group()
-            repo.unlock()
-            raise
-        else:
-            repo.commit_write_group()
-            repo.unlock()
 
         repo.lock_write()
         self.addCleanup(repo.unlock)
         return repo
-

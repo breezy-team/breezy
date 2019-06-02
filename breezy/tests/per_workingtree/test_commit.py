@@ -95,9 +95,9 @@ class TestCommit(TestCaseWithWorkingTree):
         tree_b.commit('delete in B')
 
         self.assertThat(
-                tree_b,
-                HasPathRelations(
-                    tree_a, [('', ''), ('xyz/', None), ('xyz/m', 'a/m')]))
+            tree_b,
+            HasPathRelations(
+                tree_a, [('', ''), ('xyz/', None), ('xyz/m', 'a/m')]))
 
         self.build_tree_contents([('A/a/n', b'new contents for n\n')])
         tree_a.commit('change n in A')
@@ -108,10 +108,10 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertEqual(3, num_conflicts)
 
         self.assertThat(
-                tree_b, HasPathRelations(
-                    tree_a,
-                    [('', ''), ('a/', 'a/'), ('xyz/', None),
-                     ('a/n.OTHER', 'a/n'), ('xyz/m', 'a/m')]))
+            tree_b, HasPathRelations(
+                tree_a,
+                [('', ''), ('a/', 'a/'), ('xyz/', None),
+                 ('a/n.OTHER', 'a/n'), ('xyz/m', 'a/m')]))
 
         osutils.rmtree('B/a')
         try:
@@ -124,9 +124,9 @@ class TestCommit(TestCaseWithWorkingTree):
         tree_b.commit('autoremove a, without touching xyz/m')
 
         self.assertThat(
-                tree_b, HasPathRelations(
-                    tree_a,
-                    [('', ''), ('xyz/', None), ('xyz/m', 'a/m')]))
+            tree_b, HasPathRelations(
+                tree_a,
+                [('', ''), ('xyz/', None), ('xyz/m', 'a/m')]))
 
     def test_commit_exclude_pending_merge_fails(self):
         """Excludes are a form of partial commit."""
@@ -138,7 +138,7 @@ class TestCommit(TestCaseWithWorkingTree):
         wt2.commit('change_right')
         wt.merge_from_branch(wt2.branch)
         self.assertRaises(CannotCommitSelectedFileMerge,
-            wt.commit, 'test', exclude=['foo'])
+                          wt.commit, 'test', exclude=['foo'])
 
     def test_commit_exclude_exclude_changed_is_pointless(self):
         tree = self.make_branch_and_tree('.')
@@ -147,7 +147,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.commit('setup test')
         self.build_tree_contents([('a', b'new contents for "a"\n')])
         self.assertRaises(PointlessCommit, tree.commit, 'test',
-            exclude=['a'], allow_pointless=False)
+                          exclude=['a'], allow_pointless=False)
 
     def test_commit_exclude_excludes_modified_files(self):
         tree = self.make_branch_and_tree('.')
@@ -219,10 +219,11 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.add(['a'], None, ['file'])
         a_id = wt.path2id('a')
         self.assertEqual('a', wt.id2path(a_id))
+
         def fail_message(obj):
             raise errors.BzrCommandError("empty commit message")
         self.assertRaises(errors.BzrCommandError, wt.commit,
-            message_callback=fail_message)
+                          message_callback=fail_message)
         self.assertEqual('a', wt.id2path(a_id))
 
     def test_local_commit_ignores_master(self):
@@ -268,7 +269,7 @@ class TestCommit(TestCaseWithWorkingTree):
             raise tests.TestNotApplicable(
                 'format does not support ghosts')
         wt.set_parent_ids([b'non:existent@rev--ision--0--2'],
-            allow_leftmost_as_ghost=True)
+                          allow_leftmost_as_ghost=True)
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
         self.assertEqual(rev.parent_ids, [b'non:existent@rev--ision--0--2'])
@@ -282,16 +283,16 @@ class TestCommit(TestCaseWithWorkingTree):
             raise tests.TestNotApplicable(
                 'format does not support ghosts')
         wt.set_parent_ids([
-                b'foo@azkhazan-123123-abcabc',
-                b'wibble@fofof--20050401--1928390812',
+            b'foo@azkhazan-123123-abcabc',
+            b'wibble@fofof--20050401--1928390812',
             ],
             allow_leftmost_as_ghost=True)
         rev_id = wt.commit("commit from ghost base with one merge")
         # the revision should have been committed with two parents
         rev = wt.branch.repository.get_revision(rev_id)
         self.assertEqual([b'foo@azkhazan-123123-abcabc',
-            b'wibble@fofof--20050401--1928390812'],
-            rev.parent_ids)
+                          b'wibble@fofof--20050401--1928390812'],
+                         rev.parent_ids)
 
     def test_commit_deleted_subtree_and_files_updates_workingtree(self):
         """The working trees inventory may be adjusted by commit."""
@@ -391,8 +392,8 @@ class TestCommit(TestCaseWithWorkingTree):
         sub_basis.lock_read()
         self.addCleanup(sub_basis.unlock)
         self.assertEqual(
-                subsubtree.last_revision(),
-                sub_basis.get_reference_revision('subtree'))
+            subsubtree.last_revision(),
+            sub_basis.get_reference_revision('subtree'))
         # the intermediate tree has changed, so should have had a commit
         # take place.
         self.assertNotEqual(None, subtree.last_revision())
@@ -402,7 +403,7 @@ class TestCommit(TestCaseWithWorkingTree):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         self.assertEqual(subtree.last_revision(),
-            basis.get_reference_revision('subtree'))
+                         basis.get_reference_revision('subtree'))
         # the outer tree must have have changed too.
         self.assertNotEqual(None, rev_id)
 
@@ -436,7 +437,7 @@ class TestCommit(TestCaseWithWorkingTree):
         basis.lock_read()
         self.addCleanup(basis.unlock)
         self.assertEqual(subtree.last_revision(),
-            basis.get_reference_revision('subtree'))
+                         basis.get_reference_revision('subtree'))
         self.assertNotEqual(rev_id, rev_id2)
 
     def test_nested_pointless_commits_are_pointless(self):
@@ -452,7 +453,7 @@ class TestCommit(TestCaseWithWorkingTree):
         child_revid = subtree.last_revision()
         # now do a no-op commit with allow_pointless=False
         self.assertRaises(PointlessCommit, tree.commit, '',
-            allow_pointless=False)
+                          allow_pointless=False)
         self.assertEqual(child_revid, subtree.last_revision())
         self.assertEqual(rev_id, tree.last_revision())
 
@@ -494,7 +495,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
              ('update', 4, 5, 'Updating the working tree - Stage'),
              ('update', 5, 5, 'Running post_commit hooks - Stage')],
             factory._calls
-           )
+            )
 
     def test_commit_progress_shows_post_hook_names(self):
         tree = self.make_branch_and_tree('.')
@@ -502,6 +503,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         # emitted
         factory = ProgressRecordingUIFactory()
         ui.ui_factory = factory
+
         def a_hook(_, _2, _3, _4, _5, _6):
             pass
         branch.Branch.hooks.install_named_hook('post_commit', a_hook,
@@ -517,7 +519,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
              ('update', 5, 5, 'Running post_commit hooks [hook name] - Stage'),
              ],
             factory._calls
-           )
+            )
 
     def test_commit_progress_shows_pre_hook_names(self):
         tree = self.make_branch_and_tree('.')
@@ -525,6 +527,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         # emitted
         factory = ProgressRecordingUIFactory()
         ui.ui_factory = factory
+
         def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
             pass
         branch.Branch.hooks.install_named_hook('pre_commit', a_hook,
@@ -540,14 +543,16 @@ class TestCommitProgress(TestCaseWithWorkingTree):
              ('update', 5, 5, 'Running post_commit hooks - Stage'),
              ],
             factory._calls
-           )
+            )
 
     def test_start_commit_hook(self):
         """Make sure a start commit hook can modify the tree that is
         committed."""
         def start_commit_hook_adds_file(tree):
-            with open(tree.abspath("newfile"), 'w') as f: f.write("data")
+            with open(tree.abspath("newfile"), 'w') as f:
+                f.write("data")
             tree.add(["newfile"])
+
         def restoreDefaults():
             mutabletree.MutableTree.hooks['start_commit'] = []
         self.addCleanup(restoreDefaults)
@@ -564,10 +569,11 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         """Make sure a post_commit hook is called after a commit."""
         def post_commit_hook_test_params(params):
             self.assertTrue(isinstance(params,
-                mutabletree.PostCommitHookParams))
+                                       mutabletree.PostCommitHookParams))
             self.assertTrue(isinstance(params.mutable_tree,
-                mutabletree.MutableTree))
-            with open(tree.abspath("newfile"), 'w') as f: f.write("data")
+                                       mutabletree.MutableTree))
+            with open(tree.abspath("newfile"), 'w') as f:
+                f.write("data")
             params.mutable_tree.add(["newfile"])
         tree = self.make_branch_and_tree('.')
         mutabletree.MutableTree.hooks.install_named_hook(

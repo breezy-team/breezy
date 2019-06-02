@@ -41,8 +41,8 @@ class TestSource(TestCaseWithRepository):
         builder = self.make_branch_builder('repo')
         builder.start_series()
         builder.build_snapshot([b'ghost'],
-            [('add', ('', b'ROOT_ID', 'directory', ''))],
-            allow_leftmost_as_ghost=True, revision_id=b'tip')
+                               [('add', ('', b'ROOT_ID', 'directory', ''))],
+                               allow_leftmost_as_ghost=True, revision_id=b'tip')
         builder.finish_series()
         b = builder.get_branch()
         b.lock_read()
@@ -54,4 +54,4 @@ class TestSource(TestCaseWithRepository):
         for substream_type, substream in stream:
             for record in substream:
                 self.assertNotEqual('absent', record.storage_kind,
-                    "Absent record for %s" % (((substream_type,) + record.key),))
+                                    "Absent record for %s" % (((substream_type,) + record.key),))

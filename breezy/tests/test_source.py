@@ -31,6 +31,7 @@ from breezy import (
     )
 import breezy.branch
 from breezy.tests import (
+    features,
     TestCase,
     TestSkipped,
     )
@@ -88,7 +89,7 @@ class TestApiUsage(TestSourceHelper):
         # increase it, then you almost certainly are doing something wrong as
         # the relationship from working_tree to branch is one way.
         # Note that this is an exact equality so that when the number drops,
-        #it is not given a buffer but rather has this test updated immediately.
+        # it is not given a buffer but rather has this test updated immediately.
         self.assertEqual(0, occurences)
 
     def test_branch_WorkingTree(self):
@@ -205,8 +206,8 @@ class TestSource(TestSourceHelper):
             else:
                 if 'by Canonical' in match.group():
                     incorrect.append((fname,
-                        'should not have: "by Canonical": %s'
-                        % (match.group(),)))
+                                      'should not have: "by Canonical": %s'
+                                      % (match.group(),)))
 
         if incorrect:
             help_text = ["Some files have missing or incorrect copyright"
@@ -219,7 +220,7 @@ class TestSource(TestSourceHelper):
                          "or add '# Copyright (C)"
                          " 2007 Bazaar hackers' to these files:",
                          "",
-                        ]
+                         ]
             for fname, comment in incorrect:
                 help_text.append(fname)
                 help_text.append((' ' * 4) + comment)
@@ -275,7 +276,7 @@ class TestSource(TestSourceHelper):
 
     def _format_message(self, dict_, message):
         files = sorted(["%s: %s" % (f, ', '.join([str(i + 1) for i in lines]))
-                for f, lines in dict_.items()])
+                        for f, lines in dict_.items()])
         return message + '\n\n    %s' % ('\n    '.join(files))
 
     def test_coding_style(self):
@@ -309,19 +310,53 @@ class TestSource(TestSourceHelper):
         problems = []
         if tabs:
             problems.append(self._format_message(tabs,
-                'Tab characters were found in the following source files.'
-                '\nThey should either be replaced by "\\t" or by spaces:'))
+                                                 'Tab characters were found in the following source files.'
+                                                 '\nThey should either be replaced by "\\t" or by spaces:'))
         if illegal_newlines:
             problems.append(self._format_message(illegal_newlines,
-                'Non-unix newlines were found in the following source files:'))
+                                                 'Non-unix newlines were found in the following source files:'))
         if no_newline_at_eof:
             no_newline_at_eof.sort()
             problems.append("The following source files doesn't have a "
-                "newline at the end:"
-               '\n\n    %s'
-               % ('\n    '.join(no_newline_at_eof)))
+                            "newline at the end:"
+                            '\n\n    %s'
+                            % ('\n    '.join(no_newline_at_eof)))
         if problems:
             self.fail('\n\n'.join(problems))
+
+    def test_flake8(self):
+        self.requireFeature(features.flake8)
+        # Older versions of flake8 don't support the 'paths'
+        # variable
+        new_path = list(sys.path)
+        new_path.insert(
+            0, os.path.join(os.path.dirname(__file__), '..', '..', 'tools'))
+        self.overrideAttr(sys, 'path', new_path)
+        from flake8.main.application import Application
+        from flake8.formatting.base import BaseFormatter
+        app = Application()
+        app.config = u'setup.cfg'
+        app.jobs = 1
+
+        class Formatter(BaseFormatter):
+
+            def __init__(self):
+                self.errors = []
+
+            def start(self):
+                pass
+
+            def stop(self):
+                app.file_checker_manager.report()
+
+            def handle(self, error):
+                self.errors.append(error)
+
+        app.formatter = Formatter()
+        app.initialize([])
+        app.run_checks()
+        app.report()
+        self.assertEqual(app.formatter.errors, [])
 
     def test_no_asserts(self):
         """bzr shouldn't use the 'assert' statement."""
@@ -422,7 +457,7 @@ class TestSource(TestSourceHelper):
             if "/tests/" in fname or "test_" in fname:
                 # We don't really care about tests
                 continue
-            if not "from __future__ import absolute_import" in text:
+            if "from __future__ import absolute_import" not in text:
                 missing_absolute_import.append(fname)
 
         if missing_absolute_import:

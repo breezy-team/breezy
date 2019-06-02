@@ -67,12 +67,11 @@ class TestTextProgressView(tests.TestCase):
         task = self.make_task(None, view, 'reticulating splines', 5, 20)
         view.show_progress(task)
         self.assertEqual(
-'\r/ reticulating splines 5/20                                                    \r'
-            , out.getvalue())
+            '\r/ reticulating splines 5/20                                                    \r', out.getvalue())
         view.clear()
         self.assertEqual(
-'\r/ reticulating splines 5/20                                                    \r'
-            + '\r' + 79 * ' ' + '\r',
+            '\r/ reticulating splines 5/20                                                    \r' +
+            '\r' + 79 * ' ' + '\r',
             out.getvalue())
 
     def test_render_progress_no_bar(self):
@@ -82,8 +81,7 @@ class TestTextProgressView(tests.TestCase):
         task = self.make_task(None, view, 'reticulating splines', 5, 20)
         view.show_progress(task)
         self.assertEqual(
-'\r/ reticulating splines 5/20                                                    \r'
-            , out.getvalue())
+            '\r/ reticulating splines 5/20                                                    \r', out.getvalue())
 
     def test_render_progress_easy(self):
         """Just one task and one quarter done"""
@@ -92,8 +90,7 @@ class TestTextProgressView(tests.TestCase):
         task = self.make_task(None, view, 'reticulating splines', 5, 20)
         view.show_progress(task)
         self.assertEqual(
-'\r[####/               ] reticulating splines 5/20                               \r'
-            , out.getvalue())
+            '\r[####/               ] reticulating splines 5/20                               \r', out.getvalue())
 
     def test_render_progress_nested(self):
         """Tasks proportionally contribute to overall progress"""
@@ -105,14 +102,12 @@ class TestTextProgressView(tests.TestCase):
         # so we're in the first half of the main task, and half way through
         # that
         self.assertEqual(
-'[####-               ] reticulating splines:stage2 1/2                         '
-            , view._render_line())
+            '[####-               ] reticulating splines:stage2 1/2                         ', view._render_line())
         # if the nested task is complete, then we're all the way through the
         # first half of the overall work
         task2.update('stage2', 2, 2)
         self.assertEqual(
-'[#########\\          ] reticulating splines:stage2 2/2                         '
-            , view._render_line())
+            '[#########\\          ] reticulating splines:stage2 2/2                         ', view._render_line())
 
     def test_render_progress_sub_nested(self):
         """Intermediate tasks don't mess up calculation."""
@@ -128,8 +123,7 @@ class TestTextProgressView(tests.TestCase):
         # progress indication, just a label; and the bottom one is half done,
         # so the overall fraction is 1/4
         self.assertEqual(
-'[####|               ] a:b:c 1/2                                               '
-            , view._render_line())
+            '[####|               ] a:b:c 1/2                                               ', view._render_line())
 
     def test_render_truncated(self):
         # when the bar is too long for the terminal, we prefer not to truncate
@@ -140,10 +134,9 @@ class TestTextProgressView(tests.TestCase):
         task_a.update('start_' + 'a' * 200 + '_end', 2000, 5000)
         line = view._render_line()
         self.assertEqual(
-'- start_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.. 2000/5000',
-           line) 
+            '- start_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.. 2000/5000',
+            line)
         self.assertEqual(len(line), 79)
-
 
     def test_render_with_activity(self):
         # if the progress view has activity, it's shown before the spinner
@@ -152,16 +145,16 @@ class TestTextProgressView(tests.TestCase):
         view._last_transport_msg = '   123kB   100kB/s '
         line = view._render_line()
         self.assertEqual(
-'   123kB   100kB/s /                                                           ',
-           line) 
+            '   123kB   100kB/s /                                                           ',
+            line)
         self.assertEqual(len(line), 79)
 
         task_a.update('start_' + 'a' * 200 + '_end', 2000, 5000)
         view._last_transport_msg = '   123kB   100kB/s '
         line = view._render_line()
         self.assertEqual(
-'   123kB   100kB/s \\ start_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.. 2000/5000',
-           line) 
+            '   123kB   100kB/s \\ start_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.. 2000/5000',
+            line)
         self.assertEqual(len(line), 79)
 
     def test_render_progress_unicode_enc_utf8(self):

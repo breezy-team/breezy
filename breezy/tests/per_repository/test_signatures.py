@@ -22,9 +22,10 @@ from breezy import (
     tests,
     urlutils,
     )
-
-from breezy.testament import Testament
+from breezy.repository import WriteGroup
+from breezy.bzr.testament import Testament
 from breezy.tests import per_repository
+
 
 class TestSignatures(per_repository.TestCaseWithRepository):
 
@@ -48,33 +49,23 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.start_write_group()
         repo.sign_revision(a, strategy)
         repo.commit_write_group()
-        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(repo,
-                         a).as_short_text() +
+        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         + Testament.from_revision(repo,
+                                                   a).as_short_text() +
                          b'-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text(a))
 
     def test_store_signature(self):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
-        branch.lock_write()
-        try:
-            branch.repository.start_write_group()
+        with branch.lock_write(), WriteGroup(branch.repository):
             try:
                 branch.repository.store_revision_signature(
                     gpg.LoopbackGPGStrategy(None), b'FOO', b'A')
             except errors.NoSuchRevision:
-                branch.repository.abort_write_group()
                 raise tests.TestNotApplicable(
                     "repository does not support signing non-present"
                     "revisions")
-            except:
-                branch.repository.abort_write_group()
-                raise
-            else:
-                branch.repository.commit_write_group()
-        finally:
-            branch.unlock()
         # A signature without a revision should not be accessible.
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
@@ -94,7 +85,7 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.sign_revision(a, gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
-        #FIXME: clone should work to urls,
+        # FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])
         d2 = repo.controldir.clone(urlutils.local_path_to_url('target'))
@@ -118,9 +109,9 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.start_write_group()
         repo.sign_revision(a, strategy)
         repo.commit_write_group()
-        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(repo, a).as_short_text() +
-                         b'-----END PSEUDO-SIGNED CONTENT-----\n',
+        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         + Testament.from_revision(repo, a).as_short_text()
+                         + b'-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text(a))
         self.assertEqual(
             (gpg.SIGNATURE_VALID, None),
@@ -136,9 +127,9 @@ class TestSignatures(per_repository.TestCaseWithRepository):
         repo.start_write_group()
         repo.sign_revision(a, strategy)
         repo.commit_write_group()
-        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n' +
-                         Testament.from_revision(repo, a).as_short_text() +
-                         b'-----END PSEUDO-SIGNED CONTENT-----\n',
+        self.assertEqual(b'-----BEGIN PSEUDO-SIGNED CONTENT-----\n'
+                         + Testament.from_revision(repo, a).as_short_text()
+                         + b'-----END PSEUDO-SIGNED CONTENT-----\n',
                          repo.get_signature_text(a))
         self.assertEqual(
             [(a, gpg.SIGNATURE_VALID, None),
@@ -158,5 +149,5 @@ class TestUnsupportedSignatures(per_repository.TestCaseWithRepository):
         repo.lock_write()
         repo.start_write_group()
         self.assertRaises(errors.UnsupportedOperation,
-            repo.sign_revision, a, gpg.LoopbackGPGStrategy(None))
+                          repo.sign_revision, a, gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()

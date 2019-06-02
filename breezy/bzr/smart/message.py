@@ -16,7 +16,10 @@
 
 from __future__ import absolute_import
 
-import collections
+try:
+    from collections.abc import deque
+except ImportError:  # python < 3.7
+    from collections import deque
 
 from ... import (
     debug,
@@ -218,7 +221,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         MessageHandler.__init__(self)
         self.status = None
         self.args = None
-        self._bytes_parts = collections.deque()
+        self._bytes_parts = deque()
         self._body_started = False
         self._body_stream_status = None
         self._body = None

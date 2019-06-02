@@ -34,7 +34,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         base_tree.add('file', b'file-id')
         base_tree.commit('first commit', rev_id=b'tree-1')
         sub_tree = self.make_branch_and_tree('tree/subtree',
-            format='development-subtree')
+                                             format='development-subtree')
         if same_root is True:
             sub_tree.set_root_id(base_tree.get_root_id())
         sub_tree.add('file2', b'file2-id')
@@ -90,13 +90,12 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         self.assertEqual(b'subtree-1',
                          basis_tree.get_file_revision('subtree/file2'))
         self.assertEqual(b'combined-1',
-                         basis_tree.get_file_revision('subtree', sub_root_id))
+                         basis_tree.get_file_revision('subtree'))
 
     def test_subsume_failure(self):
         base_tree, sub_tree = self.make_trees()
         if base_tree.get_root_id() == sub_tree.get_root_id():
             raise tests.TestSkipped('This test requires unique roots')
-        sub_root_id = sub_tree.get_root_id()
         self.assertRaises(errors.BadSubsumeSource, base_tree.subsume,
                           base_tree)
         self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume,

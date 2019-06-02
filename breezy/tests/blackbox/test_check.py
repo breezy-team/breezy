@@ -40,7 +40,7 @@ class TestCheck(TestCaseWithTransport):
         self.assertContainsRe(err, r"checked repository.*\n"
                                    r"     1 revisions\n"
                                    r"     [01] file-ids\n"
-                                   )
+                              )
         self.assertContainsRe(err, r"Checking branch at '.*'\.\n")
         self.assertContainsRe(err, r"checked branch.*")
 
@@ -59,7 +59,7 @@ class TestCheck(TestCaseWithTransport):
                                    r"checked repository.*\n"
                                    r"     1 revisions\n"
                                    r"     [01] file-ids\n"
-                                   )
+                              )
 
     def test_check_tree(self):
         tree = self.make_branch_and_tree('.')
@@ -84,9 +84,9 @@ class TestCheck(TestCaseWithTransport):
         branch = self.make_branch('.')
         out, err = self.run_bzr('check --tree --branch')
         self.assertContainsRe(err,
-            r"Checking branch at '.*'\.\n"
-            r"No working tree found at specified location\.\n"
-            r"checked branch.*")
+                              r"Checking branch at '.*'\.\n"
+                              r"No working tree found at specified location\.\n"
+                              r"checked branch.*")
 
     def test_check_missing_branch_in_shared_repo(self):
         self.make_repository('shared', shared=True)

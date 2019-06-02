@@ -62,17 +62,17 @@ class TestStaticTuple(tests.TestCase):
         # self.assertEqual(count, sys.getrefcount(obj)-1)
         # Then it works fine. Something about passing it to assertRefcount is
         # actually double-incrementing (and decrementing) the refcount
-        self.assertEqual(count, sys.getrefcount(obj)-3)
+        self.assertEqual(count, sys.getrefcount(obj) - 3)
 
     def test_create(self):
         k = self.module.StaticTuple('foo')
         k = self.module.StaticTuple('foo', 'bar')
 
     def test_create_bad_args(self):
-        args_256 = ['a']*256
+        args_256 = ['a'] * 256
         # too many args
         self.assertRaises(TypeError, self.module.StaticTuple, *args_256)
-        args_300 = ['a']*300
+        args_300 = ['a'] * 300
         self.assertRaises(TypeError, self.module.StaticTuple, *args_300)
         # not a string
         self.assertRaises(TypeError, self.module.StaticTuple, object())
@@ -112,7 +112,7 @@ class TestStaticTuple(tests.TestCase):
     def test_concat_with_non_tuple(self):
         st1 = self.module.StaticTuple('foo')
         self.assertRaises(TypeError, lambda: st1 + 10)
-        
+
     def test_as_tuple(self):
         k = self.module.StaticTuple('foo')
         t = k.as_tuple()
@@ -155,7 +155,7 @@ class TestStaticTuple(tests.TestCase):
         self.assertEqual(2, len(k))
         k = self.module.StaticTuple('foo', 'bar', 'b', 'b', 'b', 'b', 'b')
         self.assertEqual(7, len(k))
-        args = ['foo']*255
+        args = ['foo'] * 255
         k = self.module.StaticTuple(*args)
         self.assertEqual(255, len(k))
 
@@ -174,7 +174,7 @@ class TestStaticTuple(tests.TestCase):
         self.assertEqual('z', k[6])
         self.assertEqual('z', k[-1])
         self.assertRaises(IndexError, k.__getitem__, 7)
-        self.assertRaises(IndexError, k.__getitem__, 256+7)
+        self.assertRaises(IndexError, k.__getitem__, 256 + 7)
         self.assertRaises(IndexError, k.__getitem__, 12024)
         # Python's [] resolver handles the negative arguments, so we can't
         # really test StaticTuple_item() with negative values.
@@ -183,7 +183,7 @@ class TestStaticTuple(tests.TestCase):
 
     def test_refcount(self):
         f = 'fo' + 'oo'
-        num_refs = sys.getrefcount(f) - 1 #sys.getrefcount() adds one
+        num_refs = sys.getrefcount(f) - 1  # sys.getrefcount() adds one
         k = self.module.StaticTuple(f)
         self.assertRefcount(num_refs + 1, f)
         b = k[0]
@@ -215,6 +215,7 @@ class TestStaticTuple(tests.TestCase):
 
     def test_holds_int(self):
         k1 = self.module.StaticTuple(1)
+
         class subint(int):
             pass
         # But not a subclass, because subint could introduce refcycles
@@ -224,6 +225,7 @@ class TestStaticTuple(tests.TestCase):
         if PY3:
             self.skipTest("No long type on Python 3")
         k1 = self.module.StaticTuple(2**65)
+
         class sublong(long):
             pass
         # But not a subclass
@@ -231,18 +233,21 @@ class TestStaticTuple(tests.TestCase):
 
     def test_holds_float(self):
         k1 = self.module.StaticTuple(1.2)
+
         class subfloat(float):
             pass
         self.assertRaises(TypeError, self.module.StaticTuple, subfloat(1.5))
 
     def test_holds_bytes(self):
         k1 = self.module.StaticTuple(b'astring')
+
         class substr(bytes):
             pass
         self.assertRaises(TypeError, self.module.StaticTuple, substr(b'a'))
 
     def test_holds_unicode(self):
         k1 = self.module.StaticTuple(u'\xb5')
+
         class subunicode(text_type):
             pass
         self.assertRaises(TypeError, self.module.StaticTuple,
@@ -324,7 +329,7 @@ class TestStaticTuple(tests.TestCase):
     def test_compare_vs_none(self):
         k1 = self.module.StaticTuple('baz', 'bing')
         self.assertCompareDifferent(None, k1, mismatched_types=True)
-    
+
     def test_compare_cross_class(self):
         k1 = self.module.StaticTuple('baz', 'bing')
         self.assertCompareNoRelation(10, k1, mismatched_types=True)
@@ -488,7 +493,7 @@ class TestStaticTuple(tests.TestCase):
 
     def test__c_intern_handles_refcount(self):
         if self.module is _static_tuple_py:
-            return # Not applicable
+            return  # Not applicable
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
@@ -523,7 +528,7 @@ class TestStaticTuple(tests.TestCase):
 
     def test__c_keys_are_not_immortal(self):
         if self.module is _static_tuple_py:
-            return # Not applicable
+            return  # Not applicable
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)

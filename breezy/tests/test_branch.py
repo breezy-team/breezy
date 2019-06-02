@@ -61,7 +61,7 @@ class TestDefaultFormat(tests.TestCase):
     def test_default_format(self):
         # update this if you change the default branch format
         self.assertIsInstance(_mod_branch.format_registry.get_default(),
-                _mod_bzrbranch.BzrBranchFormat7)
+                              _mod_bzrbranch.BzrBranchFormat7)
 
     def test_default_format_is_same_as_bzrdir_default(self):
         # XXX: it might be nice if there was only one place the default was
@@ -115,7 +115,8 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         self.assertFileEqual(b"# comment\n"
                              b"[%s]\n"
                              b"push_location = foo\n"
-                             b"push_location:policy = norecurse\n" % local_path.encode('utf-8'),
+                             b"push_location:policy = norecurse\n" % local_path.encode(
+                                 'utf-8'),
                              config.locations_config_filename())
 
     # TODO RBC 20051029 test getting a push location from a branch in a
@@ -154,6 +155,8 @@ class SampleBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
 SampleSupportedBranchFormatString = b"Sample supported branch format."
 
 # And the format class can then reference the constant to avoid skew.
+
+
 class SampleSupportedBranchFormat(_mod_bzrbranch.BranchFormatMetadir):
     """A sample supported format."""
 
@@ -199,6 +202,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         # create a branch with a few known format objects.
         # this is not quite the same as
         self.build_tree(["foo/", "bar/"])
+
         def check_format(format, url):
             dir = format._matchingcontroldir.initialize(url)
             dir.create_repository()
@@ -212,7 +216,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             SampleBranchFormat.from_string(b"Sample branch format."),
             SampleBranchFormat)
         self.assertRaises(AssertionError,
-            SampleBranchFormat.from_string, b"Different branch format.")
+                          SampleBranchFormat.from_string, b"Different branch format.")
 
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -230,7 +234,8 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
     def test_find_format_with_features(self):
         tree = self.make_branch_and_tree('.', format='2a')
         tree.branch.update_feature_flags({b"name": b"optional"})
-        found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(tree.controldir)
+        found_format = _mod_bzrbranch.BranchFormatMetadir.find_format(
+            tree.controldir)
         self.assertIsInstance(found_format, _mod_bzrbranch.BranchFormatMetadir)
         self.assertEqual(found_format.features.get(b"name"), b"optional")
         tree.branch.update_feature_flags({b"name": None})
@@ -254,10 +259,10 @@ class TestBranchFormatRegistry(tests.TestCase):
         format = SampleBranchFormat()
         self.registry.register(format)
         self.assertEqual(format,
-            self.registry.get(b"Sample branch format."))
+                         self.registry.get(b"Sample branch format."))
         self.registry.remove(format)
         self.assertRaises(KeyError, self.registry.get,
-            b"Sample branch format.")
+                          b"Sample branch format.")
 
     def test_get_all(self):
         format = SampleBranchFormat()
@@ -274,7 +279,7 @@ class TestBranchFormatRegistry(tests.TestCase):
     def test_register_extra_lazy(self):
         self.assertEqual([], self.registry._get_all())
         self.registry.register_extra_lazy("breezy.tests.test_branch",
-            "SampleExtraBranchFormat")
+                                          "SampleExtraBranchFormat")
         formats = self.registry._get_all()
         self.assertEqual(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraBranchFormat)
@@ -323,11 +328,11 @@ class TestBranch67(object):
 
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source',
-            format=self.get_format_name_subtree())
+                                         format=self.get_format_name_subtree())
         subtree = self.make_branch_and_tree('source/subtree',
-            format=self.get_format_name_subtree())
+                                            format=self.get_format_name_subtree())
         subsubtree = self.make_branch_and_tree('source/subtree/subsubtree',
-            format=self.get_format_name_subtree())
+                                               format=self.get_format_name_subtree())
         self.build_tree(['source/subtree/file',
                          'source/subtree/subsubtree/file'])
         subsubtree.add('file')
@@ -369,11 +374,12 @@ class TestBranch6(TestBranch67, tests.TestCaseWithTransport):
     def test_set_stacked_on_url_errors(self):
         branch = self.make_branch('a', format=self.get_format_name())
         self.assertRaises(_mod_branch.UnstackableBranchFormat,
-            branch.set_stacked_on_url, None)
+                          branch.set_stacked_on_url, None)
 
     def test_default_stacked_location(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.assertRaises(_mod_branch.UnstackableBranchFormat, branch.get_stacked_on_url)
+        self.assertRaises(_mod_branch.UnstackableBranchFormat,
+                          branch.get_stacked_on_url)
 
 
 class TestBranch7(TestBranch67, tests.TestCaseWithTransport):
@@ -393,7 +399,7 @@ class TestBranch7(TestBranch67, tests.TestCaseWithTransport):
         branch = _mod_bzrbranch.BzrBranchFormat7().initialize(control)
         target = self.make_branch('b')
         self.assertRaises(errors.UnstackableRepositoryFormat,
-            branch.set_stacked_on_url, target.base)
+                          branch.set_stacked_on_url, target.base)
 
     def test_clone_stacked_on_unstackable_repo(self):
         repo = self.make_repository('a', format='dirstate-tags')
@@ -443,6 +449,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
     @staticmethod
     def instrument_branch(branch, gets):
         old_get = branch._transport.get
+
         def get(*args, **kwargs):
             gets.append((args, kwargs))
             return old_get(*args, **kwargs)
@@ -490,6 +497,7 @@ class BzrBranch8(tests.TestCaseWithTransport):
     def _recordParentMapCalls(self, repo):
         self._parent_map_calls = []
         orig_get_parent_map = repo.revisions.get_parent_map
+
         def get_parent_map(q):
             q = list(q)
             self._parent_map_calls.extend([e[0] for e in q])
@@ -525,7 +533,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
         self.assertFileEqual(reference_url.encode('utf-8'),
                              'checkout/.bzr/branch/location')
         self.assertEqual(reference_url,
-            _mod_bzrbranch.BranchReferenceFormat().get_reference(checkout.controldir))
+                         _mod_bzrbranch.BranchReferenceFormat().get_reference(checkout.controldir))
 
 
 class TestHooks(tests.TestCaseWithTransport):
@@ -534,7 +542,8 @@ class TestHooks(tests.TestCaseWithTransport):
         """Check that creating a BranchHooks instance has the right defaults."""
         hooks = _mod_branch.BranchHooks()
         self.assertTrue("post_push" in hooks, "post_push not in %s" % hooks)
-        self.assertTrue("post_commit" in hooks, "post_commit not in %s" % hooks)
+        self.assertTrue("post_commit" in hooks,
+                        "post_commit not in %s" % hooks)
         self.assertTrue("pre_commit" in hooks, "pre_commit not in %s" % hooks)
         self.assertTrue("post_pull" in hooks, "post_pull not in %s" % hooks)
         self.assertTrue("post_uncommit" in hooks,
@@ -555,7 +564,7 @@ class TestHooks(tests.TestCaseWithTransport):
     def test_post_branch_init_hook(self):
         calls = []
         _mod_branch.Branch.hooks.install_named_hook('post_branch_init',
-            calls.append, None)
+                                                    calls.append, None)
         self.assertLength(0, calls)
         branch = self.make_branch('a')
         self.assertLength(1, calls)
@@ -567,7 +576,7 @@ class TestHooks(tests.TestCaseWithTransport):
     def test_post_branch_init_hook_repr(self):
         param_reprs = []
         _mod_branch.Branch.hooks.install_named_hook('post_branch_init',
-            lambda params: param_reprs.append(repr(params)), None)
+                                                    lambda params: param_reprs.append(repr(params)), None)
         branch = self.make_branch('a')
         self.assertLength(1, param_reprs)
         param_repr = param_reprs[0]
@@ -577,7 +586,7 @@ class TestHooks(tests.TestCaseWithTransport):
         from .. import switch
         calls = []
         _mod_branch.Branch.hooks.install_named_hook('post_switch',
-            calls.append, None)
+                                                    calls.append, None)
         tree = self.make_branch_and_tree('branch-1')
         self.build_tree(['branch-1/file-1'])
         tree.add('file-1')
@@ -613,7 +622,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
 
     def test_valid_append_revisions_only(self):
         self.assertEqual(None,
-                          self.config_stack.get('append_revisions_only'))
+                         self.config_stack.get('append_revisions_only'))
         self.check_append_revisions_only(None)
         self.check_append_revisions_only(False, 'False')
         self.check_append_revisions_only(True, 'True')
@@ -625,6 +634,7 @@ class TestBranchOptions(tests.TestCaseWithTransport):
     def test_invalid_append_revisions_only(self):
         """Ensure warning is noted on invalid settings"""
         self.warnings = []
+
         def warning(*args):
             self.warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)

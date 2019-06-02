@@ -24,11 +24,12 @@ class TestBisectMultiBytes(TestCase):
 
     def test_lookup_no_keys_no_calls(self):
         calls = []
+
         def missing_content(location_keys):
             calls.append(location_keys)
             return ((location_key, False) for location_key in location_keys)
         self.assertEqual([],
-            list(bisect_multi_bytes(missing_content, 100, [])))
+                         list(bisect_multi_bytes(missing_content, 100, [])))
         self.assertEqual([], calls)
 
     def test_lookup_missing_key_no_content(self):
@@ -39,15 +40,17 @@ class TestBisectMultiBytes(TestCase):
         for a given location, key pair.
         """
         calls = []
+
         def missing_content(location_keys):
             calls.append(location_keys)
             return ((location_key, False) for location_key in location_keys)
         self.assertEqual([],
-            list(bisect_multi_bytes(missing_content, 0, ['foo', 'bar'])))
+                         list(bisect_multi_bytes(missing_content, 0, ['foo', 'bar'])))
         self.assertEqual([[(0, 'foo'), (0, 'bar')]], calls)
 
     def test_lookup_missing_key_before_all_others(self):
         calls = []
+
         def missing_first_content(location_keys):
             # returns -1 for all keys unless the byte offset is 0 when it
             # returns False
@@ -61,12 +64,12 @@ class TestBisectMultiBytes(TestCase):
             return result
         # given a 0 length file, this should terminate with one call.
         self.assertEqual([],
-            list(bisect_multi_bytes(missing_first_content, 0, ['foo', 'bar'])))
+                         list(bisect_multi_bytes(missing_first_content, 0, ['foo', 'bar'])))
         self.assertEqual([[(0, 'foo'), (0, 'bar')]], calls)
         del calls[:]
         # given a 2 length file, this should make two calls - 1, 0.
         self.assertEqual([],
-            list(bisect_multi_bytes(missing_first_content, 2, ['foo', 'bar'])))
+                         list(bisect_multi_bytes(missing_first_content, 2, ['foo', 'bar'])))
         self.assertEqual([
             [(1, 'foo'), (1, 'bar')],
             [(0, 'foo'), (0, 'bar')],
@@ -83,8 +86,8 @@ class TestBisectMultiBytes(TestCase):
         # 800 thousand keys, and log2 of 800000 is 19 - so we're doing log2
         # steps in the worst case there.
         self.assertEqual([],
-            list(bisect_multi_bytes(
-                missing_first_content, 268435456 - 1, ['foo', 'bar'])))
+                         list(bisect_multi_bytes(
+                             missing_first_content, 268435456 - 1, ['foo', 'bar'])))
         self.assertEqual([
             [(134217727, 'foo'), (134217727, 'bar')],
             [(67108864, 'foo'), (67108864, 'bar')],
@@ -145,6 +148,7 @@ class TestBisectMultiBytes(TestCase):
     def test_lookup_missing_key_after_all_others(self):
         calls = []
         end = None
+
         def missing_last_content(location_keys):
             # returns +1 for all keys unless the byte offset is 'end' when it
             # returns False
@@ -159,13 +163,13 @@ class TestBisectMultiBytes(TestCase):
         # given a 0 length file, this should terminate with one call.
         end = 0
         self.assertEqual([],
-            list(bisect_multi_bytes(missing_last_content, 0, ['foo', 'bar'])))
+                         list(bisect_multi_bytes(missing_last_content, 0, ['foo', 'bar'])))
         self.assertEqual([[(0, 'foo'), (0, 'bar')]], calls)
         del calls[:]
         end = 2
         # given a 3 length file, this should make two calls - 1, 2.
         self.assertEqual([],
-            list(bisect_multi_bytes(missing_last_content, 3, ['foo', 'bar'])))
+                         list(bisect_multi_bytes(missing_last_content, 3, ['foo', 'bar'])))
         self.assertEqual([
             [(1, 'foo'), (1, 'bar')],
             [(2, 'foo'), (2, 'bar')],
@@ -176,8 +180,8 @@ class TestBisectMultiBytes(TestCase):
         # test_lookup_missing_key_before_all_others for details about this
         # assertion.
         self.assertEqual([],
-            list(bisect_multi_bytes(
-                missing_last_content, 268435456 - 1, ['foo', 'bar'])))
+                         list(bisect_multi_bytes(
+                             missing_last_content, 268435456 - 1, ['foo', 'bar'])))
         self.assertEqual([
             [(134217727, 'foo'), (134217727, 'bar')],
             [(201326590, 'foo'), (201326590, 'bar')],
@@ -237,6 +241,7 @@ class TestBisectMultiBytes(TestCase):
 
     def test_lookup_when_a_key_is_missing_continues(self):
         calls = []
+
         def missing_foo_otherwise_missing_first_content(location_keys):
             # returns -1 for all keys unless the byte offset is 0 when it
             # returns False
@@ -251,9 +256,9 @@ class TestBisectMultiBytes(TestCase):
         # given a 2 length file, this should terminate with two calls, one for
         # both keys, and one for bar only.
         self.assertEqual([],
-            list(bisect_multi_bytes(
-                missing_foo_otherwise_missing_first_content, 2,
-                ['foo', 'bar'])))
+                         list(bisect_multi_bytes(
+                             missing_foo_otherwise_missing_first_content, 2,
+                             ['foo', 'bar'])))
         self.assertEqual([
             [(1, 'foo'), (1, 'bar')],
             [(0, 'bar')],
@@ -261,6 +266,7 @@ class TestBisectMultiBytes(TestCase):
 
     def test_found_keys_returned_other_searches_continue(self):
         calls = []
+
         def find_bar_at_1_foo_missing_at_0(location_keys):
             calls.append(location_keys)
             result = []
@@ -275,9 +281,9 @@ class TestBisectMultiBytes(TestCase):
         # given a 4 length file, this should terminate with three calls, two for
         # both keys, and one for foo only.
         self.assertEqual([('bar', 'bar-result')],
-            list(bisect_multi_bytes(
-                find_bar_at_1_foo_missing_at_0, 4,
-                ['foo', 'bar'])))
+                         list(bisect_multi_bytes(
+                             find_bar_at_1_foo_missing_at_0, 4,
+                             ['foo', 'bar'])))
         self.assertEqual([
             [(2, 'foo'), (2, 'bar')],
             [(1, 'foo'), (1, 'bar')],
@@ -286,6 +292,7 @@ class TestBisectMultiBytes(TestCase):
 
     def test_searches_different_keys_in_different_directions(self):
         calls = []
+
         def missing_bar_at_1_foo_at_3(location_keys):
             calls.append(location_keys)
             result = []
@@ -305,9 +312,9 @@ class TestBisectMultiBytes(TestCase):
             return result
         # given a 4 length file, this should terminate with two calls.
         self.assertEqual([],
-            list(bisect_multi_bytes(
-                missing_bar_at_1_foo_at_3, 4,
-                ['foo', 'bar'])))
+                         list(bisect_multi_bytes(
+                             missing_bar_at_1_foo_at_3, 4,
+                             ['foo', 'bar'])))
         self.assertEqual([
             [(2, 'foo'), (2, 'bar')],
             [(3, 'foo'), (1, 'bar')],
@@ -317,6 +324,7 @@ class TestBisectMultiBytes(TestCase):
         # check that we can search down, up, down again -
         # so length 8, goes 4, 6, 5
         calls = []
+
         def missing_at_5(location_keys):
             calls.append(location_keys)
             result = []
@@ -332,12 +340,11 @@ class TestBisectMultiBytes(TestCase):
             return result
         # given a 8 length file, this should terminate with three calls.
         self.assertEqual([],
-            list(bisect_multi_bytes(
-                missing_at_5, 8,
-                ['foo', 'bar'])))
+                         list(bisect_multi_bytes(
+                             missing_at_5, 8,
+                             ['foo', 'bar'])))
         self.assertEqual([
             [(4, 'foo'), (4, 'bar')],
             [(6, 'foo'), (6, 'bar')],
             [(5, 'foo'), (5, 'bar')],
             ], calls)
-

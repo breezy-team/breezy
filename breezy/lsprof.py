@@ -24,6 +24,7 @@ from . import errors
 
 __all__ = ['profile', 'Stats']
 
+
 def profile(f, *args, **kwds):
     """Run a function profile.
 
@@ -47,7 +48,7 @@ def profile(f, *args, **kwds):
 
 class BzrProfiler(object):
     """Bzr utility wrapper around Profiler.
-    
+
     For most uses the module level 'profile()' function will be suitable.
     However profiling when a simple wrapped function isn't available may
     be easier to accomplish using this class.
@@ -59,7 +60,7 @@ class BzrProfiler(object):
     Note that profiling involves a threading.Lock around the actual profiling.
     This is needed because profiling involves global manipulation of the python
     interpreter state. As such you cannot perform multiple profiles at once.
-    Trying to do so will lock out the second profiler unless the global 
+    Trying to do so will lock out the second profiler unless the global
     breezy.lsprof.BzrProfiler.profiler_block is set to 0. Setting it to 0 will
     cause profiling to fail rather than blocking.
     """
@@ -72,7 +73,7 @@ class BzrProfiler(object):
 
     def start(self):
         """Start profiling.
-        
+
         This hooks into threading and will record all calls made until
         stop() is called.
         """
@@ -85,7 +86,7 @@ class BzrProfiler(object):
         try:
             self.p.enable(subcalls=True)
             threading.setprofile(self._thread_profile)
-        except:
+        except BaseException:
             self.__class__.profiler_lock.release()
             raise
 
@@ -161,7 +162,6 @@ class Stats(object):
             d = d[:top]
         cols = "% 12s %12s %11.4f %11.4f   %s\n"
         hcols = "% 12s %12s %12s %12s %s\n"
-        cols2 = "+%12s %12s %11.4f %11.4f +  %s\n"
         file.write(hcols % ("CallCount", "Recursive", "Total(ms)",
                             "Inline(ms)", "module:lineno(function)"))
         for e in d:
@@ -258,7 +258,6 @@ class _CallTreeFilter(object):
         out_file = self.out_file
         code = entry.code
         inlinetime = int(entry.inlinetime * 1000)
-        #out_file.write('ob=%s\n' % (code.co_filename,))
         if isinstance(code, str):
             out_file.write('fi=~\n')
         else:
@@ -285,7 +284,6 @@ class _CallTreeFilter(object):
         out_file = self.out_file
         code = subentry.code
         totaltime = int(subentry.totaltime * 1000)
-        #out_file.write('cob=%s\n' % (code.co_filename,))
         if isinstance(code, str):
             out_file.write('cfi=~\n')
             out_file.write('cfn=%s\n' % (label(code, True),))
@@ -297,7 +295,9 @@ class _CallTreeFilter(object):
                 subentry.callcount, code.co_firstlineno))
         out_file.write('%d %d\n' % (lineno, totaltime))
 
+
 _fn2mod = {}
+
 
 def label(code, calltree=False):
     if isinstance(code, str):
@@ -316,7 +316,7 @@ def label(code, calltree=False):
                 mname = _fn2mod[code.co_filename] = k
                 break
         else:
-            mname = _fn2mod[code.co_filename] = '<%s>'%code.co_filename
+            mname = _fn2mod[code.co_filename] = '<%s>' % code.co_filename
     if calltree:
         return '%s %s:%d' % (code.co_name, mname, code.co_firstlineno)
     else:

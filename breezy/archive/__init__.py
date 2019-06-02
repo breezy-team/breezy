@@ -52,13 +52,13 @@ class ArchiveFormatRegistry(registry.Registry):
         """Register an archive format.
         """
         registry.Registry.register(self, key, factory, help,
-            ArchiveFormatInfo(extensions))
+                                   ArchiveFormatInfo(extensions))
         self._register_extensions(key, extensions)
 
     def register_lazy(self, key, module_name, member_name, extensions,
                       help=None):
         registry.Registry.register_lazy(self, key, module_name, member_name,
-            help, ArchiveFormatInfo(extensions))
+                                        help, ArchiveFormatInfo(extensions))
         self._register_extensions(key, extensions)
 
     def _register_extensions(self, name, extensions):
@@ -94,7 +94,7 @@ format_registry.register_lazy('tar', 'breezy.archive.tar',
 format_registry.register_lazy('tgz', 'breezy.archive.tar',
                               'tgz_generator', ['.tar.gz', '.tgz'])
 format_registry.register_lazy('tbz2', 'breezy.archive.tar',
-                              'tbz_generator',  ['.tar.bz2', '.tbz2'])
+                              'tbz_generator', ['.tar.bz2', '.tbz2'])
 format_registry.register_lazy('tlzma', 'breezy.archive.tar',
                               'tar_lzma_generator', ['.tar.lzma'])
 format_registry.register_lazy('txz', 'breezy.archive.tar',

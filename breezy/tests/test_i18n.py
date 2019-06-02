@@ -168,14 +168,15 @@ class TestTranslate(tests.TestCaseWithTransport):
             self.assertContainsRe(err, u"zz\xe5{{Not a branch: .*}}")
         else:
             self.assertContainsRe(
-                    err, u"zz\xe5{{Not a branch: .*}}".encode('utf-8'))
+                err, u"zz\xe5{{Not a branch: .*}}".encode('utf-8'))
 
     def test_topic_help_translation(self):
         """does topic help get translated?"""
         from .. import help
         out = io.StringIO()
         help.help("authentication", out)
-        self.assertContainsRe(out.getvalue(), "zz\xe5{{Authentication Settings")
+        self.assertContainsRe(
+            out.getvalue(), "zz\xe5{{Authentication Settings")
 
 
 class LoadPluginTranslations(tests.TestCase):

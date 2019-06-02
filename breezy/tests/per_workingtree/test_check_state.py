@@ -23,7 +23,6 @@ from breezy import (
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
-
 class TestCaseWithState(TestCaseWithWorkingTree):
 
     def make_tree_with_broken_dirstate(self, path):

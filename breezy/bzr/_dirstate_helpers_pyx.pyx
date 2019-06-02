@@ -262,7 +262,7 @@ def _lt_path_by_dirblock(path1, path2):
     children appear. But all grandchildren come after all children.
 
     In other words, all entries in a directory are sorted together, and
-    directorys are sorted in cmp_by_dirs order.
+    directories are sorted in cmp_by_dirs order.
 
     :param path1: first path
     :param path2: the second path

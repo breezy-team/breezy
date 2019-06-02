@@ -23,6 +23,7 @@ from breezy import (
     osutils,
     revision as _mod_revision,
     tests,
+    urlutils,
     )
 from breezy.bzr import (
     branch as _mod_bzrbranch,
@@ -43,7 +44,9 @@ class TestSprout(TestCaseWithBranch):
     def test_sprout_branch_parent(self):
         source = self.make_branch('source')
         target = source.controldir.sprout(self.get_url('target')).open_branch()
-        self.assertEqual(source.user_url, target.get_parent())
+        self.assertEqual(
+            urlutils.split_segment_parameters(source.user_url)[0],
+            urlutils.split_segment_parameters(target.get_parent())[0])
 
     def test_sprout_uses_bzrdir_branch_format(self):
         # branch.sprout(bzrdir) is defined as using the branch format selected
@@ -69,7 +72,8 @@ class TestSprout(TestCaseWithBranch):
             # do not have one unless a branch was created at the time.
             # We use branch format 6 because its not the default, and its not
             # metaweave either.
-            target_bzrdir._format.set_branch_format(_mod_bzrbranch.BzrBranchFormat6())
+            target_bzrdir._format.set_branch_format(
+                _mod_bzrbranch.BzrBranchFormat6())
             result_format = target_bzrdir._format.get_branch_format()
         target = source.sprout(target_bzrdir)
         if isinstance(target, remote.RemoteBranch):
@@ -148,7 +152,7 @@ class TestSprout(TestCaseWithBranch):
         wt.revert()
         wt.commit('rev1b')
         wt2 = wt.controldir.sprout(
-                'target', revision_id=rev1a).open_workingtree()
+            'target', revision_id=rev1a).open_workingtree()
         self.assertEqual(rev1a, wt2.last_revision())
         self.assertPathExists('target/a')
 
@@ -178,7 +182,7 @@ class TestSprout(TestCaseWithBranch):
         # Check that the symlink target is safely round-tripped in the trees.
         self.assertEqual(target, tree.get_symlink_target(link_name))
         self.assertEqual(target,
-                tree.basis_tree().get_symlink_target(link_name))
+                         tree.basis_tree().get_symlink_target(link_name))
 
     def test_sprout_with_ghost_in_mainline(self):
         tree = self.make_branch_and_tree('tree1')
@@ -204,11 +208,11 @@ class TestSprout(TestCaseWithBranch):
         target_transport = self.get_transport('target')
         self.hook_calls = []
         _mod_branch.Branch.hooks.install_named_hook("pre_change_branch_tip",
-            self.assertBranchHookBranchIsStacked, None)
+                                                    self.assertBranchHookBranchIsStacked, None)
         try:
             dir = source.controldir.sprout(target_transport.base,
-                source.last_revision(), possible_transports=[target_transport],
-                source_branch=source, stacked=True)
+                                           source.last_revision(), possible_transports=[target_transport],
+                                           source_branch=source, stacked=True)
         except _mod_branch.UnstackableBranchFormat:
             if not self.branch_format.supports_stacking():
                 raise tests.TestNotApplicable(

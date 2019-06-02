@@ -30,7 +30,6 @@ from breezy import (
 from breezy.i18n import gettext
 from breezy.plugins.launchpad import (
     lp_api,
-    lp_registration,
     )
 """)
 
@@ -40,11 +39,11 @@ class ProposeMergeHooks(hooks.Hooks):
 
     def __init__(self):
         hooks.Hooks.__init__(self, "breezy.plugins.launchpad.lp_propose",
-            "Proposer.hooks")
+                             "Proposer.hooks")
         self.add_hook('get_prerequisite',
-            "Return the prerequisite branch for proposing as merge.", (2, 1))
+                      "Return the prerequisite branch for proposing as merge.", (2, 1))
         self.add_hook('merge_proposal_body',
-            "Return an initial body for the merge proposal message.", (2, 1))
+                      "Return an initial body for the merge proposal message.", (2, 1))
 
 
 class Proposer(object):
@@ -69,11 +68,10 @@ class Proposer(object):
         """
         self.tree = tree
         if staging:
-            lp_instance = 'staging'
+            lp_base_url = lp_api.uris.STAGING_SERVICE_ROOT
         else:
-            lp_instance = 'production'
-        service = lp_registration.LaunchpadService(lp_instance=lp_instance)
-        self.launchpad = lp_api.login(service)
+            lp_base_url = lp_api.uris.LPNET_SERVICE_ROOT
+        self.launchpad = lp_api.connect_launchpad(lp_base_url)
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
             self.launchpad, source_branch)
         if target_branch is None:
@@ -122,7 +120,7 @@ class Proposer(object):
             files = modified_files(lca_tree, source_tree)
             return list(files)
         target_loc = ('bzr+ssh://bazaar.launchpad.net/%s' %
-                       self.target_branch.lp.unique_name)
+                      self.target_branch.lp.unique_name)
         body = None
         for hook in self.hooks['merge_proposal_body']:
             body = hook({
@@ -165,7 +163,7 @@ class Proposer(object):
 
     def call_webservice(self, call, *args, **kwargs):
         """Make a call to the webservice, wrapping failures.
-        
+
         :param call: The call to make.
         :param *args: *args for the call.
         :param **kwargs: **kwargs for the call.
@@ -187,7 +185,7 @@ class Proposer(object):
         self.call_webservice(
             mp.createComment,
             vote=u'Approve',
-            subject='', # Use the default subject.
+            subject='',  # Use the default subject.
             content=u"Rubberstamp! Proposer approves of own proposal.")
         self.call_webservice(mp.setStatus, status=u'Approved', revid=revid)
 
@@ -227,6 +225,6 @@ class Proposer(object):
 def modified_files(old_tree, new_tree):
     """Return a list of paths in the new tree with modified contents."""
     for f, (op, path), c, v, p, n, (ok, k), e in new_tree.iter_changes(
-        old_tree):
+            old_tree):
         if c and k == 'file':
             yield str(path)

@@ -38,7 +38,6 @@ from . import (
     help_topics,
     option,
     plugin as _mod_plugin,
-    help,
     )
 from .sixish import PY3
 from .trace import (
@@ -50,12 +49,13 @@ from .i18n import gettext
 
 def _escape(s):
     s = (s.replace('\\', '\\\\')
-        .replace('\n', '\\n')
-        .replace('\r', '\\r')
-        .replace('\t', '\\t')
-        .replace('"', '\\"')
-        )
+         .replace('\n', '\\n')
+         .replace('\r', '\\r')
+         .replace('\t', '\\t')
+         .replace('"', '\\"')
+         )
     return s
+
 
 def _normalize(s):
     # This converts the various Python string types into a format that
@@ -107,7 +107,7 @@ class _ModuleContext(object):
         # TODO: fix this to do the right thing rather than rely on cwd
         relpath = os.path.relpath(sourcepath)
         return cls(relpath,
-            _source_info=_parse_source("".join(inspect.findsource(module)[0]), module.__file__))
+                   _source_info=_parse_source("".join(inspect.findsource(module)[0]), module.__file__))
 
     def from_class(self, cls):
         """Get new context with same details but lineno of class in source"""
@@ -117,7 +117,7 @@ class _ModuleContext(object):
             mutter("Definition of %r not found in %r", cls, self.path)
             return self
         return self.__class__(self.path, lineno,
-            (self._cls_to_lineno, self._str_to_lineno))
+                              (self._cls_to_lineno, self._str_to_lineno))
 
     def from_string(self, string):
         """Get new context with same details but lineno of string in source"""
@@ -127,7 +127,7 @@ class _ModuleContext(object):
             mutter("String %r not found in %r", string[:20], self.path)
             return self
         return self.__class__(self.path, lineno,
-            (self._cls_to_lineno, self._str_to_lineno))
+                              (self._cls_to_lineno, self._str_to_lineno))
 
 
 class _PotExporter(object):
@@ -189,11 +189,11 @@ class _PotExporter(object):
 
 def _write_option(exporter, context, opt, note):
     if getattr(opt, 'hidden', False):
-        return   
+        return
     optname = opt.name
     if getattr(opt, 'title', None):
         exporter.poentry_in_context(context, opt.title,
-            "title of {name!r} {what}".format(name=optname, what=note))
+                                    "title of {name!r} {what}".format(name=optname, what=note))
     for name, _, _, helptxt in opt.iter_switches():
         if name != optname:
             if opt.is_hidden(name):
@@ -201,7 +201,7 @@ def _write_option(exporter, context, opt, note):
             name = "=".join([optname, name])
         if helptxt:
             exporter.poentry_in_context(context, helptxt,
-                "help of {name!r} {what}".format(name=name, what=note))
+                                        "help of {name!r} {what}".format(name=name, what=note))
 
 
 def _standard_options(exporter):
@@ -233,7 +233,7 @@ def _write_command_help(exporter, cmd):
             return True
 
     exporter.poentry_per_paragraph(dcontext.path, dcontext.lineno, doc,
-        exclude_usage)
+                                   exclude_usage)
     _command_options(exporter, context, cmd)
 
 
@@ -259,8 +259,8 @@ def _command_helps(exporter, plugin_name=None):
     if plugin_name is not None and plugin_name not in plugins:
         raise errors.BzrError(gettext('Plugin %s is not loaded' % plugin_name))
     core_plugins = set(
-            name for name in plugins
-            if plugins[name].path().startswith(breezy.__path__[0]))
+        name for name in plugins
+        if plugins[name].path().startswith(breezy.__path__[0]))
     # plugins
     for cmd_name in _mod_commands.plugin_command_names():
         command = _mod_commands.get_cmd_object(cmd_name, False)
@@ -275,7 +275,7 @@ def _command_helps(exporter, plugin_name=None):
             # TODO: Support extracting from third party plugins.
             continue
         note(gettext("Exporting messages from plugin command: {0} in {1}").format(
-             cmd_name, command.plugin_name() ))
+             cmd_name, command.plugin_name()))
         _write_command_help(exporter, command)
 
 
@@ -305,16 +305,16 @@ def _help_topics(exporter):
         doc = topic_registry.get(key)
         if isinstance(doc, str):
             exporter.poentry_per_paragraph(
-                    'dummy/help_topics/'+key+'/detail.txt',
-                    1, doc)
-        elif callable(doc): # help topics from files
+                'dummy/help_topics/' + key + '/detail.txt',
+                1, doc)
+        elif callable(doc):  # help topics from files
             exporter.poentry_per_paragraph(
-                    'en/help_topics/'+key+'.txt',
-                    1, doc(key))
+                'en/help_topics/' + key + '.txt',
+                1, doc(key))
         summary = topic_registry.get_summary(key)
         if summary is not None:
-            exporter.poentry('dummy/help_topics/'+key+'/summary.txt',
-                     1, summary)
+            exporter.poentry('dummy/help_topics/' + key + '/summary.txt',
+                             1, summary)
 
 
 def export_pot(outf, plugin=None, include_duplicates=False):

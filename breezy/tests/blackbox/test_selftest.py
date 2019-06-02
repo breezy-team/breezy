@@ -26,16 +26,18 @@ from breezy.tests import (
     )
 from breezy.transport import memory
 
+
 class SelfTestPatch:
 
     def get_params_passed_to_core(self, cmdline):
         params = []
+
         def selftest(*args, **kwargs):
             """Capture the arguments selftest was run with."""
             params.append((args, kwargs))
             return True
         # Yes this prevents using threads to run the test suite in parallel,
-        # however we don't have a clean dependency injector for commands, 
+        # however we don't have a clean dependency injector for commands,
         # and even if we did - we'd still be testing that the glue is wired
         # up correctly. XXX: TODO: Solve this testing problem.
         original_selftest = tests.selftest
@@ -60,7 +62,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         from breezy.tests import stub_sftp
         params = self.get_params_passed_to_core('selftest --transport=sftp')
         self.assertEqual(stub_sftp.SFTPAbsoluteServer,
-            params[1]["transport"])
+                         params[1]["transport"])
 
     def test_transport_set_to_memory(self):
         # Test that we can pass a transport to the selftest core - memory
@@ -71,13 +73,14 @@ class TestOptions(tests.TestCase, SelfTestPatch):
     def test_parameters_passed_to_core(self):
         params = self.get_params_passed_to_core('selftest --list-only')
         self.assertTrue("list_only" in params[1])
-        params = self.get_params_passed_to_core('selftest --list-only selftest')
+        params = self.get_params_passed_to_core(
+            'selftest --list-only selftest')
         self.assertTrue("list_only" in params[1])
         params = self.get_params_passed_to_core(['selftest', '--list-only',
-            '--exclude', 'selftest'])
+                                                 '--exclude', 'selftest'])
         self.assertTrue("list_only" in params[1])
         params = self.get_params_passed_to_core(['selftest', '--list-only',
-            'selftest', '--randomize', 'now'])
+                                                 'selftest', '--randomize', 'now'])
         self.assertSubset(["list_only", "random_seed"], params[1])
 
     def test_starting_with(self):
@@ -132,6 +135,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         def selftest(*args, **kwargs):
             """Capture the arguments selftest was run with."""
             return True
+
         def outputs_nothing(cmdline):
             out, err = self.run_bzr(cmdline)
             (header, body, footer) = self._parse_test_list(out.splitlines())
@@ -140,7 +144,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
             self.assertLength(0, footer)
             self.assertEqual('', err)
         # Yes this prevents using threads to run the test suite in parallel,
-        # however we don't have a clean dependency injector for commands, 
+        # however we don't have a clean dependency injector for commands,
         # and even if we did - we'd still be testing that the glue is wired
         # up correctly. XXX: TODO: Solve this testing problem.
         original_selftest = tests.selftest
@@ -148,7 +152,8 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         try:
             outputs_nothing('selftest --list-only')
             outputs_nothing('selftest --list-only selftest')
-            outputs_nothing(['selftest', '--list-only', '--exclude', 'selftest'])
+            outputs_nothing(
+                ['selftest', '--list-only', '--exclude', 'selftest'])
         finally:
             tests.selftest = original_selftest
 
@@ -161,6 +166,6 @@ class TestOptions(tests.TestCase, SelfTestPatch):
             self.addCleanup(setattr, os, "fork", os.fork)
             del os.fork
         out, err = self.run_bzr(["selftest", "--parallel=fork", "-s", "bt.x"],
-            retcode=3)
+                                retcode=3)
         self.assertIn("platform does not support fork", err)
         self.assertFalse(out)

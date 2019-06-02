@@ -50,6 +50,4 @@ from __future__ import absolute_import
 #
 
 # Promote some attributes from submodules into this namespace
-from .request import SmartServerRequestHandler
-
-
+from .request import SmartServerRequestHandler  # noqa: F401

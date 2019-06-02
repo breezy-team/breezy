@@ -17,7 +17,7 @@ before we migrate it to become a supported format. Getting new versions of bzr
 in widespread use at that time will be very important, otherwise the user base
 may be split in two - users that have upgraded and users that have not.
 
-The following changes are grouped according to their compatability impact:
+The following changes are grouped according to their compatibility impact:
 library only, disk format but interoperable, disk format interoperability
 unknown, and disk format, not interoperable.
 

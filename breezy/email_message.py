@@ -71,7 +71,7 @@ class EmailMessage(object):
         self._parts = []
 
         if isinstance(to_address, (bytes, text_type)):
-            to_address = [ to_address ]
+            to_address = [to_address]
 
         to_addresses = []
 
@@ -170,7 +170,7 @@ class EmailMessage(object):
         msg = EmailMessage(from_address, to_address, subject, body)
         if attachment is not None:
             msg.add_inline_attachment(attachment, attachment_filename,
-                    attachment_mime_subtype)
+                                      attachment_mime_subtype)
         SMTPConnection(config).send_email(msg)
 
     @staticmethod
@@ -180,7 +180,7 @@ class EmailMessage(object):
         :param address: An unicode string, or UTF-8 byte string.
         :return: A possibly RFC2047-encoded string.
         """
-        if not isinstance(address,(str, text_type)):
+        if not isinstance(address, (str, text_type)):
             raise BzrBadParameterNotUnicode(address)
         # Can't call Header over all the address, because that encodes both the
         # name and the email address, which is not permitted by RFCs.
@@ -189,7 +189,7 @@ class EmailMessage(object):
             return email
         else:
             return formataddr((str(Header(safe_unicode(user))),
-                email))
+                               email))
 
     @staticmethod
     def string_with_encoding(string_):

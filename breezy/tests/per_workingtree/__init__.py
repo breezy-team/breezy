@@ -53,7 +53,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats,
         remote_backing_server = memory.MemoryServer
     scenario = make_scenario(remote_server, remote_readonly_server,
                              default_wt_format)
-    scenario['repo_is_remote'] = True;
+    scenario['repo_is_remote'] = True
     scenario['vfs_transport_factory'] = remote_backing_server
     result.append((default_wt_format.__class__.__name__ + ',remote', scenario))
     return result

@@ -44,8 +44,8 @@ class TestSyntax(tests.TestCase):
     def test_trim_blank_lines(self):
         """Blank lines are respected, but trimmed at the start and end.
 
-        Python triple-quoted syntax is going to give stubby/empty blank lines 
-        right at the start and the end.  These are cut off so that callers don't 
+        Python triple-quoted syntax is going to give stubby/empty blank lines
+        right at the start and the end.  These are cut off so that callers don't
         need special syntax to avoid them.
 
         However we do want to be able to match commands that emit blank lines.
@@ -60,19 +60,19 @@ class TestSyntax(tests.TestCase):
 
     def test_simple_command(self):
         self.assertEqual([(['cd', 'trunk'], None, None, None)],
-                           script._script_to_commands('$ cd trunk'))
+                         script._script_to_commands('$ cd trunk'))
 
     def test_command_with_single_quoted_param(self):
         story = """$ brz commit -m 'two words'"""
         self.assertEqual([(['brz', 'commit', '-m', "'two words'"],
-                            None, None, None)],
-                           script._script_to_commands(story))
+                           None, None, None)],
+                         script._script_to_commands(story))
 
     def test_command_with_double_quoted_param(self):
         story = """$ brz commit -m "two words" """
         self.assertEqual([(['brz', 'commit', '-m', '"two words"'],
-                            None, None, None)],
-                           script._script_to_commands(story))
+                           None, None, None)],
+                         script._script_to_commands(story))
 
     def test_command_with_input(self):
         self.assertEqual(
@@ -88,8 +88,8 @@ class TestSyntax(tests.TestCase):
             adding file2
             """
         self.assertEqual([(['brz', 'add'], None,
-                            'adding file\nadding file2\n', None)],
-                          script._script_to_commands(story))
+                           'adding file\nadding file2\n', None)],
+                         script._script_to_commands(story))
 
     def test_command_with_output(self):
         story = """
@@ -98,8 +98,8 @@ adding file
 adding file2
 """
         self.assertEqual([(['brz', 'add'], None,
-                            'adding file\nadding file2\n', None)],
-                          script._script_to_commands(story))
+                           'adding file\nadding file2\n', None)],
+                         script._script_to_commands(story))
 
     def test_command_with_error(self):
         story = """
@@ -107,8 +107,8 @@ $ brz branch foo
 2>brz: ERROR: Not a branch: "foo"
 """
         self.assertEqual([(['brz', 'branch', 'foo'],
-                            None, None, 'brz: ERROR: Not a branch: "foo"\n')],
-                          script._script_to_commands(story))
+                           None, None, 'brz: ERROR: Not a branch: "foo"\n')],
+                         script._script_to_commands(story))
 
     def test_input_without_command(self):
         self.assertRaises(SyntaxError, script._script_to_commands, '<input')
@@ -121,8 +121,8 @@ $ brz branch foo
 $ foo = `brz file-id toto`
 """
         self.assertEqual([(['foo', '=', '`brz file-id toto`'],
-                            None, None, None)],
-                          script._script_to_commands(story))
+                           None, None, None)],
+                         script._script_to_commands(story))
 
 
 class TestRedirections(tests.TestCase):
@@ -157,7 +157,6 @@ class TestRedirections(tests.TestCase):
         self._check('>', '', 'a+', [], ['<', '>', '>>'])
 
 
-
 class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_unknown_command(self):
@@ -176,18 +175,18 @@ class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_blank_output_mismatches_output(self):
         """If you give output, the output must actually be blank.
-        
+
         See <https://bugs.launchpad.net/bzr/+bug/637830>: previously blank
         output was a wildcard.  Now you must say ... if you want that.
         """
         self.assertRaises(AssertionError,
-            self.run_script,
-            """
+                          self.run_script,
+                          """
             $ echo foo
             """)
 
     def test_null_output_matches_option(self):
-        """If you want null output to be a wild card, you can pass 
+        """If you want null output to be a wild card, you can pass
         null_output_matches_anything to run_script"""
         self.run_script(
             """
@@ -374,7 +373,8 @@ class TestMkdir(script.TestCaseWithTransportAndScript):
 
     def test_mkdir_jailed(self):
         self.assertRaises(ValueError, self.run_script, '$ mkdir /out-of-jail')
-        self.assertRaises(ValueError, self.run_script, '$ mkdir ../out-of-jail')
+        self.assertRaises(ValueError, self.run_script,
+                          '$ mkdir ../out-of-jail')
 
     def test_mkdir_in_jail(self):
         self.run_script("""
@@ -403,7 +403,7 @@ $ mkdir dir
 $ cd dir
 """)
         self.assertEqual(osutils.pathjoin(self.test_dir, 'dir'),
-                          osutils.getcwd())
+                         osutils.getcwd())
 
         self.run_script('$ cd')
         self.assertEqual(self.test_dir, osutils.getcwd())
@@ -558,10 +558,10 @@ class cmd_test_confirm(commands.Command):
 
     def run(self):
         if ui.ui_factory.get_boolean(
-            u'Really do it',
-            # 'breezy.tests.test_script.confirm',
-            # {}
-            ):
+                u'Really do it',
+                # 'breezy.tests.test_script.confirm',
+                # {}
+                ):
             self.outf.write('Do it!\n')
         else:
             print('ok, no')
@@ -571,13 +571,14 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
 
     def test_confirm_action(self):
         """You can write tests that demonstrate user confirmation.
-        
+
         Specifically, ScriptRunner does't care if the output line for the
         prompt isn't terminated by a newline from the program; it's implicitly
         terminated by the input.
         """
         commands.builtin_command_registry.register(cmd_test_confirm)
-        self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
+        self.addCleanup(
+            commands.builtin_command_registry.remove, 'test-confirm')
         self.run_script("""
             $ brz test-confirm
             2>Really do it? ([y]es, [n]o): yes
@@ -588,6 +589,7 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
             <n
             ok, no
             """)
+
 
 class TestShelve(script.TestCaseWithTransportAndScript):
 
@@ -626,12 +628,11 @@ class TestShelve(script.TestCaseWithTransportAndScript):
 
     def test_dont_shelve(self):
         # We intentionally provide no input here to test EOF
-        self.run_script("""
-            $ brz shelve -m 'shelve bar'
-            2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): 
-            2>No changes to shelve.
-            """,
-                        null_output_matches_anything=True)
+        self.run_script((
+            "$ brz shelve -m 'shelve bar'\n"
+            "2>Shelve? ([y]es, [N]o, [f]inish, [q]uit): \n"
+            "2>No changes to shelve.\n"
+            ), null_output_matches_anything=True)
         self.run_script("""
             $ brz st
             modified:

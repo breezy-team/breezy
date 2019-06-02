@@ -72,7 +72,7 @@ class TestCheckout(TestCaseWithTransport):
 
     def test_checkout_light_dash_r(self):
         out, err = self.run_bzr(['checkout', '--lightweight', '-r', '-2',
-            'branch', 'checkout'])
+                                 'branch', 'checkout'])
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = controldir.ControlDir.open('checkout')
@@ -96,7 +96,8 @@ class TestCheckout(TestCaseWithTransport):
             force_new_tree=False,
             format=bzrdir.BzrDirMetaFormat1())
         # check no tree was created
-        self.assertRaises(errors.NoWorkingTree, branch.controldir.open_workingtree)
+        self.assertRaises(errors.NoWorkingTree,
+                          branch.controldir.open_workingtree)
         out, err = self.run_bzr('checkout treeless-branch')
         # we should have a tree now
         branch.controldir.open_workingtree()
@@ -109,7 +110,8 @@ class TestCheckout(TestCaseWithTransport):
             force_new_tree=False,
             format=bzrdir.BzrDirMetaFormat1())
         # check no tree was created
-        self.assertRaises(errors.NoWorkingTree, branch.controldir.open_workingtree)
+        self.assertRaises(errors.NoWorkingTree,
+                          branch.controldir.open_workingtree)
         out, err = self.run_bzr('checkout')
         # we should have a tree now
         branch.controldir.open_workingtree()
@@ -119,12 +121,12 @@ class TestCheckout(TestCaseWithTransport):
     def _test_checkout_existing_dir(self, lightweight):
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', b'content1'),
-                                  ('source/file2', b'content2'),])
+                                  ('source/file2', b'content2'), ])
         source.add(['file1', 'file2'])
         source.commit('added files')
         self.build_tree_contents([('target/', b''),
                                   ('target/file1', b'content1'),
-                                  ('target/file2', b'content3'),])
+                                  ('target/file2', b'content3'), ])
         cmd = ['checkout', 'source', 'target']
         if lightweight:
             cmd.append('--lightweight')
@@ -185,9 +187,9 @@ class TestCheckout(TestCaseWithTransport):
         source.add('file1')
         source.commit('added file')
         target = source.controldir.sprout('file:second,branch=somebranch',
-            create_tree_if_local=False)
+                                          create_tree_if_local=False)
         out, err = self.run_bzr('checkout file:,branch=somebranch .',
-            working_dir='second')
+                                working_dir='second')
         # We should always be creating a lighweight checkout for colocated
         # branches.
         self.assertEqual(
@@ -220,7 +222,7 @@ class TestSmartServerCheckout(TestCaseWithTransport):
             t.commit(message='commit %d' % count)
         self.reset_smart_call_log()
         out, err = self.run_bzr(['checkout', '--lightweight', self.get_url('from'),
-            'target'])
+                                 'target'])
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have

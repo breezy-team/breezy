@@ -264,7 +264,7 @@ class TestGlobster(TestCase):
         self.assertMatch([
             (u'*.x',
              [u'foo/bar/baz.x', u'\u8336/Q.x', u'foo.y.x', u'.foo.x',
-              u'bar/.foo.x', u'.x',],
+              u'bar/.foo.x', u'.x', ],
              [u'foo.x.y']),
             (u'foo/*.bar',
              [u'foo/b.bar', u'foo/a.b.bar', u'foo/.bar'],
@@ -289,7 +289,7 @@ class TestGlobster(TestCase):
 
         The types being extension, basename and full path.
         """
-        patterns = [ u'*.foo', u'.*.swp', u'./*.png']
+        patterns = [u'*.foo', u'.*.swp', u'./*.png']
         globster = Globster(patterns)
         self.assertEqual(u'*.foo', globster.match('bar.foo'))
         self.assertEqual(u'./*.png', globster.match('foo.png'))
@@ -318,14 +318,15 @@ class TestGlobster(TestCase):
         g = Globster(patterns)
         e = self.assertRaises(lazy_regex.InvalidPattern, g.match, 'filename')
         self.assertContainsRe(e.msg,
-            r"File.*ignore.*contains error.*RE:\[.*RE:\*\.cpp", flags=re.DOTALL)
+                              r"File.*ignore.*contains error.*RE:\[.*RE:\*\.cpp", flags=re.DOTALL)
 
 
 class TestExceptionGlobster(TestCase):
 
     def test_exclusion_patterns(self):
         """test that exception patterns are not matched"""
-        patterns = [ u'*', u'!./local', u'!./local/**/*', u'!RE:\\.z.*', u'!!./.zcompdump' ]
+        patterns = [u'*', u'!./local', u'!./local/**/*',
+                    u'!RE:\\.z.*', u'!!./.zcompdump']
         globster = ExceptionGlobster(patterns)
         self.assertEqual(u'*', globster.match('tmp/foo.txt'))
         self.assertEqual(None, globster.match('local'))
@@ -336,21 +337,24 @@ class TestExceptionGlobster(TestCase):
 
     def test_exclusion_order(self):
         """test that ordering of exclusion patterns does not matter"""
-        patterns = [ u'static/**/*.html', u'!static/**/versionable.html']
+        patterns = [u'static/**/*.html', u'!static/**/versionable.html']
         globster = ExceptionGlobster(patterns)
-        self.assertEqual(u'static/**/*.html', globster.match('static/foo.html'))
+        self.assertEqual(u'static/**/*.html',
+                         globster.match('static/foo.html'))
         self.assertEqual(None, globster.match('static/versionable.html'))
         self.assertEqual(None, globster.match('static/bar/versionable.html'))
         globster = ExceptionGlobster(reversed(patterns))
-        self.assertEqual(u'static/**/*.html', globster.match('static/foo.html'))
+        self.assertEqual(u'static/**/*.html',
+                         globster.match('static/foo.html'))
         self.assertEqual(None, globster.match('static/versionable.html'))
         self.assertEqual(None, globster.match('static/bar/versionable.html'))
+
 
 class TestOrderedGlobster(TestCase):
 
     def test_ordered_globs(self):
         """test that the first match in a list is the one found"""
-        patterns = [ u'*.foo', u'bar.*']
+        patterns = [u'*.foo', u'bar.*']
         globster = _OrderedGlobster(patterns)
         self.assertEqual(u'*.foo', globster.match('bar.foo'))
         self.assertEqual(None, globster.match('foo.bar'))
@@ -383,4 +387,5 @@ class TestNormalizePattern(TestCase):
     def test_mixed_slashes(self):
         """tests that multiple mixed slashes are collapsed to single forward
         slashes and trailing mixed slashes are removed"""
-        self.assertEqual(u'/foo/bar', normalize_pattern(u'\\/\\foo//\\///bar/\\\\/'))
+        self.assertEqual(
+            u'/foo/bar', normalize_pattern(u'\\/\\foo//\\///bar/\\\\/'))

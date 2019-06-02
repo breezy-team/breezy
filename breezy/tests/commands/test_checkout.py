@@ -37,4 +37,3 @@ class TestCheckout(TestCaseWithConnectionHookedTransport):
         cmd = cmd_checkout()
         cmd.run(self.get_url('branch1'), 'local', lightweight=True)
         self.assertEqual(1, len(self.connections))
-

@@ -53,4 +53,3 @@ class cmd_chk_used_by(Command):
                 self.outf.write(
                     'parent_id_basename_to_file_id of %s -> %s\n' %
                     (inv.revision_id, inv.parent_id_basename_to_file_id.key(),))
-

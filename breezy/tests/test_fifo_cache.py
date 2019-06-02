@@ -194,14 +194,15 @@ class TestFIFOCache(tests.TestCase):
 
     def test_cleanup_funcs(self):
         log = []
+
         def logging_cleanup(key, value):
             log.append((key, value))
         c = fifo_cache.FIFOCache(5, 4)
         c.add(1, 2, cleanup=logging_cleanup)
         c.add(2, 3, cleanup=logging_cleanup)
         c.add(3, 4, cleanup=logging_cleanup)
-        c.add(4, 5, cleanup=None) # no cleanup for 4
-        c[5] = 6 # no cleanup for 5
+        c.add(4, 5, cleanup=None)  # no cleanup for 4
+        c[5] = 6  # no cleanup for 5
         self.assertEqual([], log)
         # Adding another key should cleanup 1 & 2
         c.add(6, 7, cleanup=logging_cleanup)
@@ -225,6 +226,7 @@ class TestFIFOCache(tests.TestCase):
 
     def test_cleanup_at_deconstruct(self):
         log = []
+
         def logging_cleanup(key, value):
             log.append((key, value))
         c = fifo_cache.FIFOCache()
@@ -252,7 +254,7 @@ class TestFIFOSizeCache(tests.TestCase):
         self.assertEqual([(1, '2')], sorted(viewitems(c)))
         self.assertEqual(['2'], sorted(viewvalues(c)))
         self.assertEqual({1: '2'}, c)
-        self.assertEqual(1024*1024, c.cache_size())
+        self.assertEqual(1024 * 1024, c.cache_size())
 
     def test_missing(self):
         c = fifo_cache.FIFOSizeCache()
@@ -273,7 +275,7 @@ class TestFIFOSizeCache(tests.TestCase):
         c[2] = 'cde'
         c[3] = 'fghi'
         self.assertEqual({1: 'ab', 2: 'cde', 3: 'fghi'}, c)
-        c[4] = 'jkl' # Collapse
+        c[4] = 'jkl'  # Collapse
         self.assertEqual({3: 'fghi', 4: 'jkl'}, c)
         # Replacing an item will bump it to the end of the queue
         c[3] = 'mnop'
@@ -283,7 +285,7 @@ class TestFIFOSizeCache(tests.TestCase):
 
     def test_adding_large_key(self):
         c = fifo_cache.FIFOSizeCache(10, 8)
-        c[1] = 'abcdefgh' # Adding a large key won't get cached at all
+        c[1] = 'abcdefgh'  # Adding a large key won't get cached at all
         self.assertEqual({}, c)
         c[1] = 'abcdefg'
         self.assertEqual({1: 'abcdefg'}, c)

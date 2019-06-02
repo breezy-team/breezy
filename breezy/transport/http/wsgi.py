@@ -30,7 +30,7 @@ from ...urlutils import local_path_to_url
 
 
 def make_app(root, prefix, path_var='REQUEST_URI', readonly=True,
-    load_plugins=True, enable_logging=True):
+             load_plugins=True, enable_logging=True):
     """Convenience function to construct a WSGI bzr smart server.
 
     :param root: a local path that requests will be relative to.
@@ -116,7 +116,7 @@ class SmartWSGIApp(object):
         # protocol dictionary, we don't *just in case* there are parts of
         # breezy that will invoke 'get_transport' on urls rather than cloning
         # around the existing transport.
-        #self.chroot_server.stop_server()
+        # self.chroot_server.stop_server()
 
     def __call__(self, environ, start_response):
         """WSGI application callable."""

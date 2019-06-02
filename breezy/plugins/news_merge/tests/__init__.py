@@ -16,6 +16,7 @@
 
 from unittest import TestLoader, TestSuite
 
+
 def test_suite():
     result = TestSuite()
     from . import test_news_merge
@@ -23,4 +24,3 @@ def test_suite():
     loader = TestLoader()
     result.addTests(loader.loadTestsFromModule(test_news_merge))
     return result
-

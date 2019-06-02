@@ -60,4 +60,3 @@ class TestAllRevisionIds(TestCaseWithExternalReferenceRepository):
         base.fetch(tree.branch.repository, revid)
         self.assertEqual({revid}, set(repo.all_revision_ids()))
         self.assertEqual(1, len(repo.all_revision_ids()))
-

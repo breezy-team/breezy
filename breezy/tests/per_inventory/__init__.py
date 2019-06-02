@@ -23,6 +23,7 @@ from breezy.bzr import (
     groupcompress,
     )
 
+
 def load_tests(loader, basic_tests, pattern):
     """Generate suite containing all parameterized tests"""
     modules_to_test = [
@@ -39,15 +40,15 @@ def load_tests(loader, basic_tests, pattern):
         # We intentionally use a non-standard maximum_size, so that we are more
         # likely to trigger splits, and get increased test coverage.
         chk_inv = CHKInventory.from_inventory(vf, inv,
-                        maximum_size=100,
-                        search_key_name=b'hash-255-way')
+                                              maximum_size=100,
+                                              search_key_name=b'hash-255-way')
         return chk_inv
     scenarios = [('Inventory', {'_inventory_class': Inventory,
                                 '_inv_to_test_inv': lambda test, inv: inv
-                               }),
+                                }),
                  ('CHKInventory', {'_inventory_class': CHKInventory,
                                    '_inv_to_test_inv': inv_to_chk_inv,
-                                  })]
+                                   })]
     # add the tests for the sub modules
     return tests.multiply_tests(
         loader.loadTestsFromModuleNames(modules_to_test),
@@ -56,8 +57,8 @@ def load_tests(loader, basic_tests, pattern):
 
 class TestCaseWithInventory(tests.TestCaseWithMemoryTransport):
 
-    _inventory_class = None # set by load_tests
-    _inv_to_test_inv = None # set by load_tests
+    _inventory_class = None  # set by load_tests
+    _inv_to_test_inv = None  # set by load_tests
 
     def make_test_inventory(self):
         """Return an instance of the Inventory class under test."""
@@ -66,4 +67,3 @@ class TestCaseWithInventory(tests.TestCaseWithMemoryTransport):
     def inv_to_test_inv(self, inv):
         """Convert a regular Inventory object into an inventory under test."""
         return self._inv_to_test_inv(self, inv)
-

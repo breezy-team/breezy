@@ -86,7 +86,7 @@ class Convert(object):
             try:
                 rich_root = self.controldir.find_repository()._format.rich_root_data
             except errors.NoRepositoryPresent:
-                rich_root = False # assume no rich roots
+                rich_root = False  # assume no rich roots
             if rich_root:
                 format_name = "default-rich-root"
             else:
@@ -98,10 +98,10 @@ class Convert(object):
             raise errors.UpToDateFormat(self.controldir._format)
         if not self.controldir.can_convert_format():
             raise errors.BzrError(gettext("cannot upgrade from bzrdir format %s") %
-                           self.controldir._format)
+                                  self.controldir._format)
         self.controldir.check_conversion_target(format)
-        ui.ui_factory.note(gettext('starting upgrade of %s') % 
-            urlutils.unescape_for_display(self.transport.base, 'utf-8'))
+        ui.ui_factory.note(gettext('starting upgrade of %s') %
+                           urlutils.unescape_for_display(self.transport.base, 'utf-8'))
 
         self.backup_oldpath, self.backup_newpath = self.controldir.backup_bzrdir()
         while self.controldir.needs_format_conversion(format):
@@ -123,7 +123,7 @@ class Convert(object):
 
 def upgrade(url, format=None, clean_up=False, dry_run=False):
     """Upgrade locations to format.
- 
+
     This routine wraps the smart_upgrade() routine with a nicer UI.
     In particular, it ensures all URLs can be opened before starting
     and reports a summary at the end if more than one upgrade was attempted.
@@ -139,20 +139,20 @@ def upgrade(url, format=None, clean_up=False, dry_run=False):
     """
     control_dirs = [ControlDir.open_unsupported(url)]
     attempted, succeeded, exceptions = smart_upgrade(control_dirs,
-        format, clean_up=clean_up, dry_run=dry_run)
+                                                     format, clean_up=clean_up, dry_run=dry_run)
     if len(attempted) > 1:
         attempted_count = len(attempted)
         succeeded_count = len(succeeded)
         failed_count = attempted_count - succeeded_count
         ui.ui_factory.note(
-            gettext('\nSUMMARY: {0} upgrades attempted, {1} succeeded,'\
+            gettext('\nSUMMARY: {0} upgrades attempted, {1} succeeded,'
                     ' {2} failed').format(
-                     attempted_count, succeeded_count, failed_count))
+                attempted_count, succeeded_count, failed_count))
     return exceptions
 
 
 def smart_upgrade(control_dirs, format, clean_up=False,
-    dry_run=False):
+                  dry_run=False):
     """Convert control directories to a new format intelligently.
 
     If the control directory is a shared repository, dependent branches
@@ -171,7 +171,7 @@ def smart_upgrade(control_dirs, format, clean_up=False,
     all_exceptions = []
     for control_dir in control_dirs:
         attempted, succeeded, exceptions = _smart_upgrade_one(control_dir,
-            format, clean_up=clean_up, dry_run=dry_run)
+                                                              format, clean_up=clean_up, dry_run=dry_run)
         all_attempted.extend(attempted)
         all_succeeded.extend(succeeded)
         all_exceptions.extend(exceptions)
@@ -179,7 +179,7 @@ def smart_upgrade(control_dirs, format, clean_up=False,
 
 
 def _smart_upgrade_one(control_dir, format, clean_up=False,
-    dry_run=False):
+                       dry_run=False):
     """Convert a control directory to a new format intelligently.
 
     See smart_upgrade for parameter details.
@@ -207,7 +207,7 @@ def _smart_upgrade_one(control_dir, format, clean_up=False,
         # Convert dependent branches
         branch_cdirs = [b.controldir for b in dependents]
         successes, problems = _convert_items(branch_cdirs, format, clean_up,
-            dry_run, label="branch")
+                                             dry_run, label="branch")
         attempted.extend(branch_cdirs)
         succeeded.extend(successes)
         exceptions.extend(problems)
@@ -220,6 +220,8 @@ def _smart_upgrade_one(control_dir, format, clean_up=False,
 # - raising AssertionError is rude and may not be necessary
 # - no tests
 # - the only caller uses only the label
+
+
 def _get_object_and_label(control_dir):
     """Return the primary object and type label for a control directory.
 
@@ -258,7 +260,7 @@ def _get_object_and_label(control_dir):
 
 def _convert_items(items, format, clean_up, dry_run, label=None):
     """Convert a sequence of control directories to the given format.
- 
+
     :param items: the control directories to upgrade
     :param format: the format to convert to or None for the best default
     :param clean-up: if True, the backup.bzr directory is removed if the
@@ -276,9 +278,10 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
             location = control_dir.root_transport.base
             bzr_object, bzr_label = _get_object_and_label(control_dir)
             type_label = label or bzr_label
-            child_pb.update(gettext("Upgrading %s") % (type_label), i+1, len(items))
-            ui.ui_factory.note(gettext('Upgrading {0} {1} ...').format(type_label, 
-                urlutils.unescape_for_display(location, 'utf-8'),))
+            child_pb.update(gettext("Upgrading %s") %
+                            (type_label), i + 1, len(items))
+            ui.ui_factory.note(gettext('Upgrading {0} {1} ...').format(type_label,
+                                                                       urlutils.unescape_for_display(location, 'utf-8'),))
             try:
                 if not dry_run:
                     cv = Convert(control_dir=control_dir, format=format)
@@ -299,7 +302,8 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
                     if not dry_run:
                         cv.clean_up()
                 except Exception as ex:
-                    trace.warning(gettext('failed to clean-up {0}: {1}') % (location, ex))
+                    trace.warning(
+                        gettext('failed to clean-up {0}: {1}') % (location, ex))
                     exceptions.append(ex)
 
     # Return the result

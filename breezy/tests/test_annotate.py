@@ -224,14 +224,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
         """
         builder = self.create_merged_trees()
         builder.build_snapshot([b'rev-1_1_1'], [], revision_id=b'rev-1_1_2')
-        builder.build_snapshot([b'rev-3', b'rev-1_1_2'], [], revision_id=b'rev-4')
+        builder.build_snapshot([b'rev-3', b'rev-1_1_2'],
+                               [], revision_id=b'rev-4')
         builder.build_snapshot([b'rev-1_1_1'], [
             ('modify', ('a', b'first\nthird\nfourth\n')),
             ], timestamp=1166046003.00, timezone=0, committer="jerry@foo.com",
             revision_id=b'rev-1_2_1')
         builder.build_snapshot([b'rev-1_2_1'], [],
-            timestamp=1166046004.00, timezone=0, committer="jerry@foo.com",
-            revision_id=b'rev-1_2_2')
+                               timestamp=1166046004.00, timezone=0, committer="jerry@foo.com",
+                               revision_id=b'rev-1_2_2')
         builder.build_snapshot([b'rev-4', b'rev-1_2_2'], [
             ('modify', ('a', b'first\nsecond\nthird\nfourth\n')),
             ], timestamp=1166046004.00, timezone=0, committer="jerry@foo.com",
@@ -285,11 +286,11 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                  ''.join('\t'.join(l) for l in actual))
 
     def assertBranchAnnotate(self, expected, branch, path, revision_id,
-            verbose=False, full=False, show_ids=False):
+                             verbose=False, full=False, show_ids=False):
         tree = branch.repository.revision_tree(revision_id)
         to_file = StringIO()
         annotate.annotate_file_tree(tree, path, to_file,
-            verbose=verbose, full=full, show_ids=show_ids, branch=branch)
+                                    verbose=verbose, full=full, show_ids=show_ids, branch=branch)
         self.assertAnnotateEqualDiff(to_file.getvalue(), expected)
 
     def assertRepoAnnotate(self, expected, repo, path, revision_id):
@@ -421,18 +422,18 @@ class TestAnnotate(tests.TestCaseWithTransport):
         # this passes if no exception is raised
         to_file = StringIO()
         annotate.annotate_file_tree(revtree_1, 'a',
-            to_file=to_file, branch=tree1.branch)
+                                    to_file=to_file, branch=tree1.branch)
 
         sio = BytesIO()
         to_file = codecs.getwriter('ascii')(sio, 'replace')
         annotate.annotate_file_tree(revtree_2, 'b',
-            to_file=to_file, branch=tree1.branch)
+                                    to_file=to_file, branch=tree1.branch)
         self.assertEqualDiff(b'2   p?rez   | bye\n', sio.getvalue())
 
         # test now with unicode file-like
         to_file = StringIOWithEncoding()
         annotate.annotate_file_tree(revtree_2, 'b',
-            to_file=to_file, branch=tree1.branch)
+                                    to_file=to_file, branch=tree1.branch)
         self.assertContainsRe(u'2   p\xe9rez   | bye\n', to_file.getvalue())
 
     def test_annotate_author_or_committer(self):
@@ -455,10 +456,10 @@ class TestAnnotate(tests.TestCaseWithTransport):
         self.addCleanup(tree1.unlock)
 
         self.assertBranchAnnotate('1   committ | hello\n', tree1.branch,
-            'a', b'rev-1')
+                                  'a', b'rev-1')
 
         self.assertBranchAnnotate('2   author@ | bye\n', tree1.branch,
-            'b', b'rev-2')
+                                  'b', b'rev-2')
 
 
 class TestReannotate(tests.TestCase):
@@ -466,7 +467,7 @@ class TestReannotate(tests.TestCase):
     def annotateEqual(self, expected, parents, newlines, revision_id,
                       blocks=None):
         annotate_list = list(annotate.reannotate(parents, newlines,
-                             revision_id, blocks))
+                                                 revision_id, blocks))
         self.assertEqual(len(expected), len(annotate_list))
         for e, a in zip(expected, annotate_list):
             self.assertEqual(e, a)

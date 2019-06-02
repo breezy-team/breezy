@@ -16,18 +16,12 @@
 
 from __future__ import absolute_import
 
-import sys
-
-from . import errors
-
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 from breezy import (
-    cleanup,
     config as _mod_config,
     debug,
-    fetch,
     memorytree,
     repository,
     revision as _mod_revision,
@@ -37,6 +31,7 @@ from breezy import (
     urlutils,
     )
 from breezy.bzr import (
+    fetch,
     remote,
     vf_search,
     )
@@ -45,16 +40,13 @@ from breezy.i18n import gettext, ngettext
 
 from . import (
     controldir,
+    errors,
     registry,
-    )
-from .decorators import (
-    only_raises,
     )
 from .hooks import Hooks
 from .inter import InterObject
 from .lock import LogicalLockResult
 from .sixish import (
-    BytesIO,
     text_type,
     viewitems,
     )
@@ -64,7 +56,7 @@ from .trace import mutter, mutter_callsite, note, is_quiet
 class UnstackableBranchFormat(errors.BzrError):
 
     _fmt = ("The branch '%(url)s'(%(format)s) is not a stackable format. "
-        "You will need to upgrade the branch to permit branch stacking.")
+            "You will need to upgrade the branch to permit branch stacking.")
 
     def __init__(self, format, url):
         errors.BzrError.__init__(self)
@@ -162,7 +154,8 @@ class Branch(controldir.ControlComponent):
         repository._iter_for_revno(
             self.repository, self._partial_revision_history_cache,
             stop_index=stop_index, stop_revision=stop_revision)
-        if self._partial_revision_history_cache[-1] == _mod_revision.NULL_REVISION:
+        if self._partial_revision_history_cache[-1] == \
+                _mod_revision.NULL_REVISION:
             self._partial_revision_history_cache.pop()
 
     def _get_check_refs(self):
@@ -180,17 +173,21 @@ class Branch(controldir.ControlComponent):
         For instance, if the branch is at URL/.bzr/branch,
         Branch.open(URL) -> a Branch instance.
         """
-        control = controldir.ControlDir.open(base,
-            possible_transports=possible_transports, _unsupported=_unsupported)
-        return control.open_branch(unsupported=_unsupported,
+        control = controldir.ControlDir.open(
+            base, possible_transports=possible_transports,
+            _unsupported=_unsupported)
+        return control.open_branch(
+            unsupported=_unsupported,
             possible_transports=possible_transports)
 
     @staticmethod
     def open_from_transport(transport, name=None, _unsupported=False,
-            possible_transports=None):
+                            possible_transports=None):
         """Open the branch rooted at transport"""
-        control = controldir.ControlDir.open_from_transport(transport, _unsupported)
-        return control.open_branch(name=name, unsupported=_unsupported,
+        control = controldir.ControlDir.open_from_transport(
+            transport, _unsupported)
+        return control.open_branch(
+            name=name, unsupported=_unsupported,
             possible_transports=possible_transports)
 
     @staticmethod
@@ -201,12 +198,13 @@ class Branch(controldir.ControlComponent):
 
         Basically we keep looking up until we find the control directory or
         run into the root.  If there isn't one, raises NotBranchError.
-        If there is one and it is either an unrecognised format or an unsupported
-        format, UnknownFormatError or UnsupportedFormatError are raised.
-        If there is one, it is returned, along with the unused portion of url.
+        If there is one and it is either an unrecognised format or an
+        unsupported format, UnknownFormatError or UnsupportedFormatError are
+        raised.  If there is one, it is returned, along with the unused portion
+        of url.
         """
-        control, relpath = controldir.ControlDir.open_containing(url,
-                                                         possible_transports)
+        control, relpath = controldir.ControlDir.open_containing(
+            url, possible_transports)
         branch = control.open_branch(possible_transports=possible_transports)
         return (branch, relpath)
 
@@ -278,7 +276,7 @@ class Branch(controldir.ControlComponent):
                 # Silently fall back to local implicit nick if the master is
                 # unavailable
                 mutter("Could not connect to bound branch, "
-                    "falling back to local nick.\n " + str(e))
+                       "falling back to local nick.\n " + str(e))
         return config.get_nickname()
 
     def _set_nick(self, nick):
@@ -307,8 +305,8 @@ class Branch(controldir.ControlComponent):
         new_history = []
         check_not_reserved_id = _mod_revision.check_not_reserved_id
         # Do not include ghosts or graph origin in revision_history
-        while (current_rev_id in parents_map and
-               len(parents_map[current_rev_id]) > 0):
+        while (current_rev_id in parents_map
+               and len(parents_map[current_rev_id]) > 0):
             check_not_reserved_id(current_rev_id)
             new_history.append(current_rev_id)
             current_rev_id = parents_map[current_rev_id][0]
@@ -415,17 +413,18 @@ class Branch(controldir.ControlComponent):
             This dictionary should not be modified by the caller.
         """
         if 'evil' in debug.debug_flags:
-            mutter_callsite(3, "get_revision_id_to_revno_map scales with ancestry.")
+            mutter_callsite(
+                3, "get_revision_id_to_revno_map scales with ancestry.")
         with self.lock_read():
             if self._revision_id_to_revno_cache is not None:
                 mapping = self._revision_id_to_revno_cache
             else:
                 mapping = self._gen_revno_map()
                 self._cache_revision_id_to_revno(mapping)
-            # TODO: jam 20070417 Since this is being cached, should we be returning
-            #       a copy?
-            # I would rather not, and instead just declare that users should not
-            # modify the return value.
+            # TODO: jam 20070417 Since this is being cached, should we be
+            # returning a copy?
+            # I would rather not, and instead just declare that users should
+            # not modify the return value.
             return mapping
 
     def _gen_revno_map(self):
@@ -438,13 +437,14 @@ class Branch(controldir.ControlComponent):
 
         :return: A dictionary mapping revision_id => dotted revno.
         """
-        revision_id_to_revno = dict((rev_id, revno)
-            for rev_id, depth, revno, end_of_merge
-             in self.iter_merge_sorted_revisions())
+        revision_id_to_revno = {
+            rev_id: revno for rev_id, depth, revno, end_of_merge
+            in self.iter_merge_sorted_revisions()}
         return revision_id_to_revno
 
     def iter_merge_sorted_revisions(self, start_revision_id=None,
-            stop_revision_id=None, stop_rule='exclude', direction='reverse'):
+                                    stop_revision_id=None,
+                                    stop_rule='exclude', direction='reverse'):
         """Walk the revisions for a branch in merge sorted order.
 
         Merge sorted order is the output from a merge-aware,
@@ -462,7 +462,7 @@ class Branch(controldir.ControlComponent):
             * 'include' - the stop revision is the last item in the result
             * 'with-merges' - include the stop revision and all of its
               merged revisions in the result
-            * 'with-merges-without-common-ancestry' - filter out revisions 
+            * 'with-merges-without-common-ancestry' - filter out revisions
               that are in both ancestries
         :param direction: either 'reverse' or 'forward':
 
@@ -511,7 +511,8 @@ class Branch(controldir.ControlComponent):
                 raise ValueError('invalid direction %r' % direction)
 
     def _filter_merge_sorted_revisions(self, merge_sorted_revisions,
-        start_revision_id, stop_revision_id, stop_rule):
+                                       start_revision_id, stop_revision_id,
+                                       stop_rule):
         """Iterate over an inclusive range of sorted revisions."""
         rev_iter = iter(merge_sorted_revisions)
         if start_revision_id is not None:
@@ -572,10 +573,10 @@ class Branch(controldir.ControlComponent):
                 if rev_id == left_parent:
                     # reached the left parent after the stop_revision
                     return
-                if (not reached_stop_revision_id or
-                        rev_id in revision_id_whitelist):
+                if (not reached_stop_revision_id
+                        or rev_id in revision_id_whitelist):
                     yield (rev_id, node.merge_depth, node.revno,
-                       node.end_of_merge)
+                           node.end_of_merge)
                     if reached_stop_revision_id or rev_id == stop_revision_id:
                         # only do the merged revs of rev_id from now on
                         rev = self.repository.get_revision(rev_id)
@@ -637,7 +638,8 @@ class Branch(controldir.ControlComponent):
         """Tell this branch object not to release the physical lock when this
         object is unlocked.
 
-        If lock_write doesn't return a token, then this method is not supported.
+        If lock_write doesn't return a token, then this method is not
+        supported.
         """
         self.control_files.leave_in_place()
 
@@ -645,7 +647,8 @@ class Branch(controldir.ControlComponent):
         """Tell this branch object to release the physical lock when this
         object is unlocked, even if it didn't originally acquire it.
 
-        If lock_write doesn't return a token, then this method is not supported.
+        If lock_write doesn't return a token, then this method is not
+        supported.
         """
         self.control_files.dont_leave_in_place()
 
@@ -688,7 +691,7 @@ class Branch(controldir.ControlComponent):
         """
         with self.lock_write():
             return InterBranch.get(from_branch, self).fetch(
-                    last_revision, limit=limit)
+                last_revision, limit=limit)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
@@ -716,15 +719,15 @@ class Branch(controldir.ControlComponent):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         :param lossy: Whether to discard data that can not be natively
-            represented, when pushing to a foreign VCS 
+            represented, when pushing to a foreign VCS
         """
 
         if config_stack is None:
             config_stack = self.get_config_stack()
 
-        return self.repository.get_commit_builder(self, parents, config_stack,
-            timestamp, timezone, committer, revprops, revision_id,
-            lossy)
+        return self.repository.get_commit_builder(
+            self, parents, config_stack, timestamp, timezone, committer,
+            revprops, revision_id, lossy)
 
     def get_master_branch(self, possible_transports=None):
         """Return the branch we are bound to.
@@ -769,7 +772,8 @@ class Branch(controldir.ControlComponent):
                 if not graph.is_ancestor(last_rev, revision_id):
                     # our previous tip is not merged into stop_revision
                     raise errors.DivergedBranches(self, other_branch)
-            revno = graph.find_distance_to_null(revision_id, known_revision_ids)
+            revno = graph.find_distance_to_null(
+                revision_id, known_revision_ids)
             self.set_last_revision_info(revno, revision_id)
 
     def set_parent(self, url):
@@ -783,8 +787,8 @@ class Branch(controldir.ControlComponent):
                 try:
                     url.encode('ascii')
                 except UnicodeEncodeError:
-                    raise urlutils.InvalidURL(url,
-                        "Urls must be 7-bit ascii, "
+                    raise urlutils.InvalidURL(
+                        url, "Urls must be 7-bit ascii, "
                         "use breezy.urlutils.escape")
             url = urlutils.relative_url(self.base, url)
         with self.lock_write():
@@ -801,20 +805,20 @@ class Branch(controldir.ControlComponent):
         if not self._format.supports_stacking():
             raise UnstackableBranchFormat(self._format, self.user_url)
         with self.lock_write():
-            # XXX: Changing from one fallback repository to another does not check
-            # that all the data you need is present in the new fallback.
+            # XXX: Changing from one fallback repository to another does not
+            # check that all the data you need is present in the new fallback.
             # Possibly it should.
             self._check_stackable_repo()
             if not url:
                 try:
-                    old_url = self.get_stacked_on_url()
+                    self.get_stacked_on_url()
                 except (errors.NotStacked, UnstackableBranchFormat,
-                    errors.UnstackableRepositoryFormat):
+                        errors.UnstackableRepositoryFormat):
                     return
                 self._unstack()
             else:
-                self._activate_fallback_location(url,
-                    possible_transports=[self.controldir.root_transport])
+                self._activate_fallback_location(
+                    url, possible_transports=[self.controldir.root_transport])
             # write this out after the repository is stacked to avoid setting a
             # stacked config that doesn't work.
             self._set_config_location('stacked_on_location', url)
@@ -828,15 +832,16 @@ class Branch(controldir.ControlComponent):
             pb.update(gettext("Unstacking"))
             # The basic approach here is to fetch the tip of the branch,
             # including all available ghosts, from the existing stacked
-            # repository into a new repository object without the fallbacks. 
+            # repository into a new repository object without the fallbacks.
             #
             # XXX: See <https://launchpad.net/bugs/397286> - this may not be
             # correct for CHKMap repostiories
             old_repository = self.repository
             if len(old_repository._fallback_repositories) != 1:
-                raise AssertionError("can't cope with fallback repositories "
-                    "of %r (fallbacks: %r)" % (old_repository,
-                        old_repository._fallback_repositories))
+                raise AssertionError(
+                    "can't cope with fallback repositories "
+                    "of %r (fallbacks: %r)" % (
+                        old_repository, old_repository._fallback_repositories))
             # Open the new repository object.
             # Repositories don't offer an interface to remove fallback
             # repositories today; take the conceptually simpler option and just
@@ -849,8 +854,8 @@ class Branch(controldir.ControlComponent):
                 self.controldir.root_transport.base)
             new_repository = new_bzrdir.find_repository()
             if new_repository._fallback_repositories:
-                raise AssertionError("didn't expect %r to have "
-                    "fallback_repositories"
+                raise AssertionError(
+                    "didn't expect %r to have fallback_repositories"
                     % (self.repository,))
             # Replace self.repository with the new repository.
             # Do our best to transfer the lock state (i.e. lock-tokens and
@@ -883,7 +888,7 @@ class Branch(controldir.ControlComponent):
             if old_lock_count == 0:
                 raise AssertionError(
                     'old_repository should have been locked at least once.')
-            for i in range(old_lock_count-1):
+            for i in range(old_lock_count - 1):
                 self.repository.lock_write()
             # Fetch from the old repository into the new.
             with old_repository.lock_read():
@@ -894,8 +899,9 @@ class Branch(controldir.ControlComponent):
                     tags_to_fetch = set(self.tags.get_reverse_tag_dict())
                 except errors.TagsNotSupported:
                     tags_to_fetch = set()
-                fetch_spec = vf_search.NotInOtherForRevs(self.repository,
-                    old_repository, required_ids=[self.last_revision()],
+                fetch_spec = vf_search.NotInOtherForRevs(
+                    self.repository, old_repository,
+                    required_ids=[self.last_revision()],
                     if_present_ids=tags_to_fetch, find_ghosts=True).execute()
                 self.repository.fetch(old_repository, fetch_spec=fetch_spec)
 
@@ -983,7 +989,8 @@ class Branch(controldir.ControlComponent):
         """
         with self.lock_read():
             if self._last_revision_info_cache is None:
-                self._last_revision_info_cache = self._read_last_revision_info()
+                self._last_revision_info_cache = (
+                    self._read_last_revision_info())
             return self._last_revision_info_cache
 
     def _read_last_revision_info(self):
@@ -1043,18 +1050,18 @@ class Branch(controldir.ControlComponent):
 
         :returns: PullResult instance
         """
-        return InterBranch.get(source, self).pull(overwrite=overwrite,
-            stop_revision=stop_revision,
+        return InterBranch.get(source, self).pull(
+            overwrite=overwrite, stop_revision=stop_revision,
             possible_transports=possible_transports, *args, **kwargs)
 
     def push(self, target, overwrite=False, stop_revision=None, lossy=False,
-            *args, **kwargs):
+             *args, **kwargs):
         """Mirror this branch into target.
 
         This branch is considered to be 'local', having low latency.
         """
-        return InterBranch.get(self, target).push(overwrite, stop_revision,
-            lossy, *args, **kwargs)
+        return InterBranch.get(self, target).push(
+            overwrite, stop_revision, lossy, *args, **kwargs)
 
     def basis_tree(self):
         """Return `Tree` object for last revision."""
@@ -1076,7 +1083,7 @@ class Branch(controldir.ControlComponent):
             parent = urlutils.local_path_to_url(parent)
         try:
             return urlutils.join(self.base[:-1], parent)
-        except urlutils.InvalidURLJoin as e:
+        except urlutils.InvalidURLJoin:
             raise errors.InaccessibleParent(parent, self.user_url)
 
     def _get_parent_location(self):
@@ -1208,7 +1215,7 @@ class Branch(controldir.ControlComponent):
         return result
 
     def sprout(self, to_controldir, revision_id=None, repository_policy=None,
-            repository=None, lossy=False):
+               repository=None, lossy=False):
         """Create a new line of development from the branch, into to_controldir.
 
         to_controldir controls the branch format.
@@ -1216,8 +1223,8 @@ class Branch(controldir.ControlComponent):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        if (repository_policy is not None and
-            repository_policy.requires_stacking()):
+        if (repository_policy is not None
+                and repository_policy.requires_stacking()):
             to_controldir._format.require_stacking(_skip_repo=True)
         result = to_controldir.create_branch(repository=repository)
         if lossy:
@@ -1251,8 +1258,8 @@ class Branch(controldir.ControlComponent):
         else:
             graph = self.repository.get_graph()
             try:
-                revno = graph.find_distance_to_null(revision_id, 
-                    [(source_revision_id, source_revno)])
+                revno = graph.find_distance_to_null(
+                    revision_id, [(source_revision_id, source_revno)])
             except errors.GhostRevisionsHaveNoRevno:
                 # Default to 1, if we can't find anything else
                 revno = 1
@@ -1303,12 +1310,12 @@ class Branch(controldir.ControlComponent):
             if actual_revno != last_revno:
                 result.errors.append(errors.BzrCheckError(
                     'revno does not match len(mainline) %s != %s' % (
-                    last_revno, actual_revno)))
+                        last_revno, actual_revno)))
             # TODO: We should probably also check that self.revision_history
             # matches the repository for older branch formats.
-            # If looking for the code that cross-checks repository parents against
-            # the Graph.iter_lefthand_ancestry output, that is now a repository
-            # specific check.
+            # If looking for the code that cross-checks repository parents
+            # against the Graph.iter_lefthand_ancestry output, that is now a
+            # repository specific check.
             return result
 
     def _get_checkout_format(self, lightweight=False):
@@ -1320,8 +1327,8 @@ class Branch(controldir.ControlComponent):
         return format
 
     def create_clone_on_transport(self, to_transport, revision_id=None,
-        stacked_on=None, create_prefix=False, use_existing_dir=False,
-        no_tree=None):
+                                  stacked_on=None, create_prefix=False,
+                                  use_existing_dir=False, no_tree=None):
         """Create a clone of this branch and its bzrdir.
 
         :param to_transport: The transport to clone onto.
@@ -1334,12 +1341,12 @@ class Branch(controldir.ControlComponent):
         """
         # XXX: Fix the bzrdir API to allow getting the branch back from the
         # clone call. Or something. 20090224 RBC/spiv.
-        # XXX: Should this perhaps clone colocated branches as well, 
+        # XXX: Should this perhaps clone colocated branches as well,
         # rather than just the default branch? 20100319 JRV
         if revision_id is None:
             revision_id = self.last_revision()
-        dir_to = self.controldir.clone_on_transport(to_transport,
-            revision_id=revision_id, stacked_on=stacked_on,
+        dir_to = self.controldir.clone_on_transport(
+            to_transport, revision_id=revision_id, stacked_on=stacked_on,
             create_prefix=create_prefix, use_existing_dir=use_existing_dir,
             no_tree=no_tree)
         return dir_to.open_branch()
@@ -1376,7 +1383,8 @@ class Branch(controldir.ControlComponent):
                 pass
             else:
                 raise errors.AlreadyControlDirError(t.base)
-            if checkout.control_transport.base == self.controldir.control_transport.base:
+            if (checkout.control_transport.base
+                    == self.controldir.control_transport.base):
                 # When checking out to the same control directory,
                 # always create a lightweight checkout
                 lightweight = True
@@ -1385,7 +1393,7 @@ class Branch(controldir.ControlComponent):
             from_branch = checkout.set_branch_reference(target_branch=self)
         else:
             policy = checkout.determine_repository_policy()
-            repo = policy.acquire_repository()[0]
+            policy.acquire_repository()
             checkout_branch = checkout.create_branch()
             checkout_branch.bind(self)
             # pull up to the specified revision_id to set the initial
@@ -1400,18 +1408,17 @@ class Branch(controldir.ControlComponent):
         with basis_tree.lock_read():
             for path, file_id in basis_tree.iter_references():
                 reference_parent = self.reference_parent(path, file_id)
-                reference_parent.create_checkout(tree.abspath(path),
-                    basis_tree.get_reference_revision(path, file_id),
-                    lightweight)
+                reference_parent.create_checkout(
+                    tree.abspath(path),
+                    basis_tree.get_reference_revision(path), lightweight)
         return tree
 
     def reconcile(self, thorough=True):
-        """Make sure the data stored in this branch is consistent."""
-        from breezy.reconcile import BranchReconciler
-        with self.lock_write():
-            reconciler = BranchReconciler(self, thorough=thorough)
-            reconciler.reconcile()
-            return reconciler
+        """Make sure the data stored in this branch is consistent.
+
+        :return: A `ReconcileResult` object.
+        """
+        raise NotImplementedError(self.reconcile)
 
     def reference_parent(self, path, file_id=None, possible_transports=None):
         """Return the parent branch for a tree-reference file_id
@@ -1609,7 +1616,7 @@ class BranchFormat(controldir.ControlComponentFormat):
         raise NotImplementedError(self.network_name)
 
     def open(self, controldir, name=None, _found=False, ignore_fallbacks=False,
-            found_repository=None, possible_transports=None):
+             found_repository=None, possible_transports=None):
         """Return the branch object for controldir.
 
         :param controldir: A ControlDir that contains a branch.
@@ -1631,7 +1638,7 @@ class BranchFormat(controldir.ControlComponentFormat):
 
     def supports_leaving_lock(self):
         """True if this format supports leaving locks in place."""
-        return False # by default
+        return False  # by default
 
     def __str__(self):
         return self.get_format_description().rstrip()
@@ -1667,18 +1674,22 @@ class BranchHooks(Hooks):
         notified.
         """
         Hooks.__init__(self, "breezy.branch", "Branch.hooks")
-        self.add_hook('open',
+        self.add_hook(
+            'open',
             "Called with the Branch object that has been opened after a "
             "branch is opened.", (1, 8))
-        self.add_hook('post_push',
+        self.add_hook(
+            'post_push',
             "Called after a push operation completes. post_push is called "
-            "with a breezy.branch.BranchPushResult object and only runs in the "
-            "bzr client.", (0, 15))
-        self.add_hook('post_pull',
+            "with a breezy.branch.BranchPushResult object and only runs in "
+            "the bzr client.", (0, 15))
+        self.add_hook(
+            'post_pull',
             "Called after a pull operation completes. post_pull is called "
             "with a breezy.branch.PullResult object and only runs in the "
             "bzr client.", (0, 15))
-        self.add_hook('pre_commit',
+        self.add_hook(
+            'pre_commit',
             "Called after a commit is calculated but before it is "
             "completed. pre_commit is called with (local, master, old_revno, "
             "old_revid, future_revno, future_revid, tree_delta, future_tree"
@@ -1688,28 +1699,33 @@ class BranchHooks(Hooks):
             " future_tree is an in-memory tree obtained from "
             "CommitBuilder.revision_tree() and hooks MUST NOT modify this "
             "tree.", (0, 91))
-        self.add_hook('post_commit',
+        self.add_hook(
+            'post_commit',
             "Called in the bzr client after a commit has completed. "
             "post_commit is called with (local, master, old_revno, old_revid, "
             "new_revno, new_revid). old_revid is NULL_REVISION for the first "
             "commit to a branch.", (0, 15))
-        self.add_hook('post_uncommit',
+        self.add_hook(
+            'post_uncommit',
             "Called in the bzr client after an uncommit completes. "
             "post_uncommit is called with (local, master, old_revno, "
             "old_revid, new_revno, new_revid) where local is the local branch "
             "or None, master is the target branch, and an empty branch "
             "receives new_revno of 0, new_revid of None.", (0, 15))
-        self.add_hook('pre_change_branch_tip',
+        self.add_hook(
+            'pre_change_branch_tip',
             "Called in bzr client and server before a change to the tip of a "
             "branch is made. pre_change_branch_tip is called with a "
             "breezy.branch.ChangeBranchTipParams. Note that push, pull, "
             "commit, uncommit will all trigger this hook.", (1, 6))
-        self.add_hook('post_change_branch_tip',
+        self.add_hook(
+            'post_change_branch_tip',
             "Called in bzr client and server after a change to the tip of a "
             "branch is made. post_change_branch_tip is called with a "
             "breezy.branch.ChangeBranchTipParams. Note that push, pull, "
             "commit, uncommit will all trigger this hook.", (1, 4))
-        self.add_hook('transform_fallback_location',
+        self.add_hook(
+            'transform_fallback_location',
             "Called when a stacked branch is activating its fallback "
             "locations. transform_fallback_location is called with (branch, "
             "url), and should return a new url. Returning the same url "
@@ -1721,23 +1737,25 @@ class BranchHooks(Hooks):
             "multiple hooks installed for transform_fallback_location, "
             "all are called with the url returned from the previous hook."
             "The order is however undefined.", (1, 9))
-        self.add_hook('automatic_tag_name',
+        self.add_hook(
+            'automatic_tag_name',
             "Called to determine an automatic tag name for a revision. "
             "automatic_tag_name is called with (branch, revision_id) and "
             "should return a tag name or None if no tag name could be "
             "determined. The first non-None tag name returned will be used.",
             (2, 2))
-        self.add_hook('post_branch_init',
+        self.add_hook(
+            'post_branch_init',
             "Called after new branch initialization completes. "
             "post_branch_init is called with a "
             "breezy.branch.BranchInitHookParams. "
             "Note that init, branch and checkout (both heavyweight and "
             "lightweight) will all trigger this hook.", (2, 2))
-        self.add_hook('post_switch',
+        self.add_hook(
+            'post_switch',
             "Called after a checkout switches branch. "
             "post_switch is called with a "
             "breezy.branch.SwitchHookParams.", (2, 2))
-
 
 
 # install the default hooks into the Branch class.
@@ -1850,8 +1868,8 @@ class SwitchHookParams(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<%s for %s to (%s, %s)>" % (self.__class__.__name__,
-            self.control_dir, self.to_branch,
+        return "<%s for %s to (%s, %s)>" % (
+            self.__class__.__name__, self.control_dir, self.to_branch,
             self.revision_id)
 
 
@@ -1865,8 +1883,8 @@ class BranchFormatRegistry(controldir.ControlComponentFormatRegistry):
 
     def get_default(self):
         """Return the current default format."""
-        if (self._default_format_key is not None and
-            self._default_format is None):
+        if (self._default_format_key is not None
+                and self._default_format is None):
             self._default_format = self.get(self._default_format_key)
         return self._default_format
 
@@ -2001,7 +2019,8 @@ class BranchPushResult(_Result):
             if self.old_revid != self.new_revid:
                 note(gettext('Pushed up to revision %d.') % self.new_revno)
             if tag_updates:
-                note(ngettext('%d tag updated.', '%d tags updated.', len(tag_updates)) % len(tag_updates))
+                note(ngettext('%d tag updated.', '%d tags updated.',
+                              len(tag_updates)) % len(tag_updates))
             if self.old_revid == self.new_revid and not tag_updates:
                 if not tag_conflicts:
                     note(gettext('No new revisions or tags to push.'))
@@ -2027,7 +2046,7 @@ class BranchCheckResult(object):
             if any.
         """
         note(gettext('checked branch {0} format {1}').format(
-                                self.branch.user_url, self.branch._format))
+            self.branch.user_url, self.branch._format))
         for error in self.errors:
             note(gettext('found error:%s'), error)
 
@@ -2046,7 +2065,7 @@ class InterBranch(InterObject):
     @classmethod
     def _get_branch_formats_to_test(klass):
         """Return an iterable of format tuples for testing.
-        
+
         :return: An iterable of (from_format, to_format) to use when testing
             this InterBranch class. Each InterBranch class should define this
             method itself.
@@ -2144,18 +2163,19 @@ class GenericInterBranch(InterBranch):
             fetch_spec_factory.source_branch_stop_revision_id = stop_revision
             fetch_spec_factory.source_repo = self.source.repository
             fetch_spec_factory.target_repo = self.target.repository
-            fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+            fetch_spec_factory.target_repo_kind = (
+                fetch.TargetRepoKinds.PREEXISTING)
             fetch_spec_factory.limit = limit
             fetch_spec = fetch_spec_factory.make_fetch_spec()
             return self.target.repository.fetch(
-                    self.source.repository,
-                    fetch_spec=fetch_spec)
+                self.source.repository,
+                fetch_spec=fetch_spec)
 
     def _update_revisions(self, stop_revision=None, overwrite=False,
-            graph=None):
+                          graph=None):
         with self.source.lock_read(), self.target.lock_write():
             other_revno, other_last_revision = self.source.last_revision_info()
-            stop_revno = None # unknown
+            stop_revno = None  # unknown
             if stop_revision is None:
                 stop_revision = other_last_revision
                 if _mod_revision.is_null(stop_revision):
@@ -2184,10 +2204,10 @@ class GenericInterBranch(InterBranch):
                 if graph is None:
                     graph = self.target.repository.get_graph()
                 this_revno, this_last_revision = \
-                        self.target.last_revision_info()
-                stop_revno = graph.find_distance_to_null(stop_revision,
-                                [(other_last_revision, other_revno),
-                                 (this_last_revision, this_revno)])
+                    self.target.last_revision_info()
+                stop_revno = graph.find_distance_to_null(
+                    stop_revision, [(other_last_revision, other_revno),
+                                    (this_last_revision, this_revno)])
             self.target.set_last_revision_info(stop_revno, stop_revision)
 
     def pull(self, overwrite=False, stop_revision=None,
@@ -2216,15 +2236,16 @@ class GenericInterBranch(InterBranch):
                     source_is_master = False
             if not local and bound_location and not source_is_master:
                 # not pulling from master, so we need to update master.
-                master_branch = self.target.get_master_branch(possible_transports)
+                master_branch = self.target.get_master_branch(
+                    possible_transports)
                 master_branch.lock_write()
             try:
                 if master_branch:
                     # pull from source into master.
-                    master_branch.pull(self.source, overwrite, stop_revision,
-                        run_hooks=False)
-                return self._pull(overwrite,
-                    stop_revision, _hook_master=master_branch,
+                    master_branch.pull(
+                        self.source, overwrite, stop_revision, run_hooks=False)
+                return self._pull(
+                    overwrite, stop_revision, _hook_master=master_branch,
                     run_hooks=run_hooks,
                     _override_hook_target=_override_hook_target,
                     merge_tags_to_master=not source_is_master)
@@ -2247,6 +2268,7 @@ class GenericInterBranch(InterBranch):
             raise errors.LossyPushToSameVCS(self.source, self.target)
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
+
         def _run_hooks():
             if _override_hook_source_branch:
                 result.source_branch = _override_hook_source_branch
@@ -2258,16 +2280,16 @@ class GenericInterBranch(InterBranch):
             if bound_location and self.target.base != bound_location:
                 # there is a master branch.
                 #
-                # XXX: Why the second check?  Is it even supported for a branch to
-                # be bound to itself? -- mbp 20070507
+                # XXX: Why the second check?  Is it even supported for a branch
+                # to be bound to itself? -- mbp 20070507
                 master_branch = self.target.get_master_branch()
                 with master_branch.lock_write():
                     # push into the master from the source branch.
                     master_inter = InterBranch.get(self.source, master_branch)
                     master_inter._basic_push(overwrite, stop_revision)
-                    # and push into the target branch from the source. Note that
-                    # we push from the source branch again, because it's considered
-                    # the highest bandwidth repository.
+                    # and push into the target branch from the source. Note
+                    # that we push from the source branch again, because it's
+                    # considered the highest bandwidth repository.
                     result = self._basic_push(overwrite, stop_revision)
                     result.master_branch = master_branch
                     result.local_branch = self.target
@@ -2299,20 +2321,19 @@ class GenericInterBranch(InterBranch):
             # We assume that during 'push' this repository is closer than
             # the target.
             graph = self.source.repository.get_graph(self.target.repository)
-            self._update_revisions(stop_revision,
-                overwrite=("history" in overwrite),
-                graph=graph)
+            self._update_revisions(
+                stop_revision, overwrite=("history" in overwrite), graph=graph)
         if self.source._push_should_merge_tags():
             result.tag_updates, result.tag_conflicts = (
                 self.source.tags.merge_to(
-                self.target.tags, "tags" in overwrite))
+                    self.target.tags, "tags" in overwrite))
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
     def _pull(self, overwrite=False, stop_revision=None,
-             possible_transports=None, _hook_master=None, run_hooks=True,
-             _override_hook_target=None, local=False,
-             merge_tags_to_master=True):
+              possible_transports=None, _hook_master=None, run_hooks=True,
+              _override_hook_target=None, local=False,
+              merge_tags_to_master=True):
         """See Branch.pull.
 
         This function is the core worker, used by GenericInterBranch.pull to
@@ -2343,23 +2364,23 @@ class GenericInterBranch(InterBranch):
             # the source one.
             self.source.update_references(self.target)
             graph = self.target.repository.get_graph(self.source.repository)
-            # TODO: Branch formats should have a flag that indicates 
+            # TODO: Branch formats should have a flag that indicates
             # that revno's are expensive, and pull() should honor that flag.
             # -- JRV20090506
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
             overwrite = _fix_overwrite_type(overwrite)
-            self._update_revisions(stop_revision,
-                overwrite=("history" in overwrite),
-                graph=graph)
-            # TODO: The old revid should be specified when merging tags, 
-            # so a tags implementation that versions tags can only 
+            self._update_revisions(
+                stop_revision, overwrite=("history" in overwrite), graph=graph)
+            # TODO: The old revid should be specified when merging tags,
+            # so a tags implementation that versions tags can only
             # pull in the most recent changes. -- JRV20090506
             result.tag_updates, result.tag_conflicts = (
-                self.source.tags.merge_to(self.target.tags,
-                    "tags" in overwrite,
+                self.source.tags.merge_to(
+                    self.target.tags, "tags" in overwrite,
                     ignore_master=not merge_tags_to_master))
-            result.new_revno, result.new_revid = self.target.last_revision_info()
+            result.new_revno, result.new_revid = (
+                self.target.last_revision_info())
             if _hook_master:
                 result.master_branch = _hook_master
                 result.local_branch = result.target_branch

@@ -59,10 +59,10 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         format = SampleComponentFormat()
         self.registry.register(format)
         self.assertEqual(format,
-            self.registry.get(b"Example component format."))
+                         self.registry.get(b"Example component format."))
         self.registry.remove(format)
         self.assertRaises(KeyError, self.registry.get,
-            b"Example component format.")
+                          b"Example component format.")
 
     def test_get_all(self):
         format = SampleComponentFormat()
@@ -87,7 +87,7 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
     def test_register_extra_lazy(self):
         self.assertEqual([], self.registry._get_all())
         self.registry.register_extra_lazy("breezy.tests.test_controldir",
-            "SampleExtraComponentFormat")
+                                          "SampleExtraComponentFormat")
         formats = self.registry._get_all()
         self.assertEqual(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraComponentFormat)
@@ -107,14 +107,14 @@ class TestProber(tests.TestCaseWithTransport):
     def test_probe_transport_empty(self):
         transport = self.get_transport(".")
         self.assertRaises(errors.NotBranchError,
-            self.prober.probe_transport, transport)
+                          self.prober.probe_transport, transport)
 
     def test_known_formats(self):
         known_formats = self.prober_cls.known_formats()
         self.assertIsInstance(known_formats, list)
         for format in known_formats:
             self.assertIsInstance(format, controldir.ControlDirFormat,
-                repr(format))
+                                  repr(format))
 
 
 class NotBzrDir(controldir.ControlDir):
@@ -166,14 +166,16 @@ class TestNotBzrDir(tests.TestCaseWithTransport):
         # now probe for it.
         controldir.ControlDirFormat.register_prober(NotBzrDirProber)
         try:
-            found = controldir.ControlDirFormat.find_format(self.get_transport())
+            found = controldir.ControlDirFormat.find_format(
+                self.get_transport())
             self.assertIsInstance(found, NotBzrDirFormat)
         finally:
             controldir.ControlDirFormat.unregister_prober(NotBzrDirProber)
 
     def test_included_in_known_formats(self):
         controldir.ControlDirFormat.register_prober(NotBzrDirProber)
-        self.addCleanup(controldir.ControlDirFormat.unregister_prober, NotBzrDirProber)
+        self.addCleanup(
+            controldir.ControlDirFormat.unregister_prober, NotBzrDirProber)
         formats = controldir.ControlDirFormat.known_formats()
         self.assertIsInstance(formats, list)
         for format in formats:
@@ -202,8 +204,8 @@ class DefaultControlComponentFormatTests(tests.TestCase):
 
     def test_check_support_status_unsupported(self):
         self.assertRaises(errors.UnsupportedFormatError,
-            UnsupportedControlComponentFormat().check_support_status,
-            allow_unsupported=False)
+                          UnsupportedControlComponentFormat().check_support_status,
+                          allow_unsupported=False)
         UnsupportedControlComponentFormat().check_support_status(
             allow_unsupported=True)
 
@@ -217,17 +219,17 @@ class DefaultControlComponentFormatTests(tests.TestCase):
         ui.ui_factory = tests.TestUIFactory()
         format = controldir.ControlComponentFormat()
         format.check_support_status(allow_unsupported=False,
-            recommend_upgrade=True)
+                                    recommend_upgrade=True)
         self.assertEqual("", ui.ui_factory.stderr.getvalue())
 
     def test_recommend_upgrade_old_format(self):
         ui.ui_factory = tests.TestUIFactory()
         format = OldControlComponentFormat()
         format.check_support_status(allow_unsupported=False,
-            recommend_upgrade=False)
+                                    recommend_upgrade=False)
         self.assertEqual("", ui.ui_factory.stderr.getvalue())
         format.check_support_status(allow_unsupported=False,
-            recommend_upgrade=True, basedir='apath')
+                                    recommend_upgrade=True, basedir='apath')
         self.assertEqual(
             'An old format that is slow is deprecated and a better format '
             'is available.\nIt is recommended that you upgrade by running '

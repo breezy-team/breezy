@@ -85,7 +85,7 @@ class ScopeReplacer(object):
             obj = factory(self, scope, name)
             if obj is self:
                 raise errors.IllegalUseOfScopeReplacer(name, msg="Object tried"
-                    " to replace itself, check it's not using its own scope.")
+                                                       " to replace itself, check it's not using its own scope.")
 
             # Check if another thread has jumped in while obj was generated.
             real_obj = object.__getattribute__(self, '_real_obj')
@@ -165,7 +165,7 @@ class ImportReplacer(ScopeReplacer):
         :param children: Children entries to be imported later.
             This should be a map of children specifications.
             ::
-            
+
                 {'foo':(['breezy', 'foo'], None,
                     {'bar':(['breezy', 'foo', 'bar'], None {})})
                 }
@@ -261,7 +261,7 @@ class ImportProcessor(object):
                 self._convert_from_str(line)
             else:
                 raise errors.InvalidImportLine(line,
-                    "doesn't start with 'import ' or 'from '")
+                                               "doesn't start with 'import ' or 'from '")
 
     def _convert_import_str(self, import_str):
         """This converts a import string into an import map.
@@ -356,7 +356,6 @@ class ImportProcessor(object):
         """
         out = []
         cur = None
-        continuing = False
 
         for line in text.split('\n'):
             line = line.strip()

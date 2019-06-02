@@ -77,7 +77,7 @@ def write_weave_v5(weave, f):
                 f.write(b'}\n')
             else:
                 f.write(l[0] + b' %d\n' % l[1])
-        else: # text line
+        else:  # text line
             if not l:
                 f.write(b', \n')
             elif l.endswith(b'\n'):
@@ -86,7 +86,6 @@ def write_weave_v5(weave, f):
                 f.write(b', ' + l + b'\n')
 
     f.write(b'W\n')
-
 
 
 def read_weave(f):

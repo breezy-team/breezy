@@ -36,9 +36,9 @@ class TestLogFormats(tests.TestCaseWithTransport):
         # Create a config file with some useful variables
         conf_path = config.config_filename()
         if os.path.isfile(conf_path):
-                # Something is wrong in environment,
-                # we risk overwriting users config
-                self.fail("%s exists" % conf_path)
+            # Something is wrong in environment,
+            # we risk overwriting users config
+            self.fail("%s exists" % conf_path)
 
         config.ensure_config_dir_exists()
         f = open(conf_path, 'wb')
@@ -96,7 +96,7 @@ log_format=line
         # from http://launchpad.net/bugs/29582/
         wt = self.make_branch_and_tree('.')
         wt.commit('first revision', timestamp=1236045060,
-                  timezone=0) # Aka UTC
+                  timezone=0)  # Aka UTC
 
         log, err = self.run_bzr(['log', '--log-format', 'gnu-changelog',
                                  '--timezone=utc'])
@@ -111,7 +111,7 @@ log_format=line
     def test_logformat_line_wide(self):
         """Author field should get larger for column widths over 80"""
         wt = self.make_branch_and_tree('.')
-        wt.commit('revision with a long author', committer='Person with' 
+        wt.commit('revision with a long author', committer='Person with'
                   ' long name SENTINEL')
         log, err = self.run_bzr('log --line')
         self.assertNotContainsString(log, 'SENTINEL')
@@ -121,4 +121,3 @@ log_format=line
         self.overrideEnv('BRZ_COLUMNS', '0')
         log, err = self.run_bzr('log --line')
         self.assertContainsString(log, 'SENTINEL')
-

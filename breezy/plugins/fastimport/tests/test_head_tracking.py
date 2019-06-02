@@ -33,7 +33,7 @@ from .reftracker import (
 
 # A sample input stream that only adds files to a branch
 _SAMPLE_MAINLINE = \
-"""blob
+    """blob
 mark :1
 data 9
 Welcome!
@@ -79,7 +79,7 @@ M 644 :4 doc/index.txt
 
 # A sample input stream that adds files to two branches
 _SAMPLE_TWO_HEADS = \
-"""blob
+    """blob
 mark :1
 data 9
 Welcome!
@@ -125,7 +125,7 @@ M 644 :4 doc/index.txt
 
 # A sample input stream that adds files to two branches
 _SAMPLE_TWO_BRANCHES_MERGED = \
-"""blob
+    """blob
 mark :1
 data 9
 Welcome!
@@ -180,7 +180,7 @@ D doc/index.txt
 
 # A sample input stream that contains a reset
 _SAMPLE_RESET = \
-"""blob
+    """blob
 mark :1
 data 9
 Welcome!
@@ -196,7 +196,7 @@ from :100
 
 # A sample input stream that contains a reset and more commits
 _SAMPLE_RESET_WITH_MORE_COMMITS = \
-"""blob
+    """blob
 mark :1
 data 9
 Welcome!
@@ -217,6 +217,7 @@ ing
 from :100
 D doc/README.txt
 """
+
 
 class TestHeadTracking(testtools.TestCase):
 

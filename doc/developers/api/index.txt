@@ -1,0 +1,14 @@
+This is the API documentation for Breezy.
+
+Module reference
+----------------
+
+.. toctree::
+    :maxdepth: 4
+
+    modules
+
+Indices:
+
+* :ref:`modindex`
+* :ref:`search`

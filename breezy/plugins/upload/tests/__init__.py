@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
 def load_tests(loader, basic_tests, pattern):
     # This module shouldn't define any tests but I don't know how to report
     # that. I prefer to update basic_tests with the other tests to detect
@@ -24,5 +25,5 @@ def load_tests(loader, basic_tests, pattern):
         'test_upload',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
     return basic_tests

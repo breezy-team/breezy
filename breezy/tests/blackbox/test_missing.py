@@ -138,7 +138,7 @@ class TestMissing(tests.TestCaseWithTransport):
         lines7 = run_missing_a(['--show-ids'])
         self.assertLength(11, lines7)
 
-        lines8 =  run_missing_a(['--verbose'])
+        lines8 = run_missing_a(['--verbose'])
         self.assertEqual("modified:", lines8[-2])
         self.assertEqual("  a", lines8[-1])
 
@@ -155,7 +155,7 @@ class TestMissing(tests.TestCaseWithTransport):
         self.assertEqualDiff('This branch has no new revisions.',
                              run_missing_a(['--mine-only'], retcode=0)[0])
         self.assertEqualDiff('Other branch has no new revisions.',
-                              run_missing_a(['--theirs-only'], retcode=0)[0])
+                             run_missing_a(['--theirs-only'], retcode=0)[0])
 
     def test_missing_filtered(self):
         # create a source branch
@@ -172,27 +172,27 @@ class TestMissing(tests.TestCaseWithTransport):
 
         # local
         out, err = self.run_bzr('missing ../b --my-revision 3',
-                               retcode=1, working_dir='a')
+                                retcode=1, working_dir='a')
         self.assertMessages(out, ('a3', 'b2', 'b3', 'b4', 'b5'), ('a2', 'a4'))
 
         out, err = self.run_bzr('missing ../b --my-revision 3..4',
-                               retcode=1, working_dir='a')
+                                retcode=1, working_dir='a')
         self.assertMessages(out, ('a3', 'a4'), ('a2', 'a5'))
 
-        #remote
+        # remote
         out, err = self.run_bzr('missing ../b -r 3',
-                               retcode=1, working_dir='a')
+                                retcode=1, working_dir='a')
         self.assertMessages(out, ('a2', 'a3', 'a4', 'a5', 'b3'), ('b2', 'b4'))
 
         out, err = self.run_bzr('missing ../b -r 3..4',
-                               retcode=1, working_dir='a')
+                                retcode=1, working_dir='a')
         self.assertMessages(out, ('b3', 'b4'), ('b2', 'b5'))
 
-        #both
+        # both
         out, err = self.run_bzr('missing ../b --my-revision 3..4 -r 3..4',
-                               retcode=1, working_dir='a')
+                                retcode=1, working_dir='a')
         self.assertMessages(out, ('a3', 'a4', 'b3', 'b4'),
-            ('a2', 'a5', 'b2', 'b5'))
+                            ('a2', 'a5', 'b2', 'b5'))
 
     def test_missing_check_last_location(self):
         # check that last location shown as filepath not file URL

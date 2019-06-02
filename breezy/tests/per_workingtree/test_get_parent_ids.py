@@ -42,8 +42,8 @@ class TestGetParentIds(TestCaseWithWorkingTree):
         self.assertEqual([], wt.get_parent_ids())
         if not wt._format. supports_righthand_parent_id_as_ghost:
             raise TestNotApplicable(
-                    'format does not support right hand side parents '
-                    'that are ghosts')
+                'format does not support right hand side parents '
+                'that are ghosts')
         # the first pending merge replaces the 'last revision' because
         # 'last revision' is shorthand for 'left most parent'
         wt.add_pending_merge(b'foo@azkhazan-123123-abcabc')
@@ -55,5 +55,5 @@ class TestGetParentIds(TestCaseWithWorkingTree):
         # order is preserved.
         wt.add_pending_merge(b'wibble@fofof--20050401--1928390812')
         self.assertEqual([b'foo@azkhazan-123123-abcabc',
-            b'wibble@fofof--20050401--1928390812'],
-            wt.get_parent_ids())
+                          b'wibble@fofof--20050401--1928390812'],
+                         wt.get_parent_ids())

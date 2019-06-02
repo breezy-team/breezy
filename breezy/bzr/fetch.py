@@ -26,7 +26,7 @@ from __future__ import absolute_import
 
 import operator
 
-from .lazy_import import lazy_import
+from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     tsort,
@@ -36,16 +36,16 @@ from breezy.bzr import (
     vf_search,
     )
 """)
-from . import (
+from .. import (
     errors,
     ui,
     )
-from .i18n import gettext
-from .revision import NULL_REVISION
-from .sixish import (
+from ..i18n import gettext
+from ..revision import NULL_REVISION
+from ..sixish import (
     viewvalues,
     )
-from .trace import mutter
+from ..trace import mutter
 
 
 class RepoFetcher(object):
@@ -56,7 +56,7 @@ class RepoFetcher(object):
     """
 
     def __init__(self, to_repository, from_repository, last_revision=None,
-        find_ghosts=True, fetch_spec=None):
+                 find_ghosts=True, fetch_spec=None):
         """Create a repo fetcher.
 
         :param last_revision: If set, try to limit to the data this revision
@@ -118,7 +118,7 @@ class RepoFetcher(object):
         # moment, so that it can feed the progress information back to this
         # function?
         if (self.from_repository._format.rich_root_data and
-            not self.to_repository._format.rich_root_data):
+                not self.to_repository._format.rich_root_data):
             raise errors.IncompatibleRepositories(
                 self.from_repository, self.to_repository,
                 "different rich-root support")
@@ -164,12 +164,13 @@ class RepoFetcher(object):
             return vf_search.EmptySearchResult()
         elif self._last_revision is not None:
             return vf_search.NotInOtherForRevs(self.to_repository,
-                self.from_repository, [self._last_revision],
-                find_ghosts=self.find_ghosts).execute()
-        else: # self._last_revision is None:
+                                               self.from_repository, [
+                                                   self._last_revision],
+                                               find_ghosts=self.find_ghosts).execute()
+        else:  # self._last_revision is None:
             return vf_search.EverythingNotInOther(self.to_repository,
-                self.from_repository,
-                find_ghosts=self.find_ghosts).execute()
+                                                  self.from_repository,
+                                                  find_ghosts=self.find_ghosts).execute()
 
 
 class Inter1and2Helper(object):
@@ -211,7 +212,7 @@ class Inter1and2Helper(object):
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
             root_id = tree.get_root_id()
-            revision_id = tree.get_file_revision(u'', root_id)
+            revision_id = tree.get_file_revision(u'')
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
         parents = set(viewvalues(parent_map))
@@ -234,7 +235,7 @@ class Inter1and2Helper(object):
         rev_order = tsort.topo_sort(parent_map)
         rev_id_to_root_id = self._find_root_ids(revs, parent_map, graph)
         root_id_order = [(rev_id_to_root_id[rev_id], rev_id) for rev_id in
-            rev_order]
+                         rev_order]
         # Guaranteed stable, this groups all the file id operations together
         # retaining topological order within the revisions of a file id.
         # File id splits and joins would invalidate this, but they don't exist
@@ -249,11 +250,11 @@ class Inter1and2Helper(object):
 
 
 def _new_root_data_stream(
-    root_keys_to_create, rev_id_to_root_id_map, parent_map, repo, graph=None):
+        root_keys_to_create, rev_id_to_root_id_map, parent_map, repo, graph=None):
     """Generate a texts substream of synthesised root entries.
 
     Used in fetches that do rich-root upgrades.
-    
+
     :param root_keys_to_create: iterable of (root_id, rev_id) pairs describing
         the root entries to create.
     :param rev_id_to_root_id_map: dict of known rev_id -> root_id mappings for
@@ -272,9 +273,9 @@ def _new_root_data_stream(
 
 
 def _parent_keys_for_root_version(
-    root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph=None):
+        root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph=None):
     """Get the parent keys for a given root id.
-    
+
     A helper function for _new_root_data_stream.
     """
     # Include direct parents of the revision, but only if they used the same
@@ -317,7 +318,8 @@ def _parent_keys_for_root_version(
                 pass
             else:
                 try:
-                    parent_ids.append(tree.get_file_revision(tree.id2path(root_id), root_id))
+                    parent_ids.append(
+                        tree.get_file_revision(tree.id2path(root_id)))
                 except errors.NoSuchId:
                     # not in the tree
                     pass
@@ -335,10 +337,10 @@ def _parent_keys_for_root_version(
 
 class TargetRepoKinds(object):
     """An enum-like set of constants.
-    
+
     They are the possible values of FetchSpecFactory.target_repo_kinds.
     """
-    
+
     PREEXISTING = 'preexisting'
     STACKED = 'stacked'
     EMPTY = 'empty'
@@ -420,9 +422,10 @@ class FetchSpecFactory(object):
                 graph = self.source_repo.get_graph()
                 topo_order = list(graph.iter_topo_order(ret.get_keys()))
                 result_set = topo_order[:self.limit]
-                ret = self.source_repo.revision_ids_to_search_result(result_set)
+                ret = self.source_repo.revision_ids_to_search_result(
+                    result_set)
             return ret
         else:
             return vf_search.NotInOtherForRevs(self.target_repo, self.source_repo,
-                required_ids=heads_to_fetch, if_present_ids=if_present_fetch,
-                limit=self.limit).execute()
+                                               required_ids=heads_to_fetch, if_present_ids=if_present_fetch,
+                                               limit=self.limit).execute()

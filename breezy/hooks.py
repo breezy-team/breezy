@@ -51,9 +51,9 @@ class KnownHooksRegistry(registry.Registry):
     # callable to get the empty specific Hooks for that attribute
 
     def register_lazy_hook(self, hook_module_name, hook_member_name,
-            hook_factory_member_name):
+                           hook_factory_member_name):
         self.register_lazy((hook_module_name, hook_member_name),
-            hook_module_name, hook_factory_member_name)
+                           hook_module_name, hook_factory_member_name)
 
     def iter_parent_objects(self):
         """Yield (hook_key, (parent_object, attr)) tuples for every registered
@@ -164,7 +164,7 @@ class Hooks(dict):
         hook_docs = []
         name = self.__class__.__name__
         hook_docs.append(name)
-        hook_docs.append("-"*len(name))
+        hook_docs.append("-" * len(name))
         hook_docs.append("")
         for hook_name in hook_names:
             hook = self[hook_name]
@@ -177,7 +177,7 @@ class Hooks(dict):
                 strings.append("~" * len(hook_name))
                 strings.append("")
                 strings.append("An old-style hook. For documentation see the __init__ "
-                    "method of '%s'\n" % (name,))
+                               "method of '%s'\n" % (name,))
                 hook_docs.extend(strings)
         return "\n".join(hook_docs)
 
@@ -198,9 +198,8 @@ class Hooks(dict):
             return 'No hook name'
         return name
 
-
     def install_named_hook_lazy(self, hook_name, callable_module,
-        callable_member, name):
+                                callable_member, name):
         """Install a_callable in to the hook hook_name lazily, and label it.
 
         :param hook_name: A hook name. See the __init__ method for the complete
@@ -219,7 +218,7 @@ class Hooks(dict):
             hook_lazy = getattr(hook, "hook_lazy")
         except AttributeError:
             raise errors.UnsupportedOperation(self.install_named_hook_lazy,
-                self)
+                                              self)
         else:
             hook_lazy(callable_module, callable_member, name)
         if name is not None:
@@ -270,7 +269,7 @@ class Hooks(dict):
         self._callable_names[a_callable] = name
 
     def name_hook_lazy(self, callable_module, callable_member, callable_name):
-        self._lazy_callable_names[(callable_module, callable_member)]= \
+        self._lazy_callable_names[(callable_module, callable_member)] = \
             callable_name
 
 
@@ -312,7 +311,7 @@ class HookPoint(object):
         """
         strings = []
         strings.append(self.name)
-        strings.append('~'*len(self.name))
+        strings.append('~' * len(self.name))
         strings.append('')
         if self.introduced:
             introduced_string = _format_version_tuple(self.introduced)
@@ -324,7 +323,7 @@ class HookPoint(object):
             strings.append(gettext('Deprecated in: %s') % deprecated_string)
         strings.append('')
         strings.extend(textwrap.wrap(self.__doc__,
-            break_long_words=False))
+                                     break_long_words=False))
         strings.append('')
         return '\n'.join(strings)
 
@@ -341,7 +340,7 @@ class HookPoint(object):
             processing.
         """
         obj_getter = registry._LazyObjectGetter(callback_module,
-            callback_member)
+                                                callback_member)
         self._callbacks.append((obj_getter, callback_label))
 
     def hook(self, callback, callback_label):
@@ -393,7 +392,7 @@ class HookPoint(object):
 
 
 _help_prefix = \
-"""
+    """
 Hooks
 =====
 
@@ -425,6 +424,7 @@ Plugins (including hooks) are run on the server if all of these is true:
 
 """
 
+
 def hooks_help_text(topic):
     segments = [_help_prefix]
     for hook_key in sorted(known_hooks.keys()):
@@ -439,7 +439,7 @@ _lazy_hooks = {}
 
 
 def install_lazy_named_hook(hookpoints_module, hookpoints_name, hook_name,
-    a_callable, name):
+                            a_callable, name):
     """Install a callable in to a hook lazily, and label it name.
 
     :param hookpoints_module: Module name of the hook points.

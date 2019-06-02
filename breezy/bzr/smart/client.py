@@ -40,7 +40,8 @@ class _SmartClient(object):
         """
         self._medium = medium
         if headers is None:
-            self._headers = {b'Software version': breezy.__version__.encode('utf-8')}
+            self._headers = {
+                b'Software version': breezy.__version__.encode('utf-8')}
         else:
             self._headers = dict(headers)
 
@@ -48,10 +49,10 @@ class _SmartClient(object):
         return '%s(%r)' % (self.__class__.__name__, self._medium)
 
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
-            body_stream=None, expect_response_body=True):
+                                body_stream=None, expect_response_body=True):
         request = _SmartClientRequest(self, method, args, body=body,
-            readv_body=readv_body, body_stream=body_stream,
-            expect_response_body=expect_response_body)
+                                      readv_body=readv_body, body_stream=body_stream,
+                                      expect_response_body=expect_response_body)
         return request.call_and_read_response()
 
     def call(self, method, *args):
@@ -99,13 +100,13 @@ class _SmartClient(object):
 
     def call_with_body_readv_array(self, args, body):
         response, response_handler = self._call_and_read_response(
-                args[0], args[1:], readv_body=body, expect_response_body=True)
+            args[0], args[1:], readv_body=body, expect_response_body=True)
         return (response, response_handler)
 
     def call_with_body_stream(self, args, stream):
         response, response_handler = self._call_and_read_response(
-                args[0], args[1:], body_stream=stream,
-                expect_response_body=False)
+            args[0], args[1:], body_stream=stream,
+            expect_response_body=False)
         return (response, response_handler)
 
     def remote_path_from_transport(self, transport):
@@ -276,9 +277,9 @@ class _SmartClientRequest(object):
 
             # Connection is dead, so close our end of it.
             self.client._medium.reset()
-            if (('noretry' in debug.debug_flags)
-                or (self.body_stream is not None
-                    and encoder.body_stream_started)):
+            if (('noretry' in debug.debug_flags) or
+                (self.body_stream is not None and
+                    encoder.body_stream_started)):
                 # We can't restart a body_stream that has been partially
                 # consumed, so we don't retry.
                 # Note: We don't have to worry about
@@ -303,7 +304,8 @@ class _SmartClientRequest(object):
             if self.body_stream is not None:
                 raise AssertionError(
                     "body and body_stream are mutually exclusive.")
-            encoder.call_with_body_bytes((self.method, ) + self.args, self.body)
+            encoder.call_with_body_bytes(
+                (self.method, ) + self.args, self.body)
         elif self.readv_body is not None:
             if self.body_stream is not None:
                 raise AssertionError(
@@ -320,12 +322,13 @@ class _SmartClientRequest(object):
 class SmartClientHooks(hooks.Hooks):
 
     def __init__(self):
-        hooks.Hooks.__init__(self, "breezy.bzr.smart.client", "_SmartClient.hooks")
+        hooks.Hooks.__init__(
+            self, "breezy.bzr.smart.client", "_SmartClient.hooks")
         self.add_hook('call',
-            "Called when the smart client is submitting a request to the "
-            "smart server. Called with a breezy.bzr.smart.client.CallHookParams "
-            "object. Streaming request bodies, and responses, are not "
-            "accessible.", None)
+                      "Called when the smart client is submitting a request to the "
+                      "smart server. Called with a breezy.bzr.smart.client.CallHookParams "
+                      "object. Streaming request bodies, and responses, are not "
+                      "accessible.", None)
 
 
 _SmartClient.hooks = SmartClientHooks()

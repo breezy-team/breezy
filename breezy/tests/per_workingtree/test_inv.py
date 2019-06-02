@@ -31,10 +31,11 @@ class TestRevert(TestCaseWithWorkingTree):
         wt.lock_tree_write()
         self.addCleanup(wt.unlock)
         self.assertEqual(len(list(wt.all_versioned_paths())), 1)
-        with open('b1/a', 'wb') as f: f.write(b'a test\n')
+        with open('b1/a', 'wb') as f:
+            f.write(b'a test\n')
         wt.add('a')
         self.assertEqual(len(list(wt.all_versioned_paths())), 2)
-        wt.flush() # workaround revert doing wt._write_inventory for now.
+        wt.flush()  # workaround revert doing wt._write_inventory for now.
         os.unlink('b1/a')
         wt.revert()
         self.assertEqual(len(list(wt.all_versioned_paths())), 1)
@@ -54,9 +55,9 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.addCleanup(wt.unlock)
         root_id = wt.get_root_id()
         wt.apply_inventory_delta([(None, 'bar/foo', b'foo-id',
-            inventory.InventoryFile(b'foo-id', 'foo', parent_id=b'bar-id')),
-            (None, 'bar', b'bar-id', inventory.InventoryDirectory(b'bar-id',
-            'bar', parent_id=root_id))])
+                                   inventory.InventoryFile(b'foo-id', 'foo', parent_id=b'bar-id')),
+                                  (None, 'bar', b'bar-id', inventory.InventoryDirectory(b'bar-id',
+                                                                                        'bar', parent_id=root_id))])
         self.assertEqual('bar/foo', wt.id2path(b'foo-id'))
         self.assertEqual('bar', wt.id2path(b'bar-id'))
 
@@ -79,7 +80,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         wt.add(['foo', 'foo/bar'],
                [b'foo-id', b'bar-id'])
         wt.apply_inventory_delta([('foo', 'baz', b'foo-id',
-            inventory.InventoryDirectory(b'foo-id', 'baz', root_id))])
+                                   inventory.InventoryDirectory(b'foo-id', 'baz', root_id))])
         # foo/bar should have been followed the rename of its parent to baz/bar
         self.assertEqual('baz', wt.id2path(b'foo-id'))
         self.assertEqual('baz/bar', wt.id2path(b'bar-id'))
@@ -93,7 +94,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         wt.add(['foo', 'foo/bar', 'foo/bar/baz'],
                [b'foo-id', b'bar-id', b'baz-id'])
         wt.apply_inventory_delta([('foo', 'quux', b'foo-id',
-            inventory.InventoryDirectory(b'foo-id', 'quux', root_id))])
+                                   inventory.InventoryDirectory(b'foo-id', 'quux', root_id))])
         # foo/bar/baz should have been followed the rename of its parent's
         # parent to quux/bar/baz
         self.assertEqual('quux/bar/baz', wt.id2path(b'baz-id'))
@@ -106,7 +107,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         wt.add(['foo', 'foo/bar', 'baz'],
                [b'foo-id', b'bar-id', b'baz-id'])
         wt.apply_inventory_delta([('foo/bar', 'baz/bar', b'bar-id',
-            inventory.InventoryFile(b'bar-id', 'bar', b'baz-id'))])
+                                   inventory.InventoryFile(b'bar-id', 'bar', b'baz-id'))])
         self.assertEqual('baz/bar', wt.id2path(b'bar-id'))
 
     def test_rename_swap(self):
@@ -123,9 +124,9 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         wt.add(['foo', 'foo/bar', 'baz', 'baz/qux'],
                [b'foo-id', b'bar-id', b'baz-id', b'qux-id'])
         wt.apply_inventory_delta([('foo', 'baz', b'foo-id',
-            inventory.InventoryDirectory(b'foo-id', 'baz', root_id)),
-            ('baz', 'foo', b'baz-id',
-            inventory.InventoryDirectory(b'baz-id', 'foo', root_id))])
+                                   inventory.InventoryDirectory(b'foo-id', 'baz', root_id)),
+                                  ('baz', 'foo', b'baz-id',
+                                   inventory.InventoryDirectory(b'baz-id', 'foo', root_id))])
         self.assertEqual('baz/bar', wt.id2path(b'bar-id'))
         self.assertEqual('foo/qux', wt.id2path(b'qux-id'))
 
@@ -143,9 +144,9 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         # this delta moves dir-id to dir2 and reparents
         # child-id to a parent of other-id
         wt.apply_inventory_delta([('dir', 'dir2', b'dir-id',
-            inventory.InventoryDirectory(b'dir-id', 'dir2', root_id)),
-            ('dir/child', 'other/child', b'child-id',
-             inventory.InventoryFile(b'child-id', 'child', b'other-id'))])
+                                   inventory.InventoryDirectory(b'dir-id', 'dir2', root_id)),
+                                  ('dir/child', 'other/child', b'child-id',
+                                   inventory.InventoryFile(b'child-id', 'child', b'other-id'))])
         self.assertEqual('dir2', wt.id2path(b'dir-id'))
         self.assertEqual('other/child', wt.id2path(b'child-id'))
 
@@ -156,8 +157,8 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
         root_id = wt.get_root_id()
         wt.apply_inventory_delta([('', None, root_id, None),
-            (None, '', b'root-id',
-             inventory.InventoryDirectory(b'root-id', '', None))])
+                                  (None, '', b'root-id',
+                                   inventory.InventoryDirectory(b'root-id', '', None))])
 
 
 class TestTreeReference(TestCaseWithWorkingTree):

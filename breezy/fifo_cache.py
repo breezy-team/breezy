@@ -32,8 +32,8 @@ class FIFOCache(dict):
         else:
             self._after_cleanup_count = min(after_cleanup_count,
                                             self._max_cache)
-        self._cleanup = {} # map to cleanup functions when items are removed
-        self._queue = deque() # Track when things are accessed
+        self._cleanup = {}  # map to cleanup functions when items are removed
+        self._queue = deque()  # Track when things are accessed
 
     def __setitem__(self, key, value):
         """Add a value to the cache, there will be no cleanup function."""
@@ -81,8 +81,8 @@ class FIFOCache(dict):
             self._remove_oldest()
         if len(self._queue) != len(self):
             raise AssertionError('The length of the queue should always equal'
-                ' the length of the dict. %s != %s'
-                % (len(self._queue), len(self)))
+                                 ' the length of the dict. %s != %s'
+                                 % (len(self._queue), len(self)))
 
     def clear(self):
         """Clear out all of the cache."""
@@ -169,7 +169,7 @@ class FIFOSizeCache(FIFOCache):
     it restricts the cache to be cleaned based on the size of the data.
     """
 
-    def __init__(self, max_size=1024*1024, after_cleanup_size=None,
+    def __init__(self, max_size=1024 * 1024, after_cleanup_size=None,
                  compute_size=None):
         """Create a new FIFOSizeCache.
 
@@ -258,4 +258,3 @@ class FIFOSizeCache(FIFOCache):
             self._after_cleanup_size = min(max_size, after_cleanup_size)
         if self._value_size > self._max_size:
             self.cleanup()
-

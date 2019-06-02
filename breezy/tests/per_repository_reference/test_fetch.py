@@ -32,7 +32,7 @@ class TestFetchBase(TestCaseWithRepository):
         content = [b'content lines\n'
                    b'for the first revision\n'
                    b'which is a marginal amount of content\n'
-                  ]
+                   ]
         builder.start_series()
         builder.build_snapshot(None, [
             ('add', ('', b'root-id', 'directory', None)),
@@ -72,9 +72,10 @@ class TestFetch(TestFetchBase):
         final_b.lock_read()
         self.addCleanup(final_b.unlock)
         self.assertEqual(b'C-id', final_b.last_revision())
-        text_keys = [(b'a-id', b'A-id'), (b'a-id', b'B-id'), (b'a-id', b'C-id')]
+        text_keys = [(b'a-id', b'A-id'), (b'a-id', b'B-id'),
+                     (b'a-id', b'C-id')]
         stream = final_b.repository.texts.get_record_stream(text_keys,
-            'unordered', True)
+                                                            'unordered', True)
         records = sorted([(r.key, r.get_bytes_as('fulltext')) for r in stream])
         self.assertEqual([
             ((b'a-id', b'A-id'), b''.join(content[:-2])),
@@ -87,13 +88,14 @@ class TestFetch(TestFetchBase):
         transport = self.make_smart_server('server')
         transport.ensure_base()
         url = transport.abspath('')
-        stack_b = source_b.controldir.sprout(url + '/stack-on', revision_id=b'B-id')
+        stack_b = source_b.controldir.sprout(
+            url + '/stack-on', revision_id=b'B-id')
         # self.make_branch only takes relative paths, so we do it the 'hard'
         # way
         target_transport = transport.clone('target')
         target_transport.ensure_base()
         target_bzrdir = self.bzrdir_format.initialize_on_transport(
-                            target_transport)
+            target_transport)
         target_bzrdir.create_repository()
         target_b = target_bzrdir.create_branch()
         target_b.set_stacked_on_url('../stack-on')
@@ -107,7 +109,7 @@ class TestFetch(TestFetchBase):
         # revision_id versus not. If you supply revision_id, then you get a
         # PendingAncestryResult for the search, versus a SearchResult...
         final2_b = target_b.controldir.sprout('final2',
-                                          revision_id=b'C-id').open_branch()
+                                              revision_id=b'C-id').open_branch()
         self.assertEqual(b'C-id', final_b.last_revision())
 
     def make_source_with_ghost_and_stacked_target(self):
@@ -179,13 +181,10 @@ class TestFetchFromRepoWithUnconfiguredFallbacks(TestFetchBase):
             repo_missing_fallbacks,
             fetch_spec=vf_search.EverythingResult(repo_missing_fallbacks))
         self.assertEqual(repo_missing_fallbacks.revisions.keys(),
-            target.revisions.keys())
+                         target.revisions.keys())
         self.assertEqual(repo_missing_fallbacks.inventories.keys(),
-            target.inventories.keys())
+                         target.inventories.keys())
         self.assertEqual([b'C-id'],
-            sorted(k[-1] for k in target.revisions.keys()))
+                         sorted(k[-1] for k in target.revisions.keys()))
         self.assertEqual([b'B-id', b'C-id'],
-            sorted(k[-1] for k in target.inventories.keys()))
-
-
-
+                         sorted(k[-1] for k in target.inventories.keys()))

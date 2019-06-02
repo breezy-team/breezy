@@ -40,7 +40,7 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         vf.add_lines((b'one',), (), [b'first\n'])
         vf.add_lines((b'two',), [(b'one',)], [b'first\n', b'second\n'])
         vf.add_lines((b'three',), [(b'one',), (b'two',)],
-                    [b'first\n', b'second\n', b'third\n'])
+                     [b'first\n', b'second\n', b'third\n'])
         return vf
 
     def test_finds_parents(self):

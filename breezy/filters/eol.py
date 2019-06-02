@@ -22,7 +22,8 @@ See bzr help eol for details.
 from __future__ import absolute_import
 
 
-import re, sys
+import re
+import sys
 
 from ..errors import BzrError
 from ..filters import ContentFilter
@@ -57,8 +58,8 @@ else:
 _eol_filter_stack_map = {
     'exact': [],
     'native': [ContentFilter(_to_lf_converter, _native_output)],
-    'lf':     [ContentFilter(_to_lf_converter, _to_lf_converter)],
-    'crlf':   [ContentFilter(_to_lf_converter, _to_crlf_converter)],
+    'lf': [ContentFilter(_to_lf_converter, _to_lf_converter)],
+    'crlf': [ContentFilter(_to_lf_converter, _to_crlf_converter)],
     'native-with-crlf-in-repo':
         [ContentFilter(_to_crlf_converter, _native_output)],
     'lf-with-crlf-in-repo':
@@ -66,6 +67,8 @@ _eol_filter_stack_map = {
     'crlf-with-crlf-in-repo':
         [ContentFilter(_to_crlf_converter, _to_crlf_converter)],
     }
+
+
 def eol_lookup(key):
     filter = _eol_filter_stack_map.get(key)
     if filter is None:

@@ -23,7 +23,7 @@ from .. import tests
 
 def load_tests(loader, standard_tests, pattern):
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
-        'breezy.util._bencode_py', 'breezy._bencode_pyx')
+                                                 'breezy.util._bencode_py', 'breezy._bencode_pyx')
     return suite
 
 
@@ -92,10 +92,10 @@ class TestBencodeDecode(tests.TestCase):
         self._run_check_error(ValueError, b'00:')
         self._run_check_error(ValueError, b'35208734823ljdahflajhdf')
         self._run_check_error(ValueError, b'432432432432432:foo')
-        self._run_check_error(ValueError, b' 1:x') # leading whitespace
-        self._run_check_error(ValueError, b'-1:x') # negative
-        self._run_check_error(ValueError, b'1 x') # space vs colon
-        self._run_check_error(ValueError, b'1x') # missing colon
+        self._run_check_error(ValueError, b' 1:x')  # leading whitespace
+        self._run_check_error(ValueError, b'-1:x')  # negative
+        self._run_check_error(ValueError, b'1 x')  # space vs colon
+        self._run_check_error(ValueError, b'1x')  # missing colon
         self._run_check_error(ValueError, (b'1' * 1000) + b':')
 
     def test_list(self):
@@ -118,10 +118,10 @@ class TestBencodeDecode(tests.TestCase):
 
     def test_dict(self):
         self._check({}, b'de')
-        self._check({b'':3}, b'd0:i3ee')
+        self._check({b'': 3}, b'd0:i3ee')
         self._check({b'age': 25, b'eyes': b'blue'}, b'd3:agei25e4:eyes4:bluee')
         self._check({b'spam.mp3': {b'author': b'Alice', b'length': 100000}},
-            b'd8:spam.mp3d6:author5:Alice6:lengthi100000eee')
+                    b'd8:spam.mp3d6:author5:Alice6:lengthi100000eee')
 
     def test_dict_deepnested(self):
         with RecursionLimit():
@@ -206,7 +206,7 @@ class TestBencodeEncode(tests.TestCase):
         self._check(b'de', {})
         self._check(b'd3:agei25e4:eyes4:bluee', {b'age': 25, b'eyes': b'blue'})
         self._check(b'd8:spam.mp3d6:author5:Alice6:lengthi100000eee',
-            {b'spam.mp3': {b'author': b'Alice', b'length': 100000}})
+                    {b'spam.mp3': {b'author': b'Alice', b'length': 100000}})
 
     def test_dict_deep_nested(self):
         d = top = {}
@@ -225,4 +225,3 @@ class TestBencodeEncode(tests.TestCase):
     def test_bool(self):
         self._check(b'i1e', True)
         self._check(b'i0e', False)
-

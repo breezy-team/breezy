@@ -25,7 +25,7 @@ from breezy.tests import TestNotApplicable
 from breezy.tests.per_interbranch import TestCaseWithInterBranch
 
 
-# The tests here are based on the tests in 
+# The tests here are based on the tests in
 # breezy.tests.per_branch.test_pull
 
 
@@ -86,7 +86,8 @@ class TestPull(TestCaseWithInterBranch):
         master_tree.commit('master')
         checkout = master_tree.branch.create_checkout('checkout')
         try:
-            other = self.sprout_to(master_tree.branch.controldir, 'other').open_workingtree()
+            other = self.sprout_to(
+                master_tree.branch.controldir, 'other').open_workingtree()
         except errors.NoRoundtrippingSupport:
             raise TestNotApplicable(
                 'lossless push between %r and %r not supported' %
@@ -105,7 +106,8 @@ class TestPull(TestCaseWithInterBranch):
     def test_pull_raises_specific_error_on_master_connection_error(self):
         master_tree = self.make_from_branch_and_tree('master')
         checkout = master_tree.branch.create_checkout('checkout')
-        other = self.sprout_to(master_tree.branch.controldir, 'other').open_branch()
+        other = self.sprout_to(
+            master_tree.branch.controldir, 'other').open_branch()
         # move the branch out of the way on disk to cause a connection
         # error.
         try:
@@ -148,7 +150,8 @@ class TestPull(TestCaseWithInterBranch):
         tree_a = self.make_from_branch_and_tree('tree_a')
         tree_a.commit('message 1')
         try:
-            tree_b = self.sprout_to(tree_a.controldir, 'tree_b').open_workingtree()
+            tree_b = self.sprout_to(
+                tree_a.controldir, 'tree_b').open_workingtree()
         except errors.NoRoundtrippingSupport:
             raise TestNotApplicable(
                 'lossless push between %r and %r not supported' %
@@ -157,7 +160,8 @@ class TestPull(TestCaseWithInterBranch):
         rev2a = tree_a.commit('message 2a')
         rev2b = tree_b.commit('message 2b')
         try:
-            self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
+            self.assertRaises(errors.DivergedBranches,
+                              tree_a.pull, tree_b.branch)
         except errors.NoRoundtrippingSupport:
             raise TestNotApplicable(
                 'lossless push between %r and %r not supported' %
@@ -206,7 +210,7 @@ class TestPullHook(TestCaseWithInterBranch):
         target = self.make_to_branch('target')
         source = self.make_from_branch('source')
         Branch.hooks.install_named_hook('post_pull',
-            self.capture_post_pull_hook, None)
+                                        self.capture_post_pull_hook, None)
         target.pull(source)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -235,7 +239,7 @@ class TestPullHook(TestCaseWithInterBranch):
             local.bind(target)
         source = self.make_from_branch('source')
         Branch.hooks.install_named_hook('post_pull',
-            self.capture_post_pull_hook, None)
+                                        self.capture_post_pull_hook, None)
         local.pull(source)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -255,7 +259,7 @@ class TestPullHook(TestCaseWithInterBranch):
         source = MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
         Branch.hooks.install_named_hook('post_pull',
-            self.capture_post_pull_hook, None)
+                                        self.capture_post_pull_hook, None)
         target.branch.pull(source.branch)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
