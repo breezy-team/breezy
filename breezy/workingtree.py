@@ -300,24 +300,6 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """
         return WorkingTree.open(path, _unsupported=True)
 
-    @staticmethod
-    def find_trees(location):
-        def list_current(transport):
-            return [d for d in transport.list_dir('')
-                    if not ControlDirFormat.is_control_filename(d)]
-
-        def evaluate(controldir):
-            try:
-                tree = controldir.open_workingtree()
-            except errors.NoWorkingTree:
-                return True, None
-            else:
-                return True, tree
-        t = transport.get_transport(location)
-        iterator = ControlDir.find_controldirs(
-            t, evaluate=evaluate, list_current=list_current)
-        return [tr for tr in iterator if tr is not None]
-
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
                                getattr(self, 'basedir', None))

@@ -30,7 +30,7 @@ import zipfile
 
 from . import urlutils
 from .bzr import generate_ids
-from .controldir import ControlDir, ControlDirFormat
+from .controldir import ControlDir, is_control_filename
 from .errors import (BzrError, NoSuchFile, BzrCommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
@@ -210,7 +210,7 @@ def names_of_files(tar_file):
 
 
 def should_ignore(relative_path):
-    return ControlDirFormat.is_control_filename(top_path(relative_path))
+    return is_control_filename(top_path(relative_path))
 
 
 def import_tar(tree, tar_input):
