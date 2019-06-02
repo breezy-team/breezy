@@ -229,8 +229,8 @@ class TestMultiWalker(TestCaseWithTransport):
         basis_tree, root_id = self.lock_and_get_basis_and_root_id(tree)
         first_tree = tree.branch.repository.revision_tree(b'first-rev-id')
         second_tree = tree.branch.repository.revision_tree(b'second-rev-id')
-        walker = multiwalker.MultiWalker(tree, [basis_tree, first_tree,
-                                              second_tree])
+        walker = multiwalker.MultiWalker(
+            tree, [basis_tree, first_tree, second_tree])
         iterator = walker.iter_all()
         self.assertWalkerNext(u'', root_id, True, [u'', u'', u''], iterator)
         self.assertWalkerNext(u'a', b'a-id', True,

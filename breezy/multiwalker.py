@@ -264,6 +264,3 @@ class MultiWalker(object):
                     other_values.append(self._lookup_by_file_id(
                         alt_extra, alt_tree, file_id))
                 yield other_path, file_id, None, other_values
-
-
-
