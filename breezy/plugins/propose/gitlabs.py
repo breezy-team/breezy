@@ -110,17 +110,22 @@ def connect_gitlab(host):
             raise GitLabLoginMissing()
 
 
-def parse_gitlab_url(branch):
-    url = urlutils.split_segment_parameters(branch.user_url)[0]
+def parse_gitlab_url(url):
     (scheme, user, password, host, port, path) = urlutils.parse_url(
         url)
     if scheme not in ('git+ssh', 'https', 'http'):
-        raise NotGitLabUrl(branch.user_url)
+        raise NotGitLabUrl(url)
     if not host:
-        raise NotGitLabUrl(branch.user_url)
+        raise NotGitLabUrl(url)
     path = path.strip('/')
     if path.endswith('.git'):
         path = path[:-4]
+    return host, path
+
+
+def parse_gitlab_branch_url(branch):
+    url = urlutils.split_segment_parameters(branch.user_url)[0]
+    host, path = parse_gitlab_url(url)
     return host, path, branch.name
 
 
@@ -183,7 +188,7 @@ class GitLab(Hoster):
         self.gl = gl
 
     def get_push_url(self, branch):
-        (host, project_name, branch_name) = parse_gitlab_url(branch)
+        (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
         project = self.gl.projects.get(project_name)
         return gitlab_url_to_bzr_url(
             project.ssh_url_to_repo, branch_name)
@@ -192,7 +197,7 @@ class GitLab(Hoster):
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True):
         import gitlab
-        (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
+        (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
         self.gl.auth()
         try:
             base_project = self.gl.projects.get(base_project)
@@ -230,7 +235,7 @@ class GitLab(Hoster):
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         import gitlab
-        (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
+        (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
         self.gl.auth()
         try:
             base_project = self.gl.projects.get(base_project)
@@ -258,9 +263,9 @@ class GitLab(Hoster):
     def iter_proposals(self, source_branch, target_branch, status):
         import gitlab
         (source_host, source_project_name, source_branch_name) = (
-            parse_gitlab_url(source_branch))
+            parse_gitlab_branch_url(source_branch))
         (target_host, target_project_name, target_branch_name) = (
-            parse_gitlab_url(target_branch))
+            parse_gitlab_branch_url(target_branch))
         if source_host != target_host:
             raise DifferentGitLabInstances(source_host, target_host)
         self.gl.auth()
@@ -281,17 +286,17 @@ class GitLab(Hoster):
 
     def hosts(self, branch):
         try:
-            (host, project, branch_name) = parse_gitlab_url(branch)
+            (host, project, branch_name) = parse_gitlab_branch_url(branch)
         except NotGitLabUrl:
             return False
         return (self.gl.url == ('https://%s' % host))
 
     @classmethod
-    def probe(cls, branch):
+    def probe_from_url(cls, url):
         try:
-            (host, project, branch_name) = parse_gitlab_url(branch)
+            (host, project) = parse_gitlab_url(url)
         except NotGitLabUrl:
-            raise UnsupportedHoster(branch)
+            raise UnsupportedHoster(url)
         import gitlab
         import requests.exceptions
         try:
@@ -299,12 +304,12 @@ class GitLab(Hoster):
             gl.auth()
         except requests.exceptions.SSLError:
             # Well, I guess it could be..
-            raise UnsupportedHoster(branch)
+            raise UnsupportedHoster(url)
         except gitlab.GitlabGetError:
-            raise UnsupportedHoster(branch)
+            raise UnsupportedHoster(url)
         except gitlab.GitlabHttpError as e:
             if e.response_code in (404, 405, 503):
-                raise UnsupportedHoster(branch)
+                raise UnsupportedHoster(url)
             else:
                 raise
         return cls(gl)
@@ -332,10 +337,10 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         self.gl = gl
         self.source_branch = source_branch
         (self.source_host, self.source_project_name, self.source_branch_name) = (
-            parse_gitlab_url(source_branch))
+            parse_gitlab_branch_url(source_branch))
         self.target_branch = target_branch
         (self.target_host, self.target_project_name, self.target_branch_name) = (
-            parse_gitlab_url(target_branch))
+            parse_gitlab_branch_url(target_branch))
         if self.source_host != self.target_host:
             raise DifferentGitLabInstances(self.source_host, self.target_host)
 

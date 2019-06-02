@@ -150,6 +150,22 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(b"", output)
         self.assertTrue(error.endswith(b"Created new branch.\n"))
 
+    def test_push_lossy_non_mainline(self):
+        self.run_bzr(['init', '--git', 'bla'])
+        self.run_bzr(['init', 'foo'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        self.run_bzr(['branch', 'foo', 'foo1'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo1'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        self.run_bzr(['merge', '-d', 'foo', 'foo1'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'merge', 'foo'])
+        output, error = self.run_bzr(['push', '--lossy', '-r1.1.1', '-d', 'foo', 'bla'])
+        self.assertEqual("", output)
+        self.assertEqual(
+            'Pushing from a Bazaar to a Git repository. For better '
+            'performance, push into a Bazaar repository.\n'
+            'Pushed up to revision 2.\n', error)
+
     def test_log(self):
         # Smoke test for "bzr log" in a git repository.
         self.simple_commit()
@@ -197,9 +213,9 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(['diff', '--format=git'], retcode=1)
         self.assertEqual(error, '')
         self.assertEqual(output,
-                         'diff --git /dev/null b/a\n'
-                         'old mode 0\n'
-                         'new mode 100644\n'
+                         'diff --git a/a b/a\n'
+                         'old file mode 0\n'
+                         'new file mode 100644\n'
                          'index 0000000..c197bd8 100644\n'
                          '--- /dev/null\n'
                          '+++ b/a\n'

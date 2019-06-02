@@ -65,6 +65,7 @@ META_INFO = {
     'install_requires': [
         'configobj',
         'six>=1.9.0',
+        'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
         'fastimport>=0.9.8',
@@ -149,8 +150,7 @@ class my_install_scripts(install_scripts):
                 script_path = self._quoted_path(os.path.join(scripts_dir,
                                                              "brz"))
                 python_exe = self._quoted_path(sys.executable)
-                args = self._win_batch_args()
-                batch_str = "@%s %s %s" % (python_exe, script_path, args)
+                batch_str = "@%s %s %%*" % (python_exe, script_path)
                 batch_path = os.path.join(self.install_dir, "brz.bat")
                 with open(batch_path, "w") as f:
                     f.write(batch_str)
@@ -164,13 +164,6 @@ class my_install_scripts(install_scripts):
             return '"' + path + '"'
         else:
             return path
-
-    def _win_batch_args(self):
-        from breezy.win32utils import winver
-        if winver == 'Windows NT':
-            return '%*'
-        else:
-            return '%1 %2 %3 %4 %5 %6 %7 %8 %9'
 #/class my_install_scripts
 
 
@@ -334,8 +327,6 @@ else:
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx')
     add_cython_extension('breezy._readdir_pyx')
 add_cython_extension('breezy.bzr._chk_map_pyx')
-ext_modules.append(Extension('breezy._patiencediff_c',
-                             ['breezy/_patiencediff_c.c']))
 add_cython_extension('breezy.bzr._btree_serializer_pyx')
 
 

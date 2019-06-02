@@ -25,6 +25,7 @@ from ..directory_service import directories
 from ..location import (
     hooks as location_hooks,
     location_to_url,
+    rcp_location_to_url,
     )
 
 
@@ -75,6 +76,11 @@ class TestLocationToUrl(tests.TestCase):
     def test_absolute_file_url(self):
         self.assertEqual("file:///bar", location_to_url("file:/bar"))
 
+    def test_rcp_url(self):
+        self.assertEqual(
+            "ssh://example.com/srv/git/bar",
+            location_to_url("example.com:/srv/git/bar"))
+
     def test_rewrite_hook(self):
         self.assertEqual(
             'http://foo.example.com/blah', location_to_url('http://foo.example.com/blah'))
@@ -84,3 +90,23 @@ class TestLocationToUrl(tests.TestCase):
         location_hooks.install_named_hook('rewrite_url', rewrite_url, 'test')
         self.assertEqual(
             'http://bar.example.com/bar', location_to_url('http://foo.example.com/foo'))
+
+
+class RCPLocationTests(tests.TestCase):
+
+    def test_without_user(self):
+        self.assertEqual(
+            "git+ssh://example.com/srv/git/bar",
+            rcp_location_to_url("example.com:/srv/git/bar", scheme='git+ssh'))
+        self.assertEqual(
+            "ssh://example.com/srv/git/bar",
+            rcp_location_to_url("example.com:/srv/git/bar"))
+
+    def test_with_user(self):
+        self.assertEqual(
+            "git+ssh://foo@example.com/srv/git/bar",
+            rcp_location_to_url("foo@example.com:/srv/git/bar", scheme='git+ssh'))
+
+    def test_invalid(self):
+        self.assertRaises(ValueError, rcp_location_to_url, "http://srv/git/bar")
+        self.assertRaises(ValueError, rcp_location_to_url, "git/bar")

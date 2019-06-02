@@ -5,6 +5,68 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 3.0.1
+#########
+
+:3.0.1: NOT RELEASED YET
+
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+None.
+
+Improvements
+************
+
+None.
+
+
+Bug Fixes
+*********
+
+* Fix compatibility with newer versions of Dulwich (>= 0.19.12).
+  (Jelmer Vernooĳ)
+
+* Fix a nasty corner case merging changes into a tree with changed
+  symlinks when pushing from bzr into git.
+
+* Fix installation on Windows. (Raoul Snyman, #1818947)
+
+* Return consist errors from ``Branch.get_revid`` and
+  ``Repository.get_revid_for_revno`` when the revision
+  number is invalid. (Jelmer Vernooĳ, #701953)
+
+Documentation
+*************
+
+None.
+
+API Changes
+***********
+
+None.
+
+Internals
+*********
+
+None.
+
+Changed Behaviour
+*****************
+
+None.
+
+Testing
+*******
+
+None.
+
 brz 3.0.0
 #########
 
@@ -139,6 +201,10 @@ New Features
 
  * Plugins can now be registered using the 'entrypoints' mechanism in
    setuptools. (Jelmer Vernooĳ, #1802647)
+
+ * The Breezy UI now handles RCP-style URLs and suggests the
+   user specify either ``git+ssh`` or ``bzr+ssh``.
+   (Jelmer Vernooĳ)
 
 Improvements
 ************
