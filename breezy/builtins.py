@@ -7005,6 +7005,7 @@ class cmd_patch(Command):
     """Apply a named patch to the current tree.
 
     """
+
     takes_args = ['filename?']
     takes_options = [Option('strip', type=int, short_name='p',
                             help=("Strip the smallest prefix containing num "
@@ -7040,7 +7041,7 @@ class cmd_resolve_location(Command):
         from .location import location_to_url
         url = location_to_url(location)
         display_url = urlutils.unescape_for_display(url, self.outf.encoding)
-        self.outf.write('%s\n' % url)
+        self.outf.write('%s\n' % display_url)
 
 
 def _register_lazy_builtins():
