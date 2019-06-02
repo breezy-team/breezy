@@ -704,8 +704,8 @@ create_signatures=always
                 os.symlink = os_symlink
         self.assertContainsRe(
             log.getvalue(),
-                'Ignoring "foo" as symlinks are not '
-                'supported on this filesystem.')
+            'Ignoring "foo" as symlinks are not '
+            'supported on this filesystem\\.')
 
     def test_commit_kind_changes(self):
         self.requireFeature(SymlinkFeature)

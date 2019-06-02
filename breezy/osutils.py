@@ -1672,9 +1672,8 @@ def supports_executable(path):
         return False
     try:
         fs_type = get_fs_type(path)
-    except errors.DependencyNotPresent:
-        # TODO(jelmer): Warn here?
-        pass
+    except errors.DependencyNotPresent as e:
+        trace.mutter('Unable to get fs type for %r: %s', path, e)
     else:
         if fs_type in ('vfat', 'ntfs'):
             # filesystems known to not support executable bit
@@ -1690,9 +1689,8 @@ def supports_symlinks(path):
         return False
     try:
         fs_type = get_fs_type(path)
-    except errors.DependencyNotPresent:
-        # TODO(jelmer): Warn here?
-        pass
+    except errors.DependencyNotPresent as e:
+        trace.mutter('Unable to get fs type for %r: %s', path, e)
     else:
         if fs_type in ('vfat', 'ntfs'):
             # filesystems known to not support executable bit

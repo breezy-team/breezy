@@ -214,7 +214,7 @@ class MutableTree(tree.Tree):
                 # conditional below. This is slower than the try/except
                 # approach below that but we don't have a choice as we
                 # need to be sure that all symlinks are removed from the
-                # entire changeset. This is because in plantforms that
+                # entire changeset. This is because in platforms that
                 # do not support symlinks, they show up as None in the
                 # working copy as compared to the repository.
                 # Also, exclude root as mention in the above fast path.
