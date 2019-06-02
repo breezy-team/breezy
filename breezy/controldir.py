@@ -1246,6 +1246,12 @@ class ControlDirFormat(object):
         """
         raise NotImplementedError(self.supports_transport)
 
+    @classmethod
+    def is_control_filename(klass, filename):
+        """Check if filename is used for control directories."""
+        # TODO(jelmer): Allow registration by other VCSes
+        return filename == '.bzr'
+
 
 class Prober(object):
     """Abstract class that can be used to detect a particular kind of
@@ -1457,12 +1463,6 @@ class RepoInitHookParams(object):
         else:
             return "<%s for %s>" % (self.__class__.__name__,
                                     self.controldir)
-
-
-def is_control_filename(filename):
-    """Check if filename is used for control directories."""
-    # TODO(jelmer): Allow registration by other VCSes
-    return filename == '.bzr'
 
 
 class RepositoryAcquisitionPolicy(object):

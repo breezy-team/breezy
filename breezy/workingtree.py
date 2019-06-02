@@ -43,7 +43,6 @@ import stat
 
 from breezy import (
     conflicts as _mod_conflicts,
-    controldir,
     errors,
     filters as _mod_filters,
     merge,
@@ -57,6 +56,13 @@ from breezy.bzr import (
     )
 """)
 
+from .controldir import (
+    ControlComponent,
+    ControlComponentFormatRegistry,
+    ControlComponentFormat,
+    ControlDir,
+    ControlDirFormat,
+    )
 from . import (
     osutils,
     )
@@ -78,7 +84,7 @@ class ShelvingUnsupported(errors.BzrError):
     _fmt = "This format does not support shelving changes."
 
 
-class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
+class WorkingTree(mutabletree.MutableTree, ControlComponent):
     """Working copy tree.
 
     :ivar basedir: The root of the tree on disk. This is a unicode path object
@@ -198,7 +204,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         """
         if path is None:
             path = osutils.getcwd()
-        control = controldir.ControlDir.open(path, _unsupported=_unsupported)
+        control = ControlDir.open(path, _unsupported=_unsupported)
         return control.open_workingtree(unsupported=_unsupported)
 
     @staticmethod
@@ -216,7 +222,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         """
         if path is None:
             path = osutils.getcwd()
-        control, relpath = controldir.ControlDir.open_containing(path)
+        control, relpath = ControlDir.open_containing(path)
         return control.open_workingtree(), relpath
 
     @staticmethod
@@ -298,7 +304,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
     def find_trees(location):
         def list_current(transport):
             return [d for d in transport.list_dir('')
-                    if not controldir.is_control_filename(d)]
+                    if not ControlDirFormat.is_control_filename(d)]
 
         def evaluate(controldir):
             try:
@@ -308,8 +314,8 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
             else:
                 return True, tree
         t = transport.get_transport(location)
-        iterator = controldir.ControlDir.find_controldirs(t, evaluate=evaluate,
-                                                          list_current=list_current)
+        iterator = ControlDir.find_controldirs(
+            t, evaluate=evaluate, list_current=list_current)
         return [tr for tr in iterator if tr is not None]
 
     def __repr__(self):
@@ -1373,7 +1379,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
             return next(self.get_canonical_paths([path]))
 
 
-class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
+class WorkingTreeFormatRegistry(ControlComponentFormatRegistry):
     """Registry for working tree formats."""
 
     def __init__(self, other_registry=None):
@@ -1402,7 +1408,7 @@ class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
 format_registry = WorkingTreeFormatRegistry()
 
 
-class WorkingTreeFormat(controldir.ControlComponentFormat):
+class WorkingTreeFormat(ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:
