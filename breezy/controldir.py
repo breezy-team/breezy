@@ -152,7 +152,7 @@ class ControlDir(ControlComponent):
         this in the future - for instance to make bzr talk with svn working
         trees.
         """
-        raise NotImplementedError(self.is_control_filename)
+        return self._format.is_control_filename(filename)
 
     def needs_format_conversion(self, format=None):
         """Return true if this controldir needs convert_format run on it.
@@ -1246,6 +1246,22 @@ class ControlDirFormat(object):
         """
         raise NotImplementedError(self.supports_transport)
 
+    @classmethod
+    def is_control_filename(klass, filename):
+        """True if filename is the name of a path which is reserved for
+        controldirs.
+
+        :param filename: A filename within the root transport of this
+            controldir.
+
+        This is true IF and ONLY IF the filename is part of the namespace reserved
+        for bzr control dirs. Currently this is the '.bzr' directory in the root
+        of the root_transport. it is expected that plugins will need to extend
+        this in the future - for instance to make bzr talk with svn working
+        trees.
+        """
+        raise NotImplementedError(self.is_control_filename)
+
 
 class Prober(object):
     """Abstract class that can be used to detect a particular kind of
@@ -1461,8 +1477,13 @@ class RepoInitHookParams(object):
 
 def is_control_filename(filename):
     """Check if filename is used for control directories."""
-    # TODO(jelmer): Allow registration by other VCSes
-    return filename == '.bzr'
+    # TODO(jelmer): Instead, have a function that returns all control
+    # filenames.
+    for key, format in format_registry.items():
+        if format().is_control_filename(filename):
+            return True
+    else:
+        return False
 
 
 class RepositoryAcquisitionPolicy(object):
