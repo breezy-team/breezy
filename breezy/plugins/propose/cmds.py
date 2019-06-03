@@ -143,6 +143,9 @@ class cmd_propose_merge(Command):
         Option('name', help='Name of the new remote branch.', type=str),
         Option('description', help='Description of the change.', type=str),
         Option('prerequisite', help='Prerequisite branch.', type=str),
+        Option(
+            'commit-message',
+            help='Set commit message for merge, if supported', type=str),
         ListOption('labels', short_name='l', type=text_type,
                    help='Labels to apply.'),
         Option('no-allow-lossy',
@@ -154,7 +157,7 @@ class cmd_propose_merge(Command):
 
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
-            labels=None, prerequisite=None):
+            labels=None, prerequisite=None, commit_message=None):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -191,7 +194,8 @@ class cmd_propose_merge(Command):
         try:
             proposal = proposal_builder.create_proposal(
                 description=description, reviewers=reviewers,
-                prerequisite_branch=prerequisite_branch, labels=labels)
+                prerequisite_branch=prerequisite_branch, labels=labels,
+                commit_message=commit_message)
         except _mod_propose.MergeProposalExists as e:
             raise errors.BzrCommandError(gettext(
                 'There is already a branch merge proposal: %s') % e.url)
