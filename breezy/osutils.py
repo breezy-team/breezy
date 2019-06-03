@@ -1693,7 +1693,7 @@ def supports_symlinks(path):
         trace.mutter('Unable to get fs type for %r: %s', path, e)
     else:
         if fs_type in ('vfat', 'ntfs'):
-            # filesystems known to not support executable bit
+            # filesystems known to not support symlinks
             return False
     return True
 
@@ -2646,6 +2646,10 @@ def get_fs_type(path):
         import psutil
     except ImportError as e:
         raise errors.DependencyNotPresent('psutil', e)
+
+    if not PY3 and not isinstance(path, str):
+        path = path.encode(_fs_enc)
+
     for part in sorted(psutil.disk_partitions(), key=lambda x: len(x.mountpoint), reverse=True):
         if is_inside(part.mountpoint, path):
             return part.fstype

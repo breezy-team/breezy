@@ -1200,11 +1200,13 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         state, entry = self.get_state_with_a()
         self.build_tree(['a'])
 
-        # Make sure we are using the win32 implementation of _is_executable
-        state._is_executable = state._is_executable_win32
+        # Make sure we are using the version of _is_executable that doesn't
+        # check the filesystem mode.
+        state._use_filesystem_for_exec = False
 
         # The file on disk is not executable, but we are marking it as though
-        # it is. With _is_executable_win32 we ignore what is on disk.
+        # it is. With _use_filesystem_for_exec disabled we ignore what is on
+        # disk.
         entry[1][0] = (b'f', b'', 0, True, dirstate.DirState.NULLSTAT)
 
         stat_value = os.lstat('a')
