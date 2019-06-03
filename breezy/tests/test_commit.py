@@ -16,7 +16,7 @@
 
 
 import os
-from StringIO import StringIO
+from io import BytesIO
 
 import breezy
 from .. import (
@@ -683,11 +683,11 @@ create_signatures=always
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello'])
         tree.add('hello')
-        tree.commit('added hello', rev_id='hello_id')
+        tree.commit('added hello', rev_id=b'hello_id')
         os.symlink('hello', 'foo')
         tree.add('foo')
-        tree.commit('added foo', rev_id='foo_id')
-        log = StringIO()
+        tree.commit('added foo', rev_id=b'foo_id')
+        log = BytesIO()
         trace.push_log_file(log)
         os_symlink = getattr(os, 'symlink', None)
         os.symlink = None
@@ -698,14 +698,14 @@ create_signatures=always
             os.unlink('foo')
             self.build_tree(['world'])
             tree.add('world')
-            tree.commit('added world', rev_id='world_id')
+            tree.commit('added world', rev_id=b'world_id')
         finally:
             if os_symlink:
                 os.symlink = os_symlink
         self.assertContainsRe(
             log.getvalue(),
-            'Ignoring "foo" as symlinks are not '
-            'supported on this filesystem\\.')
+            b'Ignoring "foo" as symlinks are not '
+            b'supported on this filesystem\\.')
 
     def test_commit_kind_changes(self):
         self.requireFeature(SymlinkFeature)
