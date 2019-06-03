@@ -186,7 +186,7 @@ class RemoteHelper(object):
             self.batchcmd = None
         else:
             try:
-                self.commands[argv[0]](self, outf, argv)
+                self.commands[argv[0].decode()](self, outf, argv)
             except KeyError:
                 raise Exception("Unknown remote command %r" % argv)
         outf.flush()

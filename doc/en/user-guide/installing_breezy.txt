@@ -90,7 +90,7 @@ Here are the steps to follow:
   3. Put the created directory on your PATH.
 
 Advanced users may also wish to build the optional C extensions for greater
-speed. This can be done using ``make`` and requires ``pyrex`` and a C compiler.
+speed. This can be done using ``make`` and requires ``cython`` and a C compiler.
 Please contact us on email or IRC if you need assistance with this.
 
 

@@ -327,19 +327,9 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.controldir = tree_a.branch.controldir
         # add a corrupt inventory 'orphan'
         # this may need some generalising for knits.
-        tree_a.lock_write()
-        try:
-            tree_a.branch.repository.start_write_group()
-            try:
-                inv_file = tree_a.branch.repository.inventories
-                inv_file.add_lines((b'orphan',), [], [])
-            except:
-                tree_a.branch.repository.commit_write_group()
-                raise
-            else:
-                tree_a.branch.repository.abort_write_group()
-        finally:
-            tree_a.unlock()
+        with tree_a.lock_write(), _mod_repository.WriteGroup(tree_a.branch.repository):
+            inv_file = tree_a.branch.repository.inventories
+            inv_file.add_lines((b'orphan',), [], [])
         # add a real revision 'rev1'
         tree_a.commit('rev1', rev_id=b'rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
@@ -385,18 +375,13 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_reserved_id(self):
         repo = self.make_repository('repository')
-        repo.lock_write()
-        repo.start_write_group()
-        try:
+        with repo.lock_write(), _mod_repository.WriteGroup(repo):
             self.assertRaises(errors.ReservedId, repo.add_inventory,
                               b'reserved:', None, None)
             self.assertRaises(errors.ReservedId, repo.add_inventory_by_delta,
                               "foo", [], b'reserved:', None)
-            self.assertRaises(errors.ReservedId, repo.add_revision,
-                              b'reserved:', None)
-        finally:
-            repo.abort_write_group()
-            repo.unlock()
+            self.assertRaises(
+                errors.ReservedId, repo.add_revision, b'reserved:', None)
 
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):

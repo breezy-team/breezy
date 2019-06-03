@@ -78,7 +78,7 @@ LAUNCHPAD_DOMAINS = {
     'staging': 'staging.launchpad.net',
     'qastaging': 'qastaging.launchpad.net',
     'demo': 'demo.launchpad.net',
-    'dev': 'launchpad.dev',
+    'dev': 'launchpad.test',
     }
 
 LAUNCHPAD_BAZAAR_DOMAINS = [

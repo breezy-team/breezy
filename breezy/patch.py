@@ -1,4 +1,5 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2008 Aaron Bentley, 2006 Michael Ellerman
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,16 +17,30 @@
 
 from __future__ import absolute_import
 
+"""Diff and patch functionality"""
+
 import errno
 import os
 from subprocess import Popen, PIPE
+import sys
 
-from .errors import NoDiff3
+from .errors import NoDiff3, BzrError
 from .textfile import check_text_path
 
-"""Diff and patch functionality"""
+class PatchFailed(BzrError):
 
-__docformat__ = "restructuredtext"
+    _fmt = """Patch application failed"""
+
+
+class PatchInvokeError(BzrError):
+
+    _fmt = """Error invoking patch: %(errstr)s%(stderr)s"""
+    internal_error = False
+
+    def __init__(self, e, stderr=''):
+        self.exception = e
+        self.errstr = os.strerror(e.errno)
+        self.stderr = '\n' + stderr
 
 
 _do_close_fds = True
@@ -96,9 +111,67 @@ def diff3(out_file, mine_path, older_path, yours_path):
             raise
     if status not in (0, 1):
         raise Exception(stderr)
-    f = open(out_file, 'wb')
-    try:
+    with open(out_file, 'wb') as f:
         f.write(output)
-    finally:
-        f.close()
     return status
+
+
+def patch_tree(tree, patches, strip=0, reverse=False, dry_run=False,
+               quiet=False, out=None):
+    """Apply a patch to a tree.
+
+    Args:
+      tree: A MutableTree object
+      patches: list of patches as bytes
+      strip: Strip X segments of paths
+      reverse: Apply reversal of patch
+      dry_run: Dry run
+    """
+    return run_patch(tree.basedir, patches, strip, reverse, dry_run,
+                     quiet, out=out)
+
+
+def run_patch(directory, patches, strip=0, reverse=False, dry_run=False,
+              quiet=False, _patch_cmd='patch', target_file=None, out=None):
+    args = [_patch_cmd, '-d', directory, '-s', '-p%d' % strip, '-f']
+    if quiet:
+        args.append('--quiet')
+
+    if sys.platform == "win32":
+        args.append('--binary')
+
+    if reverse:
+        args.append('-R')
+    if dry_run:
+        if sys.platform.startswith('freebsd'):
+            args.append('--check')
+        else:
+            args.append('--dry-run')
+        stderr = PIPE
+    else:
+        stderr = None
+    if target_file is not None:
+        args.append(target_file)
+
+    try:
+        process = Popen(args, stdin=PIPE, stdout=PIPE, stderr=stderr)
+    except OSError as e:
+        raise PatchInvokeError(e)
+    try:
+        for patch in patches:
+            process.stdin.write(bytes(patch))
+        process.stdin.close()
+
+    except IOError as e:
+        raise PatchInvokeError(e, process.stderr.read())
+
+    result = process.wait()
+    if not dry_run:
+        if out is not None:
+            out.write(process.stdout.read())
+        else:
+            process.stdout.read()
+    if result != 0:
+        raise PatchFailed()
+
+    return result

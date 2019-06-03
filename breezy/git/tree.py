@@ -1456,7 +1456,9 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                 # Entry was removed; keep it listed, but mark it as gone.
                 blobs[path] = (ZERO_SHA, 0)
             elif e.errno == errno.EISDIR:
-                # TODO(jelmer): Only do this if 'path' appears in .gitmodules?
+                # Backwards compatibility with Dulwich < 0.19.12;
+                # newer versions of Dulwich return either an entry for the
+                # submodule or None for directories.
                 if S_ISGITLINK(index_entry.mode):
                     blobs[path] = (index_entry.sha, index_entry.mode)
                 else:
@@ -1466,13 +1468,18 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
             else:
                 raise
         else:
-            mode = live_entry.mode
-            if not trust_executable:
-                if mode_is_executable(index_entry.mode):
-                    mode |= 0o111
-                else:
-                    mode &= ~0o111
-            blobs[path] = (live_entry.sha, cleanup_mode(mode))
+            if live_entry is None:
+                # Entry was turned into a directory
+                dirified.append((path, Tree().id, stat.S_IFDIR))
+                store.add_object(Tree())
+            else:
+                mode = live_entry.mode
+                if not trust_executable:
+                    if mode_is_executable(index_entry.mode):
+                        mode |= 0o111
+                    else:
+                        mode &= ~0o111
+                blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
         for e in target.extras():
             st = target._lstat(e)

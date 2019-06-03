@@ -16,6 +16,14 @@ if sys.version_info < (2, 7):
     sys.stderr.write("[ERROR] Not a supported Python version. Need 2.7+\n")
     sys.exit(1)
 
+
+try:
+    import setuptools
+except ImportError:
+    sys.stderr.write("[ERROR] Please install setuptools\n")
+    sys.exit(1)
+
+
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
 # './setup.py' or the equivalent with another path, should always be at the
 # start of the path, so this should find the right one...
@@ -57,6 +65,7 @@ META_INFO = {
     'install_requires': [
         'configobj',
         'six>=1.9.0',
+        'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
         'fastimport>=0.9.8',
@@ -118,8 +127,7 @@ def get_breezy_packages():
 BREEZY['packages'] = get_breezy_packages()
 
 
-from distutils import log
-from distutils.core import setup
+from setuptools import setup
 from distutils.version import LooseVersion
 from distutils.command.install_scripts import install_scripts
 from distutils.command.install_data import install_data
@@ -142,8 +150,7 @@ class my_install_scripts(install_scripts):
                 script_path = self._quoted_path(os.path.join(scripts_dir,
                                                              "brz"))
                 python_exe = self._quoted_path(sys.executable)
-                args = self._win_batch_args()
-                batch_str = "@%s %s %s" % (python_exe, script_path, args)
+                batch_str = "@%s %s %%*" % (python_exe, script_path)
                 batch_path = os.path.join(self.install_dir, "brz.bat")
                 with open(batch_path, "w") as f:
                     f.write(batch_str)
@@ -157,13 +164,6 @@ class my_install_scripts(install_scripts):
             return '"' + path + '"'
         else:
             return path
-
-    def _win_batch_args(self):
-        from breezy.win32utils import winver
-        if winver == 'Windows NT':
-            return '%*'
-        else:
-            return '%1 %2 %3 %4 %5 %6 %7 %8 %9'
 #/class my_install_scripts
 
 
@@ -211,8 +211,17 @@ except ImportError:
     print("")
     from distutils.command.build_ext import build_ext
 else:
-    have_cython = True
+    minimum_cython_version = '0.29'
     cython_version_info = LooseVersion(cython_version)
+    if cython_version_info < LooseVersion(minimum_cython_version):
+        print("Version of Cython is too old. "
+              "Current is %s, need at least %s."
+              % (cython_version, minimum_cython_version))
+        print("If the .c files are available, they will be built,"
+              " but modifying the .pyx files will not rebuild them.")
+        have_cython = False
+    else:
+        have_cython = True
 
 
 class build_ext_if_possible(build_ext):
@@ -318,8 +327,6 @@ else:
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx')
     add_cython_extension('breezy._readdir_pyx')
 add_cython_extension('breezy.bzr._chk_map_pyx')
-ext_modules.append(Extension('breezy._patiencediff_c',
-                             ['breezy/_patiencediff_c.c']))
 add_cython_extension('breezy.bzr._btree_serializer_pyx')
 
 

@@ -77,7 +77,7 @@ class MemoryTransport(transport.Transport):
         self._scheme = url[:split]
         self._cwd = url[split:]
         # dictionaries from absolute path to file mode
-        self._dirs = {'/':None}
+        self._dirs = {'/': None}
         self._symlinks = {}
         self._files = {}
         self._locks = {}
@@ -149,7 +149,7 @@ class MemoryTransport(transport.Transport):
     def get(self, relpath):
         """See Transport.get()."""
         _abspath = self._resolve_symlinks(relpath)
-        if not _abspath in self._files:
+        if _abspath not in self._files:
             if _abspath in self._dirs:
                 return LateReadError(relpath)
             else:

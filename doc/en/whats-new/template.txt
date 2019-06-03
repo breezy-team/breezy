@@ -1,8 +1,8 @@
 *************************
-What's New in Bazaar x.y?
+What's New in Breezy x.y?
 *************************
 
-Bazaar x.y is still under development, and will be released in Month Year.
+Breezy x.y is still under development, and will be released in Month Year.
 This document accumulates a high level summary of what's changed.  See the
 :doc:`../release-notes/index` for a full list.
 
@@ -14,7 +14,7 @@ Further information
 For more detailed information on the changes made, see the the
 :doc:`../release-notes/index` for:
 
-* the interim bzr `milestones <https://launchpad.net/bzr/x.y>`_
+* the interim brz `milestones <https://launchpad.net/bzr/x.y>`_
 * the plugins you use.
 
 For a summary of changes made in earlier releases, see:
