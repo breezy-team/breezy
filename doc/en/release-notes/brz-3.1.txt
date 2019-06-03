@@ -21,6 +21,9 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+ * A new ``brz land`` command can merge merge proposals on Launchpad,
+   GitHub and GitLab sites. (Jelmer Vernooĳ, #1816213)
+
  * The 'patch' command is now bundled with brz.
    Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
 
