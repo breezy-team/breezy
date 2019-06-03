@@ -1611,7 +1611,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tt.apply()
         self.assertContainsRe(
             log.getvalue(),
-            'Unable to create symlink "foo" on this filesystem')
+            b'Unable to create symlink "foo" on this filesystem')
 
     def test_dir_to_file(self):
         wt = self.make_branch_and_tree('.')
@@ -2828,12 +2828,12 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'content 1')])
-        tree.set_root_id('TREE_ROOT')
-        tree.add('a', 'a-id')
+        tree.set_root_id(b'TREE_ROOT')
+        tree.add('a', b'a-id')
         os.symlink('a', 'foo')
-        tree.add('foo', 'foo-id')
-        tree.commit('rev1', rev_id='rev1')
-        revision_tree = tree.branch.repository.revision_tree('rev1')
+        tree.add('foo', b'foo-id')
+        tree.commit('rev1', rev_id=b'rev1')
+        revision_tree = tree.branch.repository.revision_tree(b'rev1')
         preview = TransformPreview(revision_tree)
         self.addCleanup(preview.finalize)
         preview.delete_versioned(preview.trans_id_tree_path('foo'))
@@ -2851,7 +2851,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                 os.symlink = os_symlink
         self.assertContainsRe(
             log.getvalue(),
-            'Ignoring "foo" as symlinks are not supported on this filesystem')
+            b'Ignoring "foo" as symlinks are not supported on this filesystem')
 
     def test_transform_conflicts(self):
         revision_tree = self.create_tree()

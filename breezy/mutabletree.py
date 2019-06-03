@@ -221,9 +221,11 @@ class MutableTree(tree.Tree):
                 changes = filter(
                     lambda c: c[6][0] != 'symlink' and c[4] != (None, None),
                     changes)
-                if len(changes) > 0:
-                    return True
-                return False
+                try:
+                    next(iter(changes))
+                except StopIteration:
+                    return False
+                return True
 
     def check_changed_or_out_of_date(self, strict, opt_name,
                                      more_error, more_warning):
