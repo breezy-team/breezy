@@ -1479,8 +1479,8 @@ def is_control_filename(filename):
     """Check if filename is used for control directories."""
     # TODO(jelmer): Instead, have a function that returns all control
     # filenames.
-    for key, format in format_registry.keys():
-        if format.is_control_filename(filename):
+    for key, format in format_registry.items():
+        if format().is_control_filename(filename):
             return True
     else:
         return False
