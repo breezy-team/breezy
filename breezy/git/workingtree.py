@@ -568,8 +568,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     except OSError as e:
                         if e.errno == errno.ENOENT:
                             raise errors.NoSuchFile(fullpath)
-                    if (kind == 'directory' and f != '' and
-                            os.path.exists(os.path.join(fullpath, '.git'))):
+                    if f != '' and self._directory_is_tree_reference(f):
                         kind = 'tree-reference'
                     kinds[pos] = kind
 
