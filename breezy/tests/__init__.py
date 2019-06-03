@@ -4148,6 +4148,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_missing',
         'breezy.tests.test_msgeditor',
         'breezy.tests.test_multiparent',
+        'breezy.tests.test_multiwalker',
         'breezy.tests.test_mutabletree',
         'breezy.tests.test_nonascii',
         'breezy.tests.test_options',
