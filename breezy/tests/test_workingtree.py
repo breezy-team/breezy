@@ -452,18 +452,6 @@ class TestAutoResolve(TestCaseWithTransport):
         tree.auto_resolve()
 
 
-class TestFindTrees(TestCaseWithTransport):
-
-    def test_find_trees(self):
-        self.make_branch_and_tree('foo')
-        self.make_branch_and_tree('foo/bar')
-        # Sticking a tree inside a control dir is heinous, so let's skip it
-        self.make_branch_and_tree('foo/.bzr/baz')
-        self.make_branch('qux')
-        trees = workingtree.WorkingTree.find_trees('.')
-        self.assertEqual(2, len(list(trees)))
-
-
 class TestStoredUncommitted(TestCaseWithTransport):
 
     def store_uncommitted(self):

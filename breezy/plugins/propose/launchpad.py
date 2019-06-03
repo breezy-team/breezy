@@ -75,7 +75,7 @@ def plausible_launchpad_url(url):
     if url.startswith('lp:'):
         return True
     regex = re.compile('([a-z]*\+)*(bzr\+ssh|http|ssh|git|https)'
-                       '://(bazaar|git).*.launchpad.net')
+                       '://(bazaar|git).*\.launchpad\.net')
     return bool(regex.match(url))
 
 
@@ -144,6 +144,13 @@ class LaunchpadMergeProposal(MergeProposal):
         self._mp.description = description
         self._mp.lp_save()
 
+    def get_commit_message(self):
+        return self._mp.commit_message
+
+    def set_commit_message(self, commit_message):
+        self._mp.commit_message = commit_message
+        self._mp.lp_save()
+
     def close(self):
         self._mp.setStatus(status='Rejected')
 
@@ -172,6 +179,8 @@ class Launchpad(Hoster):
 
     # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
+
+    supports_merge_proposal_commit_message = True
 
     def __init__(self, staging=False):
         self._staging = staging
@@ -430,13 +439,12 @@ class Launchpad(Hoster):
 
 class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, lp_host, source_branch, target_branch, message=None,
+    def __init__(self, lp_host, source_branch, target_branch,
                  staging=None, approve=None, fixes=None):
         """Constructor.
 
         :param source_branch: The branch to propose for merging.
         :param target_branch: The branch to merge into.
-        :param message: The commit message to use.  (May be None.)
         :param staging: If True, propose the merge against staging instead of
             production.
         :param approve: If True, mark the new proposal as approved immediately.
@@ -457,14 +465,11 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             self.target_branch = target_branch
             self.target_branch_lp = self.launchpad.branches.getByUrl(
                 url=target_branch.user_url)
-        self.commit_message = message
         self.approve = approve
         self.fixes = fixes
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
-        if self.commit_message is not None:
-            return self.commit_message.strip().encode('utf-8')
         info = ["Source: %s\n" % self.source_branch_lp.bzr_identity]
         info.append("Target: %s\n" % self.target_branch_lp.bzr_identity)
         return ''.join(info)
@@ -516,10 +521,10 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                              revid=self.source_branch.last_revision())
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None):
+                        prerequisite_branch=None, commit_message=None):
         """Perform the submission."""
         if labels:
-            raise LabelsUnsupported()
+            raise LabelsUnsupported(self)
         if prerequisite_branch is not None:
             prereq = self.launchpad.branches.getByUrl(
                 url=prerequisite_branch.user_url)
@@ -533,7 +538,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                 target_branch=self.target_branch_lp,
                 prerequisite_branch=prereq,
                 initial_comment=description.strip(),
-                commit_message=self.commit_message,
+                commit_message=commit_message,
                 reviewers=[self.launchpad.people[reviewer].self_link
                            for reviewer in reviewers],
                 review_types=[None for reviewer in reviewers])
@@ -557,13 +562,12 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
 class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, lp_host, source_branch, target_branch, message=None,
+    def __init__(self, lp_host, source_branch, target_branch,
                  staging=None, approve=None, fixes=None):
         """Constructor.
 
         :param source_branch: The branch to propose for merging.
         :param target_branch: The branch to merge into.
-        :param message: The commit message to use.  (May be None.)
         :param staging: If True, propose the merge against staging instead of
             production.
         :param approve: If True, mark the new proposal as approved immediately.
@@ -585,14 +589,11 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             self.target_branch = target_branch
             (self.target_repo_lp, self.target_branch_lp) = (
                 self.lp_host._get_lp_git_ref_from_branch(target_branch))
-        self.commit_message = message
         self.approve = approve
         self.fixes = fixes
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
-        if self.commit_message is not None:
-            return self.commit_message.strip().encode('utf-8')
         info = ["Source: %s\n" % self.source_branch.user_url]
         info.append("Target: %s\n" % self.target_branch.user_url)
         return ''.join(info)
@@ -645,10 +646,10 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 revid=self.source_branch.last_revision())
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None):
+                        prerequisite_branch=None, commit_message=None):
         """Perform the submission."""
         if labels:
-            raise LabelsUnsupported()
+            raise LabelsUnsupported(self)
         if prerequisite_branch is not None:
             (prereq_repo_lp, prereq_branch_lp) = (
                 self.lp_host._get_lp_git_ref_from_branch(prerequisite_branch))
@@ -662,7 +663,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 merge_target=self.target_branch_lp,
                 merge_prerequisite=prereq_branch_lp,
                 initial_comment=description.strip(),
-                commit_message=self.commit_message,
+                commit_message=commit_message,
                 needs_review=True,
                 reviewers=[self.launchpad.people[reviewer].self_link
                            for reviewer in reviewers],

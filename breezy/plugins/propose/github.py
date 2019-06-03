@@ -27,6 +27,7 @@ from .propose import (
     MergeProposalBuilder,
     MergeProposalExists,
     PrerequisiteBranchUnsupported,
+    CommitMessageUnsupported,
     UnsupportedHoster,
     )
 
@@ -122,6 +123,9 @@ class GitHubMergeProposal(MergeProposal):
     def get_description(self):
         return self._pr.body
 
+    def get_commit_message(self):
+        return None
+
     def set_description(self, description):
         self._pr.edit(body=description, title=determine_title(description))
 
@@ -177,6 +181,7 @@ class GitHub(Hoster):
     name = 'github'
 
     supports_merge_proposal_labels = True
+    supports_merge_proposal_commit_message = False
 
     def __repr__(self):
         return "GitHub()"
@@ -354,10 +359,11 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         return None
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None):
+                        prerequisite_branch=None, commit_message=None):
         """Perform the submission."""
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
+        # Note that commit_message is ignored, since github doesn't support it.
         import github
         # TODO(jelmer): Probe for right repo name
         if self.target_repo_name.endswith('.git'):

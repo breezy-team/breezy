@@ -662,23 +662,6 @@ class BzrDir(controldir.ControlDir):
     def control_transport(self):
         return self.transport
 
-    def is_control_filename(self, filename):
-        """True if filename is the name of a path which is reserved for bzrdir's.
-
-        :param filename: A filename within the root transport of this bzrdir.
-
-        This is true IF and ONLY IF the filename is part of the namespace
-        reserved for bzr control dirs. Currently this is the '.bzr' directory
-        in the root of the root_transport.
-        """
-        # this might be better on the BzrDirFormat class because it refers to
-        # all the possible bzrdir disk formats.
-        # This method is tested via the workingtree is_control_filename tests-
-        # it was extracted from WorkingTree.is_control_filename. If the
-        # method's contract is extended beyond the current trivial
-        # implementation, please add new tests for it to the appropriate place.
-        return filename == '.bzr' or filename.startswith('.bzr/')
-
     def _cloning_metadir(self):
         """Produce a metadir suitable for cloning with.
 
@@ -1468,6 +1451,24 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                                                          basedir=basedir)
         BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
                                        recommend_upgrade=recommend_upgrade, basedir=basedir)
+
+    @classmethod
+    def is_control_filename(klass, filename):
+        """True if filename is the name of a path which is reserved for bzrdir's.
+
+        :param filename: A filename within the root transport of this bzrdir.
+
+        This is true IF and ONLY IF the filename is part of the namespace
+        reserved for bzr control dirs. Currently this is the '.bzr' directory
+        in the root of the root_transport.
+        """
+        # this might be better on the BzrDirFormat class because it refers to
+        # all the possible bzrdir disk formats.
+        # This method is tested via the workingtree is_control_filename tests-
+        # it was extracted from WorkingTree.is_control_filename. If the
+        # method's contract is extended beyond the current trivial
+        # implementation, please add new tests for it to the appropriate place.
+        return filename == '.bzr' or filename.startswith('.bzr/')
 
 
 class BzrDirMetaFormat1(BzrDirFormat):

@@ -16,6 +16,7 @@
 
 from __future__ import absolute_import
 
+import patiencediff
 import shutil
 import sys
 import tempfile
@@ -29,7 +30,6 @@ from . import (
     errors,
     osutils,
     patches,
-    patiencediff,
     shelf,
     textfile,
     trace,

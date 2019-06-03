@@ -28,6 +28,7 @@ import sys
 from .. import (
     KnownFailure,
     TestCaseWithTransport,
+    TestSkipped,
     )
 from ...bzr.bzrdir import BzrDir
 

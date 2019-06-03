@@ -18,6 +18,8 @@ from __future__ import absolute_import
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+import patiencediff
+
 from breezy import (
     branch as _mod_branch,
     cleanup,
@@ -26,7 +28,6 @@ from breezy import (
     graph as _mod_graph,
     merge3,
     osutils,
-    patiencediff,
     revision as _mod_revision,
     textfile,
     trace,
@@ -904,17 +905,14 @@ class Merge3Merger(object):
         else:
             interesting_files = None
         result = []
-        walker = _mod_tree.MultiWalker(self.other_tree, self._lca_trees)
+        from .multiwalker import MultiWalker
+        walker = MultiWalker(self.other_tree, self._lca_trees)
 
-        base_inventory = self.base_tree.root_inventory
-        this_inventory = self.this_tree.root_inventory
-        for path, file_id, other_ie, lca_values in walker.iter_all():
+        for other_path, file_id, other_ie, lca_values in walker.iter_all():
             # Is this modified at all from any of the other trees?
             if other_ie is None:
                 other_ie = _none_entry
                 other_path = None
-            else:
-                other_path = self.other_tree.id2path(file_id)
             if interesting_files is not None and other_path not in interesting_files:
                 continue
 
@@ -948,20 +946,20 @@ class Merge3Merger(object):
                     lca_paths.append(lca_path)
 
             try:
-                base_ie = base_inventory.get_entry(file_id)
-            except errors.NoSuchId:
-                base_ie = _none_entry
-                base_path = None
-            else:
                 base_path = self.base_tree.id2path(file_id)
+            except errors.NoSuchId:
+                base_path = None
+                base_ie = _none_entry
+            else:
+                base_ie = next(self.base_tree.iter_entries_by_dir(specific_files=[base_path]))[1]
 
             try:
-                this_ie = this_inventory.get_entry(file_id)
+                this_path = self.this_tree.id2path(file_id)
             except errors.NoSuchId:
                 this_ie = _none_entry
                 this_path = None
             else:
-                this_path = self.this_tree.id2path(file_id)
+                this_ie = next(self.this_tree.iter_entries_by_dir(specific_files=[this_path]))[1]
 
             lca_kinds = []
             lca_parent_ids = []
@@ -1865,13 +1863,13 @@ class MergeIntoMergeType(Merge3Merger):
 
     def _entries_to_incorporate(self):
         """Yields pairs of (inventory_entry, new_parent)."""
-        other_inv = self.other_tree.root_inventory
-        subdir_id = other_inv.path2id(self._source_subpath)
+        subdir_id = self.other_tree.path2id(self._source_subpath)
         if subdir_id is None:
             # XXX: The error would be clearer if it gave the URL of the source
             # branch, but we don't have a reference to that here.
             raise PathNotInTree(self._source_subpath, "Source tree")
-        subdir = other_inv.get_entry(subdir_id)
+        subdir = next(self.other_tree.iter_entries_by_dir(
+            specific_files=[self._source_subpath]))[1]
         parent_in_target = osutils.dirname(self._target_subdir)
         target_id = self.this_tree.path2id(parent_in_target)
         if target_id is None:
@@ -1893,7 +1891,7 @@ class MergeIntoMergeType(Merge3Merger):
         if subdir.kind != 'directory':
             # No children, so we are done.
             return
-        for path, entry in other_inv.iter_entries_by_dir(subdir_id):
+        for path, entry in self.other_tree.root_inventory.iter_entries_by_dir(subdir_id):
             parent_id = entry.parent_id
             if parent_id == subdir.file_id:
                 # The root's parent ID has changed, so make sure children of
