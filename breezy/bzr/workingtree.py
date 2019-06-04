@@ -96,6 +96,7 @@ MERGE_MODIFIED_HEADER_1 = b"BZR merge-modified list format 1"
 # impossible as there is no clear relationship between the working tree format
 # and the conflict list file format.
 CONFLICT_HEADER_1 = b"BZR conflict list format 1"
+ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
 
 
 class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
