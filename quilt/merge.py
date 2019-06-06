@@ -24,6 +24,8 @@ from __future__ import absolute_import
 
 import shutil
 import tempfile
+
+from ...i18n import gettext
 from ...mutabletree import MutableTree
 from ...revisiontree import RevisionTree
 from ... import (
@@ -32,8 +34,7 @@ from ... import (
     trace,
     )
 
-from . import gettext
-from .quilt.quilt import (
+from .quilt import (
     QuiltPatches,
 )
 

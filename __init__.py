@@ -211,7 +211,7 @@ def start_commit_check_quilt(tree):
         return
     config = util.debuild_config(tree)
     policy = config.quilt_commit_policy
-    from .merge_quilt import start_commit_quilt_patches
+    from .quilt.merge import start_commit_quilt_patches
     start_commit_quilt_patches(tree, policy)
 
 
@@ -250,7 +250,7 @@ def pre_merge_quilt(merger):
     from .errors import QuiltUnapplyError
     from .quilt.quilt import QuiltPatches, QuiltError
     quilt = QuiltPatches(merger.working_tree, 'debian/patches')
-    from .merge_quilt import tree_unapply_patches
+    from .quilt.merge import tree_unapply_patches
     trace.note("Unapplying quilt patches to prevent spurious conflicts")
     merger._quilt_tempdirs = []
     merger._old_quilt_series = quilt.series()
@@ -296,7 +296,7 @@ def post_merge_quilt_cleanup(merger):
     policy = config.quilt_tree_policy
     if policy is None:
         return
-    from .merge_quilt import post_process_quilt_patches
+    from .quilt.merge import post_process_quilt_patches
     post_process_quilt_patches(
         merger.working_tree,
         getattr(merger, "_old_quilt_series", []), policy)
@@ -308,7 +308,7 @@ def post_build_tree_quilt(tree):
     policy = config.quilt_tree_policy
     if policy is None:
         return
-    from .merge_quilt import post_process_quilt_patches
+    from .quilt.merge import post_process_quilt_patches
     post_process_quilt_patches(tree, [], policy)
 
 

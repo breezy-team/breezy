@@ -24,13 +24,13 @@ from __future__ import absolute_import
 import os
 import shutil
 
-from .... import (
+from ..... import (
     config,
     errors,
     trace,
     )
-from ....merge import Merger
-from ....mutabletree import MutableTree
+from .....merge import Merger
+from .....mutabletree import MutableTree
 
 from .. import (
     pre_merge_quilt,
@@ -38,13 +38,12 @@ from .. import (
     post_merge_quilt_cleanup,
     start_commit_check_quilt,
     )
-from ..quilt.quilt import QuiltPatches
-from ..merge_quilt import tree_unapply_patches
-from ..util import FORMAT_3_0_QUILT
+from ..quilt import QuiltPatches
+from ..merge import tree_unapply_patches
 
-from ..quilt.tests.test_wrapper import quilt_feature
+from .test_wrapper import quilt_feature
 
-from ....tests import (
+from .....tests import (
     TestCaseWithTransport,
     TestSkipped,
     )
@@ -121,7 +120,7 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/'])
         self.build_tree_contents([
-            ('a/debian/source/format', FORMAT_3_0_QUILT),
+            ('a/debian/source/format', '3.0 (quilt)'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
         tree_a.smart_add([tree_a.basedir])
@@ -204,7 +203,7 @@ class TestMergeHook(TestCaseWithTransport):
 
         self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/'])
         self.build_tree_contents([
-            ('a/debian/source/format', FORMAT_3_0_QUILT),
+            ('a/debian/source/format', '3.0 (quilt)'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
         tree_a.smart_add([tree_a.basedir])
@@ -214,7 +213,7 @@ class TestMergeHook(TestCaseWithTransport):
         self.build_tree_contents([
             ("b/.bzr-builddeb/local.conf",
              "[BUILDDEB]\nquilt-tree-policy = applied\n"),
-            ('b/debian/source/format', FORMAT_3_0_QUILT),
+            ('b/debian/source/format', '3.0 (quilt)'),
             ])
 
         tree_b.update()
@@ -228,7 +227,7 @@ class TestMergeHook(TestCaseWithTransport):
 
         self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/'])
         self.build_tree_contents([
-            ('a/debian/source/format', FORMAT_3_0_QUILT),
+            ('a/debian/source/format', '3.0 (quilt)'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
         tree_a.smart_add([tree_a.basedir])
@@ -305,7 +304,7 @@ class StartCommitMergeHookTests(TestCaseWithTransport):
         self.build_tree(['source/debian/', 'source/debian/patches/',
                          'source/debian/source/'])
         self.build_tree_contents([
-            ('source/debian/source/format', FORMAT_3_0_QUILT),
+            ('source/debian/source/format', '3.0 (quilt)'),
             ('source/debian/patches/series', 'patch1\n'),
             ('source/debian/patches/patch1', TRIVIAL_PATCH),
             ('source/debian/bzr-builddeb.conf',
@@ -327,7 +326,7 @@ class StartCommitMergeHookTests(TestCaseWithTransport):
         self.build_tree_contents([
             ('source/debian/patches/series', 'patch1\n'),
             ('source/debian/patches/patch1', TRIVIAL_PATCH),
-            ('source/debian/source/format', FORMAT_3_0_QUILT),
+            ('source/debian/source/format', '3.0 (quilt)'),
             ('source/debian/bzr-builddeb.conf',
                 "[BUILDDEB]\n"
                 "quilt-commit-policy = unapplied\n")])
@@ -364,7 +363,7 @@ class StartCommitMergeHookTests(TestCaseWithTransport):
         self.assertPathExists("source/.pc/applied-patches")
         self.assertPathExists("source/a")
         self.build_tree_contents([
-            ('source/debian/source/format', FORMAT_3_0_QUILT),
+            ('source/debian/source/format', '3.0 (quilt)'),
             ('source/debian/patches/series', 'patch1\npatch2\n'),
             ('source/debian/patches/patch2',
                 """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
