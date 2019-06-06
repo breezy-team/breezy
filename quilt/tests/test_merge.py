@@ -103,7 +103,7 @@ class TestMergeHook(TestCaseWithTransport):
     def enable_hooks(self):
         try:
             Merger.hooks.install_named_hook(
-                'pre_merge', pre_merge_quilt,
+                'pre_merge_quilt', pre_merge_quilt,
                 'Debian quilt patch (un)applying and ancestry fixing')
         except errors.UnknownHook:
             raise TestSkipped("pre_merge hook not available")
