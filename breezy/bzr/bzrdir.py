@@ -1733,9 +1733,9 @@ class ConvertMetaToMeta(controldir.Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.controldir = to_convert
-        self.count = 0
-        self.total = 1
         with ui.ui_factory.nested_progress_bar() as self.pb:
+            self.count = 0
+            self.total = 1
             self.step('checking repository format')
             try:
                 repo = self.controldir.open_repository()
@@ -1776,7 +1776,7 @@ class ConvertMetaToMeta(controldir.Converter):
                                                          branch._format)
                     branch_converter.convert(branch)
                     branch = self.controldir.open_branch()
-                old = branch._format.__class__
+                    old = branch._format.__class__
             try:
                 tree = self.controldir.open_workingtree(recommend_upgrade=False)
             except (errors.NoWorkingTree, errors.NotLocalUrl):
