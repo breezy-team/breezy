@@ -215,11 +215,6 @@ def start_commit_check_quilt(tree):
     start_commit_quilt_patches(tree, policy)
 
 
-def pre_merge(merger):
-    pre_merge_fix_ancestry(merger)
-    pre_merge_quilt(merger)
-
-
 def pre_merge_quilt(merger):
     if getattr(merger, "_no_quilt_unapplying", False):
         return
@@ -357,8 +352,12 @@ install_lazy_named_hook(
     "Automatically determine tag names from Debian version")
 install_lazy_named_hook(
     "breezy.merge", "Merger.hooks",
-    'pre_merge', pre_merge,
-    'Debian quilt patch (un)applying and ancestry fixing')
+    'pre_merge_quilt', pre_merge_quilt,
+    'Debian quilt patch (un)applying')
+install_lazy_named_hook(
+    "breezy.merge", "Merger.hooks",
+    'pre_merge_fix_ancestry', pre_merge_fix_ancestry,
+    'Debian ancestry fixing')
 install_lazy_named_hook(
     "breezy.merge", "Merger.hooks",
     'post_merge', post_merge_quilt_cleanup,
