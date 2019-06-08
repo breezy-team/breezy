@@ -517,7 +517,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     agent = paramiko.Agent()
     for key in agent.get_keys():
         trace.mutter('Trying SSH agent key %s'
-                     % self._hexify(key.get_fingerprint()))
+                     % hexlify(key.get_fingerprint()).upper())
         try:
             paramiko_transport.auth_publickey(username, key)
             return
