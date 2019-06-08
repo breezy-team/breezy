@@ -286,6 +286,7 @@ def guess_upstream_revspec(package, version):
     yield 'tag:%s' % version
     yield 'tag:%s-%s' % (package, version)
     yield 'tag:v%s' % version
+    yield 'tag:v.%s' % version
 
 
 # TODO(jelmer): Move this into breezy.
