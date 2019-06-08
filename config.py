@@ -333,9 +333,6 @@ class DebBuildConfig(object):
   export_upstream_revision = _opt_property('export-upstream-revision',
                          "The revision of the upstream source to use.")
 
-  quilt_tree_policy = _opt_property('quilt-tree-policy',
-      "Whether to automatically apply/unapply quilt patches after tree operations")
-
 
 def _test():
   import doctest

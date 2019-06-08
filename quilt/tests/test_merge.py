@@ -35,8 +35,6 @@ from .....mutabletree import MutableTree
 from .. import (
     pre_merge_quilt,
     start_commit_check_quilt,
-    )
-from ... import (
     post_build_tree_quilt,
     post_merge_quilt_cleanup,
     )
@@ -168,9 +166,7 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a.commit('initial')
 
         config.ensure_config_dir_exists()
-        self.build_tree_contents([
-            (os.path.join(config.config_dir(), "builddeb.conf"),
-                "[BUILDDEB]\nquilt-tree-policy = applied\n")])
+        config.GlobalStack().set('quilt.tree_policy', 'applied')
 
         tree_a.branch.create_checkout("b")
         self.assertFileEqual("a\n", "b/a")
@@ -191,9 +187,8 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a.commit('initial')
 
         self.build_tree(["b/.bzr-builddeb/", "b/debian/", "b/debian/source/"])
+        tree_b.get_config_stack().set('quilt.tree_policy', 'applied')
         self.build_tree_contents([
-            ("b/.bzr-builddeb/local.conf",
-             "[BUILDDEB]\nquilt-tree-policy = applied\n"),
             ("b/debian/source/format", "1.0")])
 
         tree_b.update()
@@ -216,9 +211,8 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a.commit('initial')
 
         self.build_tree(["b/.bzr-builddeb/", "b/debian/", "b/debian/source/"])
+        tree_b.get_config_stack().set('quilt.tree_policy', 'applied')
         self.build_tree_contents([
-            ("b/.bzr-builddeb/local.conf",
-             "[BUILDDEB]\nquilt-tree-policy = applied\n"),
             ('b/debian/source/format', '3.0 (quilt)'),
             ])
 
@@ -242,9 +236,7 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a.commit('initial')
 
         self.build_tree(["b/.bzr-builddeb/"])
-        self.build_tree_contents([
-            ("b/.bzr-builddeb/local.conf",
-             "[BUILDDEB]\nquilt-tree-policy = unapplied\n")])
+        tree_b.get_config_stack().set('quilt.tree_policy', 'unapplied')
 
         tree_b.update()
         self.assertPathDoesNotExist("b/a")

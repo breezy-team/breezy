@@ -198,31 +198,6 @@ def debian_tag_name(branch, revid):
     return db.tag_name(changelog.version)
 
 
-def post_merge_quilt_cleanup(merger):
-    import shutil
-    for dir in getattr(merger, "_quilt_tempdirs", []):
-        shutil.rmtree(dir)
-    from .util import debuild_config
-    config = debuild_config(merger.working_tree)
-    policy = config.quilt_tree_policy
-    if policy is None:
-        return
-    from .quilt.merge import post_process_quilt_patches
-    post_process_quilt_patches(
-        merger.working_tree,
-        getattr(merger, "_old_quilt_series", []), policy)
-
-
-def post_build_tree_quilt(tree):
-    from .util import debuild_config
-    config = debuild_config(tree)
-    policy = config.quilt_tree_policy
-    if policy is None:
-        return
-    from .quilt.merge import post_process_quilt_patches
-    post_process_quilt_patches(tree, [], policy)
-
-
 def pre_merge_fix_ancestry(merger):
     from .config import BUILD_TYPE_NATIVE
     from .util import debuild_config
@@ -270,14 +245,7 @@ install_lazy_named_hook(
     "breezy.merge", "Merger.hooks",
     'pre_merge_fix_ancestry', pre_merge_fix_ancestry,
     'Debian ancestry fixing')
-install_lazy_named_hook(
-    "breezy.merge", "Merger.hooks",
-    'post_merge', post_merge_quilt_cleanup,
-    'Cleaning up quilt temporary directories')
-install_lazy_named_hook(
-    "breezy.mutabletree", "MutableTree.hooks",
-    'post_build_tree', post_build_tree_quilt,
-    'Applying quilt patches.')
+
 
 def load_tests(loader, basic_tests, pattern):
     basic_tests.addTest(
