@@ -32,7 +32,7 @@ from ..... import (
 from .....merge import Merger
 from .....mutabletree import MutableTree
 
-from .. import (
+from ... import (
     pre_merge_quilt,
     post_build_tree_quilt,
     post_merge_quilt_cleanup,
@@ -101,12 +101,9 @@ class TestMergeHook(TestCaseWithTransport):
     _test_needs_features = [quilt_feature]
 
     def enable_hooks(self):
-        try:
-            Merger.hooks.install_named_hook(
-                'pre_merge_quilt', pre_merge_quilt,
-                'Debian quilt patch (un)applying and ancestry fixing')
-        except errors.UnknownHook:
-            raise TestSkipped("pre_merge hook not available")
+        Merger.hooks.install_named_hook(
+            'pre_merge', pre_merge_quilt,
+            'Debian quilt patch (un)applying and ancestry fixing')
         Merger.hooks.install_named_hook(
             'post_merge', post_merge_quilt_cleanup,
             'Cleaning up quilt temporary directories')
@@ -257,14 +254,14 @@ class TestMergeHook(TestCaseWithTransport):
 
         tree_b = tree_a.controldir.sprout('b').open_workingtree()
         self.build_tree_contents([
-            ('a/debian/patches/patch1', 
+            ('a/debian/patches/patch1',
                 "\n".join(TRIVIAL_PATCH.splitlines()[:-1] + ["+d\n"]))])
         quilt_push_all(tree_a)
         tree_a.smart_add([tree_a.basedir])
         tree_a.commit('apply patches')
         self.assertFileEqual("d\n", "a/a")
         self.build_tree_contents([
-            ('b/debian/patches/patch1', 
+            ('b/debian/patches/patch1',
                 "\n".join(TRIVIAL_PATCH.splitlines()[:-1] + ["+c\n"]))])
         quilt_push_all(tree_b)
         tree_b.commit('apply patches')
