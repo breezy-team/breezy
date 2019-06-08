@@ -46,6 +46,15 @@ class QuiltPatches(object):
             series_file = os.path.join(patches_dir, 'series')
         self.series_file = series_file
 
+    @classmethod
+    def find(cls, tree):
+        if tree.has_filename('.pc/.quilt_patches'):
+            return cls(tree)
+        for name in ['patches', 'debian/patches']:
+            if tree.has_filename(name):
+                return cls(tree, name)
+        return None
+
     def upgrade(self):
         return wrapper.quilt_upgrade(self.tree.basedir)
 

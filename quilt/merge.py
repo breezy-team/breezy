@@ -55,7 +55,9 @@ def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
     """
     if orig_branch is None:
         orig_branch = orig_tree.branch
-    quilt = QuiltPatches(orig_tree, 'debian/patches')
+    quilt = QuiltPatches.find(orig_tree)
+    if quilt is None:
+        return orig_tree, None
     applied_patches = quilt.applied()
     if not applied_patches:
         # No quilt patches
@@ -77,8 +79,9 @@ def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
             shutil.rmtree(target_dir)
             return orig_tree, None
         trace.mutter("Applying quilt patches for %r in %s", orig_tree, target_dir)
-        quilt = QuiltPatches(tree, 'debian/patches')
-        quilt.pop_all(force=force)
+        quilt = QuiltPatches.find(tree)
+        if quilt is not None:
+            quilt.pop_all(force=force)
         return tree, target_dir
     except BaseException:
         shutil.rmtree(target_dir)
@@ -91,7 +94,9 @@ def post_process_quilt_patches(tree, old_patches, policy):
     :param tree: Working tree to work in
     :param old_patches: List of patches applied before the operation (usually a merge)
     """
-    quilt = QuiltPatches(tree, 'debian/patches')
+    quilt = QuiltPatches.find(tree)
+    if quilt is None:
+        return
     new_patches = quilt.series()
     applied_patches = quilt.applied()
     if policy == "applied":
@@ -121,7 +126,9 @@ def post_process_quilt_patches(tree, old_patches, policy):
 
 
 def start_commit_quilt_patches(tree, policy):
-    quilt = QuiltPatches(tree, 'debian/patches')
+    quilt = QuiltPatches.find(tree)
+    if quilt is None:
+        return
     applied_patches = quilt.applied()
     unapplied_patches = quilt.unapplied()
     if policy is None:

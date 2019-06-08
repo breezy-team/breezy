@@ -22,8 +22,6 @@ from __future__ import absolute_import
 
 from ..... import tests
 
-from debian.changelog import Version, Changelog
-
 from .....tests import (
     TestUtil,
     multiply_tests,
