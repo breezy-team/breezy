@@ -22,16 +22,25 @@ from __future__ import absolute_import
 
 import os
 
+from .... import osutils
 from . import wrapper
 
 QuiltError = wrapper.QuiltError
+
+DEFAULT_PATCHES_DIR = 'patches'
 
 
 class QuiltPatches(object):
     """Management object for a stack of quilt patches."""
 
-    def __init__(self, tree, patches_dir='patches', series_file=None):
+    def __init__(self, tree, patches_dir=None, series_file=None):
         self.tree = tree
+        if patches_dir is None:
+            if tree.has_filename('.pc/.quilt_patches'):
+                patches_dir = tree.get_file_text('.pc/.quilt_patches').decode(
+                    osutils._fs_enc)
+            else:
+                patches_dir = DEFAULT_PATCHES_DIR
         self.patches_dir = patches_dir
         if series_file is None:
             series_file = os.path.join(patches_dir, 'series')
