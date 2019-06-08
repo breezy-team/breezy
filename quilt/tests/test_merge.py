@@ -195,7 +195,7 @@ class TestMergeHook(TestCaseWithTransport):
             ("b/debian/source/format", "1.0")])
 
         tree_b.update()
-        self.assertPathDoesNotExist("b/a")
+        self.assertFileEqual("a\n", "b/a")
 
     def test_auto_apply_patches_after_update(self):
         self.enable_hooks()

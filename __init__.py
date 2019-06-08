@@ -219,17 +219,6 @@ def pre_merge_quilt(merger):
     if getattr(merger, "_no_quilt_unapplying", False):
         return
 
-    if (not merger.other_tree.is_versioned("debian/patches/series") and
-            not merger.this_tree.is_versioned("debian/patches/series") and
-            not merger.working_tree.is_versioned("debian/patches/series")):
-        return
-
-    from . import util
-    this_source_format = util.tree_get_source_format(merger.this_tree)
-    if this_source_format != util.FORMAT_3_0_QUILT:
-        trace.mutter("skipping smart quilt merge, not a 3.0 (quilt) tree.")
-        return
-
     from .util import debuild_config
     config = debuild_config(merger.working_tree)
     merger.debuild_config = config
