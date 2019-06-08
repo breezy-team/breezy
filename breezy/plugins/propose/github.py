@@ -27,7 +27,6 @@ from .propose import (
     MergeProposalBuilder,
     MergeProposalExists,
     PrerequisiteBranchUnsupported,
-    CommitMessageUnsupported,
     UnsupportedHoster,
     )
 

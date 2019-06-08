@@ -2305,7 +2305,7 @@ class HttpTransport(ConnectedTransport):
             headers={'Content-Type': 'application/octet-stream'})
         if response.status not in (200, 403):
             raise errors.InvalidHttpResponse(
-                url, 'Unexpected status %d' % response.status)
+                abspath, 'Unexpected status %d' % response.status)
         code = response.status
         data = handle_response(
             abspath, code, response.getheader, response)
