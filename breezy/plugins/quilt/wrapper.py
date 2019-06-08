@@ -47,6 +47,11 @@ class QuiltError(errors.BzrError):
         self.stdout = stdout
 
 
+class QuiltNotInstalled(errors.BzrError):
+
+    _fmt = "Quilt is not installed."
+
+
 def run_quilt(args, working_dir, series_file=None, patches_dir=None,
         quiet=None):
     """Run quilt.
@@ -87,7 +92,7 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None,
     except OSError as e:
         if e.errno != errno.ENOENT:
             raise
-        raise errors.BzrError("quilt is not installed, please install it")
+        raise QuiltNotInstalled()
     (stdout, stderr) = proc.communicate()
     if proc.returncode not in (0, 2):
         if stdout is not None:

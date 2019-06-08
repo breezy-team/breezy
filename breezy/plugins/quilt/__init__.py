@@ -110,9 +110,6 @@ def post_merge_quilt_cleanup(merger):
 def start_commit_check_quilt(tree):
     """start_commit hook which checks the state of quilt patches.
     """
-    if not tree.has_filename("debian/patches"):
-        # No patches to worry about
-        return
     config = tree.get_config_stack()
     policy = config.get('quilt.commit_policy')
     from .merge import start_commit_quilt_patches
