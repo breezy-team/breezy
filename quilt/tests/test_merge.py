@@ -115,8 +115,11 @@ class TestMergeHook(TestCaseWithTransport):
         self.enable_hooks()
 
         tree_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/'])
+        self.build_tree(
+            ['a/debian/', 'a/debian/patches/', 'a/debian/source/', 'a/.pc/'])
         self.build_tree_contents([
+            ('a/.pc/.quilt_patches', 'debian/patches'),
+            ('a/.pc/.version', '2'),
             ('a/debian/source/format', '3.0 (quilt)'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
@@ -125,13 +128,13 @@ class TestMergeHook(TestCaseWithTransport):
 
         tree_b = tree_a.controldir.sprout('b').open_workingtree()
         self.build_tree_contents([
-            ('a/debian/patches/patch1', 
+            ('a/debian/patches/patch1',
                 "\n".join(TRIVIAL_PATCH.splitlines()[:-1] + ["+d\n"]))])
         quilt_push_all(tree_a)
         tree_a.smart_add([tree_a.basedir])
         tree_a.commit('apply patches')
         self.build_tree_contents([
-            ('b/debian/patches/patch1', 
+            ('b/debian/patches/patch1',
                 "\n".join(TRIVIAL_PATCH.splitlines()[:-1] + ["+c\n"]))])
         quilt_push_all(tree_b)
         tree_b.commit('apply patches')
@@ -176,8 +179,10 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a = self.make_branch_and_tree('a')
         tree_b = tree_a.branch.create_checkout("b")
 
-        self.build_tree(['a/debian/', 'a/debian/patches/'])
+        self.build_tree(['a/debian/', 'a/debian/patches/', 'a/.pc/'])
         self.build_tree_contents([
+            ('a/.pc/.quilt_patches', 'debian/patches'),
+            ('a/.pc/.version', '2'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
         tree_a.smart_add([tree_a.basedir])
@@ -198,8 +203,10 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a = self.make_branch_and_tree('a')
         tree_b = tree_a.branch.create_checkout("b")
 
-        self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/'])
+        self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/', 'a/.pc/'])
         self.build_tree_contents([
+            ('a/.pc/.quilt_patches', 'debian/patches'),
+            ('a/.pc/.version', '2'),
             ('a/debian/source/format', '3.0 (quilt)'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
@@ -222,8 +229,10 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a = self.make_branch_and_tree('a')
         tree_b = tree_a.branch.create_checkout("b")
 
-        self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/'])
+        self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/', 'a/.pc/'])
         self.build_tree_contents([
+            ('a/.pc/.quilt_patches', 'debian/patches'),
+            ('a/.pc/.version', '2'),
             ('a/debian/source/format', '3.0 (quilt)'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
@@ -242,8 +251,10 @@ class TestMergeHook(TestCaseWithTransport):
         self.enable_hooks()
 
         tree_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/debian/', 'a/debian/patches/'])
+        self.build_tree(['a/debian/', 'a/debian/patches/', 'a/.pc/'])
         self.build_tree_contents([
+            ('a/.pc/.quilt_patches', 'debian/patches'),
+            ('a/.pc/.version', '2'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH),
             ("a/debian/bzr-builddeb.conf", "[BUILDDEB]\n"

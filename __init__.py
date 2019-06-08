@@ -237,14 +237,14 @@ def pre_merge_quilt(merger):
         trace.mutter("skipping smart quilt merge, not enabled.")
         return
 
-    if (not merger.other_tree.is_versioned(".pc/applied-patches") and
-            not merger.this_tree.is_versioned(".pc/applied-patches") and
-            not merger.working_tree.is_versioned(".pc/applied-patches")):
+    if (not merger.other_tree.is_versioned(".pc") and
+            not merger.this_tree.is_versioned(".pc") and
+            not merger.working_tree.is_versioned(".pc")):
         return
 
     from .errors import QuiltUnapplyError
     from .quilt.quilt import QuiltPatches, QuiltError
-    quilt = QuiltPatches(merger.working_tree, 'debian/patches')
+    quilt = QuiltPatches(merger.working_tree)
     from .quilt.merge import tree_unapply_patches
     trace.note("Unapplying quilt patches to prevent spurious conflicts")
     merger._quilt_tempdirs = []
