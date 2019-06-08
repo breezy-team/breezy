@@ -29,7 +29,6 @@ import os
 
 import breezy
 from ...commands import plugin_cmds
-from ...config import option_registry, Option, bool_from_store
 from ...sixish import (
     viewitems,
     )
@@ -199,23 +198,6 @@ def debian_tag_name(branch, revid):
     return db.tag_name(changelog.version)
 
 
-def start_commit_check_quilt(tree):
-    """start_commit hook which checks the state of quilt patches.
-    """
-    if not tree.is_versioned("debian/patches"):
-        # No patches to worry about
-        return
-    from . import util
-    this_source_format = util.tree_get_source_format(tree)
-    if this_source_format != util.FORMAT_3_0_QUILT:
-        trace.mutter("skipping smart quilt merge, not a 3.0 (quilt) tree.")
-        return
-    config = util.debuild_config(tree)
-    policy = config.quilt_commit_policy
-    from .quilt.merge import start_commit_quilt_patches
-    start_commit_quilt_patches(tree, policy)
-
-
 def post_merge_quilt_cleanup(merger):
     import shutil
     for dir in getattr(merger, "_quilt_tempdirs", []):
@@ -296,15 +278,6 @@ install_lazy_named_hook(
     "breezy.mutabletree", "MutableTree.hooks",
     'post_build_tree', post_build_tree_quilt,
     'Applying quilt patches.')
-install_lazy_named_hook(
-    "breezy.mutabletree", "MutableTree.hooks",
-    "start_commit", start_commit_check_quilt,
-    "Check for (un)applied quilt patches")
-
-option_registry.register(
-    Option('quilt.smart_merge', default=True, from_unicode=bool_from_store,
-           help="Unapply quilt patches before merging."))
-
 
 def load_tests(loader, basic_tests, pattern):
     basic_tests.addTest(

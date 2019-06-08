@@ -127,7 +127,7 @@ will by default warn::
 
 It is also possible to force it to always make sure that quilt patches
 are unapplied or applied during a commit by setting the
-``quilt-commit-policy`` to either ``applied`` or ``unapplied``.
+``quilt.commit_policy`` to either ``applied`` or ``unapplied``.
 
 Builders
 ^^^^^^^^

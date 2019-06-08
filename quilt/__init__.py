@@ -85,9 +85,40 @@ def pre_merge_quilt(merger):
             merger._quilt_tempdirs.append(other_dir)
 
 
+def start_commit_check_quilt(tree):
+    """start_commit hook which checks the state of quilt patches.
+    """
+    if not tree.has_filename("debian/patches"):
+        # No patches to worry about
+        return
+    config = tree.get_config_stack()
+    policy = config.get('quilt.commit_policy')
+    from .merge import start_commit_quilt_patches
+    start_commit_quilt_patches(tree, policy)
+
+
 
 from ....hooks import install_lazy_named_hook
 install_lazy_named_hook(
     "breezy.merge", "Merger.hooks",
     'pre_merge_quilt', pre_merge_quilt,
-    'Debian quilt patch (un)applying')
+    'Quilt patch (un)applying')
+install_lazy_named_hook(
+    "breezy.mutabletree", "MutableTree.hooks",
+    "start_commit", start_commit_check_quilt,
+    "Check for (un)applied quilt patches")
+
+
+from ....config import option_registry, Option, bool_from_store
+option_registry.register(
+    Option('quilt.smart_merge', default=True, from_unicode=bool_from_store,
+           help="Unapply quilt patches before merging."))
+
+def commit_policy_from_store(s):
+    if not s in ('applied', 'unapplied'):
+        raise ValueError('Invalid quilt.commit_policy: %s' % s)
+    return s
+
+option_registry.register(
+    Option('quilt.commit_policy', default=None, from_unicode=commit_policy_from_store,
+          help="Whether to apply or unapply all patches in commits."))

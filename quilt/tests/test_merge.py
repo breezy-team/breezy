@@ -34,11 +34,11 @@ from .....mutabletree import MutableTree
 
 from .. import (
     pre_merge_quilt,
+    start_commit_check_quilt,
     )
 from ... import (
     post_build_tree_quilt,
     post_merge_quilt_cleanup,
-    start_commit_check_quilt,
     )
 from ..quilt import QuiltPatches
 from ..merge import tree_unapply_patches
@@ -310,15 +310,13 @@ class StartCommitMergeHookTests(TestCaseWithTransport):
     def test_applied(self):
         self.enable_hooks()
         tree = self.make_branch_and_tree('source')
+        tree.get_config_stack().set('quilt.commit_policy', 'applied')
         self.build_tree(['source/debian/', 'source/debian/patches/',
                          'source/debian/source/'])
         self.build_tree_contents([
             ('source/debian/source/format', '3.0 (quilt)'),
             ('source/debian/patches/series', 'patch1\n'),
-            ('source/debian/patches/patch1', TRIVIAL_PATCH),
-            ('source/debian/bzr-builddeb.conf',
-                "[BUILDDEB]\n"
-                "quilt-commit-policy = applied\n")])
+            ('source/debian/patches/patch1', TRIVIAL_PATCH)])
         self.assertPathDoesNotExist("source/.pc/applied-patches")
         self.assertPathDoesNotExist("source/a")
         tree.smart_add([tree.basedir])
@@ -329,16 +327,14 @@ class StartCommitMergeHookTests(TestCaseWithTransport):
     def test_unapplied(self):
         self.enable_hooks()
         tree = self.make_branch_and_tree('source')
+        tree.get_config_stack().set('quilt.commit_policy', 'unapplied')
         self.build_tree(
             ['source/debian/', 'source/debian/patches/',
              'source/debian/source/'])
         self.build_tree_contents([
             ('source/debian/patches/series', 'patch1\n'),
             ('source/debian/patches/patch1', TRIVIAL_PATCH),
-            ('source/debian/source/format', '3.0 (quilt)'),
-            ('source/debian/bzr-builddeb.conf',
-                "[BUILDDEB]\n"
-                "quilt-commit-policy = unapplied\n")])
+            ('source/debian/source/format', '3.0 (quilt)')])
         quilt_push_all(tree)
         self.assertPathExists("source/.pc/applied-patches")
         self.assertPathExists("source/a")

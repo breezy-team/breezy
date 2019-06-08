@@ -135,6 +135,3 @@ def start_commit_quilt_patches(tree, policy):
         quilt.push_all()
     elif policy == "unapplied":
         quilt.pop_all()
-    else:
-        raise errors.BzrError(
-            "Invalid setting %r for quilt-commit-policy" % policy)
