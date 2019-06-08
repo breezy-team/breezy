@@ -251,14 +251,13 @@ class TestMergeHook(TestCaseWithTransport):
         self.enable_hooks()
 
         tree_a = self.make_branch_and_tree('a')
+        tree_a.get_config_stack().set('quilt.smart_merge', False)
         self.build_tree(['a/debian/', 'a/debian/patches/', 'a/.pc/'])
         self.build_tree_contents([
             ('a/.pc/.quilt_patches', 'debian/patches'),
             ('a/.pc/.version', '2'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH),
-            ("a/debian/bzr-builddeb.conf", "[BUILDDEB]\n"
-                "quilt-smart-merge = False\n"),
             ("a/a", "")])
         tree_a.smart_add([tree_a.basedir])
         tree_a.commit('initial')

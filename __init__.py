@@ -29,6 +29,7 @@ import os
 
 import breezy
 from ...commands import plugin_cmds
+from ...config import option_registry, Option, bool_from_store
 from ...sixish import (
     viewitems,
     )
@@ -219,10 +220,9 @@ def pre_merge_quilt(merger):
     if getattr(merger, "_no_quilt_unapplying", False):
         return
 
-    from .util import debuild_config
-    config = debuild_config(merger.working_tree)
+    config = merger.working_tree.get_config_stack()
     merger.debuild_config = config
-    if not config.quilt_smart_merge:
+    if not config.get('quilt.smart_merge'):
         trace.mutter("skipping smart quilt merge, not enabled.")
         return
 
@@ -273,10 +273,8 @@ def post_merge_quilt_cleanup(merger):
     import shutil
     for dir in getattr(merger, "_quilt_tempdirs", []):
         shutil.rmtree(dir)
-    config = getattr(merger, "debuild_config", None)
-    if config is None:
-        # If there is no debuild config, then pre_merge didn't get far enough.
-        return
+    from .util import debuild_config
+    config = debuild_config(merger.working_tree)
     policy = config.quilt_tree_policy
     if policy is None:
         return
@@ -359,6 +357,10 @@ install_lazy_named_hook(
     "breezy.mutabletree", "MutableTree.hooks",
     "start_commit", start_commit_check_quilt,
     "Check for (un)applied quilt patches")
+
+option_registry.register(
+    Option('quilt.smart_merge', default=True, from_unicode=bool_from_store,
+           help="Unapply quilt patches before merging."))
 
 
 def load_tests(loader, basic_tests, pattern):
