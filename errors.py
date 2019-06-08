@@ -205,13 +205,4 @@ class MultipleUpstreamTarballsNotSupported(BzrError):
             "is not yet supported.")
 
 
-class QuiltUnapplyError(BzrError):
 
-    _fmt = ("Unable to unapply quilt patches for %(kind)r tree: %(msg)s")
-
-    def __init__(self, kind, msg):
-        BzrError.__init__(self)
-        self.kind = kind
-        if msg is not None and msg.count("\n") == 1:
-            msg = msg.strip()
-        self.msg = msg

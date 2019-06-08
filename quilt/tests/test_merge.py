@@ -32,8 +32,10 @@ from ..... import (
 from .....merge import Merger
 from .....mutabletree import MutableTree
 
-from ... import (
+from .. import (
     pre_merge_quilt,
+    )
+from ... import (
     post_build_tree_quilt,
     post_merge_quilt_cleanup,
     start_commit_check_quilt,

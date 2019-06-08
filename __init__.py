@@ -216,59 +216,6 @@ def start_commit_check_quilt(tree):
     start_commit_quilt_patches(tree, policy)
 
 
-def pre_merge_quilt(merger):
-    if getattr(merger, "_no_quilt_unapplying", False):
-        return
-
-    config = merger.working_tree.get_config_stack()
-    merger.debuild_config = config
-    if not config.get('quilt.smart_merge'):
-        trace.mutter("skipping smart quilt merge, not enabled.")
-        return
-
-    if (not merger.other_tree.is_versioned(".pc") and
-            not merger.this_tree.is_versioned(".pc") and
-            not merger.working_tree.is_versioned(".pc")):
-        return
-
-    from .errors import QuiltUnapplyError
-    from .quilt.quilt import QuiltPatches, QuiltError
-    quilt = QuiltPatches(merger.working_tree)
-    from .quilt.merge import tree_unapply_patches
-    trace.note("Unapplying quilt patches to prevent spurious conflicts")
-    merger._quilt_tempdirs = []
-    merger._old_quilt_series = quilt.series()
-    if merger._old_quilt_series:
-        quilt.pop_all()
-    try:
-        merger.this_tree, this_dir = tree_unapply_patches(
-            merger.this_tree, merger.this_branch, force=True)
-    except QuiltError as e:
-        raise QuiltUnapplyError("this", e.stderr)
-    else:
-        if this_dir is not None:
-            merger._quilt_tempdirs.append(this_dir)
-    try:
-        merger.base_tree, base_dir = tree_unapply_patches(
-            merger.base_tree, merger.this_branch, force=True)
-    except QuiltError as e:
-        raise QuiltUnapplyError("base", e.stderr)
-    else:
-        if base_dir is not None:
-            merger._quilt_tempdirs.append(base_dir)
-    other_branch = getattr(merger, "other_branch", None)
-    if other_branch is None:
-        other_branch = merger.this_branch
-    try:
-        merger.other_tree, other_dir = tree_unapply_patches(
-            merger.other_tree, other_branch, force=True)
-    except QuiltError as e:
-        raise QuiltUnapplyError("other", e.stderr)
-    else:
-        if other_dir is not None:
-            merger._quilt_tempdirs.append(other_dir)
-
-
 def post_merge_quilt_cleanup(merger):
     import shutil
     for dir in getattr(merger, "_quilt_tempdirs", []):
@@ -337,10 +284,6 @@ install_lazy_named_hook(
     "breezy.branch", "Branch.hooks",
     "automatic_tag_name", debian_tag_name,
     "Automatically determine tag names from Debian version")
-install_lazy_named_hook(
-    "breezy.merge", "Merger.hooks",
-    'pre_merge_quilt', pre_merge_quilt,
-    'Debian quilt patch (un)applying')
 install_lazy_named_hook(
     "breezy.merge", "Merger.hooks",
     'pre_merge_fix_ancestry', pre_merge_fix_ancestry,
