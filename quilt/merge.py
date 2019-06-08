@@ -25,10 +25,10 @@ from __future__ import absolute_import
 import shutil
 import tempfile
 
-from ...i18n import gettext
-from ...mutabletree import MutableTree
-from ...revisiontree import RevisionTree
-from ... import (
+from ....i18n import gettext
+from ....mutabletree import MutableTree
+from ....revisiontree import RevisionTree
+from .... import (
     errors,
     merge as _mod_merge,
     trace,
