@@ -296,8 +296,9 @@ class BranchOpener(object):
                 e.source, e.target)
             if redirected_transport is None:
                 raise errors.NotBranchError(e.source)
-            trace.note('%s is%s redirected to %s',
-                 transport.base, e.permanently, redirected_transport.base)
+            trace.note(
+                '%s is%s redirected to %s',
+                transport.base, e.permanently, redirected_transport.base)
             return redirected_transport
 
         def find_format(transport):
@@ -311,8 +312,8 @@ class BranchOpener(object):
             else:
                 raise last_error
         transport = get_transport(url)
-        transport, format = do_catching_redirections(find_format, transport,
-            redirected)
+        transport, format = do_catching_redirections(
+            find_format, transport, redirected)
         return format.open(transport)
 
     def follow_reference(self, url):
