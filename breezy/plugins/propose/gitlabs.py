@@ -24,7 +24,6 @@ from ... import (
     errors,
     urlutils,
     )
-from ...config import AuthenticationConfig
 from ...git.urls import git_url_to_bzr_url
 from ...sixish import PY3
 
@@ -52,6 +51,16 @@ class NotGitLabUrl(errors.BzrError):
 
     def __init__(self, url):
         errors.BzrError.__init__(self)
+        self.url = url
+
+
+class NotMergeRequestUrl(errors.BzrError):
+
+    _fmt = "Not a merge proposal URL: %(url)s"
+
+    def __init__(self, host, url):
+        errors.BzrError.__init__(self)
+        self.host = host
         self.url = url
 
 
@@ -100,37 +109,48 @@ def iter_tokens():
 
 def connect_gitlab(host):
     from gitlab import Gitlab, GitlabGetError
-    auth = AuthenticationConfig()
-
     url = 'https://%s' % host
-    credentials = auth.get_credentials('https', host)
-    if credentials is None:
-        for name, section in iter_tokens():
-            if section.get('url') == url:
-                credentials = section
-                break
-        else:
-            try:
-                return Gitlab(url)
-            except GitlabGetError:
-                raise GitLabLoginMissing()
+    for name, section in iter_tokens():
+        if section.get('url') == url:
+            return Gitlab(**section)
     else:
-        credentials['url'] = url
-    return Gitlab(**credentials)
+        try:
+            return Gitlab(url)
+        except GitlabGetError:
+            raise GitLabLoginMissing()
 
 
-def parse_gitlab_url(branch):
-    url = urlutils.split_segment_parameters(branch.user_url)[0]
+def parse_gitlab_url(url):
     (scheme, user, password, host, port, path) = urlutils.parse_url(
         url)
     if scheme not in ('git+ssh', 'https', 'http'):
-        raise NotGitLabUrl(branch.user_url)
+        raise NotGitLabUrl(url)
     if not host:
-        raise NotGitLabUrl(branch.user_url)
+        raise NotGitLabUrl(url)
     path = path.strip('/')
     if path.endswith('.git'):
         path = path[:-4]
+    return host, path
+
+
+def parse_gitlab_branch_url(branch):
+    url = urlutils.split_segment_parameters(branch.user_url)[0]
+    host, path = parse_gitlab_url(url)
     return host, path, branch.name
+
+
+def parse_gitlab_merge_request_url(url):
+    (scheme, user, password, host, port, path) = urlutils.parse_url(
+        url)
+    if scheme not in ('git+ssh', 'https', 'http'):
+        raise NotGitLabUrl(url)
+    if not host:
+        raise NotGitLabUrl(url)
+    path = path.strip('/')
+    parts = path.split('/')
+    if parts[-2] != 'merge_requests':
+        raise NotMergeRequestUrl(host, url)
+    return host, '/'.join(parts[:-2]), int(parts[-1])
 
 
 class GitLabMergeProposal(MergeProposal):
@@ -147,6 +167,10 @@ class GitLabMergeProposal(MergeProposal):
 
     def set_description(self, description):
         self._mr.description = description
+        self._mr.save()
+
+    def get_commit_message(self):
+        return None
 
     def _branch_url_from_project(self, project_id, branch_name):
         project = self._mr.manager.gitlab.projects.get(project_id)
@@ -167,6 +191,10 @@ class GitLabMergeProposal(MergeProposal):
         self._mr.state_event = 'close'
         self._mr.save()
 
+    def merge(self, commit_message=None):
+        # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
+        self._mr.merge(merge_commit_message=commit_message)
+
 
 def gitlab_url_to_bzr_url(url, name):
     if not PY3:
@@ -179,6 +207,7 @@ class GitLab(Hoster):
     """GitLab hoster implementation."""
 
     supports_merge_proposal_labels = True
+    supports_merge_proposal_commit_message = False
 
     def __repr__(self):
         return "<GitLab(%r)>" % self.gl.url
@@ -191,7 +220,7 @@ class GitLab(Hoster):
         self.gl = gl
 
     def get_push_url(self, branch):
-        (host, project_name, branch_name) = parse_gitlab_url(branch)
+        (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
         project = self.gl.projects.get(project_name)
         return gitlab_url_to_bzr_url(
             project.ssh_url_to_repo, branch_name)
@@ -200,7 +229,7 @@ class GitLab(Hoster):
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True):
         import gitlab
-        (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
+        (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
         self.gl.auth()
         try:
             base_project = self.gl.projects.get(base_project)
@@ -238,7 +267,7 @@ class GitLab(Hoster):
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         import gitlab
-        (host, base_project, base_branch_name) = parse_gitlab_url(base_branch)
+        (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
         self.gl.auth()
         try:
             base_project = self.gl.projects.get(base_project)
@@ -266,9 +295,9 @@ class GitLab(Hoster):
     def iter_proposals(self, source_branch, target_branch, status):
         import gitlab
         (source_host, source_project_name, source_branch_name) = (
-            parse_gitlab_url(source_branch))
+            parse_gitlab_branch_url(source_branch))
         (target_host, target_project_name, target_branch_name) = (
-            parse_gitlab_url(target_branch))
+            parse_gitlab_branch_url(target_branch))
         if source_host != target_host:
             raise DifferentGitLabInstances(source_host, target_host)
         self.gl.auth()
@@ -289,17 +318,17 @@ class GitLab(Hoster):
 
     def hosts(self, branch):
         try:
-            (host, project, branch_name) = parse_gitlab_url(branch)
+            (host, project, branch_name) = parse_gitlab_branch_url(branch)
         except NotGitLabUrl:
             return False
         return (self.gl.url == ('https://%s' % host))
 
     @classmethod
-    def probe(cls, branch):
+    def probe_from_url(cls, url):
         try:
-            (host, project, branch_name) = parse_gitlab_url(branch)
+            (host, project) = parse_gitlab_url(url)
         except NotGitLabUrl:
-            raise UnsupportedHoster(branch)
+            raise UnsupportedHoster(url)
         import gitlab
         import requests.exceptions
         try:
@@ -307,12 +336,12 @@ class GitLab(Hoster):
             gl.auth()
         except requests.exceptions.SSLError:
             # Well, I guess it could be..
-            raise UnsupportedHoster(branch)
+            raise UnsupportedHoster(url)
         except gitlab.GitlabGetError:
-            raise UnsupportedHoster(branch)
+            raise UnsupportedHoster(url)
         except gitlab.GitlabHttpError as e:
             if e.response_code in (404, 405, 503):
-                raise UnsupportedHoster(branch)
+                raise UnsupportedHoster(url)
             else:
                 raise
         return cls(gl)
@@ -333,6 +362,22 @@ class GitLab(Hoster):
                 owner=self.gl.user.username, state=state):
             yield GitLabMergeProposal(mp)
 
+    def get_proposal_by_url(self, url):
+        try:
+            (host, project, merge_id) = parse_gitlab_merge_request_url(url)
+        except NotGitLabUrl:
+            raise UnsupportedHoster(url)
+        except NotMergeRequestUrl as e:
+            if self.gl.url == ('https://%s' % e.host):
+                raise
+            else:
+                raise UnsupportedHoster(url)
+        if self.gl.url != ('https://%s' % host):
+            raise UnsupportedHoster(url)
+        project = self.gl.projects.get(project)
+        mr = project.mergerequests.get(merge_id)
+        return GitLabMergeProposal(mr)
+
 
 class GitlabMergeProposalBuilder(MergeProposalBuilder):
 
@@ -340,10 +385,10 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         self.gl = gl
         self.source_branch = source_branch
         (self.source_host, self.source_project_name, self.source_branch_name) = (
-            parse_gitlab_url(source_branch))
+            parse_gitlab_branch_url(source_branch))
         self.target_branch = target_branch
         (self.target_host, self.target_project_name, self.target_branch_name) = (
-            parse_gitlab_url(target_branch))
+            parse_gitlab_branch_url(target_branch))
         if self.source_host != self.target_host:
             raise DifferentGitLabInstances(self.source_host, self.target_host)
 
@@ -363,11 +408,13 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         return None
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None):
+                        prerequisite_branch=None, commit_message=None):
         """Perform the submission."""
+        # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
         import gitlab
+        # Note that commit_message is ignored, since Gitlab doesn't support it.
         # TODO(jelmer): Support reviewers
         self.gl.auth()
         source_project = self.gl.projects.get(self.source_project_name)

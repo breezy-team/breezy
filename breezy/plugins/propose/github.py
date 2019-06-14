@@ -22,6 +22,7 @@ import os
 
 from .propose import (
     Hoster,
+    HosterLoginRequired,
     MergeProposal,
     MergeProposalBuilder,
     MergeProposalExists,
@@ -74,6 +75,11 @@ class NotGitHubUrl(errors.BzrError):
         self.url = url
 
 
+class GitHubLoginRequired(HosterLoginRequired):
+
+    _fmt = "Action requires GitHub login."
+
+
 def connect_github():
     """Connect to GitHub.
     """
@@ -116,6 +122,9 @@ class GitHubMergeProposal(MergeProposal):
     def get_description(self):
         return self._pr.body
 
+    def get_commit_message(self):
+        return None
+
     def set_description(self, description):
         self._pr.edit(body=description, title=determine_title(description))
 
@@ -125,9 +134,12 @@ class GitHubMergeProposal(MergeProposal):
     def close(self):
         self._pr.edit(state='closed')
 
+    def merge(self, commit_message=None):
+        # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
+        self._pr.merge(commit_message=commit_message)
 
-def parse_github_url(branch):
-    url = urlutils.split_segment_parameters(branch.user_url)[0]
+
+def parse_github_url(url):
     (scheme, user, password, host, port, path) = urlutils.parse_url(
         url)
     if host != 'github.com':
@@ -135,6 +147,12 @@ def parse_github_url(branch):
     (owner, repo_name) = path.strip('/').split('/')
     if repo_name.endswith('.git'):
         repo_name = repo_name[:-4]
+    return owner, repo_name
+
+
+def parse_github_branch_url(branch):
+    url = urlutils.split_segment_parameters(branch.user_url)[0]
+    owner, repo_name = parse_github_url(url)
     return owner, repo_name, branch.name
 
 
@@ -145,11 +163,24 @@ def github_url_to_bzr_url(url, branch_name):
         git_url_to_bzr_url(url), {"branch": branch_name})
 
 
+def convert_github_error(fn):
+    def convert(self, *args, **kwargs):
+        import github
+        try:
+            return fn(self, *args, **kwargs)
+        except github.GithubException as e:
+            if e.args[0] == 401:
+                raise GitHubLoginRequired(self)
+            raise
+    return convert
+
+
 class GitHub(Hoster):
 
     name = 'github'
 
     supports_merge_proposal_labels = True
+    supports_merge_proposal_commit_message = False
 
     def __repr__(self):
         return "GitHub()"
@@ -163,11 +194,12 @@ class GitHub(Hoster):
     def __init__(self):
         self.gh = connect_github()
 
+    @convert_github_error
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True):
         import github
-        base_owner, base_project, base_branch_name = parse_github_url(base_branch)
+        base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self.gh.get_repo('%s/%s' % (base_owner, base_project))
         if owner is None:
             owner = self.gh.get_user().login
@@ -201,14 +233,16 @@ class GitHub(Hoster):
         return push_result.target_branch, github_url_to_bzr_url(
             remote_repo.html_url, name)
 
+    @convert_github_error
     def get_push_url(self, branch):
-        owner, project, branch_name = parse_github_url(branch)
+        owner, project, branch_name = parse_github_branch_url(branch)
         repo = self.gh.get_repo('%s/%s' % (owner, project))
         return github_url_to_bzr_url(repo.ssh_url, branch_name)
 
+    @convert_github_error
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         import github
-        base_owner, base_project, base_branch_name = parse_github_url(base_branch)
+        base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self.gh.get_repo('%s/%s' % (base_owner, base_project))
         if owner is None:
             owner = self.gh.get_user().login
@@ -221,14 +255,16 @@ class GitHub(Hoster):
         except github.UnknownObjectException:
             raise errors.NotBranchError('https://github.com/%s/%s' % (owner, project))
 
+    @convert_github_error
     def get_proposer(self, source_branch, target_branch):
         return GitHubMergeProposalBuilder(self.gh, source_branch, target_branch)
 
+    @convert_github_error
     def iter_proposals(self, source_branch, target_branch, status='open'):
         (source_owner, source_repo_name, source_branch_name) = (
-            parse_github_url(source_branch))
+            parse_github_branch_url(source_branch))
         (target_owner, target_repo_name, target_branch_name) = (
-            parse_github_url(target_branch))
+            parse_github_branch_url(target_branch))
         target_repo = self.gh.get_repo(
             "%s/%s" % (target_owner, target_repo_name))
         state = {
@@ -244,6 +280,9 @@ class GitHub(Hoster):
                 continue
             if pull.head.ref != source_branch_name:
                 continue
+            if pull.head.repo is None:
+                # Repo has gone the way of the dodo
+                continue
             if (pull.head.repo.owner.login != source_owner or
                     pull.head.repo.name != source_repo_name):
                 continue
@@ -251,37 +290,43 @@ class GitHub(Hoster):
 
     def hosts(self, branch):
         try:
-            parse_github_url(branch)
+            parse_github_branch_url(branch)
         except NotGitHubUrl:
             return False
         else:
             return True
 
     @classmethod
-    def probe(cls, branch):
+    def probe_from_url(cls, url):
         try:
-            parse_github_url(branch)
+            parse_github_url(url)
         except NotGitHubUrl:
-            raise UnsupportedHoster(branch)
+            raise UnsupportedHoster(url)
         return cls()
 
     @classmethod
     def iter_instances(cls):
         yield cls()
 
+    @convert_github_error
     def iter_my_proposals(self, status='open'):
         query = ['is:pr']
         if status == 'open':
             query.append('is:open')
         elif status == 'closed':
-            # Note that we don't use is:closed here, since that also includes
-            # merged pull requests.
             query.append('is:unmerged')
+            # Also use "is:closed" otherwise unmerged open pull requests are
+            # also included.
+            query.append('is:closed')
         elif status == 'merged':
             query.append('is:merged')
         query.append('author:%s' % self.gh.get_user().login)
         for issue in self.gh.search_issues(query=' '.join(query)):
             yield GitHubMergeProposal(issue.as_pull_request())
+
+    @convert_github_error
+    def get_proposal_by_url(self, url):
+        raise UnsupportedHoster(url)
 
 
 class GitHubMergeProposalBuilder(MergeProposalBuilder):
@@ -291,9 +336,9 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         self.source_branch = source_branch
         self.target_branch = target_branch
         (self.target_owner, self.target_repo_name, self.target_branch_name) = (
-            parse_github_url(self.target_branch))
+            parse_github_branch_url(self.target_branch))
         (self.source_owner, self.source_repo_name, self.source_branch_name) = (
-            parse_github_url(self.source_branch))
+            parse_github_branch_url(self.source_branch))
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
@@ -313,10 +358,11 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         return None
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None):
+                        prerequisite_branch=None, commit_message=None):
         """Perform the submission."""
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
+        # Note that commit_message is ignored, since github doesn't support it.
         import github
         # TODO(jelmer): Probe for right repo name
         if self.target_repo_name.endswith('.git'):

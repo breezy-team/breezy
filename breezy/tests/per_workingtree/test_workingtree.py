@@ -943,7 +943,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if tree.supports_setting_file_ids():
             tree.add(['foo'], [b'foo-id'])
             self.assertEqual(b'foo-id', tree.path2id('foo'))
-            # the next assertion is for backwards compatability with
+            # the next assertion is for backwards compatibility with
             # WorkingTree3, though its probably a bad idea, it makes things
             # work. Perhaps it should raise a deprecation warning?
             self.assertEqual(b'foo-id', tree.path2id('foo/'))

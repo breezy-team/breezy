@@ -35,7 +35,7 @@ How to install a plugin
 
 Installing a plugin is very easy! If not already created, create a
 ``plugins`` directory under your Breezy configuration directory,
-``~/.bazaar/`` on Unix and
+``~/.config/breezy/`` on Unix and
 ``C:\Documents and Settings\<username>\Application Data\Breezy\2.0\``
 on Windows. Within this directory (referred to as $BZR_HOME below),
 each plugin is placed in its own subdirectory.
@@ -45,7 +45,7 @@ install the brztools plugins for your main user account on GNU/Linux,
 one can perform the following::
 
     brz branch http://panoramicfeedback.com/opensource/brz/brztools
-    ~/.bazaar/plugins/brztools
+    ~/.config/breezy/plugins/brztools
 
 When installing plugins, the directories that you install them in must
 be valid python identifiers. This means that they can only contain

@@ -19,9 +19,11 @@ from __future__ import absolute_import
 # mbp: "you know that thing where cvs gives you conflict markers?"
 # s: "i hate that."
 
+import patiencediff
+
+
 from . import (
     errors,
-    patiencediff,
     textfile,
     )
 

@@ -38,18 +38,16 @@ except ImportError:  # python < 3.7
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 
-from breezy import (
-    generate_ids,
-    osutils,
-    )
 from breezy.bzr import (
     chk_map,
+    generate_ids,
     )
 """)
 
 from .. import (
     errors,
     lazy_regex,
+    osutils,
     trace,
     )
 from ..sixish import (

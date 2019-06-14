@@ -52,17 +52,16 @@ from breezy.i18n import gettext
 """)
 from .errors import (DuplicateKey, MalformedTransform,
                      ReusingTransform, CantMoveRoot,
-                     ImmortalLimbo, NoFinalPath,
-                     UnableCreateSymlink)
+                     ImmortalLimbo, NoFinalPath)
 from .filters import filtered_output_bytes, ContentFilterContext
 from .mutabletree import MutableTree
 from .osutils import (
     delete_any,
     file_kind,
-    has_symlinks,
     pathjoin,
     sha_file,
     splitpath,
+    supports_symlinks,
     )
 from .progress import ProgressPhase
 from .sixish import (
@@ -653,6 +652,9 @@ class TreeTransformBase(object):
         conflicts = []
         for trans_id in self._new_id:
             kind = self.final_kind(trans_id)
+            if kind == 'symlink' and not self._tree.supports_symlinks():
+                # Ignore symlinks as they are not supported on this platform
+                continue
             if kind is None:
                 conflicts.append(('versioning no contents', trans_id))
                 continue
@@ -1201,8 +1203,7 @@ class TreeTransformBase(object):
 class DiskTreeTransform(TreeTransformBase):
     """Tree transform storing its contents on disk."""
 
-    def __init__(self, tree, limbodir, pb=None,
-                 case_sensitive=True):
+    def __init__(self, tree, limbodir, pb=None, case_sensitive=True):
         """Constructor.
         :param tree: The tree that will be transformed, but not necessarily
             the output tree.
@@ -1226,6 +1227,7 @@ class DiskTreeTransform(TreeTransformBase):
         # List of transform ids that need to be renamed from limbo into place
         self._needs_rename = set()
         self._creation_mtime = None
+        self._create_symlinks = osutils.supports_symlinks(self._limbodir)
 
     def finalize(self):
         """Release the working tree lock, if held, clean up limbo dir.
@@ -1263,8 +1265,7 @@ class DiskTreeTransform(TreeTransformBase):
 
     def _limbo_supports_executable(self):
         """Check if the limbo path supports the executable bit."""
-        # FIXME: Check actual file system capabilities of limbodir
-        return osutils.supports_executable()
+        return osutils.supports_executable(self._limbodir)
 
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
@@ -1396,15 +1397,19 @@ class DiskTreeTransform(TreeTransformBase):
         target is a bytestring.
         See also new_symlink.
         """
-        if has_symlinks():
+        if self._create_symlinks:
             os.symlink(target, self._limbo_name(trans_id))
-            unique_add(self._new_contents, trans_id, 'symlink')
         else:
             try:
                 path = FinalPaths(self).get_path(trans_id)
             except KeyError:
                 path = None
-            raise UnableCreateSymlink(path=path)
+            trace.warning(
+                'Unable to create symlink "%s" on this filesystem.' % (path,))
+        # We add symlink to _new_contents even if they are unsupported
+        # and not created. These entries are subsequently used to avoid
+        # conflicts on platforms that don't support symlink
+        unique_add(self._new_contents, trans_id, 'symlink')
 
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""

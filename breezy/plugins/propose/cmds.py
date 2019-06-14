@@ -143,6 +143,9 @@ class cmd_propose_merge(Command):
         Option('name', help='Name of the new remote branch.', type=str),
         Option('description', help='Description of the change.', type=str),
         Option('prerequisite', help='Prerequisite branch.', type=str),
+        Option(
+            'commit-message',
+            help='Set commit message for merge, if supported', type=str),
         ListOption('labels', short_name='l', type=text_type,
                    help='Labels to apply.'),
         Option('no-allow-lossy',
@@ -154,7 +157,7 @@ class cmd_propose_merge(Command):
 
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
-            labels=None, prerequisite=None):
+            labels=None, prerequisite=None, commit_message=None):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -191,7 +194,8 @@ class cmd_propose_merge(Command):
         try:
             proposal = proposal_builder.create_proposal(
                 description=description, reviewers=reviewers,
-                prerequisite_branch=prerequisite_branch, labels=labels)
+                prerequisite_branch=prerequisite_branch, labels=labels,
+                commit_message=commit_message)
         except _mod_propose.MergeProposalExists as e:
             raise errors.BzrCommandError(gettext(
                 'There is already a branch merge proposal: %s') % e.url)
@@ -336,3 +340,16 @@ class cmd_my_merge_proposals(Command):
             for instance in hoster_cls.iter_instances():
                 for mp in instance.iter_my_proposals(status=status):
                     self.outf.write('%s\n' % mp.url)
+
+
+class cmd_land_merge_proposal(Command):
+    __doc__ = """Land a merge proposal."""
+
+    takes_args = ['url']
+    takes_options = [
+        Option('message', help='Commit message to use.', type=str)]
+
+    def run(self, url, message=None):
+        from .propose import get_proposal_by_url
+        proposal = get_proposal_by_url(url)
+        proposal.merge(commit_message=message)

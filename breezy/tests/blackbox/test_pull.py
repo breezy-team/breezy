@@ -353,7 +353,7 @@ class TestPull(tests.TestCaseWithTransport):
         class FooService(object):
             """A directory service that always returns source"""
 
-            def look_up(self, name, url):
+            def look_up(self, name, url, purpose=None):
                 return 'source'
         directories.register('foo:', FooService, 'Testing directory service')
         self.addCleanup(directories.remove, 'foo:')

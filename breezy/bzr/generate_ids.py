@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from .lazy_import import lazy_import
+from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import time
 
@@ -28,10 +28,10 @@ from breezy import (
     )
 """)
 
-from . import (
+from .. import (
     lazy_regex,
     )
-from .sixish import text_type
+from ..sixish import text_type
 
 # the regex removes any weird characters; we don't escape them
 # but rather just pull them out

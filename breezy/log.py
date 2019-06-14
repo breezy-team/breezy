@@ -136,7 +136,6 @@ def find_touching_revisions(repository, last_revision, last_tree, last_path):
 
 def show_log(branch,
              lf,
-             specific_fileid=None,
              verbose=False,
              direction='reverse',
              start_revision=None,
@@ -153,9 +152,6 @@ def show_log(branch,
     make_log_request_dict function.
 
     :param lf: The LogFormatter object showing the output.
-
-    :param specific_fileid: If not None, list only the commits affecting the
-        specified file, rather than all commits.
 
     :param verbose: If True show added/changed/deleted/renamed files.
 
@@ -177,46 +173,36 @@ def show_log(branch,
     :param match: Dictionary of search lists to use when matching revision
       properties.
     """
-    # Convert old-style parameters to new-style parameters
-    if specific_fileid is not None:
-        file_ids = [specific_fileid]
-    else:
-        file_ids = None
     if verbose:
-        if file_ids:
-            delta_type = 'partial'
-        else:
-            delta_type = 'full'
+        delta_type = 'full'
     else:
         delta_type = None
     if show_diff:
-        if file_ids:
-            diff_type = 'partial'
-        else:
-            diff_type = 'full'
+        diff_type = 'full'
     else:
         diff_type = None
 
     if isinstance(start_revision, int):
         try:
             start_revision = revisionspec.RevisionInfo(branch, start_revision)
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
             raise errors.InvalidRevisionNumber(start_revision)
 
     if isinstance(end_revision, int):
         try:
             end_revision = revisionspec.RevisionInfo(branch, end_revision)
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
             raise errors.InvalidRevisionNumber(end_revision)
 
     if end_revision is not None and end_revision.revno == 0:
         raise errors.InvalidRevisionNumber(end_revision.revno)
 
     # Build the request and execute it
-    rqst = make_log_request_dict(direction=direction, specific_fileids=file_ids,
-                                 start_revision=start_revision, end_revision=end_revision,
-                                 limit=limit, message_search=search,
-                                 delta_type=delta_type, diff_type=diff_type)
+    rqst = make_log_request_dict(
+        direction=direction,
+        start_revision=start_revision, end_revision=end_revision,
+        limit=limit, message_search=search,
+        delta_type=delta_type, diff_type=diff_type)
     Logger(branch, rqst).show(lf)
 
 
@@ -1949,7 +1935,6 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
         to_file.write('Added Revisions:\n')
         show_log(branch,
                  lf,
-                 None,
                  verbose=False,
                  direction='forward',
                  start_revision=base_idx + 1,
@@ -2034,7 +2019,7 @@ def show_branch_change(branch, output, old_revno, old_revision_id):
     if new_history != []:
         output.write('Added Revisions:\n')
         start_revno = new_revno - len(new_history) + 1
-        show_log(branch, lf, None, verbose=False, direction='forward',
+        show_log(branch, lf, verbose=False, direction='forward',
                  start_revision=start_revno)
 
 

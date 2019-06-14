@@ -18,6 +18,7 @@
 
 import gzip
 from io import BytesIO
+from patiencediff import PatienceSequenceMatcher
 import sys
 
 from .. import (
@@ -48,7 +49,6 @@ from ..bzr.knit import (
     _KnitKeyAccess,
     make_file_factory,
     )
-from ..patiencediff import PatienceSequenceMatcher
 from ..bzr import (
     knitpack_repo,
     pack_repo,

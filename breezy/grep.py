@@ -1,5 +1,5 @@
 # Copyright (C) 2010 Canonical Ltd
-#
+
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -12,36 +12,35 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from __future__ import absolute_import
 
 import re
 
-from ...lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from fnmatch import fnmatch
 
 from breezy._termcolor import color_string, FG
 
 from breezy import (
-    controldir,
     diff,
-    errors,
-    lazy_regex,
-    revision as _mod_revision,
     )
 """)
-from breezy import (
+from . import (
+    controldir,
+    errors,
     osutils,
+    revision as _mod_revision,
     trace,
     )
-from breezy.revisionspec import (
+from .revisionspec import (
     RevisionSpec,
     RevisionSpec_revid,
     RevisionSpec_revno,
     )
-from breezy.sixish import (
+from .sixish import (
     BytesIO,
     )
 
@@ -50,6 +49,42 @@ _user_encoding = osutils.get_user_encoding()
 
 class _RevisionNotLinear(Exception):
     """Raised when a revision is not on left-hand history."""
+
+
+class GrepOptions(object):
+    """Container to pass around grep options.
+
+    This class is used as a container to pass around user option and
+    some other params (like outf) to processing functions. This makes
+    it easier to add more options as grep evolves.
+    """
+    verbose = False
+    ignore_case = False
+    no_recursive = False
+    from_root = False
+    null = False
+    levels = None
+    line_number = False
+    path_list = None
+    revision = None
+    pattern = None
+    include = None
+    exclude = None
+    fixed_string = False
+    files_with_matches = False
+    files_without_match = False
+    color = None
+    diff = False
+
+    # derived options
+    recursive = None
+    eol_marker = None
+    patternc = None
+    sub_patternc = None
+    print_revno = None
+    fixed_string = None
+    outf = None
+    show_color = False
 
 
 def _rev_on_mainline(rev_tuple):

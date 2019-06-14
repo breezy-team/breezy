@@ -348,9 +348,9 @@ class LocalGitRepository(GitRepository):
             o = self._git.object_store[sha]
             if not isinstance(o, Commit):
                 continue
-            rev, roundtrip_revid, verifiers = mapping.import_commit(
-                o, mapping.revision_id_foreign_to_bzr)
-            yield o.id, rev.revision_id, roundtrip_revid
+            revid = mapping.revision_id_foreign_to_bzr(o)
+            roundtrip_revid = mapping.get_revision_id(o)
+            yield o.id, revid, (roundtrip_revid if revid != roundtrip_revid else None)
 
     def all_revision_ids(self):
         ret = set()
@@ -454,13 +454,9 @@ class LocalGitRepository(GitRepository):
         commit = self._git.object_store.peel_sha(foreign_revid)
         if not isinstance(commit, Commit):
             raise NotCommitError(commit.id)
-        rev, roundtrip_revid, verifiers = mapping.import_commit(
-            commit, mapping.revision_id_foreign_to_bzr)
+        revid = mapping.get_revision_id(commit)
         # FIXME: check testament before doing this?
-        if roundtrip_revid:
-            return roundtrip_revid
-        else:
-            return rev.revision_id
+        return revid
 
     def has_signature_for_revision_id(self, revision_id):
         """Check whether a GPG signature is present for this revision.
@@ -520,8 +516,7 @@ class LocalGitRepository(GitRepository):
             except KeyError:
                 # Update refs from Git commit objects
                 # FIXME: Hitting this a lot will be very inefficient...
-                pb = ui.ui_factory.nested_progress_bar()
-                try:
+                with ui.ui_factory.nested_progress_bar() as pb:
                     for i, (git_sha, revid, roundtrip_revid) in enumerate(
                             self._iter_revision_ids()):
                         if not roundtrip_revid:
@@ -531,8 +526,6 @@ class LocalGitRepository(GitRepository):
                         self._git.refs[refname] = git_sha
                         if roundtrip_revid == bzr_revid:
                             return git_sha, mapping
-                finally:
-                    pb.finished()
                 raise errors.NoSuchRevision(self, bzr_revid)
         else:
             return (git_sha, mapping)

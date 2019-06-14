@@ -39,7 +39,6 @@ from breezy import (
     debug,
     errors,
     filters as _mod_filters,
-    generate_ids,
     osutils,
     revision as _mod_revision,
     revisiontree,
@@ -49,6 +48,7 @@ from breezy import (
     )
 from breezy.bzr import (
     dirstate,
+    generate_ids,
     )
 """)
 
@@ -256,7 +256,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
         local_path = self.controldir.get_workingtree_transport(
             None).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(
-            local_path, self._sha1_provider(), self._worth_saving_limit())
+            local_path, self._sha1_provider(), self._worth_saving_limit(),
+            self._supports_executable())
         return self._dirstate
 
     def _sha1_provider(self):

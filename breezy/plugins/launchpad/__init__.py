@@ -29,7 +29,6 @@ The plugin also provides the following commands:
 
     launchpad-login: Show or set the Launchpad user ID
     launchpad-open: Open a Launchpad branch page in your web browser
-    launchpad-mirror: Ask Launchpad to mirror a branch now
 
 As well as the following deprecated command:
 

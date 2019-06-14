@@ -532,7 +532,7 @@ class LocalTransport(transport.Transport):
             except (IOError, OSError) as e:
                 self._translate_error(e, source)
 
-    if osutils.has_symlinks():
+    if getattr(os, 'symlink', None) is not None:
         def symlink(self, source, link_name):
             """See Transport.symlink."""
             abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
