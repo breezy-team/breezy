@@ -65,6 +65,8 @@ class TreeEntry(object):
     """An entry that implements the minimum interface used by commands.
     """
 
+    __slots__ = []
+
     def __eq__(self, other):
         # yes, this is ugly, TODO: best practice __eq__ style.
         return (isinstance(other, TreeEntry)
@@ -79,6 +81,8 @@ class TreeEntry(object):
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
 
+    __slots__ = []
+
     kind = 'directory'
 
     def kind_character(self):
@@ -87,6 +91,8 @@ class TreeDirectory(TreeEntry):
 
 class TreeFile(TreeEntry):
     """See TreeEntry. This is a regular file in a working tree."""
+
+    __slots__ = []
 
     kind = 'file'
 
@@ -97,6 +103,8 @@ class TreeFile(TreeEntry):
 class TreeLink(TreeEntry):
     """See TreeEntry. This is a symlink in a working tree."""
 
+    __slots__ = []
+
     kind = 'symlink'
 
     def kind_character(self):
@@ -105,6 +113,8 @@ class TreeLink(TreeEntry):
 
 class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
+
+    __slots__ = []
 
     kind = 'tree-reference'
 
