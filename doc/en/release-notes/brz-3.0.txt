@@ -42,6 +42,10 @@ Bug Fixes
 * Fix switching between branches while preserving uncommitted changes in git.
   (Jelmer Vernooĳ, #1820606)
 
+* Return consist errors from ``Branch.get_revid`` and
+  ``Repository.get_revid_for_revno`` when the revision
+  number is invalid. (Jelmer Vernooĳ, #701953)
+
 Documentation
 *************
 
