@@ -36,8 +36,8 @@ from breezy.tests import (
 BIG_FILE_SIZE = 1024 * 1024 * 500
 BIG_FILE_CHUNK_SIZE = 1024 * 1024
 
-RESOURCE = resource.RLIMIT_DATA
-LIMIT = 1024 * 1024 * 200
+RESOURCE = resource.RLIMIT_AS
+LIMIT = 1024 * 1024 * 100
 
 
 def make_big_file(path):
