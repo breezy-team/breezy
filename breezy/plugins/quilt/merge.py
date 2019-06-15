@@ -1,20 +1,19 @@
 #    quilt.py -- Quilt patch handling
 #    Copyright (C) 2011 Canonical Ltd.
+#    Copyright (C) 2019 Jelmer Verooij <jelmer@jelmer.uk>
 #
-#    This file is part of bzr-builddeb.
-#
-#    bzr-builddeb is free software; you can redistribute it and/or modify
+#    Breezy is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
 #    (at your option) any later version.
 #
-#    bzr-builddeb is distributed in the hope that it will be useful,
+#    Breezy is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with bzr-builddeb; if not, write to the Free Software
+#    along with Breezy; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
@@ -66,13 +65,16 @@ def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
     target_dir = tempfile.mkdtemp()
     try:
         if isinstance(orig_tree, MutableTree):
-            tree = orig_branch.create_checkout(target_dir, lightweight=True,
-                revision_id=orig_tree.last_revision(), accelerator_tree=orig_tree)
+            tree = orig_branch.create_checkout(
+                target_dir, lightweight=True,
+                revision_id=orig_tree.last_revision(),
+                accelerator_tree=orig_tree)
             merger = _mod_merge.Merger.from_uncommitted(tree, orig_tree)
             merger.merge_type = NoUnapplyingMerger
             merger.do_merge()
         elif isinstance(orig_tree, RevisionTree):
-            tree = orig_branch.create_checkout(target_dir, lightweight=True,
+            tree = orig_branch.create_checkout(
+                target_dir, lightweight=True,
                 accelerator_tree=orig_tree, revision_id=orig_tree.get_revision_id())
         else:
             trace.mutter("Not sure how to create copy of %r", orig_tree)

@@ -15,6 +15,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from __future__ import absolute_import
+
 """Quilt patch integration.
 
 This plugin adds support for three configuration options:
@@ -149,18 +151,19 @@ option_registry.register(
     Option('quilt.smart_merge', default=True, from_unicode=bool_from_store,
            help="Unapply quilt patches before merging."))
 
+
 def policy_from_store(s):
-    if not s in ('applied', 'unapplied'):
+    if s not in ('applied', 'unapplied'):
         raise ValueError('Invalid quilt.commit_policy: %s' % s)
     return s
 
 option_registry.register(
     Option('quilt.commit_policy', default=None, from_unicode=policy_from_store,
-          help="Whether to apply or unapply all patches in commits."))
+           help="Whether to apply or unapply all patches in commits."))
 
 option_registry.register(
     Option('quilt.tree_policy', default=None, from_unicode=policy_from_store,
-          help="Whether to apply or unapply all patches after checkout/update."))
+           help="Whether to apply or unapply all patches after checkout/update."))
 
 
 def load_tests(loader, basic_tests, pattern):
