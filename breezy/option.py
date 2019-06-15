@@ -246,7 +246,11 @@ class Option(object):
             self.custom_callback(option, self._param_name, bool_v, parser)
 
     def _optparse_callback(self, option, opt, value, parser):
-        v = self.type(value)
+        try:
+            v = self.type(value)
+        except ValueError as e:
+            raise optparse.OptionValueError(
+                'invalid value for option %s: %s' % (option, value))
         setattr(parser.values, self._param_name, v)
         if self.custom_callback is not None:
             self.custom_callback(option, self.name, v, parser)
