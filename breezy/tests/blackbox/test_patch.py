@@ -34,3 +34,9 @@ class TestPatch(TestCaseWithTransport):
         self.assertFileEqual('hello', 'myfile')
         self.run_bzr('patch -p1 --silent mypatch')
         self.assertFileEqual('goodbye', 'myfile')
+
+    def test_patch_invalid_strip(self):
+        self.run_bzr_error(
+            args="patch --strip=a",
+            error_regexes=[
+                'brz: ERROR: invalid value for option -p/--strip: a'])
