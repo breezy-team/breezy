@@ -115,16 +115,16 @@ class TreeReference(TreeEntry):
 class TreeChange(object):
     """Describes the changes between the same item in two different trees."""
 
-    __slots__ = ['file_id', 'path', 'changed_content', 'versioned', 'parent',
+    __slots__ = ['file_id', 'path', 'changed_content', 'versioned', 'parent_id',
                  'name', 'kind', 'executable']
 
-    def __init__(self, file_id, path, changed_content, versioned, parent,
+    def __init__(self, file_id, path, changed_content, versioned, parent_id,
                  name, kind, executable):
         self.file_id = file_id
         self.path = path
         self.changed_content = changed_content
         self.versioned = versioned
-        self.parent = parent
+        self.parent_id = parent_id
         self.name = name
         self.kind = kind
         self.executable = executable
@@ -134,7 +134,7 @@ class TreeChange(object):
 
     def __tuple__(self):
         return (self.file_id, self.path, self.changed_content, self.versioned,
-                self.parent, self.name, self.kind, self.executable)
+                self.parent_id, self.name, self.kind, self.executable)
 
     def __eq__(self, other):
         if isinstance(other, TreeChange):
@@ -145,7 +145,7 @@ class TreeChange(object):
 
     def __getitem__(self, i):
         if isinstance(i, slice):
-            return tuple(self[x] for x in i.indices(7))
+            return tuple(self).__getitem__(i)
         return getattr(self, self.__slots__[i])
 
 
@@ -983,8 +983,9 @@ class InterTree(InterObject):
             changed_content = from_kind is not None
             # the parent's path is necessarily known at this point.
             changed_file_ids.append(file_id)
-            yield(file_id, (path, to_path), changed_content, versioned, parent,
-                  name, kind, executable)
+            yield TreeChange(
+                file_id, (path, to_path), changed_content, versioned, parent,
+                name, kind, executable)
         changed_file_ids = set(changed_file_ids)
         if specific_files is not None:
             for result in self._handle_precise_ids(precise_file_ids,
