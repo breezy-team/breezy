@@ -2020,11 +2020,6 @@ class HttpTransport(ConnectedTransport):
             def text(self):
                 return self.data.decode()
 
-            @property
-            def json(self):
-                from json import loads
-                return loads(self.data)
-
             def read(self, amt=None):
                 return self._actual.read(amt)
 

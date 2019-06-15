@@ -18,6 +18,7 @@
 
 from __future__ import absolute_import
 
+import json
 import os
 
 from ... import (
@@ -236,7 +237,7 @@ class GitLab(Hoster):
         if response.status == 404:
             raise NoSuchProject(project_name)
         if response.status == 200:
-            return response.json
+            return json.loads(response.data)
         raise InvalidHttpResponse(path, response.text)
 
     def _fork_project(self, project_name):
@@ -244,7 +245,7 @@ class GitLab(Hoster):
         response = self._api_request('POST', path)
         if response != 200:
             raise InvalidHttpResponse(path, response.text)
-        return response.json
+        return json.loads(response.data)
 
     def _get_logged_in_username(self):
         return self._current_user['username']
@@ -265,7 +266,7 @@ class GitLab(Hoster):
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 200:
-            return response.json
+            return json.loads(response.data)
         raise InvalidHttpResponse(path, response.text)
 
     def _create_mergerequest(
@@ -287,7 +288,7 @@ class GitLab(Hoster):
             raise MergeProposalExists(self.source_branch.user_url)
         if response.status == 200:
             raise InvalidHttpResponse(path, response.text)
-        return response.json
+        return json.loads(response.data)
 
     def get_push_url(self, branch):
         (host, project_name, branch_name) = parse_gitlab_branch_url(branch)
@@ -370,10 +371,10 @@ class GitLab(Hoster):
     def check(self):
         response = self._api_request('GET', 'user')
         if response.status == 200:
-            self._current_user = response.json
+            self._current_user = json.loads(response.data)
             return
         if response == 401:
-            if response.json == {"message": "401 Unauthorized"}:
+            if json.loads(response.data) == {"message": "401 Unauthorized"}:
                 raise GitLabLoginMissing()
             else:
                 raise GitlabLoginError(response.text)
