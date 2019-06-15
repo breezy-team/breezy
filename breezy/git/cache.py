@@ -51,13 +51,7 @@ from ..transport import (
 
 
 def get_cache_dir():
-    try:
-        from xdg.BaseDirectory import xdg_cache_home
-    except ImportError:
-        from ..config import config_dir
-        ret = os.path.join(config_dir(), "git")
-    else:
-        ret = os.path.join(xdg_cache_home, "breezy", "git")
+    ret = os.path.join(osutils.cache_dir(), "git")
     if not os.path.isdir(ret):
         os.makedirs(ret)
     return ret
