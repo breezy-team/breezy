@@ -250,7 +250,7 @@ class GitLab(Hoster):
     def _get_logged_in_username(self):
         return self._current_user['username']
 
-    def _list_mergerequests(self, owner=None, project=None, state=None):
+    def _list_merge_requests(self, owner=None, project=None, state=None):
         if project is not None:
             path = 'projects/:%s/merge_requests' % urlutils.quote(str(project_name), '')
         else:
@@ -352,7 +352,7 @@ class GitLab(Hoster):
         source_project = self._get_project(source_project_name)
         target_project = self._get_project(target_project_name)
         state = mp_status_to_status(status)
-        for mr in self.gl._list_mergerequests(
+        for mr in self.gl._list_merge_requests(
                 project=target_project['id'], state=state):
             if (mr['source_project_id'] != source_project['id'] or
                     mr['source_branch'] != source_branch_name or
@@ -401,7 +401,7 @@ class GitLab(Hoster):
 
     def iter_my_proposals(self, status='open'):
         state = mp_status_to_status(status)
-        for mp in self._list_mergerequests(
+        for mp in self._list_merge_requests(
                 owner=self._get_logged_in_username(), state=state):
             yield GitLabMergeProposal(self, mp)
 
