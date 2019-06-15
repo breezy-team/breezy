@@ -1,5 +1,5 @@
 #    Copyright (C) 2011 Canonical Ltd
-#    Copyright (C) 2019 Jelmer Vernooĳ <jelmer@jelmer.uk>
+#    Copyright (C) 2019 Jelmer Vernooij <jelmer@jelmer.uk>
 #
 #    Breezy is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
