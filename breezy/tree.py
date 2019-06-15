@@ -112,6 +112,59 @@ class TreeReference(TreeEntry):
         return '+'
 
 
+class TreeChange(object):
+    """Describes the changes between the same item in two different trees."""
+
+    __slots__ = ['file_id', 'paths', 'changed_content', 'versioned', 'parent',
+                 'name', 'kind', 'executable']
+
+    def __init__(self, file_id, paths, changed_content, versioned, parent,
+                 name, kind, executable):
+        self.file_id = file_id
+        self.paths = paths
+        self.changed_content = changed_content
+        self.versioned = versioned
+        self.parent = parent
+        self.name = name
+        self.kind = kind
+        self.executable = executable
+
+    def __len__(self):
+        return 8
+
+    def __tuple__(self):
+        return (self.file_id, self.paths, self.changed_content, self.versioned,
+                self.parent, self.name, self.kind, self.executable)
+
+    def __eq__(self, other):
+        if isinstance(other, TreeChange):
+            return tuple(self) == tuple(other)
+        if isinstance(other, tuple):
+            return tuple(self) == other
+        return False
+
+    def __getitem__(self, i):
+        if i == 0:
+            return self.file_id
+        if i == 1:
+            return self.paths
+        if i == 2:
+            return self.changed_content
+        if i == 3:
+            return self.versioned
+        if i == 4:
+            return self.parent
+        if i == 5:
+            return self.name
+        if i == 6:
+            return self.kind
+        if i == 7:
+            return self.executable
+        if isinstance(i, slice):
+            return tuple(self[x] for x in i.indices(7))
+        raise IndexError(i)
+
+
 class Tree(object):
     """Abstract file tree.
 
@@ -762,7 +815,7 @@ class InterTree(InterObject):
             changes = True
         else:
             changes = False
-        return (file_id, (source_path, target_path), changed_content,
+        return TreeChange(file_id, (source_path, target_path), changed_content,
                 versioned, parent, name, kind, executable), changes
 
     def compare(self, want_unchanged=False, specific_files=None,
@@ -882,7 +935,8 @@ class InterTree(InterObject):
                 target_kind, target_executable, target_stat = \
                     self.target._comparison_data(
                         fake_entry, unversioned_path[1])
-                yield (None, (None, unversioned_path[1]), True, (False, False),
+                yield TreeChange(
+                       None, (None, unversioned_path[1]), True, (False, False),
                        (None, None),
                        (None, unversioned_path[0][-1]),
                        (None, target_kind),
@@ -918,7 +972,8 @@ class InterTree(InterObject):
             unversioned_path = all_unversioned.popleft()
             to_kind, to_executable, to_stat = \
                 self.target._comparison_data(fake_entry, unversioned_path[1])
-            yield (None, (None, unversioned_path[1]), True, (False, False),
+            yield TreeChange(
+                    None, (None, unversioned_path[1]), True, (False, False),
                    (None, None),
                    (None, unversioned_path[0][-1]),
                    (None, to_kind),
