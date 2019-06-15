@@ -173,7 +173,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     delta.renamed.sort()
 
     def missing_key(change):
-        return (change.file_id or '', change.path)
+        return (change[0] or '', change[1])
     delta.missing.sort(key=missing_key)
     # TODO: jam 20060529 These lists shouldn't need to be sorted
     #       since we added them in alphabetical order.

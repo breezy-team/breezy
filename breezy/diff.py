@@ -1047,18 +1047,20 @@ class DiffTree(object):
         for change in sorted(iterator, key=changes_key):
             # The root does not get diffed, and items with no known kind (that
             # is, missing) in both trees are skipped as well.
-            if change.parent == (None, None) or change.kind == (None, None):
+            if change.parent_id == (None, None) or change.kind == (None, None):
                 continue
-            if change.kind == 'symlink' and not self.new_tree.supports_symlinks():
+            if change.kind[0] == 'symlink' and not self.new_tree.supports_symlinks():
                 warning(
                     'Ignoring "%s" as symlinks are not '
                     'supported on this filesystem.' % (change.path[0],))
                 continue
-            oldpath, newpath = paths
+            oldpath, newpath = change.path
             oldpath_encoded = get_encoded_path(change.path[0])
             newpath_encoded = get_encoded_path(change.path[1])
             old_present = (change.kind[0] is not None and change.versioned[0])
             new_present = (change.kind[1] is not None and change.versioned[1])
+            executable = change.executable
+            kind = change.kind
             renamed = (change.parent_id[0], change.name[0]) != (change.parent_id[1], change.name[1])
 
             properties_changed = []
@@ -1087,7 +1089,7 @@ class DiffTree(object):
                 # modified *somehow*, either content or execute bit.
                 self.to_file.write(b"=== modified %s '%s'%s\n" % (kind[0].encode('ascii'),
                                                                   newpath_encoded, prop_str))
-            if changed_content:
+            if change.changed_content:
                 self._diff(oldpath, newpath, kind[0], kind[1])
                 has_changes = 1
             if renamed:

@@ -893,6 +893,7 @@ class InterCHKRevisionTree(InterTree):
         # FIXME: nested tree support
         for result in self.target.root_inventory.iter_changes(
                 self.source.root_inventory):
+            result = TreeChange(*result)
             if specific_file_ids is not None:
                 if result.file_id not in specific_file_ids:
                     # A change from the whole tree that we don't want to show yet.
@@ -902,7 +903,7 @@ class InterCHKRevisionTree(InterTree):
                     continue
                 precise_file_ids.add(result.parent_id[1])
             yield result
-            changed_file_ids.add(result.file_id)
+            changed_file_ids.add(result[0])
         if specific_file_ids is not None:
             for result in self._handle_precise_ids(precise_file_ids,
                                                    changed_file_ids, discarded_changes=discarded_changes):

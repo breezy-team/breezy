@@ -427,9 +427,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # Bail out if we are going to delete files we shouldn't
             if not keep_files and not force:
                 for change in self.iter_changes(
-                         self.basis_tree(), include_unchanged=True,
-                         require_versioned=False, want_unversioned=True,
-                         specific_files=files):
+                        self.basis_tree(), include_unchanged=True,
+                        require_versioned=False, want_unversioned=True,
+                        specific_files=files):
                     if change.versioned[0] is False:
                         # The record is unknown or newly added
                         files_to_backup.append(change.path[1])

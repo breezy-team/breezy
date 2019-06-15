@@ -2104,8 +2104,9 @@ class CHKInventory(CommonInventory):
                 # Could happen when only the revision changed for a directory
                 # for instance.
                 continue
-            yield (file_id, (path_in_source, path_in_target), changed_content,
-                   versioned, parent, name, kind, executable)
+            yield (
+                file_id, (path_in_source, path_in_target), changed_content,
+                versioned, parent, name, kind, executable)
 
     def __len__(self):
         """Return the number of entries in the inventory."""

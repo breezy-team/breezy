@@ -2415,8 +2415,8 @@ class _PreviewTree(inventorytree.InventoryTree):
         if changes is None:
             get_old = True
         else:
-            changed_content, versioned, kind = (changes.content_changed, changes.versioned,
-                                                changes.kind)
+            changed_content, versioned, kind = (
+                changes.changed_content, changes.versioned, changes.kind)
             if kind[1] is None:
                 return None
             get_old = (kind[0] == 'file' and versioned[0])
@@ -2910,19 +2910,19 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
         skip_root = False
     try:
         deferred_files = []
-        for id_num, (file_id, path, changed_content, versioned, parent, name,
-                     kind, executable) in enumerate(change_list):
-            target_path, wt_path = path
-            target_versioned, wt_versioned = versioned
-            target_parent, wt_parent = parent
-            target_name, wt_name = name
-            target_kind, wt_kind = kind
-            target_executable, wt_executable = executable
+        for id_num, change in enumerate(change_list):
+            file_id = change.file_id
+            target_path, wt_path = change.path
+            target_versioned, wt_versioned = change.versioned
+            target_parent, wt_parent = change.parent_id
+            target_name, wt_name = change.name
+            target_kind, wt_kind = change.kind
+            target_executable, wt_executable = change.executable
             if skip_root and wt_parent is None:
                 continue
             trans_id = tt.trans_id_file_id(file_id)
             mode_id = None
-            if changed_content:
+            if change.changed_content:
                 keep_content = False
                 if wt_kind == 'file' and (backups or target_kind is None):
                     wt_sha1 = working_tree.get_file_sha1(wt_path)

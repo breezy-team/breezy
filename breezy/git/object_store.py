@@ -293,7 +293,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             except KeyError:
                 if change.changed_content:
                     yield (change.path[1], blob,
-                           (file_id, tree.get_file_revision(path[1])))
+                           (change.file_id, tree.get_file_revision(change.path[1])))
         elif change.kind[1] is None:
             shamap[change.path[1]] = None
         elif change.kind[1] != 'directory':

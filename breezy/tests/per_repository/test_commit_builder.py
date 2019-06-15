@@ -26,6 +26,7 @@ from breezy import (
     revision as _mod_revision,
     tests,
     )
+from breezy.tree import TreeChange
 from breezy.bzr import (
     inventorytree,
     )
@@ -193,10 +194,11 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         with tree.lock_write():
             builder = tree.branch.get_commit_builder([rev_id])
             try:
-                delete_change = (foo_id, ('foo', None), True, (True, False),
-                                 (tree.path2id(''), None), ('foo',
-                                                            None), ('file', None),
-                                 (False, None))
+                delete_change = TreeChange(
+                    foo_id, ('foo', None), True, (True, False),
+                    (tree.path2id(''), None),
+                    ('foo', None), ('file', None),
+                    (False, None))
                 list(builder.record_iter_changes(tree, rev_id,
                                                  [delete_change]))
                 self.assertEqual(("foo", None, foo_id, None),

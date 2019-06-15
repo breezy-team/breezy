@@ -714,9 +714,7 @@ class Commit(object):
                     continue
                 deleted_paths.append(change[1][1])
                 # Reset the new path (None) and new versioned flag (False)
-                change = TreeChange(
-                    change.file_id, (change.path[0], None), change.changed_content,
-                    (change.versioned[0], False)) + change[4:]
+                change = change.discard_new()
                 new_path = change.path[1]
                 versioned = False
             elif kind == 'tree-reference':

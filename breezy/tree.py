@@ -143,10 +143,20 @@ class TreeChange(object):
             return tuple(self) == other
         return False
 
+    def __lt__(self, other):
+        return tuple(self) < tuple(other)
+
     def __getitem__(self, i):
         if isinstance(i, slice):
             return tuple(self).__getitem__(i)
         return getattr(self, self.__slots__[i])
+
+    def discard_new(self):
+        return self.__class__(
+            self.file_id, (self.path[0], None), self.changed_content,
+            (self.versioned[0], None), (self.parent_id[0], None),
+            (self.name[0], None), (self.kind[0], None),
+            (self.executable[0], None))
 
 
 class Tree(object):
