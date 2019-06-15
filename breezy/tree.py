@@ -148,6 +148,9 @@ class TreeChange(object):
             return tuple(self).__getitem__(i)
         return getattr(self, self.__slots__[i])
 
+    def is_reparented(self):
+        return self.parent_id[0] != self.parent_id[1]
+
 
 class Tree(object):
     """Abstract file tree.
@@ -904,9 +907,11 @@ class InterTree(InterObject):
         to_paths = {}
         from_entries_by_dir = list(self.source.iter_entries_by_dir(
             specific_files=source_specific_files))
-        from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
+        from_data = dict(from_entries_by_dir)
         to_entries_by_dir = list(self.target.iter_entries_by_dir(
             specific_files=target_specific_files))
+        path_equivs = find_previous_paths(
+            self.target, self.source, [p for p, e in to_entries_by_dir])
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
         # the unversioned path lookup only occurs on real trees - where there
@@ -926,32 +931,32 @@ class InterTree(InterObject):
                     (None, unversioned_path[0][-1]),
                     (None, target_kind),
                     (None, target_executable))
-            source_path, source_entry = from_data.get(target_entry.file_id,
-                                                      (None, None))
-            result, changes = self._changes_from_entries(source_entry,
-                                                         target_entry, source_path=source_path, target_path=target_path)
-            to_paths[result[0]] = result[1][1]
+            source_path = path_equivs[target_path]
+            if source_path is not None:
+                source_entry = from_data.get(source_path)
+            else:
+                source_entry = None
+            result, changes = self._changes_from_entries(
+                source_entry, target_entry, source_path=source_path, target_path=target_path)
+            to_paths[result.file_id] = result.path[1]
             entry_count += 1
-            if result[3][0]:
+            if result.versioned[0]:
                 entry_count += 1
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
             if changes or include_unchanged:
                 if specific_files is not None:
-                    new_parent_id = result[4][1]
-                    precise_file_ids.add(new_parent_id)
-                    changed_file_ids.append(result[0])
+                    precise_file_ids.add(result.parent_id[1])
+                    changed_file_ids.append(result.file_id)
                 yield result
             # Ensure correct behaviour for reparented/added specific files.
             if specific_files is not None:
                 # Record output dirs
-                if result[6][1] == 'directory':
-                    seen_dirs.add(result[0])
+                if result.kind[1] == 'directory':
+                    seen_dirs.add(result.file_id)
                 # Record parents of reparented/added entries.
-                versioned = result[3]
-                parents = result[4]
-                if not versioned[0] or parents[0] != parents[1]:
-                    seen_parents.add(parents[1])
+                if not result.versioned[0] or result.is_reparented():
+                    seen_parents.add(result.parent_id[1])
         while all_unversioned:
             # yield any trailing unversioned paths
             unversioned_path = all_unversioned.popleft()
@@ -1081,20 +1086,20 @@ class InterTree(InterObject):
                 else:
                     changes = True
                 # Get this parents parent to examine.
-                new_parent_id = result[4][1]
+                new_parent_id = result.parent_id[1]
                 precise_file_ids.add(new_parent_id)
                 if changes:
-                    if (result[6][0] == 'directory' and
-                            result[6][1] != 'directory'):
+                    if (result.kind[0] == 'directory' and
+                            result.kind[1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
                         if source_entry is None:
                             # Reusing a discarded change.
                             source_entry = self._get_entry(
-                                self.source, result[1][0])
+                                self.source, result.path[0])
                         precise_file_ids.update(
                             child.file_id
-                            for child in self.source.iter_child_entries(result[1][0]))
+                            for child in self.source.iter_child_entries(result.path[0]))
                     changed_file_ids.add(result[0])
                     yield result
 
@@ -1108,8 +1113,6 @@ class InterTree(InterObject):
 
         :param source_path: Path of the file in the source tree
         :param target_path: Path of the file in the target tree
-        :param source_file_id: Optional file id of the file in the source tree
-        :param target_file_id: Optional file id of the file in the target tree
         :param source_stat: Optional stat value of the file in the source tree
         :param target_stat: Optional stat value of the file in the target tree
         :return: Boolean indicating whether the files have the same contents
@@ -1144,7 +1147,7 @@ def find_previous_paths(from_tree, to_tree, paths):
 
     :param from_tree: From tree
     :param to_tree: To tree
-    :param paths: Iterable over paths to search for
+    :param paths: Iterable over paths in from_tree to search for
     :return: Dictionary mapping from from_tree paths to paths in to_tree, or
         None if there is no equivalent path.
     """
@@ -1159,7 +1162,7 @@ def find_previous_path(from_tree, to_tree, path, file_id=None):
 
     :param from_tree: From tree
     :param to_tree: To tree
-    :param path: Path to search for
+    :param path: Path to search for (exists in from_tree)
     :return: path in to_tree, or None if there is no equivalent path.
     """
     if file_id is None:
