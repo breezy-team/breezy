@@ -37,6 +37,9 @@ Improvements
   ``brz propose``, for hosting sites that support it.
   (Jelmer Vernooĳ)
 
+* Automatically upgrade to branch format 8 when setting branch references.
+  (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
