@@ -52,7 +52,7 @@ def read_news_bugnos(path):
     :return: list of bug numbers that were closed.
     """
     # Pattern to find bug numbers
-    bug_pattern = re.compile("\#([0-9]+)")
+    bug_pattern = re.compile(r"\#([0-9]+)")
     ret = set()
     with open(path, 'r') as f:
         section = ""

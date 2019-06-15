@@ -74,8 +74,8 @@ def plausible_launchpad_url(url):
         return False
     if url.startswith('lp:'):
         return True
-    regex = re.compile('([a-z]*\+)*(bzr\+ssh|http|ssh|git|https)'
-                       '://(bazaar|git).*\.launchpad\.net')
+    regex = re.compile(r'([a-z]*\+)*(bzr\+ssh|http|ssh|git|https)'
+                       r'://(bazaar|git).*\.launchpad\.net')
     return bool(regex.match(url))
 
 
