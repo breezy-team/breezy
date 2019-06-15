@@ -213,7 +213,7 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
                            'lp:///apt')
         self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/apt',
                            'lp://production/apt')
-        self.assertResolve('bzr+ssh://bazaar.launchpad.dev/+branch/apt',
+        self.assertResolve('bzr+ssh://bazaar.launchpad.test/+branch/apt',
                            'lp://dev/apt')
         self.assertResolve('bzr+ssh://bazaar.staging.launchpad.net/+branch/apt',
                            'lp://staging/apt')
@@ -397,7 +397,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         class FooService(object):
             """A directory service that maps the name to a FILE url"""
 
-            def look_up(self, name, url):
+            def look_up(self, name, url, purpose=None):
                 if 'lp:///apt' == url:
                     return target_branch.base.rstrip('/')
                 return '!unexpected look_up value!'

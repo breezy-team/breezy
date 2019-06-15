@@ -36,6 +36,7 @@ from dulwich.objects import (
 from dulwich.object_store import (
     PackBasedObjectStore,
     PACKDIR,
+    read_packs_file,
     )
 from dulwich.pack import (
     MemoryPackIndex,
@@ -587,16 +588,41 @@ class TransportObjectStore(PackBasedObjectStore):
                 ret.append(l)
             return ret
 
-    @property
-    def packs(self):
-        # FIXME: Never invalidates.
-        if not self._pack_cache:
-            self._update_pack_cache()
-        return self._pack_cache.values()
-
     def _update_pack_cache(self):
-        for pack in self._load_packs():
-            self._pack_cache[pack._basename] = pack
+        pack_files = set()
+        pack_dir_contents = self._pack_names()
+        for name in pack_dir_contents:
+            if name.startswith("pack-") and name.endswith(".pack"):
+                # verify that idx exists first (otherwise the pack was not yet
+                # fully written)
+                idx_name = os.path.splitext(name)[0] + ".idx"
+                if idx_name in pack_dir_contents:
+                    pack_files.add(os.path.splitext(name)[0])
+
+        new_packs = []
+        for basename in pack_files:
+            pack_name = basename + ".pack"
+            if basename not in self._pack_cache:
+                try:
+                    size = self.pack_transport.stat(pack_name).st_size
+                except TransportNotPossible:
+                    f = self.pack_transport.get(pack_name)
+                    pd = PackData(pack_name, f)
+                else:
+                    pd = PackData(
+                        pack_name, self.pack_transport.get(pack_name),
+                        size=size)
+                idxname = basename + ".idx"
+                idx = load_pack_index_file(
+                    idxname, self.pack_transport.get(idxname))
+                pack = Pack.from_objects(pd, idx)
+                pack._basename = basename
+                self._pack_cache[basename] = pack
+                new_packs.append(pack)
+        # Remove disappeared pack files
+        for f in set(self._pack_cache) - pack_files:
+            self._pack_cache.pop(f).close()
+        return new_packs
 
     def _pack_names(self):
         try:
@@ -608,9 +634,6 @@ class TransportObjectStore(PackBasedObjectStore):
                 # Hmm, warn about running 'git update-server-info' ?
                 return iter([])
             else:
-                # TODO(jelmer): Move to top-level after dulwich
-                # 0.19.7 is released.
-                from dulwich.object_store import read_packs_file
                 with f:
                     return read_packs_file(f)
         except NoSuchFile:
@@ -619,26 +642,10 @@ class TransportObjectStore(PackBasedObjectStore):
     def _remove_pack(self, pack):
         self.pack_transport.delete(os.path.basename(pack.index.path))
         self.pack_transport.delete(pack.data.filename)
-
-    def _load_packs(self):
-        ret = []
-        for name in self._pack_names():
-            if name.startswith("pack-") and name.endswith(".pack"):
-                try:
-                    size = self.pack_transport.stat(name).st_size
-                except TransportNotPossible:
-                    f = self.pack_transport.get(name)
-                    pd = PackData(name, f)
-                else:
-                    pd = PackData(name, self.pack_transport.get(name),
-                                  size=size)
-                idxname = name.replace(".pack", ".idx")
-                idx = load_pack_index_file(
-                    idxname, self.pack_transport.get(idxname))
-                pack = Pack.from_objects(pd, idx)
-                pack._basename = idxname[:-4]
-                ret.append(pack)
-        return ret
+        try:
+            del self._pack_cache[os.path.basename(pack._basename)]
+        except KeyError:
+            pass
 
     def _iter_loose_objects(self):
         for base in self.transport.list_dir('.'):
@@ -702,7 +709,7 @@ class TransportObjectStore(PackBasedObjectStore):
         idx = load_pack_index_file(basename + ".idx", idxfile)
         final_pack = Pack.from_objects(p, idx)
         final_pack._basename = basename
-        self._add_known_pack(basename, final_pack)
+        self._add_cached_pack(basename, final_pack)
         return final_pack
 
     def move_in_thin_pack(self, f):
@@ -735,8 +742,6 @@ class TransportObjectStore(PackBasedObjectStore):
             write_pack_index_v2(idxfile, entries, data_sum)
         finally:
             idxfile.close()
-        # TODO(jelmer): Just add new pack to the cache
-        self._flush_pack_cache()
 
     def add_pack(self):
         """Add a new pack to this object store.

@@ -143,6 +143,9 @@ class cmd_propose_merge(Command):
         Option('name', help='Name of the new remote branch.', type=str),
         Option('description', help='Description of the change.', type=str),
         Option('prerequisite', help='Prerequisite branch.', type=str),
+        Option(
+            'commit-message',
+            help='Set commit message for merge, if supported', type=str),
         ListOption('labels', short_name='l', type=text_type,
                    help='Labels to apply.'),
         Option('no-allow-lossy',
@@ -154,7 +157,7 @@ class cmd_propose_merge(Command):
 
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
-            labels=None, prerequisite=None):
+            labels=None, prerequisite=None, commit_message=None):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -191,7 +194,8 @@ class cmd_propose_merge(Command):
         try:
             proposal = proposal_builder.create_proposal(
                 description=description, reviewers=reviewers,
-                prerequisite_branch=prerequisite_branch, labels=labels)
+                prerequisite_branch=prerequisite_branch, labels=labels,
+                commit_message=commit_message)
         except _mod_propose.MergeProposalExists as e:
             raise errors.BzrCommandError(gettext(
                 'There is already a branch merge proposal: %s') % e.url)
@@ -305,9 +309,9 @@ class cmd_gitlab_login(Command):
                  urlutils.join(url, "profile/personal_access_tokens"))
             private_token = ui.ui_factory.get_password(u'Private token')
         if not no_check:
-            from gitlab import Gitlab
-            gl = Gitlab(url=url, private_token=private_token)
-            gl.auth()
+            from breezy.transport import get_transport
+            from .gitlabs import GitLab
+            GitLab(get_transport(url), private_token=private_token)
         store_gitlab_token(name=name, url=url, private_token=private_token)
 
 
@@ -319,6 +323,7 @@ class cmd_my_merge_proposals(Command):
     hidden = True
 
     takes_options = [
+        'verbose',
         RegistryOption.from_kwargs(
             'status',
             title='Proposal Status',
@@ -330,9 +335,31 @@ class cmd_my_merge_proposals(Command):
             merged='Merged merge proposals',
             closed='Closed merge proposals')]
 
-    def run(self, status='open'):
+    def run(self, status='open', verbose=False):
         from .propose import hosters
         for name, hoster_cls in hosters.items():
             for instance in hoster_cls.iter_instances():
                 for mp in instance.iter_my_proposals(status=status):
                     self.outf.write('%s\n' % mp.url)
+                    if verbose:
+                        self.outf.write(
+                            '(Merging %s into %s)\n' %
+                            (mp.get_source_branch_url(),
+                             mp.get_target_branch_url()))
+                        self.outf.writelines(
+                            ['\t%s\n' % l
+                             for l in mp.get_description().splitlines()])
+                        self.outf.write('\n')
+
+
+class cmd_land_merge_proposal(Command):
+    __doc__ = """Land a merge proposal."""
+
+    takes_args = ['url']
+    takes_options = [
+        Option('message', help='Commit message to use.', type=str)]
+
+    def run(self, url, message=None):
+        from .propose import get_proposal_by_url
+        proposal = get_proposal_by_url(url)
+        proposal.merge(commit_message=message)

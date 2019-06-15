@@ -1553,7 +1553,7 @@ def get_transport_from_url(url, possible_transports=None):
     raise errors.UnsupportedProtocol(url, last_err)
 
 
-def get_transport(base, possible_transports=None):
+def get_transport(base, possible_transports=None, purpose=None):
     """Open a transport to access a URL or directory.
 
     :param base: either a URL or a directory name.
@@ -1561,13 +1561,17 @@ def get_transport(base, possible_transports=None):
     :param transports: optional reusable transports list. If not None, created
         transports will be added to the list.
 
+    :param purpose: Purpose for which the transport will be used
+        (e.g. 'read', 'write' or None)
+
     :return: A new transport optionally sharing its connection with one of
         possible_transports.
     """
     if base is None:
         base = '.'
     return get_transport_from_url(
-        _mod_location.location_to_url(base), possible_transports)
+        _mod_location.location_to_url(base, purpose=purpose),
+        possible_transports)
 
 
 def _try_transport_factories(base, factory_list):

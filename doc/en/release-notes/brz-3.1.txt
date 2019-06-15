@@ -1,0 +1,78 @@
+####################
+Breezy Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+brz 3.1.0
+#########
+
+:Codename: Nirvana
+:3.1.0: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+ * A new ``brz land`` command can merge merge proposals on Launchpad,
+   GitHub and GitLab sites. (Jelmer Vernooĳ, #1816213)
+
+ * The 'patch' command is now bundled with brz.
+   Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
+
+ * The 'quilt' plugin, extracted from brz-debian, is now
+   bundled. (Jelmer Vernooĳ)
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+* A new ``--commit-message`` option has been added to
+  ``brz propose``, for hosting sites that support it.
+  (Jelmer Vernooĳ)
+
+* Automatically upgrade to branch format 8 when setting branch references.
+  (Jelmer Vernooĳ)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where brz would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   breezy.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for brz developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to brz's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+..
+   vim: tw=74 ft=rst ff=unix

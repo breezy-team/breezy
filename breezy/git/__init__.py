@@ -27,7 +27,7 @@ from __future__ import absolute_import
 import os
 import sys
 
-dulwich_minimum_version = (0, 19, 7)
+dulwich_minimum_version = (0, 19, 11)
 
 from .. import (  # noqa: F401
     __version__ as breezy_version,
@@ -145,30 +145,37 @@ def user_agent_for_github():
 class RemoteGitProber(Prober):
 
     def probe_http_transport(self, transport):
+        # This function intentionally doesn't use any of the support code under
+        # breezy.git, since it's called for every repository that's
+        # accessed over HTTP, whether it's Git, Bzr or something else.
+        # Importing Dulwich and the other support code adds unnecessray slowdowns.
         from .. import urlutils
         base_url, _ = urlutils.split_segment_parameters(
             transport.external_url())
-        url = urlutils.join(base_url, "info/refs") + "?service=git-upload-pack"
-        from ..transport.http import Request
+        url = urlutils.URL.from_string(base_url)
+        url.user = url.quoted_user = None
+        url.password = url.quoted_password = None
+        url = urlutils.join(str(url), "info/refs") + "?service=git-upload-pack"
         headers = {"Content-Type": "application/x-git-upload-pack-request",
                    "Accept": "application/x-git-upload-pack-result",
                    }
-        req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
-                      headers=headers)
         (scheme, user, password, host, port,
-         path) = urlutils.parse_url(req.get_full_url())
+         path) = urlutils.parse_url(url)
         if host == "github.com":
             # GitHub requires we lie.
             # https://github.com/dulwich/dulwich/issues/562
-            req.add_header("User-Agent", user_agent_for_github())
+            headers["User-Agent"] = user_agent_for_github()
         elif host == "bazaar.launchpad.net":
             # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
             raise brz_errors.NotBranchError(transport.base)
-        resp = transport._perform(req)
-        if resp.code in (404, 405):
+        resp = transport.request('GET', url, headers=headers)
+        if resp.status in (404, 405):
             raise brz_errors.NotBranchError(transport.base)
-        headers = resp.headers
-        ct = headers.get("Content-Type")
+        elif resp.status != 200:
+            raise brz_errors.InvalidHttpResponse(
+                url, 'Unable to handle http code %d' % resp.status)
+
+        ct = resp.getheader("Content-Type")
         if ct is None:
             raise brz_errors.NotBranchError(transport.base)
         if ct.startswith("application/x-git"):

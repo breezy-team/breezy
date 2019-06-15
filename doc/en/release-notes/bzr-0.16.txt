@@ -183,7 +183,7 @@ Improvements
 Internals
 *********
 
-* bzrlib API compatability with 0.8 has been dropped, cleaning up some
+* bzrlib API compatibility with 0.8 has been dropped, cleaning up some
   code paths. (Robert Collins)
 
 * Change the format of chroot URLS so that they can be safely manipulated

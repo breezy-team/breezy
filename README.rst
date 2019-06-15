@@ -17,7 +17,9 @@ version 2 or later.
 
 Breezy is a friendly fork of the Bazaar (``bzr``) project, hosted on
 http://bazaar.canonical.com/. It is backwards compatibility with
-Bazaar's disk format and protocols.
+Bazaar's disk format and protocols. One of the key differences with
+Bazaar is that Breezy also runs on Python 3.3 and later, in addition to
+Python 2.7.
 
 Breezy highlights
 =================
@@ -53,7 +55,7 @@ like to offer suggestions or feedback, please get in touch with us:
 
   Please mention that you are using Breezy rather than Bazaar.
 
-* Talk to us in irc://irc.ubuntu.com/bzr
+* Talk to us in irc://irc.freenode.net/bzr
 
   Please mention that you are using Breezy rather than Bazaar.
 

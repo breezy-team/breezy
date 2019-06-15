@@ -332,13 +332,23 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         except KeyError:
             pass
         # FIXME: Should be the same as in parent
-        if ie.kind in ("file", "symlink"):
+        if ie.kind == "file":
             try:
                 return idmap.lookup_blob_id(ie.file_id, ie.revision)
             except KeyError:
                 # no-change merge ?
                 blob = Blob()
                 blob.data = tree.get_file_text(path)
+                if add_cache_entry is not None:
+                    add_cache_entry(blob, (ie.file_id, ie.revision), path)
+                return blob.id
+        elif ie.kind == "symlink":
+            try:
+                return idmap.lookup_blob_id(ie.file_id, ie.revision)
+            except KeyError:
+                # no-change merge ?
+                target = tree.get_symlink_target(path)
+                blob = symlink_to_blob(target)
                 if add_cache_entry is not None:
                     add_cache_entry(blob, (ie.file_id, ie.revision), path)
                 return blob.id
@@ -359,24 +369,13 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             continue
 
         if tree.kind(path) != 'directory':
-            raise AssertionError
+            continue
 
-        obj = Tree()
-        for value in tree.iter_child_entries(path):
-            if value.name in BANNED_FILENAMES:
-                trace.warning('not exporting %s with banned filename %s',
-                              value.kind, value.name)
-                continue
-            child_path = osutils.pathjoin(path, value.name)
-            try:
-                mode = unusual_modes[child_path]
-            except KeyError:
-                mode = entry_mode(value)
-            hexsha = ie_to_hexsha(child_path, value)
-            if hexsha is not None:
-                obj.add(value.name.encode("utf-8"), mode, hexsha)
+        obj = directory_to_tree(
+            path, tree.iter_child_entries(path), ie_to_hexsha, unusual_modes,
+            dummy_file_name, path == '')
 
-        if len(obj) > 0:
+        if obj is not None:
             file_id = tree.path2id(path)
             if add_cache_entry is not None:
                 add_cache_entry(obj, (file_id, tree.get_revision_id()), path)
@@ -458,15 +457,12 @@ class BazaarObjectStore(BaseObjectStore):
             return
         self.start_write_group()
         try:
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 for i, revid in enumerate(graph.iter_topo_order(
                         missing_revids)):
                     trace.mutter('processing %r', revid)
                     pb.update("updating git map", i, len(missing_revids))
                     self._update_sha_map_revision(revid)
-            finally:
-                pb.finished()
             if stop_revision is None:
                 self._map_updated = True
         except BaseException:
@@ -589,7 +585,7 @@ class BazaarObjectStore(BaseObjectStore):
         for (file_id, revision, expected_sha), chunks in stream:
             blob = Blob()
             blob.chunked = chunks
-            if blob.id != expected_sha and blob.data == "":
+            if blob.id != expected_sha and blob.data == b"":
                 # Perhaps it's a symlink ?
                 tree = self.tree_cache.revision_tree(revision)
                 path = tree.id2path(file_id)
@@ -825,8 +821,7 @@ class BazaarObjectStore(BaseObjectStore):
         graph = self.repository.get_graph()
         todo = _find_missing_bzr_revids(graph, pending, processed)
         ret = PackTupleIterable(self)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             for i, revid in enumerate(graph.iter_topo_order(todo)):
                 pb.update("generating git objects", i, len(todo))
                 try:
@@ -838,8 +833,6 @@ class BazaarObjectStore(BaseObjectStore):
                         rev, tree, lossy=lossy):
                     ret.add(obj.id, path)
             return ret
-        finally:
-            pb.finished()
 
     def add_thin_pack(self):
         import tempfile

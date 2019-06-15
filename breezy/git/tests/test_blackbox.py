@@ -78,6 +78,15 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(output, '')
         self.assertFileEqual("foo\n", ".gitignore")
 
+    def test_cat_revision(self):
+        self.simple_commit()
+        output, error = self.run_bzr(['cat-revision', '-r-1'], retcode=3)
+        self.assertContainsRe(
+            error,
+            'brz: ERROR: Repository .* does not support access to raw '
+            'revision texts')
+        self.assertEqual(output, '')
+
     def test_branch(self):
         os.mkdir("gitbranch")
         GitRepo.init(os.path.join(self.test_dir, "gitbranch"))
@@ -141,6 +150,22 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(b"", output)
         self.assertTrue(error.endswith(b"Created new branch.\n"))
 
+    def test_push_lossy_non_mainline(self):
+        self.run_bzr(['init', '--git', 'bla'])
+        self.run_bzr(['init', 'foo'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        self.run_bzr(['branch', 'foo', 'foo1'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo1'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        self.run_bzr(['merge', '-d', 'foo', 'foo1'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'merge', 'foo'])
+        output, error = self.run_bzr(['push', '--lossy', '-r1.1.1', '-d', 'foo', 'bla'])
+        self.assertEqual("", output)
+        self.assertEqual(
+            'Pushing from a Bazaar to a Git repository. For better '
+            'performance, push into a Bazaar repository.\n'
+            'Pushed up to revision 2.\n', error)
+
     def test_log(self):
         # Smoke test for "bzr log" in a git repository.
         self.simple_commit()
@@ -188,9 +213,9 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(['diff', '--format=git'], retcode=1)
         self.assertEqual(error, '')
         self.assertEqual(output,
-                         'diff --git /dev/null b/a\n'
-                         'old mode 0\n'
-                         'new mode 100644\n'
+                         'diff --git a/a b/a\n'
+                         'old file mode 0\n'
+                         'new file mode 100644\n'
                          'index 0000000..c197bd8 100644\n'
                          '--- /dev/null\n'
                          '+++ b/a\n'
@@ -308,6 +333,7 @@ class ShallowTests(ExternalBase):
         self.repo.stage("foo")
         self.repo.do_commit(
             b"message", committer=b"Somebody <user@example.com>",
+            author=b"Somebody <user@example.com>",
             commit_timestamp=1526330165, commit_timezone=0,
             author_timestamp=1526330165, author_timezone=0,
             merge_heads=[b'aa' * 20])
@@ -386,7 +412,6 @@ class SwitchTests(ExternalBase):
 class GrepTests(ExternalBase):
 
     def test_simple_grep(self):
-        self.requireFeature(PluginLoadedFeature('grep'))
         tree = self.make_branch_and_tree('.', format='git')
         self.build_tree_contents([('a', 'text for a\n')])
         tree.add(['a'])
@@ -455,3 +480,37 @@ class GitObjectsTests(ExternalBase):
 
     def test_in_bzr(self):
         self.run_simple(format='2a')
+
+
+class GitApplyTests(ExternalBase):
+
+    def test_apply(self):
+        b = self.make_branch_and_tree('.')
+
+        with open('foo.patch', 'w') as f:
+            f.write("""\
+From bdefb25fab801e6af0a70e965f60cb48f2b759fa Mon Sep 17 00:00:00 2001
+From: Dmitry Bogatov <KAction@debian.org>
+Date: Fri, 8 Feb 2019 23:28:30 +0000
+Subject: [PATCH] Add fixed for out-of-date-standards-version
+
+---
+ message           | 3 +++
+ 1 files changed, 14 insertions(+)
+ create mode 100644 message
+
+diff --git a/message b/message
+new file mode 100644
+index 0000000..05ec0b1
+--- /dev/null
++++ b/message
+@@ -0,0 +1,3 @@
++Update standards version, no changes needed.
++Certainty: certain
++Fixed-Lintian-Tags: out-of-date-standards-version
+""")
+        output, error = self.run_bzr('git-apply foo.patch')
+        self.assertContainsRe(
+            error,
+            'Committing to: .*\n'
+            'Committed revision 1.\n')

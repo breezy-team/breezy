@@ -235,6 +235,9 @@ class TestImportCommit(tests.TestCase):
         self.assertRaises(
             UnknownMercurialCommitExtra,
             mapping.import_commit, c, mapping.revision_id_foreign_to_bzr)
+        self.assertEqual(
+            mapping.revision_id_foreign_to_bzr(c.id),
+            mapping.get_revision_id(c))
 
 
 class RoundtripRevisionsFromBazaar(tests.TestCase):

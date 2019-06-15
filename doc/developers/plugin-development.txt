@@ -31,7 +31,7 @@ Testing
 To ensure your plugin under development is available to Breezy, set
 the ``BRZ_PLUGIN_PATH`` environment variable to its parent directory.
 Alternatively, you may wish to develop your plugin within a directory
-under your personal plugins area (``~/.bazaar/plugins`` on GNU/Linux)
+under your personal plugins area (``~/.config/breezy/plugins`` on GNU/Linux)
 or put a symbolic link in that area pointing to your plugin under
 test.  Finally you can use ``BRZ_PLUGINS_AT`` to point to a specific
 directory for a specific plugin (separated by your platform's value of

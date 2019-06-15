@@ -23,6 +23,7 @@ responses.
 
 from __future__ import absolute_import
 
+import cgi
 import os
 try:
     import http.client as http_client
@@ -369,7 +370,7 @@ class RangeFile(ResponseFile):
         return self._pos
 
 
-def handle_response(url, code, msg, data):
+def handle_response(url, code, getheader, data):
     """Interpret the code & headers and wrap the provided data in a RangeFile.
 
     This is a factory method which returns an appropriate RangeFile based on
@@ -377,7 +378,7 @@ def handle_response(url, code, msg, data):
 
     :param url: The url being processed. Mostly for error reporting
     :param code: The integer HTTP response code
-    :param msg: An HTTPMessage containing the headers for the response
+    :param getheader: Function for retrieving header
     :param data: A file-like object that can be read() to get the
                  requested data
     :return: A file-like object that can seek()+read() the
@@ -388,35 +389,20 @@ def handle_response(url, code, msg, data):
         rfile = ResponseFile(url, data)
     elif code == 206:
         rfile = RangeFile(url, data)
-        content_type = msg.get('content-type', None)
-        if content_type is None:
-            # When there is no content-type header we treat the response as
-            # being of type 'application/octet-stream' as per RFC2616 section
-            # 7.2.1.
-            # Therefore it is obviously not multipart
-            content_type = 'application/octet-stream'
-            is_multipart = False
-        else:
-            if PY3:
-                is_multipart = (msg.get_content_maintype() == 'multipart'
-                                and msg.get_content_subtype() == 'byteranges')
-            else:
-                is_multipart = (msg.getmaintype() == 'multipart'
-                                and msg.getsubtype() == 'byteranges')
-
-        if is_multipart:
-            # Full fledged multipart response
-            if PY3:
-                boundary = msg.get_param('boundary')
-            else:
-                boundary = msg.getparam('boundary')
-            rfile.set_boundary(boundary.encode('ascii'))
+        # When there is no content-type header we treat the response as
+        # being of type 'application/octet-stream' as per RFC2616 section
+        # 7.2.1.
+        # Therefore it is obviously not multipart
+        content_type = getheader('content-type', 'application/octet-stream')
+        mimetype, options = cgi.parse_header(content_type)
+        if mimetype == 'multipart/byteranges':
+            rfile.set_boundary(options['boundary'].encode('ascii'))
         else:
             # A response to a range request, but not multipart
-            content_range = msg.get('content-range', None)
+            content_range = getheader('content-range', None)
             if content_range is None:
-                raise errors.InvalidHttpResponse(url,
-                                                 'Missing the Content-Range header in a 206 range response')
+                raise errors.InvalidHttpResponse(
+                    url, 'Missing the Content-Range header in a 206 range response')
             rfile.set_range_from_header(content_range)
     else:
         raise errors.InvalidHttpResponse(url,

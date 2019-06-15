@@ -18,6 +18,10 @@
 
 from __future__ import absolute_import
 
+import os
+import shutil
+import stat
+
 from dulwich.objects import (
     Blob,
     Tree,
@@ -41,6 +45,7 @@ from ...tests import (
     TestCase,
     TestCaseWithTransport,
     )
+from ...tests.features import SymlinkFeature
 
 from ..cache import (
     DictGitShaMap,
@@ -144,11 +149,11 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
     def setUp(self):
         super(BazaarObjectStoreTests, self).setUp()
         self.branch = self.make_branch(".")
-        self.branch.lock_write()
-        self.addCleanup(self.branch.unlock)
         self.store = BazaarObjectStore(self.branch.repository)
 
     def test_get_blob(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
         b = Blob()
         b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
@@ -167,7 +172,31 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         self.store.lock_read()
         self.assertEqual(b, self.store[b.id])
 
+    def test_directory_converted_to_symlink(self):
+        self.requireFeature(SymlinkFeature)
+        b = Blob()
+        b.data = b'trgt'
+        self.store.lock_read()
+        self.addCleanup(self.store.unlock)
+        self.assertRaises(KeyError, self.store.__getitem__, b.id)
+        tree = self.branch.controldir.create_workingtree()
+        self.build_tree_contents([
+            ('foo/', ),
+            ('foo/bar', b'a\nb\nc\nd\ne\n')])
+        tree.add(['foo', 'foo/bar'])
+        revid1 = tree.commit('commit 1')
+        shutil.rmtree('foo')
+        os.symlink('trgt', 'foo')
+        revid2 = tree.commit('commit 2')
+        # read locks cache
+        self.assertRaises(KeyError, self.store.__getitem__, b.id)
+        self.store.unlock()
+        self.store.lock_read()
+        self.assertEqual(b, self.store[b.id])
+
     def test_get_raw(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
         b = Blob()
         b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
@@ -187,6 +216,8 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         self.assertEqual(b.as_raw_string(), self.store.get_raw(b.id)[1])
 
     def test_contains(self):
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
         b = Blob()
         b.data = b'a\nb\nc\nd\ne\n'
         self.store.lock_read()
@@ -227,6 +258,60 @@ class TreeToObjectsTests(TestCaseWithTransport):
         self.addCleanup(revtree.lock_read().unlock)
         entries = list(_tree_to_objects(revtree, [], self.idmap, {}))
         self.assertEqual(['foo', ''], [p[0] for p in entries])
+
+    def test_merge(self):
+        basis_tree = self.make_branch_and_tree('base')
+        self.build_tree(['base/foo/'])
+        basis_tree.add(['foo'])
+        basis_rev = basis_tree.commit('foo')
+        basis_revtree = basis_tree.branch.repository.revision_tree(basis_rev)
+
+        tree_a = self.make_branch_and_tree('a')
+        tree_a.pull(basis_tree.branch)
+
+        self.build_tree(['a/foo/file1'])
+        self.build_tree(['a/foo/subdir-a/'])
+        os.symlink('.', 'a/foo/subdir-a/symlink')
+        tree_a.add(['foo/subdir-a', 'foo/subdir-a/symlink'])
+
+        tree_a.add(['foo/file1'])
+        rev_a = tree_a.commit('commit a')
+        revtree_a = tree_a.branch.repository.revision_tree(rev_a)
+
+        with revtree_a.lock_read():
+            entries = list(_tree_to_objects(revtree_a, [basis_revtree],
+                           self.idmap, {}))
+            objects = {path: obj for (path, obj, key) in entries}
+            subdir_a = objects['foo/subdir-a']
+
+        tree_b = self.make_branch_and_tree('b')
+        tree_b.pull(basis_tree.branch)
+        self.build_tree(['b/foo/subdir/'])
+        os.symlink('.', 'b/foo/subdir/symlink')
+        tree_b.add(['foo/subdir', 'foo/subdir/symlink'])
+        rev_b = tree_b.commit('commit b')
+        revtree_b = tree_b.branch.repository.revision_tree(rev_b)
+        self.addCleanup(revtree_b.lock_read().unlock)
+
+        with revtree_b.lock_read():
+            list(_tree_to_objects(revtree_b, [basis_revtree], self.idmap, {}))
+
+        with tree_a.lock_write():
+            tree_a.merge_from_branch(tree_b.branch)
+        rev_merge = tree_a.commit('merge')
+
+        revtree_merge = tree_a.branch.basis_tree()
+        self.addCleanup(revtree_merge.lock_read().unlock)
+
+        entries = list(_tree_to_objects(
+            revtree_merge,
+            [tree_a.branch.repository.revision_tree(r)
+             for r in revtree_merge.get_parent_ids()],
+            self.idmap, {}))
+        objects = {path: obj for (path, obj, key) in entries}
+        self.assertEqual(set(['', 'foo', 'foo/subdir']), set(objects))
+        self.assertEqual(
+            (stat.S_IFDIR, subdir_a.id), objects['foo'][b'subdir-a'])
 
 
 class DirectoryToTreeTests(TestCase):

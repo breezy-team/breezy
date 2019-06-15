@@ -48,7 +48,10 @@ from ..errors import (
     UninitializableFormat,
     )
 from ..revisiontree import RevisionTree
-from ..sixish import text_type
+from ..sixish import (
+    text_type,
+    viewitems,
+    )
 from ..transport import (
     Transport,
     register_urlparse_netloc_protocol,
@@ -86,6 +89,7 @@ from .push import (
     )
 from .repository import (
     GitRepository,
+    GitRepositoryFormat,
     )
 from .refs import (
     branch_name_to_ref,
@@ -566,27 +570,38 @@ class RemoteGitDir(GitDir):
         if isinstance(source, GitBranch) and lossy:
             raise errors.LossyPushToSameVCS(source.controldir, self)
         source_store = get_object_store(source.repository)
+        fetch_tags = source.get_config_stack().get('branch.fetch_tags')
+        def get_changed_refs(refs):
+            self._refs = remote_refs_dict_to_container(refs)
+            ret = {}
+            # TODO(jelmer): Unpeel if necessary
+            push_result.new_original_revid = revision_id
+            if lossy:
+                new_sha = source_store._lookup_revision_sha1(revision_id)
+            else:
+                try:
+                    new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
+                except errors.NoSuchRevision:
+                    raise errors.NoRoundtrippingSupport(
+                        source, self.open_branch(name=name, nascent_ok=True))
+            if not overwrite:
+                if remote_divergence(ret.get(refname), new_sha,
+                                     source_store):
+                    raise DivergedBranches(
+                        source, self.open_branch(name, nascent_ok=True))
+            ret[refname] = new_sha
+            if fetch_tags:
+                for tagname, revid in viewitems(source.tags.get_tag_dict()):
+                    if lossy:
+                        new_sha = source_store._lookup_revision_sha1(revid)
+                    else:
+                        try:
+                            new_sha = repo.lookup_bzr_revision_id(revid)[0]
+                        except errors.NoSuchRevision:
+                            continue
+                    ret[tag_name_to_ref(tagname)] = new_sha
+            return ret
         with source_store.lock_read():
-            def get_changed_refs(refs):
-                self._refs = remote_refs_dict_to_container(refs)
-                ret = {}
-                # TODO(jelmer): Unpeel if necessary
-                push_result.new_original_revid = revision_id
-                if lossy:
-                    new_sha = source_store._lookup_revision_sha1(revision_id)
-                else:
-                    try:
-                        new_sha = repo.lookup_bzr_revision_id(revision_id)[0]
-                    except errors.NoSuchRevision:
-                        raise errors.NoRoundtrippingSupport(
-                            source, self.open_branch(name=name, nascent_ok=True))
-                if not overwrite:
-                    if remote_divergence(ret.get(refname), new_sha,
-                                         source_store):
-                        raise DivergedBranches(
-                            source, self.open_branch(name, nascent_ok=True))
-                ret[refname] = new_sha
-                return ret
             if lossy:
                 generate_pack_data = source_store.generate_lossy_pack_data
             else:
@@ -637,14 +652,10 @@ class TemporaryPackIterator(Pack):
 
     def _idx_load_or_generate(self, path):
         if not os.path.exists(path):
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 def report_progress(cur, total):
                     pb.update("generating index", cur, total)
-                self.data.create_index(path,
-                                       progress=report_progress)
-            finally:
-                pb.finished()
+                self.data.create_index(path, progress=report_progress)
         return load_pack_index(path)
 
     def __del__(self):
@@ -660,8 +671,10 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
     def __init__(self, transport, *args, **kwargs):
         self.transport = transport
-        super(BzrGitHttpClient, self).__init__(
-            transport.external_url(), *args, **kwargs)
+        url = urlutils.URL.from_string(transport.external_url())
+        url.user = url.quoted_user = None
+        url.password = url.quoted_password = None
+        super(BzrGitHttpClient, self).__init__(str(url), *args, **kwargs)
 
     def _http_request(self, url, headers=None, data=None,
                       allow_compression=False):
@@ -676,7 +689,6 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             `redirect_location` properties, and `read` is a consumable read
             method for the response data.
         """
-        from breezy.transport.http._urllib2_wrappers import Request
         headers['User-agent'] = user_agent_for_github()
         headers["Pragma"] = "no-cache"
         if allow_compression:
@@ -684,17 +696,15 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         else:
             headers["Accept-Encoding"] = "identity"
 
-        request = Request(
+        response = self.transport.request(
             ('GET' if data is None else 'POST'),
-            url, data, headers,
-            accepted_errors=[200, 404])
-        request.follow_redirections = True
+            url,
+            body=data,
+            headers=headers, retries=8)
 
-        response = self.transport._perform(request)
-
-        if response.code == 404:
+        if response.status == 404:
             raise NotGitRepository()
-        elif response.code != 200:
+        elif response.status != 200:
             raise GitProtocolError("unexpected http resp %d for %s" %
                                    (response.code, url))
 
@@ -712,15 +722,15 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
             def __init__(self, response):
                 self._response = response
-                self.status = response.code
+                self.status = response.status
                 self.content_type = response.getheader("Content-Type")
-                self.redirect_location = response.geturl()
+                self.redirect_location = response._actual.geturl()
 
             def readlines(self):
                 return self._response.readlines()
 
             def close(self):
-                self._response.close()
+                pass
 
         return WrapResponse(response), read
 
@@ -736,6 +746,10 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
     def get_branch_format(self):
         return RemoteGitBranchFormat()
+
+    @property
+    def repository_format(self):
+        return GitRepositoryFormat()
 
     def is_initializable(self):
         return False

@@ -37,6 +37,7 @@ from ..foreign import (
     )
 from ..revision import (
     NULL_REVISION,
+    Revision,
     )
 from ..sixish import (
     PY3,
@@ -377,6 +378,17 @@ class BzrGitMapping(foreign.VcsMapping):
         """
         return deserialize_fileid_map(blob.data)
 
+    def get_revision_id(self, commit):
+        if commit.encoding:
+            encoding = commit.encoding.decode('ascii')
+        else:
+            encoding = 'utf-8'
+        message, metadata = self._decode_commit_message(
+            None, commit.message, encoding)
+        if metadata.revision_id:
+            return metadata.revision_id
+        return self.revision_id_foreign_to_bzr(commit.id)
+
     def import_commit(self, commit, lookup_parent_revid):
         """Convert a git commit to a bzr revision.
 
@@ -499,6 +511,8 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
     BZR_DUMMY_FILE = '.bzrdummy'
 
     def _decode_commit_message(self, rev, message, encoding):
+        if rev is None:
+            rev = Revision()
         message = self._extract_hg_metadata(rev, message)
         message = self._extract_git_svn_metadata(rev, message)
         message, metadata = self._extract_bzr_metadata(rev, message)

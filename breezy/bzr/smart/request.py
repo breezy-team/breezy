@@ -309,7 +309,7 @@ class SmartServerRequestHandler(object):
         self.finished_reading = False
         self._command = None
         if 'hpss' in debug.debug_flags:
-            self._request_start_time = osutils.timer_func()
+            self._request_start_time = osutils.perf_counter()
             self._thread_id = get_ident()
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
@@ -318,7 +318,7 @@ class SmartServerRequestHandler(object):
         # that just putting it in a helper doesn't help a lot. And some state
         # is taken from the instance.
         if include_time:
-            t = '%5.3fs ' % (osutils.timer_func() - self._request_start_time)
+            t = '%5.3fs ' % (osutils.perf_counter() - self._request_start_time)
         else:
             t = ''
         if extra_bytes is None:

@@ -24,7 +24,6 @@ from breezy import (
     config,
     controldir,
     debug,
-    generate_ids,
     graph,
     osutils,
     revision as _mod_revision,
@@ -183,10 +182,6 @@ class CommitBuilder(object):
         """
         raise NotImplementedError(self.finish_inventory)
 
-    def _gen_revision_id(self):
-        """Return new revision-id."""
-        return generate_ids.gen_revision_id(self._committer, self._timestamp)
-
     def _generate_revision_if_needed(self, revision_id):
         """Create a revision id if None was supplied.
 
@@ -239,6 +234,28 @@ class RepositoryWriteLockResult(LogicalLockResult):
     def __repr__(self):
         return "RepositoryWriteLockResult(%s, %s)" % (self.repository_token,
                                                       self.unlock)
+
+
+class WriteGroup(object):
+    """Context manager that manages a write group.
+
+    Raising an exception will result in the write group being aborted.
+    """
+
+    def __init__(self, repository, suppress_errors=False):
+        self.repository = repository
+        self._suppress_errors = suppress_errors
+
+    def __enter__(self):
+        self.repository.start_write_group()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.repository.abort_write_group(self._suppress_errors)
+            return False
+        else:
+            self.repository.commit_write_group()
 
 
 ######################################################################
@@ -928,16 +945,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         partial_history = [known_revid]
         distance_from_known = known_revno - revno
         if distance_from_known < 0:
-            raise ValueError(
-                'requested revno (%d) is later than given known revno (%d)'
-                % (revno, known_revno))
+            raise errors.RevnoOutOfBounds(revno, (0, known_revno))
         try:
             _iter_for_revno(
                 self, partial_history, stop_index=distance_from_known)
         except errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
-                raise
+                raise errors.NoSuchRevision(self, known_revid)
             # This is a stacked repository with no fallbacks, or a there's a
             # left-hand ghost.  Either way, even though the revision named in
             # the error isn't in this repo, we know it's the next step in this

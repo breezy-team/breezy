@@ -78,10 +78,7 @@ class Action(object):
             if len(prop) == 1:
                 p_texts.append(prop[0])
             else:
-                try:
-                    p_texts.append('%s:%s' % prop)
-                except:
-                    raise repr(prop)
+                p_texts.append('%s:%s' % prop)
         text = ['=== ']
         text.append(' // '.join(p_texts))
         text_line = ''.join(text).encode('utf-8')

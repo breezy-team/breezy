@@ -18,6 +18,7 @@ from __future__ import absolute_import
 
 import bz2
 import os
+import re
 import sys
 import zlib
 
@@ -1379,6 +1380,20 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         except errors.UnknownSmartMethod:
             self._client._medium._remember_remote_is_before((1, 17))
             return self._get_rev_id_for_revno_vfs(revno, known_pair)
+        except errors.UnknownErrorFromSmartServer as e:
+            # Older versions of Bazaar/Breezy (<< 3.0.0) would raise a
+            # ValueError instead of returning revno-outofbounds
+            if len(e.error_tuple) < 3:
+                raise
+            if e.error_tuple[:2] != (b'error', b'ValueError'):
+                raise
+            m = re.match(
+                br"requested revno \(([0-9]+)\) is later than given "
+                br"known revno \(([0-9]+)\)", e.error_tuple[2])
+            if not m:
+                raise
+            raise errors.RevnoOutOfBounds(
+                int(m.group(1)), (0, int(m.group(2))))
         if response[0] == b'ok':
             return True, response[1]
         elif response[0] == b'history-incomplete':
@@ -3872,6 +3887,9 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return _mod_revision.NULL_REVISION
         with self.lock_read():
             last_revision_info = self.last_revision_info()
+            if revno < 0:
+                raise errors.RevnoOutOfBounds(
+                    revno, (0, last_revision_info[0]))
             ok, result = self.repository.get_rev_id_for_revno(
                 revno, last_revision_info)
             if ok:
@@ -3883,7 +3901,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             parent_map = self.repository.get_parent_map([missing_parent])
             if missing_parent in parent_map:
                 missing_parent = parent_map[missing_parent]
-            raise errors.RevisionNotPresent(missing_parent, self.repository)
+            raise errors.NoSuchRevision(self, missing_parent)
 
     def _read_last_revision_info(self):
         response = self._call(
@@ -4032,6 +4050,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             except errors.UnknownSmartMethod:
                 self._ensure_real()
                 return self._real_branch.revision_id_to_dotted_revno(revision_id)
+            except errors.UnknownErrorFromSmartServer as e:
+                # Deal with older versions of bzr/brz that didn't explicitly
+                # wrap GhostRevisionsHaveNoRevno.
+                if e.error_tuple[1] == b'GhostRevisionsHaveNoRevno':
+                    (revid, ghost_revid) = re.findall(b"{([^}]+)}", e.error_tuple[2])
+                    raise errors.GhostRevisionsHaveNoRevno(
+                        revid, ghost_revid)
+                raise
             if response[0] == b'ok':
                 return tuple([int(x) for x in response[1:]])
             else:
@@ -4226,12 +4252,17 @@ class RemoteBranchConfig(RemoteConfig):
             return self._set_config_option(value, name, section)
 
     def _set_config_option(self, value, name, section):
+        if isinstance(value, (bool, int)):
+            value = str(value)
+        elif isinstance(value, (text_type, str)):
+            pass
+        else:
+            raise TypeError(value)
         try:
             path = self._branch._remote_path()
             response = self._branch._client.call(b'Branch.set_config_option',
                                                  path, self._branch._lock_token, self._branch._repo_lock_token,
-                                                 value.encode(
-                                                     'utf8'), name.encode('utf-8'),
+                                                 value.encode('utf-8'), name.encode('utf-8'),
                                                  (section or '').encode('utf-8'))
         except errors.UnknownSmartMethod:
             medium = self._branch._client._medium
@@ -4368,6 +4399,10 @@ error_translators.register(b'NoSuchRevision',
 error_translators.register(b'nosuchrevision',
                            lambda err, find, get_path: NoSuchRevision(
                                find('repository'), err.error_args[0]))
+error_translators.register(
+    b'revno-outofbounds',
+    lambda err, find, get_path: errors.RevnoOutOfBounds(
+        err.error_args[0], (err.error_args[1], err.error_args[2])))
 
 
 def _translate_nobranch_error(err, find, get_path):

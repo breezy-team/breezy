@@ -2303,21 +2303,6 @@ class ShelvedChanges(UncommittedChanges):
             ' (See brz shelve --list).%(more)s')
 
 
-class UnableCreateSymlink(BzrError):
-
-    _fmt = 'Unable to create symlink %(path_str)son this platform'
-
-    def __init__(self, path=None):
-        path_str = ''
-        if path:
-            try:
-                path_str = repr(str(path))
-            except UnicodeEncodeError:
-                path_str = repr(path)
-            path_str += ' '
-        self.path_str = path_str
-
-
 class UnableEncodePath(BzrError):
 
     _fmt = ('Unable to encode %(kind)s path %(path)r in '
@@ -2452,3 +2437,13 @@ class ChangesAlreadyStored(BzrCommandError):
 
     _fmt = ('Cannot store uncommitted changes because this branch already'
             ' stores uncommitted changes.')
+
+
+class RevnoOutOfBounds(InternalBzrError):
+
+    _fmt = ("The requested revision number %(revno)d is outside of the "
+            "expected boundaries (%(minimum)d <= %(maximum)d).")
+
+    def __init__(self, revno, bounds):
+        InternalBzrError.__init__(
+            self, revno=revno, minimum=bounds[0], maximum=bounds[1])

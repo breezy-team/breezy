@@ -25,7 +25,7 @@ import sys
 import warnings
 
 # update this on each release
-_script_version = (3, 0, 0)
+_script_version = (3, 1, 0)
 
 NEED_VERS = (2, 7)
 

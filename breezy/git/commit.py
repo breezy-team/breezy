@@ -262,10 +262,6 @@ class GitCommitBuilder(CommitBuilder):
         return self.repository.revision_tree(self._new_revision_id)
 
     def get_basis_delta(self):
-        # TODO(jelmer): remove this logic when lp:~jelmer/brz/remaining lands
-        for (oldpath, newpath, file_id, entry) in self._inv_delta:
-            if entry is not None:
-                entry.revision = self._new_revision_id
         return self._inv_delta
 
     def update_basis_by_delta(self, revid, delta):

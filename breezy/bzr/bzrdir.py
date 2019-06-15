@@ -662,23 +662,6 @@ class BzrDir(controldir.ControlDir):
     def control_transport(self):
         return self.transport
 
-    def is_control_filename(self, filename):
-        """True if filename is the name of a path which is reserved for bzrdir's.
-
-        :param filename: A filename within the root transport of this bzrdir.
-
-        This is true IF and ONLY IF the filename is part of the namespace
-        reserved for bzr control dirs. Currently this is the '.bzr' directory
-        in the root of the root_transport.
-        """
-        # this might be better on the BzrDirFormat class because it refers to
-        # all the possible bzrdir disk formats.
-        # This method is tested via the workingtree is_control_filename tests-
-        # it was extracted from WorkingTree.is_control_filename. If the
-        # method's contract is extended beyond the current trivial
-        # implementation, please add new tests for it to the appropriate place.
-        return filename == '.bzr' or filename.startswith('.bzr/')
-
     def _cloning_metadir(self):
         """Produce a metadir suitable for cloning with.
 
@@ -1469,6 +1452,24 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
                                        recommend_upgrade=recommend_upgrade, basedir=basedir)
 
+    @classmethod
+    def is_control_filename(klass, filename):
+        """True if filename is the name of a path which is reserved for bzrdir's.
+
+        :param filename: A filename within the root transport of this bzrdir.
+
+        This is true IF and ONLY IF the filename is part of the namespace
+        reserved for bzr control dirs. Currently this is the '.bzr' directory
+        in the root of the root_transport.
+        """
+        # this might be better on the BzrDirFormat class because it refers to
+        # all the possible bzrdir disk formats.
+        # This method is tested via the workingtree is_control_filename tests-
+        # it was extracted from WorkingTree.is_control_filename. If the
+        # method's contract is extended beyond the current trivial
+        # implementation, please add new tests for it to the appropriate place.
+        return filename == '.bzr' or filename.startswith('.bzr/')
+
 
 class BzrDirMetaFormat1(BzrDirFormat):
     """Bzr meta control format 1
@@ -1733,73 +1734,72 @@ class ConvertMetaToMeta(controldir.Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.controldir = to_convert
-        self.pb = ui.ui_factory.nested_progress_bar()
-        self.count = 0
-        self.total = 1
-        self.step('checking repository format')
-        try:
-            repo = self.controldir.open_repository()
-        except errors.NoRepositoryPresent:
-            pass
-        else:
-            repo_fmt = self.target_format.repository_format
-            if not isinstance(repo._format, repo_fmt.__class__):
-                from ..repository import CopyConverter
-                ui.ui_factory.note(gettext('starting repository conversion'))
-                if not repo_fmt.supports_overriding_transport:
-                    raise AssertionError(
-                        "Repository in metadir does not support "
-                        "overriding transport")
-                converter = CopyConverter(self.target_format.repository_format)
-                converter.convert(repo, pb)
-        for branch in self.controldir.list_branches():
-            # TODO: conversions of Branch and Tree should be done by
-            # InterXFormat lookups/some sort of registry.
-            # Avoid circular imports
-            old = branch._format.__class__
-            new = self.target_format.get_branch_format().__class__
-            while old != new:
-                if (old == fullhistorybranch.BzrBranchFormat5
-                    and new in (_mod_bzrbranch.BzrBranchFormat6,
-                                _mod_bzrbranch.BzrBranchFormat7,
-                                _mod_bzrbranch.BzrBranchFormat8)):
-                    branch_converter = _mod_bzrbranch.Converter5to6()
-                elif (old == _mod_bzrbranch.BzrBranchFormat6
-                      and new in (_mod_bzrbranch.BzrBranchFormat7,
-                                  _mod_bzrbranch.BzrBranchFormat8)):
-                    branch_converter = _mod_bzrbranch.Converter6to7()
-                elif (old == _mod_bzrbranch.BzrBranchFormat7
-                      and new is _mod_bzrbranch.BzrBranchFormat8):
-                    branch_converter = _mod_bzrbranch.Converter7to8()
-                else:
-                    raise errors.BadConversionTarget("No converter", new,
-                                                     branch._format)
-                branch_converter.convert(branch)
-                branch = self.controldir.open_branch()
+        with ui.ui_factory.nested_progress_bar() as self.pb:
+            self.count = 0
+            self.total = 1
+            self.step('checking repository format')
+            try:
+                repo = self.controldir.open_repository()
+            except errors.NoRepositoryPresent:
+                pass
+            else:
+                repo_fmt = self.target_format.repository_format
+                if not isinstance(repo._format, repo_fmt.__class__):
+                    from ..repository import CopyConverter
+                    ui.ui_factory.note(gettext('starting repository conversion'))
+                    if not repo_fmt.supports_overriding_transport:
+                        raise AssertionError(
+                            "Repository in metadir does not support "
+                            "overriding transport")
+                    converter = CopyConverter(self.target_format.repository_format)
+                    converter.convert(repo, pb)
+            for branch in self.controldir.list_branches():
+                # TODO: conversions of Branch and Tree should be done by
+                # InterXFormat lookups/some sort of registry.
+                # Avoid circular imports
                 old = branch._format.__class__
-        try:
-            tree = self.controldir.open_workingtree(recommend_upgrade=False)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            pass
-        else:
-            # TODO: conversions of Branch and Tree should be done by
-            # InterXFormat lookups
-            if (isinstance(tree, workingtree_3.WorkingTree3)
-                and not isinstance(tree, workingtree_4.DirStateWorkingTree)
-                and isinstance(self.target_format.workingtree_format,
-                               workingtree_4.DirStateWorkingTreeFormat)):
-                workingtree_4.Converter3to4().convert(tree)
-            if (isinstance(tree, workingtree_4.DirStateWorkingTree)
-                and not isinstance(tree, workingtree_4.WorkingTree5)
-                and isinstance(self.target_format.workingtree_format,
-                               workingtree_4.WorkingTreeFormat5)):
-                workingtree_4.Converter4to5().convert(tree)
-            if (isinstance(tree, workingtree_4.DirStateWorkingTree)
-                and not isinstance(tree, workingtree_4.WorkingTree6)
-                and isinstance(self.target_format.workingtree_format,
-                               workingtree_4.WorkingTreeFormat6)):
-                workingtree_4.Converter4or5to6().convert(tree)
-        self.pb.finished()
+                new = self.target_format.get_branch_format().__class__
+                while old != new:
+                    if (old == fullhistorybranch.BzrBranchFormat5
+                        and new in (_mod_bzrbranch.BzrBranchFormat6,
+                                    _mod_bzrbranch.BzrBranchFormat7,
+                                    _mod_bzrbranch.BzrBranchFormat8)):
+                        branch_converter = _mod_bzrbranch.Converter5to6()
+                    elif (old == _mod_bzrbranch.BzrBranchFormat6
+                          and new in (_mod_bzrbranch.BzrBranchFormat7,
+                                      _mod_bzrbranch.BzrBranchFormat8)):
+                        branch_converter = _mod_bzrbranch.Converter6to7()
+                    elif (old == _mod_bzrbranch.BzrBranchFormat7
+                          and new is _mod_bzrbranch.BzrBranchFormat8):
+                        branch_converter = _mod_bzrbranch.Converter7to8()
+                    else:
+                        raise errors.BadConversionTarget("No converter", new,
+                                                         branch._format)
+                    branch_converter.convert(branch)
+                    branch = self.controldir.open_branch()
+                    old = branch._format.__class__
+            try:
+                tree = self.controldir.open_workingtree(recommend_upgrade=False)
+            except (errors.NoWorkingTree, errors.NotLocalUrl):
+                pass
+            else:
+                # TODO: conversions of Branch and Tree should be done by
+                # InterXFormat lookups
+                if (isinstance(tree, workingtree_3.WorkingTree3)
+                    and not isinstance(tree, workingtree_4.DirStateWorkingTree)
+                    and isinstance(self.target_format.workingtree_format,
+                                   workingtree_4.DirStateWorkingTreeFormat)):
+                    workingtree_4.Converter3to4().convert(tree)
+                if (isinstance(tree, workingtree_4.DirStateWorkingTree)
+                    and not isinstance(tree, workingtree_4.WorkingTree5)
+                    and isinstance(self.target_format.workingtree_format,
+                                   workingtree_4.WorkingTreeFormat5)):
+                    workingtree_4.Converter4to5().convert(tree)
+                if (isinstance(tree, workingtree_4.DirStateWorkingTree)
+                    and not isinstance(tree, workingtree_4.WorkingTree6)
+                    and isinstance(self.target_format.workingtree_format,
+                                   workingtree_4.WorkingTreeFormat6)):
+                    workingtree_4.Converter4or5to6().convert(tree)
         return to_convert
 
 

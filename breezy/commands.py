@@ -264,7 +264,7 @@ def guess_command(cmd_name):
         names.update(cmd.aliases)
     # candidate: modified levenshtein distance against cmd_name.
     costs = {}
-    from . import patiencediff
+    import patiencediff
     for name in sorted(names):
         matcher = patiencediff.PatienceSequenceMatcher(None, cmd_name, name)
         distance = 0.0
