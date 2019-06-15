@@ -1553,7 +1553,8 @@ cdef class ProcessEntryC:
                 new_executable = bool(
                     stat.S_ISREG(self.root_dir_info[3].st_mode)
                     and stat.S_IEXEC & self.root_dir_info[3].st_mode)
-                return (None,
+                return TreeChange(
+                       None,
                        (None, self.current_root_unicode),
                        True,
                        (False, False),
@@ -1664,7 +1665,8 @@ cdef class ProcessEntryC:
                             new_executable = bool(
                                 stat.S_ISREG(current_path_info[3].st_mode)
                                 and stat.S_IEXEC & current_path_info[3].st_mode)
-                            return (None,
+                            return TreeChange(
+                                None,
                                 (None, self.utf8_decode(current_path_info[0])[0]),
                                 True,
                                 (False, False),
@@ -1833,7 +1835,8 @@ cdef class ProcessEntryC:
                             if changed is not None:
                                 raise AssertionError(
                                     "result is not None: %r" % result)
-                            result = (None,
+                            result = TreeChange(
+                                None,
                                 (None, relpath_unicode),
                                 True,
                                 (False, False),

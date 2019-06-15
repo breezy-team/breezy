@@ -153,10 +153,20 @@ class TreeChange(object):
             return tuple(self) == other
         return False
 
+    def __lt__(self, other):
+        return tuple(self) < tuple(other)
+
     def __getitem__(self, i):
         if isinstance(i, slice):
             return tuple(self).__getitem__(i)
         return getattr(self, self.__slots__[i])
+
+    def discard_new(self):
+        return self.__class__(
+            self.file_id, (self.path[0], None), self.changed_content,
+            (self.versioned[0], None), (self.parent_id[0], None),
+            (self.name[0], None), (self.kind[0], None),
+            (self.executable[0], None))
 
 
 class Tree(object):
@@ -1094,18 +1104,18 @@ class InterTree(InterObject):
                 new_parent_id = result[4][1]
                 precise_file_ids.add(new_parent_id)
                 if changes:
-                    if (result[6][0] == 'directory' and
-                            result[6][1] != 'directory'):
+                    if (result.kind[0] == 'directory' and
+                            result.kind[1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
                         if source_entry is None:
                             # Reusing a discarded change.
                             source_entry = self._get_entry(
-                                self.source, result[1][0])
+                                self.source, result.path[0])
                         precise_file_ids.update(
                             child.file_id
-                            for child in self.source.iter_child_entries(result[1][0]))
-                    changed_file_ids.add(result[0])
+                            for child in self.source.iter_child_entries(result.path[0]))
+                    changed_file_ids.add(result.file_id)
                     yield result
 
     def file_content_matches(

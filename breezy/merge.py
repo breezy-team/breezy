@@ -852,14 +852,13 @@ class Merge3Merger(object):
             self.interesting_files, trees=[self.other_tree])
         this_entries = dict(self.this_tree.iter_entries_by_dir(
                             specific_files=this_interesting_files))
-        for (file_id, paths, changed, versioned, parents, names, kind,
-             executable) in iterator:
-            if paths[0] is not None:
+        for change in iterator:
+            if change.path[0] is not None:
                 this_path = _mod_tree.find_previous_path(
-                    self.base_tree, self.this_tree, paths[0])
+                    self.base_tree, self.this_tree, change.path[0])
             else:
                 this_path = _mod_tree.find_previous_path(
-                    self.other_tree, self.this_tree, paths[1])
+                    self.other_tree, self.this_tree, change.path[1])
             this_entry = this_entries.get(this_path)
             if this_entry is not None:
                 this_name = this_entry.name
@@ -869,12 +868,13 @@ class Merge3Merger(object):
                 this_name = None
                 this_parent = None
                 this_executable = None
-            parents3 = parents + (this_parent,)
-            names3 = names + (this_name,)
-            paths3 = paths + (this_path, )
-            executable3 = executable + (this_executable,)
-            result.append((file_id, changed, paths3,
-                           parents3, names3, executable3))
+            parents3 = change.parent_id + (this_parent,)
+            names3 = change.name + (this_name,)
+            paths3 = change.path + (this_path, )
+            executable3 = change.executable + (this_executable,)
+            result.append(
+                (change.file_id, change.changed_content, paths3,
+                 parents3, names3, executable3))
         return result
 
     def _entries_lca(self):

@@ -2838,7 +2838,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(preview.finalize)
         preview.delete_versioned(preview.trans_id_tree_path('foo'))
         preview_tree = preview.get_preview_tree()
-        out = StringIO()
+        out = BytesIO()
         log = BytesIO()
         trace.push_log_file(log)
         os_symlink = getattr(os, 'symlink', None)
@@ -2847,8 +2847,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
             show_diff_trees(revision_tree, preview_tree, out)
             lines = out.getvalue().splitlines()
         finally:
-            if os_symlink:
-                os.symlink = os_symlink
+            os.symlink = os_symlink
         self.assertContainsRe(
             log.getvalue(),
             b'Ignoring "foo" as symlinks are not supported on this filesystem')

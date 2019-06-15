@@ -4190,15 +4190,15 @@ class ProcessEntryPython(object):
                                 except UnicodeDecodeError:
                                     raise errors.BadFilenameEncoding(
                                         current_path_info[0], osutils._fs_enc)
-                                yield (None,
-                                       (None, relpath_unicode),
-                                       True,
-                                       (False, False),
-                                       (None, None),
-                                       (None, utf8_decode(
-                                        current_path_info[1])[0]),
-                                       (None, current_path_info[2]),
-                                       (None, new_executable))
+                                yield TreeChange(
+                                    None,
+                                    (None, relpath_unicode),
+                                    True,
+                                    (False, False),
+                                    (None, None),
+                                    (None, utf8_decode(current_path_info[1])[0]),
+                                    (None, current_path_info[2]),
+                                    (None, new_executable))
                             # dont descend into this unversioned path if it is
                             # a dir
                             if current_path_info[2] in ('directory'):

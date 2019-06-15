@@ -125,48 +125,48 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     delta = TreeDelta()
     # mutter('start compare_trees')
 
-    for (file_id, path, content_change, versioned, parent_id, name, kind,
-         executable) in new_tree.iter_changes(old_tree, want_unchanged,
-                                              specific_files, extra_trees=extra_trees,
-                                              require_versioned=require_versioned,
-                                              want_unversioned=want_unversioned):
-        if versioned == (False, False):
-            delta.unversioned.append((path[1], None, kind[1]))
+    for change in new_tree.iter_changes(
+            old_tree, want_unchanged, specific_files, extra_trees=extra_trees,
+            require_versioned=require_versioned,
+            want_unversioned=want_unversioned):
+        if change.versioned == (False, False):
+            delta.unversioned.append((change.path[1], None, change.kind[1]))
             continue
-        if not include_root and (None, None) == parent_id:
+        if not include_root and (None, None) == change.parent_id:
             continue
-        fully_present = tuple((versioned[x] and kind[x] is not None) for
-                              x in range(2))
+        fully_present = tuple(
+            (change.versioned[x] and change.kind[x] is not None)
+            for x in range(2))
         if fully_present[0] != fully_present[1]:
             if fully_present[1] is True:
-                delta.added.append((path[1], file_id, kind[1]))
+                delta.added.append((change.path[1], change.file_id, change.kind[1]))
             else:
-                if kind[0] == 'symlink' and not new_tree.supports_symlinks():
+                if change.kind[0] == 'symlink' and not new_tree.supports_symlinks():
                     trace.warning(
                         'Ignoring "%s" as symlinks '
-                        'are not supported on this filesystem.' % (path[0],))
+                        'are not supported on this filesystem.' % (change.path[0],))
                 else:
-                    delta.removed.append((path[0], file_id, kind[0]))
+                    delta.removed.append(
+                        (change.path[0], change.file_id, change.kind[0]))
         elif fully_present[0] is False:
-            delta.missing.append((path[1], file_id, kind[1]))
-        elif name[0] != name[1] or parent_id[0] != parent_id[1]:
+            delta.missing.append((change.path[1], change.file_id, change.kind[1]))
+        elif change.name[0] != change.name[1] or change.parent_id[0] != change.parent_id[1]:
             # If the name changes, or the parent_id changes, we have a rename
             # (if we move a parent, that doesn't count as a rename for the
             # file)
-            delta.renamed.append((path[0],
-                                  path[1],
-                                  file_id,
-                                  kind[1],
-                                  content_change,
-                                  (executable[0] != executable[1])))
-        elif kind[0] != kind[1]:
-            delta.kind_changed.append((path[1], file_id, kind[0], kind[1]))
-        elif content_change or executable[0] != executable[1]:
-            delta.modified.append((path[1], file_id, kind[1],
-                                   content_change,
-                                   (executable[0] != executable[1])))
+            delta.renamed.append(
+                (change.path[0], change.path[1], change.file_id,
+                    change.kind[1], change.changed_content,
+                    (change.executable[0] != change.executable[1])))
+        elif change.kind[0] != change.kind[1]:
+            delta.kind_changed.append(
+                (change.path[1], change.file_id, change.kind[0], change.kind[1]))
+        elif change.changed_content or change.executable[0] != change.executable[1]:
+            delta.modified.append((change.path[1], change.file_id, change.kind[1],
+                                   change.changed_content,
+                                   (change.executable[0] != change.executable[1])))
         else:
-            delta.unchanged.append((path[1], file_id, kind[1]))
+            delta.unchanged.append((change.path[1], change.file_id, change.kind[1]))
 
     delta.removed.sort()
     delta.added.sort()
