@@ -293,6 +293,8 @@ c
 
 class StartCommitMergeHookTests(TestCaseWithTransport):
 
+    _test_needs_features = [quilt_feature]
+
     def enable_hooks(self):
         MutableTree.hooks.install_named_hook(
             'start_commit', start_commit_check_quilt,
