@@ -42,6 +42,9 @@ Bug Fixes
   ``Repository.get_revid_for_revno`` when the revision
   number is invalid. (Jelmer Vernooĳ, #701953)
 
+* Print full upgrade command to run when complaining about lack of
+  support for tags. (Jelmer Vernooĳ, #163908)
+
 Documentation
 *************
 
