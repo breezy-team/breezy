@@ -130,7 +130,7 @@ class TreeChange(object):
         self.executable = executable
 
     def __len__(self):
-        return 8
+        return len(self.__slots__)
 
     def __tuple__(self):
         return (self.file_id, self.paths, self.changed_content, self.versioned,
@@ -144,25 +144,9 @@ class TreeChange(object):
         return False
 
     def __getitem__(self, i):
-        if i == 0:
-            return self.file_id
-        if i == 1:
-            return self.paths
-        if i == 2:
-            return self.changed_content
-        if i == 3:
-            return self.versioned
-        if i == 4:
-            return self.parent
-        if i == 5:
-            return self.name
-        if i == 6:
-            return self.kind
-        if i == 7:
-            return self.executable
         if isinstance(i, slice):
             return tuple(self[x] for x in i.indices(7))
-        raise IndexError(i)
+        return getattr(self, self.__slots__[i])
 
 
 class Tree(object):
@@ -815,8 +799,9 @@ class InterTree(InterObject):
             changes = True
         else:
             changes = False
-        return TreeChange(file_id, (source_path, target_path), changed_content,
-                versioned, parent, name, kind, executable), changes
+        return TreeChange(
+            file_id, (source_path, target_path), changed_content,
+            versioned, parent, name, kind, executable), changes
 
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
@@ -936,11 +921,11 @@ class InterTree(InterObject):
                     self.target._comparison_data(
                         fake_entry, unversioned_path[1])
                 yield TreeChange(
-                       None, (None, unversioned_path[1]), True, (False, False),
-                       (None, None),
-                       (None, unversioned_path[0][-1]),
-                       (None, target_kind),
-                       (None, target_executable))
+                    None, (None, unversioned_path[1]), True, (False, False),
+                    (None, None),
+                    (None, unversioned_path[0][-1]),
+                    (None, target_kind),
+                    (None, target_executable))
             source_path, source_entry = from_data.get(target_entry.file_id,
                                                       (None, None))
             result, changes = self._changes_from_entries(source_entry,
@@ -973,11 +958,11 @@ class InterTree(InterObject):
             to_kind, to_executable, to_stat = \
                 self.target._comparison_data(fake_entry, unversioned_path[1])
             yield TreeChange(
-                    None, (None, unversioned_path[1]), True, (False, False),
-                   (None, None),
-                   (None, unversioned_path[0][-1]),
-                   (None, to_kind),
-                   (None, to_executable))
+                None, (None, unversioned_path[1]), True, (False, False),
+                (None, None),
+                (None, unversioned_path[0][-1]),
+                (None, to_kind),
+                (None, to_executable))
         # Yield all remaining source paths
         for path, from_entry in from_entries_by_dir:
             file_id = from_entry.file_id
