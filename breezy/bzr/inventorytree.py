@@ -52,6 +52,7 @@ from ..tree import (
     FileTimestampUnavailable,
     InterTree,
     Tree,
+    TreeChange,
     )
 
 
@@ -920,14 +921,15 @@ class InterCHKRevisionTree(InterTree):
                         entry.file_id not in specific_file_ids):
                     continue
                 if entry.file_id not in changed_file_ids:
-                    yield (entry.file_id,
-                           (relpath, relpath),  # Not renamed
-                           False,  # Not modified
-                           (True, True),  # Still  versioned
-                           (entry.parent_id, entry.parent_id),
-                           (entry.name, entry.name),
-                           (entry.kind, entry.kind),
-                           (entry.executable, entry.executable))
+                    yield TreeChange(
+                        entry.file_id,
+                        (relpath, relpath),  # Not renamed
+                        False,  # Not modified
+                        (True, True),  # Still  versioned
+                        (entry.parent_id, entry.parent_id),
+                        (entry.name, entry.name),
+                        (entry.kind, entry.kind),
+                        (entry.executable, entry.executable))
 
 
 InterTree.register_optimiser(InterCHKRevisionTree)
