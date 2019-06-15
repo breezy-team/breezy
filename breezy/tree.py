@@ -1084,18 +1084,18 @@ class InterTree(InterObject):
                 new_parent_id = result[4][1]
                 precise_file_ids.add(new_parent_id)
                 if changes:
-                    if (result[6][0] == 'directory' and
-                            result[6][1] != 'directory'):
+                    if (result.kind[0] == 'directory' and
+                            result.kind[1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
                         if source_entry is None:
                             # Reusing a discarded change.
                             source_entry = self._get_entry(
-                                self.source, result[1][0])
+                                self.source, result.path[0])
                         precise_file_ids.update(
                             child.file_id
-                            for child in self.source.iter_child_entries(result[1][0]))
-                    changed_file_ids.add(result[0])
+                            for child in self.source.iter_child_entries(result.path[0]))
+                    changed_file_ids.add(result.file_id)
                     yield result
 
     def file_content_matches(

@@ -426,19 +426,18 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
             # Bail out if we are going to delete files we shouldn't
             if not keep_files and not force:
-                for (file_id, path, content_change, versioned, parent_id, name,
-                     kind, executable) in self.iter_changes(
+                for change in self.iter_changes(
                          self.basis_tree(), include_unchanged=True,
                          require_versioned=False, want_unversioned=True,
                          specific_files=files):
-                    if versioned[0] is False:
+                    if change.versioned[0] is False:
                         # The record is unknown or newly added
-                        files_to_backup.append(path[1])
-                    elif (content_change and (kind[1] is not None)
-                            and osutils.is_inside_any(files, path[1])):
+                        files_to_backup.append(change.path[1])
+                    elif (change.changed_content and (change.kind[1] is not None)
+                            and osutils.is_inside_any(files, change.path[1])):
                         # Versioned and changed, but not deleted, and still
                         # in one of the dirs to be deleted.
-                        files_to_backup.append(path[1])
+                        files_to_backup.append(change.path[1])
 
             def backup(file_to_backup):
                 backup_name = self.controldir._available_backup_name(

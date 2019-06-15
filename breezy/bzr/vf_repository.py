@@ -85,6 +85,7 @@ from ..sixish import (
 from ..trace import (
     mutter
     )
+from ..tree import TreeChange
 
 
 class VersionedFileRepositoryFormat(RepositoryFormat):
@@ -374,12 +375,12 @@ class VersionedFileCommitBuilder(CommitBuilder):
         changes = {}
         for change in iter_changes:
             # This probably looks up in basis_inv way to much.
-            if change[1][0] is not None:
-                head_candidate = [basis_inv.get_entry(change[0]).revision]
+            if change.path[0] is not None:
+                head_candidate = [basis_inv.get_entry(change.file_id).revision]
             else:
                 head_candidate = []
-            changes[change[0]] = change, merged_ids.get(change[0],
-                                                        head_candidate)
+            changes[change.file_id] = change, merged_ids.get(
+                change.file_id, head_candidate)
         unchanged_merged = set(merged_ids) - set(changes)
         # Extend the changes dict with synthetic changes to record merges of
         # texts.
@@ -403,13 +404,14 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 # by the user. So we discard this change.
                 pass
             else:
-                change = (file_id,
-                          (basis_inv.id2path(file_id), tree.id2path(file_id)),
-                          False, (True, True),
-                          (basis_entry.parent_id, basis_entry.parent_id),
-                          (basis_entry.name, basis_entry.name),
-                          (basis_entry.kind, basis_entry.kind),
-                          (basis_entry.executable, basis_entry.executable))
+                change = TreeChange(
+                    file_id,
+                    (basis_inv.id2path(file_id), tree.id2path(file_id)),
+                    False, (True, True),
+                    (basis_entry.parent_id, basis_entry.parent_id),
+                    (basis_entry.name, basis_entry.name),
+                    (basis_entry.kind, basis_entry.kind),
+                    (basis_entry.executable, basis_entry.executable))
                 changes[file_id] = (change, merged_ids[file_id])
         # changes contains tuples with the change and a set of inventory
         # candidates for the file.
@@ -419,7 +421,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
         inv_delta = self._basis_delta
         modified_rev = self._new_revision_id
         for change, head_candidates in viewvalues(changes):
-            if change[3][1]:  # versioned in target.
+            if change.versioned[1]:  # versioned in target.
                 # Several things may be happening here:
                 # We may have a fork in the per-file graph
                 #  - record a change with the content from tree
@@ -427,11 +429,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 #  - carry over the tree that hasn't changed
                 # We may have a change against all trees
                 #  - record the change with the content from tree
-                kind = change[6][1]
-                file_id = change[0]
-                entry = _entry_factory[kind](file_id, change[5][1],
-                                             change[4][1])
-                head_set = self._heads(change[0], set(head_candidates))
+                kind = change.kind[1]
+                file_id = change.file_id
+                entry = _entry_factory[kind](file_id, change.name[1],
+                                             change.parent_id[1])
+                head_set = self._heads(change.file_id, set(head_candidates))
                 heads = []
                 # Preserve ordering.
                 for head_candidate in head_candidates:
@@ -478,7 +480,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                     # other process reverts it while commit is running (with
                     # the revert happening after iter_changes did its
                     # examination).
-                    if change[7][1]:
+                    if change.executable[1]:
                         entry.executable = True
                     else:
                         entry.executable = False
@@ -489,11 +491,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         nostore_sha = parent_entry.text_sha1
                     else:
                         nostore_sha = None
-                    file_obj, stat_value = tree.get_file_with_stat(change[1][1])
+                    file_obj, stat_value = tree.get_file_with_stat(change.path[1])
                     try:
                         entry.text_sha1, entry.text_size = self._add_file_to_weave(
                             file_id, file_obj, heads, nostore_sha)
-                        yield change[1][1], (entry.text_sha1, stat_value)
+                        yield change.path[1], (entry.text_sha1, stat_value)
                     except errors.ExistingContent:
                         # No content change against a carry_over parent
                         # Perhaps this should also yield a fs hash update?
@@ -505,23 +507,23 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 elif kind == 'symlink':
                     # Wants a path hint?
                     entry.symlink_target = tree.get_symlink_target(
-                        change[1][1])
+                        change.path[1])
                     if (carry_over_possible and
                             parent_entry.symlink_target ==
                             entry.symlink_target):
                         carried_over = True
                     else:
                         self._add_file_to_weave(
-                            change[0], BytesIO(), heads, None)
+                            change.file_id, BytesIO(), heads, None)
                 elif kind == 'directory':
                     if carry_over_possible:
                         carried_over = True
                     else:
                         # Nothing to set on the entry.
                         # XXX: split into the Root and nonRoot versions.
-                        if change[1][1] != '' or self.repository.supports_rich_root():
+                        if change.path[1] != '' or self.repository.supports_rich_root():
                             self._add_file_to_weave(
-                                change[0], BytesIO(), heads, None)
+                                change.file_id, BytesIO(), heads, None)
                 elif kind == 'tree-reference':
                     if not self.repository._format.supports_tree_reference:
                         # This isn't quite sane as an error, but we shouldn't
@@ -531,7 +533,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         raise errors.UnsupportedOperation(
                             tree.add_reference, self.repository)
                     reference_revision = tree.get_reference_revision(
-                        change[1][1])
+                        change.path[1])
                     entry.reference_revision = reference_revision
                     if (carry_over_possible
                             and parent_entry.reference_revision ==
@@ -539,7 +541,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         carried_over = True
                     else:
                         self._add_file_to_weave(
-                            change[0], BytesIO(), heads, None)
+                            change.file_id, BytesIO(), heads, None)
                 else:
                     raise AssertionError('unknown kind %r' % kind)
                 if not carried_over:
@@ -548,8 +550,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                     entry.revision = parent_entry.revision
             else:
                 entry = None
-            new_path = change[1][1]
-            inv_delta.append((change[1][0], new_path, change[0], entry))
+            new_path = change.path[1]
+            inv_delta.append((change.path[0], new_path, change.file_id, entry))
             if new_path == '':
                 seen_root = True
         # The initial commit adds a root directory, but this in itself is not

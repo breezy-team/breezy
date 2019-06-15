@@ -1044,23 +1044,22 @@ class DiffTree(object):
         def get_encoded_path(path):
             if path is not None:
                 return path.encode(self.path_encoding, "replace")
-        for (file_id, paths, changed_content, versioned, parent, name, kind,
-             executable) in sorted(iterator, key=changes_key):
+        for change in sorted(iterator, key=changes_key):
             # The root does not get diffed, and items with no known kind (that
             # is, missing) in both trees are skipped as well.
-            if parent == (None, None) or kind == (None, None):
+            if change.parent == (None, None) or change.kind == (None, None):
                 continue
-            if kind[0] == 'symlink' and not self.new_tree.supports_symlinks():
+            if change.kind == 'symlink' and not self.new_tree.supports_symlinks():
                 warning(
                     'Ignoring "%s" as symlinks are not '
-                    'supported on this filesystem.' % (paths[0],))
+                    'supported on this filesystem.' % (change.path[0],))
                 continue
             oldpath, newpath = paths
-            oldpath_encoded = get_encoded_path(paths[0])
-            newpath_encoded = get_encoded_path(paths[1])
-            old_present = (kind[0] is not None and versioned[0])
-            new_present = (kind[1] is not None and versioned[1])
-            renamed = (parent[0], name[0]) != (parent[1], name[1])
+            oldpath_encoded = get_encoded_path(change.path[0])
+            newpath_encoded = get_encoded_path(change.path[1])
+            old_present = (change.kind[0] is not None and change.versioned[0])
+            new_present = (change.kind[1] is not None and change.versioned[1])
+            renamed = (change.parent_id[0], change.name[0]) != (change.parent_id[1], change.name[1])
 
             properties_changed = []
             properties_changed.extend(

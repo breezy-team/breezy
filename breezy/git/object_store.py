@@ -249,16 +249,15 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         raise KeyError
 
     # Find all the changed blobs
-    for (file_id, path, changed_content, versioned, parent, name, kind,
-         executable) in tree.iter_changes(base_tree):
-        if name[1] in BANNED_FILENAMES:
+    for change in tree.iter_changes(base_tree):
+        if change.name[1] in BANNED_FILENAMES:
             continue
-        if kind[1] == "file":
-            sha1 = tree.get_file_sha1(path[1])
+        if change.kind[1] == "file":
+            sha1 = tree.get_file_sha1(change.path[1])
             blob_id = None
             try:
                 (pfile_id, prevision) = find_unchanged_parent_ie(
-                    file_id, kind[1], sha1, other_parent_trees)
+                    change.file_id, change.kind[1], sha1, other_parent_trees)
             except KeyError:
                 pass
             else:
@@ -271,35 +270,35 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     if not changed_content:
                         # no-change merge ?
                         blob = Blob()
-                        blob.data = tree.get_file_text(path[1])
+                        blob.data = tree.get_file_text(change.path[1])
                         blob_id = blob.id
             if blob_id is None:
-                new_blobs.append((path[1], file_id))
+                new_blobs.append((change.path[1], change.file_id))
             else:
                 shamap[path[1]] = blob_id
                 if add_cache_entry is not None:
                     add_cache_entry(
                         ("blob", blob_id),
-                        (file_id, tree.get_file_revision(path[1])), path[1])
-        elif kind[1] == "symlink":
-            target = tree.get_symlink_target(path[1])
+                        (file_id, tree.get_file_revision(change.path[1])), change.path[1])
+        elif change.kind[1] == "symlink":
+            target = tree.get_symlink_target(change.path[1])
             blob = symlink_to_blob(target)
-            shamap[path[1]] = blob.id
+            shamap[change.path[1]] = blob.id
             if add_cache_entry is not None:
                 add_cache_entry(
-                    blob, (file_id, tree.get_file_revision(path[1])), path[1])
+                    blob, (change.file_id, tree.get_file_revision(change.path[1])), change.path[1])
             try:
                 find_unchanged_parent_ie(
-                    file_id, kind[1], target, other_parent_trees)
+                    change.file_id, change.kind[1], target, other_parent_trees)
             except KeyError:
-                if changed_content:
-                    yield (path[1], blob,
+                if change.changed_content:
+                    yield (change.path[1], blob,
                            (file_id, tree.get_file_revision(path[1])))
-        elif kind[1] is None:
-            shamap[path[1]] = None
-        elif kind[1] != 'directory':
-            raise AssertionError(kind[1])
-        for p in path:
+        elif change.kind[1] is None:
+            shamap[change.path[1]] = None
+        elif change.kind[1] != 'directory':
+            raise AssertionError(change.kind[1])
+        for p in change.path:
             if p is None:
                 continue
             dirty_dirs.add(osutils.dirname(p))

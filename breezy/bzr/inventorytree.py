@@ -894,17 +894,15 @@ class InterCHKRevisionTree(InterTree):
         for result in self.target.root_inventory.iter_changes(
                 self.source.root_inventory):
             if specific_file_ids is not None:
-                file_id = result[0]
-                if file_id not in specific_file_ids:
+                if result.file_id not in specific_file_ids:
                     # A change from the whole tree that we don't want to show yet.
                     # We may find that we need to show it for delta consistency, so
                     # stash it.
-                    discarded_changes[result[0]] = result
+                    discarded_changes[result.file_id] = result
                     continue
-                new_parent_id = result[4][1]
-                precise_file_ids.add(new_parent_id)
+                precise_file_ids.add(result.parent_id[1])
             yield result
-            changed_file_ids.add(result[0])
+            changed_file_ids.add(result.file_id)
         if specific_file_ids is not None:
             for result in self._handle_precise_ids(precise_file_ids,
                                                    changed_file_ids, discarded_changes=discarded_changes):

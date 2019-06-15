@@ -1260,7 +1260,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         state._sha1_provider = UppercaseSHA1Provider()
         # If we used the standard provider, it would look like nothing has
         # changed
-        file_ids_changed = [change[0] for change
+        file_ids_changed = [change.file_id for change
                             in tree.iter_changes(tree.basis_tree())]
         self.assertEqual([b'a-file-id'], file_ids_changed)
 
@@ -1291,12 +1291,9 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         self.overrideAttr(dirstate, '_process_entry', self._process_entry)
 
     def assertChangedFileIds(self, expected, tree):
-        tree.lock_read()
-        try:
-            file_ids = [info[0] for info
+        with tree.lock_read():
+            file_ids = [info.file_id for info
                         in tree.iter_changes(tree.basis_tree())]
-        finally:
-            tree.unlock()
         self.assertEqual(sorted(expected), sorted(file_ids))
 
     def test_exceptions_raised(self):

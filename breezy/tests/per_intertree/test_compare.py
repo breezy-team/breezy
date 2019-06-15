@@ -50,10 +50,9 @@ from breezy.tests import (
 
 def _change_key(change):
     """Return a valid key for sorting Tree.iter_changes entries."""
-    (file_id, paths, content_changed, versioned, parent, name, kind,
-     executable) = change
-    return (file_id or b'', (paths[0] or '', paths[1] or ''), versioned,
-            parent, name, kind, executable)
+    return (change.file_id or b'', (change.path[0] or '', change.path[1] or ''),
+            change.versioned, change.parent_id, change.name, change.kind,
+            change.executable)
 
 
 class TestCompare(TestCaseWithTwoTrees):
