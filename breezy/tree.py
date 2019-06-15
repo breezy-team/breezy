@@ -115,13 +115,13 @@ class TreeReference(TreeEntry):
 class TreeChange(object):
     """Describes the changes between the same item in two different trees."""
 
-    __slots__ = ['file_id', 'paths', 'changed_content', 'versioned', 'parent',
+    __slots__ = ['file_id', 'path', 'changed_content', 'versioned', 'parent',
                  'name', 'kind', 'executable']
 
-    def __init__(self, file_id, paths, changed_content, versioned, parent,
+    def __init__(self, file_id, path, changed_content, versioned, parent,
                  name, kind, executable):
         self.file_id = file_id
-        self.paths = paths
+        self.path = path
         self.changed_content = changed_content
         self.versioned = versioned
         self.parent = parent
@@ -133,7 +133,7 @@ class TreeChange(object):
         return len(self.__slots__)
 
     def __tuple__(self):
-        return (self.file_id, self.paths, self.changed_content, self.versioned,
+        return (self.file_id, self.path, self.changed_content, self.versioned,
                 self.parent, self.name, self.kind, self.executable)
 
     def __eq__(self, other):
