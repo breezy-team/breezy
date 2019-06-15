@@ -2646,11 +2646,15 @@ def cache_dir():
         cache_dir = s.encode(_fs_enc)
     else:
         try:
-            from xdg.BaseDirectory import xdg_cache_home
+            from xdg import BaseDirectory
         except ImportError:
-            cache_dir = os.environ.get('XDG_CACHE_DIR', None)
+            xdg_cache_dir = os.environ.get('XDG_CACHE_HOME', None)
         else:
-            cache_dir = os.path.join(xdg_cache_home, "breezy")
+            xdg_cache_dir = BaseDirectory.xdg_cache_home
+        if xdg_cache_dir is not None:
+            cache_dir = os.path.join(xdg_cache_dir, "breezy")
+        else:
+            cache_dir = None
         if cache_dir is not None and not isinstance(cache_dir, text_type):
             cache_dir = cache_dir.encode(_fs_enc)
 

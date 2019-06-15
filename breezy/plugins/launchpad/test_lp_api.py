@@ -77,7 +77,7 @@ class TestCacheDirectory(TestCase):
 
     def test_get_cache_directory(self):
         # get_cache_directory returns the path to a directory inside the
-        # Bazaar configuration directory.
+        # Breezy cache directory.
         from . import lp_api
-        expected_path = osutils.pathjoin(config.config_dir(), 'launchpad')
+        expected_path = osutils.pathjoin(cache_dir(), 'launchpad')
         self.assertEqual(expected_path, lp_api.get_cache_directory())

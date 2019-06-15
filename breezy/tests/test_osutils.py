@@ -2370,8 +2370,11 @@ class TestXDGCacheDir(tests.TestCaseInTempDir):
         os.makedirs(newdir)
         self.assertEqual(osutils.cache_dir(), newdir)
 
-    def test_xdg_cache_home(self):
+    def test_xdg_cache_home_unix(self):
         """When XDG_CACHE_HOME is set, use it."""
+        if sys.platform in ('nt', 'win32'):
+            raise tests.TestNotApplicable(
+                'XDG cache dir not used on this platform')
         xdgcachedir = osutils.pathjoin(self.test_home_dir, 'xdgcache')
         self.overrideEnv('XDG_CACHE_HOME', xdgcachedir)
         try:
