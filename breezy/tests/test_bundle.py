@@ -44,6 +44,7 @@ from . import (
     test_commit,
     )
 from ..transform import TreeTransform
+from ..tree import find_previous_path
 
 
 def get_text(vf, key):
