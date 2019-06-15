@@ -1701,12 +1701,12 @@ class cmd_renames(Command):
         self.add_cleanup(old_tree.lock_read().unlock)
         renames = []
         iterator = tree.iter_changes(old_tree, include_unchanged=True)
-        for f, paths, c, v, p, n, k, e in iterator:
-            if paths[0] == paths[1]:
+        for change in iterator:
+            if change.path[0] == change.path[1]:
                 continue
-            if None in (paths):
+            if None in change.path:
                 continue
-            renames.append(paths)
+            renames.append(change.path)
         renames.sort()
         for old_name, new_name in renames:
             self.outf.write("%s => %s\n" % (old_name, new_name))
@@ -1916,8 +1916,8 @@ class cmd_remove(Command):
             missing = []
             for change in tree.iter_changes(tree.basis_tree()):
                 # Find paths in the working tree that have no kind:
-                if change[1][1] is not None and change[6][1] is None:
-                    missing.append(change[1][1])
+                if change.path[1] is not None and change.kind[1] is None:
+                    missing.append(change.path[1])
             file_list = sorted(missing, reverse=True)
             file_deletion_strategy = 'keep'
         tree.remove(file_list, verbose=verbose, to_file=self.outf,

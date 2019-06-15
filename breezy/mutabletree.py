@@ -202,7 +202,7 @@ class MutableTree(tree.Tree):
                 try:
                     change = next(changes)
                     # Exclude root (talk about black magic... --vila 20090629)
-                    if change[4] == (None, None):
+                    if change.parent_id == (None, None):
                         change = next(changes)
                     return True
                 except StopIteration:

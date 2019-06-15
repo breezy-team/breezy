@@ -71,6 +71,7 @@ from .sixish import (
     )
 from .tree import (
     find_previous_path,
+    TreeChange,
     )
 
 
@@ -1002,16 +1003,17 @@ class TreeTransformBase(object):
                 and from_parent == to_parent and from_name == to_name
                     and from_executable == to_executable):
                 continue
-            results.append((file_id, (from_path, to_path), modified,
-                            (from_versioned, to_versioned),
-                            (from_parent, to_parent),
-                            (from_name, to_name),
-                            (from_kind, to_kind),
-                            (from_executable, to_executable)))
+            results.append(
+                TreeChange(
+                    file_id, (from_path, to_path), modified,
+                    (from_versioned, to_versioned),
+                    (from_parent, to_parent),
+                    (from_name, to_name),
+                    (from_kind, to_kind),
+                    (from_executable, to_executable)))
 
-        def path_key(t):
-            paths = t[1]
-            return (paths[0] or '', paths[1] or '')
+        def path_key(c):
+            return (c.path[0] or '', c.path[1] or '')
         return iter(sorted(results, key=path_key))
 
     def get_preview_tree(self):
@@ -1991,7 +1993,7 @@ class _PreviewTree(inventorytree.InventoryTree):
         self._all_children_cache = {}
         self._path2trans_id_cache = {}
         self._final_name_cache = {}
-        self._iter_changes_cache = dict((c[0], c) for c in
+        self._iter_changes_cache = dict((c.file_id, c) for c in
                                         self._transform.iter_changes())
 
     def _content_change(self, file_id):
@@ -2413,8 +2415,8 @@ class _PreviewTree(inventorytree.InventoryTree):
         if changes is None:
             get_old = True
         else:
-            changed_content, versioned, kind = (changes[2], changes[3],
-                                                changes[6])
+            changed_content, versioned, kind = (
+                changes.changed_content, changes.versioned, changes.kind)
             if kind[1] is None:
                 return None
             get_old = (kind[0] == 'file' and versioned[0])
@@ -2693,8 +2695,9 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         new_desired_files = desired_files
     else:
         iter = accelerator_tree.iter_changes(tree, include_unchanged=True)
-        unchanged = [(p[0], p[1]) for (f, p, c, v, d, n, k, e)
-                     in iter if not (c or e[0] != e[1])]
+        unchanged = [
+            change.path for change in iter
+            if not (change.changed_content or change.executable[0] != change.executable[1])]
         if accelerator_tree.supports_content_filtering():
             unchanged = [(tp, ap) for (tp, ap) in unchanged
                          if not next(accelerator_tree.iter_search_rules([ap]))]
@@ -2907,19 +2910,19 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
         skip_root = False
     try:
         deferred_files = []
-        for id_num, (file_id, path, changed_content, versioned, parent, name,
-                     kind, executable) in enumerate(change_list):
-            target_path, wt_path = path
-            target_versioned, wt_versioned = versioned
-            target_parent, wt_parent = parent
-            target_name, wt_name = name
-            target_kind, wt_kind = kind
-            target_executable, wt_executable = executable
+        for id_num, change in enumerate(change_list):
+            file_id = change.file_id
+            target_path, wt_path = change.path
+            target_versioned, wt_versioned = change.versioned
+            target_parent, wt_parent = change.parent_id
+            target_name, wt_name = change.name
+            target_kind, wt_kind = change.kind
+            target_executable, wt_executable = change.executable
             if skip_root and wt_parent is None:
                 continue
             trans_id = tt.trans_id_file_id(file_id)
             mode_id = None
-            if changed_content:
+            if change.changed_content:
                 keep_content = False
                 if wt_kind == 'file' and (backups or target_kind is None):
                     wt_sha1 = working_tree.get_file_sha1(wt_path)
@@ -3231,18 +3234,16 @@ def link_tree(target_tree, source_tree):
     """
     tt = TreeTransform(target_tree)
     try:
-        for (file_id, paths, changed_content, versioned, parent, name, kind,
-             executable) in target_tree.iter_changes(source_tree,
-                                                     include_unchanged=True):
-            if changed_content:
+        for change in target_tree.iter_changes(source_tree, include_unchanged=True):
+            if change.changed_content:
                 continue
-            if kind != ('file', 'file'):
+            if change.kind != ('file', 'file'):
                 continue
-            if executable[0] != executable[1]:
+            if change.executable[0] != change.executable[1]:
                 continue
-            trans_id = tt.trans_id_tree_path(paths[1])
+            trans_id = tt.trans_id_tree_path(change.path[1])
             tt.delete_contents(trans_id)
-            tt.create_hardlink(source_tree.abspath(paths[0]), trans_id)
+            tt.create_hardlink(source_tree.abspath(change.path[0]), trans_id)
         tt.apply()
     finally:
         tt.finalize()

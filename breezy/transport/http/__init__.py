@@ -486,7 +486,7 @@ class HTTPSConnection(AbstractHTTPConnection, http_client.HTTPSConnection):
         try:
             ssl_context = ssl.create_default_context(
                 purpose=ssl.Purpose.SERVER_AUTH, cafile=ca_certs)
-            ssl.check_hostname = True
+            ssl_context.check_hostname = cert_reqs != ssl.CERT_NONE
             if self.cert_file:
                 ssl_context.load_cert_chain(
                     keyfile=self.key_file, certfile=self.cert_file)

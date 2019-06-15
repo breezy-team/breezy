@@ -26,6 +26,7 @@ from breezy import (
     transform,
     )
 from breezy.osutils import has_symlinks
+from breezy.tree import TreeChange
 from breezy.tests.per_intertree import TestCaseWithTwoTrees
 from breezy.tests import (
     features,
@@ -50,10 +51,9 @@ from breezy.tests import (
 
 def _change_key(change):
     """Return a valid key for sorting Tree.iter_changes entries."""
-    (file_id, paths, content_changed, versioned, parent, name, kind,
-     executable) = change
-    return (file_id or b'', (paths[0] or '', paths[1] or ''), versioned,
-            parent, name, kind, executable)
+    return (change.file_id or b'', (change.path[0] or '', change.path[1] or ''),
+            change.versioned, change.parent_id, change.name, change.kind,
+            change.executable)
 
 
 class TestCompare(TestCaseWithTwoTrees):
@@ -553,9 +553,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def added(self, tree, file_id):
         path, entry = self.get_path_entry(tree, file_id)
-        return (file_id, (None, path), True, (False, True), (None, entry.parent_id),
-                (None, entry.name), (None, entry.kind),
-                (None, entry.executable))
+        return TreeChange(
+            file_id, (None, path), True, (False, True), (None, entry.parent_id),
+            (None, entry.name), (None, entry.kind),
+            (None, entry.executable))
 
     @staticmethod
     def get_path_entry(tree, file_id):
@@ -569,43 +570,48 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def content_changed(self, tree, file_id):
         path, entry = self.get_path_entry(tree, file_id)
-        return (file_id, (path, path), True, (True, True),
-                (entry.parent_id, entry.parent_id),
-                (entry.name, entry.name), (entry.kind, entry.kind),
-                (entry.executable, entry.executable))
+        return TreeChange(
+            file_id, (path, path), True, (True, True),
+            (entry.parent_id, entry.parent_id),
+            (entry.name, entry.name), (entry.kind, entry.kind),
+            (entry.executable, entry.executable))
 
     def kind_changed(self, from_tree, to_tree, file_id):
         from_path, old_entry = self.get_path_entry(from_tree, file_id)
         path, new_entry = self.get_path_entry(to_tree, file_id)
-        return (file_id, (from_path, path), True, (True, True),
-                (old_entry.parent_id, new_entry.parent_id),
-                (old_entry.name, new_entry.name),
-                (old_entry.kind, new_entry.kind),
-                (old_entry.executable, new_entry.executable))
+        return TreeChange(
+            file_id, (from_path, path), True, (True, True),
+            (old_entry.parent_id, new_entry.parent_id),
+            (old_entry.name, new_entry.name),
+            (old_entry.kind, new_entry.kind),
+            (old_entry.executable, new_entry.executable))
 
     def missing(self, file_id, from_path, to_path, parent_id, kind):
         _, from_basename = os.path.split(from_path)
         _, to_basename = os.path.split(to_path)
         # missing files have both paths, but no kind.
-        return (file_id, (from_path, to_path), True, (True, True),
-                (parent_id, parent_id),
-                (from_basename, to_basename), (kind, None), (False, False))
+        return TreeChange(
+            file_id, (from_path, to_path), True, (True, True),
+            (parent_id, parent_id),
+            (from_basename, to_basename), (kind, None), (False, False))
 
     def deleted(self, tree, file_id):
         entry = tree.root_inventory.get_entry(file_id)
         path = tree.id2path(file_id)
-        return (file_id, (path, None), True, (True, False), (entry.parent_id, None),
-                (entry.name, None), (entry.kind, None),
-                (entry.executable, None))
+        return TreeChange(
+            file_id, (path, None), True, (True, False), (entry.parent_id, None),
+            (entry.name, None), (entry.kind, None),
+            (entry.executable, None))
 
     def renamed(self, from_tree, to_tree, file_id, content_changed):
         from_path, from_entry = self.get_path_entry(from_tree, file_id)
         to_path, to_entry = self.get_path_entry(to_tree, file_id)
-        return (file_id, (from_path, to_path), content_changed, (True, True),
-                (from_entry.parent_id, to_entry.parent_id),
-                (from_entry.name, to_entry.name),
-                (from_entry.kind, to_entry.kind),
-                (from_entry.executable, to_entry.executable))
+        return TreeChange(
+            file_id, (from_path, to_path), content_changed, (True, True),
+            (from_entry.parent_id, to_entry.parent_id),
+            (from_entry.name, to_entry.name),
+            (from_entry.kind, to_entry.kind),
+            (from_entry.executable, to_entry.executable))
 
     def unchanged(self, tree, file_id):
         path, entry = self.get_path_entry(tree, file_id)
@@ -613,17 +619,19 @@ class TestIterChanges(TestCaseWithTwoTrees):
         name = entry.name
         kind = entry.kind
         executable = entry.executable
-        return (file_id, (path, path), False, (True, True),
-                (parent, parent), (name, name), (kind, kind),
-                (executable, executable))
+        return TreeChange(
+            file_id, (path, path), False, (True, True),
+            (parent, parent), (name, name), (kind, kind),
+            (executable, executable))
 
     def unversioned(self, tree, path):
         """Create an unversioned result."""
         _, basename = os.path.split(path)
         kind = tree._comparison_data(None, path)[0]
-        return (None, (None, path), True, (False, False), (None, None),
-                (None, basename), (None, kind),
-                (None, False))
+        return TreeChange(
+            None, (None, path), True, (False, False), (None, None),
+            (None, basename), (None, kind),
+            (None, False))
 
     def sorted(self, changes):
         return sorted(changes, key=_change_key)
@@ -1086,8 +1094,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.not_applicable_if_missing_in('file', tree1)
         root_id = tree1.path2id('')
-        expected = [(b'file-id', ('file', None), False, (True, False),
-                     (root_id, None), ('file', None), (None, None), (False, None))]
+        expected = [
+            TreeChange(b'file-id', ('file', None), False, (True, False),
+                       (root_id, None), ('file', None), (None, None), (False, None))]
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
 
     def test_only_in_target_and_missing(self):
@@ -1100,8 +1109,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.not_applicable_if_missing_in('file', tree2)
         root_id = tree1.path2id('')
-        expected = [(b'file-id', (None, 'file'), False, (False, True),
-                     (None, root_id), (None, 'file'), (None, None), (None, False))]
+        expected = [
+            TreeChange(b'file-id', (None, 'file'), False, (False, True),
+                       (None, root_id), (None, 'file'), (None, None), (None, False))]
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
 
     def test_only_in_target_missing_subtree_specific_bug_367632(self):
@@ -1116,10 +1126,12 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.not_applicable_if_missing_in('a-dir', tree2)
         root_id = tree1.path2id('')
         expected = [
-            (b'dir-id', (None, 'a-dir'), False, (False, True),
-             (None, root_id), (None, 'a-dir'), (None, None), (None, False)),
-            (b'file-id', (None, 'a-dir/a-file'), False, (False, True),
-             (None, b'dir-id'), (None, 'a-file'), (None, None), (None, False))
+            TreeChange(
+                b'dir-id', (None, 'a-dir'), False, (False, True),
+                (None, root_id), (None, 'a-dir'), (None, None), (None, False)),
+            TreeChange(
+                b'file-id', (None, 'a-dir/a-file'), False, (False, True),
+                (None, b'dir-id'), (None, 'a-file'), (None, None), (None, False))
             ]
         # bug 367632 showed that specifying the root broke some code paths,
         # so we check this contract with and without it.
@@ -1136,10 +1148,11 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.assertEqual(sorted([self.unchanged(tree1, b'root-id'),
                                  self.unchanged(tree1, b'b-id'),
-                                 (b'a-id', ('a', 'd'), True, (True, True),
-                                  (b'root-id', b'root-id'), ('a',
-                                                             'd'), ('file', 'file'),
-                                  (False, False)), self.unchanged(tree1, b'c-id')]),
+                                 TreeChange(
+                                     b'a-id', ('a', 'd'), True, (True, True),
+                                     (b'root-id', b'root-id'), ('a', 'd'),
+                                     ('file', 'file'),
+                                     (False, False)), self.unchanged(tree1, b'c-id')]),
                          self.do_iter_changes(tree1, tree2, include_unchanged=True))
 
     def test_compare_subtrees(self):
@@ -1163,22 +1176,24 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([], list(tree2.iter_changes(tree1)))
         subtree1.commit('commit', rev_id=b'commit-a')
         self.assertEqual([
-            (b'root-id',
-             (u'', u''),
-             False,
-             (True, True),
-             (None, None),
-             (u'', u''),
-             ('directory', 'directory'),
-             (False, False)),
-            (b'subtree-id',
-             ('sub', 'sub',),
-             False,
-             (True, True),
-             (b'root-id', b'root-id'),
-             ('sub', 'sub'),
-             ('tree-reference', 'tree-reference'),
-             (False, False))],
+            TreeChange(
+                b'root-id',
+                (u'', u''),
+                False,
+                (True, True),
+                (None, None),
+                (u'', u''),
+                ('directory', 'directory'),
+                (False, False)),
+            TreeChange(
+                b'subtree-id',
+                ('sub', 'sub',),
+                False,
+                (True, True),
+                (b'root-id', b'root-id'),
+                ('sub', 'sub'),
+                ('tree-reference', 'tree-reference'),
+                (False, False))],
             list(tree2.iter_changes(tree1,
                                     include_unchanged=True)))
 

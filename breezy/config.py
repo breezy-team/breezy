@@ -1560,16 +1560,6 @@ def crash_dir():
         return os.environ.get('APPORT_CRASH_DIR', '/var/crash')
 
 
-def xdg_cache_dir():
-    # See http://standards.freedesktop.org/basedir-spec/latest/ar01s03.html
-    # Possibly this should be different on Windows?
-    e = os.environ.get('XDG_CACHE_HOME', None)
-    if e:
-        return e
-    else:
-        return os.path.expanduser('~/.cache')
-
-
 def _get_default_mail_domain(mailname_file='/etc/mailname'):
     """If possible, return the assumed default email domain.
 

@@ -41,7 +41,10 @@ import codecs
 import sys
 
 
-__copyright__ = "Copyright 2005-2012 Canonical Ltd."
+__copyright__ = (
+    "Copyright 2005-2012 Canonical Ltd.\n"
+    "Copyright 2017-2019 Breezy developers"
+)
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All

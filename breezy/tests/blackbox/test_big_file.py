@@ -43,7 +43,7 @@ LIMIT = 1024 * 1024 * 200
 def make_big_file(path):
     blob_1mb = BIG_FILE_CHUNK_SIZE * b'\x0c'
     with open(path, 'wb') as f:
-        for i in range(BIG_FILE_SIZE / BIG_FILE_CHUNK_SIZE):
+        for i in range(BIG_FILE_SIZE // BIG_FILE_CHUNK_SIZE):
             f.write(blob_1mb)
 
 
