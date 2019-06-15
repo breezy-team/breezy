@@ -64,6 +64,7 @@ from .errors import (BzrError,
                      StrictCommitFailed
                      )
 from .osutils import (get_user_encoding,
+                      has_symlinks,
                       is_inside_any,
                       minimum_path_selection,
                       )
@@ -709,6 +710,10 @@ class Commit(object):
                 # 'missing' path
                 if report_changes:
                     reporter.missing(new_path)
+                if change[6][0] == 'symlink' and not self.work_tree.supports_symlinks():
+                    trace.warning('Ignoring "%s" as symlinks are not '
+                                  'supported on this filesystem.' % (change[1][0],))
+                    continue
                 deleted_paths.append(change[1][1])
                 # Reset the new path (None) and new versioned flag (False)
                 change = (change[0], (change[1][0], None), change[2],

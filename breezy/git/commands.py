@@ -130,8 +130,7 @@ class cmd_git_import(Command):
         interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
         refs = interrepo.fetch()
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             for i, (name, sha) in enumerate(viewitems(refs)):
                 try:
                     branch_name = ref_to_branch_name(name)
@@ -159,8 +158,6 @@ class cmd_git_import(Command):
                         source_branch.base,
                         {"branch": urlutils.escape(branch_name)})
                     head_branch.set_parent(url)
-        finally:
-            pb.finished()
         trace.note(gettext(
             "Use 'bzr checkout' to create a working tree in "
             "the newly created branches."))

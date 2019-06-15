@@ -1826,9 +1826,11 @@ class TestDirstateSortOrder(tests.TestCaseWithTransport):
 class InstrumentedDirState(dirstate.DirState):
     """An DirState with instrumented sha1 functionality."""
 
-    def __init__(self, path, sha1_provider, worth_saving_limit=0):
-        super(InstrumentedDirState, self).__init__(path, sha1_provider,
-                                                   worth_saving_limit=worth_saving_limit)
+    def __init__(self, path, sha1_provider, worth_saving_limit=0,
+                 use_filesystem_for_exec=True):
+        super(InstrumentedDirState, self).__init__(
+            path, sha1_provider, worth_saving_limit=worth_saving_limit,
+            use_filesystem_for_exec=use_filesystem_for_exec)
         self._time_offset = 0
         self._log = []
         # member is dynamically set in DirState.__init__ to turn on trace

@@ -652,14 +652,10 @@ class TemporaryPackIterator(Pack):
 
     def _idx_load_or_generate(self, path):
         if not os.path.exists(path):
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 def report_progress(cur, total):
                     pb.update("generating index", cur, total)
-                self.data.create_index(path,
-                                       progress=report_progress)
-            finally:
-                pb.finished()
+                self.data.create_index(path, progress=report_progress)
         return load_pack_index(path)
 
     def __del__(self):
@@ -702,6 +698,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
         response = self.transport.request(
             ('GET' if data is None else 'POST'),
+            url,
             body=data,
             headers=headers, retries=8)
 
@@ -725,15 +722,15 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
             def __init__(self, response):
                 self._response = response
-                self.status = response.code
+                self.status = response.status
                 self.content_type = response.getheader("Content-Type")
-                self.redirect_location = response.geturl()
+                self.redirect_location = response._actual.geturl()
 
             def readlines(self):
                 return self._response.readlines()
 
             def close(self):
-                self._response.close()
+                pass
 
         return WrapResponse(response), read
 

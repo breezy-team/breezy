@@ -71,9 +71,6 @@ from . import mutabletree
 from .trace import mutter, note
 
 
-ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
-
-
 class SettingFileIdUnsupported(errors.BzrError):
 
     _fmt = "This format does not support setting file ids."
@@ -129,6 +126,9 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def control_transport(self):
         return self._transport
 
+    def supports_symlinks(self):
+        return osutils.supports_symlinks(self.basedir)
+
     def is_control_filename(self, filename):
         """True if filename is the name of a control file in this tree.
 
@@ -159,10 +159,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return self._format.supports_merge_modified
 
     def _supports_executable(self):
-        if sys.platform == 'win32':
-            return False
-        # FIXME: Ideally this should check the file system
-        return True
+        return osutils.supports_executable(self.basedir)
 
     def break_lock(self):
         """Break a lock if one is present from another instance.

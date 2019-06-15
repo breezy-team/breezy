@@ -414,7 +414,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         # expand any symlinks in the directory part, while leaving the
         # filename alone
         # only expanding if symlinks are supported avoids windows path bugs
-        if osutils.has_symlinks():
+        if self.supports_symlinks():
             file_list = list(map(osutils.normalizepath, file_list))
 
         conflicts_related = set()
@@ -742,8 +742,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def is_executable(self, path):
         with self.lock_read():
-            if getattr(self, "_supports_executable",
-                       osutils.supports_executable)():
+            if self._supports_executable():
                 mode = self._lstat(path).st_mode
             else:
                 (index, subpath) = self._lookup_index(path.encode('utf-8'))
@@ -754,10 +753,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def _is_executable_from_path_and_stat(self, path, stat_result):
-        if getattr(self, "_supports_executable",
-                   osutils.supports_executable)():
-            return self._is_executable_from_path_and_stat_from_stat(
-                path, stat_result)
+        if self._supports_executable():
+            return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
         else:
             return self._is_executable_from_path_and_stat_from_basis(
                 path, stat_result)
@@ -1165,7 +1162,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.store,
             None
             if self.branch.head is None
-            else self.store[self.branch.head].tree)
+            else self.store[self.branch.head].tree,
+            honor_filemode=self._supports_executable())
 
     def reset_state(self, revision_ids=None):
         """Reset the state of the working tree.

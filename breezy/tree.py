@@ -141,6 +141,11 @@ class Tree(object):
         """
         return True
 
+    def supports_symlinks(self):
+        """Does this tree support symbolic links?
+        """
+        return osutils.has_symlinks()
+
     def changes_from(self, other, want_unchanged=False, specific_files=None,
                      extra_trees=None, require_versioned=False, include_root=False,
                      want_unversioned=False):
@@ -181,7 +186,8 @@ class Tree(object):
         """See InterTree.iter_changes"""
         intertree = InterTree.get(from_tree, self)
         return intertree.iter_changes(include_unchanged, specific_files, pb,
-                                      extra_trees, require_versioned, want_unversioned=want_unversioned)
+                                      extra_trees, require_versioned,
+                                      want_unversioned=want_unversioned)
 
     def conflicts(self):
         """Get a list of the conflicts in the tree.

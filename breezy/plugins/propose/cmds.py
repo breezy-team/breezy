@@ -350,3 +350,16 @@ class cmd_my_merge_proposals(Command):
                             ['\t%s\n' % l
                              for l in mp.get_description().splitlines()])
                         self.outf.write('\n')
+
+
+class cmd_land_merge_proposal(Command):
+    __doc__ = """Land a merge proposal."""
+
+    takes_args = ['url']
+    takes_options = [
+        Option('message', help='Commit message to use.', type=str)]
+
+    def run(self, url, message=None):
+        from .propose import get_proposal_by_url
+        proposal = get_proposal_by_url(url)
+        proposal.merge(commit_message=message)

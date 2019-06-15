@@ -164,19 +164,18 @@ class RemoteGitProber(Prober):
         if host == "github.com":
             # GitHub requires we lie.
             # https://github.com/dulwich/dulwich/issues/562
-            req.add_header("User-Agent", user_agent_for_github())
+            headers["User-Agent"] = user_agent_for_github()
         elif host == "bazaar.launchpad.net":
             # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
             raise brz_errors.NotBranchError(transport.base)
         resp = transport.request('GET', url, headers=headers)
         if resp.status in (404, 405):
             raise brz_errors.NotBranchError(transport.base)
-        else:
-            raise errors.InvalidHttpResponse(
+        elif resp.status != 200:
+            raise brz_errors.InvalidHttpResponse(
                 url, 'Unable to handle http code %d' % resp.status)
 
-        headers = resp.headers
-        ct = headers.get("Content-Type")
+        ct = resp.getheader("Content-Type")
         if ct is None:
             raise brz_errors.NotBranchError(transport.base)
         if ct.startswith("application/x-git"):

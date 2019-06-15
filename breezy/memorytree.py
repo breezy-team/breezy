@@ -51,6 +51,9 @@ class MemoryTree(MutableInventoryTree):
         self._locks = 0
         self._lock_mode = None
 
+    def supports_symlinks(self):
+        return True
+
     def get_config_stack(self):
         return self.branch.get_config_stack()
 
