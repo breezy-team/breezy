@@ -1108,8 +1108,6 @@ class InterTree(InterObject):
 
         :param source_path: Path of the file in the source tree
         :param target_path: Path of the file in the target tree
-        :param source_file_id: Optional file id of the file in the source tree
-        :param target_file_id: Optional file id of the file in the target tree
         :param source_stat: Optional stat value of the file in the source tree
         :param target_stat: Optional stat value of the file in the target tree
         :return: Boolean indicating whether the files have the same contents
@@ -1125,12 +1123,12 @@ class InterTree(InterObject):
             # Fall back to SHA1 for now
             if source_verifier_kind != "SHA1":
                 source_sha1 = self.source.get_file_sha1(
-                    source_path, source_file_id, source_stat)
+                    source_path, source_stat)
             else:
                 source_sha1 = source_verifier_data
             if target_verifier_kind != "SHA1":
                 target_sha1 = self.target.get_file_sha1(
-                    target_path, target_file_id, target_stat)
+                    target_path, target_stat)
             else:
                 target_sha1 = target_verifier_data
             return (source_sha1 == target_sha1)
