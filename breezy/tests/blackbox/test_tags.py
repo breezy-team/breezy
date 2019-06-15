@@ -443,6 +443,15 @@ class TestTagging(TestCaseWithTransport):
                          'unknown              ?\n')
         self.assertEqual('', err)
 
+    def test_tag_unsupported(self):
+        tree = self.make_branch_and_tree('tree', format='dirstate')
+        out, err = self.run_bzr('tag -d tree blah', retcode=3)
+        self.assertEqual(out, '')
+        self.assertContainsRe(
+            err,
+            'brz: ERROR: Tags not supported by BzrBranch5\\(.*\\/tree\\/\\); '
+            'you may be able to use \'brz upgrade file:\\/\\/.*\\/tree\\/\'.')
+
 
 class TestSmartServerCat(TestCaseWithTransport):
 
