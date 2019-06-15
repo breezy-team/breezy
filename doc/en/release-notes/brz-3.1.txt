@@ -27,6 +27,9 @@ New Features
  * The 'patch' command is now bundled with brz.
    Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
 
+ * The 'quilt' plugin, extracted from brz-debian, is now
+   bundled. (Jelmer Vernooĳ)
+
 Improvements
 ************
 
