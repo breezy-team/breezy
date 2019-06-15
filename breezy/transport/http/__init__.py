@@ -83,6 +83,10 @@ from ...transport import (
     )
 
 
+def default_user_agent():
+    return 'Breezy/%s' % breezy_version
+
+
 try:
     _ = (ssl.match_hostname, ssl.CertificateError)
 except AttributeError:
@@ -682,7 +686,7 @@ class AbstractHTTPHandler(urllib_request.AbstractHTTPHandler):
     _default_headers = {'Pragma': 'no-cache',
                         'Cache-control': 'max-age=0',
                         'Connection': 'Keep-Alive',
-                        'User-agent': 'Breezy/%s' % breezy_version,
+                        'User-agent': default_user_agent(),
                         'Accept': '*/*',
                         }
 
@@ -2011,6 +2015,10 @@ class HttpTransport(ConnectedTransport):
                 if self._data is None:
                     self._data = self._actual.read()
                 return self._data
+
+            @property
+            def text(self):
+                return self.data.decode()
 
             def read(self, amt=None):
                 return self._actual.read(amt)
