@@ -681,7 +681,11 @@ class TextConflict(Conflict):
     def action_auto(self, tree):
         # GZ 2012-07-27: Using NotImplementedError to signal that a conflict
         #                can't be auto resolved does not seem ideal.
-        if tree.kind(self.path) != 'file':
+        try:
+            kind = tree.kind(self.path)
+        except errors.NoSuchFile:
+            return
+        if kind != 'file':
             raise NotImplementedError("Conflict is not a file")
         conflict_markers_in_line = self._conflict_re.search
         # GZ 2012-07-27: What if not tree.has_id(self.file_id) due to removal?

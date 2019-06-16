@@ -456,7 +456,21 @@ class TestAutoResolve(TestCaseWithTransport):
         tree.add('hello', b'hello-id')
         file_conflict = conflicts.TextConflict('hello', b'hello-id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
-        self._auto_resolve(tree)
+        remaining, resolved = self._auto_resolve(tree)
+        self.assertEqual(
+            remaining,
+            conflicts.ConflictList([conflicts.TextConflict(u'hello', 'hello-id')]))
+        self.assertEqual(resolved, [])
+
+    def test_auto_resolve_missing(self):
+        tree = self.make_branch_and_tree('tree')
+        file_conflict = conflicts.TextConflict('hello', b'hello-id')
+        tree.set_conflicts(conflicts.ConflictList([file_conflict]))
+        remaining, resolved = self._auto_resolve(tree)
+        self.assertEqual(remaining, [])
+        self.assertEqual(
+            resolved,
+            conflicts.ConflictList([conflicts.TextConflict(u'hello', 'hello-id')]))
 
 
 class TestFindTrees(TestCaseWithTransport):
