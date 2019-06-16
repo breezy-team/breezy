@@ -21,7 +21,7 @@ import sys
 
 import breezy
 from .. import (
-    config,
+    bedding,
     crash,
     osutils,
     plugin,
@@ -41,7 +41,7 @@ class TestApportReporting(tests.TestCaseInTempDir):
         crash_dir = osutils.joinpath((self.test_base_dir, 'crash'))
         os.mkdir(crash_dir)
         self.overrideEnv('APPORT_CRASH_DIR', crash_dir)
-        self.assertEqual(crash_dir, config.crash_dir())
+        self.assertEqual(crash_dir, bedding.crash_dir())
 
         self.overrideAttr(
             breezy.get_global_state(),

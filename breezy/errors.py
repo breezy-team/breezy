@@ -284,6 +284,13 @@ class WorkingTreeAlreadyPopulated(InternalBzrError):
         self.base = base
 
 
+class NoWhoami(BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+            "Please, set your name with the 'whoami' command.\n"
+            'E.g. brz whoami "Your Name <name@example.com>"')
+
+
 class BzrCommandError(BzrError):
     """Error from user command"""
 
