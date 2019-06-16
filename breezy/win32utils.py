@@ -22,7 +22,6 @@ Only one dependency: ctypes should be installed.
 from __future__ import absolute_import
 
 import glob
-import operator
 import os
 import struct
 import sys
@@ -32,37 +31,13 @@ from breezy import (
     )
 from breezy.i18n import gettext
 
-# We can cope without it; use a separate variable to help pyflakes
-try:
-    import ctypes
-    has_ctypes = True
-except ImportError:
-    has_ctypes = False
-else:
-    create_buffer = ctypes.create_unicode_buffer
-    extract_buffer = operator.attrgetter("value")
-    suffix = 'W'
-try:
-    import pywintypes
-    has_pywintypes = True
-except ImportError:
-    has_pywintypes = has_win32file = has_win32api = False
-else:
+has_ctypes_win32 = False
+if sys.platform == 'win32':
     try:
-        import win32file
-        has_win32file = True
+        import ctypes
     except ImportError:
-        has_win32file = False
-    try:
-        import win32api
-        has_win32api = True
-    except ImportError:
-        has_win32api = False
+        has_ctypes_win32 = False
 
-# pulling in win32com.shell is a bit of overhead, and normally we don't need
-# it as ctypes is preferred and common.  lazy_imports and "optional"
-# modules don't work well, so we do our own lazy thing...
-has_win32com_shell = None  # Set to True or False once we know for sure...
 
 # Special Win32 API constants
 # Handles of std streams
@@ -89,7 +64,7 @@ REG_EXPAND_SZ = 2
 def debug_memory_win32api(message='', short=True):
     """Use trace.note() to dump the running memory info."""
     from breezy import trace
-    if has_ctypes:
+    if has_ctypes_win32:
         class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
             """Used by GetProcessMemoryInfo"""
             _fields_ = [('cb', ctypes.c_ulong),
@@ -123,12 +98,6 @@ def debug_memory_win32api(message='', short=True):
                 'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
                 'PrivateUsage': mem_struct.PrivateUsage,
                 }
-    elif has_win32api:
-        import win32process
-        # win32process does not return PrivateUsage, because it doesn't use
-        # PROCESS_MEMORY_COUNTERS_EX (it uses the one without _EX).
-        proc = win32process.GetCurrentProcess()
-        info = win32process.GetProcessMemoryInfo(proc)
     else:
         trace.note(gettext('Cannot debug memory on win32 without ctypes'
                            ' or win32process'))
@@ -163,7 +132,7 @@ def get_console_size(defaultx=80, defaulty=25):
     console window and return tuple (sizex, sizey) if success,
     or default size (defaultx, defaulty) otherwise.
     """
-    if not has_ctypes:
+    if not has_ctypes_win32:
         # no ctypes is found
         return (defaultx, defaulty)
 
@@ -189,7 +158,7 @@ def _get_sh_special_folder_path(csidl):
 
     Result is always unicode (or None).
     """
-    if has_ctypes:
+    if has_ctypes_win32:
         try:
             SHGetSpecialFolderPath = \
                 ctypes.windll.shell32.SHGetSpecialFolderPathW
@@ -199,23 +168,6 @@ def _get_sh_special_folder_path(csidl):
             buf = ctypes.create_unicode_buffer(MAX_PATH)
             if SHGetSpecialFolderPath(None, buf, csidl, 0):
                 return buf.value
-
-    global has_win32com_shell
-    if has_win32com_shell is None:
-        try:
-            from win32com.shell import shell
-            has_win32com_shell = True
-        except ImportError:
-            has_win32com_shell = False
-    if has_win32com_shell:
-        # still need to bind the name locally, but this is fast.
-        from win32com.shell import shell
-        try:
-            return shell.SHGetSpecialFolderPath(0, csidl, 0)
-        except shell.error:
-            # possibly E_NOTIMPL meaning we can't load the function pointer,
-            # or E_FAIL meaning the function failed - regardless, just ignore it
-            pass
     return None
 
 
@@ -282,17 +234,17 @@ def get_user_name():
     """Return user name as login name.
     If name cannot be obtained return None.
     """
-    if has_ctypes:
+    if has_ctypes_win32:
         try:
             advapi32 = ctypes.windll.advapi32
-            GetUserName = getattr(advapi32, 'GetUserName' + suffix)
+            GetUserName = getattr(advapi32, 'GetUserNameW')
         except AttributeError:
             pass
         else:
-            buf = create_buffer(UNLEN + 1)
+            buf = ctypes.create_unicode_buffer(UNLEN + 1)
             n = ctypes.c_int(UNLEN + 1)
             if GetUserName(buf, ctypes.byref(n)):
-                return extract_buffer(buf)
+                return buf.value
     # otherwise try env variables
     return get_environ_unicode('USERNAME')
 
@@ -308,38 +260,21 @@ def get_host_name():
 
     :return: A unicode string representing the host name.
     """
-    if has_win32api:
-        try:
-            return win32api.GetComputerNameEx(_WIN32_ComputerNameDnsHostname)
-        except (NotImplementedError, win32api.error):
-            # NotImplemented will happen on win9x...
-            pass
-    if has_ctypes:
+    if has_ctypes_win32:
         try:
             kernel32 = ctypes.windll.kernel32
         except AttributeError:
             pass  # Missing the module we need
         else:
-            buf = create_buffer(MAX_COMPUTERNAME_LENGTH + 1)
+            buf = ctypes.create_unicode_buffer(MAX_COMPUTERNAME_LENGTH + 1)
             n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH + 1)
 
             # Try GetComputerNameEx which gives a proper Unicode hostname
-            GetComputerNameEx = getattr(kernel32, 'GetComputerNameEx' + suffix,
-                                        None)
+            GetComputerNameEx = getattr(kernel32, 'GetComputerNameExW', None)
             if (GetComputerNameEx is not None
                 and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
                                       buf, ctypes.byref(n))):
-                return extract_buffer(buf)
-
-            # Try GetComputerName in case GetComputerNameEx wasn't found
-            # It returns the NETBIOS name, which isn't as good, but still ok.
-            # The first GetComputerNameEx might have changed 'n', so reset it
-            n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH + 1)
-            GetComputerName = getattr(kernel32, 'GetComputerName' + suffix,
-                                      None)
-            if (GetComputerName is not None
-                    and GetComputerName(buf, ctypes.byref(n))):
-                return extract_buffer(buf)
+                return buf.value
     return get_environ_unicode('COMPUTERNAME')
 
 
@@ -440,13 +375,18 @@ def get_app_path(appname):
 
 def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
-    if has_win32file:
-        SetFileAttributes = win32file.SetFileAttributesW
-        try:
-            SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)
-        except pywintypes.error as e:
-            from . import trace
-            trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
+    if not has_ctypes_win32:
+        return
+    from ctypes.wintypes import BOOL, DWORD, LPCWSTR
+    _kernel32 = ctypes.windll.kernel32
+    # <https://docs.microsoft.com/windows/desktop/api/fileapi/nf-fileapi-setfileattributesw>
+    _SetFileAttributesW = ctypes.WINFUNCTYPE(BOOL, LPCWSTR, DWORD)(
+        ("SetFileAttributesW", _kernel32))
+    FILE_ATTRIBUTE_HIDDEN = 2
+    if not SetFileAttributes(path, FILE_ATTRIBUTE_HIDDEN):
+        e = ctypes.WinError()
+        from . import trace
+        trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
 def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
@@ -491,7 +431,7 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     return args
 
 
-if has_ctypes:
+if has_ctypes_win32:
     def get_unicode_argv():
         prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p)
         GetCommandLineW = prototype(("GetCommandLineW",
@@ -513,8 +453,6 @@ if has_ctypes:
 
         A large enough buffer will be allocated to retrieve the value, though
         it may take two calls to the underlying library function.
-
-        This needs ctypes because pywin32 does not expose the wide version.
         """
         cfunc = getattr(get_environ_unicode, "_c_function", None)
         if cfunc is None:
@@ -524,34 +462,19 @@ if has_ctypes:
             get_environ_unicode._c_function = cfunc
         buffer_size = 256  # heuristic, 256 characters often enough
         while True:
-            buffer = ctypes.create_unicode_buffer(buffer_size)
-            length = cfunc(key, buffer, buffer_size)
+            buf = ctypes.create_unicode_buffer(buffer_size)
+            length = cfunc(key, buf, buffer_size)
             if not length:
                 code = ctypes.GetLastError()
                 if code == 203:  # ERROR_ENVVAR_NOT_FOUND
                     return default
                 raise ctypes.WinError(code)
             if buffer_size > length:
-                return buffer[:length]
+                return buf[:length]
             buffer_size = length
 
 
-if has_win32api:
-    def _pywin32_is_local_pid_dead(pid):
-        """True if pid doesn't correspond to live process on this machine"""
-        try:
-            handle = win32api.OpenProcess(1, False, pid)  # PROCESS_TERMINATE
-        except pywintypes.error as e:
-            if e[0] == 5:  # ERROR_ACCESS_DENIED
-                # Probably something alive we're not allowed to kill
-                return False
-            elif e[0] == 87:  # ERROR_INVALID_PARAMETER
-                return True
-            raise
-        handle.close()
-        return False
-    is_local_pid_dead = _pywin32_is_local_pid_dead
-elif has_ctypes and sys.platform == 'win32':
+if has_ctypes_win32:
     from ctypes.wintypes import BOOL, DWORD, HANDLE
     _kernel32 = ctypes.windll.kernel32
     _CloseHandle = ctypes.WINFUNCTYPE(BOOL, HANDLE)(
@@ -572,11 +495,5 @@ elif has_ctypes and sys.platform == 'win32':
             raise ctypes.WinError(errorcode)
         _CloseHandle(handle)
         return False
+
     is_local_pid_dead = _ctypes_is_local_pid_dead
-
-
-def _is_pywintypes_error(evalue):
-    """True if exception instance is an error from pywin32"""
-    if has_pywintypes and isinstance(evalue, pywintypes.error):
-        return True
-    return False
