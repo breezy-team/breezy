@@ -143,18 +143,9 @@ try:
 except ImportError:
     have_fcntl = False
 
-have_pywin32 = False
 have_ctypes_win32 = False
 if sys.platform == 'win32':
     import msvcrt
-    try:
-        import win32file
-        import pywintypes
-        import winerror
-        have_pywin32 = True
-    except ImportError:
-        pass
-
     try:
         import ctypes
         have_ctypes_win32 = True
@@ -358,73 +349,6 @@ if have_fcntl:
     _lock_classes.append(('fcntl', _fcntl_WriteLock, _fcntl_ReadLock))
 
 
-if have_pywin32 and sys.platform == 'win32':
-    win32file_CreateFile = win32file.CreateFileW
-
-    class _w32c_FileLock(_OSLock):
-
-        def _open(self, filename, access, share, cflags, pymode):
-            self.filename = osutils.realpath(filename)
-            try:
-                self._handle = win32file_CreateFile(
-                    filename, access, share, None, win32file.OPEN_ALWAYS,
-                    win32file.FILE_ATTRIBUTE_NORMAL, None)
-            except pywintypes.error as e:
-                if e.args[0] == winerror.ERROR_ACCESS_DENIED:
-                    raise errors.LockFailed(filename, e)
-                if e.args[0] == winerror.ERROR_SHARING_VIOLATION:
-                    raise errors.LockContention(filename, e)
-                raise
-            fd = win32file._open_osfhandle(self._handle, cflags)
-            self.f = os.fdopen(fd, pymode)
-            return self.f
-
-        def unlock(self):
-            self._clear_f()
-            self._handle = None
-
-    class _w32c_ReadLock(_w32c_FileLock):
-        def __init__(self, filename):
-            super(_w32c_ReadLock, self).__init__()
-            self._open(filename, win32file.GENERIC_READ,
-                       win32file.FILE_SHARE_READ, os.O_RDONLY, "rb")
-
-        def temporary_write_lock(self):
-            """Try to grab a write lock on the file.
-
-            On platforms that support it, this will upgrade to a write lock
-            without unlocking the file.
-            Otherwise, this will release the read lock, and try to acquire a
-            write lock.
-
-            :return: A token which can be used to switch back to a read lock.
-            """
-            # I can't find a way to upgrade a read lock to a write lock without
-            # unlocking first. So here, we do just that.
-            self.unlock()
-            try:
-                wlock = _w32c_WriteLock(self.filename)
-            except errors.LockError:
-                return False, _w32c_ReadLock(self.filename)
-            return True, wlock
-
-    class _w32c_WriteLock(_w32c_FileLock):
-        def __init__(self, filename):
-            super(_w32c_WriteLock, self).__init__()
-            self._open(filename,
-                       win32file.GENERIC_READ | win32file.GENERIC_WRITE, 0,
-                       os.O_RDWR, "rb+")
-
-        def restore_read_lock(self):
-            """Restore the original ReadLock."""
-            # For win32 we had to completely let go of the original lock, so we
-            # just unlock and create a new read lock.
-            self.unlock()
-            return _w32c_ReadLock(self.filename)
-
-    _lock_classes.append(('pywin32', _w32c_WriteLock, _w32c_ReadLock))
-
-
 if have_ctypes_win32:
     from ctypes.wintypes import DWORD, LPWSTR
     LPSECURITY_ATTRIBUTES = ctypes.c_void_p  # used as NULL no need to declare
@@ -517,7 +441,7 @@ if have_ctypes_win32:
 
 if len(_lock_classes) == 0:
     raise NotImplementedError(
-        "We must have one of fcntl, pywin32, or ctypes available"
+        "We must have one of fcntl or ctypes available"
         " to support OS locking."
         )
 
