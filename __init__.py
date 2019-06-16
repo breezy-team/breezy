@@ -29,6 +29,7 @@ import os
 
 import breezy
 from ...commands import plugin_cmds
+from ...hooks import install_lazy_named_hook
 from ...sixish import (
     viewitems,
     )
@@ -58,14 +59,21 @@ commands = {
         }
 
 for command, aliases in viewitems(commands):
-    plugin_cmds.register_lazy('cmd_' + command, aliases, 
-        __name__ + ".cmds")
+    plugin_cmds.register_lazy(
+        'cmd_' + command, aliases, __name__ + ".cmds")
 
 builddeb_dir = '.bzr-builddeb'
 default_conf = os.path.join(builddeb_dir, 'default.conf')
+
+
 def global_conf():
-    from ...config import config_dir
+    try:
+        from ...bedding import config_dir
+    except ImportError:
+        from ...config import config_dir
     return os.path.join(config_dir(), 'builddeb.conf')
+
+
 local_conf = os.path.join(builddeb_dir, 'local.conf')
 new_local_conf = 'debian/local.conf.local'
 new_conf = 'debian/bzr-builddeb.conf'
@@ -114,18 +122,23 @@ except ImportError:
     revspec_registry.register_lazy(
         "upstream:", __name__ + ".revspec", "RevisionSpec_upstream")
 else:
-    register_lazy("breezy.directory", "directories", "apt:",
-            __name__ + '.directory', 'VcsDirectory',
-            help="Directory that uses Debian Vcs-* control fields to look up branches")
-    register_lazy("breezy.directory", "AliasDirectory.branch_aliases", "upstream",
-            __name__ + ".directory", "upstream_branch_alias",
-            help="upstream branch (for packaging branches)")
-    register_lazy("breezy.tag", "tag_sort_methods", "debversion",
+    register_lazy(
+        "breezy.directory", "directories", "apt:",
+        __name__ + '.directory', 'VcsDirectory',
+        help="Directory that uses Debian Vcs-* control fields to look up branches")
+    register_lazy(
+        "breezy.directory", "AliasDirectory.branch_aliases", "upstream",
+        __name__ + ".directory", "upstream_branch_alias",
+        help="upstream branch (for packaging branches)")
+    register_lazy(
+        "breezy.tag", "tag_sort_methods", "debversion",
         __name__ + ".tagging", "sort_debversion",
         "Sort like Debian versions.")
-    register_lazy("breezy.revisionspec", "revspec_registry", "package:",
+    register_lazy(
+        "breezy.revisionspec", "revspec_registry", "package:",
         __name__ + ".revspec", "RevisionSpec_package")
-    register_lazy("breezy.revisionspec", "revspec_registry", "upstream:",
+    register_lazy(
+        "breezy.revisionspec", "revspec_registry", "upstream:",
         __name__ + ".revspec", "RevisionSpec_upstream")
 
 
@@ -227,7 +240,6 @@ def pre_merge_fix_ancestry(merger):
                 e.version)
 
 
-from ...hooks import install_lazy_named_hook
 install_lazy_named_hook(
     "breezy.msgeditor", "hooks", "commit_message_template",
     debian_changelog_commit_message,
