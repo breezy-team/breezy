@@ -2647,7 +2647,7 @@ def read_mtab(path):
             cols = line.split()
             if len(cols) < 3:
                 continue
-            yield cols[1], cols[2].decode('ascii', 'replace')
+            yield cols[1].decode(_fs_enc, 'replace'), cols[2].decode('ascii', 'replace')
 
 
 MTAB_PATH = '/etc/mtab'
