@@ -183,6 +183,15 @@ class TestGitBlackBox(ExternalBase):
 
         # Check that bzr log does not fail and includes the revision.
         output, error = self.run_bzr(['log', '-v'])
+        self.assertContainsRe(output, 'revno: 1')
+
+    def test_log_without_revno(self):
+        # Smoke test for "bzr log -v" in a git repository.
+        self.simple_commit()
+
+        # Check that bzr log does not fail and includes the revision.
+        output, error = self.run_bzr(['log', '-Ocalculate_revnos=no'])
+        self.assertNotContainsRe(output, 'revno: 1')
 
     def test_tags(self):
         git_repo, commit_sha1 = self.simple_commit()
