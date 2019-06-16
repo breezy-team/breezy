@@ -44,6 +44,7 @@ from . import (
     test_commit,
     )
 from ..transform import TreeTransform
+from ..tree import find_previous_path
 
 
 def get_text(vf, key):
@@ -587,12 +588,13 @@ class BundleTester(object):
 
         for path, status, kind, entry in base_files:
             # Check that the meta information is the same
+            to_path = find_previous_path(base_tree, to_tree, path)
             self.assertEqual(
                 base_tree.get_file_size(path),
-                to_tree.get_file_size(to_tree.id2path(entry.file_id)))
+                to_tree.get_file_size(to_path))
             self.assertEqual(
-                base_tree.get_file_sha1(path, entry.file_id),
-                to_tree.get_file_sha1(to_tree.id2path(entry.file_id)))
+                base_tree.get_file_sha1(path),
+                to_tree.get_file_sha1(to_path))
             # Check that the contents are the same
             # This is pretty expensive
             # self.assertEqual(base_tree.get_file(fileid).read(),

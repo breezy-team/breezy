@@ -65,6 +65,8 @@ class TreeEntry(object):
     """An entry that implements the minimum interface used by commands.
     """
 
+    __slots__ = []
+
     def __eq__(self, other):
         # yes, this is ugly, TODO: best practice __eq__ style.
         return (isinstance(other, TreeEntry)
@@ -79,6 +81,8 @@ class TreeEntry(object):
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
 
+    __slots__ = []
+
     kind = 'directory'
 
     def kind_character(self):
@@ -87,6 +91,8 @@ class TreeDirectory(TreeEntry):
 
 class TreeFile(TreeEntry):
     """See TreeEntry. This is a regular file in a working tree."""
+
+    __slots__ = []
 
     kind = 'file'
 
@@ -97,6 +103,8 @@ class TreeFile(TreeEntry):
 class TreeLink(TreeEntry):
     """See TreeEntry. This is a symlink in a working tree."""
 
+    __slots__ = []
+
     kind = 'symlink'
 
     def kind_character(self):
@@ -105,6 +113,8 @@ class TreeLink(TreeEntry):
 
 class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
+
+    __slots__ = []
 
     kind = 'tree-reference'
 
@@ -143,6 +153,9 @@ class TreeChange(object):
             return tuple(self) == other
         return False
 
+    def __lt__(self, other):
+        return tuple(self) < tuple(other)
+
     def __getitem__(self, i):
         if isinstance(i, slice):
             return tuple(self).__getitem__(i)
@@ -150,6 +163,13 @@ class TreeChange(object):
 
     def is_reparented(self):
         return self.parent_id[0] != self.parent_id[1]
+
+    def discard_new(self):
+        return self.__class__(
+            self.file_id, (self.path[0], None), self.changed_content,
+            (self.versioned[0], None), (self.parent_id[0], None),
+            (self.name[0], None), (self.kind[0], None),
+            (self.executable[0], None))
 
 
 class Tree(object):
@@ -1100,7 +1120,7 @@ class InterTree(InterObject):
                         precise_file_ids.update(
                             child.file_id
                             for child in self.source.iter_child_entries(result.path[0]))
-                    changed_file_ids.add(result[0])
+                    changed_file_ids.add(result.file_id)
                     yield result
 
     def file_content_matches(
@@ -1128,12 +1148,12 @@ class InterTree(InterObject):
             # Fall back to SHA1 for now
             if source_verifier_kind != "SHA1":
                 source_sha1 = self.source.get_file_sha1(
-                    source_path, source_file_id, source_stat)
+                    source_path, source_stat)
             else:
                 source_sha1 = source_verifier_data
             if target_verifier_kind != "SHA1":
                 target_sha1 = self.target.get_file_sha1(
-                    target_path, target_file_id, target_stat)
+                    target_path, target_stat)
             else:
                 target_sha1 = target_verifier_data
             return (source_sha1 == target_sha1)

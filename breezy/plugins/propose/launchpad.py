@@ -74,8 +74,8 @@ def plausible_launchpad_url(url):
         return False
     if url.startswith('lp:'):
         return True
-    regex = re.compile('([a-z]*\+)*(bzr\+ssh|http|ssh|git|https)'
-                       '://(bazaar|git).*\.launchpad\.net')
+    regex = re.compile(r'([a-z]*\+)*(bzr\+ssh|http|ssh|git|https)'
+                       r'://(bazaar|git).*\.launchpad\.net')
     return bool(regex.match(url))
 
 
@@ -203,7 +203,7 @@ class Launchpad(Hoster):
         return plausible_launchpad_url(branch.user_url)
 
     @classmethod
-    def probe_from_url(cls, url):
+    def probe_from_url(cls, url, possible_transports=None):
         if plausible_launchpad_url(url):
             return Launchpad()
         raise UnsupportedHoster(url)
@@ -687,7 +687,6 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
 
 def modified_files(old_tree, new_tree):
     """Return a list of paths in the new tree with modified contents."""
-    for f, (op, path), c, v, p, n, (ok, k), e in new_tree.iter_changes(
-            old_tree):
-        if c and k == 'file':
+    for change in new_tree.iter_changes(old_tree):
+        if change.changed_content and change.kind[1] == 'file':
             yield str(path)

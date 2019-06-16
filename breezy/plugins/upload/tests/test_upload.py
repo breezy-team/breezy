@@ -19,7 +19,7 @@ import sys
 
 
 from .... import (
-    config,
+    bedding,
     controldir,
     errors,
     osutils,
@@ -734,8 +734,8 @@ class TestBranchUploadLocations(per_branch.TestCaseWithBranch):
         self.assertEqual(None, conf.get('upload_location'))
 
     def test_get_push_location_exact(self):
-        config.ensure_config_dir_exists()
-        fn = config.locations_config_filename()
+        bedding.ensure_config_dir_exists()
+        fn = bedding.locations_config_path()
         b = self.get_branch()
         with open(fn, 'wt') as f:
             f.write(("[%s]\n" "upload_location=foo\n" % b.base.rstrip("/")))
