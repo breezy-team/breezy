@@ -91,6 +91,7 @@ class cmd_publish_derived(Command):
             overwrite=overwrite)
         local_branch.set_push_location(remote_branch.user_url)
         local_branch.set_public_branch(public_url)
+        local_branch.set_submit_branch(submit_branch.user_url)
         note(gettext("Pushed to %s") % public_url)
 
 
@@ -178,6 +179,7 @@ class cmd_propose_merge(Command):
         remote_branch, public_branch_url = hoster.publish_derived(
             branch, target, name=name, allow_lossy=not no_allow_lossy)
         branch.set_push_location(remote_branch.user_url)
+        branch.set_submit_branch(target.user_url)
         note(gettext('Published branch to %s') % public_branch_url)
         if prerequisite is not None:
             prerequisite_branch = _mod_branch.Branch.open(prerequisite)

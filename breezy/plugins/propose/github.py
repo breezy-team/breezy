@@ -364,7 +364,6 @@ class GitHub(Hoster):
             yield GitHubMergeProposal(
                 self.transport.request('GET', issue['pull_request']['url']).json)
 
-    @convert_github_error
     def get_proposal_by_url(self, url):
         raise UnsupportedHoster(url)
 
