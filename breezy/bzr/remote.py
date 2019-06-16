@@ -3398,6 +3398,9 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._ensure_real()
         return self._custom_format.supports_set_append_revisions_only()
 
+    def stores_revno(self):
+        return True
+
     def _use_default_local_heads_to_fetch(self):
         # If the branch format is a metadir format *and* its heads_to_fetch
         # implementation is not overridden vs the base class, we can use the

@@ -1662,6 +1662,10 @@ class BranchFormat(controldir.ControlComponentFormat):
         """True if uncommitted changes can be stored in this branch."""
         return True
 
+    def stores_revno(self):
+        """True if this branch format store revision numbers."""
+        return True
+
 
 class BranchHooks(Hooks):
     """A dictionary mapping hook name to a list of callables for branch hooks.

@@ -324,6 +324,10 @@ class GitBranchFormat(branch.BranchFormat):
     def set_reference(self, controldir, name, target):
         return controldir.set_branch_reference(target, name)
 
+    def stores_revno(self):
+        """True if this branch format store revision numbers."""
+        return False
+
 
 class LocalGitBranchFormat(GitBranchFormat):
 
