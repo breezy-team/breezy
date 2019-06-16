@@ -878,8 +878,7 @@ altered in u2
             ['commit', '-m', 'initial'], working_dir='foo')
 
     def test_commit_amend(self):
-        """Ensure commit error if username is not set.
-        """
+        """Ensure --amend works."""
         tree = self.make_branch_and_tree('foo')
         self.build_tree_contents([('foo/foo.txt', 'hello')])
         self.run_bzr(['add'], working_dir='foo')
