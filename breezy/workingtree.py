@@ -31,7 +31,6 @@ from __future__ import absolute_import
 
 import errno
 import os
-import re
 import sys
 
 import breezy
@@ -62,6 +61,7 @@ from . import (
     )
 from .i18n import gettext
 from . import mutabletree
+from .symbol_versioning import deprecated_method, deprecated_in
 from .trace import mutter, note
 
 
@@ -1271,6 +1271,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         """
         raise NotImplementedError(self.walkdirs)
 
+    @deprecated_method(deprecated_in((3, 0, 1)))
     def auto_resolve(self):
         """Automatically resolve text conflicts according to contents.
 
@@ -1284,21 +1285,14 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         with self.lock_tree_write():
             un_resolved = _mod_conflicts.ConflictList()
             resolved = _mod_conflicts.ConflictList()
-            conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
             for conflict in self.conflicts():
-                path = self.id2path(conflict.file_id)
-                if (conflict.typestring != 'text conflict' or
-                        self.kind(path) != 'file'):
+                try:
+                    conflict.action_auto(self)
+                except NotImplementedError:
                     un_resolved.append(conflict)
-                    continue
-                with open(self.abspath(path), 'rb') as my_file:
-                    for line in my_file:
-                        if conflict_re.search(line):
-                            un_resolved.append(conflict)
-                            break
-                    else:
-                        resolved.append(conflict)
-            resolved.remove_files(self)
+                else:
+                    conflict.cleanup(self)
+                    resolved.append(conflict)
             self.set_conflicts(un_resolved)
             return un_resolved, resolved
 
