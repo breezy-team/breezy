@@ -880,23 +880,28 @@ altered in u2
     def test_commit_amend(self):
         """Ensure commit error if username is not set.
         """
-        self.run_bzr(['init', 'foo'])
-        with open('foo/foo.txt', 'w') as f:
-            f.write('hello')
+        tree = self.make_branch_and_tree('foo')
+        self.build_tree_contents([('foo/foo.txt', 'hello')])
         self.run_bzr(['add'], working_dir='foo')
         out, err = self.run_bzr("commit -m original\\ message foo/foo.txt")
+        revid1 = tree.last_revision()
         self.assertEqualDiff(out, '')
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'added foo\.txt\n'
                               'Committed revision 1\.\n$')
+        self.build_tree_contents([('foo/foo.txt', 'hello again')])
         out, err = self.run_bzr("commit --amend -m new\\ message foo/foo.txt")
         self.assertEqualDiff(out, '')
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'added foo\.txt\n'
                               'Committed revision 1\.\n$')
-        out, err = self.run_bzr("log --short foo'")
         self.assertEqualDiff(out, '')
-        self.assertEqualDiff(err, '')
+        revid2 = tree.last_revision()
+        self.assertNotEqual(revid1, revid2)
+        self.assertEqual('hello again', tree.get_file_text('foo.txt'))
+        basis_tree = tree.basis_tree()
+        with basis_tree.lock_read():
+            self.assertEqual('hello again', basis_tree.get_file_text('foo.txt'))
 
     def test_commit_recursive_checkout(self):
         """Ensure that a commit to a recursive checkout fails cleanly.
@@ -946,7 +951,7 @@ class TestSmartServerCommit(TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(211, self.hpss_calls)
+        self.assertLength(212, self.hpss_calls)
         self.assertLength(2, self.hpss_connections)
         self.expectFailure("commit still uses VFS calls",
                            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)

@@ -479,7 +479,7 @@ class Commit(object):
             self.work_tree.update_basis_by_delta(self.rev_id, invdelta)
         else:
             with self.wt_basis_tree.lock_read():
-                self.work_tree.update(self.rev_id)
+                self.work_tree.set_last_revision(self.rev_id)
         self.reporter.completed(new_revno, self.rev_id)
         self._process_post_hooks(old_revno, new_revno)
         return self.rev_id
@@ -603,15 +603,13 @@ class Commit(object):
             # - in a checkout scenario the tree may have no
             # parents but the branch may do.
             first_tree_parent = breezy.revision.NULL_REVISION
-        try:
-            old_revno, master_last = self.master_branch.last_revision_info()
-        except errors.UnsupportedOperation:
-            master_last = self.master_branch.last_revision()
-            old_revno = self.branch.revision_id_to_revno(master_last)
+        master_last = self.master_branch.last_revision()
         if master_last != first_tree_parent:
             if master_last != breezy.revision.NULL_REVISION:
                 raise errors.OutOfDateTree(self.work_tree)
-        if self.branch.repository.has_revision(first_tree_parent):
+
+        if self.branch.repository.has_revision(self.basis_revid):
+            old_revno = self.branch.revision_id_to_revno(self.basis_revid)
             new_revno = old_revno + 1
         else:
             # ghost parents never appear in revision history.
