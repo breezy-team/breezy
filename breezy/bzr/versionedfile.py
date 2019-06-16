@@ -1233,6 +1233,16 @@ class ThunkedVersionedFiles(VersionedFiles):
         self._mapper = mapper
         self._is_locked = is_locked
 
+    def add_chunks(self, key, parents, chunk_iter, parent_texts=None,
+                   left_matching_blocks=None, nostore_sha=None,
+                   random_id=False):
+        # For now, just fallback to add_lines.
+        lines = osutils.chunks_to_lines(list(chunk_iter))
+        return self.add_lines(
+            key, parents, lines, parent_texts,
+            left_matching_blocks, nostore_sha, random_id,
+            check_content=True)
+
     def add_lines(self, key, parents, lines, parent_texts=None,
                   left_matching_blocks=None, nostore_sha=None, random_id=False,
                   check_content=True):
