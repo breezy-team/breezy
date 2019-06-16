@@ -476,12 +476,10 @@ class Commit(object):
         self._set_progress_stage("Updating the working tree")
         if self.work_tree.last_revision() == self.basis_revid:
             invdelta = self.builder.get_basis_delta()
+            self.work_tree.update_basis_by_delta(self.rev_id, invdelta)
         else:
-            import pdb; pdb.set_trace()
             with self.wt_basis_tree.lock_read():
-                invdelta = self.work_tree.root_inventory._make_delta(
-                    self.wt_basis_tree.root_inventory)
-        self.work_tree.update_basis_by_delta(self.rev_id, invdelta)
+                self.work_tree.update(self.rev_id)
         self.reporter.completed(new_revno, self.rev_id)
         self._process_post_hooks(old_revno, new_revno)
         return self.rev_id
