@@ -17,6 +17,7 @@ breezy-debian (2.8.27) UNRELEASED; urgency=medium
   * Check gbp.conf for tag format.
   * Support git style revisions in upstream versions with just the date.
   * Support v.X syntax for version tags.
+  * Disable quilt functionality when Breezy is providing a quilt plugin.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 06 Mar 2019 21:35:13 +0000
 

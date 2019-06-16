@@ -128,39 +128,42 @@ def post_build_tree_quilt(tree):
     post_process_quilt_patches(tree, [], policy)
 
 
-from ....hooks import install_lazy_named_hook
-install_lazy_named_hook(
-    "breezy.merge", "Merger.hooks",
-    'pre_merge_quilt', pre_merge_quilt,
-    'Quilt patch (un)applying')
-install_lazy_named_hook(
-    "breezy.mutabletree", "MutableTree.hooks",
-    "start_commit", start_commit_check_quilt,
-    "Check for (un)applied quilt patches")
-install_lazy_named_hook(
-    "breezy.merge", "Merger.hooks",
-    'post_merge', post_merge_quilt_cleanup,
-    'Cleaning up quilt temporary directories')
-install_lazy_named_hook(
-    "breezy.mutabletree", "MutableTree.hooks",
-    'post_build_tree', post_build_tree_quilt,
-    'Applying quilt patches.')
+try:
+    import breezy.plugins.quilt
+except ImportError:
+    from ....hooks import install_lazy_named_hook
+    install_lazy_named_hook(
+        "breezy.merge", "Merger.hooks",
+        'pre_merge_quilt', pre_merge_quilt,
+        'Quilt patch (un)applying')
+    install_lazy_named_hook(
+        "breezy.mutabletree", "MutableTree.hooks",
+        "start_commit", start_commit_check_quilt,
+        "Check for (un)applied quilt patches")
+    install_lazy_named_hook(
+        "breezy.merge", "Merger.hooks",
+        'post_merge', post_merge_quilt_cleanup,
+        'Cleaning up quilt temporary directories')
+    install_lazy_named_hook(
+        "breezy.mutabletree", "MutableTree.hooks",
+        'post_build_tree', post_build_tree_quilt,
+        'Applying quilt patches.')
 
 
-from ....config import option_registry, Option, bool_from_store
-option_registry.register(
-    Option('quilt.smart_merge', default=True, from_unicode=bool_from_store,
-           help="Unapply quilt patches before merging."))
+    from ....config import option_registry, Option, bool_from_store
+    option_registry.register(
+        Option('quilt.smart_merge', default=True, from_unicode=bool_from_store,
+               help="Unapply quilt patches before merging."))
 
-def policy_from_store(s):
-    if not s in ('applied', 'unapplied'):
-        raise ValueError('Invalid quilt.commit_policy: %s' % s)
-    return s
+    def policy_from_store(s):
+        if not s in ('applied', 'unapplied'):
+            raise ValueError('Invalid quilt.commit_policy: %s' % s)
+        return s
 
-option_registry.register(
-    Option('quilt.commit_policy', default=None, from_unicode=policy_from_store,
-          help="Whether to apply or unapply all patches in commits."))
+    option_registry.register(
+        Option('quilt.commit_policy', default=None, from_unicode=policy_from_store,
+              help="Whether to apply or unapply all patches in commits."))
 
-option_registry.register(
-    Option('quilt.tree_policy', default=None, from_unicode=policy_from_store,
-          help="Whether to apply or unapply all patches after checkout/update."))
+    option_registry.register(
+        Option('quilt.tree_policy', default=None, from_unicode=policy_from_store,
+              help="Whether to apply or unapply all patches after checkout/update."))

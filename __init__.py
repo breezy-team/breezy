@@ -259,6 +259,9 @@ install_lazy_named_hook(
     'Debian ancestry fixing')
 
 
+from . import quilt
+
+
 def load_tests(loader, basic_tests, pattern):
     basic_tests.addTest(
         loader.loadTestsFromModuleNames([__name__ + '.tests']))
