@@ -1785,7 +1785,10 @@ class DirStateRevisionTree(InventoryTree):
             raise errors.BzrError('must supply file_id or path')
         if path is not None:
             path = path.encode('utf8')
-        parent_index = self._get_parent_index()
+        try:
+            parent_index = self._get_parent_index()
+        except ValueError:
+            raise errors.NoSuchRevisionInTree(self._dirstate, self._revision_id)
         return self._dirstate._get_entry(parent_index, fileid_utf8=file_id,
                                          path_utf8=path)
 
