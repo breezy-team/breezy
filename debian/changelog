@@ -1,4 +1,4 @@
-breezy-debian (2.8.27) UNRELEASED; urgency=medium
+breezy-debian (2.8.27) experimental; urgency=medium
 
   * Support dotted revnos when referencing upstream revisions.
   * Support a Repository-Tag-Prefix field in debian/upstream/metadata.
