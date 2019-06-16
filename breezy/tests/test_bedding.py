@@ -30,6 +30,13 @@ from .. import (
     )
 
 
+def override_whoami(test):
+    test.overrideEnv('EMAIL', None)
+    test.overrideEnv('BRZ_EMAIL', None)
+    # Also, make sure that it's not inferred from mailname.
+    test.overrideAttr(bedding, '_auto_user_id', lambda: (None, None))
+
+
 class TestConfigPath(tests.TestCase):
 
     def setUp(self):
