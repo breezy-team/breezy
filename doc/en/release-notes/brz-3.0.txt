@@ -45,6 +45,9 @@ Bug Fixes
 * Print full upgrade command to run when complaining about lack of
   support for tags. (Jelmer Vernooĳ, #163908)
 
+* Refactor auto conflict handling and add a ``--auto`` flag
+  to ``bzr resolve``. (Martin Packman, #688506)
+
 Documentation
 *************
 
