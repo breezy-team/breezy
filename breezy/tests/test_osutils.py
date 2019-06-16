@@ -62,8 +62,6 @@ UTF8DirReaderFeature = _UTF8DirReaderFeature('breezy._readdir_pyx')
 
 term_ios_feature = features.ModuleAvailableFeature('termios')
 
-psutil_feature = features.ModuleAvailableFeature('psutil')
-
 
 def _already_unicode(s):
     return s
@@ -2356,8 +2354,42 @@ class SupportsSymlinksTests(tests.TestCaseInTempDir):
         self.assertIsInstance(osutils.supports_symlinks(self.test_dir), bool)
 
 
+class MtabReader(tests.TestCaseInTempDir):
+
+    def test_read_mtab(self):
+        self.build_tree_contents([('mtab', """\
+/dev/mapper/blah--vg-root / ext4 rw,relatime,errors=remount-ro 0 0
+/dev/mapper/blah--vg-home /home vfat rw,relatime 0 0
+# comment
+
+iminvalid
+""")])
+        self.assertEqual(
+            list(osutils.read_mtab('mtab')),
+            [(b'/', 'ext4'),
+             (b'/home', 'vfat')])
+
+
 class GetFsTypeTests(tests.TestCaseInTempDir):
 
-    def test_returns_string(self):
-        self.requireFeature(psutil_feature)
-        self.assertIsInstance(osutils.get_fs_type(self.test_dir), str)
+    def test_returns_string_or_none(self):
+        ret = osutils.get_fs_type(self.test_dir)
+        self.assertTrue(isinstance(ret, text_type) or ret is None)
+
+    def test_returns_most_specific(self):
+        self.overrideAttr(
+            osutils, '_FILESYSTEM_FINDER',
+            osutils.FilesystemFinder(
+                [('/', 'ext4'), ('/home', 'vfat'), ('/home/jelmer', 'ext2')]))
+        self.assertEqual(osutils.get_fs_type('/home/jelmer/blah'), 'ext2')
+        self.assertEqual(osutils.get_fs_type('/home/jelmer'), 'ext2')
+        self.assertEqual(osutils.get_fs_type('/home/martin'), 'vfat')
+        self.assertEqual(osutils.get_fs_type('/home'), 'vfat')
+        self.assertEqual(osutils.get_fs_type('/other'), 'ext4')
+
+    def test_returns_none(self):
+        self.overrideAttr(
+            osutils, '_FILESYSTEM_FINDER',
+            osutils.FilesystemFinder([]))
+        self.assertIs(osutils.get_fs_type('/home/jelmer/blah'), None)
+        self.assertIs(osutils.get_fs_type('/home/jelmer'), None)
