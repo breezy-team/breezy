@@ -1271,7 +1271,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         """
         raise NotImplementedError(self.walkdirs)
 
-    @deprecated_method(deprecated_in((2, 6, 0)))
+    @deprecated_method(deprecated_in((3, 0, 1)))
     def auto_resolve(self):
         """Automatically resolve text conflicts according to contents.
 
