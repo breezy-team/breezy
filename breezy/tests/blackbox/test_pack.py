@@ -28,9 +28,9 @@ class TestPack(tests.TestCaseWithTransport):
         self._make_file(path, line_prefix, total_lines, versioned=True)
 
     def _make_file(self, path, line_prefix, total_lines, versioned):
-        text=''
+        text = ''
         for i in range(total_lines):
-            text += line_prefix + str(i+1) + "\n"
+            text += line_prefix + str(i + 1) + "\n"
 
         with open(path, 'w') as f:
             f.write(text)
@@ -90,7 +90,7 @@ class TestSmartServerPack(tests.TestCaseWithTransport):
     def test_simple_pack(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()

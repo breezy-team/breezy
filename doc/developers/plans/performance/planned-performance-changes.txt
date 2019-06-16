@@ -1,0 +1,167 @@
+Planned changes to the bzr core
+===============================
+
+Delivering the best possible performance requires changing the bzr core design
+from that present in 0.16. Some of these changes are incremental and can be
+done with no impact on disk format. Many of them however do require changes to
+the disk format, and these can be broken into two sets of changes, those which
+are sufficiently close to the model bzr uses today to interoperate with the
+0.16 disk formats, and those that are not able to interoperate with the 0.16
+disk formats - specifically some planned changes may result in data which
+cannot be exported to bzr 0.16's disk formats and then imported back to the new
+format without losing critical information. If/when this takes place it will be
+essentially a migration for users to switch from their bzr 0.16 repository to a
+bzr that supports them. We plan to batch all such changes into one large
+'experimental' repository format, which will be complete stable and usable
+before we migrate it to become a supported format. Getting new versions of bzr
+in widespread use at that time will be very important, otherwise the user base
+may be split in two - users that have upgraded and users that have not.
+
+The following changes are grouped according to their compatibility impact:
+library only, disk format but interoperable, disk format interoperability
+unknown, and disk format, not interoperable.
+
+Library changes
+---------------
+
+These changes will change bzrlib's API but will not affect the disk format and
+thus do not pose a significant migration issue.
+
+ * For our 20 core use cases, we plan to add targeted API's to bzrlib that are
+   repository-representation agnostic. These will instead reflect the shape of
+   data access most optimal for that case.
+
+ * Deprecate 'versioned files' as a library concept. Instead of asking for
+   information about a file-over-time as a special case, we will move to an API
+   that assumes less coupling between the historical information and the
+   ability to obtain texts/deltas etc. Specifically, we need to remove all
+   API's that act in terms of on disk representation except those within a
+   given repository implementation.
+
+ * Create a validator for revisions that is more amenable to use by other parts
+   of the code base than just the gpg signing facility. This can be done today
+   without changing disk, possibly with a performance hit until the disk
+   formats match the validatory logic. It will be hard to tell if we have the
+   right routine for that until all the disk changes are complete, so while
+   this is a library only change, it's likely one that will be delayed to near
+   the end of the process.
+
+ * Add an explicit API for managing cached annotations. While annotations are
+   considered a cache this is not exposed in such a way that cache operations
+   like 'drop the cache' can be performed. On current disk formats the cache is
+   mandatory, but an API to manage would allow refreshing of the cache (e.g.
+   after ghosts are filled in during baz conversions).
+
+ * Use the _iter_changes API to perform merges. This is a small change that may
+   remove the need to use inventories in merge, making a dramatic difference to
+   merge performance once the tree shape comparison optimisations are
+   implemented.
+
+ * Create a network-efficient revision graph API. This is the logic at the
+   start of push and pull operations, which currently scales O(graph size).
+   Fixing the scaling can be done, but there are tradeoffs to latency and
+   performance to consider, making it a little tricky to get right.
+
+ * Working tree disk operation ordering. We plan to change the order in which
+   some operations are done (specifically TreeTransform ones) to improve
+   performance. There is already a 66% performance boost in that area going
+   through review.
+
+ * Stop requiring full memory copies of files. Currently bzr requires that it
+   can hold 3 copies of any file it's versioning in memory. Solving this is
+   tricky, particularly without performance regressions on small files, but
+   without solving it versioning of .iso and other large objects will continue
+   to be extremely painful.
+
+ * Add an API for per-file graph access that alllows incremental access and is
+   suitable for on-demand generation if desired.
+
+ * Repository stacking API. Allowing multiple databases to be stacked to give a
+   single 'repository' will allow implementation of some long desired features
+   like history horizons, and bundle usage where the bundle is not added to the
+   local repository just to examine its contents.
+
+ * Revision data manipulation API. We need a single streaming API for adding
+   data to or getting it from a repository. This will need to allow hints such
+   as 'optimise for size', or 'optimise for fast-addition' to meet the various
+   users planned, but it is a core part of the library today, and it's not
+   sufficiently clean to let us simplify/remove a lot of related code today.
+
+Interoperable disk changes
+--------------------------
+
+ * New container format to allow single-file description of multiple named
+   objects. This will provide the basis for transmission of revisions over the
+   network, the new bundle format, and possibly a new repository format as
+   well. [Core implemented]
+
+ * Separate the annotation cache from the storage of actual file texts and make
+   the annotation style, and when to do it, configurable. This will reduce data
+   sent over the wire when repositories have had 'needs-annotations' turned
+   off, which very large trees may choose to do - generating just-in-time
+   annotations may be desirable for those trees (even when performing
+   annotation based merges).
+
+ * Repository disk operation ordering. The order that tasks access data within
+   the repository and the layout of the data should be harmonised. This will
+   require disk format changes but does not inherently alter the model, so it's
+   straight forward to export from a repository that has been optimised in this
+   way to a 0.16 based repository.
+
+ * Inventory representation. An inventory is a logical description of the shape
+   of a version controlled tree. Currently we operate on the whole inventory as
+   a tree broken down per directory, but we store it as a flat file. This scale
+   very poorly as even a minor change between inventories requires us to scan
+   the entire file, and in large trees this is many megabytes of data to
+   consider. We are investigating the exact form, but the intent is to change
+   the serialisation of inventories so that comparing two inventories can be
+   done in some smaller time - e.g. O(log N) scaling. Whatever form this takes,
+   a repository that can export it directly will be able to perform operations
+   between two historical trees much more efficiently than the current
+   repositories.
+
+ * Greatest distance from origin cache. This is a possible change to introduce,
+   but it may be unnecessary - listed here for completeness till it has been
+   established as [un]needed.
+
+Possibly non-interoperable disk changes
+---------------------------------------
+
+ * Removing of derivable data from the core of bzr. Much of the data that bzr
+   stores is derivable from the users source files. For instance the
+   annotations that record who introduced a line. Given the full history for a
+   repository we can recreate that at any time. We want to remove the
+   dependence of the core of bzr on any data that is derivable, because doing
+   this will give us the freedom to:
+
+   * Improve the derivation algorithm over time.
+   * Deal with bugs in the derivation algorithms without having 'corrupt
+     repositories' or such things.
+
+   However, some of the data that is technically derived, like the per-file
+   merge graph, is both considered core, and can be generated differently when
+   certain circumstances arive, by bzr 0.16. Any change to the 'core' status of
+   that data will discard data that cannot be recreated and thus lead to the
+   inability to export from a format where that is derived data to bzr 0.16's
+   formats without errors occuring in those circumstances. Some of the data
+   that may be considered for this includes:
+
+   * Per file merge graphs
+   * Annotations
+
+Non-interoperable disk changes
+------------------------------
+
+ * Drop the per-file merge graph 'cache' currently held in the FILE-ID.kndx
+   files. A specific case of removing derivable data, this may allow smaller
+   inventory metadata and also make it easier to allow two different trees (in
+   terms of last-change made, e.g. if one is a working tree) to be compared
+   using a hash-tree style approach.
+
+ * Use hash based names for some objects in the bzr database. Because it would force
+   total-knowledge-of-history on the graph revision objects will not be namable
+   via hash's and neither will revisio signatures. Other than that though we
+   can in principle use hash's e.g. SHA1 for everything else. There are many
+   unanswered questions about hash based naming related to locality of
+   reference impacts, which need to be answered before this becomes a definite
+   item.

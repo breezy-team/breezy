@@ -15,14 +15,22 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
-import httplib
+try:
+    import http.client as http_client
+    import http.server as http_server
+except ImportError:
+    import httplib as http_client
+    import SimpleHTTPServer as http_server
 import os
 import posixpath
 import random
 import re
-import SimpleHTTPServer
 import socket
-import urlparse
+import sys
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
 
 from .. import (
     osutils,
@@ -36,7 +44,7 @@ class BadWebserverPath(ValueError):
         return 'path %s is not in %s' % self.args
 
 
-class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+class TestingHTTPRequestHandler(http_server.SimpleHTTPRequestHandler):
     """Handles one request.
 
     A TestingHTTPRequestHandler is instantiated for every request received by
@@ -48,10 +56,10 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
 
     # The Message-like class used to parse the request headers
-    MessageClass = httplib.HTTPMessage
+    MessageClass = http_client.HTTPMessage
 
     def setup(self):
-        SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
+        http_server.SimpleHTTPRequestHandler.setup(self)
         self._cwd = self.server._home_dir
         tcs = self.server.test_case_server
         if tcs.protocol_version is not None:
@@ -94,7 +102,7 @@ Message: %(message)s.
     def send_error(self, code, message=None):
         """Send and log an error reply.
 
-        We redefine the python-provided version to be able to set a 
+        We redefine the python-provided version to be able to set a
         ``Content-Length`` header as some http/1.1 clients complain otherwise
         (see bug #568421).
 
@@ -118,10 +126,10 @@ Message: %(message)s.
         self.send_header('Connection', 'close')
         self.end_headers()
         if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
-            self.wfile.write(content)
+            self.wfile.write(content.encode('utf-8'))
 
     def _handle_one_request(self):
-        SimpleHTTPServer.SimpleHTTPRequestHandler.handle_one_request(self)
+        http_server.SimpleHTTPRequestHandler.handle_one_request(self)
 
     _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)?$')
     _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
@@ -200,7 +208,7 @@ Message: %(message)s.
             self.end_headers()
             return None
 
-        return SimpleHTTPServer.SimpleHTTPRequestHandler.send_head(self)
+        return http_server.SimpleHTTPRequestHandler.send_head(self)
 
     def send_range_content(self, file, start, length):
         file.seek(start)
@@ -222,10 +230,10 @@ Message: %(message)s.
     def get_multiple_ranges(self, file, file_size, ranges):
         self.send_response(206)
         self.send_header('Accept-Ranges', 'bytes')
-        boundary = '%d' % random.randint(0,0x7FFFFFFF)
+        boundary = '%d' % random.randint(0, 0x7FFFFFFF)
         self.send_header('Content-Type',
                          'multipart/byteranges; boundary=%s' % boundary)
-        boundary_line = '--%s\r\n' % boundary
+        boundary_line = b'--%s\r\n' % boundary.encode('ascii')
         # Calculate the Content-Length
         content_length = 0
         for (start, end) in ranges:
@@ -234,7 +242,7 @@ Message: %(message)s.
                 'Content-type', 'application/octet-stream')
             content_length += self._header_line_length(
                 'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
-            content_length += len('\r\n') # end headers
+            content_length += len('\r\n')  # end headers
             content_length += end - start + 1
         content_length += len(boundary_line)
         self.send_header('Content-length', content_length)
@@ -263,7 +271,7 @@ Message: %(message)s.
         ranges_header_value = self.headers.get('Range')
         if ranges_header_value is None or os.path.isdir(path):
             # Let the mother class handle most cases
-            return SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+            return http_server.SimpleHTTPRequestHandler.do_GET(self)
 
         try:
             # Always read in binary mode. Opening files in text
@@ -312,7 +320,7 @@ Message: %(message)s.
             # do beginning with python 2.4.3: abandon query
             # parameters, scheme, host port, etc (which ensure we
             # provide the right behaviour on all python versions).
-            path = urlparse.urlparse(path)[2]
+            path = urlparse(path)[2]
             # And now, we can apply *our* trick to proxy files
             path += '-proxied'
 
@@ -330,16 +338,18 @@ Message: %(message)s.
         Override from python standard library to stop it calling os.getcwd()
         """
         # abandon query parameters
-        path = urlparse.urlparse(path)[2]
+        path = urlparse(path)[2]
         path = posixpath.normpath(urlutils.unquote(path))
-        path = path.decode('utf-8')
+        if sys.version_info[0] == 2:
+            path = path.decode('utf-8')
         words = path.split('/')
         path = self._cwd
         for num, word in enumerate(w for w in words if w):
             if num == 0:
                 drive, word = os.path.splitdrive(word)
             head, word = os.path.split(word)
-            if word in (os.curdir, os.pardir): continue
+            if word in (os.curdir, os.pardir):
+                continue
             path = os.path.join(path, word)
         return path
 
@@ -372,6 +382,7 @@ class TestingThreadingHTTPServer(test_server.TestingThreadingTCPServer,
     server, we need an independent connection for each of them. We achieve that
     by spawning a new thread for each connection.
     """
+
     def __init__(self, server_address, request_handler_class,
                  test_case_server):
         test_server.TestingThreadingTCPServer.__init__(self, server_address,
@@ -419,7 +430,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         # Get the appropriate server class for the required protocol
         serv_cls = self.http_server_class.get(proto_vers, None)
         if serv_cls is None:
-            raise httplib.UnknownProtocol(proto_vers)
+            raise http_client.UnknownProtocol(proto_vers)
         self.host = 'localhost'
         self.port = 0
         super(HttpServer, self).__init__((self.host, self.port),
@@ -439,7 +450,7 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         path_parts = path.split(os.path.sep)
         if os.path.isabs(path):
             if path_parts[:len(self._local_path_parts)] != \
-                   self._local_path_parts:
+                    self._local_path_parts:
                 raise BadWebserverPath(path, self.test_dir)
             remote_path = '/'.join(path_parts[len(self._local_path_parts):])
         else:
@@ -483,14 +494,3 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
         return self._url_protocol + '://127.0.0.1:1/'
-
-
-class HttpServer_urllib(HttpServer):
-    """Subclass of HttpServer that gives http+urllib urls.
-
-    This is for use in testing: connections to this server will always go
-    through urllib where possible.
-    """
-
-    # urls returned by this server should require the urllib client impl
-    _url_protocol = 'http+urllib'

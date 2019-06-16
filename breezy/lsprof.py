@@ -5,16 +5,25 @@
 
 from __future__ import absolute_import
 
-import cPickle
+import codecs
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+import operator
 import os
 import sys
-import thread
+try:
+    import _thread
+except ImportError:
+    import thread as _thread
 import threading
 from _lsprof import Profiler, profiler_entry
 
 from . import errors
 
 __all__ = ['profile', 'Stats']
+
 
 def profile(f, *args, **kwds):
     """Run a function profile.
@@ -39,7 +48,7 @@ def profile(f, *args, **kwds):
 
 class BzrProfiler(object):
     """Bzr utility wrapper around Profiler.
-    
+
     For most uses the module level 'profile()' function will be suitable.
     However profiling when a simple wrapped function isn't available may
     be easier to accomplish using this class.
@@ -51,7 +60,7 @@ class BzrProfiler(object):
     Note that profiling involves a threading.Lock around the actual profiling.
     This is needed because profiling involves global manipulation of the python
     interpreter state. As such you cannot perform multiple profiles at once.
-    Trying to do so will lock out the second profiler unless the global 
+    Trying to do so will lock out the second profiler unless the global
     breezy.lsprof.BzrProfiler.profiler_block is set to 0. Setting it to 0 will
     cause profiling to fail rather than blocking.
     """
@@ -64,7 +73,7 @@ class BzrProfiler(object):
 
     def start(self):
         """Start profiling.
-        
+
         This hooks into threading and will record all calls made until
         stop() is called.
         """
@@ -77,7 +86,7 @@ class BzrProfiler(object):
         try:
             self.p.enable(subcalls=True)
             threading.setprofile(self._thread_profile)
-        except:
+        except BaseException:
             self.__class__.profiler_lock.release()
             raise
 
@@ -107,7 +116,7 @@ class BzrProfiler(object):
     def _thread_profile(self, f, *args, **kwds):
         # we lose the first profile point for a new thread in order to
         # trampoline a new Profile object into place
-        thr = thread.get_ident()
+        thr = _thread.get_ident()
         self._g_threadmap[thr] = p = Profiler()
         # this overrides our sys.setprofile hook:
         p.enable(subcalls=True, builtins=True)
@@ -125,18 +134,19 @@ class Stats(object):
         self.data = data
         self.threads = threads
 
-    def sort(self, crit="inlinetime"):
+    def sort(self, crit="inlinetime", reverse=True):
         """Sort the data by the supplied critera.
 
         :param crit: the data attribute used as the sort key."""
-        if crit not in profiler_entry.__dict__:
+        if crit not in profiler_entry.__dict__ or crit == 'code':
             raise ValueError("Can't sort by %s" % crit)
-        self.data.sort(lambda b, a: cmp(getattr(a, crit),
-                                        getattr(b, crit)))
+
+        key_func = operator.attrgetter(crit)
+        self.data.sort(key=key_func, reverse=reverse)
+
         for e in self.data:
             if e.calls:
-                e.calls.sort(lambda b, a: cmp(getattr(a, crit),
-                                              getattr(b, crit)))
+                e.calls.sort(key=key_func, reverse=reverse)
 
     def pprint(self, top=None, file=None):
         """Pretty-print the data as plain text for human consumption.
@@ -152,7 +162,6 @@ class Stats(object):
             d = d[:top]
         cols = "% 12s %12s %11.4f %11.4f   %s\n"
         hcols = "% 12s %12s %12s %12s %s\n"
-        cols2 = "+%12s %12s %11.4f %11.4f +  %s\n"
         file.write(hcols % ("CallCount", "Recursive", "Total(ms)",
                             "Inline(ms)", "module:lineno(function)"))
         for e in d:
@@ -204,17 +213,17 @@ class Stats(object):
                 ext = os.path.splitext(filename)[1]
                 if len(ext) > 1:
                     format = ext[1:]
-        outfile = open(filename, 'wb')
-        try:
+        with open(filename, 'wb') as outfile:
             if format == "callgrind":
-                self.calltree(outfile)
+                # The callgrind format states it is 'ASCII based':
+                # <http://valgrind.org/docs/manual/cl-format.html>
+                # But includes filenames so lets ignore and use UTF-8.
+                self.calltree(codecs.getwriter('utf-8')(outfile))
             elif format == "txt":
-                self.pprint(file=outfile)
+                self.pprint(file=codecs.getwriter('utf-8')(outfile))
             else:
                 self.freeze()
-                cPickle.dump(self, outfile, 2)
-        finally:
-            outfile.close()
+                pickle.dump(self, outfile, 2)
 
 
 class _CallTreeFilter(object):
@@ -249,7 +258,6 @@ class _CallTreeFilter(object):
         out_file = self.out_file
         code = entry.code
         inlinetime = int(entry.inlinetime * 1000)
-        #out_file.write('ob=%s\n' % (code.co_filename,))
         if isinstance(code, str):
             out_file.write('fi=~\n')
         else:
@@ -276,7 +284,6 @@ class _CallTreeFilter(object):
         out_file = self.out_file
         code = subentry.code
         totaltime = int(subentry.totaltime * 1000)
-        #out_file.write('cob=%s\n' % (code.co_filename,))
         if isinstance(code, str):
             out_file.write('cfi=~\n')
             out_file.write('cfn=%s\n' % (label(code, True),))
@@ -288,7 +295,9 @@ class _CallTreeFilter(object):
                 subentry.callcount, code.co_firstlineno))
         out_file.write('%d %d\n' % (lineno, totaltime))
 
+
 _fn2mod = {}
+
 
 def label(code, calltree=False):
     if isinstance(code, str):
@@ -307,19 +316,23 @@ def label(code, calltree=False):
                 mname = _fn2mod[code.co_filename] = k
                 break
         else:
-            mname = _fn2mod[code.co_filename] = '<%s>'%code.co_filename
+            mname = _fn2mod[code.co_filename] = '<%s>' % code.co_filename
     if calltree:
         return '%s %s:%d' % (code.co_name, mname, code.co_firstlineno)
     else:
         return '%s:%d(%s)' % (mname, code.co_firstlineno, code.co_name)
 
 
-if __name__ == '__main__':
-    import os
+def main():
     sys.argv = sys.argv[1:]
     if not sys.argv:
         sys.stderr.write("usage: lsprof.py <script> <arguments...>\n")
         sys.exit(2)
-    sys.path.insert(0, os.path.abspath(os.path.dirname(sys.argv[0])))
-    stats = sorted(profile(execfile, sys.argv[0], globals(), locals()))
+    import runpy
+    result, stats = profile(runpy.run_path, sys.argv[0], run_name='__main__')
+    stats.sort()
     stats.pprint()
+
+
+if __name__ == '__main__':
+    main()

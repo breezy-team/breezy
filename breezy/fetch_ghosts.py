@@ -42,8 +42,7 @@ class GhostFetcher(object):
 
     def run(self):
         lock_other = self.this_branch.base != self.other_branch.base
-        self.this_branch.lock_write()
-        try:
+        with self.this_branch.lock_write():
             if lock_other:
                 self.other_branch.lock_read()
             try:
@@ -51,8 +50,6 @@ class GhostFetcher(object):
             finally:
                 if lock_other:
                     self.other_branch.unlock()
-        finally:
-            self.this_branch.unlock()
 
     def iter_ghosts(self):
         """Find all ancestors that aren't stored in this branch."""

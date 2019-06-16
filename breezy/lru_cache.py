@@ -29,6 +29,7 @@ from .sixish import (
 
 _null_key = object()
 
+
 class _LRUNode(object):
     """This maintains the linked-list which is the lru internals."""
 
@@ -232,7 +233,7 @@ class LRUSizeCache(LRUCache):
     defaults to len() if not supplied.
     """
 
-    def __init__(self, max_size=1024*1024, after_cleanup_size=None,
+    def __init__(self, max_size=1024 * 1024, after_cleanup_size=None,
                  compute_size=None):
         """Create a new LRUSizeCache.
 

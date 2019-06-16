@@ -22,33 +22,49 @@ from __future__ import absolute_import
 cdef extern from "python-compat.h":
     pass
 
-cdef extern from "stdlib.h":
-    void *malloc(int)
-    void *realloc(void *, int)
-    void free(void *)
+from cpython.bytes cimport (
+    PyBytes_CheckExact,
+    PyBytes_FromStringAndSize,
+    PyBytes_AS_STRING,
+    PyBytes_GET_SIZE,
+    )
+from cpython.unicode cimport (
+    PyUnicode_CheckExact,
+    PyUnicode_DecodeUTF8,
+    # Deprecated after PEP 393 changes
+    PyUnicode_AS_UNICODE,
+    PyUnicode_FromUnicode,
+    PyUnicode_GET_SIZE,
+    )
+from cpython.list cimport (
+    PyList_Append,
+    )
+from cpython.mem cimport (
+    PyMem_Free,
+    PyMem_Malloc,
+    PyMem_Realloc,
+    )
+from cpython.version cimport (
+    PY_MAJOR_VERSION,
+    )
 
 cdef extern from "Python.h":
     ctypedef int Py_UNICODE
-    char *PyString_AS_STRING(object s)
-    Py_ssize_t PyString_GET_SIZE(object t) except -1
-    object PyUnicode_DecodeUTF8(char *string, Py_ssize_t length, char *errors)
-    object PyString_FromStringAndSize(char *s, Py_ssize_t len)
-    int PyString_CheckExact(object)
-    int PyUnicode_CheckExact(object)
-    object PyUnicode_Join(object, object)
     object PyUnicode_EncodeASCII(Py_UNICODE *, int, char *)
-    Py_UNICODE *PyUnicode_AS_UNICODE(object)
-    Py_UNICODE *PyUnicode_AsUnicode(object)
-    Py_ssize_t PyUnicode_GET_SIZE(object) except -1
-    int PyList_Append(object, object) except -1
     int Py_UNICODE_ISLINEBREAK(Py_UNICODE)
-    object PyUnicode_FromUnicode(Py_UNICODE *, int)
-    void *Py_UNICODE_COPY(Py_UNICODE *, Py_UNICODE *, int)
 
-cdef extern from "string.h":
-    void *memcpy(void *, void *, int)
+    # GZ 2017-09-11: Not sure why cython unicode module lacks this?
+    object PyUnicode_FromStringAndSize(const char *u, Py_ssize_t size)
+
+    # Python 3.3 or later unicode handling
+    char* PyUnicode_AsUTF8AndSize(object unicode, Py_ssize_t *size)
+
+from libc.string cimport (
+    memcpy,
+    )
 
 from .rio import Stanza
+
 
 cdef int _valid_tag_char(char c): # cannot_raise
     return (c == c'_' or c == c'-' or
@@ -61,10 +77,16 @@ def _valid_tag(tag):
     cdef char *c_tag
     cdef Py_ssize_t c_len
     cdef int i
-    if not PyString_CheckExact(tag):
-        raise TypeError(tag)
-    c_tag = PyString_AS_STRING(tag)
-    c_len = PyString_GET_SIZE(tag)
+    # GZ 2017-09-11: Encapsulate native string as ascii tag somewhere neater
+    if PY_MAJOR_VERSION >= 3:
+        if not PyUnicode_CheckExact(tag):
+            raise TypeError(tag)
+        c_tag = PyUnicode_AsUTF8AndSize(tag, &c_len)
+    else:
+        if not PyBytes_CheckExact(tag):
+            raise TypeError(tag)
+        c_tag = PyBytes_AS_STRING(tag)
+        c_len = PyBytes_GET_SIZE(tag)
     if c_len < 1:
         return False
     for i from 0 <= i < c_len:
@@ -82,7 +104,9 @@ cdef object _split_first_line_utf8(char *line, int len,
                 raise ValueError("invalid tag in line %r" % line)
             memcpy(value, line+i+2, len-i-2)
             value_len[0] = len-i-2
-            return PyString_FromStringAndSize(line, i)
+            if PY_MAJOR_VERSION >= 3:
+                return PyUnicode_FromStringAndSize(line, i)
+            return PyBytes_FromStringAndSize(line, i)
     raise ValueError('tag/value separator not found in line %r' % line)
 
 
@@ -96,6 +120,8 @@ cdef object _split_first_line_unicode(Py_UNICODE *line, int len,
                                  PyUnicode_FromUnicode(line, len))
             memcpy(value, &line[i+2], (len-i-2) * sizeof(Py_UNICODE))
             value_len[0] = len-i-2
+            if PY_MAJOR_VERSION >= 3:
+                return PyUnicode_FromUnicode(line, i)
             return PyUnicode_EncodeASCII(line, i, "strict")
     raise ValueError("tag/value separator not found in line %r" %
                      PyUnicode_FromUnicode(line, len))
@@ -104,30 +130,31 @@ cdef object _split_first_line_unicode(Py_UNICODE *line, int len,
 def _read_stanza_utf8(line_iter):
     cdef char *c_line
     cdef Py_ssize_t c_len
-    cdef char *accum_value, *new_accum_value
+    cdef char *accum_value
+    cdef char *new_accum_value
     cdef Py_ssize_t accum_len, accum_size
     pairs = []
     tag = None
     accum_len = 0
     accum_size = 4096
-    accum_value = <char *>malloc(accum_size)
+    accum_value = <char *>PyMem_Malloc(accum_size)
     if accum_value == NULL:
         raise MemoryError
     try:
         for line in line_iter:
             if line is None:
                 break # end of file
-            if not PyString_CheckExact(line):
+            if not PyBytes_CheckExact(line):
                 raise TypeError("%r is not a plain string" % line)
-            c_line = PyString_AS_STRING(line)
-            c_len = PyString_GET_SIZE(line)
+            c_line = PyBytes_AS_STRING(line)
+            c_len = PyBytes_GET_SIZE(line)
             if c_len < 1:
                 break       # end of file
             if c_len == 1 and c_line[0] == c"\n":
                 break       # end of stanza
             if accum_len + c_len > accum_size:
                 accum_size = (accum_len + c_len)
-                new_accum_value = <char *>realloc(accum_value, accum_size)
+                new_accum_value = <char *>PyMem_Realloc(accum_value, accum_size)
                 if new_accum_value == NULL:
                     raise MemoryError
                 else:
@@ -153,19 +180,20 @@ def _read_stanza_utf8(line_iter):
         else:     # didn't see any content
             return None
     finally:
-        free(accum_value)
+        PyMem_Free(accum_value)
 
 
 def _read_stanza_unicode(unicode_iter):
     cdef Py_UNICODE *c_line
     cdef int c_len
-    cdef Py_UNICODE *accum_value, *new_accum_value
+    cdef Py_UNICODE *accum_value
+    cdef Py_UNICODE *new_accum_value
     cdef Py_ssize_t accum_len, accum_size
     pairs = []
     tag = None
     accum_len = 0
     accum_size = 4096
-    accum_value = <Py_UNICODE *>malloc(accum_size*sizeof(Py_UNICODE))
+    accum_value = <Py_UNICODE *>PyMem_Malloc(accum_size*sizeof(Py_UNICODE))
     if accum_value == NULL:
         raise MemoryError
     try:
@@ -182,7 +210,7 @@ def _read_stanza_unicode(unicode_iter):
                 break       # end of stanza
             if accum_len + c_len > accum_size:
                 accum_size = accum_len + c_len
-                new_accum_value = <Py_UNICODE *>realloc(accum_value,
+                new_accum_value = <Py_UNICODE *>PyMem_Realloc(accum_value,
                     accum_size*sizeof(Py_UNICODE))
                 if new_accum_value == NULL:
                     raise MemoryError
@@ -209,4 +237,4 @@ def _read_stanza_unicode(unicode_iter):
         else:     # didn't see any content
             return None
     finally:
-        free(accum_value)
+        PyMem_Free(accum_value)

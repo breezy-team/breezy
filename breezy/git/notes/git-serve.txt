@@ -1,0 +1,16 @@
+Git serve
+
+Todo:
+
+ * Fix the pack creation code in Dulwich. It doesn't generate deltas quite 
+   well at the moment. (http://pad.lv/562673)
+
+ * Switch to the new pack-based format once John's work on PackCollections 
+   is finished. This should give very nice performance improvements, 
+   in particular the caching of Trees. (http://pad.lv/520694)
+
+ * Support using the cached trees in BazaarObjectStore.generate_pack_contents,
+   rather than calling out to _revision_to_objects as the latter is slow
+   (it uses inventories).
+
+ * Support roundtripping (http://pad.lv/544776)

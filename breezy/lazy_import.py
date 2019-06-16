@@ -85,7 +85,7 @@ class ScopeReplacer(object):
             obj = factory(self, scope, name)
             if obj is self:
                 raise errors.IllegalUseOfScopeReplacer(name, msg="Object tried"
-                    " to replace itself, check it's not using its own scope.")
+                                                       " to replace itself, check it's not using its own scope.")
 
             # Check if another thread has jumped in while obj was generated.
             real_obj = object.__getattribute__(self, '_real_obj')
@@ -129,6 +129,9 @@ def disallow_proxying():
     ScopeReplacer._should_proxy = False
 
 
+_builtin_import = __import__
+
+
 class ImportReplacer(ScopeReplacer):
     """This is designed to replace only a portion of an import list.
 
@@ -162,7 +165,7 @@ class ImportReplacer(ScopeReplacer):
         :param children: Children entries to be imported later.
             This should be a map of children specifications.
             ::
-            
+
                 {'foo':(['breezy', 'foo'], None,
                     {'bar':(['breezy', 'foo', 'bar'], None {})})
                 }
@@ -195,12 +198,12 @@ class ImportReplacer(ScopeReplacer):
         children = object.__getattribute__(self, '_import_replacer_children')
         member = object.__getattribute__(self, '_member')
         module_path = object.__getattribute__(self, '_module_path')
-        module_python_path = '.'.join(module_path)
+        name = '.'.join(module_path)
         if member is not None:
-            module = __import__(module_python_path, scope, scope, [member], level=0)
+            module = _builtin_import(name, scope, scope, [member], level=0)
             return getattr(module, member)
         else:
-            module = __import__(module_python_path, scope, scope, [], level=0)
+            module = _builtin_import(name, scope, scope, [], level=0)
             for path in module_path[1:]:
                 module = getattr(module, path)
 
@@ -258,7 +261,7 @@ class ImportProcessor(object):
                 self._convert_from_str(line)
             else:
                 raise errors.InvalidImportLine(line,
-                    "doesn't start with 'import ' or 'from '")
+                                               "doesn't start with 'import ' or 'from '")
 
     def _convert_import_str(self, import_str):
         """This converts a import string into an import map.
@@ -353,7 +356,6 @@ class ImportProcessor(object):
         """
         out = []
         cur = None
-        continuing = False
 
         for line in text.split('\n'):
             line = line.strip()

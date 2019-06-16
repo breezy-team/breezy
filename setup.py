@@ -16,6 +16,14 @@ if sys.version_info < (2, 7):
     sys.stderr.write("[ERROR] Not a supported Python version. Need 2.7+\n")
     sys.exit(1)
 
+
+try:
+    import setuptools
+except ImportError:
+    sys.stderr.write("[ERROR] Please install setuptools\n")
+    sys.exit(1)
+
+
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
 # './setup.py' or the equivalent with another path, should always be at the
 # start of the path, so this should find the right one...
@@ -23,26 +31,22 @@ import breezy
 
 def get_long_description():
     dirname = os.path.dirname(__file__)
-    readme = os.path.join(dirname, 'README')
-    f = open(readme, 'rb')
-    try:
+    readme = os.path.join(dirname, 'README.rst')
+    with open(readme, 'r') as f:
         return f.read()
-    finally:
-        f.close()
 
 
 ##
 # META INFORMATION FOR SETUP
 # see http://docs.python.org/dist/meta-data.html
 META_INFO = {
-    'name':         'brz',
-    'version':      breezy.__version__,
-    'author':       'Canonical Ltd',
-    'author_email': 'bazaar@lists.canonical.com',
-    'maintainer':   'Breezy Developers',
-    'url':          'https://www.breezy-vcs.org/',
-    'description':  'Friendly distributed version control system',
-    'license':      'GNU GPL v2',
+    'name': 'breezy',
+    'version': breezy.__version__,
+    'maintainer': 'Breezy Developers',
+    'maintainer_email': 'team@breezy-vcs.org',
+    'url': 'https://www.breezy-vcs.org/',
+    'description': 'Friendly distributed version control system',
+    'license': 'GNU GPL v2',
     'download_url': 'https://launchpad.net/brz/+download',
     'long_description': get_long_description(),
     'classifiers': [
@@ -58,22 +62,40 @@ META_INFO = {
         'Programming Language :: C',
         'Topic :: Software Development :: Version Control',
         ],
-    }
+    'install_requires': [
+        'configobj',
+        'six>=1.9.0',
+        'patiencediff',
+        # Technically, Breezy works without these two dependencies too. But there's
+        # no way to enable them by default and let users opt out.
+        'fastimport>=0.9.8',
+        'dulwich>=0.19.11',
+        ],
+    'extras_require': {
+        'fastimport': [],
+        'git': [],
+        'launchpad': ['launchpadlib>=1.6.3'],
+        },
+    'tests_require': [
+        'testtools',
+    ],
+}
 
 # The list of packages is automatically generated later. Add other things
-# that are part of BZRLIB here.
-BZRLIB = {}
+# that are part of BREEZY here.
+BREEZY = {}
 
-PKG_DATA = {# install files from selftest suite
-            'package_data': {'breezy': ['doc/api/*.txt',
-                                        'tests/test_patches_data/*',
-                                        'help_topics/en/*.txt',
-                                        'tests/ssl_certs/ca.crt',
-                                        'tests/ssl_certs/server_without_pass.key',
-                                        'tests/ssl_certs/server_with_pass.key',
-                                        'tests/ssl_certs/server.crt',
-                                       ]},
-           }
+PKG_DATA = {
+    # install files from selftest suite
+    'package_data': {'breezy': ['doc/api/*.txt',
+                                'tests/test_patches_data/*',
+                                'help_topics/en/*.txt',
+                                'tests/ssl_certs/ca.crt',
+                                'tests/ssl_certs/server_without_pass.key',
+                                'tests/ssl_certs/server_with_pass.key',
+                                'tests/ssl_certs/server.crt',
+                                ]},
+    }
 I18N_FILES = []
 for filepath in glob.glob("breezy/locale/*/LC_MESSAGES/*.mo"):
     langfile = filepath[len("breezy/locale/"):]
@@ -95,17 +117,17 @@ def get_breezy_packages():
             if not package_path:
                 package_name = 'breezy'
             else:
-                package_name = ('breezy.' +
-                            package_path.replace('/', '.').replace('\\', '.'))
+                package_name = (
+                    'breezy.' +
+                    package_path.replace('/', '.').replace('\\', '.'))
             packages.append(package_name)
     return sorted(packages)
 
 
-BZRLIB['packages'] = get_breezy_packages()
+BREEZY['packages'] = get_breezy_packages()
 
 
-from distutils import log
-from distutils.core import setup
+from setuptools import setup
 from distutils.version import LooseVersion
 from distutils.command.install_scripts import install_scripts
 from distutils.command.install_data import install_data
@@ -128,12 +150,10 @@ class my_install_scripts(install_scripts):
                 script_path = self._quoted_path(os.path.join(scripts_dir,
                                                              "brz"))
                 python_exe = self._quoted_path(sys.executable)
-                args = self._win_batch_args()
-                batch_str = "@%s %s %s" % (python_exe, script_path, args)
+                batch_str = "@%s %s %%*" % (python_exe, script_path)
                 batch_path = os.path.join(self.install_dir, "brz.bat")
-                f = file(batch_path, "w")
-                f.write(batch_str)
-                f.close()
+                with open(batch_path, "w") as f:
+                    f.write(batch_str)
                 print(("Created: %s" % batch_path))
             except Exception:
                 e = sys.exc_info()[1]
@@ -144,13 +164,6 @@ class my_install_scripts(install_scripts):
             return '"' + path + '"'
         else:
             return path
-
-    def _win_batch_args(self):
-        from breezy.win32utils import winver
-        if winver == 'Windows NT':
-            return '%*'
-        else:
-            return '%1 %2 %3 %4 %5 %6 %7 %8 %9'
 #/class my_install_scripts
 
 
@@ -160,8 +173,8 @@ class bzr_build(build):
     """
 
     sub_commands = build.sub_commands + [
-            ('build_mo', lambda _: True),
-            ]
+        ('build_mo', lambda _: True),
+        ]
 
     def run(self):
         build.run(self)
@@ -198,8 +211,17 @@ except ImportError:
     print("")
     from distutils.command.build_ext import build_ext
 else:
-    have_cython = True
+    minimum_cython_version = '0.29'
     cython_version_info = LooseVersion(cython_version)
+    if cython_version_info < LooseVersion(minimum_cython_version):
+        print("Version of Cython is too old. "
+              "Current is %s, need at least %s."
+              % (cython_version, minimum_cython_version))
+        print("If the .c files are available, they will be built,"
+              " but modifying the .pyx files will not rebuild them.")
+        have_cython = False
+    else:
+        have_cython = True
 
 
 class build_ext_if_possible(build_ext):
@@ -280,9 +302,10 @@ def add_cython_extension(module_name, libraries=None, extra_source=[]):
             source = [c_name]
     source.extend(extra_source)
     include_dirs = ['breezy']
-    ext_modules.append(Extension(module_name, source,
-        define_macros=define_macros, libraries=libraries,
-        include_dirs=include_dirs))
+    ext_modules.append(
+        Extension(
+            module_name, source, define_macros=define_macros,
+            libraries=libraries, include_dirs=include_dirs))
 
 
 add_cython_extension('breezy._simple_set_pyx')
@@ -292,20 +315,18 @@ add_cython_extension('breezy._annotator_pyx')
 add_cython_extension('breezy._bencode_pyx')
 add_cython_extension('breezy._chunks_to_lines_pyx')
 add_cython_extension('breezy.bzr._groupcompress_pyx',
-                    extra_source=['breezy/bzr/diff-delta.c'])
+                     extra_source=['breezy/bzr/diff-delta.c'])
 add_cython_extension('breezy.bzr._knit_load_data_pyx')
 add_cython_extension('breezy._known_graph_pyx')
 add_cython_extension('breezy._rio_pyx')
 if sys.platform == 'win32':
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx',
-                        libraries=['Ws2_32'])
+                         libraries=['Ws2_32'])
     add_cython_extension('breezy._walkdirs_win32')
 else:
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx')
     add_cython_extension('breezy._readdir_pyx')
 add_cython_extension('breezy.bzr._chk_map_pyx')
-ext_modules.append(Extension('breezy._patiencediff_c',
-                             ['breezy/_patiencediff_c.c']))
 add_cython_extension('breezy.bzr._btree_serializer_pyx')
 
 
@@ -348,7 +369,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # First always brz's icon and its in the root of the brz tree.
     icos.append(('', 'brz.ico'))
     for root, dirs, files in os.walk(ico_root):
-        icos.extend([(ico_root, os.path.join(root, f)[len(ico_root)+1:])
+        icos.extend([(ico_root, os.path.join(root, f)[len(ico_root) + 1:])
                      for f in files if f.endswith('.ico')])
     # allocate an icon ID for each file and the full path to the ico
     icon_resources = [(rid, os.path.join(ico_dir, ico_name))
@@ -361,7 +382,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
                  for rid, (_, f) in enumerate(icos)]
     ico_map = dict(map_items)
     # Create a new resource type of 'ICON_MAP', and use ID=1
-    other_resources = [ ("ICON_MAP", 1, pickle.dumps(ico_map))]
+    other_resources = [("ICON_MAP", 1, pickle.dumps(ico_map))]
 
     excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
                        win32ui crawler.Crawler""".split())
@@ -369,28 +390,28 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # tbzrcache executables - a "console" version for debugging and a
     # GUI version that is generally used.
     tbzrcache = dict(
-        script = os.path.join(tbzr_root, "scripts", "tbzrcache.py"),
-        icon_resources = icon_resources,
-        other_resources = other_resources,
+        script=os.path.join(tbzr_root, "scripts", "tbzrcache.py"),
+        icon_resources=icon_resources,
+        other_resources=other_resources,
     )
     console_targets.append(tbzrcache)
 
     # Make a windows version which is the same except for the base name.
     tbzrcachew = tbzrcache.copy()
-    tbzrcachew["dest_base"]="tbzrcachew"
+    tbzrcachew["dest_base"] = "tbzrcachew"
     gui_targets.append(tbzrcachew)
 
     # ditto for the tbzrcommand tool
     tbzrcommand = dict(
-        script = os.path.join(tbzr_root, "scripts", "tbzrcommand.py"),
-        icon_resources = icon_resources,
-        other_resources = other_resources,
+        script=os.path.join(tbzr_root, "scripts", "tbzrcommand.py"),
+        icon_resources=icon_resources,
+        other_resources=other_resources,
     )
     console_targets.append(tbzrcommand)
     tbzrcommandw = tbzrcommand.copy()
-    tbzrcommandw["dest_base"]="tbzrcommandw"
+    tbzrcommandw["dest_base"] = "tbzrcommandw"
     gui_targets.append(tbzrcommandw)
-    
+
     # A utility to see python output from both C++ and Python based shell
     # extensions
     tracer = dict(script=os.path.join(tbzr_root, "scripts", "tbzrtrace.py"))
@@ -474,8 +495,8 @@ if 'bdist_wininst' in sys.argv:
         for root, dirs, files in os.walk('doc'):
             r = []
             for f in files:
-                if (os.path.splitext(f)[1] in ('.html','.css','.png','.pdf')
-                    or f == 'quick-start-summary.svg'):
+                if (os.path.splitext(f)[1] in ('.html', '.css', '.png', '.pdf')
+                        or f == 'quick-start-summary.svg'):
                     r.append(os.path.join(root, f))
             if r:
                 relative = root[4:]
@@ -493,10 +514,10 @@ if 'bdist_wininst' in sys.argv:
             'data_files': find_docs(),
             # for building cython extensions
             'cmdclass': command_classes,
-           }
+            }
 
     ARGS.update(META_INFO)
-    ARGS.update(BZRLIB)
+    ARGS.update(BREEZY)
     PKG_DATA['package_data']['breezy'].append('locale/*/LC_MESSAGES/*.mo')
     ARGS.update(PKG_DATA)
 
@@ -548,21 +569,22 @@ elif 'py2exe' in sys.argv:
             self.outfiles.extend([f + 'o' for f in compile_names])
     # end of class install_data_with_bytecompile
 
-    target = py2exe.build_exe.Target(script = "brz",
-                                     dest_base = "brz",
-                                     icon_resources = [(0,'brz.ico')],
-                                     name = META_INFO['name'],
-                                     version = version_str,
-                                     description = META_INFO['description'],
-                                     author = META_INFO['author'],
-                                     copyright = "(c) Canonical Ltd, 2005-2010",
-                                     company_name = "Canonical Ltd.",
-                                     comments = META_INFO['description'],
-                                    )
+    target = py2exe.build_exe.Target(
+        script="brz",
+        dest_base="brz",
+        icon_resources=[(0, 'brz.ico')],
+        name=META_INFO['name'],
+        version=version_str,
+        description=META_INFO['description'],
+        author=META_INFO['author'],
+        copyright="(c) Canonical Ltd, 2005-2010",
+        company_name="Canonical Ltd.",
+        comments=META_INFO['description'],
+    )
     gui_target = copy.copy(target)
     gui_target.dest_base = "bzrw"
 
-    packages = BZRLIB['packages']
+    packages = BREEZY['packages']
     packages.remove('breezy')
     packages = [i for i in packages if not i.startswith('breezy.plugins')]
     includes = []
@@ -687,7 +709,7 @@ elif 'py2exe' in sys.argv:
         # at build time.  Also to stdout so it appears in the log
         for f in (sys.stderr, sys.stdout):
             f.write("Skipping TBZR binaries - "
-                "please set TBZR to a directory to enable\n")
+                    "please set TBZR to a directory to enable\n")
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
@@ -703,9 +725,9 @@ elif 'py2exe' in sys.argv:
                                "dist_dir": "win32_bzr.exe",
                                "optimize": 2,
                                "custom_boot_script":
-                                        "tools/win32/py2exe_boot_common.py",
-                              },
-                   }
+                                   "tools/win32/py2exe_boot_common.py",
+                               },
+                    }
 
     # We want the libaray.zip to have optimize = 2, but the exe to have
     # optimize = 1, so that .py files that get compilied at run time
@@ -730,21 +752,26 @@ elif 'py2exe' in sys.argv:
 else:
     # ad-hoc for easy_install
     DATA_FILES = []
-    if not 'bdist_egg' in sys.argv:
+    if 'bdist_egg' not in sys.argv:
         # generate and install brz.1 only with plain install, not the
         # easy_install one
-        DATA_FILES = [('man/man1', ['brz.1'])]
+        DATA_FILES = [('man/man1', ['brz.1', 'breezy/git/git-remote-bzr.1'])]
 
     DATA_FILES = DATA_FILES + I18N_FILES
     # std setup
-    ARGS = {'scripts': ['brz'],
+    ARGS = {'scripts': ['brz',
+                        # TODO(jelmer): Only install the git scripts if
+                        # Dulwich was found.
+                        'breezy/git/git-remote-bzr',
+                        'breezy/git/bzr-receive-pack',
+                        'breezy/git/bzr-upload-pack'],
             'data_files': DATA_FILES,
             'cmdclass': command_classes,
             'ext_modules': ext_modules,
-           }
+            }
 
     ARGS.update(META_INFO)
-    ARGS.update(BZRLIB)
+    ARGS.update(BREEZY)
     ARGS.update(PKG_DATA)
 
     if __name__ == '__main__':

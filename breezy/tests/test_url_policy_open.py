@@ -30,7 +30,10 @@ from ..controldir import (
     ControlDir,
     ControlDirFormat,
     )
-from ..errors import NotBranchError
+from ..errors import (
+    NotBranchError,
+    RedirectRequested,
+    )
 from ..url_policy_open import (
     BadUrl,
     _BlacklistPolicy,
@@ -44,7 +47,15 @@ from . import (
     TestCase,
     TestCaseWithTransport,
     )
-from ..transport import chroot
+from ..transport import (
+    chroot,
+    get_transport,
+    register_transport_proto,
+    register_transport,
+    unregister_transport,
+    transport_list_registry,
+    Transport,
+    )
 
 
 class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
@@ -88,8 +99,8 @@ class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
             BadUrl, opener.check_and_follow_branch_reference, 'a')
 
     def test_not_reference(self):
-        # When branch references are forbidden, check_and_follow_branch_reference
-        # does not raise on non-references.
+        # When branch references are forbidden,
+        # check_and_follow_branch_reference does not raise on non-references.
         opener = self.make_branch_opener(False, ['a', None])
         self.assertEqual(
             'a', opener.check_and_follow_branch_reference('a'))
@@ -106,17 +117,17 @@ class TestBranchOpenerCheckAndFollowBranchReference(TestCase):
         self.assertEqual(['a'], opener.follow_reference_calls)
 
     def test_allowed_reference(self):
-        # check_and_follow_branch_reference does not raise if following references
-        # is allowed and the source URL points to a branch reference to a
-        # permitted location.
+        # check_and_follow_branch_reference does not raise if following
+        # references is allowed and the source URL points to a branch reference
+        # to a permitted location.
         opener = self.make_branch_opener(True, ['a', 'b', None])
         self.assertEqual(
             'b', opener.check_and_follow_branch_reference('a'))
         self.assertEqual(['a', 'b'], opener.follow_reference_calls)
 
     def test_check_referenced_urls(self):
-        # check_and_follow_branch_reference checks if the URL a reference points
-        # to is safe.
+        # check_and_follow_branch_reference checks if the URL a reference
+        # points to is safe.
         opener = self.make_branch_opener(
             True, ['a', 'b', None], unsafe_urls=set('b'))
         self.assertRaises(
@@ -186,8 +197,8 @@ class TestBranchOpenerStacking(TestCaseWithTransport):
         self.assertRaises(NotBranchError, opener.open, ".")
         self.assertEqual(1, len(TrackingProber.seen_urls))
         TrackingProber.seen_urls = []
-        # And make sure it's registered in such a way that ControlDir.open would
-        # use it.
+        # And make sure it's registered in such a way that ControlDir.open
+        # would use it.
         self.assertRaises(NotBranchError, ControlDir.open, ".")
         self.assertEqual(1, len(TrackingProber.seen_urls))
 
@@ -305,6 +316,48 @@ class TestBranchOpenerStacking(TestCaseWithTransport):
             set(TrackingProber.seen_urls), {b.base, a.base})
 
 
+class TestRedirects(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestRedirects, self).setUp()
+        BranchOpener.install_hook()
+
+    def setup_redirect(self, target_url):
+        class RedirectingTransport(Transport):
+
+            def get(self, name):
+                raise RedirectRequested(self.base, target_url)
+
+            def _redirected_to(self, source, target):
+                return get_transport(target)
+
+        register_transport_proto(
+            'redirecting://', help="Test transport that redirects.")
+        register_transport('redirecting://', RedirectingTransport)
+        self.addCleanup(unregister_transport, 'redirecting://', RedirectingTransport)
+
+    def make_branch_opener(self, allowed_urls, probers=None):
+        policy = WhitelistPolicy(True, allowed_urls, True)
+        return BranchOpener(policy, probers)
+
+    def test_redirect_forbidden(self):
+        b = self.make_branch('b')
+        self.setup_redirect(b.base)
+        class TrackingProber(BzrProber):
+            seen_urls = []
+
+            @classmethod
+            def probe_transport(klass, transport):
+                klass.seen_urls.append(transport.base)
+                return BzrProber.probe_transport(transport)
+
+        opener = self.make_branch_opener(['redirecting:///'], probers=[TrackingProber])
+        self.assertRaises(BadUrl, opener.open, 'redirecting:///')
+
+        opener = self.make_branch_opener(['redirecting:///', b.base], probers=[TrackingProber])
+        opener.open('redirecting:///')
+
+
 class TestOpenOnlyScheme(TestCaseWithTransport):
     """Tests for `open_only_scheme`."""
 
@@ -334,7 +387,8 @@ class TestOpenOnlyScheme(TestCaseWithTransport):
         def get_url(relpath):
             return chroot_server.get_url() + relpath
 
-        return urlutils.URL.from_string(chroot_server.get_url()).scheme, get_url
+        return (urlutils.URL.from_string(chroot_server.get_url()).scheme,
+                get_url)
 
     def test_stacked_within_scheme(self):
         # A branch that is stacked on a URL of the same scheme is safe to

@@ -73,7 +73,7 @@ class TestReadonly(TestCaseWithWorkingTree):
 
     def _custom_cutoff_time(self):
         """We need to fake the cutoff time."""
-        return time.time() + 10
+        return time.time() + 10.0
 
     def test_readonly_unclean(self):
         """Even if the tree is unclean, we should still handle readonly dirs."""
@@ -99,18 +99,15 @@ class TestReadonly(TestCaseWithWorkingTree):
             hack_dirstate = True
 
         # Make it a little dirty
-        self.build_tree_contents([('tree/a', 'new contents of a\n')])
+        self.build_tree_contents([('tree/a', b'new contents of a\n')])
 
         # Make it readonly, and do some operations and then unlock
         self.set_dirs_readonly('tree')
 
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             if hack_dirstate:
-                tree._dirstate._sha_cutoff_time = self._custom_cutoff_time
+                tree._dirstate._cutoff_time = self._custom_cutoff_time()
             # Make sure we check all the files
-            for file_id in tree.all_file_ids():
-                size = tree.get_file_size(file_id)
-                sha1 = tree.get_file_sha1(file_id)
-        finally:
-            tree.unlock()
+            for path in tree.all_versioned_paths():
+                size = tree.get_file_size(path)
+                sha1 = tree.get_file_sha1(path)

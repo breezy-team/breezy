@@ -17,7 +17,6 @@
 """HTTPS test server, available when ssl python module is available"""
 
 import ssl
-import sys
 
 from . import (
     http_server,
@@ -32,7 +31,7 @@ class TestingHTTPSServerMixin:
         self.key_file = key_file
         self.cert_file = cert_file
 
-    def _get_ssl_request (self, sock, addr):
+    def _get_ssl_request(self, sock, addr):
         """Wrap the socket with SSL"""
         ssl_sock = ssl.wrap_socket(sock, server_side=True,
                                    keyfile=self.key_file,
@@ -51,7 +50,7 @@ class TestingHTTPSServerMixin:
         if serving:
             try:
                 request.do_handshake()
-            except ssl.SSLError as e:
+            except ssl.SSLError:
                 # FIXME: We proabaly want more tests to capture which ssl
                 # errors are worth reporting but mostly our tests want an https
                 # server that works -- vila 2012-01-19
@@ -59,13 +58,6 @@ class TestingHTTPSServerMixin:
         return serving
 
     def ignored_exceptions_during_shutdown(self, e):
-        if (sys.version < (2, 7) and isinstance(e, TypeError)
-            and e.args[0] == "'member_descriptor' object is not callable"):
-            # Fixed in python-2.7 (and some Ubuntu 2.6) there is a bug where
-            # the ssl socket fail to raise a socket.error when trying to read
-            # from a closed socket. This is rarely observed in practice but
-            # still make valid selftest runs fail if not caught.
-            return True
         base = test_server.TestingTCPServerMixin
         return base.ignored_exceptions_during_shutdown(self, e)
 

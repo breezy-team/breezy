@@ -42,6 +42,7 @@ from . import (
     option,
     registry,
     )
+from .sixish import text_type
 
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
@@ -62,9 +63,9 @@ class cmd_conflicts(commands.Command):
     Use brz resolve when you have fixed a problem.
     """
     takes_options = [
-            'directory',
-            option.Option('text',
-                          help='List paths of files with text conflicts.'),
+        'directory',
+        option.Option('text',
+                      help='List paths of files with text conflicts.'),
         ]
     _see_also = ['resolve', 'conflict-types']
 
@@ -76,7 +77,7 @@ class cmd_conflicts(commands.Command):
                     continue
                 self.outf.write(conflict.path + '\n')
             else:
-                self.outf.write(unicode(conflict) + '\n')
+                self.outf.write(text_type(conflict) + '\n')
 
 
 resolve_action_registry = registry.Registry()
@@ -91,6 +92,7 @@ resolve_action_registry.register(
     'take-other', 'take_other',
     'Resolve the conflict taking the merged version into account.')
 resolve_action_registry.default_key = 'done'
+
 
 class ResolveActionOption(option.RegistryOption):
 
@@ -116,16 +118,17 @@ class cmd_resolve(commands.Command):
     aliases = ['resolved']
     takes_args = ['file*']
     takes_options = [
-            'directory',
-            option.Option('all', help='Resolve all conflicts in this tree.'),
-            ResolveActionOption(),
-            ]
+        'directory',
+        option.Option('all', help='Resolve all conflicts in this tree.'),
+        ResolveActionOption(),
+        ]
     _see_also = ['conflicts']
+
     def run(self, file_list=None, all=False, action=None, directory=None):
         if all:
             if file_list:
                 raise errors.BzrCommandError(gettext("If --all is specified,"
-                                             " no FILE may be provided"))
+                                                     " no FILE may be provided"))
             if directory is None:
                 directory = u'.'
             tree = workingtree.WorkingTree.open_containing(directory)[0]
@@ -150,11 +153,11 @@ class cmd_resolve(commands.Command):
                 un_resolved, resolved = tree.auto_resolve()
                 if len(un_resolved) > 0:
                     trace.note(ngettext('%d conflict auto-resolved.',
-                        '%d conflicts auto-resolved.', len(resolved)),
-                        len(resolved))
+                                        '%d conflicts auto-resolved.', len(resolved)),
+                               len(resolved))
                     trace.note(gettext('Remaining conflicts:'))
                     for conflict in un_resolved:
-                        trace.note(unicode(conflict))
+                        trace.note(text_type(conflict))
                     return 1
                 else:
                     trace.note(gettext('All conflicts resolved.'))
@@ -168,7 +171,7 @@ class cmd_resolve(commands.Command):
             before, after = resolve(tree, file_list, action=action)
             trace.note(ngettext('{0} conflict resolved, {1} remaining',
                                 '{0} conflicts resolved, {1} remaining',
-                                before-after).format(before - after, after))
+                                before - after).format(before - after, after))
 
 
 def resolve(tree, paths=None, ignore_misses=False, recursive=False,
@@ -295,7 +298,7 @@ class ConflictList(object):
     def to_strings(self):
         """Generate strings for the provided conflicts"""
         for conflict in self:
-            yield unicode(conflict)
+            yield text_type(conflict)
 
     def remove_files(self, tree):
         """Remove the THIS, BASE and OTHER files for listed conflicts"""
@@ -368,7 +371,7 @@ class Conflict(object):
         self.path = path
         # the factory blindly transfers the Stanza values to __init__ and
         # Stanza is purely a Unicode api.
-        if isinstance(file_id, unicode):
+        if isinstance(file_id, text_type):
             file_id = cache_utf8.encode(file_id)
         self.file_id = osutils.safe_file_id(file_id)
 
@@ -385,7 +388,9 @@ class Conflict(object):
     def __cmp__(self, other):
         if getattr(other, "_cmp_list", None) is None:
             return -1
-        return cmp(self._cmp_list(), other._cmp_list())
+        x = self._cmp_list()
+        y = other._cmp_list()
+        return (x > y) - (x < y)
 
     def __hash__(self):
         return hash((type(self), self.path, self.file_id))
@@ -397,6 +402,12 @@ class Conflict(object):
         return not self.__eq__(other)
 
     def __unicode__(self):
+        return self.describe()
+
+    def __str__(self):
+        return self.describe()
+
+    def describe(self):
         return self.format % self.__dict__
 
     def __repr__(self):
@@ -494,7 +505,7 @@ class PathConflict(Conflict):
         path_to_create = None
         if winner == 'this':
             if self.path == '<deleted>':
-                return # Nothing to do
+                return  # Nothing to do
             if self.conflict_path == '<deleted>':
                 path_to_create = self.path
                 revid = tt._tree.get_parent_ids()[0]
@@ -512,8 +523,9 @@ class PathConflict(Conflict):
             raise AssertionError('bad winner: %r' % (winner,))
         if path_to_create is not None:
             tid = tt.trans_id_tree_path(path_to_create)
+            tree = self._revision_tree(tt._tree, revid)
             transform.create_from_tree(
-                tt, tid, self._revision_tree(tt._tree, revid), file_id)
+                tt, tid, tree, tree.id2path(file_id), file_id=file_id)
             tt.version_file(file_id, tid)
         else:
             tid = tt.trans_id_file_id(file_id)
@@ -532,7 +544,7 @@ class PathConflict(Conflict):
         possible_paths = []
         for p in (self.path, self.conflict_path):
             if p == '<deleted>':
-                # special hard-coded path 
+                # special hard-coded path
                 continue
             if p is not None:
                 possible_paths.append(p)
@@ -608,7 +620,7 @@ class ContentsConflict(PathConflict):
             # deleted the file either manually or when resolving a conflict on
             # the parent.  We may raise some exception to indicate that the
             # conflict doesn't exist anymore and as such doesn't need to be
-            # resolved ? -- vila 20110615 
+            # resolved ? -- vila 20110615
             this_tid = None
         else:
             this_tid = tt.trans_id_tree_path(this_path)
@@ -662,7 +674,8 @@ class TextConflict(Conflict):
         # Switch the paths to preserve the content
         tt.adjust_path(osutils.basename(self.path),
                        winner_parent_tid, winner_tid)
-        tt.adjust_path(osutils.basename(winner_path), item_parent_tid, item_tid)
+        tt.adjust_path(osutils.basename(winner_path),
+                       item_parent_tid, item_tid)
         # Associate the file_id to the right content
         tt.unversion_file(item_tid)
         tt.version_file(self.file_id, winner_tid)
@@ -713,7 +726,7 @@ class HandledPathConflict(HandledConflict):
         self.conflict_path = conflict_path
         # the factory blindly transfers the Stanza values to __init__,
         # so they can be unicode.
-        if isinstance(conflict_file_id, unicode):
+        if isinstance(conflict_file_id, text_type):
             conflict_file_id = cache_utf8.encode(conflict_file_id)
         self.conflict_file_id = osutils.safe_file_id(conflict_file_id)
 
@@ -888,6 +901,7 @@ def register_types(*conflict_types):
     global ctype
     for conflict_type in conflict_types:
         ctype[conflict_type.typestring] = conflict_type
+
 
 register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
                DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,

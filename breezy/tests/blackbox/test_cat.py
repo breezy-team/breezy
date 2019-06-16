@@ -27,24 +27,24 @@ class TestCat(tests.TestCaseWithTransport):
 
     def test_cat(self):
         tree = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/a', 'foo\n')])
+        self.build_tree_contents([('branch/a', b'foo\n')])
         tree.add('a')
         # 'brz cat' without an option should cat the last revision
         self.run_bzr(['cat', 'a'], retcode=3, working_dir='branch')
 
         tree.commit(message='1')
-        self.build_tree_contents([('branch/a', 'baz\n')])
+        self.build_tree_contents([('branch/a', b'baz\n')])
 
         self.assertEqual('foo\n',
-                          self.run_bzr(['cat', 'a'], working_dir='branch')[0])
+                         self.run_bzr(['cat', 'a'], working_dir='branch')[0])
 
         # On Windows, we used to have a bug where newlines got changed into
         # crlf, whereas cat ought to write out the file exactly as it's
         # recorded (by default.)  That problem can't be reproduced in-process,
-        # so we need just one test here that 
-        self.assertEqual('foo\n',
-                          self.run_bzr_subprocess(['cat', 'a'],
-                                                  working_dir='branch')[0])
+        # so we need just one test here that
+        self.assertEqual(b'foo\n',
+                         self.run_bzr_subprocess(['cat', 'a'],
+                                                 working_dir='branch')[0])
 
         tree.commit(message='2')
         self.assertEqual(
@@ -59,12 +59,13 @@ class TestCat(tests.TestCaseWithTransport):
         rev_id = tree.branch.last_revision()
 
         self.assertEqual(
-            'baz\n', self.run_bzr(['cat', 'a', '-r', 'revid:%s' % rev_id],
-                                  working_dir='branch')[0])
+            'baz\n', self.run_bzr(
+                ['cat', 'a', '-r', 'revid:%s' % rev_id.decode('utf-8')],
+                working_dir='branch')[0])
 
         self.assertEqual('foo\n',
-                          self.run_bzr(['cat', 'branch/a',
-                                        '-r', 'revno:1:branch'])[0])
+                         self.run_bzr(['cat', 'branch/a',
+                                       '-r', 'revno:1:branch'])[0])
         self.run_bzr(['cat', 'a'], retcode=3)
         self.run_bzr(['cat', 'a', '-r', 'revno:1:branch-that-does-not-exist'],
                      retcode=3)
@@ -77,12 +78,11 @@ class TestCat(tests.TestCaseWithTransport):
         # current trees later in the test case
         # a-rev-tree is special because it appears in both the revision
         # tree and the working tree
-        self.build_tree_contents([('a-rev-tree', 'foo\n'),
-            ('c-rev', 'baz\n'), ('d-rev', 'bar\n'), ('e-rev', 'qux\n')])
-        tree.lock_write()
-        try:
+        self.build_tree_contents([('a-rev-tree', b'foo\n'),
+                                  ('c-rev', b'baz\n'), ('d-rev', b'bar\n'), ('e-rev', b'qux\n')])
+        with tree.lock_write():
             tree.add(['a-rev-tree', 'c-rev', 'd-rev', 'e-rev'])
-            tree.commit('add test files', rev_id='first')
+            tree.commit('add test files', rev_id=b'first')
             # remove currently uses self._write_inventory -
             # work around that for now.
             tree.flush()
@@ -90,11 +90,8 @@ class TestCat(tests.TestCaseWithTransport):
             tree.rename_one('a-rev-tree', 'b-tree')
             tree.rename_one('c-rev', 'a-rev-tree')
             tree.rename_one('e-rev', 'old-rev')
-            self.build_tree_contents([('e-rev', 'new\n')])
+            self.build_tree_contents([('e-rev', b'new\n')])
             tree.add(['e-rev'])
-        finally:
-            # calling brz as another process require free lock on win32
-            tree.unlock()
 
         # 'b-tree' is not present in the old tree.
         self.run_bzr_error(["^brz: ERROR: u?'b-tree' "
@@ -103,11 +100,11 @@ class TestCat(tests.TestCaseWithTransport):
 
         # get to the old file automatically
         out, err = self.run_bzr('cat d-rev')
-        self.assertEqual('bar\n', out)
         self.assertEqual('', err)
+        self.assertEqual('bar\n', out)
 
         out, err = \
-                self.run_bzr('cat a-rev-tree --name-from-revision')
+            self.run_bzr('cat a-rev-tree --name-from-revision')
         self.assertEqual('foo\n', out)
         self.assertEqual('', err)
 
@@ -165,12 +162,13 @@ class TestCat(tests.TestCaseWithTransport):
         from ...tree import Tree
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([
-            ('README', "junk\nline 1 of README\nline 2 of README\n"),
+            ('README', b"junk\nline 1 of README\nline 2 of README\n"),
             ])
         wt.add('README')
         wt.commit('Making sure there is a basis_tree available')
         url = self.get_readonly_url() + '/README'
         real_content_filter_stack = Tree._content_filter_stack
+
         def _custom_content_filter_stack(tree, path=None, file_id=None):
             return _stack_2
         Tree._content_filter_stack = _custom_content_filter_stack
@@ -223,7 +221,7 @@ class TestSmartServerCat(tests.TestCaseWithTransport):
     def test_simple_branch_cat(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/foo', 'thecontents')])
+        self.build_tree_contents([('branch/foo', b'thecontents')])
         t.add("foo")
         t.commit("message")
         self.reset_smart_call_log()

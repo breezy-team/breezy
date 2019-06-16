@@ -36,35 +36,34 @@ class TestWithoutConfig(tests.TestCaseWithTransport):
         self.assertEqual('', err)
 
     def test_remove_unknown_option(self):
-        self.run_bzr_error(['The "file" configuration option does not exist',],
+        self.run_bzr_error(['The "file" configuration option does not exist', ],
                            ['config', '--remove', 'file'])
 
     def test_all_remove_exclusive(self):
-        self.run_bzr_error(['--all and --remove are mutually exclusive.',],
+        self.run_bzr_error(['--all and --remove are mutually exclusive.', ],
                            ['config', '--remove', '--all'])
 
     def test_all_set_exclusive(self):
-        self.run_bzr_error(['Only one option can be set.',],
+        self.run_bzr_error(['Only one option can be set.', ],
                            ['config', '--all', 'hello=world'])
 
     def test_remove_no_option(self):
-        self.run_bzr_error(['--remove expects an option to remove.',],
+        self.run_bzr_error(['--remove expects an option to remove.', ],
                            ['config', '--remove'])
 
     def test_unknown_option(self):
-        self.run_bzr_error(['The "file" configuration option does not exist',],
+        self.run_bzr_error(['The "file" configuration option does not exist', ],
                            ['config', 'file'])
 
     def test_unexpected_regexp(self):
         self.run_bzr_error(
-            ['The "\*file" configuration option does not exist',],
+            ['The "\\*file" configuration option does not exist', ],
             ['config', '*file'])
 
     def test_wrong_regexp(self):
         self.run_bzr_error(
-            ['Invalid pattern\(s\) found. "\*file" nothing to repeat',],
+            ['Invalid pattern\\(s\\) found. "\\*file" nothing to repeat', ],
             ['config', '--all', '*file'])
-
 
 
 class TestConfigDisplay(tests.TestCaseWithTransport):
@@ -116,20 +115,20 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
             ''')
 
     def test_registry_value_all(self):
-        self.breezy_config.set_user_option('bzr.transform.orphan_policy',
+        self.breezy_config.set_user_option('transform.orphan_policy',
                                            u'move')
         script.run_script(self, '''\
             $ brz config -d tree
             breezy:
               [DEFAULT]
-              bzr.transform.orphan_policy = move
+              transform.orphan_policy = move
             ''')
 
     def test_registry_value_one(self):
-        self.breezy_config.set_user_option('bzr.transform.orphan_policy',
+        self.breezy_config.set_user_option('transform.orphan_policy',
                                            u'move')
         script.run_script(self, '''\
-            $ brz config -d tree bzr.transform.orphan_policy
+            $ brz config -d tree transform.orphan_policy
             move
             ''')
 

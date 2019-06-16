@@ -51,5 +51,5 @@ def load_tests(loader, basic_tests, pattern):
         'test_write_group',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
     return basic_tests

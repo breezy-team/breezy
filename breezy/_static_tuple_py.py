@@ -44,8 +44,8 @@ class StaticTuple(tuple):
         for bit in args:
             if type(bit) not in _valid_types:
                 raise TypeError('StaticTuple can only point to'
-                    ' StaticTuple, str, unicode, int, float, bool, or'
-                    ' None not %s' % (type(bit),))
+                                ' StaticTuple, str, unicode, int, float, bool, or'
+                                ' None not %s' % (type(bit),))
         # We don't need to pass args to tuple.__init__, because that was
         # already handled in __new__.
         tuple.__init__(self)
@@ -58,7 +58,7 @@ class StaticTuple(tuple):
 
     def __add__(self, other):
         """Concatenate self with other"""
-        return StaticTuple.from_sequence(tuple.__add__(self,other))
+        return StaticTuple.from_sequence(tuple.__add__(self, other))
 
     def as_tuple(self):
         return tuple(self)

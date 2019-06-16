@@ -97,6 +97,7 @@ class Test_CompatibilityFeature(tests.TestCase):
             'a_feature',
             'UnicodeFilenameFeature',
             replacement_module='breezy.tests.features')
+
         def test_caller(message, category=None, stacklevel=1):
             # Find ourselves back from the right frame
             caller = sys._getframe(stacklevel)
@@ -155,3 +156,12 @@ class TestUnicodeFilenameFeature(tests.TestCase):
         # We can't test much more than that because the behaviour depends
         # on the platform.
         features.UnicodeFilenameFeature._probe()
+
+
+class TestBackslashFilenameFeature(tests.TestCase):
+
+    def test_probe_passes(self):
+        """BackslashFilenameFeature._probe passes."""
+        # We can't test much more than that because the behaviour depends
+        # on the platform.
+        features.BackslashFilenameFeature._probe()

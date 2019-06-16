@@ -52,12 +52,12 @@ def check_availability(command_line):
         if exe is None:
             return False
         base, ext = os.path.splitext(exe)
-        path_ext = [unicode(s.lower())
+        path_ext = [s.lower()
                     for s in os.getenv('PATHEXT', '').split(os.pathsep)]
         return os.path.exists(exe) and ext in path_ext
     else:
-        return (os.access(exe, os.X_OK)
-                or osutils.find_executable_on_path(exe) is not None)
+        return (os.access(exe, os.X_OK) or
+                osutils.find_executable_on_path(exe) is not None)
 
 
 def invoke(command_line, filename, invoker=None):
@@ -73,11 +73,12 @@ def invoke(command_line, filename, invoker=None):
     if exe is not None:
         cmd_list[0] = exe
     args, tmp_file = _subst_filename(cmd_list, filename)
+
     def cleanup(retcode):
         if tmp_file is not None:
-            if retcode == 0: # on success, replace file with temp file
+            if retcode == 0:  # on success, replace file with temp file
                 shutil.move(tmp_file, filename)
-            else: # otherwise, delete temp file
+            else:  # otherwise, delete temp file
                 os.remove(tmp_file)
     return invoker(args[0], args[1:], cleanup)
 
@@ -98,7 +99,7 @@ def _subst_filename(args, filename):
     tmp_file = None
     subst_args = []
     for arg in args:
-        if '{this_temp}' in arg and not 'this_temp' in subst_names:
+        if '{this_temp}' in arg and 'this_temp' not in subst_names:
             fh, tmp_file = tempfile.mkstemp(u"_bzr_mergetools_%s.THIS" %
                                             os.path.basename(filename))
             trace.mutter('fh=%r, tmp_file=%r', fh, tmp_file)

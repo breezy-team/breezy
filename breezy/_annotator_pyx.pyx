@@ -22,38 +22,45 @@ from __future__ import absolute_import
 cdef extern from "python-compat.h":
     pass
 
+from cpython.dict cimport (
+    PyDict_GetItem,
+    PyDict_SetItem,
+    )
+from cpython.list cimport (
+    PyList_Append,
+    PyList_CheckExact,
+    PyList_GET_ITEM,
+    PyList_GET_SIZE,
+    PyList_SetItem,
+    PyList_Sort,
+    )
+from cpython.object cimport (
+    Py_EQ,
+    Py_LT,
+    PyObject,
+    PyObject_RichCompareBool,
+    )
+from cpython.ref cimport (
+    Py_INCREF,
+    )
+from cpython.tuple cimport (
+    PyTuple_CheckExact,
+    PyTuple_GET_ITEM,
+    PyTuple_GET_SIZE,
+    PyTuple_New,
+    PyTuple_SET_ITEM,
+    )
+
 cdef extern from "Python.h":
-    ctypedef int Py_ssize_t
-    ctypedef struct PyObject:
-        pass
     ctypedef struct PyListObject:
         PyObject **ob_item
-    int PyList_CheckExact(object)
-    PyObject *PyList_GET_ITEM(object, Py_ssize_t o)
-    Py_ssize_t PyList_GET_SIZE(object)
-    int PyList_Append(object, object) except -1
-    int PyList_SetItem(object, Py_ssize_t o, object) except -1
-    int PyList_Sort(object) except -1
 
-    int PyTuple_CheckExact(object)
-    object PyTuple_New(Py_ssize_t len)
-    void PyTuple_SET_ITEM(object, Py_ssize_t pos, object)
     void PyTuple_SET_ITEM_ptr "PyTuple_SET_ITEM" (object, Py_ssize_t,
                                                   PyObject *)
-    int PyTuple_Resize(PyObject **, Py_ssize_t newlen)
-    PyObject *PyTuple_GET_ITEM(object, Py_ssize_t o)
-    Py_ssize_t PyTuple_GET_SIZE(object)
 
-    PyObject *PyDict_GetItem(object d, object k)
-    int PyDict_SetItem(object d, object k, object v) except -1
-
-    void Py_INCREF(object)
     void Py_INCREF_ptr "Py_INCREF" (PyObject *)
     void Py_DECREF_ptr "Py_DECREF" (PyObject *)
 
-    int Py_EQ
-    int Py_LT
-    int PyObject_RichCompareBool(object, object, int opid) except -1
     int PyObject_RichCompareBool_ptr "PyObject_RichCompareBool" (
         PyObject *, PyObject *, int opid)
 
@@ -91,7 +98,7 @@ cdef PyObject *_next_tuple_entry(object tpl, Py_ssize_t *pos): # cannot_raise
 
     :param tpl: The tuple we are investigating, *must* be a PyTuple
     :param pos: The last item we found. Will be updated to the new position.
-    
+
     This cannot raise an exception, as it does no error checking.
     """
     pos[0] = pos[0] + 1
@@ -104,7 +111,9 @@ cdef object _combine_annotations(ann_one, ann_two, cache):
     """Combine the annotations from both sides."""
     cdef Py_ssize_t pos_one, pos_two, len_one, len_two
     cdef Py_ssize_t out_pos
-    cdef PyObject *temp, *left, *right
+    cdef PyObject *temp
+    cdef PyObject *left
+    cdef PyObject *right
 
     if (PyObject_RichCompareBool(ann_one, ann_two, Py_LT)):
         cache_key = (ann_one, ann_two)
@@ -171,8 +180,10 @@ cdef int _apply_parent_annotations(annotations, parent_annotations,
     matching_blocks defines the ranges that match.
     """
     cdef Py_ssize_t parent_idx, lines_idx, match_len, idx
-    cdef PyListObject *par_list, *ann_list
-    cdef PyObject **par_temp, **ann_temp
+    cdef PyListObject *par_list
+    cdef PyListObject *ann_list
+    cdef PyObject **par_temp
+    cdef PyObject **ann_temp
 
     _check_annotations_are_lists(annotations, parent_annotations)
     par_list = <PyListObject *>parent_annotations
@@ -197,7 +208,8 @@ cdef int _merge_annotations(this_annotation, annotations, parent_annotations,
                             matching_blocks, ann_cache) except -1:
     cdef Py_ssize_t parent_idx, ann_idx, lines_idx, match_len, idx
     cdef Py_ssize_t pos
-    cdef PyObject *ann_temp, *par_temp
+    cdef PyObject *ann_temp
+    cdef PyObject *par_temp
 
     _check_annotations_are_lists(annotations, parent_annotations)
     last_ann = None

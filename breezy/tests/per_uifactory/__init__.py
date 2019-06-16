@@ -44,6 +44,7 @@ from ... import (
 from ..ui_testing import (
     StringIOWithEncoding,
     StringIOAsTTY,
+    TextUIFactory,
     )
 
 
@@ -70,8 +71,8 @@ class UIFactoryTestMixin(object):
         # noninteractive ones should have a reasonable default
         self._load_responses([True])
         result = self.factory.confirm_action(u'Break a lock?',
-             'bzr.lock.break.confirm',
-            {})
+                                             'bzr.lock.break.confirm',
+                                             {})
         # will be true either because we read it from the input or because
         # that's the default
         self.assertEqual(result, True)
@@ -124,29 +125,33 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def setUp(self):
         super(TestTextUIFactory, self).setUp()
-        self.stdin = StringIOWithEncoding()
-        self.stdout = StringIOWithEncoding()
-        self.stderr = StringIOWithEncoding()
-        self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,
-            self.stderr)
+        self.factory = self._create_ui_factory()
+        self.factory.__enter__()
+        self.addCleanup(self.factory.__exit__, None, None, None)
+        self.stdin = self.factory.stdin
+        self.stdout = self.factory.stdout
+        self.stderr = self.factory.stderr
+
+    def _create_ui_factory(self):
+        return TextUIFactory(u'')
 
     def _check_note(self, note_text):
         self.assertEqual("%s\n" % note_text,
-            self.stdout.getvalue())
+                         self.stdout.getvalue())
 
     def _check_show_error(self, msg):
         self.assertEqual("bzr: error: %s\n" % msg,
-            self.stderr.getvalue())
+                         self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 
     def _check_show_message(self, msg):
         self.assertEqual("%s\n" % msg,
-            self.stdout.getvalue())
+                         self.stdout.getvalue())
         self.assertEqual("", self.stderr.getvalue())
 
     def _check_show_warning(self, msg):
         self.assertEqual("bzr: warning: %s\n" % msg,
-            self.stderr.getvalue())
+                         self.stderr.getvalue())
         self.assertEqual("", self.stdout.getvalue())
 
     def _check_log_transport_activity_noarg(self):
@@ -166,30 +171,26 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def _load_responses(self, responses):
         self.factory.stdin.seek(0)
-        self.factory.stdin.writelines([(r and "y\n" or "n\n") for r in responses])
+        self.factory.stdin.writelines(
+            [(r and "y\n" or "n\n") for r in responses])
         self.factory.stdin.seek(0)
 
 
 class TestTTYTextUIFactory(TestTextUIFactory):
 
-    def setUp(self):
-        super(TestTTYTextUIFactory, self).setUp()
-
+    def _create_ui_factory(self):
         # Remove 'TERM' == 'dumb' which causes us to *not* treat output as a
         # real terminal, even though isatty returns True
         self.overrideEnv('TERM', None)
-        self.stderr = StringIOAsTTY()
-        self.stdout = StringIOAsTTY()
-        self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,
-            self.stderr)
+        return TextUIFactory(u'', StringIOAsTTY(), StringIOAsTTY())
 
     def _check_log_transport_activity_display(self):
         self.assertEqual('', self.stdout.getvalue())
         # Displaying the result should write to the progress stream using
         # base-10 units (see HACKING.txt).
         self.assertContainsRe(self.stderr.getvalue(),
-            r'Transferred: 7kB'
-            r' \(\d+\.\dkB/s r:2kB w:1kB u:4kB\)')
+                              r'Transferred: 7kB'
+                              r' \(\d+\.\dkB/s r:2kB w:1kB u:4kB\)')
 
     def _check_log_transport_activity_display_no_bytes(self):
         self.assertEqual('', self.stdout.getvalue())

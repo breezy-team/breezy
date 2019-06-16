@@ -46,7 +46,7 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         """
         repo = self.make_repo_with_extra_ghost_index()
         self.assertEqual(
-            [('revision-id', ('incorrect-parent',), ())],
+            [(b'revision-id', (b'incorrect-parent',), ())],
             list(repo._find_inconsistent_revision_parents()))
 
     def test__check_for_inconsistent_revision_parents(self):
@@ -79,12 +79,12 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         check_object = repo.check(['ignored'])
         check_object.report_results(verbose=False)
         self.assertContainsRe(self.get_log(),
-            '1 revisions have incorrect parents in the revision index')
+                              '1 revisions have incorrect parents in the revision index')
         check_object.report_results(verbose=True)
         self.assertContainsRe(
             self.get_log(),
             "revision-id has wrong parents in index: "
-            r"\('incorrect-parent',\) should be \(\)")
+            r"\(incorrect-parent\) should be \(\)")
 
 
 class TestCallbacks(TestCaseWithRepository):
@@ -135,6 +135,3 @@ class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
         check_object = tree.branch.repository.check([revid1, revid2])
         check_object.report_results(verbose=True)
         self.assertContainsRe(self.get_log(), "0 unreferenced text versions")
-
-
-

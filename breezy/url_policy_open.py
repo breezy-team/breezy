@@ -22,11 +22,17 @@ import threading
 
 from . import (
     errors,
+    trace,
     urlutils,
     )
 from .branch import Branch
 from .controldir import (
     ControlDir,
+    ControlDirFormat,
+    )
+from .transport import (
+    do_catching_redirections,
+    get_transport,
     )
 
 
@@ -184,7 +190,7 @@ class BranchOpener(object):
     checked against a policy object.
 
     The policy object is expected to have the following methods:
-    * check_one_url 
+    * check_one_url
     * should_follow_references
     * transform_fallback_location
     """
@@ -200,6 +206,8 @@ class BranchOpener(object):
         """
         self.policy = policy
         self._seen_urls = set()
+        if probers is None:
+            probers = ControlDirFormat.all_probers()
         self.probers = probers
 
     @classmethod
@@ -248,8 +256,8 @@ class BranchOpener(object):
     def transform_fallback_locationHook(cls, branch, url):
         """Installed as the 'transform_fallback_location' Branch hook.
 
-        This method calls `transform_fallback_location` on the policy object and
-        either returns the url it provides or passes it back to
+        This method calls `transform_fallback_location` on the policy object
+        and either returns the url it provides or passes it back to
         check_and_follow_branch_reference.
         """
         try:
@@ -276,30 +284,62 @@ class BranchOpener(object):
             # spurious loop exceptions.
             self._seen_urls = set()
 
+    def _open_dir(self, url):
+        """Simple BzrDir.open clone that only uses specific probers.
+
+        :param url: URL to open
+        :return: ControlDir instance
+        """
+        def redirected(transport, e, redirection_notice):
+            self.policy.check_one_url(e.target)
+            redirected_transport = transport._redirected_to(
+                e.source, e.target)
+            if redirected_transport is None:
+                raise errors.NotBranchError(e.source)
+            trace.note(
+                '%s is%s redirected to %s',
+                transport.base, e.permanently, redirected_transport.base)
+            return redirected_transport
+
+        def find_format(transport):
+            last_error = errors.NotBranchError(transport.base)
+            for prober_kls in self.probers:
+                prober = prober_kls()
+                try:
+                    return transport, prober.probe_transport(transport)
+                except errors.NotBranchError as e:
+                    last_error = e
+            else:
+                raise last_error
+        transport = get_transport(url)
+        transport, format = do_catching_redirections(
+            find_format, transport, redirected)
+        return format.open(transport)
+
     def follow_reference(self, url):
         """Get the branch-reference value at the specified url.
 
         This exists as a separate method only to be overriden in unit tests.
         """
-        controldir = ControlDir.open(url, probers=self.probers)
+        controldir = self._open_dir(url)
         return controldir.get_branch_reference()
 
-    def open(self, url):
+    def open(self, url, ignore_fallbacks=False):
         """Open the Bazaar branch at url, first checking it.
 
-        What is acceptable means is defined by the policy's `follow_reference` and
-        `check_one_url` methods.
+        What is acceptable means is defined by the policy's `follow_reference`
+        and `check_one_url` methods.
         """
         if not isinstance(url, str):
             raise TypeError
 
         url = self.check_and_follow_branch_reference(url)
 
-        def open_branch(url):
-            dir = ControlDir.open(url, probers=self.probers)
-            return dir.open_branch()
+        def open_branch(url, ignore_fallbacks):
+            dir = self._open_dir(url)
+            return dir.open_branch(ignore_fallbacks=ignore_fallbacks)
         return self.run_with_transform_fallback_location_hook_installed(
-            open_branch, url)
+            open_branch, url, ignore_fallbacks)
 
 
 def open_only_scheme(allowed_scheme, url):

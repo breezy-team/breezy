@@ -27,7 +27,8 @@ from . import (
     )
 
 
-win32_readdir_feature = features.ModuleAvailableFeature('breezy._walkdirs_win32')
+win32_readdir_feature = features.ModuleAvailableFeature(
+    'breezy._walkdirs_win32')
 
 
 class TestWin32Finder(tests.TestCaseInTempDir):
@@ -64,9 +65,10 @@ class TestWin32Finder(tests.TestCaseInTempDir):
 
     def test_top_prefix_to_starting_dir(self):
         # preparing an iteration should create a unicode native path.
-        self.assertEqual(('prefix', None, None, None, u'\x12'),
-            self.reader.top_prefix_to_starting_dir(u'\x12'.encode('utf8'),
-                                                   'prefix'))
+        self.assertEqual(
+            ('prefix', None, None, None, u'\x12'),
+            self.reader.top_prefix_to_starting_dir(
+                u'\x12'.encode('utf8'), 'prefix'))
 
     def test_empty_directory(self):
         self.assertReadDir([], 'prefix', u'.')
@@ -75,12 +77,12 @@ class TestWin32Finder(tests.TestCaseInTempDir):
     def test_file(self):
         self.build_tree(['foo'])
         self.assertReadDir([('foo', 'foo', 'file', u'./foo')],
-            '', u'.')
+                           '', u'.')
 
     def test_directory(self):
         self.build_tree(['bar/'])
         self.assertReadDir([('bar', 'bar', 'directory', u'./bar')],
-            '', u'.')
+                           '', u'.')
 
     def test_prefix(self):
         self.build_tree(['bar/', 'baf'])
@@ -92,7 +94,7 @@ class TestWin32Finder(tests.TestCaseInTempDir):
 
     def test_missing_dir(self):
         e = self.assertRaises(WindowsError,
-            self.reader.read_dir, 'prefix', u'no_such_dir')
+                              self.reader.read_dir, 'prefix', u'no_such_dir')
         self.assertEqual(errno.ENOENT, e.errno)
         self.assertEqual(3, e.winerror)
         self.assertEqual((3, u'no_such_dir/*'), e.args)

@@ -19,13 +19,13 @@ from __future__ import absolute_import
 import sys
 
 
-def shellcomplete(context=None, outfile = None):
+def shellcomplete(context=None, outfile=None):
     if outfile is None:
         outfile = sys.stdout
     if context is None:
-        shellcomplete_commands(outfile = outfile)
+        shellcomplete_commands(outfile=outfile)
     else:
-        shellcomplete_on_command(context, outfile = outfile)
+        shellcomplete_on_command(context, outfile=outfile)
 
 
 def shellcomplete_on_command(cmdname, outfile=None):
@@ -35,12 +35,13 @@ def shellcomplete_on_command(cmdname, outfile=None):
         outfile = sys.stdout
 
     from inspect import getdoc
-    import commands
+    from . import commands
     cmdobj = commands.get_cmd_object(cmdname)
 
     doc = getdoc(cmdobj)
     if doc is None:
-        raise NotImplementedError("sorry, no detailed shellcomplete yet for %r" % cmdname)
+        raise NotImplementedError(
+            "sorry, no detailed shellcomplete yet for %r" % cmdname)
 
     shellcomplete_on_options(cmdobj.options().values(), outfile=outfile)
     for aname in cmdobj.takes_args:
@@ -52,12 +53,12 @@ def shellcomplete_on_options(options, outfile=None):
         short_name = opt.short_name()
         if short_name:
             outfile.write('"(--%s -%s)"{--%s,-%s}\n'
-                    % (opt.name, short_name, opt.name, short_name))
+                          % (opt.name, short_name, opt.name, short_name))
         else:
             outfile.write('--%s\n' % opt.name)
 
 
-def shellcomplete_commands(outfile = None):
+def shellcomplete_commands(outfile=None):
     """List all commands"""
     from . import commands
     from inspect import getdoc

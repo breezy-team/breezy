@@ -31,8 +31,18 @@ from . import (
 
 from .sixish import (
     text_type,
-    viewvalues,
     )
+
+
+class BadReferenceTarget(errors.InternalBzrError):
+
+    _fmt = "Can't add reference to %(other_tree)s into %(tree)s." \
+           "%(reason)s"
+
+    def __init__(self, tree, other_tree, reason):
+        self.tree = tree
+        self.other_tree = other_tree
+        self.reason = reason
 
 
 class MutableTree(tree.Tree):
@@ -53,6 +63,7 @@ class MutableTree(tree.Tree):
     A mutable tree always has an associated Branch and ControlDir object - the
     branch and bzrdir attributes.
     """
+
     def __init__(self, *args, **kw):
         super(MutableTree, self).__init__(*args, **kw)
         # Is this tree on a case-insensitive or case-preserving file-system?
@@ -78,7 +89,7 @@ class MutableTree(tree.Tree):
         Note that the command line normally calls smart_add instead,
         which can automatically recurse.
 
-        This adds the files to the inventory, so that they will be
+        This adds the files to the tree, so that they will be
         recorded by the next commit.
 
         :param files: List of paths to add, relative to the base of the tree.
@@ -93,7 +104,7 @@ class MutableTree(tree.Tree):
         if isinstance(files, (str, text_type)):
             # XXX: Passing a single string is inconsistent and should be
             # deprecated.
-            if not (ids is None or isinstance(ids, (str, text_type))):
+            if not (ids is None or isinstance(ids, bytes)):
                 raise AssertionError()
             if not (kinds is None or isinstance(kinds, (str, text_type))):
                 raise AssertionError()
@@ -127,24 +138,11 @@ class MutableTree(tree.Tree):
             self._add(files, ids, kinds)
 
     def add_reference(self, sub_tree):
-        """Add a TreeReference to the tree, pointing at sub_tree"""
-        raise errors.UnsupportedOperation(self.add_reference, self)
+        """Add a TreeReference to the tree, pointing at sub_tree.
 
-    def _add_reference(self, sub_tree):
-        """Standard add_reference implementation, for use by subclasses"""
-        try:
-            sub_tree_path = self.relpath(sub_tree.basedir)
-        except errors.PathNotChild:
-            raise errors.BadReferenceTarget(self, sub_tree,
-                                            'Target not inside tree.')
-        sub_tree_id = sub_tree.get_root_id()
-        if sub_tree_id == self.get_root_id():
-            raise errors.BadReferenceTarget(self, sub_tree,
-                                     'Trees have the same root id.')
-        if self.has_id(sub_tree_id):
-            raise errors.BadReferenceTarget(self, sub_tree,
-                                            'Root id already present in tree')
-        self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
+        :param sub_tree: subtree to add.
+        """
+        raise errors.UnsupportedOperation(self.add_reference, self)
 
     def _add(self, files, ids, kinds):
         """Helper function for add - updates the inventory.
@@ -162,11 +160,11 @@ class MutableTree(tree.Tree):
         possible_master_transports = []
         with self.lock_write():
             revprops = commit.Commit.update_revprops(
-                    revprops,
-                    self.branch,
-                    kwargs.pop('authors', None),
-                    kwargs.get('local', False),
-                    possible_master_transports)
+                revprops,
+                self.branch,
+                kwargs.pop('authors', None),
+                kwargs.get('local', False),
+                possible_master_transports)
             # args for wt.commit start at message from the Commit.commit
             # method,
             args = (message, ) + args
@@ -201,15 +199,35 @@ class MutableTree(tree.Tree):
             if _from_tree is None:
                 _from_tree = self.basis_tree()
             changes = self.iter_changes(_from_tree)
-            try:
-                change = next(changes)
-                # Exclude root (talk about black magic... --vila 20090629)
-                if change[4] == (None, None):
+            if self.supports_symlinks():
+                # Fast path for has_changes.
+                try:
                     change = next(changes)
+                    # Exclude root (talk about black magic... --vila 20090629)
+                    if change.parent_id == (None, None):
+                        change = next(changes)
+                    return True
+                except StopIteration:
+                    # No changes
+                    return False
+            else:
+                # Slow path for has_changes.
+                # Handle platforms that do not support symlinks in the
+                # conditional below. This is slower than the try/except
+                # approach below that but we don't have a choice as we
+                # need to be sure that all symlinks are removed from the
+                # entire changeset. This is because in platforms that
+                # do not support symlinks, they show up as None in the
+                # working copy as compared to the repository.
+                # Also, exclude root as mention in the above fast path.
+                changes = filter(
+                    lambda c: c[6][0] != 'symlink' and c[4] != (None, None),
+                    changes)
+                try:
+                    next(iter(changes))
+                except StopIteration:
+                    return False
                 return True
-            except StopIteration:
-                # No changes
-                return False
 
     def check_changed_or_out_of_date(self, strict, opt_name,
                                      more_error, more_warning):
@@ -293,7 +311,7 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.mkdir)
 
-    def _observed_sha1(self, file_id, path, sha_and_stat):
+    def _observed_sha1(self, path, sha_and_stat):
         """Tell the tree we have observed a paths sha1.
 
         The intent of this function is to allow trees that have a hashcache to
@@ -303,13 +321,12 @@ class MutableTree(tree.Tree):
 
         The default implementation does nothing.
 
-        :param file_id: The file id
         :param path: The file path
         :param sha_and_stat: The sha 1 and stat result observed.
         :return: None
         """
 
-    def put_file_bytes_non_atomic(self, file_id, bytes):
+    def put_file_bytes_non_atomic(self, path, bytes):
         """Update the content of a file in the tree.
 
         Note that the file is written in-place rather than being
@@ -343,21 +360,53 @@ class MutableTree(tree.Tree):
         This is designed more towards DWIM for humans than API clarity.
         For the specific behaviour see the help for cmd_add().
 
-        :param file_list: List of zero or more paths.  *NB: these are 
-            interpreted relative to the process cwd, not relative to the 
+        :param file_list: List of zero or more paths.  *NB: these are
+            interpreted relative to the process cwd, not relative to the
             tree.*  (Add and most other tree methods use tree-relative
             paths.)
-        :param action: A reporter to be called with the inventory, parent_ie,
+        :param action: A reporter to be called with the working tree, parent_ie,
             path and kind of the path being added. It may return a file_id if
             a specific one should be used.
-        :param save: Save the inventory after completing the adds. If False
+        :param save: Save the changes after completing the adds. If False
             this provides dry-run functionality by doing the add and not saving
-            the inventory.
+            the changes.
         :return: A tuple - files_added, ignored_files. files_added is the count
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.
         """
         raise NotImplementedError(self.smart_add)
+
+    def rename_one(self, from_rel, to_rel, after=False):
+        """Rename one file.
+
+        This can change the directory or the filename or both.
+
+        rename_one has several 'modes' to work. First, it can rename a physical
+        file and change the file_id. That is the normal mode. Second, it can
+        only change the file_id without touching any physical file.
+
+        rename_one uses the second mode if 'after == True' and 'to_rel' is
+        either not versioned or newly added, and present in the working tree.
+
+        rename_one uses the second mode if 'after == False' and 'from_rel' is
+        versioned but no longer in the working tree, and 'to_rel' is not
+        versioned but present in the working tree.
+
+        rename_one uses the first mode if 'after == False' and 'from_rel' is
+        versioned and present in the working tree, and 'to_rel' is not
+        versioned and not present in the working tree.
+
+        Everything else results in an error.
+        """
+        raise NotImplementedError(self.rename_one)
+
+    def copy_one(self, from_rel, to_rel):
+        """Copy one file or directory.
+
+        This can change the directory or the filename or both.
+
+        """
+        raise NotImplementedError(self.copy_one)
 
 
 class MutableTreeHooks(hooks.Hooks):
@@ -371,27 +420,28 @@ class MutableTreeHooks(hooks.Hooks):
         """
         hooks.Hooks.__init__(self, "breezy.mutabletree", "MutableTree.hooks")
         self.add_hook('start_commit',
-            "Called before a commit is performed on a tree. The start commit "
-            "hook is able to change the tree before the commit takes place. "
-            "start_commit is called with the breezy.mutabletree.MutableTree "
-            "that the commit is being performed on.", (1, 4))
+                      "Called before a commit is performed on a tree. The start commit "
+                      "hook is able to change the tree before the commit takes place. "
+                      "start_commit is called with the breezy.mutabletree.MutableTree "
+                      "that the commit is being performed on.", (1, 4))
         self.add_hook('post_commit',
-            "Called after a commit is performed on a tree. The hook is "
-            "called with a breezy.mutabletree.PostCommitHookParams object. "
-            "The mutable tree the commit was performed on is available via "
-            "the mutable_tree attribute of that object.", (2, 0))
+                      "Called after a commit is performed on a tree. The hook is "
+                      "called with a breezy.mutabletree.PostCommitHookParams object. "
+                      "The mutable tree the commit was performed on is available via "
+                      "the mutable_tree attribute of that object.", (2, 0))
         self.add_hook('pre_transform',
-            "Called before a tree transform on this tree. The hook is called "
-            "with the tree that is being transformed and the transform.",
-            (2, 5))
+                      "Called before a tree transform on this tree. The hook is called "
+                      "with the tree that is being transformed and the transform.",
+                      (2, 5))
         self.add_hook('post_build_tree',
-            "Called after a completely new tree is built. The hook is "
-            "called with the tree as its only argument.", (2, 5))
+                      "Called after a completely new tree is built. The hook is "
+                      "called with the tree as its only argument.", (2, 5))
         self.add_hook('post_transform',
-            "Called after a tree transform has been performed on a tree. "
-            "The hook is called with the tree that is being transformed and "
-            "the transform.",
-            (2, 5))
+                      "Called after a tree transform has been performed on a tree. "
+                      "The hook is called with the tree that is being transformed and "
+                      "the transform.",
+                      (2, 5))
+
 
 # install the default hooks into the MutableTree class.
 MutableTree.hooks = MutableTreeHooks()

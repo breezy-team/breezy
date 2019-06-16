@@ -1,0 +1,264 @@
+Developing a plugin
+===================
+
+Naming
+------
+
+By convention, most plugins are named brz-xxx and are installed into a
+directory called xxx. Note that the directory name must be a legal
+Python package name, so a plugin called brz-xxx-yyy need to be installed
+into a directory called xxx_yyy, i.e. '-' in a plugin name should be mapped to
+an underscore in the directory name.
+
+
+Licensing
+---------
+
+We encourage plugin authors to make their plugins publicly available
+under the same license as Breezy itself, namely GPL v2 or later. However, there
+is no requirement to do so. You are free to create Breezy plugins for
+private or internal use within your company and not distribute them.
+
+By sharing your work, a larger number of people benefit. In our experience,
+plugin developers also benefit heavily by having more users involved in
+the design, testing, bug fixing and longer term maintenance. In other words,
+sharing leads to a better plugin faster.
+
+
+Testing
+-------
+
+To ensure your plugin under development is available to Breezy, set
+the ``BRZ_PLUGIN_PATH`` environment variable to its parent directory.
+Alternatively, you may wish to develop your plugin within a directory
+under your personal plugins area (``~/.config/breezy/plugins`` on GNU/Linux)
+or put a symbolic link in that area pointing to your plugin under
+test.  Finally you can use ``BRZ_PLUGINS_AT`` to point to a specific
+directory for a specific plugin (separated by your platform's value of
+os.pathsep), e.g.
+
+  export BRZ_PLUGINS_AT=qbrz@/home/me/qbrz:explorer@/home/me/explorer
+
+You can disable loading plugins with ``BRZ_DISABLE_PLUGINS``.
+
+If you want to stop loading all but installed plugins you can use:
+
+  BRZ_PLUGIN_PATH=-site
+
+We also encourage plugin developers to provide tests for their plugin.
+When you run ``brz selftest``, Breezy will scan all its plugins to see if
+they contain a function named ``test_suite()``.  For each plugin that does,
+it calls the function and adds any resulting tests to the master test suite.
+To run just the tests for plugin xxx, the command is::
+
+  brz selftest -s bp.xxx
+
+
+Providing help
+--------------
+
+Plugins in this guide have their documentation automatically
+generated from the online help provided for a plugin. Sections are
+ordered as follows:
+
+1. High level introduction
+2. Plugin-specific help topics (COMING SOON)
+3. Commands defined or extended by the plugin.
+
+High level help is specified in the docstring for the ``__init__.py`` module.
+You can register plugin-specific help topics in ``__init__.py`` like this::
+
+  _xxx_tutorial = """XXX Tutorial
+
+  Welcome to xxx, your new best friend. ...
+  """
+  topic_registry.register('xxx-tutorial',
+      _xxx_tutorial,
+      'How to use xxx')
+
+Command level help is specified in the docstring for the relevant 
+``cmd_xxx`` Command class.
+
+.. note::
+
+   The final documentation needs to be in ReST format. Keep in mind though
+   that the documentation should also be readable via ``brz help xxx`` so
+   it's best to keep markup to a reasonable minimum.
+   
+
+Providing custom code via hooks
+-------------------------------
+
+Hooks let you provide custom code at certain processing points.
+The available hook point are documented in the `User Reference
+<http://doc.bazaar-vcs.org/development/en/user-reference/index.html#hooks>`_.
+
+Adding a new hook is done with, for example::
+
+  import breezy.branch
+  breezy.branch.Branch.hooks.install_named_hook('post_push', post_push_hook,
+                                 'My post_push hook')
+
+For more information on how to write hooks,
+see http://doc.bazaar-vcs.org/development/en/user-guide/hooks.html.
+
+
+Defining a new command
+----------------------
+
+Breezy commands are defined as subclasses of ``breezy.commands.Command``, the
+command name is specified by the name of the subclass, and they must be
+registered into ``brz`` with the ``breezy.commands.register_command`` function
+at module import time.
+
+To define the ``brz foo-bar`` command::
+
+  from breezy.commands import Command, register_command
+
+  class cmd_foo_bar(Command):
+    # see breezy/builtins.py for information about what to put here
+    pass
+
+  register_command(cmd_foo_bar)
+
+If the class name starts with ``cmd_``, the prefix will get dropped
+and ``_`` will be replaced by ``-`` characters.
+
+
+Managing data
+-------------
+
+Plugin data falls into several categories:
+
+* Configuration settings.
+* Data the user can see and version control.
+* Data behind the scenes.
+
+Configuration settings are often stored in ``branch.conf``,
+``locations.conf`` or ``bazaar.conf``.
+
+User-visible data for a plugin called xxx should be stored in
+``.bzrmeta/xxx``. If mutiple files are desirable, make ``.bzrmeta/xxx``
+a directory or give them a common prefix within ``.bzrmeta``, e.g.
+``xxx-foo``, ``xxx-bar``.
+
+Data managed behind the scenes should be stored in ``.bzr``.
+Depending on the nature of the data, it may belong in a subdirectory
+within there, e.g. ``checkout``, ``branch`` or ``repository``.
+It's your responsibility to ensure behind-the-scenes data is
+propagated and merged appropriately via custom code. You may want
+to use existing hooks for this or ask for new hooks to help.
+
+Useful metadata
+---------------
+
+It is highly recommended that plugins define a version number. This
+is displayed by ``brz plugins`` and by the ``qplugins`` GUI dialog.
+To do this, define ``version_info`` in ``__init__.py`` like this::
+
+  version_info = (1, 2, 0, 'beta', 1)
+
+Plugins can also declare other useful metadata such as a mimimum
+breezy version, new transports and storage formats. See
+`Plugin API <plugin-api>`_ for details.
+
+
+Performance tips
+----------------
+
+When brz starts up, it imports every plugin, so plugins can degrade
+performance when they're not being used. However, sub-modules are not
+loaded, only the main name.
+
+One way you can avoid this slowdown is by putting most of your code
+in sub-modules, so that the plugin, itself, is small. All you really
+need in the ``__init__.py`` is the plugin's Command classes, the
+commands to register them, and the optional ``test_suite()``.
+
+Another way to reduce your plugin's overhead is to use the breezy
+lazy_import functionality. That looks something like this::
+
+  from breezy.lazy_import import lazy_import
+  lazy_import(globals(), """
+  from breezy import (
+      branch as _mod_branch,
+      option,
+      workingtree,
+      )
+  """)
+
+Lazy importing only works for packages and modules, not classes or
+functions. It defers the import until you actually need it.
+
+
+Learning more
+-------------
+
+`Integrating with Bazaar <http://wiki.bazaar.canonical.com/Integrating_with_Bazaar>`_
+explains how to do such operations as ``add``, ``commit``, ``log`` and more.
+
+Reference documentation on some key APIs is provided below. For a more
+detailed reference, see the `complete breezy API documentation <api/index>`_.
+
+
+Mini API Reference
+------------------
+
+Command Class
+~~~~~~~~~~~~~
+
+Base class for commands. Commands are the heart of the command-line brz
+interface.
+
+The command object mostly handles the mapping of command-line parameters into
+one or more breezy operations, and of the results into textual output.
+
+Commands normally don't have any state. All their arguments are passed in to
+the run method. (Subclasses may take a different policy if the behaviour of the
+instance needs to depend on e.g. a shell plugin and not just its Python class.)
+
+The docstring for an actual command should give a single-line summary, then a
+complete description of the command. A grammar description will be inserted.
+
+aliases
+    Other accepted names for this command.
+
+takes_args
+    List of argument forms, marked with whether they are optional,
+    repeated, etc.
+
+    For example: ``['to_location', 'from_branch?', 'file*']`` means:
+
+    * 'to_location' is required
+    * 'from_branch' is optional
+    * 'file' can be specified 0 or more times
+
+takes_options
+    List of options that may be given for this command. These can be either
+    strings, referring to globally-defined options, or option objects.
+    Retrieve through options().
+
+hidden
+    If true, this command isn't advertised. This is typically for commands
+    intended for expert users.
+
+run()
+    Actually run the command. This is invoked with the options and arguments
+    bound to keyword parameters.
+
+    Return 0 or None if the command was successful, or a non-zero shell error
+    code if not. It's OK for this method to allow an exception to raise up.
+
+
+register_command Function
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Utility function to help register a command.
+
+param *cmd*
+  Command subclass to register
+
+param *decorate*
+  If true, allow overriding an existing command of the same name; the old
+  command is returned by this function. Otherwise it is an error to try to
+  override an existing command.

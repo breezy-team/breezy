@@ -41,8 +41,8 @@ class TestRefreshData(TestCaseWithRepository):
         source = self.make_branch_and_memory_tree('source')
         source.lock_write()
         self.addCleanup(source.unlock)
-        source.add([''], ['root-id'])
-        revid = source.commit('foo', rev_id='new-rev')
+        source.add([''], [b'root-id'])
+        revid = source.commit('foo', rev_id=b'new-rev')
         # Force data reading on weaves/knits
         repo.all_revision_ids()
         repo.revisions.keys()
@@ -54,7 +54,7 @@ class TestRefreshData(TestCaseWithRepository):
             server_repo.lock_write(token)
         except errors.TokenLockingNotSupported:
             self.skipTest('Cannot concurrently insert into repo format %r'
-                % self.repository_format)
+                          % self.repository_format)
         try:
             server_repo.fetch(source.branch.repository, revid)
         finally:
@@ -64,8 +64,8 @@ class TestRefreshData(TestCaseWithRepository):
         tree = self.make_branch_and_memory_tree('target')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.add([''], ['root-id'])
-        tree.commit('foo', rev_id='commit-in-target')
+        tree.add([''], [b'root-id'])
+        tree.commit('foo', rev_id=b'commit-in-target')
         repo = tree.branch.repository
         token = repo.lock_write().repository_token
         self.addCleanup(repo.unlock)
@@ -80,7 +80,7 @@ class TestRefreshData(TestCaseWithRepository):
             pass
         else:
             self.assertEqual(
-                ['commit-in-target', 'new-rev'],
+                [b'commit-in-target', b'new-rev'],
                 sorted(repo.all_revision_ids()))
 
     def test_refresh_data_after_fetch_new_data_visible(self):
@@ -89,6 +89,5 @@ class TestRefreshData(TestCaseWithRepository):
         self.addCleanup(repo.unlock)
         self.fetch_new_revision_into_concurrent_instance(repo, token)
         repo.refresh_data()
-        self.assertNotEqual({}, repo.get_graph().get_parent_map(['new-rev']))
-
-
+        self.assertNotEqual(
+            {}, repo.get_graph().get_parent_map([b'new-rev']))

@@ -22,7 +22,7 @@ from __future__ import absolute_import
 import struct
 import zlib
 
-__all__ = ["bytes_to_gzip", "chunks_to_gzip"]
+__all__ = ["chunks_to_gzip"]
 
 
 def U32(i):
@@ -40,18 +40,10 @@ def LOWU32(i):
     return i & 0xFFFFFFFF
 
 
-def bytes_to_gzip(bytes, factory=zlib.compressobj,
-    level=zlib.Z_DEFAULT_COMPRESSION, method=zlib.DEFLATED,
-    width=-zlib.MAX_WBITS, mem=zlib.DEF_MEM_LEVEL,
-    crc32=zlib.crc32):
-    """Create a gzip file containing bytes and return its content."""
-    return chunks_to_gzip([bytes])
-
-
 def chunks_to_gzip(chunks, factory=zlib.compressobj,
-    level=zlib.Z_DEFAULT_COMPRESSION, method=zlib.DEFLATED,
-    width=-zlib.MAX_WBITS, mem=zlib.DEF_MEM_LEVEL,
-    crc32=zlib.crc32):
+                   level=zlib.Z_DEFAULT_COMPRESSION, method=zlib.DEFLATED,
+                   width=-zlib.MAX_WBITS, mem=zlib.DEF_MEM_LEVEL,
+                   crc32=zlib.crc32):
     """Create a gzip file containing chunks and return its content.
 
     :param chunks: An iterable of strings. Each string can have arbitrary
@@ -69,7 +61,7 @@ def chunks_to_gzip(chunks, factory=zlib.compressobj,
         b'\002'      # self.fileobj.write('\002')
         b'\377'      # self.fileobj.write('\377')
                      # if fname:
-        b''          #     self.fileobj.write(fname + '\000')
+        b''  # self.fileobj.write(fname + '\000')
         ]
     # using a compressobj avoids a small header and trailer that the compress()
     # utility function adds.
@@ -85,4 +77,4 @@ def chunks_to_gzip(chunks, factory=zlib.compressobj,
     result.append(compress.flush())
     # size may exceed 2GB, or even 4GB
     result.append(struct.pack("<LL", LOWU32(crc), LOWU32(total_len)))
-    return b''.join(result)
+    return result

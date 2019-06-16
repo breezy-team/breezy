@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from .. import (
     cache_utf8,
     errors,
+    osutils,
     )
 from . import (
     inventory,
@@ -36,7 +37,7 @@ class Serializer_v5(xml6.Serializer_v6):
 
     Packs objects into XML and vice versa.
     """
-    format_num = '5'
+    format_num = b'5'
     root_id = inventory.ROOT_ID
 
     def _unpack_inventory(self, elt, revision_id, entry_cache=None,
@@ -64,7 +65,7 @@ class Serializer_v5(xml6.Serializer_v6):
         byid = inv._byid
         for e in elt:
             ie = unpack_inventory_entry(e, entry_cache=entry_cache,
-                              return_from_cache=return_from_cache)
+                                        return_from_cache=return_from_cache)
             parent_id = ie.parent_id
             if parent_id is None:
                 ie.parent_id = parent_id = root_id
@@ -77,9 +78,10 @@ class Serializer_v5(xml6.Serializer_v6):
                 raise errors.DuplicateFileId(ie.file_id,
                                              byid[ie.file_id])
             if ie.name in parent.children:
-                raise errors.BzrError("%s is already versioned"
-                    % (osutils.pathjoin(inv.id2path(parent_id),
-                       ie.name).encode('utf-8'),))
+                raise errors.BzrError(
+                    "%s is already versioned" % (
+                        osutils.pathjoin(
+                            inv.id2path(parent_id), ie.name).encode('utf-8'),))
             parent.children[ie.name] = ie
             byid[ie.file_id] = ie
         if revision_id is not None:
@@ -99,18 +101,18 @@ class Serializer_v5(xml6.Serializer_v6):
     def _append_inventory_root(self, append, inv):
         """Append the inventory root to output."""
         if inv.root.file_id not in (None, inventory.ROOT_ID):
-            fileid1 = ' file_id="'
+            fileid1 = b' file_id="'
             fileid2 = encode_and_escape(inv.root.file_id)
         else:
-            fileid1 = ""
-            fileid2 = ""
+            fileid1 = b""
+            fileid2 = b""
         if inv.revision_id is not None:
-            revid1 = ' revision_id="'
+            revid1 = b' revision_id="'
             revid2 = encode_and_escape(inv.revision_id)
         else:
-            revid1 = ""
-            revid2 = ""
-        append('<inventory%s%s format="5"%s%s>\n' % (
+            revid1 = b""
+            revid2 = b""
+        append(b'<inventory%s%s format="5"%s%s>\n' % (
             fileid1, fileid2, revid1, revid2))
 
 

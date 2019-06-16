@@ -41,7 +41,7 @@ The process is
 
 #. An exception reaches the top-level handler.
 
-#. We log it in apport-format to a file in ~/.bazaar/crash.
+#. We log it in apport-format to a file in ~/.config/breezy/crash.
 
 #. We tell the user where that file is, and invite them to file a bug
    report.

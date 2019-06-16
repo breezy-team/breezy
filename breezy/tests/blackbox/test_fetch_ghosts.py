@@ -34,7 +34,7 @@ class TestFetchGhosts(TestCaseWithTransport):
     def test_fetch_ghosts_more(self):
         self.run_bzr('init')
         with open('myfile', 'wb') as f:
-            f.write('hello')
+            f.write(b'hello')
         self.run_bzr('add')
         self.run_bzr('commit -m hello')
         self.run_bzr('branch . my_branch')

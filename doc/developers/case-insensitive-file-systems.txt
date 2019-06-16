@@ -66,7 +66,7 @@ The rules for such fixups turn out to be quite simple:
   accidentally creating 2 inventory items that differ only by case.
 
 * If an argument results in the creation of a *new* filename (eg, a move
-  destination), the argument will be used as specified.  Bzr will create
+  destination), the argument will be used as specified.  Breezy will create
   a file and inventory item that exactly matches the case specified (although
   as above, care must be taken to avoid creating two inventory items that
   differ only by case.)

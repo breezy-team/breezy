@@ -19,6 +19,8 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
+
 from . import (
     tree,
     )
@@ -30,7 +32,7 @@ from .filters import (
 
 class ContentFilterTree(tree.Tree):
     """A virtual tree that applies content filters to an underlying tree.
-    
+
     Not every operation is supported yet.
     """
 
@@ -44,31 +46,31 @@ class ContentFilterTree(tree.Tree):
         self.backing_tree = backing_tree
         self.filter_stack_callback = filter_stack_callback
 
-    def get_file_text(self, file_id, path=None):
-        chunks = self.backing_tree.get_file_lines(file_id, path)
-        if path is None:
-            path = self.backing_tree.id2path(file_id)
+    def get_file_text(self, path):
+        chunks = self.backing_tree.get_file_lines(path)
         filters = self.filter_stack_callback(path)
-        context = ContentFilterContext(path, self, None)
+        context = ContentFilterContext(path, self)
         contents = filtered_output_bytes(chunks, filters, context)
-        content = ''.join(contents)
+        content = b''.join(contents)
         return content
+
+    def get_file(self, path):
+        return BytesIO(self.get_file_text(path))
 
     def has_filename(self, filename):
         return self.backing_tree.has_filename
 
-    def is_executable(self, file_id, path=None):
-        return self.backing_tree.is_executable(file_id, path)
+    def is_executable(self, path):
+        return self.backing_tree.is_executable(path)
 
-    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=None):
+    def iter_entries_by_dir(self, specific_files=None):
         # NB: This simply returns the parent tree's entries; the length may be
         # wrong but it can't easily be calculated without filtering the whole
         # text.  Currently all callers cope with this; perhaps they should be
         # updated to a narrower interface that only provides things guaranteed
         # cheaply available across all trees. -- mbp 20110705
         return self.backing_tree.iter_entries_by_dir(
-            specific_file_ids=specific_file_ids,
-            yield_parents=yield_parents)
+            specific_files=specific_files)
 
     def lock_read(self):
         return self.backing_tree.lock_read()

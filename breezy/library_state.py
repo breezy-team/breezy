@@ -75,13 +75,13 @@ class BzrLibraryState(object):
         # arguments are parsed.
         self.cmdline_overrides = config.CommandLineStore()
         # No config stores are cached to start with
-        self.config_stores = {} # By url
+        self.config_stores = {}  # By url
         self.started = False
 
     def __enter__(self):
         if not self.started:
             self._start()
-        return self # This is bound to the 'as' clause in a with statement.
+        return self  # This is bound to the 'as' clause in a with statement.
 
     def _start(self):
         """Do all initialization."""
@@ -119,4 +119,4 @@ class BzrLibraryState(object):
         self._trace.__exit__(None, None, None)
         ui.ui_factory = self._orig_ui
         breezy._global_state = None
-        return False # propogate exceptions.
+        return False  # propogate exceptions.

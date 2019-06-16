@@ -45,7 +45,7 @@ class build_mo(Command):
                     ('force', 'f', 'Force creation of mo files'),
                     ('lang=', None, 'Comma-separated list of languages '
                                     'to process'),
-                   ]
+                    ]
 
     boolean_options = ['force']
 
@@ -94,11 +94,11 @@ class build_mo(Command):
                 pot = (self.prj_name or 'messages') + '.pot'
                 en_po = 'en.po'
                 self.spawn(['msginit',
-                    '--no-translator',
-                    '-l', 'en',
-                    '-i', os.path.join(self.source_dir, pot),
-                    '-o', os.path.join(self.source_dir, en_po),
-                    ])
+                            '--no-translator',
+                            '-l', 'en',
+                            '-i', os.path.join(self.source_dir, pot),
+                            '-o', os.path.join(self.source_dir, en_po),
+                            ])
 
         basename = self.output_base
         if not basename.endswith('.mo'):
@@ -114,5 +114,3 @@ class build_mo(Command):
             if self.force or newer(po, mo):
                 log.info('Compile: %s -> %s' % (po, mo))
                 self.spawn(['msgfmt', '-o', mo, po])
-
-

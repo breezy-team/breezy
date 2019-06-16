@@ -2,6 +2,7 @@
 # These are created as byproducts of our test suite
 ./test*.tmp
 ./.python-eggs
+./breezy.egg-info
 ./.bzr.log
 # Generated files
 CHANGELOG
@@ -71,3 +72,6 @@ breezy/_*.so
 breezy/_*.pyd
 ./.ccache
 .testrepository
+selftest.log
+.coverage
+doc/developers/api/*.txt

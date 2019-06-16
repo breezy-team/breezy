@@ -22,7 +22,7 @@ These were formats present in pre-1.0 version of Bazaar.
 from __future__ import absolute_import
 
 # Since we are a built-in plugin we share the breezy version
-from ... import version_info
+from ... import version_info  # noqa: F401
 
 from ... import (
     branch as _mod_branch,
@@ -43,12 +43,12 @@ from ...bzr import (
 # disk format string as a key for the network_name because they meet the
 # constraints (simple string, unique, immutable).
 _mod_repository.network_format_registry.register_lazy(
-    "Bazaar-NG branch, format 5\n",
+    b"Bazaar-NG branch, format 5\n",
     'breezy.plugins.weave_fmt.repository',
     'RepositoryFormat5',
 )
 _mod_repository.network_format_registry.register_lazy(
-    "Bazaar-NG branch, format 6\n",
+    b"Bazaar-NG branch, format 6\n",
     'breezy.plugins.weave_fmt.repository',
     'RepositoryFormat6',
 )
@@ -60,7 +60,7 @@ _mod_repository.network_format_registry.register_lazy(
 # the repository is not separately opened are similar.
 
 _mod_repository.format_registry.register_lazy(
-    'Bazaar-NG Repository format 7',
+    b'Bazaar-NG Repository format 7',
     'breezy.plugins.weave_fmt.repository',
     'RepositoryFormat7'
     )
@@ -80,35 +80,35 @@ _mod_repository.format_registry.register_extra_lazy(
 # repository.py. MetaDir formats have their repository format network name
 # inferred from their disk format string.
 controldir.format_registry.register_lazy('weave',
-    "breezy.plugins.weave_fmt.bzrdir", "BzrDirFormat6",
-    'Pre-0.8 format.  Slower than knit and does not'
-    ' support checkouts or shared repositories.',
-    hidden=True,
-    deprecated=True)
+                                         "breezy.plugins.weave_fmt.bzrdir", "BzrDirFormat6",
+                                         'Pre-0.8 format.  Slower than knit and does not'
+                                         ' support checkouts or shared repositories.',
+                                         hidden=True,
+                                         deprecated=True)
 register_metadir(controldir.format_registry, 'metaweave',
-    'breezy.plugins.weave_fmt.repository.RepositoryFormat7',
-    'Transitional format in 0.8.  Slower than knit.',
-    branch_format='breezy.bzr.fullhistory.BzrBranchFormat5',
-    tree_format='breezy.bzr.workingtree_3.WorkingTreeFormat3',
-    hidden=True,
-    deprecated=True)
+                 'breezy.plugins.weave_fmt.repository.RepositoryFormat7',
+                 'Transitional format in 0.8.  Slower than knit.',
+                 branch_format='breezy.bzr.fullhistory.BzrBranchFormat5',
+                 tree_format='breezy.bzr.workingtree_3.WorkingTreeFormat3',
+                 hidden=True,
+                 deprecated=True)
 
 
 BzrProber.formats.register_lazy(
-    "Bazaar-NG branch, format 0.0.4\n", "breezy.plugins.weave_fmt.bzrdir",
+    b"Bazaar-NG branch, format 0.0.4\n", "breezy.plugins.weave_fmt.bzrdir",
     "BzrDirFormat4")
 BzrProber.formats.register_lazy(
-    "Bazaar-NG branch, format 5\n", "breezy.plugins.weave_fmt.bzrdir",
+    b"Bazaar-NG branch, format 5\n", "breezy.plugins.weave_fmt.bzrdir",
     "BzrDirFormat5")
 BzrProber.formats.register_lazy(
-    "Bazaar-NG branch, format 6\n", "breezy.plugins.weave_fmt.bzrdir",
+    b"Bazaar-NG branch, format 6\n", "breezy.plugins.weave_fmt.bzrdir",
     "BzrDirFormat6")
 
 
 _mod_branch.format_registry.register_extra_lazy(
     'breezy.plugins.weave_fmt.branch', 'BzrBranchFormat4')
 _mod_branch.network_format_registry.register_lazy(
-    "Bazaar-NG branch, format 6\n",
+    b"Bazaar-NG branch, format 6\n",
     'breezy.plugins.weave_fmt.branch', "BzrBranchFormat4")
 
 
@@ -117,7 +117,8 @@ _mod_workingtree.format_registry.register_extra_lazy(
     'WorkingTreeFormat2')
 
 serializer.format_registry.register_lazy('4', 'breezy.plugins.weave_fmt.xml4',
-    'serializer_v4')
+                                         'serializer_v4')
+
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
@@ -127,5 +128,5 @@ def load_tests(loader, basic_tests, pattern):
         'test_workingtree',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
     return basic_tests

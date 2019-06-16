@@ -18,15 +18,22 @@
 
 from __future__ import absolute_import
 
-from email import (
-    Header,
-    Message,
-    MIMEMultipart,
-    MIMEText,
-    Utils,
-    )
-
+try:
+    from email.message import Message
+    from email.header import Header
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.utils import formataddr, parseaddr
+except ImportError:   # python < 3
+    from email import (
+        Header,
+        Message,
+        MIMEMultipart,
+        MIMEText,
+        )
+    from email.Utils import formataddr, parseaddr
 from . import __version__ as _breezy_version
+from .errors import BzrBadParameterNotUnicode
 from .osutils import safe_unicode
 from .sixish import (
     text_type,
@@ -63,8 +70,8 @@ class EmailMessage(object):
         self._body = body
         self._parts = []
 
-        if isinstance(to_address, (str, text_type)):
-            to_address = [ to_address ]
+        if isinstance(to_address, (bytes, text_type)):
+            to_address = [to_address]
 
         to_addresses = []
 
@@ -73,7 +80,7 @@ class EmailMessage(object):
 
         self._headers['To'] = ', '.join(to_addresses)
         self._headers['From'] = self.address_to_encoded_header(from_address)
-        self._headers['Subject'] = Header.Header(safe_unicode(subject))
+        self._headers['Subject'] = Header(safe_unicode(subject))
         self._headers['User-Agent'] = 'Bazaar (%s)' % _breezy_version
 
     def add_inline_attachment(self, body, filename=None, mime_subtype='plain'):
@@ -105,19 +112,19 @@ class EmailMessage(object):
             Used for tests.
         """
         if not self._parts:
-            msgobj = Message.Message()
+            msgobj = Message()
             if self._body is not None:
                 body, encoding = self.string_with_encoding(self._body)
                 msgobj.set_payload(body, encoding)
         else:
-            msgobj = MIMEMultipart.MIMEMultipart()
+            msgobj = MIMEMultipart()
 
             if boundary is not None:
                 msgobj.set_boundary(boundary)
 
             for body, filename, mime_subtype in self._parts:
                 body, encoding = self.string_with_encoding(body)
-                payload = MIMEText.MIMEText(body, mime_subtype, encoding)
+                payload = MIMEText(body, mime_subtype, encoding)
 
                 if filename is not None:
                     content_type = payload['Content-Type']
@@ -163,7 +170,7 @@ class EmailMessage(object):
         msg = EmailMessage(from_address, to_address, subject, body)
         if attachment is not None:
             msg.add_inline_attachment(attachment, attachment_filename,
-                    attachment_mime_subtype)
+                                      attachment_mime_subtype)
         SMTPConnection(config).send_email(msg)
 
     @staticmethod
@@ -173,14 +180,16 @@ class EmailMessage(object):
         :param address: An unicode string, or UTF-8 byte string.
         :return: A possibly RFC2047-encoded string.
         """
+        if not isinstance(address, (str, text_type)):
+            raise BzrBadParameterNotUnicode(address)
         # Can't call Header over all the address, because that encodes both the
         # name and the email address, which is not permitted by RFCs.
-        user, email = Utils.parseaddr(address)
+        user, email = parseaddr(address)
         if not user:
             return email
         else:
-            return Utils.formataddr((str(Header.Header(safe_unicode(user))),
-                email))
+            return formataddr((str(Header(safe_unicode(user))),
+                               email))
 
     @staticmethod
     def string_with_encoding(string_):
@@ -195,7 +204,7 @@ class EmailMessage(object):
         # avoid base64 when it's not necessary in order to be most compatible
         # with the capabilities of the receiving side, we check with encode()
         # and decode() whether the body is actually ascii-only.
-        if isinstance(string_, unicode):
+        if isinstance(string_, text_type):
             try:
                 return (string_.encode('ascii'), 'ascii')
             except UnicodeEncodeError:

@@ -38,104 +38,50 @@ import breezy
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-from bisect import bisect_left
-import itertools
-import operator
+import shutil
 import stat
 
 from breezy import (
-    branch,
     conflicts as _mod_conflicts,
-    controldir,
     errors,
     filters as _mod_filters,
-    generate_ids,
     merge,
     revision as _mod_revision,
-    shelf,
     transform,
     transport,
-    ui,
     views,
+    )
+from breezy.bzr import (
+    generate_ids,
     )
 """)
 
+from .controldir import (
+    ControlComponent,
+    ControlComponentFormatRegistry,
+    ControlComponentFormat,
+    ControlDir,
+    ControlDirFormat,
+    )
 from . import (
     osutils,
     )
 from .i18n import gettext
 from . import mutabletree
-from .sixish import (
-    text_type,
-    )
 from .trace import mutter, note
-
-
-ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
 
 
 class SettingFileIdUnsupported(errors.BzrError):
 
-    _fmt = "This format does not support setting file ids."""
+    _fmt = "This format does not support setting file ids."
 
 
-class TreeEntry(object):
-    """An entry that implements the minimum interface used by commands.
+class ShelvingUnsupported(errors.BzrError):
 
-    This needs further inspection, it may be better to have
-    InventoryEntries without ids - though that seems wrong. For now,
-    this is a parallel hierarchy to InventoryEntry, and needs to become
-    one of several things: decorates to that hierarchy, children of, or
-    parents of it.
-    Another note is that these objects are currently only used when there is
-    no InventoryEntry available - i.e. for unversioned objects.
-    Perhaps they should be UnversionedEntry et al. ? - RBC 20051003
-    """
-
-    def __eq__(self, other):
-        # yes, this us ugly, TODO: best practice __eq__ style.
-        return (isinstance(other, TreeEntry)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return "???"
+    _fmt = "This format does not support shelving changes."
 
 
-class TreeDirectory(TreeEntry):
-    """See TreeEntry. This is a directory in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeDirectory)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return "/"
-
-
-class TreeFile(TreeEntry):
-    """See TreeEntry. This is a regular file in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeFile)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return ''
-
-
-class TreeLink(TreeEntry):
-    """See TreeEntry. This is a symlink in a working tree."""
-
-    def __eq__(self, other):
-        return (isinstance(other, TreeLink)
-                and other.__class__ == self.__class__)
-
-    def kind_character(self):
-        return ''
-
-
-class WorkingTree(mutabletree.MutableTree,
-    controldir.ControlComponent):
+class WorkingTree(mutabletree.MutableTree, ControlComponent):
     """Working copy tree.
 
     :ivar basedir: The root of the tree on disk. This is a unicode path object
@@ -160,7 +106,7 @@ class WorkingTree(mutabletree.MutableTree,
         self.controldir = _controldir
         if not _internal:
             raise errors.BzrError("Please use controldir.open_workingtree or "
-                "WorkingTree.open() to obtain a WorkingTree.")
+                                  "WorkingTree.open() to obtain a WorkingTree.")
         basedir = osutils.safe_unicode(basedir)
         mutter("opening working tree %r", basedir)
         if branch is not None:
@@ -179,6 +125,9 @@ class WorkingTree(mutabletree.MutableTree,
     @property
     def control_transport(self):
         return self._transport
+
+    def supports_symlinks(self):
+        return osutils.supports_symlinks(self.basedir)
 
     def is_control_filename(self, filename):
         """True if filename is the name of a control file in this tree.
@@ -204,11 +153,13 @@ class WorkingTree(mutabletree.MutableTree,
         """See `Tree.has_versioned_directories`."""
         return self._format.supports_versioned_directories
 
+    def supports_merge_modified(self):
+        """Indicate whether this workingtree supports storing merge_modified.
+        """
+        return self._format.supports_merge_modified
+
     def _supports_executable(self):
-        if sys.platform == 'win32':
-            return False
-        # FIXME: Ideally this should check the file system
-        return True
+        return osutils.supports_executable(self.basedir)
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -250,7 +201,7 @@ class WorkingTree(mutabletree.MutableTree,
         """
         if path is None:
             path = osutils.getcwd()
-        control = controldir.ControlDir.open(path, _unsupported=_unsupported)
+        control = ControlDir.open(path, _unsupported=_unsupported)
         return control.open_workingtree(unsupported=_unsupported)
 
     @staticmethod
@@ -268,7 +219,7 @@ class WorkingTree(mutabletree.MutableTree,
         """
         if path is None:
             path = osutils.getcwd()
-        control, relpath = controldir.ControlDir.open_containing(path)
+        control, relpath = ControlDir.open_containing(path)
         return control.open_workingtree(), relpath
 
     @staticmethod
@@ -327,7 +278,8 @@ class WorkingTree(mutabletree.MutableTree,
         # self.relpath exists as a "thunk" to osutils, but canonical_relpath
         # doesn't - fix that up here before we enter the loop.
         if canonicalize:
-            fixer = lambda p: osutils.canonical_relpath(self.basedir, p)
+            def fixer(p):
+                return osutils.canonical_relpath(self.basedir, p)
         else:
             fixer = self.relpath
         for filename in file_list:
@@ -344,23 +296,6 @@ class WorkingTree(mutabletree.MutableTree,
         Only intended for advanced situations like upgrading part of a controldir.
         """
         return WorkingTree.open(path, _unsupported=True)
-
-    @staticmethod
-    def find_trees(location):
-        def list_current(transport):
-            return [d for d in transport.list_dir('')
-                    if not controldir.is_control_filename(d)]
-        def evaluate(controldir):
-            try:
-                tree = controldir.open_workingtree()
-            except errors.NoWorkingTree:
-                return True, None
-            else:
-                return True, tree
-        t = transport.get_transport(location)
-        iterator = controldir.ControlDir.find_controldirs(t, evaluate=evaluate,
-                                              list_current=list_current)
-        return [tr for tr in iterator if tr is not None]
 
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
@@ -383,13 +318,13 @@ class WorkingTree(mutabletree.MutableTree,
             # in the future this should return the tree for
             # 'empty:' - the implicit root empty tree.
             return self.branch.repository.revision_tree(
-                       _mod_revision.NULL_REVISION)
+                _mod_revision.NULL_REVISION)
         try:
             return self.revision_tree(revision_id)
         except errors.NoSuchRevision:
             pass
         # No cached copy available, retrieve from the repository.
-        # FIXME? RBC 20060403 should we cache the inventory locally
+        # FIXME? RBC 20060403 should we cache the tree locally
         # at this point ?
         try:
             return self.branch.repository.revision_tree(revision_id)
@@ -401,7 +336,7 @@ class WorkingTree(mutabletree.MutableTree,
                 raise
             # the basis tree is a ghost so return an empty tree.
             return self.branch.repository.revision_tree(
-                       _mod_revision.NULL_REVISION)
+                _mod_revision.NULL_REVISION)
 
     def relpath(self, path):
         """Return the local path portion from a given path.
@@ -414,44 +349,33 @@ class WorkingTree(mutabletree.MutableTree,
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
 
-    def get_file(self, file_id, path=None, filtered=True):
-        return self.get_file_with_stat(file_id, path, filtered=filtered)[0]
+    def get_file(self, path, filtered=True):
+        return self.get_file_with_stat(path, filtered=filtered)[0]
 
-    def get_file_with_stat(self, file_id, path=None, filtered=True,
+    def get_file_with_stat(self, path, filtered=True,
                            _fstat=osutils.fstat):
         """See Tree.get_file_with_stat."""
-        if path is None:
-            path = self.id2path(file_id)
-        file_obj = self.get_file_byname(path, filtered=False)
+        abspath = self.abspath(path)
+        try:
+            file_obj = open(abspath, 'rb')
+        except EnvironmentError as e:
+            if e.errno == errno.ENOENT:
+                raise errors.NoSuchFile(path)
+            raise
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
             file_obj = _mod_filters.filtered_input_file(file_obj, filters)
         return (file_obj, stat_value)
 
-    def get_file_text(self, file_id, path=None, filtered=True):
-        my_file = self.get_file(file_id, path=path, filtered=filtered)
-        try:
+    def get_file_text(self, path, filtered=True):
+        with self.get_file(path, filtered=filtered) as my_file:
             return my_file.read()
-        finally:
-            my_file.close()
 
-    def get_file_byname(self, filename, filtered=True):
-        path = self.abspath(filename)
-        f = file(path, 'rb')
-        if filtered and self.supports_content_filtering():
-            filters = self._content_filter_stack(filename)
-            return _mod_filters.filtered_input_file(f, filters)
-        else:
-            return f
-
-    def get_file_lines(self, file_id, path=None, filtered=True):
+    def get_file_lines(self, path, filtered=True):
         """See Tree.get_file_lines()"""
-        file = self.get_file(file_id, path, filtered=filtered)
-        try:
+        with self.get_file(path, filtered=filtered) as file:
             return file.readlines()
-        finally:
-            file.close()
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -470,7 +394,7 @@ class WorkingTree(mutabletree.MutableTree,
             pass
         else:
             for l in osutils.split_lines(merges_bytes):
-                revision_id = l.rstrip('\n')
+                revision_id = l.rstrip(b'\n')
                 parents.append(revision_id)
         return parents
 
@@ -510,7 +434,7 @@ class WorkingTree(mutabletree.MutableTree,
                     other_tree = self.revision_tree(revision_id)
                 except errors.NoSuchRevision:
                     other_tree = self.branch.repository.revision_tree(
-                            revision_id)
+                        revision_id)
 
                 merge.transform_tree(tree, other_tree)
                 if revision_id == _mod_revision.NULL_REVISION:
@@ -519,15 +443,12 @@ class WorkingTree(mutabletree.MutableTree,
                     new_parents = [revision_id]
                 tree.set_parent_ids(new_parents)
 
-    def id2abspath(self, file_id):
-        return self.abspath(self.id2path(file_id))
-
-    def get_file_size(self, file_id):
+    def get_file_size(self, path):
         """See Tree.get_file_size"""
         # XXX: this returns the on-disk size; it should probably return the
         # canonical size
         try:
-            return os.path.getsize(self.id2abspath(file_id))
+            return os.path.getsize(self.abspath(path))
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
@@ -560,7 +481,7 @@ class WorkingTree(mutabletree.MutableTree,
         with self.lock_write():
             parents = self.get_parent_ids() + [revision_id]
             self.set_parent_ids(parents, allow_leftmost_as_ghost=len(parents) > 1
-                or allow_leftmost_as_ghost)
+                                or allow_leftmost_as_ghost)
 
     def add_parent_tree(self, parent_tuple, allow_leftmost_as_ghost=False):
         """Add revision_id, tree tuple as a parent.
@@ -582,7 +503,7 @@ class WorkingTree(mutabletree.MutableTree,
                 # was.
                 allow_leftmost_as_ghost = True
             self.set_parent_ids(parent_ids,
-                allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+                                allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
     def add_pending_merge(self, *revision_ids):
         with self.lock_tree_write():
@@ -599,7 +520,7 @@ class WorkingTree(mutabletree.MutableTree,
                 self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
     def path_content_summary(self, path, _lstat=os.lstat,
-        _mapper=osutils.file_kind_from_stat_mode):
+                             _mapper=osutils.file_kind_from_stat_mode):
         """See Tree.path_content_summary."""
         abspath = self.abspath(path)
         try:
@@ -641,13 +562,13 @@ class WorkingTree(mutabletree.MutableTree,
         if len(revision_ids) > 0:
             leftmost_id = revision_ids[0]
             if (not allow_leftmost_as_ghost and not
-                self.branch.repository.has_revision(leftmost_id)):
+                    self.branch.repository.has_revision(leftmost_id)):
                 raise errors.GhostRevisionUnusableHere(leftmost_id)
 
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
-        self._transport.put_bytes('pending-merges', '\n'.join(merges),
-            mode=self.controldir._get_file_mode())
+        self._transport.put_bytes('pending-merges', b'\n'.join(merges),
+                                  mode=self.controldir._get_file_mode())
 
     def _filter_parent_ids_by_ancestry(self, revision_ids):
         """Check that all merged revisions are proper 'heads'.
@@ -665,7 +586,7 @@ class WorkingTree(mutabletree.MutableTree,
                 new_revision_ids.append(revision_id)
         if new_revision_ids != revision_ids:
             mutter('requested to set revision_ids = %s,'
-                         ' but filtered to %s', revision_ids, new_revision_ids)
+                   ' but filtered to %s', revision_ids, new_revision_ids)
         return new_revision_ids
 
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
@@ -682,7 +603,7 @@ class WorkingTree(mutabletree.MutableTree,
         """
         with self.lock_tree_write():
             self._check_parents_for_ghosts(revision_ids,
-                allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+                                           allow_leftmost_as_ghost=allow_leftmost_as_ghost)
             for revision_id in revision_ids:
                 _mod_revision.check_not_reserved_id(revision_id)
 
@@ -768,59 +689,35 @@ class WorkingTree(mutabletree.MutableTree,
         because of a merge.
 
         This returns a map of file_id->sha1, containing only files which are
-        still in the working inventory and have that text hash.
+        still in the working tree and have that text hash.
         """
         raise NotImplementedError(self.merge_modified)
 
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
         if file_id is None:
-            file_id = generate_ids.gen_file_id(os.path.basename(path))
-        elif not self.supports_setting_file_ids():
-            raise SettingFileIdUnsupported()
+            if self.supports_setting_file_ids():
+                file_id = generate_ids.gen_file_id(os.path.basename(path))
+        else:
+            if not self.supports_setting_file_ids():
+                raise SettingFileIdUnsupported()
         with self.lock_write():
             os.mkdir(self.abspath(path))
             self.add(path, file_id, 'directory')
             return file_id
 
-    def get_symlink_target(self, file_id, path=None):
-        if path is not None:
-            abspath = self.abspath(path)
-        else:
-            abspath = self.id2abspath(file_id)
+    def get_symlink_target(self, path):
+        abspath = self.abspath(path)
         target = osutils.readlink(abspath)
         return target
 
     def subsume(self, other_tree):
         raise NotImplementedError(self.subsume)
 
-    def _setup_directory_is_tree_reference(self):
-        if self._branch.repository._format.supports_tree_reference:
-            self._directory_is_tree_reference = \
-                self._directory_may_be_tree_reference
-        else:
-            self._directory_is_tree_reference = \
-                self._directory_is_never_tree_reference
+    def _directory_is_tree_reference(self, relpath):
+        raise NotImplementedError(self._directory_is_tree_reference)
 
-    def _directory_is_never_tree_reference(self, relpath):
-        return False
-
-    def _directory_may_be_tree_reference(self, relpath):
-        # as a special case, if a directory contains control files then
-        # it's a tree reference, except that the root of the tree is not
-        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
-        # TODO: We could ask all the control formats whether they
-        # recognize this directory, but at the moment there's no cheap api
-        # to do that.  Since we probably can only nest bzr checkouts and
-        # they always use this name it's ok for now.  -- mbp 20060306
-        #
-        # FIXME: There is an unhandled case here of a subdirectory
-        # containing .bzr but not a branch; that will probably blow up
-        # when you try to commit it.  It might happen if there is a
-        # checkout in a subdirectory.  This can be avoided by not adding
-        # it.  mbp 20070306
-
-    def extract(self, file_id, format=None):
+    def extract(self, path, format=None):
         """Extract a subtree from this tree.
 
         A new branch will be created, relative to the path for this tree.
@@ -831,7 +728,7 @@ class WorkingTree(mutabletree.MutableTree,
         """Write the in memory meta data to disk."""
         raise NotImplementedError(self.flush)
 
-    def _kind(self, relpath):
+    def kind(self, relpath):
         return osutils.file_kind(self.abspath(relpath))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
@@ -883,29 +780,17 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.move)
 
-    def rename_one(self, from_rel, to_rel, after=False):
-        """Rename one file.
+    def copy_one(self, from_rel, to_rel):
+        """Copy a file in the tree to a new location.
 
-        This can change the directory or the filename or both.
+        This default implementation just copies the file, then
+        adds the target.
 
-        rename_one has several 'modes' to work. First, it can rename a physical
-        file and change the file_id. That is the normal mode. Second, it can
-        only change the file_id without touching any physical file.
-
-        rename_one uses the second mode if 'after == True' and 'to_rel' is
-        either not versioned or newly added, and present in the working tree.
-
-        rename_one uses the second mode if 'after == False' and 'from_rel' is
-        versioned but no longer in the working tree, and 'to_rel' is not
-        versioned but present in the working tree.
-
-        rename_one uses the first mode if 'after == False' and 'from_rel' is
-        versioned and present in the working tree, and 'to_rel' is not
-        versioned and not present in the working tree.
-
-        Everything else results in an error.
+        :param from_rel: From location (relative to tree root)
+        :param to_rel: Target location (relative to tree root)
         """
-        raise NotImplementedError(self.rename_one)
+        shutil.copyfile(self.abspath(from_rel), self.abspath(to_rel))
+        self.add(to_rel)
 
     def unknowns(self):
         """Return all unknown files.
@@ -919,14 +804,14 @@ class WorkingTree(mutabletree.MutableTree,
             return iter(
                 [subp for subp in self.extras() if not self.is_ignored(subp)])
 
-    def unversion(self, file_ids):
-        """Remove the file ids in file_ids from the current versioned set.
+    def unversion(self, paths):
+        """Remove the path in pahs from the current versioned set.
 
-        When a file_id is unversioned, all of its children are automatically
+        When a path is unversioned, all of its children are automatically
         unversioned.
 
-        :param file_ids: The file ids to stop versioning.
-        :raises: NoSuchId if any fileid is not currently versioned.
+        :param paths: The paths to stop versioning.
+        :raises NoSuchFile: if any path is not currently versioned.
         """
         raise NotImplementedError(self.unversion)
 
@@ -950,12 +835,12 @@ class WorkingTree(mutabletree.MutableTree,
                 with basis_tree.lock_read():
                     new_basis_tree = self.branch.basis_tree()
                     merge.merge_inner(
-                                self.branch,
-                                new_basis_tree,
-                                basis_tree,
-                                this_tree=self,
-                                change_reporter=change_reporter,
-                                show_base=show_base)
+                        self.branch,
+                        new_basis_tree,
+                        basis_tree,
+                        this_tree=self,
+                        change_reporter=change_reporter,
+                        show_base=show_base)
                     basis_root_id = basis_tree.get_root_id()
                     new_root_id = new_basis_tree.get_root_id()
                     if new_root_id is not None and basis_root_id != new_root_id:
@@ -975,25 +860,22 @@ class WorkingTree(mutabletree.MutableTree,
                 merges = self.get_parent_ids()[1:]
                 parent_trees.extend([
                     (parent, repository.revision_tree(parent)) for
-                     parent in merges])
+                    parent in merges])
                 self.set_parent_trees(parent_trees)
             return count
 
-    def put_file_bytes_non_atomic(self, file_id, bytes):
+    def put_file_bytes_non_atomic(self, path, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
-        with self.lock_write():
-            stream = file(self.id2abspath(file_id), 'wb')
-            try:
-                stream.write(bytes)
-            finally:
-                stream.close()
+        with self.lock_write(), open(self.abspath(path), 'wb') as stream:
+            stream.write(bytes)
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
 
-        If there are any unversioned directories then only the directory is
-        returned, not all its children.  But if there are unversioned files
-        under a versioned subdirectory, they are returned.
+        If there are any unversioned directories and the file format
+        supports versioning directories, then only the directory is returned,
+        not all its children. But if there are unversioned files under a
+        versioned subdirectory, they are returned.
 
         Currently returned depth-first, sorted by name within directories.
         This is the same order used by 'osutils.walkdirs'.
@@ -1012,10 +894,7 @@ class WorkingTree(mutabletree.MutableTree,
         """
         raise NotImplementedError(self.is_ignored)
 
-    def kind(self, file_id):
-        return osutils.file_kind(self.id2abspath(file_id))
-
-    def stored_kind(self, file_id):
+    def stored_kind(self, path):
         """See Tree.stored_kind"""
         raise NotImplementedError(self.stored_kind)
 
@@ -1038,9 +917,6 @@ class WorkingTree(mutabletree.MutableTree,
             else:
                 executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         return kind, executable, stat_value
-
-    def _file_size(self, entry, stat_value):
-        return stat_value.st_size
 
     def last_revision(self):
         """Return the last revision of the branch for this tree.
@@ -1151,37 +1027,17 @@ class WorkingTree(mutabletree.MutableTree,
 
     def store_uncommitted(self):
         """Store uncommitted changes from the tree in the branch."""
-        with self.lock_write():
-            target_tree = self.basis_tree()
-            shelf_creator = shelf.ShelfCreator(self, target_tree)
-            try:
-                if not shelf_creator.shelve_all():
-                    return
-                self.branch.store_uncommitted(shelf_creator)
-                shelf_creator.transform()
-            finally:
-                shelf_creator.finalize()
-            note('Uncommitted changes stored in branch "%s".', self.branch.nick)
+        raise NotImplementedError(self.store_uncommitted)
 
     def restore_uncommitted(self):
         """Restore uncommitted changes from the branch into the tree."""
-        with self.lock_write():
-            unshelver = self.branch.get_unshelver(self)
-            if unshelver is None:
-                return
-            try:
-                merger = unshelver.make_merger()
-                merger.ignore_zero = True
-                merger.do_merge()
-                self.branch.store_uncommitted(None)
-            finally:
-                unshelver.finalize()
+        raise NotImplementedError(self.restore_uncommitted)
 
     def revision_tree(self, revision_id):
         """See Tree.revision_tree.
 
-        WorkingTree can supply revision_trees for the basis revision only
-        because there is only one cached inventory in the bzr directory.
+        For trees that can be obtained from the working tree, this
+        will do so. For other trees, it will fall back to the repository.
         """
         raise NotImplementedError(self.revision_tree)
 
@@ -1190,7 +1046,7 @@ class WorkingTree(mutabletree.MutableTree,
         if not self.supports_setting_file_ids():
             raise SettingFileIdUnsupported()
         with self.lock_tree_write():
-            # for compatability
+            # for compatibility
             if file_id is None:
                 raise ValueError(
                     'WorkingTree.set_root_id with fileid=None')
@@ -1299,7 +1155,7 @@ class WorkingTree(mutabletree.MutableTree,
             if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
                 # the branch we are bound to was updated
                 # merge those changes in first
-                base_tree  = self.basis_tree()
+                base_tree = self.basis_tree()
                 other_tree = self.branch.repository.revision_tree(old_tip)
                 nb_conflicts = merge.merge_inner(self.branch, other_tree,
                                                  base_tree, this_tree=self,
@@ -1375,124 +1231,7 @@ class WorkingTree(mutabletree.MutableTree,
         If the tree is not locked, it may cause an error to be raised,
         depending on the tree implementation.
         """
-        disk_top = self.abspath(prefix)
-        if disk_top.endswith('/'):
-            disk_top = disk_top[:-1]
-        top_strip_len = len(disk_top) + 1
-        inventory_iterator = self._walkdirs(prefix)
-        disk_iterator = osutils.walkdirs(disk_top, prefix)
-        try:
-            current_disk = next(disk_iterator)
-            disk_finished = False
-        except OSError as e:
-            if not (e.errno == errno.ENOENT or
-                (sys.platform == 'win32' and e.errno == ERROR_PATH_NOT_FOUND)):
-                raise
-            current_disk = None
-            disk_finished = True
-        try:
-            current_inv = next(inventory_iterator)
-            inv_finished = False
-        except StopIteration:
-            current_inv = None
-            inv_finished = True
-        while not inv_finished or not disk_finished:
-            if current_disk:
-                ((cur_disk_dir_relpath, cur_disk_dir_path_from_top),
-                    cur_disk_dir_content) = current_disk
-            else:
-                ((cur_disk_dir_relpath, cur_disk_dir_path_from_top),
-                    cur_disk_dir_content) = ((None, None), None)
-            if not disk_finished:
-                # strip out .bzr dirs
-                if (cur_disk_dir_path_from_top[top_strip_len:] == '' and
-                    len(cur_disk_dir_content) > 0):
-                    # osutils.walkdirs can be made nicer -
-                    # yield the path-from-prefix rather than the pathjoined
-                    # value.
-                    bzrdir_loc = bisect_left(cur_disk_dir_content,
-                        ('.bzr', '.bzr'))
-                    if (bzrdir_loc < len(cur_disk_dir_content)
-                        and self.controldir.is_control_filename(
-                            cur_disk_dir_content[bzrdir_loc][0])):
-                        # we dont yield the contents of, or, .bzr itself.
-                        del cur_disk_dir_content[bzrdir_loc]
-            if inv_finished:
-                # everything is unknown
-                direction = 1
-            elif disk_finished:
-                # everything is missing
-                direction = -1
-            else:
-                direction = cmp(current_inv[0][0], cur_disk_dir_relpath)
-            if direction > 0:
-                # disk is before inventory - unknown
-                dirblock = [(relpath, basename, kind, stat, None, None) for
-                    relpath, basename, kind, stat, top_path in
-                    cur_disk_dir_content]
-                yield (cur_disk_dir_relpath, None), dirblock
-                try:
-                    current_disk = next(disk_iterator)
-                except StopIteration:
-                    disk_finished = True
-            elif direction < 0:
-                # inventory is before disk - missing.
-                dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
-                    for relpath, basename, dkind, stat, fileid, kind in
-                    current_inv[1]]
-                yield (current_inv[0][0], current_inv[0][1]), dirblock
-                try:
-                    current_inv = next(inventory_iterator)
-                except StopIteration:
-                    inv_finished = True
-            else:
-                # versioned present directory
-                # merge the inventory and disk data together
-                dirblock = []
-                for relpath, subiterator in itertools.groupby(sorted(
-                    current_inv[1] + cur_disk_dir_content,
-                    key=operator.itemgetter(0)), operator.itemgetter(1)):
-                    path_elements = list(subiterator)
-                    if len(path_elements) == 2:
-                        inv_row, disk_row = path_elements
-                        # versioned, present file
-                        dirblock.append((inv_row[0],
-                            inv_row[1], disk_row[2],
-                            disk_row[3], inv_row[4],
-                            inv_row[5]))
-                    elif len(path_elements[0]) == 5:
-                        # unknown disk file
-                        dirblock.append((path_elements[0][0],
-                            path_elements[0][1], path_elements[0][2],
-                            path_elements[0][3], None, None))
-                    elif len(path_elements[0]) == 6:
-                        # versioned, absent file.
-                        dirblock.append((path_elements[0][0],
-                            path_elements[0][1], 'unknown', None,
-                            path_elements[0][4], path_elements[0][5]))
-                    else:
-                        raise NotImplementedError('unreachable code')
-                yield current_inv[0], dirblock
-                try:
-                    current_inv = next(inventory_iterator)
-                except StopIteration:
-                    inv_finished = True
-                try:
-                    current_disk = next(disk_iterator)
-                except StopIteration:
-                    disk_finished = True
-
-    def _walkdirs(self, prefix=""):
-        """Walk the directories of this tree.
-
-        :param prefix: is used as the directrory to start with.
-        :returns: a generator which yields items in the form::
-
-            ((curren_directory_path, fileid),
-             [(file1_path, file1_name, file1_kind, None, file1_id,
-               file1_kind), ... ])
-        """
-        raise NotImplementedError(self._walkdirs)
+        raise NotImplementedError(self.walkdirs)
 
     def auto_resolve(self):
         """Automatically resolve text conflicts according to contents.
@@ -1507,22 +1246,20 @@ class WorkingTree(mutabletree.MutableTree,
         with self.lock_tree_write():
             un_resolved = _mod_conflicts.ConflictList()
             resolved = _mod_conflicts.ConflictList()
-            conflict_re = re.compile('^(<{7}|={7}|>{7})')
+            conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
             for conflict in self.conflicts():
+                path = self.id2path(conflict.file_id)
                 if (conflict.typestring != 'text conflict' or
-                    self.kind(conflict.file_id) != 'file'):
+                        self.kind(path) != 'file'):
                     un_resolved.append(conflict)
                     continue
-                my_file = open(self.id2abspath(conflict.file_id), 'rb')
-                try:
+                with open(self.abspath(path), 'rb') as my_file:
                     for line in my_file:
                         if conflict_re.search(line):
                             un_resolved.append(conflict)
                             break
                     else:
                         resolved.append(conflict)
-                finally:
-                    my_file.close()
             resolved.remove_files(self)
             self.set_conflicts(un_resolved)
             return un_resolved, resolved
@@ -1554,16 +1291,51 @@ class WorkingTree(mutabletree.MutableTree,
         """See Tree._get_rules_searcher."""
         if self._rules_searcher is None:
             self._rules_searcher = super(WorkingTree,
-                self)._get_rules_searcher(default_searcher)
+                                         self)._get_rules_searcher(default_searcher)
         return self._rules_searcher
 
     def get_shelf_manager(self):
         """Return the ShelfManager for this WorkingTree."""
-        from .shelf import ShelfManager
-        return ShelfManager(self, self._transport)
+        raise NotImplementedError(self.get_shelf_manager)
+
+    def get_canonical_paths(self, paths):
+        """Like get_canonical_path() but works on multiple items.
+
+        :param paths: A sequence of paths relative to the root of the tree.
+        :return: A list of paths, with each item the corresponding input path
+            adjusted to account for existing elements that match case
+            insensitively.
+        """
+        with self.lock_read():
+            for path in paths:
+                yield path
+
+    def get_canonical_path(self, path):
+        """Returns the first item in the tree that matches a path.
+
+        This is meant to allow case-insensitive path lookups on e.g.
+        FAT filesystems.
+
+        If a path matches exactly, it is returned. If no path matches exactly
+        but more than one path matches according to the underlying file system,
+        it is implementation defined which is returned.
+
+        If no path matches according to the file system, the input path is
+        returned, but with as many path entries that do exist changed to their
+        canonical form.
+
+        If you need to resolve many names from the same tree, you should
+        use get_canonical_paths() to avoid O(N) behaviour.
+
+        :param path: A paths relative to the root of the tree.
+        :return: The input path adjusted to account for existing elements
+        that match case insensitively.
+        """
+        with self.lock_read():
+            return next(self.get_canonical_paths([path]))
 
 
-class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
+class WorkingTreeFormatRegistry(ControlComponentFormatRegistry):
     """Registry for working tree formats."""
 
     def __init__(self, other_registry=None):
@@ -1574,7 +1346,7 @@ class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
     def get_default(self):
         """Return the current default format."""
         if (self._default_format_key is not None and
-            self._default_format is None):
+                self._default_format is None):
             self._default_format = self.get(self._default_format_key)
         return self._default_format
 
@@ -1592,7 +1364,7 @@ class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
 format_registry = WorkingTreeFormatRegistry()
 
 
-class WorkingTreeFormat(controldir.ControlComponentFormat):
+class WorkingTreeFormat(ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:
@@ -1623,8 +1395,21 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
 
     supports_versioned_directories = None
 
+    supports_merge_modified = True
+    """If this format supports storing merge modified hashes."""
+
     supports_setting_file_ids = True
     """If this format allows setting the file id."""
+
+    supports_store_uncommitted = True
+    """If this format supports shelve-like functionality."""
+
+    supports_leftmost_parent_id_as_ghost = True
+
+    supports_righthand_parent_id_as_ghost = True
+
+    ignore_filename = None
+    """Name of file with ignore patterns, if any. """
 
     def initialize(self, controldir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
@@ -1679,12 +1464,12 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
         return self._matchingcontroldir
 
 
-format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
-    "breezy.bzr.workingtree_4", "WorkingTreeFormat4")
-format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
-    "breezy.bzr.workingtree_4", "WorkingTreeFormat5")
-format_registry.register_lazy("Bazaar Working Tree Format 6 (bzr 1.14)\n",
-    "breezy.bzr.workingtree_4", "WorkingTreeFormat6")
-format_registry.register_lazy("Bazaar-NG Working Tree format 3",
-    "breezy.bzr.workingtree_3", "WorkingTreeFormat3")
-format_registry.set_default_key("Bazaar Working Tree Format 6 (bzr 1.14)\n")
+format_registry.register_lazy(b"Bazaar Working Tree Format 4 (bzr 0.15)\n",
+                              "breezy.bzr.workingtree_4", "WorkingTreeFormat4")
+format_registry.register_lazy(b"Bazaar Working Tree Format 5 (bzr 1.11)\n",
+                              "breezy.bzr.workingtree_4", "WorkingTreeFormat5")
+format_registry.register_lazy(b"Bazaar Working Tree Format 6 (bzr 1.14)\n",
+                              "breezy.bzr.workingtree_4", "WorkingTreeFormat6")
+format_registry.register_lazy(b"Bazaar-NG Working Tree format 3",
+                              "breezy.bzr.workingtree_3", "WorkingTreeFormat3")
+format_registry.set_default_key(b"Bazaar Working Tree Format 6 (bzr 1.14)\n")

@@ -28,7 +28,7 @@ from breezy import (
 EMAIL1 = """From: "J. Random Hacker" <jrandom@example.com>
 Subject: bar
 To: pqm@example.com
-User-Agent: Bazaar \(.*\)
+User-Agent: Bazaar \\(.*\\)
 
 # Bazaar merge directive format 2 \\(Bazaar 0.90\\)
 # revision_id: bar-id
@@ -43,14 +43,14 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def prepare_merge_directive(self):
         self.tree1 = self.make_branch_and_tree('tree1')
-        self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\n')])
+        self.build_tree_contents([('tree1/file', b'a\nb\nc\nd\n')])
         self.tree1.branch.get_config_stack().set(
             'email', 'J. Random Hacker <jrandom@example.com>')
         self.tree1.add('file')
-        self.tree1.commit('foo', rev_id='foo-id')
+        self.tree1.commit('foo', rev_id=b'foo-id')
         self.tree2 = self.tree1.controldir.sprout('tree2').open_workingtree()
-        self.build_tree_contents([('tree1/file', 'a\nb\nc\nd\ne\n')])
-        self.tree1.commit('bar', rev_id='bar-id')
+        self.build_tree_contents([('tree1/file', b'a\nb\nc\nd\ne\n')])
+        self.tree1.commit('bar', rev_id=b'bar-id')
         os.chdir('tree1')
         return self.tree1, self.tree2
 
@@ -60,11 +60,12 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertContainsRe(md_text, "\\+e")
         md_text = self.run_bzr('merge-directive -r -2 ../tree2')[0]
         self.assertNotContainsRe(md_text, "\\+e")
-        md_text = self.run_bzr('merge-directive -r -1..-2 ../tree2')[0]
+        md_text = self.run_bzr(
+            'merge-directive -r -1..-2 ../tree2')[0].encode('utf-8')
         md2 = merge_directive.MergeDirective.from_lines(
             md_text.splitlines(True))
-        self.assertEqual('foo-id', md2.revision_id)
-        self.assertEqual('bar-id', md2.base_revision_id)
+        self.assertEqual(b'foo-id', md2.revision_id)
+        self.assertEqual(b'bar-id', md2.base_revision_id)
 
     def test_submit_branch(self):
         self.prepare_merge_directive()
@@ -111,13 +112,17 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def run_bzr_fakemail(self, *args, **kwargs):
         sendmail_calls = []
+
         def sendmail(self, from_, to, message):
             sendmail_calls.append((self, from_, to, message))
         connect_calls = []
+
         def connect(self, host='localhost', port=0):
             connect_calls.append((self, host, port))
+
         def has_extn(self, extension):
             return False
+
         def ehlo(self):
             return (200, 'Ok')
         old_sendmail = smtplib.SMTP.sendmail
@@ -150,24 +155,24 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         self.assertEqual(1, len(sendmail_calls))
         call = sendmail_calls[0]
         self.assertEqual(('jrandom@example.com', ['pqm@example.com']),
-                call[1:3])
+                         call[1:3])
         self.assertContainsRe(call[3], EMAIL1)
 
     def test_pull_raw(self):
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
                                 '-r', '2', self.tree1.basedir, '--plain'])[0]
         self.build_tree_contents([('../directive', md_text)])
         os.chdir('../tree2')
         self.run_bzr('pull ../directive')
         wt = workingtree.WorkingTree.open('.')
-        self.assertEqual('bar-id', wt.last_revision())
+        self.assertEqual(b'bar-id', wt.last_revision())
 
     def test_pull_user_r(self):
         """If the user supplies -r, an error is emitted"""
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
                                 self.tree1.basedir, '--plain'])[0]
         self.build_tree_contents([('../directive', md_text)])
@@ -178,30 +183,30 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def test_pull_bundle(self):
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
                                 '-r', '2', '/dev/null', '--bundle'])[0]
         self.build_tree_contents([('../directive', md_text)])
         os.chdir('../tree2')
         self.run_bzr('pull ../directive')
         wt = workingtree.WorkingTree.open('.')
-        self.assertEqual('bar-id', wt.last_revision())
+        self.assertEqual(b'bar-id', wt.last_revision())
 
     def test_merge_raw(self):
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
                                 '-r', '2', self.tree1.basedir, '--plain'])[0]
         self.build_tree_contents([('../directive', md_text)])
         os.chdir('../tree2')
         self.run_bzr('merge ../directive')
         wt = workingtree.WorkingTree.open('.')
-        self.assertEqual('bar-id', wt.get_parent_ids()[1])
+        self.assertEqual(b'bar-id', wt.get_parent_ids()[1])
 
     def test_merge_user_r(self):
         """If the user supplies -r, an error is emitted"""
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
                                 self.tree1.basedir, '--plain'])[0]
         self.build_tree_contents([('../directive', md_text)])
@@ -212,14 +217,14 @@ class TestMergeDirective(tests.TestCaseWithTransport):
 
     def test_merge_bundle(self):
         self.prepare_merge_directive()
-        self.tree1.commit('baz', rev_id='baz-id')
+        self.tree1.commit('baz', rev_id=b'baz-id')
         md_text = self.run_bzr(['merge-directive', self.tree2.basedir,
-                               '-r', '2', '/dev/null', '--bundle'])[0]
+                                '-r', '2', '/dev/null', '--bundle'])[0]
         self.build_tree_contents([('../directive', md_text)])
         os.chdir('../tree2')
         self.run_bzr('merge ../directive')
         wt = workingtree.WorkingTree.open('.')
-        self.assertEqual('bar-id', wt.get_parent_ids()[1])
+        self.assertEqual(b'bar-id', wt.get_parent_ids()[1])
 
     def test_mail_uses_config(self):
         tree1, tree2 = self.prepare_merge_directive()
@@ -241,12 +246,12 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         foo = self.make_branch_and_tree('foo')
         bar = self.make_branch_and_tree('bar')
         self.run_bzr_error(('No revisions to bundle.', ),
-                            'merge-directive ../bar', working_dir='foo')
+                           'merge-directive ../bar', working_dir='foo')
 
     def test_encoding_exact(self):
         tree1, tree2 = self.prepare_merge_directive()
         tree1.commit(u'messag\xe9')
-        self.run_bzr('merge-directive ../tree2') # no exception raised
+        self.run_bzr('merge-directive ../tree2')  # no exception raised
 
     def test_merge_directive_directory(self):
         """Test --directory option"""

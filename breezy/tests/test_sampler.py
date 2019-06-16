@@ -24,11 +24,6 @@ Be sure to register your new test script in breezy/tests/__init__.py -
 search for sampler in there.
 """
 
-# import system imports here
-import os
-import sys
-
-#import breezy specific imports here
 from breezy.tests import TestCaseInTempDir
 
 
@@ -36,4 +31,4 @@ from breezy.tests import TestCaseInTempDir
 class DemoTest(TestCaseInTempDir):
 
     def test_nothing(self):
-        self.assertEqual(1,1)
+        self.assertEqual(1, 1)

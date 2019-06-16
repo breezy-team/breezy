@@ -62,7 +62,7 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
             raise tests.TestNotApplicable('cannot represent unversioned files')
 
     def not_applicable_if_missing_in(self, relpath, tree):
-        if not tree.path2id(relpath):
+        if not tree.is_versioned(relpath):
             # The locked test trees conversion could not preserve the missing
             # file status. This is normal (e.g. InterDirstateTree falls back
             # to InterTree if the basis is not a DirstateRevisionTree, and
@@ -72,7 +72,7 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
     def make_to_branch_and_tree(self, relpath):
         """Make a to_workingtree_format branch and tree."""
         made_control = self.make_controldir(relpath,
-            format=self.workingtree_format_to._matchingcontroldir)
+                                            format=self.workingtree_format_to._matchingcontroldir)
         made_control.create_repository()
         made_control.create_branch()
         return self.workingtree_format_to.initialize(made_control)
@@ -89,19 +89,19 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     """
     result = []
     for (label, intertree_class,
-        workingtree_format,
-        workingtree_format_to,
-        mutable_trees_to_test_trees) in formats:
+         workingtree_format,
+         workingtree_format_to,
+         mutable_trees_to_test_trees) in formats:
         scenario = (label, {
             "transport_server": transport_server,
             "transport_readonly_server": transport_readonly_server,
-            "bzrdir_format":workingtree_format._matchingcontroldir,
-            "workingtree_format":workingtree_format,
-            "intertree_class":intertree_class,
-            "workingtree_format_to":workingtree_format_to,
+            "bzrdir_format": workingtree_format._matchingcontroldir,
+            "workingtree_format": workingtree_format,
+            "intertree_class": intertree_class,
+            "workingtree_format_to": workingtree_format_to,
             # mutable_trees_to_test_trees takes two trees and converts them to,
             # whatever relationship the optimiser under test requires.,
-            "mutable_trees_to_test_trees":mutable_trees_to_test_trees,
+            "mutable_trees_to_test_trees": mutable_trees_to_test_trees,
             # workingtree_to_test_tree is set to disable changing individual,
             # trees: instead the mutable_trees_to_test_trees helper is used.,
             "_workingtree_to_test_tree": return_parameter,
@@ -115,10 +115,11 @@ def mutable_trees_to_preview_trees(test_case, source, target):
     test_case.addCleanup(preview.finalize)
     return source, preview.get_preview_tree()
 
+
 def mutable_trees_to_revision_trees(test_case, source, target):
     """Convert both trees to repository based revision trees."""
     return (revision_tree_from_workingtree(test_case, source),
-        revision_tree_from_workingtree(test_case, target))
+            revision_tree_from_workingtree(test_case, target))
 
 
 def load_tests(loader, standard_tests, pattern):
@@ -138,7 +139,7 @@ def load_tests(loader, standard_tests, pattern):
             # -- vila 20090311
             chk_tree_format = WorkingTreeFormat4()
             chk_tree_format._get_matchingcontroldir = \
-                lambda:breezy.controldir.format_registry.make_controldir('2a')
+                lambda: breezy.controldir.format_registry.make_controldir('2a')
             test_intertree_permutations.append(
                 (InterTree.__name__ + "(CHKInventory)",
                  InterTree,
@@ -162,7 +163,7 @@ def load_tests(loader, standard_tests, pattern):
                  optimiser._matching_from_tree_format,
                  optimiser._matching_to_tree_format,
                  optimiser.make_source_parent_tree_python_dirstate))
-        elif (optimiser._matching_from_tree_format is not None and 
+        elif (optimiser._matching_from_tree_format is not None and
               optimiser._matching_to_tree_format is not None):
             test_intertree_permutations.append(
                 (optimiser.__name__,

@@ -26,6 +26,7 @@ from breezy import (
 
 from breezy.tests import (
     TestCaseWithTransport,
+    script,
     )
 from breezy.tests.features import (
     CaseInsensitiveFilesystemFeature,
@@ -36,7 +37,7 @@ from breezy.tests.features import (
 
 class TestMove(TestCaseWithTransport):
 
-    def assertMoved(self,from_path,to_path):
+    def assertMoved(self, from_path, to_path):
         """Assert that to_path is existing and versioned but from_path not. """
         self.assertPathDoesNotExist(from_path)
         self.assertNotInWorkingTree(from_path)
@@ -51,32 +52,32 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a', 'c', 'subdir'])
 
         self.run_bzr('mv a b')
-        self.assertMoved('a','b')
+        self.assertMoved('a', 'b')
 
         self.run_bzr('mv b subdir')
-        self.assertMoved('b','subdir/b')
+        self.assertMoved('b', 'subdir/b')
 
         self.run_bzr('mv subdir/b a')
-        self.assertMoved('subdir/b','a')
+        self.assertMoved('subdir/b', 'a')
 
         self.run_bzr('mv a c subdir')
-        self.assertMoved('a','subdir/a')
-        self.assertMoved('c','subdir/c')
+        self.assertMoved('a', 'subdir/a')
+        self.assertMoved('c', 'subdir/c')
 
         self.run_bzr('mv subdir/a subdir/newa')
-        self.assertMoved('subdir/a','subdir/newa')
+        self.assertMoved('subdir/a', 'subdir/newa')
 
     def test_mv_unversioned(self):
         self.build_tree(['unversioned.txt'])
         self.run_bzr_error(
             ["^brz: ERROR: Could not rename unversioned.txt => elsewhere."
-             " .*unversioned.txt is not versioned\.$"],
+             " .*unversioned.txt is not versioned\\.$"],
             'mv unversioned.txt elsewhere')
 
     def test_mv_nonexisting(self):
         self.run_bzr_error(
             ["^brz: ERROR: Could not rename doesnotexist => somewhereelse."
-             " .*doesnotexist is not versioned\.$"],
+             " .*doesnotexist is not versioned\\.$"],
             'mv doesnotexist somewhereelse')
 
     def test_mv_unqualified(self):
@@ -88,12 +89,12 @@ class TestMove(TestCaseWithTransport):
         tree.add(['test.txt'])
 
         self.run_bzr_error(
-            ["^brz: ERROR: Could not move to sub1: sub1 is not versioned\.$"],
+            ["^brz: ERROR: Could not move to sub1: sub1 is not versioned\\.$"],
             'mv test.txt sub1')
 
         self.run_bzr_error(
             ["^brz: ERROR: Could not move test.txt => .*hello.txt: "
-             "sub1 is not versioned\.$"],
+             "sub1 is not versioned\\.$"],
             'mv test.txt sub1/hello.txt')
 
     def test_mv_dirs(self):
@@ -102,18 +103,18 @@ class TestMove(TestCaseWithTransport):
         tree.add(['hello.txt', 'sub1'])
 
         self.run_bzr('mv sub1 sub2')
-        self.assertMoved('sub1','sub2')
+        self.assertMoved('sub1', 'sub2')
 
         self.run_bzr('mv hello.txt sub2')
-        self.assertMoved('hello.txt','sub2/hello.txt')
+        self.assertMoved('hello.txt', 'sub2/hello.txt')
 
         self.build_tree(['sub1/'])
         tree.add(['sub1'])
         self.run_bzr('mv sub2/hello.txt sub1')
-        self.assertMoved('sub2/hello.txt','sub1/hello.txt')
+        self.assertMoved('sub2/hello.txt', 'sub1/hello.txt')
 
         self.run_bzr('mv sub2 sub1')
-        self.assertMoved('sub2','sub1/sub2')
+        self.assertMoved('sub2', 'sub1/sub2')
 
     def test_mv_relative(self):
         self.build_tree(['sub1/', 'sub1/sub2/', 'sub1/hello.txt'])
@@ -124,7 +125,7 @@ class TestMove(TestCaseWithTransport):
         self.assertPathExists('sub1/sub2/hello.txt')
 
         self.run_bzr('mv sub2/hello.txt .', working_dir='sub1')
-        self.assertMoved('sub1/sub2/hello.txt','sub1/hello.txt')
+        self.assertMoved('sub1/sub2/hello.txt', 'sub1/hello.txt')
 
     def test_mv_change_case_file(self):
         # test for bug #77740 (mv unable change filename case on Windows)
@@ -196,10 +197,10 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a/', 'a/b'])
         os.symlink('a', 'c')
         os.symlink('.', 'd')
-        tree.add(['a', 'a/b', 'c'], ['a-id', 'b-id', 'c-id'])
+        tree.add(['a', 'a/b', 'c'], [b'a-id', b'b-id', b'c-id'])
         self.run_bzr('mv c/b b')
         tree = workingtree.WorkingTree.open('.')
-        self.assertEqual('b-id', tree.path2id('b'))
+        self.assertEqual(b'b-id', tree.path2id('b'))
 
     def test_mv_already_moved_file(self):
         """Test brz mv original_file to moved_file.
@@ -215,7 +216,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a', 'b')
         self.run_bzr('mv a b')
-        self.assertMoved('a','b')
+        self.assertMoved('a', 'b')
 
     def test_mv_already_moved_file_to_versioned_target(self):
         """Test brz mv existing_file to versioned_file.
@@ -232,9 +233,9 @@ class TestMove(TestCaseWithTransport):
         os.remove('b')
         osutils.rename('a', 'b')
         self.run_bzr_error(
-            ["^brz: ERROR: Could not move a => b. b is already versioned\.$"],
+            ["^brz: ERROR: Could not move a => b. b is already versioned\\.$"],
             'mv a b')
-        #check that nothing changed
+        # check that nothing changed
         self.assertPathDoesNotExist('a')
         self.assertPathExists('b')
 
@@ -252,7 +253,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a', 'sub/a')
         self.run_bzr('mv a sub/a')
-        self.assertMoved('a','sub/a')
+        self.assertMoved('a', 'sub/a')
 
     def test_mv_already_moved_file_into_unversioned_subdir(self):
         """Test brz mv original_file to unversioned_directory/file.
@@ -268,7 +269,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a', 'sub/a')
         self.run_bzr_error(
-            ["^brz: ERROR: Could not move a => a: sub is not versioned\.$"],
+            ["^brz: ERROR: Could not move a => a: sub is not versioned\\.$"],
             'mv a sub/a')
         self.assertPathDoesNotExist('a')
         self.assertPathExists('sub/a')
@@ -287,8 +288,8 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a1', 'sub/a1')
         self.run_bzr('mv a1 a2 sub')
-        self.assertMoved('a1','sub/a1')
-        self.assertMoved('a2','sub/a2')
+        self.assertMoved('a1', 'sub/a1')
+        self.assertMoved('a2', 'sub/a2')
 
     def test_mv_already_moved_files_into_unversioned_subdir(self):
         """Test brz mv original_file to unversioned_directory.
@@ -304,7 +305,7 @@ class TestMove(TestCaseWithTransport):
 
         osutils.rename('a1', 'sub/a1')
         self.run_bzr_error(
-            ["^brz: ERROR: Could not move to sub. sub is not versioned\.$"],
+            ["^brz: ERROR: Could not move to sub. sub is not versioned\\.$"],
             'mv a1 a2 sub')
         self.assertPathDoesNotExist('a1')
         self.assertPathExists('sub/a1')
@@ -325,11 +326,11 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a'])
 
         osutils.rename('a', 'b')
-        self.build_tree(['a']) #touch a
+        self.build_tree(['a'])  # touch a
         self.run_bzr_error(
             ["^brz: ERROR: Could not rename a => b because both files exist."
-             " \(Use --after to tell brz about a rename that has already"
-             " happened\)$"],
+             " \\(Use --after to tell brz about a rename that has already"
+             " happened\\)$"],
             'mv a b')
         self.assertPathExists('a')
         self.assertPathExists('b')
@@ -349,11 +350,11 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         tree.add(['a'])
         osutils.rename('a', 'b')
-        self.build_tree(['a']) #touch a
+        self.build_tree(['a'])  # touch a
 
         self.run_bzr('mv a b --after')
         self.assertPathExists('a')
-        self.assertNotInWorkingTree('a')#a should be unknown now.
+        self.assertNotInWorkingTree('a')  # a should be unknown now.
         self.assertPathExists('b')
         self.assertInWorkingTree('b')
 
@@ -373,13 +374,13 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a1', 'a2', 'sub'])
         osutils.rename('a1', 'sub/a1')
         osutils.rename('a2', 'sub/a2')
-        self.build_tree(['a1']) #touch a1
-        self.build_tree(['a2']) #touch a2
+        self.build_tree(['a1'])  # touch a1
+        self.build_tree(['a2'])  # touch a2
 
         self.run_bzr_error(
             ["^brz: ERROR: Could not rename a1 => sub/a1 because both files"
-             " exist. \(Use --after to tell brz about a rename that has already"
-             " happened\)$"],
+             " exist. \\(Use --after to tell brz about a rename that has already"
+             " happened\\)$"],
             'mv a1 a2 sub')
         self.assertPathExists('a1')
         self.assertPathExists('a2')
@@ -404,8 +405,8 @@ class TestMove(TestCaseWithTransport):
         tree.add(['a1', 'a2', 'sub'])
         osutils.rename('a1', 'sub/a1')
         osutils.rename('a2', 'sub/a2')
-        self.build_tree(['a1']) #touch a1
-        self.build_tree(['a2']) #touch a2
+        self.build_tree(['a1'])  # touch a1
+        self.build_tree(['a2'])  # touch a2
 
         self.run_bzr('mv a1 a2 sub --after')
         self.assertPathExists('a1')
@@ -453,8 +454,8 @@ class TestMove(TestCaseWithTransport):
         self.assertEqual(out, '')
         self.assertEqual(err, 'a => b\nc => d\n')
         tree = workingtree.WorkingTree.open('tree')
-        self.assertIsNot(None, tree.path2id('b'))
-        self.assertIsNot(None, tree.path2id('d'))
+        self.assertTrue(tree.is_versioned('b'))
+        self.assertTrue(tree.is_versioned('d'))
 
     def test_mv_auto_one_path(self):
         self.make_abcd_tree()
@@ -462,8 +463,8 @@ class TestMove(TestCaseWithTransport):
         self.assertEqual(out, '')
         self.assertEqual(err, 'a => b\nc => d\n')
         tree = workingtree.WorkingTree.open('tree')
-        self.assertIsNot(None, tree.path2id('b'))
-        self.assertIsNot(None, tree.path2id('d'))
+        self.assertTrue(tree.is_versioned('b'))
+        self.assertTrue(tree.is_versioned('d'))
 
     def test_mv_auto_two_paths(self):
         self.make_abcd_tree()
@@ -477,8 +478,8 @@ class TestMove(TestCaseWithTransport):
         self.assertEqual(out, '')
         self.assertEqual(err, 'a => b\nc => d\n')
         tree = workingtree.WorkingTree.open('tree')
-        self.assertIsNot(None, tree.path2id('a'))
-        self.assertIsNot(None, tree.path2id('c'))
+        self.assertTrue(tree.is_versioned('a'))
+        self.assertTrue(tree.is_versioned('c'))
 
     def test_mv_no_auto_dry_run(self):
         self.make_abcd_tree()
@@ -517,7 +518,7 @@ class TestMove(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         self.build_tree([u"\xA7"])
         out, err = self.run_bzr_error(["Could not rename", "not versioned"],
-            ["mv", u"\xA7", "b"])
+                                      ["mv", u"\xA7", "b"])
 
     def test_mv_removed_non_ascii(self):
         """Clear error on mv of a removed non-ascii file, see lp:898541"""
@@ -528,4 +529,42 @@ class TestMove(TestCaseWithTransport):
         tree.commit(u"Adding \xA7")
         os.remove(u"\xA7")
         out, err = self.run_bzr_error(["Could not rename", "not exist"],
-            ["mv", u"\xA7", "b"])
+                                      ["mv", u"\xA7", "b"])
+
+    def test_dupe_move(self):
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''
+        $ brz init brz-bug
+        Created a standalone tree (format: 2a)
+        $ cd brz-bug
+        $ mkdir dir
+        $ brz add
+        adding dir
+        $ echo text >> dir/test.txt
+        $ brz add
+        adding dir/test.txt
+        $ brz ci -m "Add files"
+        2>Committing to: .../brz-bug/
+        2>added dir
+        2>added dir/test.txt
+        2>Committed revision 1.
+        $ mv dir dir2
+        $ mv dir2/test.txt dir2/test2.txt
+        $ brz st
+        removed:
+          dir/
+          dir/test.txt
+        unknown:
+          dir2/
+        $ brz mv dir dir2
+        dir => dir2
+        $ brz st
+        removed:
+          dir/test.txt
+        renamed:
+          dir/ => dir2/
+        unknown:
+          dir2/test2.txt
+        $ brz mv dir/test.txt dir2/test2.txt
+        dir/test.txt => dir2/test2.txt
+        ''')

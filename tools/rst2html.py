@@ -25,7 +25,7 @@ if True: # this is still required in the distutils trunk as-at June 2008.
     # python-docutils 0.4-4 -- so monkeypatch in a better pattern
     #
     # This is a bit gross to patch because all this is built up at load time.
-    Body.pats['optname'] = r'[a-zA-Z0-9][a-zA-Z0-9._-]*'    
+    Body.pats['optname'] = r'[a-zA-Z0-9][a-zA-Z0-9._-]*'
     Body.pats['longopt'] = r'(--|/)%(optname)s([ =]%(optarg)s)?' % Body.pats
     Body.pats['option'] = r'(%(shortopt)s|%(longopt)s)' % Body.pats
     Body.patterns['option_marker'] = r'%(option)s(, %(option)s)*(  +| ?$)' % Body.pats

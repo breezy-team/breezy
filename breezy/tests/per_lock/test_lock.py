@@ -39,26 +39,26 @@ class TestLock(TestCaseWithLock):
         self.addCleanup(a_lock.unlock)
         # The lock file should be opened for reading
         txt = a_lock.f.read()
-        self.assertEqual('contents of a-file\n', txt)
+        self.assertEqual(b'contents of a-file\n', txt)
 
     def test_create_if_needed_read(self):
         """We will create the file if it doesn't exist yet."""
         a_lock = self.read_lock('other-file')
         self.addCleanup(a_lock.unlock)
         txt = a_lock.f.read()
-        self.assertEqual('', txt)
+        self.assertEqual(b'', txt)
 
     def test_create_if_needed_write(self):
         """We will create the file if it doesn't exist yet."""
         a_lock = self.write_lock('other-file')
         self.addCleanup(a_lock.unlock)
         txt = a_lock.f.read()
-        self.assertEqual('', txt)
+        self.assertEqual(b'', txt)
         a_lock.f.seek(0)
-        a_lock.f.write('foo\n')
+        a_lock.f.write(b'foo\n')
         a_lock.f.seek(0)
         txt = a_lock.f.read()
-        self.assertEqual('foo\n', txt)
+        self.assertEqual(b'foo\n', txt)
 
     def test_readonly_file(self):
         """If the file is readonly, we can take a read lock.
@@ -80,14 +80,14 @@ class TestLock(TestCaseWithLock):
         self.addCleanup(a_lock.unlock)
         # You should be able to read and write to the lock file.
         txt = a_lock.f.read()
-        self.assertEqual('contents of a-file\n', txt)
+        self.assertEqual(b'contents of a-file\n', txt)
         # Win32 requires that you call seek() when switching between a read
         # operation and a write operation.
         a_lock.f.seek(0, 2)
-        a_lock.f.write('more content\n')
+        a_lock.f.write(b'more content\n')
         a_lock.f.seek(0)
         txt = a_lock.f.read()
-        self.assertEqual('contents of a-file\nmore content\n', txt)
+        self.assertEqual(b'contents of a-file\nmore content\n', txt)
 
     def test_multiple_read_locks(self):
         """You can take out more than one read lock on the same file."""

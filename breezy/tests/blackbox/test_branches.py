@@ -66,8 +66,8 @@ class TestBranches(TestCaseWithTransport):
         t.controldir.create_branch(name='colocated')
         out, err = self.run_bzr('branches a')
         self.assertEqual(out, "* (default)\n"
-                               "  another\n"
-                               "  colocated\n")
+                              "  another\n"
+                              "  colocated\n")
 
     def test_indicates_branch(self):
         t = self.make_repository('a', format='development-colo')
@@ -76,7 +76,7 @@ class TestBranches(TestCaseWithTransport):
         t.controldir.set_branch_reference(target_branch=branch)
         out, err = self.run_bzr('branches a')
         self.assertEqual(out, "  another\n"
-                               "* colocated\n")
+                              "* colocated\n")
 
     def test_shared_repos(self):
         self.make_repository('a', shared=True)
@@ -85,7 +85,7 @@ class TestBranches(TestCaseWithTransport):
         b.create_checkout(lightweight=True, to_location='b')
         out, err = self.run_bzr('branches b')
         self.assertEqual(out, "  branch1\n"
-                               "* branch2\n")
+                              "* branch2\n")
 
     def test_standalone_branch(self):
         self.make_branch('a')

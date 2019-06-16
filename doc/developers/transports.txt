@@ -1,8 +1,8 @@
 ####################################
-Developer guide to bzrlib transports
+Developer guide to breezy transports
 ####################################
 
-This guide describes the `Transport` classes that Bazaar uses for most
+This guide describes the `Transport` classes that Breezy uses for most
 local and remote file access.  (Working tree files are the major
 exception (`bug 606249 <https://bugs.launchpad.net/bzr/+bug/606249>`).
 
@@ -23,17 +23,17 @@ or ::
 
     self.requireFeature(tests.SymlinkFeature)
 
-Bazaar versions symlinks as objects in their own right, whose content is
-the path they point to.  bzr doesn't care whether a versioned
+Breezy versions symlinks as objects in their own right, whose content is
+the path they point to.  Breezy doesn't care whether a versioned
 symlink is absolute or relative; or whether it points inside or outside
 the working tree; or whether its referent exists or not.  In Unix the
-target of a symlink is a byte string; bzr treats this as a Unicode string
+target of a symlink is a byte string; Breezy treats this as a Unicode string
 in the filesystem encoding (`osutils._fs_enc`).
 
-So when we say ``bzr add symlink``, this should always add the symlink to
+So when we say ``brz add symlink``, this should always add the symlink to
 its containing working tree, and never dereference the symlink.
 
-However, ``bzr add symlink/file`` shouldn't add ``file`` as a child of
+However, ``brz add symlink/file`` shouldn't add ``file`` as a child of
 ``symlink``.  (Symlinks don't have files underneath them: they may point to
 a directory which contains children, but if the symlink was pointed
 somewhere else those children would be unaffected.)  This could either add
@@ -41,7 +41,7 @@ the file in its containing working tree, or fail outright.
 
 One interesting case for this is ::
 
-    bzr add ~/dev/bug123/a.c
+    brz add ~/dev/bug123/a.c
 
 where ``~/dev`` is actually a symlink to ``/srv/dev/joe/``.  In this case
 clearly the user does want us to follow the symlink to open the tree.
@@ -54,7 +54,7 @@ its apparent path.  (This may not be the best thing.)
 Useful functions
 ----------------
 
-`bzrlib.osutils.dereference_path` does the commonly useful operation of
+`breezy.osutils.dereference_path` does the commonly useful operation of
 resolving the directory part of a path, but leaving the filename
 untouched.  In other words ::
 
@@ -90,7 +90,7 @@ Transports that hide symlinks
 
 On local, SFTP and bzr+ssh transports, we can directly see symlinks as
 symlinks.  Over HTTP (and FTP?) they're expanded by the server and we
-cannot detect them.  This can cause problems when bzr follows relative
+cannot detect them.  This can cause problems when Breezy follows relative
 paths because typically we will join the paths, and we may do this
 inconsistently with how the server, which can see the symlinks, would do.
 
@@ -98,9 +98,9 @@ inconsistently with how the server, which can see the symlinks, would do.
 Symlinks and ChrootTransports
 -----------------------------
 
-bzr has an internal concept of a `ChrootTransport` that locks access into
+Breezy has an internal concept of a `ChrootTransport` that locks access into
 a particular directory.  Symlinks should not break out of a chroot jail
-which implies they should be expanded and checked within bzrlib.
+which implies they should be expanded and checked within breezy.
 (At least as long as the transport lets us see the symlink; otherwise it
 may not be possible.) 
 

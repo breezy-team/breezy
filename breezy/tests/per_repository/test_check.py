@@ -20,6 +20,7 @@
 from breezy import (
     revision as _mod_revision,
     )
+from breezy.tree import TreeChange
 from breezy.tests.per_repository import TestCaseWithRepository
 
 
@@ -32,8 +33,9 @@ class TestCleanRepository(TestCaseWithRepository):
         self.overrideEnv('BRZ_EMAIL', 'foo@sample.com')
         builder = branch.get_commit_builder([], branch.get_config_stack())
         list(builder.record_iter_changes(None, _mod_revision.NULL_REVISION, [
-            ('TREE_ROOT', (None, ''), True, (False, True), (None, None),
-            (None, ''), (None, 'directory'), (None, False))]))
+            TreeChange(
+                b'TREE_ROOT', (None, ''), True, (False, True), (None, None),
+                (None, ''), (None, 'directory'), (None, False))]))
         builder.finish_inventory()
         rev_id = builder.commit('first post')
         result = branch.repository.check(None, check_repo=True)

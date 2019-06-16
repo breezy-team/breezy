@@ -27,9 +27,9 @@ class Serializer_v6(xml8.Serializer_v8):
     converted from format 5 or 7 without updating the sha1.
     """
 
-    format_num = '6'
+    format_num = b'6'
     # Format 6 & 7 reported their revision format as 5.
-    revision_format_num = '5'
+    revision_format_num = b'5'
 
 
 serializer_v6 = Serializer_v6()

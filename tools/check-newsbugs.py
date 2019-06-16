@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Simple script that will check which bugs mentioned in NEWS 
+# Simple script that will check which bugs mentioned in NEWS
 # are not yet marked Fix Released in Launchpad
 
 import getopt, re, sys
@@ -20,8 +20,8 @@ options, args = getopt.gnu_getopt(sys.argv, "lw", ["launchpad", 'webbrowser'])
 options = dict(options)
 
 if len(args) == 1:
-    print ("Usage: check-newsbugs [--launchpad][--webbrowser] "
-           "doc/en/release-notes/brz-x.y.txt")
+    print("Usage: check-newsbugs [--launchpad][--webbrowser] "
+          "doc/en/release-notes/brz-x.y.txt")
     print("Options:")
     print("--launchpad     Print out Launchpad mail commands for closing bugs ")
     print("                that are already fixed.")
@@ -52,10 +52,9 @@ def read_news_bugnos(path):
     :return: list of bug numbers that were closed.
     """
     # Pattern to find bug numbers
-    bug_pattern = re.compile("\#([0-9]+)")
+    bug_pattern = re.compile(r"\#([0-9]+)")
     ret = set()
-    f = open(path, 'r')
-    try:
+    with open(path, 'r') as f:
         section = ""
         for l in f.readlines():
             if l.strip() == "":
@@ -70,8 +69,6 @@ def read_news_bugnos(path):
             else:
                 section += l
         return ret
-    finally:
-        f.close()
 
 
 def print_bug_url(bugno):

@@ -220,7 +220,7 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
     unsigned int i, j, hmask, memsize, fit_in_old, copied_count;
     struct unpacked_index_entry *entry;
     struct delta_index *index;
-    struct index_entry *packed_entry, **packed_hash, *old_entry, *copy_from;
+    struct index_entry *packed_entry, **packed_hash, *old_entry;
     struct index_entry null_entry = {0};
     void *mem;
 
@@ -334,7 +334,6 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
              * old_index->hash_mask? Would it make any real difference?
              */
             j = i & old_index->hash_mask;
-            copy_from = old_index->hash[j];
             for (old_entry = old_index->hash[j];
                  old_entry < old_index->hash[j + 1] && old_entry->ptr != NULL;
                  old_entry++) {
@@ -905,7 +904,6 @@ create_delta(const struct delta_index *index,
     int inscnt;
     const unsigned char *ref_data, *ref_top, *data, *top;
     unsigned char *out;
-    unsigned long source_size;
 
     if (!trg_buf || !trg_size)
         return DELTA_BUFFER_EMPTY;
@@ -919,8 +917,6 @@ create_delta(const struct delta_index *index,
     out = malloc(outsize);
     if (!out)
         return DELTA_OUT_OF_MEMORY;
-
-    source_size = index->last_src->size + index->last_src->agg_offset;
 
     /* store target buffer size */
     i = trg_size;
@@ -1053,7 +1049,8 @@ create_delta(const struct delta_index *index,
              */
             assert(moff < msource->size);
             moff += msource->agg_offset;
-            assert(moff + msize <= source_size);
+            assert(moff + msize
+	    	<= index->last_src->size + index->last_src->agg_offset);
             if (moff & 0x000000ff)
                 out[outpos++] = moff >> 0,  i |= 0x01;
             if (moff & 0x0000ff00)

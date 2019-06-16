@@ -21,7 +21,6 @@ from __future__ import absolute_import
 import breezy
 import breezy.help
 import breezy.commands
-import breezy.osutils
 from breezy.doc_generate import get_autodoc_datetime
 
 
@@ -32,11 +31,11 @@ def get_filename(options):
 def infogen(options, outfile):
     d = get_autodoc_datetime()
     params = \
-           { "brzcmd": options.brz_name,
-             "datestamp": d.strftime("%Y-%m-%d"),
-             "timestamp": d.strftime("%Y-%m-%d %H:%M:%S +0000"),
-             "version": breezy.__version__,
-             }
+        {"brzcmd": options.brz_name,
+         "datestamp": d.strftime("%Y-%m-%d"),
+         "timestamp": d.strftime("%Y-%m-%d %H:%M:%S +0000"),
+         "version": breezy.__version__,
+         }
 
     outfile.write(preamble % params)
 
@@ -49,4 +48,3 @@ preamble = """\
 #
 # Generation time: %(timestamp)s
 """
-

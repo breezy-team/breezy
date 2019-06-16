@@ -25,7 +25,6 @@ import datetime
 from breezy import (
     branch as _mod_branch,
     cache_utf8,
-    osutils,
     revision,
     workingtree,
     )
@@ -74,7 +73,7 @@ class RevisionInfo(object):
         if not self._has_revno and self.rev_id is not None:
             try:
                 self._revno = self.branch.revision_id_to_revno(self.rev_id)
-            except errors.NoSuchRevision:
+            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
                 self._revno = None
             self._has_revno = True
         return self._revno
@@ -93,8 +92,10 @@ class RevisionInfo(object):
         return 2
 
     def __getitem__(self, index):
-        if index == 0: return self.revno
-        if index == 1: return self.rev_id
+        if index == 0:
+            return self.revno
+        if index == 1:
+            return self.rev_id
         raise IndexError(index)
 
     def get(self):
@@ -255,7 +256,7 @@ class RevisionSpec(object):
     def __repr__(self):
         # this is mostly for helping with testing
         return '<%s %s>' % (self.__class__.__name__,
-                              self.user_spec)
+                            self.user_spec)
 
     def needs_branch(self):
         """Whether this revision spec needs a branch.
@@ -373,12 +374,12 @@ class RevisionSpec_revno(RevisionSpec):
             branch_spec = None
         else:
             revno_spec = self.spec[:loc]
-            branch_spec = self.spec[loc+1:]
+            branch_spec = self.spec[loc + 1:]
 
         if revno_spec == '':
             if not branch_spec:
                 raise errors.InvalidRevisionSpec(self.user_spec,
-                        branch, 'cannot have an empty revno and no branch')
+                                                 branch, 'cannot have an empty revno and no branch')
             revno = None
         else:
             try:
@@ -389,7 +390,8 @@ class RevisionSpec_revno(RevisionSpec):
                 # but the from_string method is a little primitive
                 # right now - RBC 20060928
                 try:
-                    match_revno = tuple((int(number) for number in revno_spec.split('.')))
+                    match_revno = tuple((int(number)
+                                         for number in revno_spec.split('.')))
                 except ValueError as e:
                     raise errors.InvalidRevisionSpec(self.user_spec, branch, e)
 
@@ -402,8 +404,8 @@ class RevisionSpec_revno(RevisionSpec):
         if dotted:
             try:
                 revision_id = branch.dotted_revno_to_revision_id(match_revno,
-                    _cache_reverse=True)
-            except errors.NoSuchRevision:
+                                                                 _cache_reverse=True)
+            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
@@ -420,7 +422,7 @@ class RevisionSpec_revno(RevisionSpec):
                     revno = last_revno + revno + 1
             try:
                 revision_id = branch.get_rev_id(revno)
-            except errors.NoSuchRevision:
+            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return branch, revno, revision_id
 
@@ -436,7 +438,8 @@ class RevisionSpec_revno(RevisionSpec):
         if self.spec.find(':') == -1:
             return None
         else:
-            return self.spec[self.spec.find(':')+1:]
+            return self.spec[self.spec.find(':') + 1:]
+
 
 # Old compatibility
 RevisionSpec_int = RevisionSpec_revno
@@ -468,10 +471,9 @@ class RevisionSpec_revid(RevisionIDSpec):
         # self.spec comes straight from parsing the command line arguments,
         # so we expect it to be a Unicode string. Switch it to the internal
         # representation.
-        if isinstance(self.spec, unicode):
+        if isinstance(self.spec, text_type):
             return cache_utf8.encode(self.spec)
         return self.spec
-
 
 
 class RevisionSpec_last(RevisionSpec):
@@ -513,7 +515,7 @@ class RevisionSpec_last(RevisionSpec):
         revno = last_revno - offset + 1
         try:
             revision_id = context_branch.get_rev_id(revno)
-        except errors.NoSuchRevision:
+        except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch)
         return revno, revision_id
 
@@ -522,7 +524,6 @@ class RevisionSpec_last(RevisionSpec):
         # about it.
         revno, revision_id = self._revno_and_revision_id(context_branch)
         return revision_id
-
 
 
 class RevisionSpec_before(RevisionSpec):
@@ -553,7 +554,7 @@ class RevisionSpec_before(RevisionSpec):
         r = RevisionSpec.from_string(self.spec)._match_on(branch, revs)
         if r.revno == 0:
             raise errors.InvalidRevisionSpec(self.user_spec, branch,
-                                         'cannot go before the null: revision')
+                                             'cannot go before the null: revision')
         if r.revno is None:
             # We need to use the repository history here
             rev = branch.repository.get_revision(r.rev_id)
@@ -566,16 +567,17 @@ class RevisionSpec_before(RevisionSpec):
             revno = r.revno - 1
             try:
                 revision_id = branch.get_rev_id(revno, revs)
-            except errors.NoSuchRevision:
+            except (errors.NoSuchRevision, errors.RevnoOutOfBounds):
                 raise errors.InvalidRevisionSpec(self.user_spec,
                                                  branch)
         return RevisionInfo(branch, revno, revision_id)
 
     def _as_revision_id(self, context_branch):
-        base_revision_id = RevisionSpec.from_string(self.spec)._as_revision_id(context_branch)
+        base_revision_id = RevisionSpec.from_string(
+            self.spec)._as_revision_id(context_branch)
         if base_revision_id == revision.NULL_REVISION:
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
-                                         'cannot go before the null: revision')
+                                             'cannot go before the null: revision')
         context_repo = context_branch.repository
         context_repo.lock_read()
         try:
@@ -585,13 +587,12 @@ class RevisionSpec_before(RevisionSpec):
         if base_revision_id not in parent_map:
             # Ghost, or unknown revision id
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
-                'cannot find the matching revision')
+                                             'cannot find the matching revision')
         parents = parent_map[base_revision_id]
         if len(parents) < 1:
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
-                'No parents for revision.')
+                                             'No parents for revision.')
         return parents[0]
-
 
 
 class RevisionSpec_tag(RevisionSpec):
@@ -608,11 +609,10 @@ class RevisionSpec_tag(RevisionSpec):
     def _match_on(self, branch, revs):
         # Can raise tags not supported, NoSuchTag, etc
         return RevisionInfo.from_revision_id(branch,
-            branch.tags.lookup_tag(self.spec))
+                                             branch.tags.lookup_tag(self.spec))
 
     def _as_revision_id(self, context_branch):
         return context_branch.tags.lookup_tag(self.spec)
-
 
 
 class _RevListToTimestamps(object):
@@ -655,9 +655,9 @@ class RevisionSpec_date(RevisionSpec):
     """
     prefix = 'date:'
     _date_regex = lazy_regex.lazy_compile(
-            r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
-            r'(,|T)?\s*'
-            r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
+        r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
+        r'(,|T)?\s*'
+        r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
         )
 
     def _match_on(self, branch, revs):
@@ -670,7 +670,8 @@ class RevisionSpec_date(RevisionSpec):
         #  XXX: This doesn't actually work
         #  So the proper way of saying 'give me all entries for today' is:
         #      -r date:yesterday..date:today
-        today = datetime.datetime.fromordinal(datetime.date.today().toordinal())
+        today = datetime.datetime.fromordinal(
+            datetime.date.today().toordinal())
         if self.spec.lower() == 'yesterday':
             dt = today - datetime.timedelta(days=1)
         elif self.spec.lower() == 'today':
@@ -701,19 +702,18 @@ class RevisionSpec_date(RevisionSpec):
                     else:
                         second = 0
                 else:
-                    hour, minute, second = 0,0,0
+                    hour, minute, second = 0, 0, 0
             except ValueError:
                 raise errors.InvalidRevisionSpec(self.user_spec,
                                                  branch, 'invalid date')
 
             dt = datetime.datetime(year=year, month=month, day=day,
-                    hour=hour, minute=minute, second=second)
+                                   hour=hour, minute=minute, second=second)
         with branch.lock_read():
             rev = bisect.bisect(_RevListToTimestamps(branch), dt, 1)
         if rev == branch.revno():
             raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return RevisionInfo(branch, rev)
-
 
 
 class RevisionSpec_ancestor(RevisionSpec):
@@ -829,7 +829,6 @@ class RevisionSpec_branch(RevisionSpec):
         return self.spec
 
 
-
 class RevisionSpec_submit(RevisionSpec_ancestor):
     """Selects a common ancestor with a submit branch."""
 
@@ -860,17 +859,17 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
         if submit_location is None:
             raise errors.NoSubmitBranch(branch)
         trace.note(gettext('Using {0} {1}').format(location_type,
-                                                        submit_location))
+                                                   submit_location))
         return submit_location
 
     def _match_on(self, branch, revs):
         trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
         return self._find_revision_info(branch,
-            self._get_submit_location(branch))
+                                        self._get_submit_location(branch))
 
     def _as_revision_id(self, context_branch):
         return self._find_revision_id(context_branch,
-            self._get_submit_location(context_branch))
+                                      self._get_submit_location(context_branch))
 
 
 class RevisionSpec_annotate(RevisionIDSpec):
@@ -887,7 +886,7 @@ class RevisionSpec_annotate(RevisionIDSpec):
 
     def _raise_invalid(self, numstring, context_branch):
         raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
-            'No such line: %s' % numstring)
+                                         'No such line: %s' % numstring)
 
     def _as_revision_id(self, context_branch):
         path, numstring = self.spec.rsplit(':', 1)
@@ -897,19 +896,18 @@ class RevisionSpec_annotate(RevisionIDSpec):
             self._raise_invalid(numstring, context_branch)
         tree, file_path = workingtree.WorkingTree.open_containing(path)
         with tree.lock_read():
-            file_id = tree.path2id(file_path)
-            if file_id is None:
+            if not tree.has_filename(file_path):
                 raise errors.InvalidRevisionSpec(self.user_spec,
-                    context_branch, "File '%s' is not versioned." %
-                    file_path)
-            revision_ids = [r for (r, l) in tree.annotate_iter(file_id)]
+                                                 context_branch, "File '%s' is not versioned." %
+                                                 file_path)
+            revision_ids = [r for (r, l) in tree.annotate_iter(file_path)]
         try:
             revision_id = revision_ids[index]
         except IndexError:
             self._raise_invalid(numstring, context_branch)
         if revision_id == revision.CURRENT_REVISION:
             raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
-                'Line %s has not been committed.' % numstring)
+                                             'Line %s has not been committed.' % numstring)
         return revision_id
 
 
@@ -946,8 +944,11 @@ RevisionSpec_dwim.append_possible_revspec(RevisionSpec_date)
 RevisionSpec_dwim.append_possible_revspec(RevisionSpec_branch)
 
 revspec_registry = registry.Registry()
+
+
 def _register_revspec(revspec):
     revspec_registry.register(revspec.prefix, revspec)
+
 
 _register_revspec(RevisionSpec_revno)
 _register_revspec(RevisionSpec_revid)

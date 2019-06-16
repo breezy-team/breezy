@@ -17,7 +17,7 @@
 import sys
 
 import breezy
-from breezy import commands, tests
+from breezy import commands, osutils, tests
 from breezy.tests import features
 from breezy.plugins.bash_completion.bashcomp import *
 
@@ -45,29 +45,31 @@ class BashCompletionMixin(object):
                                 stderr=subprocess.PIPE)
         if cword < 0:
             cword = len(words) + cword
-        input = '%s\n' % self.script
-        input += ('COMP_WORDS=( %s )\n' %
-                  ' '.join(["'"+w.replace("'", "'\\''")+"'" for w in words]))
-        input += 'COMP_CWORD=%d\n' % cword
-        input += '%s\n' % getattr(self, 'script_name', '_brz')
-        input += 'echo ${#COMPREPLY[*]}\n'
-        input += "IFS=$'\\n'\n"
-        input += 'echo "${COMPREPLY[*]}"\n'
+        encoding = osutils.get_user_encoding()
+        input = b'%s\n' % self.script.encode(encoding)
+        input += (b'COMP_WORDS=( %s )\n' %
+                  b' '.join([b"'" + w.replace("'", "'\\''").encode(encoding) + b"'" for w in words]))
+        input += b'COMP_CWORD=%d\n' % cword
+        input += b'%s\n' % getattr(self, 'script_name',
+                                   '_brz').encode(encoding)
+        input += b'echo ${#COMPREPLY[*]}\n'
+        input += b"IFS=$'\\n'\n"
+        input += b'echo "${COMPREPLY[*]}"\n'
         (out, err) = proc.communicate(input)
-        if '' != err:
+        if b'' != err:
             raise AssertionError('Unexpected error message:\n%s' % err)
-        self.assertEqual('', err, 'No messages to standard error')
+        self.assertEqual(b'', err, 'No messages to standard error')
         #import sys
         #print >>sys.stdout, '---\n%s\n---\n%s\n---\n' % (input, out)
-        lines = out.split('\n')
+        lines = out.split(b'\n')
         nlines = int(lines[0])
         del lines[0]
-        self.assertEqual('', lines[-1], 'Newline at end')
+        self.assertEqual(b'', lines[-1], 'Newline at end')
         del lines[-1]
-        if nlines == 0 and len(lines) == 1 and lines[0] == '':
+        if nlines == 0 and len(lines) == 1 and lines[0] == b'':
             del lines[0]
         self.assertEqual(nlines, len(lines), 'No newlines in generated words')
-        self.completion_result = set(lines)
+        self.completion_result = {l.decode(encoding) for l in lines}
         return self.completion_result
 
     def assertCompletionEquals(self, *words):
@@ -166,25 +168,25 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
     def test_revspec_tag_all(self):
         self.requireFeature(features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
-        wt.branch.tags.set_tag('tag1', 'null:')
-        wt.branch.tags.set_tag('tag2', 'null:')
-        wt.branch.tags.set_tag('3tag', 'null:')
+        wt.branch.tags.set_tag('tag1', b'null:')
+        wt.branch.tags.set_tag('tag2', b'null:')
+        wt.branch.tags.set_tag('3tag', b'null:')
         self.complete(['brz', 'log', '-r', 'tag', ':'])
         self.assertCompletionEquals('tag1', 'tag2', '3tag')
 
     def test_revspec_tag_prefix(self):
         self.requireFeature(features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
-        wt.branch.tags.set_tag('tag1', 'null:')
-        wt.branch.tags.set_tag('tag2', 'null:')
-        wt.branch.tags.set_tag('3tag', 'null:')
+        wt.branch.tags.set_tag('tag1', b'null:')
+        wt.branch.tags.set_tag('tag2', b'null:')
+        wt.branch.tags.set_tag('3tag', b'null:')
         self.complete(['brz', 'log', '-r', 'tag', ':', 't'])
         self.assertCompletionEquals('tag1', 'tag2')
 
     def test_revspec_tag_spaces(self):
         self.requireFeature(features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
-        wt.branch.tags.set_tag('tag with spaces', 'null:')
+        wt.branch.tags.set_tag('tag with spaces', b'null:')
         self.complete(['brz', 'log', '-r', 'tag', ':', 't'])
         self.assertCompletionEquals(r'tag\ with\ spaces')
         self.complete(['brz', 'log', '-r', '"tag:t'])
@@ -195,8 +197,8 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
     def test_revspec_tag_endrange(self):
         self.requireFeature(features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
-        wt.branch.tags.set_tag('tag1', 'null:')
-        wt.branch.tags.set_tag('tag2', 'null:')
+        wt.branch.tags.set_tag('tag1', b'null:')
+        wt.branch.tags.set_tag('tag2', b'null:')
         self.complete(['brz', 'log', '-r', '3..tag', ':', 't'])
         self.assertCompletionEquals('tag1', 'tag2')
         self.complete(['brz', 'log', '-r', '"3..tag:t'])
@@ -290,31 +292,31 @@ class TestDataCollector(tests.TestCase):
         dc = DataCollector()
         dc.global_options()
         self.assertSubset(['--no-plugins', '--builtin'],
-                           dc.data.global_options)
+                          dc.data.global_options)
 
     def test_commands(self):
         dc = DataCollector()
         dc.commands()
         self.assertSubset(['init', 'init-repo', 'init-repository'],
-                           dc.data.all_command_aliases())
+                          dc.data.all_command_aliases())
 
     def test_commands_from_plugins(self):
         dc = DataCollector()
         dc.commands()
         self.assertSubset(['bash-completion'],
-                           dc.data.all_command_aliases())
+                          dc.data.all_command_aliases())
 
     def test_commit_dashm(self):
         dc = DataCollector()
         cmd = dc.command('commit')
         self.assertSubset(['-m'],
-                           [str(o) for o in cmd.options])
+                          [str(o) for o in cmd.options])
 
     def test_status_negated(self):
         dc = DataCollector()
         cmd = dc.command('status')
         self.assertSubset(['--no-versioned', '--no-verbose'],
-                           [str(o) for o in cmd.options])
+                          [str(o) for o in cmd.options])
 
     def test_init_format(self):
         dc = DataCollector()

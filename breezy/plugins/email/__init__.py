@@ -72,7 +72,8 @@ from ...config import option_registry
 def post_commit(branch, revision_id):
     """This is the post_commit hook that should get run after commit."""
     from . import emailer
-    emailer.EmailSender(branch, revision_id, branch.get_config_stack()).send_maybe()
+    emailer.EmailSender(branch, revision_id,
+                        branch.get_config_stack()).send_maybe()
 
 
 def branch_commit_hook(local, master, old_revno, old_revid, new_revno, new_revid):
@@ -87,7 +88,7 @@ def branch_post_change_hook(params):
     # (branch, old_revno, new_revno, old_revid, new_revid)
     from . import emailer
     emailer.EmailSender(params.branch, params.new_revid,
-        params.branch.get_config_stack(), local_branch=None, op='change').send_maybe()
+                        params.branch.get_config_stack(), local_branch=None, op='change').send_maybe()
 
 
 def test_suite():
@@ -99,28 +100,28 @@ def test_suite():
 
 
 option_registry.register_lazy("post_commit_body",
-    "breezy.plugins.email.emailer", "opt_post_commit_body")
+                              "breezy.plugins.email.emailer", "opt_post_commit_body")
 option_registry.register_lazy("post_commit_subject",
-    "breezy.plugins.email.emailer", "opt_post_commit_subject")
+                              "breezy.plugins.email.emailer", "opt_post_commit_subject")
 option_registry.register_lazy("post_commit_log_format",
-    "breezy.plugins.email.emailer", "opt_post_commit_log_format")
+                              "breezy.plugins.email.emailer", "opt_post_commit_log_format")
 option_registry.register_lazy("post_commit_difflimit",
-    "breezy.plugins.email.emailer", "opt_post_commit_difflimit")
+                              "breezy.plugins.email.emailer", "opt_post_commit_difflimit")
 option_registry.register_lazy("post_commit_push_pull",
-    "breezy.plugins.email.emailer", "opt_post_commit_push_pull")
+                              "breezy.plugins.email.emailer", "opt_post_commit_push_pull")
 option_registry.register_lazy("post_commit_diffoptions",
-    "breezy.plugins.email.emailer", "opt_post_commit_diffoptions")
+                              "breezy.plugins.email.emailer", "opt_post_commit_diffoptions")
 option_registry.register_lazy("post_commit_sender",
-    "breezy.plugins.email.emailer", "opt_post_commit_sender")
+                              "breezy.plugins.email.emailer", "opt_post_commit_sender")
 option_registry.register_lazy("post_commit_to",
-    "breezy.plugins.email.emailer", "opt_post_commit_to")
+                              "breezy.plugins.email.emailer", "opt_post_commit_to")
 option_registry.register_lazy("post_commit_mailer",
-    "breezy.plugins.email.emailer", "opt_post_commit_mailer")
+                              "breezy.plugins.email.emailer", "opt_post_commit_mailer")
 option_registry.register_lazy("revision_mail_headers",
-    "breezy.plugins.email.emailer", "opt_revision_mail_headers")
+                              "breezy.plugins.email.emailer", "opt_revision_mail_headers")
 
 from ...hooks import install_lazy_named_hook
 install_lazy_named_hook("breezy.branch", "Branch.hooks", 'post_commit',
-    branch_commit_hook, 'bzr-email')
+                        branch_commit_hook, 'bzr-email')
 install_lazy_named_hook("breezy.branch", "Branch.hooks",
-    'post_change_branch_tip', branch_post_change_hook, 'bzr-email')
+                        'post_change_branch_tip', branch_post_change_hook, 'bzr-email')

@@ -44,5 +44,3 @@ class TestGetConfig(per_branch.TestCaseWithBranch):
         # Refresh the branch
         b = branch.Branch.open('.')
         self.assertEqual('foo', b.get_submit_branch())
-
-

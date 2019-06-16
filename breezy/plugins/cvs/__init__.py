@@ -21,7 +21,7 @@ Currently limited to referencing tools for migration.
 
 from __future__ import absolute_import
 
-from ... import version_info
+from ... import version_info  # noqa: F401
 
 from ... import (
     controldir,
@@ -55,7 +55,7 @@ class CVSDirFormat(controldir.ControlDirFormat):
         return False
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
-           basedir=None):
+                             basedir=None):
         raise CVSUnsupportedError(self)
 
     def open(self, transport):
@@ -76,7 +76,7 @@ class CVSProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([CVSDirFormat()])
+        return [CVSDirFormat()]
 
 
 controldir.ControlDirFormat.register_prober(CVSProber)

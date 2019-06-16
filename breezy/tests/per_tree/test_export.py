@@ -32,7 +32,7 @@ class ExportTest(object):
     def prepare_export(self):
         work_a = self.make_branch_and_tree('wta')
         self.build_tree_contents(
-            [('wta/file', 'a\nb\nc\nd\n'), ('wta/dir', '')])
+            [('wta/file', b'a\nb\nc\nd\n'), ('wta/dir', b'')])
         work_a.add('file')
         work_a.add('dir')
         work_a.commit('add file')

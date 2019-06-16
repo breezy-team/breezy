@@ -49,7 +49,7 @@ OPTIONS:
 """ % os.path.basename(sys.argv[0])
 
 # Windows version
-_major,_minor,_build,_platform,_text = sys.getwindowsversion()
+_major, _minor, _build, _platform, _text = sys.getwindowsversion()
 # from MSDN:
 # dwPlatformId
 #   The operating system platform.
@@ -93,7 +93,7 @@ def main():
     hkey_str = {_winreg.HKEY_LOCAL_MACHINE: 'HKEY_LOCAL_MACHINE',
                 _winreg.HKEY_CURRENT_USER: 'HKEY_CURRENT_USER',
                 _winreg.HKEY_CLASSES_ROOT: 'HKEY_CLASSES_ROOT',
-               }
+                }
 
     dry_run = False
     silent = False
@@ -115,7 +115,7 @@ def main():
                                     "add-shell-menu",
                                     "delete-shell-menu",
                                     "check-mfc71",
-                                   ])
+                                    ])
 
         for o, a in opts:
             if o in ("-h", "--help"):
@@ -159,9 +159,8 @@ def main():
     if start_brz:
         fname = os.path.join(brz_dir, "start_brz.bat")
         if os.path.isfile(fname):
-            f = file(fname, "r")
-            content = f.readlines()
-            f.close()
+            with open(fname, "r") as f:
+                content = f.readlines()
         else:
             content = ["brz.exe help\n"]
 
@@ -182,9 +181,8 @@ def main():
             print("*** File content:")
             print(''.join(content))
         else:
-            f = file(fname, 'w')
-            f.write(''.join(content))
-            f.close()
+            with open(fname, 'w') as f:
+                f.write(''.join(content))
 
     if (add_path or delete_path) and winver == 'Windows NT':
         # find appropriate registry key:
@@ -193,7 +191,7 @@ def main():
         keys = ((_winreg.HKEY_LOCAL_MACHINE, (r'System\CurrentControlSet\Control'
                                               r'\Session Manager\Environment')),
                 (_winreg.HKEY_CURRENT_USER, r'Environment'),
-               )
+                )
 
         hkey = None
         for key, subkey in keys:
@@ -241,7 +239,7 @@ def main():
                     _winreg.SetValueEx(hkey, 'Path', 0, type_, path_u)
                     _winreg.FlushKey(hkey)
 
-        if not hkey is None:
+        if hkey is not None:
             _winreg.CloseKey(hkey)
 
     if (add_path or delete_path) and winver == 'Windows 98':
@@ -268,9 +266,8 @@ def main():
         pattern = 'SET PATH=%PATH%;' + brz_dir_8_3
 
         # search pattern
-        f = file(abat, 'r')
-        lines = f.readlines()
-        f.close()
+        with open(abat, 'r') as f:
+            lines = f.readlines()
         found = False
         for i in lines:
             if i.rstrip('\r\n') == pattern:
@@ -280,21 +277,19 @@ def main():
         if delete_path and found:
             backup_autoexec_bat(abat, abak, dry_run)
             if not dry_run:
-                f = file(abat, 'w')
-                for i in lines:
-                    if i.rstrip('\r\n') != pattern:
-                        f.write(i)
-                f.close()
+                with open(abat, 'w') as f:
+                    for i in lines:
+                        if i.rstrip('\r\n') != pattern:
+                            f.write(i)
             else:
                 print('*** Remove line <%s> from autoexec.bat' % pattern)
-                    
+
         elif add_path and not found:
             backup_autoexec_bat(abat, abak, dry_run)
             if not dry_run:
-                f = file(abat, 'a')
-                f.write(pattern)
-                f.write('\n')
-                f.close()
+                with open(abat, 'a') as f:
+                    f.write(pattern)
+                    f.write('\n')
             else:
                 print('*** Add line <%s> to autoexec.bat' % pattern)
 
@@ -310,7 +305,7 @@ def main():
                             'EnvironmentError',
                             MB_OK | MB_ICONERROR)
 
-        if not hkey is None:
+        if hkey is not None:
             _winreg.SetValue(hkey, '', _winreg.REG_SZ, 'Brz Here')
             hkey2 = _winreg.CreateKey(hkey, 'command')
             _winreg.SetValue(hkey2, '', _winreg.REG_SZ,
@@ -345,7 +340,7 @@ def main():
                          "where Brz installed.\n"
                          "For detailed instructions see:\n"
                          "http://wiki.bazaar.canonical.com/BzrOnPureWindows"
-                        ),
+                         ),
                         "Warning",
                         MB_OK | MB_ICONEXCLAMATION)
 

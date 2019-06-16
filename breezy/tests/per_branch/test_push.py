@@ -90,7 +90,8 @@ class TestPush(per_branch.TestCaseWithBranch):
             return
         rev1 = checkout.commit('master')
 
-        other = master_tree.branch.controldir.sprout('other').open_workingtree()
+        other = master_tree.branch.controldir.sprout(
+            'other').open_workingtree()
         rev2 = other.commit('other commit')
         # now push, which should update both checkout and master.
         other.branch.push(checkout.branch)
@@ -105,13 +106,14 @@ class TestPush(per_branch.TestCaseWithBranch):
         except errors.UpgradeRequired:
             # cant bind this format, the test is irrelevant.
             return
-        other = master_tree.branch.controldir.sprout('other').open_workingtree()
+        other = master_tree.branch.controldir.sprout(
+            'other').open_workingtree()
         # move the branch out of the way on disk to cause a connection
         # error.
         os.rename('master', 'master_gone')
         # try to push, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
-                other.branch.push, checkout.branch)
+                          other.branch.push, checkout.branch)
 
     def test_push_new_tag_to_bound_branch(self):
         master = self.make_branch('master')
@@ -123,12 +125,12 @@ class TestPush(per_branch.TestCaseWithBranch):
                 'Format does not support bound branches')
         other = bound.controldir.sprout('other').open_branch()
         try:
-            other.tags.set_tag('new-tag', 'some-rev')
+            other.tags.set_tag('new-tag', b'some-rev')
         except errors.TagsNotSupported:
             raise tests.TestNotApplicable('Format does not support tags')
         other.push(bound)
-        self.assertEqual({'new-tag': 'some-rev'}, bound.tags.get_tag_dict())
-        self.assertEqual({'new-tag': 'some-rev'}, master.tags.get_tag_dict())
+        self.assertEqual({'new-tag': b'some-rev'}, bound.tags.get_tag_dict())
+        self.assertEqual({'new-tag': b'some-rev'}, master.tags.get_tag_dict())
 
     def test_push_uses_read_lock(self):
         """Push should only need a read lock on the source side."""
@@ -143,7 +145,8 @@ class TestPush(per_branch.TestCaseWithBranch):
         try:
             target.lock_write()
             try:
-                source.branch.push(target, stop_revision=source.last_revision())
+                source.branch.push(
+                    target, stop_revision=source.last_revision())
             finally:
                 target.unlock()
         finally:
@@ -223,13 +226,16 @@ class TestPush(per_branch.TestCaseWithBranch):
         # See https://bugs.launchpad.net/bzr/+bug/465517
         t = self.get_transport('target')
         t.ensure_base()
-        bzrdir = self.bzrdir_format.initialize_on_transport(t)
+        try:
+            bzrdir = self.bzrdir_format.initialize_on_transport(t)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('cannot initialize this format')
         try:
             bzrdir.open_branch()
         except errors.NotBranchError:
             pass
         else:
-            raise tests.TestNotApplicable('older formats can\'t have a repo'
+            raise tests.TestNotApplicable('some formats can\'t have a repo'
                                           ' without a branch')
         try:
             source = self.make_branch_builder('source',
@@ -237,10 +243,10 @@ class TestPush(per_branch.TestCaseWithBranch):
         except errors.UninitializableFormat:
             raise tests.TestNotApplicable('cannot initialize this format')
         source.start_series()
-        source.build_snapshot('A', None, [
-            ('add', ('', 'root-id', 'directory', None))])
-        source.build_snapshot('B', ['A'], [])
-        source.build_snapshot('C', ['A'], [])
+        revid_a = source.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', None))])
+        revid_b = source.build_snapshot([revid_a], [])
+        revid_c = source.build_snapshot([revid_a], [])
         source.finish_series()
         b = source.get_branch()
         # Note: We can't read lock the source branch. Some formats take a write
@@ -250,9 +256,9 @@ class TestPush(per_branch.TestCaseWithBranch):
         # This means 'push the source branch into this dir'
         bzrdir.push_branch(b)
         self.addCleanup(repo.lock_read().unlock)
-        # We should have pushed 'C', but not 'B', since it isn't in the
+        # We should have pushed revid_c, but not revid_b, since it isn't in the
         # ancestry
-        self.assertEqual(['A', 'C'], sorted(repo.all_revision_ids()))
+        self.assertEqual(set([revid_a, revid_c]), set(repo.all_revision_ids()))
 
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
@@ -277,22 +283,22 @@ class TestPush(per_branch.TestCaseWithBranch):
         repo = self.make_repository('repo', shared=True, format='1.6')
         builder = self.make_branch_builder('repo/local')
         builder.start_series()
-        builder.build_snapshot('rev-1', None, [
-            ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename', 'f-id', 'file', 'content\n'))])
-        builder.build_snapshot('rev-2', ['rev-1'], [])
-        builder.build_snapshot('rev-3', ['rev-2'],
-            [('modify', ('f-id', 'new-content\n'))])
+        revid1 = builder.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', b'')),
+            ('add', ('filename', b'f-id', 'file', b'content\n'))])
+        revid2 = builder.build_snapshot([revid1], [])
+        revid3 = builder.build_snapshot([revid2],
+                                        [('modify', ('filename', b'new-content\n'))])
         builder.finish_series()
         trunk = builder.get_branch()
         # Sprout rev-1 to "trunk", so that we can stack on it.
-        trunk.controldir.sprout(self.get_url('trunk'), revision_id='rev-1')
+        trunk.controldir.sprout(self.get_url('trunk'), revision_id=revid1)
         # Set a default stacking policy so that new branches will automatically
         # stack on trunk.
         self.make_controldir('.').get_config().set_default_stack_on('trunk')
         # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
         output = BytesIO()
-        push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
+        push._show_push_branch(trunk, revid2, self.get_url('remote'), output)
         # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
         # fulltext record for f-id @ rev-1, then this will fail.
         remote_branch = branch.Branch.open(self.get_url('remote'))
@@ -376,7 +382,8 @@ class TestPushHook(per_branch.TestCaseWithBranch):
         rev1 = target.commit('rev 1')
         target.unlock()
         sourcedir = target.controldir.clone(self.get_url('source'))
-        source = memorytree.MemoryTree.create_on_branch(sourcedir.open_branch())
+        source = memorytree.MemoryTree.create_on_branch(
+            sourcedir.open_branch())
         rev2 = source.commit('rev 2')
         branch.Branch.hooks.install_named_hook(
             'post_push', self.capture_post_push_hook, None)
@@ -397,9 +404,9 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         # Skip some scenarios that don't apply to these tests.
-        if (self.transport_server is not None
-            and issubclass(self.transport_server,
-                           test_server.SmartTCPServer_for_testing)):
+        if (self.transport_server is not None and
+            issubclass(self.transport_server,
+                       test_server.SmartTCPServer_for_testing)):
             raise tests.TestNotApplicable(
                 'Does not apply when remote backing branch is also '
                 'a smart branch')
@@ -425,17 +432,18 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
     def test_empty_branch_api(self):
         """The branch_obj.push API should make a limited number of HPSS calls.
         """
-        t = transport.get_transport_from_url(self.smart_server.get_url()).clone('target')
+        t = transport.get_transport_from_url(
+            self.smart_server.get_url()).clone('target')
         target = branch.Branch.open_from_transport(t)
         self.empty_branch.push(target)
         self.assertEqual(
-            ['BzrDir.open_2.1',
-             'BzrDir.open_branchV3',
-             'BzrDir.find_repositoryV3',
-             'Branch.get_stacked_on_url',
-             'Branch.lock_write',
-             'Branch.last_revision_info',
-             'Branch.unlock'],
+            [b'BzrDir.open_2.1',
+             b'BzrDir.open_branchV3',
+             b'BzrDir.find_repositoryV3',
+             b'Branch.get_stacked_on_url',
+             b'Branch.lock_write',
+             b'Branch.last_revision_info',
+             b'Branch.unlock'],
             self.hpss_calls)
 
     def test_empty_branch_command(self):
@@ -462,4 +470,5 @@ class TestLossyPush(per_branch.TestCaseWithBranch):
     def test_lossy_push_raises_same_vcs(self):
         target = self.make_branch('target')
         source = self.make_branch('source')
-        self.assertRaises(errors.LossyPushToSameVCS, source.push, target, lossy=True)
+        self.assertRaises(errors.LossyPushToSameVCS,
+                          source.push, target, lossy=True)

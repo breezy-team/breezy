@@ -18,7 +18,11 @@
 
 from __future__ import absolute_import
 
-from email import Utils
+try:
+    from email.utils import getaddresses, parseaddr
+except ImportError:  # python < 3
+    from email.Utils import getaddresses, parseaddr
+
 import errno
 import smtplib
 import socket
@@ -34,15 +38,15 @@ from .errors import (
 
 
 smtp_password = config.Option('smtp_password', default=None,
-        help='''\
+                              help='''\
 Password to use for authentication to SMTP server.
 ''')
 smtp_server = config.Option('smtp_server', default=None,
-        help='''\
+                            help='''\
 Hostname of the SMTP server to use for sending email.
 ''')
 smtp_username = config.Option('smtp_username', default=None,
-        help='''\
+                              help='''\
 Username to use for authentication to SMTP server.
 ''')
 
@@ -69,11 +73,9 @@ class DefaultSMTPConnectionRefused(SMTPConnectionRefused):
     _fmt = "Please specify smtp_server.  No server at default %(host)s."
 
 
-
 class NoDestinationAddress(InternalBzrError):
 
     _fmt = "Message does not have a destination address."
-
 
 
 class SMTPConnection(object):
@@ -108,7 +110,7 @@ class SMTPConnection(object):
 
         self._create_connection()
         # FIXME: _authenticate() should only be called when the server has
-        # refused unauthenticated access, so it can safely try to authenticate 
+        # refused unauthenticated access, so it can safely try to authenticate
         # with the default username. JRV20090407
         self._authenticate()
 
@@ -139,7 +141,8 @@ class SMTPConnection(object):
         if self._connection.has_extn("starttls"):
             code, resp = self._connection.starttls()
             if not (200 <= code <= 299):
-                raise SMTPError("server refused STARTTLS: %d %s" % (code, resp))
+                raise SMTPError("server refused STARTTLS: %d %s" %
+                                (code, resp))
             # Say EHLO again, to check for newly revealed features
             code, resp = self._connection.ehlo()
             if not (200 <= code <= 299):
@@ -150,7 +153,7 @@ class SMTPConnection(object):
         auth = config.AuthenticationConfig()
         if self._smtp_username is None:
             # FIXME: Since _authenticate gets called even when no authentication
-            # is necessary, it's not possible to use the default username 
+            # is necessary, it's not possible to use the default username
             # here yet.
             self._smtp_username = auth.get_user('smtp', self._smtp_server)
             if self._smtp_username is None:
@@ -174,19 +177,20 @@ class SMTPConnection(object):
         """Get the origin and destination addresses of a message.
 
         :param message: A message object supporting get() to access its
-            headers, like email.Message or breezy.email_message.EmailMessage.
+            headers, like email.message.Message or
+            breezy.email_message.EmailMessage.
         :return: A pair (from_email, to_emails), where from_email is the email
             address in the From header, and to_emails a list of all the
             addresses in the To, Cc, and Bcc headers.
         """
-        from_email = Utils.parseaddr(message.get('From', None))[1]
+        from_email = parseaddr(message.get('From', None))[1]
         to_full_addresses = []
         for header in ['To', 'Cc', 'Bcc']:
             value = message.get(header, None)
             if value:
                 to_full_addresses.append(value)
-        to_emails = [ pair[1] for pair in
-                Utils.getaddresses(to_full_addresses) ]
+        to_emails = [pair[1] for pair in
+                     getaddresses(to_full_addresses)]
 
         return from_email, to_emails
 
@@ -196,7 +200,8 @@ class SMTPConnection(object):
         The message will be sent to all addresses in the To, Cc and Bcc
         headers.
 
-        :param message: An email.Message or email.MIMEMultipart object.
+        :param message: An email.message.Message or
+            email.mime.multipart.MIMEMultipart object.
         :return: None
         """
         from_email, to_emails = self.get_message_addresses(message)
@@ -210,7 +215,7 @@ class SMTPConnection(object):
                                       message.as_string())
         except smtplib.SMTPRecipientsRefused as e:
             raise SMTPError('server refused recipient: %d %s' %
-                    next(iter(e.recipients.values())))
+                            next(iter(e.recipients.values())))
         except smtplib.SMTPResponseException as e:
             raise SMTPError('%d %s' % (e.smtp_code, e.smtp_error))
         except smtplib.SMTPException as e:

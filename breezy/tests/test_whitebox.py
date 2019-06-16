@@ -52,7 +52,8 @@ class MoreTests(tests.TestCaseWithTransport):
         # now some near-miss operations -- note that
         # os.path.commonprefix gets these wrong!
         self.assertRaises(errors.PathNotChild, rp, dtmp.rstrip('\\/') + '2')
-        self.assertRaises(errors.PathNotChild, rp, dtmp.rstrip('\\/') + '2/foo')
+        self.assertRaises(errors.PathNotChild, rp,
+                          dtmp.rstrip('\\/') + '2/foo')
 
         # now operations based on relpath of files in current
         # directory, or nearby

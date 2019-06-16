@@ -55,20 +55,22 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
     def test_pull_merges_tree_content(self):
         tree_a, tree_b, rev_a = self.get_pullable_trees()
         tree_b.pull(tree_a.branch)
-        self.assertFileEqual('contents of from/file\n', 'to/file')
+        self.assertFileEqual(b'contents of from/file\n', 'to/file')
 
     def test_pull_changes_root_id(self):
         tree = self.make_branch_and_tree('from')
-        tree.set_root_id('first_root_id')
+        if not tree._format.supports_versioned_directories:
+            self.skipTest('format does not support custom root ids')
+        tree.set_root_id(b'first_root_id')
         self.build_tree(['from/file'])
         tree.add(['file'])
         tree.commit('first')
         to_tree = tree.controldir.sprout('to').open_workingtree()
-        self.assertEqual('first_root_id', to_tree.get_root_id())
-        tree.set_root_id('second_root_id')
+        self.assertEqual(b'first_root_id', to_tree.get_root_id())
+        tree.set_root_id(b'second_root_id')
         tree.commit('second')
         to_tree.pull(tree.branch)
-        self.assertEqual('second_root_id', to_tree.get_root_id())
+        self.assertEqual(b'second_root_id', to_tree.get_root_id())
 
 
 class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
@@ -80,13 +82,16 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         builder.start_series()
 
         # Create an empty trunk
-        builder.build_snapshot('1', None, [
-                ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('2', ['1'], [
-                ('add', ('dir', 'dir-id', 'directory', '')),
-                ('add', ('file', 'file-id', 'file', 'trunk content\n')),])
-        builder.build_snapshot('3', ['2'], [
-                ('unversion', 'dir-id'),])
+        builder.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', ''))],
+            revision_id=b'1')
+        builder.build_snapshot([b'1'], [
+            ('add', ('dir', b'dir-id', 'directory', '')),
+            ('add', ('file', b'file-id', 'file', b'trunk content\n')), ],
+            revision_id=b'2')
+        builder.build_snapshot([b'2'], [
+            ('unversion', 'dir'), ],
+            revision_id=b'3')
         builder.finish_series()
         return builder.get_branch()
 
@@ -94,11 +99,12 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         if not self.workingtree_format.missing_parent_conflicts:
             raise tests.TestSkipped(
                 '%r does not support missing parent conflicts' %
-                    self.workingtree_format)
+                self.workingtree_format)
         trunk = self.make_branch_deleting_dir('trunk')
-        work = trunk.controldir.sprout('work', revision_id='2').open_workingtree()
+        work = trunk.controldir.sprout(
+            'work', revision_id=b'2').open_workingtree()
         work.branch.get_config_stack().set(
-            'bzr.transform.orphan_policy', 'move')
+            'transform.orphan_policy', 'move')
         # Add some unversioned files in dir
         self.build_tree(['work/dir/foo',
                          'work/dir/subdir/',

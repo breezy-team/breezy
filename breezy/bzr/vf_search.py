@@ -130,7 +130,7 @@ class SearchResult(AbstractSearchResult):
         else:
             exclude_keys_repr = repr(exclude_keys)
         return '<%s %s:(%s, %s, %d)>' % (self.__class__.__name__,
-            kind, start_keys_repr, exclude_keys_repr, key_count)
+                                         kind, start_keys_repr, exclude_keys_repr, key_count)
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
@@ -156,10 +156,11 @@ class SearchResult(AbstractSearchResult):
         return self._recipe
 
     def get_network_struct(self):
-        start_keys = ' '.join(self._recipe[1])
-        stop_keys = ' '.join(self._recipe[2])
-        count = str(self._recipe[3])
-        return (self._recipe[0], '\n'.join((start_keys, stop_keys, count)))
+        start_keys = b' '.join(self._recipe[1])
+        stop_keys = b' '.join(self._recipe[2])
+        count = str(self._recipe[3]).encode('ascii')
+        return (self._recipe[0].encode('ascii'),
+                b'\n'.join((start_keys, stop_keys, count)))
 
     def get_keys(self):
         """Return the keys found in this search.
@@ -238,7 +239,7 @@ class PendingAncestryResult(AbstractSearchResult):
         return ('proxy-search', self.heads, set(), -1)
 
     def get_network_struct(self):
-        parts = ['ancestry-of']
+        parts = [b'ancestry-of']
         parts.extend(self.heads)
         return parts
 
@@ -294,7 +295,7 @@ class EverythingResult(AbstractSearchResult):
         raise NotImplementedError(self.get_recipe)
 
     def get_network_struct(self):
-        return ('everything',)
+        return (b'everything',)
 
     def get_keys(self):
         if 'evil' in debug.debug_flags:
@@ -335,7 +336,7 @@ class NotInOtherForRevs(AbstractSearch):
     """Find all revisions missing in one repo for a some specific heads."""
 
     def __init__(self, to_repo, from_repo, required_ids, if_present_ids=None,
-            find_ghosts=False, limit=None):
+                 find_ghosts=False, limit=None):
         """Constructor.
 
         :param required_ids: revision IDs of heads that must be found, or else
@@ -366,9 +367,9 @@ class NotInOtherForRevs(AbstractSearch):
 
         return ("<%s from:%r to:%r find_ghosts:%r req'd:%r if-present:%r"
                 "limit:%r>") % (
-                self.__class__.__name__, self.from_repo, self.to_repo,
-                self.find_ghosts, reqd_revs_repr, ifp_revs_repr,
-                self.limit)
+            self.__class__.__name__, self.from_repo, self.to_repo,
+            self.find_ghosts, reqd_revs_repr, ifp_revs_repr,
+            self.limit)
 
     def execute(self):
         return self.to_repo.search_missing_revision_ids(
@@ -392,7 +393,7 @@ def search_result_from_parent_map(parent_map, missing_keys):
     stop_keys.difference_update(missing_keys)
     key_count = len(parent_map)
     if (revision.NULL_REVISION in result_parents
-        and revision.NULL_REVISION in missing_keys):
+            and revision.NULL_REVISION in missing_keys):
         # If we pruned NULL_REVISION from the stop_keys because it's also
         # in our cache of "missing" keys we need to increment our key count
         # by 1, because the reconsitituted SearchResult on the server will

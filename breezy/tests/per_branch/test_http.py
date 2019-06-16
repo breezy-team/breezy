@@ -46,7 +46,8 @@ class InaccessibleParentTests(per_branch.TestCaseWithBranch):
             ['parent/', 'parent/path/', 'parent/path/to/',
              'child/', 'child/path/', 'child/path/to/'],
             transport=self.get_transport())
-        self.make_branch('parent/path/to/a').controldir.sprout(self.get_url('child/path/to/b'))
+        self.make_branch(
+            'parent/path/to/a').controldir.sprout(self.get_url('child/path/to/b'))
 
         # The child branch internally will have recorded that its parent is at
         # "../../../../parent/path/to/a" or similar.  So we move the child
@@ -75,4 +76,4 @@ class InaccessibleParentTests(per_branch.TestCaseWithBranch):
         # from, even if that branch has an invalid parent.
         branch_b = self.get_branch_with_invalid_parent()
         branch_c = branch_b.controldir.sprout('c').open_branch()
-        self.assertEqual(branch_b.base, branch_c.get_parent())
+        self.assertEqual(branch_b.user_url, branch_c.get_parent())

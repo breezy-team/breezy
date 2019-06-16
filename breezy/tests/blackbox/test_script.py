@@ -32,7 +32,7 @@ class TestTestScript(tests.TestCaseInTempDir):
         self.run_bzr(['test-script', 'I-do-not-exist'], retcode=3)
 
     def test_empty_file(self):
-        self.build_tree_contents([('script', '')])
+        self.build_tree_contents([('script', b'')])
         out, err = self.run_bzr(['test-script', 'script'])
         out_lines = out.splitlines()
         self.assertStartsWith(out_lines[-3], 'Ran 1 test in ')
@@ -40,7 +40,7 @@ class TestTestScript(tests.TestCaseInTempDir):
         self.assertEqual('', err)
 
     def test_simple_file(self):
-        self.build_tree_contents([('script', '''
+        self.build_tree_contents([('script', b'''
 $ echo hello world
 hello world
 ''')])
@@ -51,7 +51,7 @@ hello world
         self.assertEqual('', err)
 
     def test_null_output(self):
-        self.build_tree_contents([('script', '''
+        self.build_tree_contents([('script', b'''
 $ echo hello world
 ''')])
         out, err = self.run_bzr(['test-script', 'script', '--null-output'])
@@ -61,7 +61,7 @@ $ echo hello world
         self.assertEqual('', err)
 
     def test_failing_script(self):
-        self.build_tree_contents([('script', '''
+        self.build_tree_contents([('script', b'''
 $ echo hello foo
 hello bar
 ''')])

@@ -25,7 +25,7 @@ the tree.
 Serialization
 =============
 
-There are several variants of serialised tree shape in use by bzr. To date
+There are several variants of serialised tree shape in use by Breezy. To date
 these have been mostly XML-based, though plugins have offered non-XML versions.
 
 dirstate
@@ -61,12 +61,12 @@ that an inventory is stored as. We have a number of goals we want to achieve:
  5. Allow fetch to determine the file texts that need to be pulled to ensure
     that the entire tree can be reconstructed without having to probe every
     path in the tree.
- 6. Allow bzr to map paths to file ids without reading the entire serialised
+ 6. Allow Breezy to map paths to file ids without reading the entire serialised
     form. This is something that is used by commands such as merge PATH and
     diff -r X PATH.
- 7. Let bzr map file ids to paths without reading the entire serialised form.
+ 7. Let Breezy map file ids to paths without reading the entire serialised form.
     This is used by commands that are presenting output to the user such as
-    loggerhead, bzr-search, log FILENAME.
+    loggerhead, brz-search, log FILENAME.
  8. We want a strong validator for inventories which is cheap to generate.
     Specifically we should be able to create the generator for a new commit
     without processing all the data of the basis commit.
@@ -127,7 +127,7 @@ the absence of compelling reasons not to.
 
 Some key layers we have today and can look at using or tweaking are:
 
- * Tree objects - the abstract interface bzrlib code works in
+ * Tree objects - the abstract interface breezy code works in
  * VersionedFiles - the optionally delta compressing key->bytes storage
    interface.
  * Inventory - the abstract interface that many tree operations are written in.
@@ -503,7 +503,7 @@ Delta consistency
 =================
 
 Inventory deltas and more broadly changes between trees are a significant part
-of bzr's core operations: they are key components in status, diff, commit,
+of Breezy's core operations: they are key components in status, diff, commit,
 and merge (although merge uses tree transform, deltas contain the changes that
 are applied to the transform). Our ability to perform a given operation depends
 on us creating consistent deltas between trees. Inconsistent deltas lead to

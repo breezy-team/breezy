@@ -51,14 +51,23 @@ class TestInit(TestCaseWithTransport):
         """Smoke test for constructing a format 2a repository."""
         out, err = self.run_bzr('init --format=2a')
         self.assertEqual("""Created a standalone tree (format: 2a)\n""",
+                         out)
+        self.assertEqual('', err)
+
+    def test_init_format_bzr(self):
+        """Smoke test for constructing a format with the 'bzr' alias."""
+        out, err = self.run_bzr('init --format=bzr')
+        self.assertEqual(
+            "Created a standalone tree (format: %s)\n" % self._default_label,
             out)
         self.assertEqual('', err)
 
     def test_init_colocated(self):
         """Smoke test for constructing a colocated branch."""
-        out, err = self.run_bzr('init --format=development-colo file:,branch=abranch')
-        self.assertEqual("""Created a lightweight checkout (format: development-colo)\n""",
-            out)
+        out, err = self.run_bzr(
+            'init --format=development-colo file:,branch=abranch')
+        self.assertEqual("""Created a standalone tree (format: development-colo)\n""",
+                         out)
         self.assertEqual('', err)
         out, err = self.run_bzr('branches')
         self.assertEqual("  abranch\n", out)
@@ -98,7 +107,7 @@ Using shared repository: %s
         WorkingTree.open('subdir1')
 
         self.run_bzr_error(['Parent directory of subdir2/nothere does not exist'],
-                            'init subdir2/nothere')
+                           'init subdir2/nothere')
         out, err = self.run_bzr('init subdir2/nothere', retcode=3)
         self.assertEqual('', out)
 
@@ -153,8 +162,8 @@ Using shared repository: %s
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
-        tree.add(['a'], ['a-id'])
-        tree.commit('one', rev_id='r1')
+        tree.add(['a'], [b'a-id'])
+        tree.commit('one', rev_id=b'r1')
         return tree
 
     def test_init_create_prefix(self):
@@ -162,20 +171,20 @@ Using shared repository: %s
         tree = self.create_simple_tree()
 
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
-                            'init ../new/tree', working_dir='tree')
+                           'init ../new/tree', working_dir='tree')
         self.run_bzr('init ../new/tree --create-prefix', working_dir='tree')
         self.assertPathExists('new/tree/.bzr')
 
     def test_init_default_format_option(self):
         """brz init should read default format from option default_format"""
         g_store = _mod_config.GlobalStore()
-        g_store._load_from_string('''
+        g_store._load_from_string(b'''
 [DEFAULT]
 default_format = 1.9
 ''')
         g_store.save()
         out, err = self.run_bzr_subprocess('init')
-        self.assertContainsRe(out, '1.9')
+        self.assertContainsRe(out, b'1.9')
 
     def test_init_no_tree(self):
         """'brz init --no-tree' creates a branch with no working tree."""
@@ -189,7 +198,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         # init on a remote url should succeed.
         out, err = self.run_bzr(['init', '--format=pack-0.92', self.get_url()])
         self.assertEqual(out,
-            """Created a standalone branch (format: pack-0.92)\n""")
+                         """Created a standalone branch (format: pack-0.92)\n""")
         self.assertEqual('', err)
 
     def test_init_existing_branch(self):
@@ -216,7 +225,8 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.run_bzr('init --format=dirstate-tags normal_branch6')
         branch = _mod_branch.Branch.open('normal_branch6')
         self.assertEqual(None, branch.get_append_revisions_only())
-        self.run_bzr('init --append-revisions-only --format=dirstate-tags branch6')
+        self.run_bzr(
+            'init --append-revisions-only --format=dirstate-tags branch6')
         branch = _mod_branch.Branch.open('branch6')
         self.assertEqual(True, branch.get_append_revisions_only())
         self.run_bzr_error(['cannot be set to append-revisions-only'],
@@ -235,4 +245,3 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         out, err = self.run_bzr(['init', 'foo'])
         self.assertEqual(err, '')
         self.assertTrue(os.path.exists('foo'))
-

@@ -30,6 +30,7 @@ from . import (
     osutils,
     trace,
     )
+from .sixish import text_type
 
 
 def show_version(show_config=True, show_copyright=True, to_file=None):
@@ -40,9 +41,13 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     src_tree = _get_brz_source_tree()
     if src_tree:
         src_revision_id = src_tree.last_revision()
-        revno = src_tree.branch.revision_id_to_revno(src_revision_id)
         to_file.write("  from brz checkout %s\n" % (src_tree.basedir,))
-        to_file.write("    revision: %s\n" % (revno,))
+        try:
+            revno = src_tree.branch.revision_id_to_revno(src_revision_id)
+        except errors.GhostRevisionsHaveNoRevno:
+            pass
+        else:
+            to_file.write("    revision: %s\n" % (revno,))
         to_file.write("    revid: %s\n" % (src_revision_id,))
         to_file.write("    branch nick: %s\n" % (src_tree.branch.nick,))
 
@@ -52,7 +57,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     # but sys.executable point to brz.exe itself)
     # however, sys.frozen exists if running from brz.exe
     # see http://www.py2exe.org/index.cgi/Py2exeEnvironment
-    if getattr(sys, 'frozen', None) is None: # if not brz.exe
+    if getattr(sys, 'frozen', None) is None:  # if not brz.exe
         to_file.write(sys.executable + ' ')
     else:
         # pythonXY.dll
@@ -65,8 +70,10 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
 
     to_file.write("  Python standard library:" + ' ')
     to_file.write(os.path.dirname(os.__file__) + '\n')
-    to_file.write("  Platform: %s\n"
-                  % platform.platform(aliased=1).decode('utf-8'))
+    platform_str = platform.platform(aliased=1)
+    if not isinstance(platform_str, text_type):
+        platform_str = platform_str.decode('utf-8')
+    to_file.write("  Platform: %s\n" % platform_str)
     to_file.write("  breezy: ")
     if len(breezy.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
@@ -75,8 +82,9 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     else:
         to_file.write(breezy.__path__[0] + '\n')
     if show_config:
-        config_dir = osutils.normpath(config.config_dir())  # use native slashes
-        if not isinstance(config_dir, unicode):
+        config_dir = osutils.normpath(
+            config.config_dir())  # use native slashes
+        if not isinstance(config_dir, text_type):
             config_dir = config_dir.decode(osutils.get_user_encoding())
         to_file.write("  Breezy configuration: %s\n" % (config_dir,))
         to_file.write("  Breezy log file: ")
@@ -86,8 +94,10 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         to_file.write(breezy.__copyright__ + '\n')
         to_file.write("https://www.breezy-vcs.org/\n")
         to_file.write('\n')
-        to_file.write("brz comes with ABSOLUTELY NO WARRANTY.  brz is free software, and\n")
-        to_file.write("you may use, modify and redistribute it under the terms of the GNU\n")
+        to_file.write(
+            "brz comes with ABSOLUTELY NO WARRANTY.  brz is free software, and\n")
+        to_file.write(
+            "you may use, modify and redistribute it under the terms of the GNU\n")
         to_file.write("General Public License version 2 or later.\n")
     to_file.write('\n')
 

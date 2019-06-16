@@ -1,0 +1,9 @@
+Plans
+=====
+
+.. toctree::
+   :maxdepth: 1
+
+   Performance roadmap <performance-roadmap>
+   tortoise-strategy
+   nested-trees

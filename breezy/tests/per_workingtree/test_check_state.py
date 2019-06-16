@@ -23,7 +23,6 @@ from breezy import (
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
-
 class TestCaseWithState(TestCaseWithWorkingTree):
 
     def make_tree_with_broken_dirstate(self, path):
@@ -50,7 +49,7 @@ class TestCaseWithState(TestCaseWithWorkingTree):
         else:
             f = open(dirstate_path, 'ab')
         try:
-            f.write('garbage-at-end-of-file\n')
+            f.write(b'garbage-at-end-of-file\n')
         finally:
             f.close()
 
@@ -81,8 +80,11 @@ class TestResetState(TestCaseWithState):
         tree = self.make_initial_tree()
         foo_id = tree.path2id('foo')
         tree.rename_one('foo', 'baz')
-        self.assertEqual(None, tree.path2id('foo'))
-        self.assertEqual(foo_id, tree.path2id('baz'))
+        self.assertFalse(tree.is_versioned('foo'))
+        if tree.supports_rename_tracking():
+            self.assertEqual(foo_id, tree.path2id('baz'))
+        else:
+            self.assertTrue(tree.is_versioned('baz'))
         tree.reset_state()
         # After reset, we should have forgotten about the rename, but we won't
         # have

@@ -14,25 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import features
+from ..transport import Transport
 
-# SFTPTransport offers better performances but relies on paramiko, if paramiko
-# is not available, we fallback to FtpTransport
-if features.paramiko.available():
-    from . import test_sftp_transport
-    from ..transport import sftp, Transport
-    _backing_scheme = 'sftp'
-    _backing_transport_class = sftp.SFTPTransport
-    _backing_test_class = test_sftp_transport.TestCaseWithSFTPServer
-else:
-    from ..transport import ftp, Transport
-    from . import test_ftp_transport
-    _backing_scheme = 'ftp'
-    _backing_transport_class = ftp.FtpTransport
-    _backing_test_class = test_ftp_transport.TestCaseWithFTPServer
+# SFTPTransport is the only bundled transport that properly counts connections
+# at the moment.
+from . import test_sftp_transport
 
 
-class TestCaseWithConnectionHookedTransport(_backing_test_class):
+class TestCaseWithConnectionHookedTransport(test_sftp_transport.TestCaseWithSFTPServer):
 
     def setUp(self):
         super(TestCaseWithConnectionHookedTransport, self).setUp()
@@ -40,8 +29,7 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
 
     def start_logging_connections(self):
         Transport.hooks.install_named_hook('post_connect',
-            self.connections.append, None)
+                                           self.connections.append, None)
 
     def reset_connections(self):
         self.connections = []
-

@@ -1,0 +1,635 @@
+Commit Performance Notes
+========================
+
+.. contents:: :local:
+
+Changes to commit
+-----------------
+
+We want to improve the commit code in two phases.
+
+Phase one is to have a better separation from the format-specific logic,
+the user interface, and the general process of committing.
+
+Phase two is to have better interfaces by which a good workingtree format
+can efficiently pass data to a good storage format.  If we get phase one
+right, it will be relatively easy and non-disruptive to bring this in.
+
+
+Commit: The Minimum Work Required
+---------------------------------
+
+Here is a description of the minimum work that commit must do.  We
+want to make sure that our design doesn't cost too much more than this
+minimum.  I am trying to do this without making too many assumptions
+about the underlying storage, but am assuming that the ui and basic
+architecture (wt, branch, repo) stays about the same.
+
+The basic purpose of commit is to:
+
+1. create and store a new revision based on the contents of the working tree
+2. make this the new basis revision for the working tree
+
+We can do a selected commit of only some files or subtrees.
+
+The best performance we could hope for is:
+- stat each versioned selected working file once
+- read from the workingtree and write into the repository any new file texts
+- in general, do work proportional to the size of the shape (eg
+inventory) of the old and new selected trees, and to the total size of
+the modified files
+
+In more detail:
+
+1.0 - Store new file texts: if a versioned file contains a new text
+there is no avoiding storing it.  To determine which ones have changed
+we must go over the workingtree and at least stat each file.  If the
+file is modified since it was last hashed, it must be read in.
+Ideally we would read it only once, and either notice that it has not
+changed, or store it at that point.
+
+On the other hand we want new code to be able to handle files that are
+larger than will fit in memory.  We may then need to read each file up
+to two times: once to determine if there is a new text and calculate
+its hash, and again to store it.
+
+1.1 - Store a tree-shape description (ie inventory or similar.)  This
+describes the non-file objects, and provides a reference from the
+Revision to the texts within it.
+
+1.2 - Generate and store a new revision object.
+
+1.3 - Do delta-compression on the stored objects.  (git notably does
+not do this at commit time, deferring this entirely until later.)
+This requires finding the appropriate basis for each modified file: in
+the current scheme we get the file id, last-revision from the
+dirstate, look into the knit for that text, extract that text in
+total, generate a delta, then store that into the knit.  Most delta
+operations are O(n**2) to O(n**3) in the size of the modified files.
+
+1.4 - Cache annotation information for the changes: at the moment this
+is done as part of the delta storage.  There are some flaws in that
+approach, such as that it is not updated when ghosts are filled, and
+the annotation can't be re-run with new diff parameters.
+
+2.1 - Make the new revision the basis for the tree, and clear the list
+of parents.  Strictly this is all that's logically necessary, unless
+the working tree format requires more work.
+
+The dirstate format does require more work, because it caches the
+parent tree data for each file within the working tree data.  In
+practice this means that every commit rewrites the entire dirstate
+file - we could try to avoid rewriting the whole file but this may be
+difficult because variable-length data (the last-changed revision id)
+is inserted into many rows.
+
+The current dirstate design then seems to mean that any commit of a
+single file imposes a cost proportional to the size of the current
+workingtree.  Maybe there are other benefits that outweigh this.
+Alternatively if it was fast enough for operations to always look at
+the original storage of the parent trees we could do without the
+cache.
+
+2.2 - Record the observed file hashes into the workingtree control
+files.  For the files that we just committed, we have the information
+to store a valid hash cache entry: we know their stat information and
+the sha1 of the file contents.  This is not strictly necessary to the
+speed of commit, but it will be useful later in avoiding reading those
+files, and the only cost of doing it now is writing it out.
+
+In fact there are some user interface niceties that complicate this:
+
+3 - Before starting the commit proper, we prompt for a commit message
+and in that commit message editor we show a list of the files that
+will be committed: basically the output of brz status.  This is
+basically the same as the list of changes we detect while storing the
+commit, but because the user will sometimes change the tree after
+opening the commit editor and expect the final state to be committed I
+think we do have to look for changes twice.  Since it takes the user a
+while to enter a message this is not a big problem as long as both the
+status summary and the commit are individually fast.
+
+4 - As the commit proceeds (or after?) we show another status-like
+summary.  Just printing the names of modified files as they're stored
+would be easy.  Recording deleted and renamed files or directories is
+more work: this can only be done by reference to the primary parent
+tree and requires it be read in.  Worse, reporting renames requires
+searching by id across the entire parent tree.   Possibly full
+reporting should be a default-off verbose option because it does
+require more work beyond the commit itself.
+
+5 - Bazaar currently allows for missing files to be automatically
+marked as removed at the time of commit.  Leaving aside the ui
+consequences, this means that we have to update the working inventory
+to mark these files as removed.  Since as discussed above we always
+have to rewrite the dirstate on commit this is not substantial, though
+we should make sure we do this in one pass, not two.  I have
+previously proposed to make this behaviour a non-default option.
+
+We may need to run hooks or generate signatures during commit, but
+they don't seem to have substantial performance consequences.
+
+If one wanted to optimize solely for the speed of commit I think
+hash-addressed  file-per-text storage like in git (or Breezy 0.1) is very
+good.  Remarkably, it does not need to read the inventory for the
+previous revision.  For each versioned file, we just need to get its
+hash, either by reading the file or validating its stat data.  If that
+hash is not already in the repository, the file is just copied in and
+compressed.  As directories are traversed, they're turned into texts
+and stored as well, and then finally the revision is too.  This does
+depend on later doing some delta compression of these texts.
+
+Variations on this are possible.  Rather than writing a single file
+into the repository for each text, we could fold them into a single
+collation or pack file.  That would create a smaller number of files
+in the repository, but looking up a single text would require looking
+into their indexes rather than just asking the filesystem.
+
+Rather than using hashes we can use file-id/rev-id pairs as at
+present, which has several consequences pro and con.
+
+
+Commit vs Status
+----------------
+
+At first glance, commit simply stores the changes status reports. In fact,
+this isn't technically correct: commit considers some files modified that
+status does not. The notes below were put together by John Arbash Meinel
+and Aaron Bentley in May 2007 to explain the finer details of commit to
+Ian Clatworthy. They are recorded here as they are likely to be useful to
+others new to Bazaar ...
+
+1) **Unknown files have a different effect.** With --no-strict (the default)
+   they have no effect and can be completely ignored. With --strict they
+   should cause the commit to abort (so you don't forget to add the two new
+   test files that you just created).
+
+2) **Multiple parents.** 'status' always compares 2 trees, typically the
+   last-committed tree and the current working tree. 'commit' will compare
+   more trees if there has been a merge.
+
+  a) The "last modified" property for files.
+     A file may be marked as changed since the last commit, but that
+     change may have come in from the merge, and the change could have
+     happened several commits back. There are several edge cases to be
+     handled here, like if both branches modified the same file, or if
+     just one branch modified it.
+
+  b) The trickier case is when a file appears unmodified since last
+     commit, but it was modified versus one of the merged branches. I
+     believe there are a few ways this can happen, like if a merged
+     branch changes a file and then reverts it back (you still update
+     the 'last modified' field).
+     In general, if both sides disagree on the 'last-modified' flag,
+     then you need to generate a new entry pointing 'last-modified' at
+     this revision (because you are resolving the differences between
+     the 2 parents).
+
+3) **Automatic deletion of 'missing' files.** This is a point that we go
+   back and forth on. I think the basic idea is that 'brz commit' by
+   default should abort if it finds a 'missing' file (in case that file was
+   renamed rather than deleted), but 'brz commit --auto' can add unknown
+   files and remove missing files automatically.
+
+4) **sha1 for newly added files.** status doesn't really need this: it should
+   only care that the file is not present in base, but is present now. In
+   some ways commit doesn't care either, since it needs to read and sha the
+   file itself anyway.
+
+5) **Nested trees.** status doesn't recurse into nested trees, but commit does.
+   This is just because not all of the nested-trees work has been merged yet.
+
+   A tree-reference is considered modified if the subtree has been
+   committed since the last containing-tree commit.  But commit needs to
+   recurse into every subtree, to ensure that a commit is done if the
+   subtree has changed since its last commit.  _iter_changes only reports
+   on tree-references that are modified, so it can't be used for doing
+   subtree commits.
+
+
+Avoiding Work: Smarter Change Detection
+---------------------------------------
+
+Commit currently walks through every file building an inventory. Here is
+Aaron's brain dump on a better way ...
+
+_iter_changes won't tell us about tree references that haven't changed,
+even if those subtrees have changed.  (Unless we ask for unchanged
+files, which we don't want to do, of course.)
+
+There is an iter_references method, but using it looks just as expensive
+as calling kind().
+
+I did some work on updating commit to use iter_changes, but found for
+multi-parent trees, I had to fall back to the slow inventory comparison
+approach.
+
+Really, I think we need a call akin to iter_changes that handles
+multiple parents, and knows to emit entries when InventoryEntry.revision
+is all that's changed.
+
+
+Avoiding Work: Better Layering
+------------------------------
+
+For each file, commit is currently doing more work than it should. Here is
+John's take on a better way ...
+
+Note that "_iter_changes" *does* have to touch every path on disk, but
+it just can do it in a more efficient manner. (It doesn't have to create
+an InventoryEntry for all the ones that haven't changed).
+
+I agree with Aaron that we need something a little different than
+_iter_changes. Both because of handling multiple parents, as well as we
+don't want it to actually read the files if we have a stat-cache miss.
+
+Specifically, the commit code *has* to read the files because it is
+going to add the text to the repository, and we want it to compute the
+sha1 at *that* time, so we are guaranteed to have the valid sha (rather
+than just whatever the last cached one was). So we want the code to
+return 'None' if it doesn't have an up-to-date sha1, rather than reading
+the file and computing it, just before it returns it to the parent.
+
+The commit code (0.16) should really be restructured. It's layering is
+pretty wrong.
+
+Specifically, calling "kind()" requires a stat of the file. But we have
+to do a stat to get the size/whether the record is up-to-date, etc. So
+we really need to have a "create_an_up_to_date_inventory()" function.
+But because we are accessing every object on disk, we want to be working
+in tuples rather than Inventory objects. And because DirState already
+has the parent records next to the current working inventory, it can do
+all the work to do really fast comparison and throw-away of unimportant
+records.
+
+The way I made "brz status" fast is by moving the 'ignore this record'
+ability as deep into the stack as I could get. Status has the property
+that you don't care about most of the records, just like commit. So the
+sooner you can stop evaluating the 99% that you don't care about, the
+less work you do.
+
+
+Avoiding work: avoiding reading parent data
+-------------------------------------------
+
+We would like to avoid the work of reading any data about the parent
+revisions.  We should at least try to avoid reading anything from the
+repository; we can also consider whether it is possible or useful to hold
+less parent information in the working tree.
+
+When a commit of selected files is requested, the committed snapshot is a
+composite of some directories from the parent revision and some from the
+working tree.  In this case it is logically necessary to have the parent
+inventory information.
+
+If file last-change information or per-file graph information is stored
+then it must be available from the parent trees.
+
+If the Branch's storage method does delta compression at commit time it
+may need to retrieve file or inventory texts from the repository.
+
+It is desirable to avoid roundtrips to the Repository during commit,
+particularly because it may be remote.  If the WorkingTree can determine
+by itself that a text was in the parent and therefore should be in the
+Repository that avoids one roundtrip per file.
+
+There is a possibility here that the parent revision is not stored, or not
+correctly stored, in the repository the tree is being committed into, and
+so the committed tree would not be reconstructable.  We could check that
+the parent revision is present in the inventory and rely on the invariant
+that if a revision is present, everything to reconstruct it will be
+present too.
+
+
+Code structure
+--------------
+
+Caller starts a commit
+
+>>> Branch.commit(from_tree, options)
+
+This creates a CommitBuilder object matched to the Branch, Repository and
+Tree.  It can vary depending on model differences or by knowledge of what
+is efficient with the Repository and Tree.  Model differences might
+include whether no-text-change merges need to be reported, and whether the
+
+The basic CommitBuilder.commit structure can be
+
+1. Ask the branch if it is ready to commit (up to date with master if
+   any.)
+
+2. Ask the tree if it is ready to commit to the branch (up to date with
+   branch?), no conflicts, etc
+
+3. Commit changed files; prototype implementation:
+
+   a. Ask the working tree for all committable files; for each it should
+      return the per-file parents, stat information, kind, etc.
+
+   b. Ask the repository to store the new file text; the repository should
+      return the stored sha1 and new revision id.
+
+4. Commit changed inventory
+
+5. Commit revision object
+
+
+
+
+
+
+
+
+
+Complications of commit
+-----------------------
+
+Bazaar (as of 0.17) does not support selective-file commit of a merge;
+this could be done if we decide how it should be recorded - is this to be
+stored as an overall merge revision; as a preliminary non-merge revisions;
+or will the per-file graph diverge from the revision graph.
+
+There are several checks that may cause the commit to be refused, which
+may be activated or deactivated by options.
+
+* presence of conflicts in the tree
+
+* presence of unknown files
+
+* the working tree basis is up to date with the branch tip
+
+* the local branch is up to date with the master branch, if there
+  is one and --local is not specified
+
+* an empty commit message is given,
+
+* a hook flags an error
+
+* a "pointless" commit, with no inventory changes
+
+Most of these require walking the tree and can be easily done while
+recording the tree shape.  This does require that it be possible to abort
+the commit after the tree changes have been recorded.  It could be ok to
+either leave the unreachable partly-committed records in the repository,
+or to roll back.
+
+Other complications:
+
+* when automatically adding new files or deleting missing files during
+  commit, they must be noted during commit and written into the working
+  tree at some point
+
+* refuse "pointless" commits with no file changes - should be easy by
+  just refusing to do the final step of storing a new overall inventory
+  and revision object
+
+* heuristic detection of renames between add and delete (out of scope for
+  this change)
+
+* pushing changes to a master branch if any
+
+* running hooks, pre and post commit
+
+* prompting for a commit message if necessary, including a list of the
+  changes that have already been observed
+
+* if there are tree references and recursing into them is enabled, then
+  do so
+
+Commit needs to protect against duplicated file ids
+
+
+Updates that need to be made in the working tree, either on conclusion
+of commit or during the scan, include
+
+* Changes made to the tree shape, including automatic adds, renames or
+  deletes
+
+* For trees (eg dirstate) that cache parent inventories, the old parent
+  information must be removed and the new one inserted
+
+* The tree hashcache information should be updated to reflect the stat
+  value at which the file was the same as the committed version, and the
+  content hash it was observed to have.  This needs to be done carefully to
+  prevent inconsistencies if the file is modified during or shortly after
+  the commit.  Perhaps it would work to read the mtime of the file before we
+  read its text to commit.
+
+
+Interface stack
+---------------
+
+The commit api is invoked by the command interface, and copies information
+from the tree into the branch and its repository, possibly updating the
+WorkingTree afterwards.
+
+The command interface passes:
+
+* a commit message (from an option, if any),
+* or an indication that it should be read interactively from the ui object;
+* a list of files to commit
+* an option for a dry-run commit
+* verbose option, or callback to indicate
+* timestamp, timezone, committer, chosen revision id
+* config (for what?)
+* option for local-only commit on a bound branch
+* option for strict commits (fail if there are unknown or missing files)
+* option to allow "pointless" commits (with no tree changes)
+
+(This is rather a lot of options to pass individually and just for code tidyness maybe some of them should be combine into objects.)
+
+>>> Branch.commit(from_tree, message, files_to_commit, ...)
+
+There will be different implementations of this for different Branch
+classes, whether for foreign branches or Bazaar repositories using
+different storage methods.
+
+Most of the commit should occur during a single lockstep iteration across
+the workingtree and parent trees.  The WorkingTree interface needs to
+provide methods that give commit all it needs.  Some of these methods
+(such as answering the file's last change revision) may be deprecated in
+newer working trees and there we have a choice of either calculating the
+value from the data that is present, or refusing to support commit to
+newer repositories.
+
+For a dirstate tree the iteration of changes from the parent can easily be
+done within its own iter_changes.
+
+Dirstate inventories may be most easily updated in a single operation at
+the end; however it may be best to accumulate data as we proceed through
+the tree rather than revisiting it at the end.
+
+Showing a progress bar for commit may not be necessary if we report files
+as they are committed.  Alternatively we could transiently show a progress
+bar for each directory that's scanned, even if no changes are observed.
+
+This needs to collect a list of added/changed/removed files, each of which
+must have its text stored (if any) and containing directory updated.  This
+can be done by calling Tree._iter_changes on the source tree, asking for
+changes
+
+In the 0.17 model the commit operation needs to know the per-file parents
+and per-file last-changed revision.
+
+(In this and other operations we must avoid having multiple layers walk
+over the tree separately.  For example, it is no good to have the Command
+layer walk the tree to generate a list of all file ids to commit, because
+the tree will also be walked later.  The layers that do need to operate
+per-file should probably be bound together in a per-dirblock iterator,
+rather than each iterating independently.)
+
+Branch->Tree interface
+----------------------
+
+The Branch commit code needs to ask the Tree what should be committed, in
+terms of changes from the parent revisions.  If the Tree holds all the
+necessary parent tree information itself it can do it single handed;
+otherwise it may need to ask the Repository for parent information.
+
+This should be a streaming interface, probably like iter_changes returning
+information per directory block.
+
+The interface should not return a block for directories that are
+recursively unchanged.
+
+The tree's idea of what is possibly changed may be more conservative than
+that of the branch.  For example the tree may report on merges of files
+where the text is identical to the parents: this must be recorded for
+Bazaar branches that record per-file ancestry but is not necessary for all
+branches.  If the tree is responsible for determining when directories
+have been recursively modified then it will report on all the parents of
+such files.  There are several implementation options:
+
+1. Return all files and directories the branch might want to commit, even
+if the branch ends up taking no action on them.
+
+2. When starting the iteration, the branch can specify what type of change
+is considered interesting.
+
+Since these types of changes are probably (??) rare compared to files that
+are either completely unmodified or substantially modified, the first may
+be the best and simplest option.
+
+The branch needs to build an inventory to commit, which must include
+unchanged files within changed directories.  This should be returned from
+the working tree too.  Repositories that store per-directory inventories
+will want to build and store these from the lowest directories up.
+For 0.17 format repositories with an all-in-one inventory it may be
+easiest to accumulate inventory entries in arbitrary order into an
+in-memory Inventory and then serialize it.
+
+It ought to be possible to commit any Tree into a Branch, without
+requiring a WorkingTree; the commit code should cope if the tree is not
+interested in updating hashcache information or does not have a
+``last_revision``.
+
+
+Information from the tree to repository
+---------------------------------------
+
+The main things the tree needs to tell the Branch about are:
+
+* A file is modified from its parent revision (in text, permissions,
+  other), and so its text may need to be stored.
+
+  Files should also be reported if they have more than one unique parent
+  revision, for repositories that store per-file graphs or last-change
+  revisions.  Perhaps this behaviour should be optional.
+
+  **XXX:** are renames/deletions reported here too?
+
+* The complete contents of a modified directory, so that its inventory
+  text may be stored.  This should be done after all the contained files
+  and directories have been reported.  If there are unmodified files,
+  or unselected files carried through from
+
+  XXX: Actually perhaps not grouped by directory, but rather grouped
+  appropriately for the shape of inventory storage in the repository.
+
+  In a zoomed-in checkout the workingtree may not have all the shape data
+  for the entire tree.
+
+* A file is missing -- could cause either automatic removal or an aborted
+  commit.
+
+* Any unknown files -- can cause automatic addition, abortion of a strict
+  commit, or just reporting.
+
+
+Information from the repository to the tree
+-------------------------------------------
+
+After the commit the tree needs to be updated to the new revision.  Some
+information which was accumulated during the commit must be made available
+to the workingtree.  It's probably reasonable to hold it all in memory and
+allow the workingtree to get it in whatever order it wants.
+
+* A list of modified entries, and for each one:
+
+  * The stat values observed when the file was first read.
+
+  * The hash of the committed file text.
+
+  * The file's last-change revision, if appropriate.
+
+  This should include any entries automatically added or removed.
+
+This might be construed as an enhanced version of ``set_parent_trees``.
+We can avoid a stat on each file by using the value that was observed when
+it was first read.
+
+
+
+Selective commit
+----------------
+
+For a partial commit the directory contents may need to contain a mix of
+entries from the working tree and parent trees.  This code probably
+shouldn't live in a specific tree implementation; maybe there should be a
+general filter that selects paths from one tree into another?
+
+However, the tree walking code does probably need to know about selected
+paths to avoid examining unselected files or directories.
+
+We never refuse selective file commits (except of merges).
+
+
+
+Common commit code
+------------------
+
+What is common to all commit implementations, regardless of workingtree or
+repository format?
+
+* Prompting for a commit message?
+* Strictness/conflict checks?
+* Auto add/remove?
+
+How should this be separated?
+
+
+
+Order of traversal
+------------------
+
+For current and contemplated Bazaar storage formats, we can only finally
+commit a directory after its contained files and directories have been
+committed.
+
+The dirstate workingtree format naturally iterates by directory in order
+by path, yielding directories before their contents.  This may also be the
+most efficient order in which to stat and read the files.
+
+One option would be to construe the interface as a visitor which reports
+when files are detected to be changed, and also when directories are
+finished.
+
+
+Open question: per-file graphs
+------------------------------
+
+**XXX:** If we want to retain explicitly stored per-file graphs, it would
+seem that we do need to record per-file parents.  We have not yet finally
+settled that we do want to remove them or treat them as a cache.  This api
+stack is still ok whether we do or not, but the internals of it may
+change.

@@ -48,8 +48,8 @@ def btreeparser_scenarios():
     import breezy.bzr._btree_serializer_py as py_module
     scenarios = [('python', {'parse_btree': py_module})]
     if compiled_btreeparser_feature.available():
-        scenarios.append(('C', 
-            {'parse_btree': compiled_btreeparser_feature.module}))
+        scenarios.append(('C',
+                          {'parse_btree': compiled_btreeparser_feature.module}))
     return scenarios
 
 
@@ -92,10 +92,12 @@ class BTreeTestCase(TestCaseWithTransport):
                         for ref_pos in range(list_pos + pos % 2):
                             if pos % 2:
                                 # refer to a nearby key
-                                refs[-1].append(prefix + _pos_to_key(pos - 1, b"ref"))
+                                refs[-1].append(prefix
+                                                + _pos_to_key(pos - 1, b"ref"))
                             else:
                                 # serial of this ref in the ref list
-                                refs[-1].append(prefix + _pos_to_key(ref_pos, b"ref"))
+                                refs[-1].append(prefix
+                                                + _pos_to_key(ref_pos, b"ref"))
                         refs[-1] = tuple(refs[-1])
                     refs = tuple(refs)
                 else:
@@ -116,7 +118,7 @@ class BTreeTestCase(TestCaseWithTransport):
         """
         if not expected - slop < actual < expected + slop:
             self.fail("Expected around %d bytes compressed but got %d" %
-                (expected, actual))
+                      (expected, actual))
 
 
 class TestBTreeBuilder(BTreeTestCase):
@@ -166,11 +168,11 @@ class TestBTreeBuilder(BTreeTestCase):
         node_content = content[73:]
         node_bytes = zlib.decompress(node_content)
         expected_node = (b"type=leaf\n"
-            b"0000000000000000000000000000000000000000\x00\x00value:0\n"
-            b"1111111111111111111111111111111111111111\x00\x00value:1\n"
-            b"2222222222222222222222222222222222222222\x00\x00value:2\n"
-            b"3333333333333333333333333333333333333333\x00\x00value:3\n"
-            b"4444444444444444444444444444444444444444\x00\x00value:4\n")
+                         b"0000000000000000000000000000000000000000\x00\x00value:0\n"
+                         b"1111111111111111111111111111111111111111\x00\x00value:1\n"
+                         b"2222222222222222222222222222222222222222\x00\x00value:2\n"
+                         b"3333333333333333333333333333333333333333\x00\x00value:3\n"
+                         b"4444444444444444444444444444444444444444\x00\x00value:4\n")
         self.assertEqual(expected_node, node_bytes)
 
     def test_root_leaf_2_2(self):
@@ -303,7 +305,7 @@ class TestBTreeBuilder(BTreeTestCase):
         # Seed the metadata, we're using internal calls now.
         index.key_count()
         self.assertEqual(3, len(index._row_lengths),
-            "Not enough rows: %r" % index._row_lengths)
+                         "Not enough rows: %r" % index._row_lengths)
         self.assertEqual(4, len(index._row_offsets))
         self.assertEqual(sum(index._row_lengths), index._row_offsets[-1])
         internal_nodes = index._get_internal_nodes([0, 1, 2])
@@ -341,9 +343,9 @@ class TestBTreeBuilder(BTreeTestCase):
         root_bytes = zlib.decompress(root)
         expected_root = (
             b"type=internal\n"
-            b"offset=0\n"
-            + (b"0" * 40) + b"\x00" + (b"91" * 40) + b"\n"
-            + (b"1" * 40) + b"\x00" + (b"81" * 40) + b"\n"
+            b"offset=0\n" +
+            (b"0" * 40) + b"\x00" + (b"91" * 40) + b"\n" +
+            (b"1" * 40) + b"\x00" + (b"81" * 40) + b"\n"
             )
         self.assertEqual(expected_root, root_bytes)
         # We assume the other leaf nodes have been written correctly - layering
@@ -405,13 +407,13 @@ class TestBTreeBuilder(BTreeTestCase):
         # Test that memory and disk are both used for query methods; and that
         # None is skipped over happily.
         self.assertEqual([(builder,) + node for node in sorted(nodes[:13])],
-            list(builder.iter_all_entries()))
+                         list(builder.iter_all_entries()))
         # Two nodes - one memory one disk
         self.assertEqual({(builder,) + node for node in nodes[11:13]},
-            set(builder.iter_entries([nodes[12][0], nodes[11][0]])))
+                         set(builder.iter_entries([nodes[12][0], nodes[11][0]])))
         self.assertEqual(13, builder.key_count())
         self.assertEqual({(builder,) + node for node in nodes[11:13]},
-            set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]])))
+                         set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]])))
         builder.add_node(*nodes[13])
         self.assertEqual(3, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
@@ -479,13 +481,13 @@ class TestBTreeBuilder(BTreeTestCase):
         # Test that memory and disk are both used for query methods; and that
         # None is skipped over happily.
         self.assertEqual([(builder,) + node for node in sorted(nodes[:13])],
-            list(builder.iter_all_entries()))
+                         list(builder.iter_all_entries()))
         # Two nodes - one memory one disk
         self.assertEqual({(builder,) + node for node in nodes[11:13]},
-            set(builder.iter_entries([nodes[12][0], nodes[11][0]])))
+                         set(builder.iter_entries([nodes[12][0], nodes[11][0]])))
         self.assertEqual(13, builder.key_count())
         self.assertEqual({(builder,) + node for node in nodes[11:13]},
-            set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]])))
+                         set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]])))
         builder.add_node(*nodes[13])
         builder.add_node(*nodes[14])
         builder.add_node(*nodes[15])
@@ -520,7 +522,7 @@ class TestBTreeBuilder(BTreeTestCase):
     def test_spill_index_stress_2_2(self):
         # test that references and longer keys don't confuse things.
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2,
-            spill_at=2)
+                                           spill_at=2)
         nodes = self.make_nodes(16, 2, 2)
         builder.add_node(*nodes[0])
         # Test the parts of the index that take up memory are doing so
@@ -533,7 +535,8 @@ class TestBTreeBuilder(BTreeTestCase):
         self.assertEqual(1, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
         # now back to memory
-        old = dict(builder._get_nodes_by_key()) #Build up the nodes by key dict
+        # Build up the nodes by key dict
+        old = dict(builder._get_nodes_by_key())
         builder.add_node(*nodes[2])
         self.assertEqual(1, len(builder._nodes))
         self.assertIsNot(None, builder._nodes_by_key)
@@ -579,13 +582,13 @@ class TestBTreeBuilder(BTreeTestCase):
         # Test that memory and disk are both used for query methods; and that
         # None is skipped over happily.
         self.assertEqual([(builder,) + node for node in sorted(nodes[:13])],
-            list(builder.iter_all_entries()))
+                         list(builder.iter_all_entries()))
         # Two nodes - one memory one disk
         self.assertEqual({(builder,) + node for node in nodes[11:13]},
-            set(builder.iter_entries([nodes[12][0], nodes[11][0]])))
+                         set(builder.iter_entries([nodes[12][0], nodes[11][0]])))
         self.assertEqual(13, builder.key_count())
         self.assertEqual({(builder,) + node for node in nodes[11:13]},
-            set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]])))
+                         set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]])))
         builder.add_node(*nodes[13])
         self.assertEqual(3, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
@@ -619,7 +622,7 @@ class TestBTreeIndex(BTreeTestCase):
 
     def make_index(self, ref_lists=0, key_elements=1, nodes=[]):
         builder = btree_index.BTreeBuilder(reference_lists=ref_lists,
-            key_elements=key_elements)
+                                           key_elements=key_elements)
         for key, value, references in nodes:
             builder.add_node(key, value, references)
         stream = builder.finish()
@@ -638,7 +641,7 @@ class TestBTreeIndex(BTreeTestCase):
         content = temp_file.read()
         del temp_file
         size = len(content)
-        transport.put_bytes('index', (b' '*offset)+content)
+        transport.put_bytes('index', (b' ' * offset) + content)
         return btree_index.BTreeGraphIndex(transport, 'index', size=size,
                                            offset=offset)
 
@@ -714,14 +717,14 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(70, index.key_count())
         # The entire index should have been read, as it is one page long.
         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
-            t._activity)
+                         t._activity)
         self.assertEqualApproxCompressed(1173, size)
 
     def test_with_offset_no_size(self):
         index = self.make_index_with_offset(key_elements=1, ref_lists=1,
                                             offset=1234,
                                             nodes=self.make_nodes(200, 1, 1))
-        index._size = None # throw away the size info
+        index._size = None  # throw away the size info
         self.assertEqual(200, index.key_count())
 
     def test_with_small_offset(self):
@@ -803,7 +806,7 @@ class TestBTreeIndex(BTreeTestCase):
         del t._activity[:]
         self.assertEqual([], t._activity)
         index.validate()
-        rem = size - 8192 # Number of remaining bytes after second block
+        rem = size - 8192  # Number of remaining bytes after second block
         # The entire index should have been read linearly.
         self.assertEqual(
             [('readv', 'index', [(0, 4096)], False, None),
@@ -817,35 +820,35 @@ class TestBTreeIndex(BTreeTestCase):
         t1 = transport.get_transport_from_url('trace+' + self.get_url(''))
         t2 = self.get_transport()
         self.assertTrue(
-            btree_index.BTreeGraphIndex(t1, 'index', None) ==
-            btree_index.BTreeGraphIndex(t1, 'index', None))
+            btree_index.BTreeGraphIndex(t1, 'index', None)
+            == btree_index.BTreeGraphIndex(t1, 'index', None))
         self.assertTrue(
-            btree_index.BTreeGraphIndex(t1, 'index', 20) ==
-            btree_index.BTreeGraphIndex(t1, 'index', 20))
+            btree_index.BTreeGraphIndex(t1, 'index', 20)
+            == btree_index.BTreeGraphIndex(t1, 'index', 20))
         self.assertFalse(
-            btree_index.BTreeGraphIndex(t1, 'index', 20) ==
-            btree_index.BTreeGraphIndex(t2, 'index', 20))
+            btree_index.BTreeGraphIndex(t1, 'index', 20)
+            == btree_index.BTreeGraphIndex(t2, 'index', 20))
         self.assertFalse(
-            btree_index.BTreeGraphIndex(t1, 'inde1', 20) ==
-            btree_index.BTreeGraphIndex(t1, 'inde2', 20))
+            btree_index.BTreeGraphIndex(t1, 'inde1', 20)
+            == btree_index.BTreeGraphIndex(t1, 'inde2', 20))
         self.assertFalse(
-            btree_index.BTreeGraphIndex(t1, 'index', 10) ==
-            btree_index.BTreeGraphIndex(t1, 'index', 20))
+            btree_index.BTreeGraphIndex(t1, 'index', 10)
+            == btree_index.BTreeGraphIndex(t1, 'index', 20))
         self.assertFalse(
-            btree_index.BTreeGraphIndex(t1, 'index', None) !=
-            btree_index.BTreeGraphIndex(t1, 'index', None))
+            btree_index.BTreeGraphIndex(t1, 'index', None)
+            != btree_index.BTreeGraphIndex(t1, 'index', None))
         self.assertFalse(
-            btree_index.BTreeGraphIndex(t1, 'index', 20) !=
-            btree_index.BTreeGraphIndex(t1, 'index', 20))
+            btree_index.BTreeGraphIndex(t1, 'index', 20)
+            != btree_index.BTreeGraphIndex(t1, 'index', 20))
         self.assertTrue(
-            btree_index.BTreeGraphIndex(t1, 'index', 20) !=
-            btree_index.BTreeGraphIndex(t2, 'index', 20))
+            btree_index.BTreeGraphIndex(t1, 'index', 20)
+            != btree_index.BTreeGraphIndex(t2, 'index', 20))
         self.assertTrue(
-            btree_index.BTreeGraphIndex(t1, 'inde1', 20) !=
-            btree_index.BTreeGraphIndex(t1, 'inde2', 20))
+            btree_index.BTreeGraphIndex(t1, 'inde1', 20)
+            != btree_index.BTreeGraphIndex(t1, 'inde2', 20))
         self.assertTrue(
-            btree_index.BTreeGraphIndex(t1, 'index', 10) !=
-            btree_index.BTreeGraphIndex(t1, 'index', 20))
+            btree_index.BTreeGraphIndex(t1, 'index', 10)
+            != btree_index.BTreeGraphIndex(t1, 'index', 20))
 
     def test_key_too_big(self):
         # the size that matters here is the _compressed_ size of the key, so we can't
@@ -887,7 +890,7 @@ class TestBTreeIndex(BTreeTestCase):
             self.assertTrue(node[0] is index)
             bare_nodes.append(node[1:])
         self.assertEqual(3, len(index._row_lengths),
-            "Not enough rows: %r" % index._row_lengths)
+                         "Not enough rows: %r" % index._row_lengths)
         # Should be as long as the nodes we supplied
         self.assertEqual(20000, len(found_nodes))
         # Should have the same content
@@ -906,7 +909,7 @@ class TestBTreeIndex(BTreeTestCase):
         # The last page is truncated
         readv_request[-1] = (readv_request[-1][0], size % page_size)
         expected = [('readv', 'index', [(0, page_size)], False, None),
-             ('readv',  'index', readv_request, False, None)]
+                    ('readv', 'index', readv_request, False, None)]
         if expected != t._activity:
             self.assertEqualDiff(pprint.pformat(expected),
                                  pprint.pformat(t._activity))
@@ -937,39 +940,39 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(nodes[30], bare_nodes[0])
         # Should have read the root node, then one leaf page:
         self.assertEqual([('readv', 'index', [(0, 4096)], False, None),
-             ('readv',  'index', [(8192, 4096), ], False, None)],
-            t._activity)
+                          ('readv', 'index', [(8192, 4096), ], False, None)],
+                         t._activity)
 
     def test_iter_key_prefix_1_element_key_None(self):
         index = self.make_index()
         self.assertRaises(_mod_index.BadIndexKey, list,
-            index.iter_entries_prefix([(None, )]))
+                          index.iter_entries_prefix([(None, )]))
 
     def test_iter_key_prefix_wrong_length(self):
         index = self.make_index()
         self.assertRaises(_mod_index.BadIndexKey, list,
-            index.iter_entries_prefix([(b'foo', None)]))
+                          index.iter_entries_prefix([(b'foo', None)]))
         index = self.make_index(key_elements=2)
         self.assertRaises(_mod_index.BadIndexKey, list,
-            index.iter_entries_prefix([(b'foo', )]))
+                          index.iter_entries_prefix([(b'foo', )]))
         self.assertRaises(_mod_index.BadIndexKey, list,
-            index.iter_entries_prefix([(b'foo', None, None)]))
+                          index.iter_entries_prefix([(b'foo', None, None)]))
 
     def test_iter_key_prefix_1_key_element_no_refs(self):
         index = self.make_index(nodes=[
             ((b'name', ), b'data', ()),
             ((b'ref', ), b'refdata', ())])
         self.assertEqual({(index, (b'name', ), b'data'),
-            (index, (b'ref', ), b'refdata')},
-            set(index.iter_entries_prefix([(b'name', ), (b'ref', )])))
+                          (index, (b'ref', ), b'refdata')},
+                         set(index.iter_entries_prefix([(b'name', ), (b'ref', )])))
 
     def test_iter_key_prefix_1_key_element_refs(self):
         index = self.make_index(1, nodes=[
             ((b'name', ), b'data', ([(b'ref', )], )),
             ((b'ref', ), b'refdata', ([], ))])
         self.assertEqual({(index, (b'name', ), b'data', (((b'ref',),),)),
-            (index, (b'ref', ), b'refdata', ((), ))},
-            set(index.iter_entries_prefix([(b'name', ), (b'ref', )])))
+                          (index, (b'ref', ), b'refdata', ((), ))},
+                         set(index.iter_entries_prefix([(b'name', ), (b'ref', )])))
 
     def test_iter_key_prefix_2_key_element_no_refs(self):
         index = self.make_index(key_elements=2, nodes=[
@@ -977,12 +980,12 @@ class TestBTreeIndex(BTreeTestCase):
             ((b'name', b'fin2'), b'beta', ()),
             ((b'ref', b'erence'), b'refdata', ())])
         self.assertEqual({(index, (b'name', b'fin1'), b'data'),
-            (index, (b'ref', b'erence'), b'refdata')},
-            set(index.iter_entries_prefix(
-                [(b'name', b'fin1'), (b'ref', b'erence')])))
+                          (index, (b'ref', b'erence'), b'refdata')},
+                         set(index.iter_entries_prefix(
+                             [(b'name', b'fin1'), (b'ref', b'erence')])))
         self.assertEqual({(index, (b'name', b'fin1'), b'data'),
-            (index, (b'name', b'fin2'), b'beta')},
-            set(index.iter_entries_prefix([(b'name', None)])))
+                          (index, (b'name', b'fin2'), b'beta')},
+                         set(index.iter_entries_prefix([(b'name', None)])))
 
     def test_iter_key_prefix_2_key_element_refs(self):
         index = self.make_index(1, key_elements=2, nodes=[
@@ -1039,7 +1042,8 @@ class TestBTreeIndex(BTreeTestCase):
             ])
         parent_map = {}
         missing_keys = set()
-        search_keys = index._find_ancestors([key1], 0, parent_map, missing_keys)
+        search_keys = index._find_ancestors(
+            [key1], 0, parent_map, missing_keys)
         self.assertEqual({key1: (key2,), key2: ()}, parent_map)
         self.assertEqual(set(), missing_keys)
         self.assertEqual(set(), search_keys)
@@ -1114,8 +1118,8 @@ class TestBTreeIndex(BTreeTestCase):
         rev_keys = []
         for i in range(400):
             rev_id = ('%s-%s-%s' % (email,
-                                   osutils.compact_date(start_time + i),
-                                   osutils.rand_chars(16))).encode('ascii')
+                                    osutils.compact_date(start_time + i),
+                                    osutils.rand_chars(16))).encode('ascii')
             rev_key = (rev_id,)
             nodes.append((rev_key, b'value', ref_lists))
             # We have a ref 'list' of length 1, with a list of parents, with 1
@@ -1136,7 +1140,7 @@ class TestBTreeIndex(BTreeTestCase):
         # Now, whatever key we select that would fall on the second page,
         # should give us all the parents until the page break
         key_idx = rev_keys.index(min_l2_key)
-        next_key = rev_keys[key_idx+1]
+        next_key = rev_keys[key_idx + 1]
         # So now when we get the parent map, we should get the key we are
         # looking for, min_l2_key, and then a reference to go look for the
         # parent of that key
@@ -1212,11 +1216,11 @@ class TestBTreeNodes(BTreeTestCase):
 
     def test_LeafNode_1_0(self):
         node_bytes = (b"type=leaf\n"
-            b"0000000000000000000000000000000000000000\x00\x00value:0\n"
-            b"1111111111111111111111111111111111111111\x00\x00value:1\n"
-            b"2222222222222222222222222222222222222222\x00\x00value:2\n"
-            b"3333333333333333333333333333333333333333\x00\x00value:3\n"
-            b"4444444444444444444444444444444444444444\x00\x00value:4\n")
+                      b"0000000000000000000000000000000000000000\x00\x00value:0\n"
+                      b"1111111111111111111111111111111111111111\x00\x00value:1\n"
+                      b"2222222222222222222222222222222222222222\x00\x00value:2\n"
+                      b"3333333333333333333333333333333333333333\x00\x00value:3\n"
+                      b"4444444444444444444444444444444444444444\x00\x00value:4\n")
         node = btree_index._LeafNode(node_bytes, 1, 0)
         # We do direct access, or don't care about order, to leaf nodes most of
         # the time, so a dict is useful:
@@ -1230,33 +1234,33 @@ class TestBTreeNodes(BTreeTestCase):
 
     def test_LeafNode_2_2(self):
         node_bytes = (b"type=leaf\n"
-            b"00\x0000\x00\t00\x00ref00\x00value:0\n"
-            b"00\x0011\x0000\x00ref00\t00\x00ref00\r01\x00ref01\x00value:1\n"
-            b"11\x0033\x0011\x00ref22\t11\x00ref22\r11\x00ref22\x00value:3\n"
-            b"11\x0044\x00\t11\x00ref00\x00value:4\n"
-            b""
-            )
+                      b"00\x0000\x00\t00\x00ref00\x00value:0\n"
+                      b"00\x0011\x0000\x00ref00\t00\x00ref00\r01\x00ref01\x00value:1\n"
+                      b"11\x0033\x0011\x00ref22\t11\x00ref22\r11\x00ref22\x00value:3\n"
+                      b"11\x0044\x00\t11\x00ref00\x00value:4\n"
+                      b""
+                      )
         node = btree_index._LeafNode(node_bytes, 2, 2)
         # We do direct access, or don't care about order, to leaf nodes most of
         # the time, so a dict is useful:
         self.assertEqual({
             (b'00', b'00'): (b'value:0', ((), ((b'00', b'ref00'),))),
             (b'00', b'11'): (b'value:1', (((b'00', b'ref00'),),
-                ((b'00', b'ref00'), (b'01', b'ref01')))),
+                                          ((b'00', b'ref00'), (b'01', b'ref01')))),
             (b'11', b'33'): (b'value:3', (((b'11', b'ref22'),),
-                ((b'11', b'ref22'), (b'11', b'ref22')))),
+                                          ((b'11', b'ref22'), (b'11', b'ref22')))),
             (b'11', b'44'): (b'value:4', ((), ((b'11', b'ref00'),)))
             }, dict(node.all_items()))
 
     def test_InternalNode_1(self):
         node_bytes = (b"type=internal\n"
-            b"offset=1\n"
-            b"0000000000000000000000000000000000000000\n"
-            b"1111111111111111111111111111111111111111\n"
-            b"2222222222222222222222222222222222222222\n"
-            b"3333333333333333333333333333333333333333\n"
-            b"4444444444444444444444444444444444444444\n"
-            )
+                      b"offset=1\n"
+                      b"0000000000000000000000000000000000000000\n"
+                      b"1111111111111111111111111111111111111111\n"
+                      b"2222222222222222222222222222222222222222\n"
+                      b"3333333333333333333333333333333333333333\n"
+                      b"4444444444444444444444444444444444444444\n"
+                      )
         node = btree_index._InternalNode(node_bytes)
         # We want to bisect to find the right children from this node, so a
         # vector is most useful.
@@ -1271,21 +1275,21 @@ class TestBTreeNodes(BTreeTestCase):
 
     def test_LeafNode_2_2(self):
         node_bytes = (b"type=leaf\n"
-            b"00\x0000\x00\t00\x00ref00\x00value:0\n"
-            b"00\x0011\x0000\x00ref00\t00\x00ref00\r01\x00ref01\x00value:1\n"
-            b"11\x0033\x0011\x00ref22\t11\x00ref22\r11\x00ref22\x00value:3\n"
-            b"11\x0044\x00\t11\x00ref00\x00value:4\n"
-            b""
-            )
+                      b"00\x0000\x00\t00\x00ref00\x00value:0\n"
+                      b"00\x0011\x0000\x00ref00\t00\x00ref00\r01\x00ref01\x00value:1\n"
+                      b"11\x0033\x0011\x00ref22\t11\x00ref22\r11\x00ref22\x00value:3\n"
+                      b"11\x0044\x00\t11\x00ref00\x00value:4\n"
+                      b""
+                      )
         node = btree_index._LeafNode(node_bytes, 2, 2)
         # We do direct access, or don't care about order, to leaf nodes most of
         # the time, so a dict is useful:
         self.assertEqual({
             (b'00', b'00'): (b'value:0', ((), ((b'00', b'ref00'),))),
             (b'00', b'11'): (b'value:1', (((b'00', b'ref00'),),
-                ((b'00', b'ref00'), (b'01', b'ref01')))),
+                                          ((b'00', b'ref00'), (b'01', b'ref01')))),
             (b'11', b'33'): (b'value:3', (((b'11', b'ref22'),),
-                ((b'11', b'ref22'), (b'11', b'ref22')))),
+                                          ((b'11', b'ref22'), (b'11', b'ref22')))),
             (b'11', b'44'): (b'value:4', ((), ((b'11', b'ref00'),)))
             }, dict(node.all_items()))
 
@@ -1298,23 +1302,23 @@ class TestBTreeNodes(BTreeTestCase):
     def test__flatten_node(self):
         self.assertFlattened(b'key\0\0value\n', (b'key',), b'value', [])
         self.assertFlattened(b'key\0tuple\0\0value str\n',
-            (b'key', b'tuple'), b'value str', [])
+                             (b'key', b'tuple'), b'value str', [])
         self.assertFlattened(b'key\0tuple\0triple\0\0value str\n',
-            (b'key', b'tuple', b'triple'), b'value str', [])
+                             (b'key', b'tuple', b'triple'), b'value str', [])
         self.assertFlattened(b'k\0t\0s\0ref\0value str\n',
-            (b'k', b't', b's'), b'value str', [[(b'ref',)]])
+                             (b'k', b't', b's'), b'value str', [[(b'ref',)]])
         self.assertFlattened(b'key\0tuple\0ref\0key\0value str\n',
-            (b'key', b'tuple'), b'value str', [[(b'ref', b'key')]])
+                             (b'key', b'tuple'), b'value str', [[(b'ref', b'key')]])
         self.assertFlattened(b"00\x0000\x00\t00\x00ref00\x00value:0\n",
-            (b'00', b'00'), b'value:0', ((), ((b'00', b'ref00'),)))
+                             (b'00', b'00'), b'value:0', ((), ((b'00', b'ref00'),)))
         self.assertFlattened(
             b"00\x0011\x0000\x00ref00\t00\x00ref00\r01\x00ref01\x00value:1\n",
             (b'00', b'11'), b'value:1',
-                (((b'00', b'ref00'),), ((b'00', b'ref00'), (b'01', b'ref01'))))
+            (((b'00', b'ref00'),), ((b'00', b'ref00'), (b'01', b'ref01'))))
         self.assertFlattened(
             b"11\x0033\x0011\x00ref22\t11\x00ref22\r11\x00ref22\x00value:3\n",
             (b'11', b'33'), b'value:3',
-                (((b'11', b'ref22'),), ((b'11', b'ref22'), (b'11', b'ref22'))))
+            (((b'11', b'ref22'),), ((b'11', b'ref22'), (b'11', b'ref22'))))
         self.assertFlattened(
             b"11\x0044\x00\t11\x00ref00\x00value:4\n",
             (b'11', b'44'), b'value:4', ((), ((b'11', b'ref00'),)))
@@ -1333,7 +1337,7 @@ class TestMultiBisectRight(tests.TestCase):
     def assertMultiBisectRight(self, offsets, search_keys, fixed_keys):
         self.assertEqual(offsets,
                          btree_index.BTreeGraphIndex._multi_bisect_right(
-                            search_keys, fixed_keys))
+                             search_keys, fixed_keys))
 
     def test_after(self):
         self.assertMultiBisectRight([(1, ['b'])], ['b'], ['a'])
@@ -1347,7 +1351,8 @@ class TestMultiBisectRight(tests.TestCase):
 
     def test_exact(self):
         self.assertMultiBisectRight([(1, ['a'])], ['a'], ['a'])
-        self.assertMultiBisectRight([(1, ['a']), (2, ['b'])], ['a', 'b'], ['a', 'b'])
+        self.assertMultiBisectRight(
+            [(1, ['a']), (2, ['b'])], ['a', 'b'], ['a', 'b'])
         self.assertMultiBisectRight([(1, ['a']), (3, ['c'])],
                                     ['a', 'c'], ['a', 'b', 'c'])
 
@@ -1397,7 +1402,7 @@ class TestExpandOffsets(tests.TestCase):
         self.set_cached_offsets(index, cached_offsets)
 
     def make_100_node_index(self):
-        index = self.make_index(4096*100, 6)
+        index = self.make_index(4096 * 100, 6)
         # Consider we've already made a single request at the middle
         self.prepare_index(index, node_ref_lists=0, key_length=1,
                            key_count=1000, row_lengths=[1, 99],
@@ -1405,7 +1410,7 @@ class TestExpandOffsets(tests.TestCase):
         return index
 
     def make_1000_node_index(self):
-        index = self.make_index(4096*1000, 6)
+        index = self.make_index(4096 * 1000, 6)
         # Pretend we've already made a single request in the middle
         self.prepare_index(index, node_ref_lists=0, key_length=1,
                            key_count=90000, row_lengths=[1, 9, 990],
@@ -1433,7 +1438,7 @@ class TestExpandOffsets(tests.TestCase):
         self.assertNumPages(1, index, 4096)
         self.assertNumPages(2, index, 4097)
         self.assertNumPages(2, index, 8192)
-        self.assertNumPages(76, index, 4096*75 + 10)
+        self.assertNumPages(76, index, 4096 * 75 + 10)
 
     def test__find_layer_start_and_stop(self):
         index = self.make_1000_node_index()
@@ -1451,17 +1456,17 @@ class TestExpandOffsets(tests.TestCase):
         self.assertExpandOffsets([1, 4, 9], index, [1, 4, 9])
 
     def test_more_than_recommended(self):
-        index = self.make_index(4096*100, 2)
+        index = self.make_index(4096 * 100, 2)
         self.assertExpandOffsets([1, 10], index, [1, 10])
         self.assertExpandOffsets([1, 10, 20], index, [1, 10, 20])
 
     def test_read_all_from_root(self):
-        index = self.make_index(4096*10, 20)
+        index = self.make_index(4096 * 10, 20)
         self.assertExpandOffsets(list(range(10)), index, [0])
 
     def test_read_all_when_cached(self):
         # We've read enough that we can grab all the rest in a single request
-        index = self.make_index(4096*10, 5)
+        index = self.make_index(4096 * 10, 5)
         self.prepare_index(index, node_ref_lists=0, key_length=1,
                            key_count=1000, row_lengths=[1, 9],
                            cached_offsets=[0, 1, 2, 5, 6])
@@ -1471,7 +1476,7 @@ class TestExpandOffsets(tests.TestCase):
         self.assertExpandOffsets([3, 4, 7, 8, 9], index, [9])
 
     def test_no_root_node(self):
-        index = self.make_index(4096*10, 5)
+        index = self.make_index(4096 * 10, 5)
         self.assertExpandOffsets([0], index, [0])
 
     def test_include_neighbors(self):
@@ -1487,7 +1492,7 @@ class TestExpandOffsets(tests.TestCase):
         # Requesting many nodes will expand all locations equally
         self.assertExpandOffsets([1, 2, 3, 80, 81, 82], index, [2, 81])
         self.assertExpandOffsets([1, 2, 3, 9, 10, 11, 80, 81, 82], index,
-                               [2, 10, 81])
+                                 [2, 10, 81])
 
     def test_stop_at_cached(self):
         index = self.make_100_node_index()

@@ -85,7 +85,7 @@ class cmd_launchpad_open(Command):
         trace.note(gettext('Opening %s in web browser') % web_url)
         if not dry_run:
             import webbrowser   # this import should not be lazy
-                                # otherwise brz.exe lacks this module
+            # otherwise brz.exe lacks this module
             webbrowser.open(web_url)
 
 
@@ -140,25 +140,31 @@ class cmd_launchpad_login(Command):
             account.set_lp_login(name)
             if verbose:
                 self.outf.write(gettext("Launchpad user ID set to '%s'.\n") %
-                                                                        (name,))
+                                (name,))
 
 
-# XXX: cmd_launchpad_mirror is untested
-class cmd_launchpad_mirror(Command):
-    __doc__ = """Ask Launchpad to mirror a branch now."""
+class cmd_launchpad_logout(Command):
+    __doc__ = """Unset the Launchpad user ID.
 
-    aliases = ['lp-mirror']
-    takes_args = ['location?']
+    When communicating with Launchpad, some commands need to know your
+    Launchpad user ID.  This command will log you out from Launchpad.
+    This means that communication with Launchpad will happen over
+    HTTPS, and will not require one of your SSH keys to be available.
+    """
+    aliases = ['lp-logout']
+    takes_options = ['verbose']
 
-    def run(self, location='.'):
-        from . import lp_api
-        from .lp_registration import LaunchpadService
-        branch, _ = _mod_branch.Branch.open_containing(location)
-        service = LaunchpadService()
-        launchpad = lp_api.login(service)
-        lp_branch = lp_api.LaunchpadBranch.from_bzr(launchpad, branch,
-                create_missing=False)
-        lp_branch.lp.requestMirror()
+    def run(self, verbose=False):
+        from . import account
+        old_username = account.get_lp_login()
+        if old_username is None:
+            self.outf.write(gettext('Not logged into Launchpad.\n'))
+            return 1
+        account.set_lp_login(None)
+        if verbose:
+            self.outf.write(gettext(
+                "Launchpad user ID %s logged out.\n") %
+                old_username)
 
 
 class cmd_lp_propose_merge(Command):
@@ -182,6 +188,7 @@ class cmd_lp_propose_merge(Command):
     unspecified type, and request "review-team" to perform a "qa" review.
     """
 
+    hidden = True
     takes_options = [Option('staging',
                             help='Propose the merge on staging.'),
                      Option('message', short_name='m', type=text_type,
@@ -191,7 +198,7 @@ class cmd_lp_propose_merge(Command):
                                   'setting the approved revision to tip.')),
                      Option('fixes', 'The bug this proposal fixes.', str),
                      ListOption('review', short_name='R', type=text_type,
-                            help='Requested reviewer and optional type.')]
+                                help='Requested reviewer and optional type.')]
 
     takes_args = ['submit_branch?']
 
@@ -247,9 +254,7 @@ class cmd_lp_find_proposal(Command):
         from . import lp_api
         import webbrowser
         b = _mod_branch.Branch.open_containing('.')[0]
-        pb = ui.ui_factory.nested_progress_bar()
-        b.lock_read()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb, b.lock_read():
             if revision is None:
                 revision_id = b.last_revision()
             else:
@@ -260,15 +265,13 @@ class cmd_lp_find_proposal(Command):
             trace.note(gettext('%d proposals(s) found.') % len(merged))
             for mp in merged:
                 webbrowser.open(lp_api.canonical_url(mp))
-        finally:
-            b.unlock()
-            pb.finished()
 
     def _find_proposals(self, revision_id, pb):
-        from . import (lp_api, lp_registration)
+        from launchpadlib import uris
+        from . import lp_api
         # "devel" because branches.getMergeProposals is not part of 1.0 API.
-        launchpad = lp_api.login(lp_registration.LaunchpadService(),
-                                 version='devel')
+        lp_base_url = uris.LPNET_SERVICE_ROOT
+        launchpad = lp_api.connect_launchpad(lp_base_url, version='devel')
         pb.update(gettext('Finding proposals'))
         return list(launchpad.branches.getMergeProposals(
-                    merged_revision=revision_id))
+                    merged_revision=revision_id.decode('utf-8')))

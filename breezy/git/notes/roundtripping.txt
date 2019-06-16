@@ -1,0 +1,10 @@
+Bzr revision metadata that doesn't exist in git:
+
+ - revision ids
+ - revision properties
+ - ghost parents
+ - file ids
+  * git-sha+path -> fileid mapping
+
+refs/bzr/<revid> refs to be able to find Git revisions based on Bazaar revision
+ids.

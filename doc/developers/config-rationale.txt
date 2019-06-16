@@ -1,0 +1,790 @@
+================================
+Simplifying Breezy Configuration
+================================
+
+Goal
+====
+
+Not all needs can be addressed by the default values used inside bzr and
+breezy, no matter how well they are chosen (and they are ;).
+
+Options that are rarely used don't deserve a corresponding command line
+switch in one or several commands.
+
+Many parts of ``breezy`` depends on some constants though and the user
+should be able to customize the behavior to suit his needs so these
+constants need to become configuration options or more generally, be easier
+to set.
+
+These options can be set from the command-line, acquired from an environment
+variable or recorded in a configuration file.
+
+To simplify writing (and reading), this document refers to the old and new
+config designs:
+* the old design is using ``Config`` as a base class for all config files,
+* the new design use ``ConfigStacks`` of ``Section`` from config ``Stores``.
+
+
+Current issues
+==============
+
+* Many parts of ``breezy`` declare constants and there is no way for the
+  user to look at or modify them (see http://pad.lv/832061).
+
+* The old design requires a configuration object to create, modify or delete
+  a configuration option in a given configuration file.  ``bzr config``
+  makes it almost transparent for the user. Internally though, not all cases
+  are handled: only BranchConfig implements chained configs, nothing is
+  provided at the repository level and too many plugins define their own
+  section or even their own config file. (config.Stack now provides a way to
+  chain config files, BranchStack properly implements the desired behavior,
+  ``bzr config`` uses the new design).
+
+* ``locations.conf`` defines the options that need to override any setting
+  in ``branch.conf`` for both local and remotes branches (but some remote
+  branch options just ignore ``locations.conf``). Many users want a way to
+  define default values for options that are not defined in ``branch.conf``
+  (and even more users think that ``locations.conf`` provide default values,
+  see also http://pad.lv/843211 and http://pad.lv/832046). This could be
+  approximated today by *not* defining these options in ``branch.conf`` but
+  in ``locations.conf`` instead. This workaround doesn't allow a user to
+  define defaults in ``locations.conf`` and override them in
+  ``branch.conf``. (Allowing sections in 'breezy.conf' (or introducing a new
+  defaults.conf' allowing sections) can now address that. Defining and using
+  a new file is easier as it avoids handling a migration path for
+  breezy.conf and doesn't require banning the use of sections for special
+  purpose needs (ALIASES and BOOKMARKS for example)).
+
+* Defining a new option requires adding a new method in the ``Config``
+  object to get access to features like:
+
+  * should the option be inherited by more specific sections, (this was more
+    or less the default in the old design, it is addressed by section
+    matchers in the new one by letting users define options in whatever
+    relevant section and let the matcher select the right ones).
+
+  * should the inherited value append the relative path between the section
+    one and the location it applies to (see http://pad.lv/832013, fixed),
+
+  * the default value (including calling any python code that may be
+    required to calculate this value)(see http://pad.lv/832064, fixed),
+
+  * priority between sections in various config files (this is defined by
+    the section matcher associated with a given config store for stacks,
+    http://pad.lv/832046 is about adding a section matcher with clearer
+    semantics than the one used for locations.conf).
+
+  A related problem is that, in the actual implementation, some
+  configuration options have defined methods, others don't and this is
+  inconsistent. (Using only Stacks addresses that).
+
+* Access to the 'active' configuration option value from the command line
+  doesn't give access to the specific section. This is a concern if the user
+  has no other way to address a specific configuration option including
+  Store and Section when using ``bzr config`` (see
+  http://pad.lv/725234). Plugins defining their own stacks and/or stores
+  also have no way to properly plug into ``bzr config`` (see
+  http://pad.lv/788991).
+
+* Rules for configuration options are not clearly defined for remote
+  branches (they may differ between dumb and smart servers the former will
+  use the local ``breezy.conf`` and ``locations.conf`` files while the later
+  will use (or ignore ?) the remote ones).
+
+* The features offered by the Breezy configuration files should be easily
+  accessible to plugin authors either by supporting plugin configuration
+  options in the configuration files or allowing the plugins to define their
+  own configuration files. (Separating Section, Store and Stack starts
+  addressing that, a stack registry should complete the needed means
+  http://pad.lv/832036).
+
+* While the actual configuration files support sections, they are used in
+  mutually exclusive ways that make it impossible to offer the same set of
+  features to all configuration files:
+
+  * ``breezy.conf`` use arbitrary names for sections. ``DEFAULT`` is used
+    for global options, ``ALIASES`` are used to define command aliases,
+    plugins can define their own sections, some plugins do that
+    (``bzr-bookmarks`` use ``BOOKMARKS`` for example), some other define
+    their own sections (this is addressed with the new design by using only
+    the ``DEFAULT`` section and ignore the others. When needed, one can
+    create a specific stack to get access to a specific section).
+
+  * ``locations.conf`` use globs as section names. This provides an easy
+    way to associate a set of options to a matching working tree or
+    branch, including remote ones.
+
+  * ``branch.conf`` doesn't use any section.
+
+  This is addressed by defining different stacks selecting the relevant
+  sections from the stores involved. ``ALIASES`` for example can define a
+  stack that select only the ``ALIASES`` section from ``breezy.conf``.
+
+* There is no easy way to get configuration options for a given repository
+  or an arbitrary path. Working trees and branches are generally organized
+  in hierarchies and being able to share the option definitions is an often
+  required feature. This can also address some needs exhibited by various
+  branch schemes like looms, pipeline, colocated branches and nested
+  trees. Being able to specify options *in* a working tree could also help
+  support conflict resolution options for a given file, directory or
+  subtree (see http://pad.lv/359320).
+
+* Since sections allow different definitions for the same option (in the
+  same store), a total order should be defined between sections to select
+  the right definition for a given context (paths or globs for
+  ``locations.conf`` but other schemes can be used, window names for qbzr,
+  repository UUIDs for bzr-svn for example). Allowing globs for section
+  names is harmful in this respect since the order is currently defined as
+  being based on the number of path components. The caveat here is that if
+  the order is always defined for a given set of sections it can change when
+  one or several globs are modified and the user may get surprising and
+  unwanted results in these cases. The lexicographical order is otherwise
+  fine to define what section is more specific than another. (This may not
+  be a problem in real life since longer globs are generally more specific
+  than shorter ones and explicit paths should also be longer than matching
+  globs. That may leave a glob and a path of equal length in a gray area but
+  in practice using ``bzr config`` should give enough feedback to address
+  them. See also http://pad.lv/832046 asking for a less magical section
+  matcher).
+
+* Internally, configuration files (and their fallbacks, ``breezy.conf`` and
+  ``locations.conf`` for ``branch.conf``) are read every time *one* option is
+  queried. Likewise, setting or deleting a configuration option implies
+  writing the configuration file *immediately* after re-reading the file to
+  avoid racing updates (see http://pad.lv/832042).
+
+* The current implementation use a mix of transport-based and direct file
+  systems operations (Addressed by Store implementation relying on
+  transports only and the hpss implementing the corresponding verbs).
+
+* While the underlying ``ConfigObj`` implementation provides an
+  interpolation feature, the ``breezy`` implementation doesn't provide an
+  easy handling of templates where other configuration options can be
+  interpolated. Instead, ``locations.conf`` (and only it) allows for
+  ``appendpath`` and ``norecurse``. (Cross-section, cross-file interpolation
+  and section local options are now implemented in the new design).
+
+* Inherited list values can't be modified, a more specific configuration can
+  only redefine the whole list.
+
+* There is no easy way to define dicts (the most obvious one being to use a
+  dedicated section which is already overloaded). Using embedded sections
+  for this would not be practical either if we keep using a no-name section
+  for default values. In a few known cases, a bencoded dict is stored in a
+  config value, so while this isn't user-friendly, not providing a better
+  alternative shouldn't be a concern. A possible, limited, implementation
+  can be envisioned: limiting the dict to a single level only, with simple
+  names as keys and unicode strings as values. The keys can then be mapped
+  to options prefixed with the dict name.
+
+
+Proposed implementation
+=======================
+
+
+Configuration files definition
+------------------------------
+
+While of course configurations files can be versioned they are not intended
+to be accessed in sync with the files they refer to (one can imagine
+handling versioned properties this way but this is *not* what the breezy
+configuration files are targeted at). ``bzr`` will always refer to
+configuration files as they exist on disk when an option is queried or set.
+
+The configuration files are generally local to the file system but some of
+them can be accessed remotely (``branch.conf``, ``repo.conf``).
+
+
+Naming
+------
+
+Option names are organized into a name space for a given stack. One such set
+includes ``breezy.conf``, ``locations.conf``, ``branch.conf``, etc. Plugins
+can define their own sets for their own needs. While it is conceivable that
+the same option name can be used in unrelated configuration stacks, it seems
+better to define a single name space for all options if only to avoid
+ambiguities.
+
+Using a name space is meant to help:
+
+* avoid collisions between bzr and plugins and between plugins,
+
+* discover the available options and making them easier to remember,
+
+* organise the documentation for the option set.
+
+Using valid python identifiers is recommended but not enforced (but we may
+do so in the future).
+
+The option name space is organized by topic:
+
+* breezy options are grouped by topic (``branch``, ``tree``, ``repo``)
+
+* plugins are encouraged (but not required) to prefix their specific options
+  with their name (``qbzr.`` for qbzr)
+
+* collisions are detected at registration time so users are protected from
+  incompatibilities between plugins,
+
+* options that need to be used by several plugins (or shared between ``bzr``
+  core and plugins) should be discussed but these discussions are already
+  happening so the risk of misuse is low enough.
+
+Value
+-----
+
+All option values are text. They are provided as Unicode strings to API
+users with some refinements:
+
+* boolean values can be obtained for a set of acceptable strings (yes/no,
+  y/n, on/off, etc), (implemented with the ``from_unicode`` parameter)
+
+* a list of strings from a value containing a comma separated list of
+  strings.
+
+Since the configuration files can be edited by the user, ``bzr`` doesn't
+expect their content to be valid at all times. Instead, the code using
+options should be ready to handle *invalid* values by warning the user and
+falling back to a default value.
+
+Likely, if an option is not defined in any configuration file, the code
+should fallback to a default value (helpers should be provided by the API to
+handle common cases: warning the user, getting a particular type of value,
+returning a default value)(most of that is now handled at Option definition).
+
+This also ensures compatibility with values provided via environment
+variables or from the command line (where no validation can be expected
+either)(done in the new design).
+
+
+Option expansion
+----------------
+
+Some option values can be templates and contain references to other
+options. This is especially useful to define URLs in sections shared for
+multiple branches for example. It can also be used to describe commands
+where some parameters are set by ``breezy`` at runtime.
+
+Since option values are text-only, and to avoid clashing with other option
+expansion (also known as interpolation) syntaxes, references are enclosed
+with curly brackets::
+
+  push_location = lp:~{launchpad_username}/bzr/{nick}
+
+In the example above, ``launchpad_username`` is an already defined
+configuration option while ``nick`` is the branch nickname and is set when a
+configuration applies to a given branch.
+
+The interpolation implementation should accept an additional dict so that
+``breezy`` or plugins can define references that can be expanded without
+being existing configuration options::
+
+  diff_command={cmd} {cmd_opts} {file_a} {file_b}
+
+There are two common errors that should be handled when handling interpolation:
+
+* loops: when a configuration value refers to itself, directly or indirectly,
+
+* undefined references: when a configuration value refers to an unknown option.
+
+The loop handling can be modified to allow cross-sections and cross-files
+interpolation: if an option refers to itself (directly or indirectly) during
+an expansion, the fallback sections or files can be queried for its value.
+
+This allows list values to refer to the definition in the less specific
+configurations::
+
+  breezy.conf:
+    debug_flags = hpss
+
+  branch.conf for mybranch:
+    debug_flags = {debug_flags}, hpssdetail
+
+  $ bzr -d mybranch config debug_flags
+  hpss, hpssdetail
+
+Undefined references are detected if they are not defined in any
+configuration. This will trigger errors while displaying the value. Diagnosing
+typos should be doable in this case.
+
+Configuration file syntax
+-------------------------
+
+The configuration file is mostly an ``ini-file``. It contains ``name = value``
+lines grouped in sections. A section starts with a string enclosed in squared
+brackets ('[section_name]`), this string uniquely identifies the section in
+the file. Comments are allowed by prefixing them with the '#' character.
+
+A section is named by the path (or some other unuique identifier) it should
+apply to (more examples below).
+
+When sections are used, they provide a finer grain of configuration by
+defining option sets that apply to some working trees, branches,
+repositories (or any kind of context) or part of them. The relationship
+between a given context and the sections it applies to is defined by the
+config file.
+
+So far, Breezy uses a glob in ``locations.conf`` and select the sections
+that apply to a given url (or a local path).
+
+The subset is defined by the common leading path or a glob.
+
+Different kinds of section names can be defined:
+
+* a full url: used to described options for remote branches and
+  repositories (LocationMatcher supports this).
+
+* local absolute path: used for working trees, branches or repositories
+  on the local disks (LocationMatcher supports this).
+
+* relative path: the path is relative to the configuration file and can be
+  used for colocated branches or threads in a loom, i.e any working tree,
+  branch or repository that is located in a place related to the
+  configuration file path. Some configuration files may define this path
+  relationship in specific ways to make them easier to use (i.e. if a config
+  file is somewhere below ``.bzr`` and refers to threads in a loom for
+  example, the relative path would be the thread name, it doesn't have to be
+  an *exact* relative path, as long as its interpretation is unambiguous and
+  clear for the user) (No section matchers support this so far, needs to
+  file a bug)
+
+Section matching
+----------------
+
+Section names define another name space (than the option names one) with an
+entirely different purpose: in a given configuration file, for a given
+context, only some sections will be relevant and will be queried in a
+specific order.
+
+This matching is specific to each config file and implemented by the
+SectionMatcher objects.
+
+Whatever this matching does, the user can observe the results with the ``bzr
+config`` command which displays the sections in the order they are queried.
+
+LocationMatcher
+~~~~~~~~~~~~~~~
+
+The context here is either:
+
+* an URL,
+
+* a local path.
+
+Note that for both the provided context and the section names, if an URL uses
+a ``file:///`` form, it is converted to a local path.
+
+The sections names can use globs for each path component
+(i.e. ``/dir/*/subdir`` is allowed but ``/dir/\*\*/subdir`` will match
+``/dir/a/subdir`` but not ``/dir/a/b/subdir``. 
+
+The reason is that the ordering is defined by sorting the section names
+matching the context on the number of path components followed by the path
+itself in lexicographical order. This results in most specific sections being
+queried before the more generic ones.
+
+PathMatcher
+~~~~~~~~~~~
+
+``LocationMatcher`` has some obscure (for unaware users) edge cases and
+limitations that can be surprising. ``PathMatcher`` aims at addressing these
+issues by providing simpler rules while still giving full control to the
+user (http://pad.lv/832046).
+
+The context here is a local path, absolute or relative. If the path is
+relative it is interpreted from the file base directory.
+
+Note that 'base directory' for configuration files in Breezy directories is
+really:
+
+* the home directory for files under ``~/.config/breezy``,
+
+* the ``.bzr`` base directory for files under ``.bzr``.
+
+The order is the one observed in the file so most generic values are specified
+first and most specific ones last. As such, the order in the file is the
+opposite of the one displayed by ``bzr config`` which displays most specific
+values first. This seems to be the most natural order in both cases.
+
+A section matches if the section name is a prefix of the context path
+(relative paths being converted to absolute on the fly).
+
+The Option object
+-----------------
+
+(copied from a recent version of bzr.dev for easier reading, refer to the
+original for an up to date version)
+
+The Option object is used to define its properties:
+
+* name: a name: a valid python identifier (even if it's not used as an
+  identifier in python itself). This is also used to register the option.
+
+* default: the default value that Stack.get() should return if no
+  value can be found for the option.
+
+* default_from_env: a list of environment variables. The first variable set
+  will provide a default value overriding 'default' which remains the
+  default value if *no* environment variable is set.
+
+* help: a doc string describing the option, the first line should be a
+  summary and can be followed by a blank line and a more detailed
+  explanation.
+
+* from_unicode: a callable accepting a unicode string and returning a
+  suitable value for the option. If the string cannot be coerced it should
+  return None.
+
+* invalid: the action to be taken when an invalid value is encountered in a
+  store (during a Stack.get()).
+
+The Section object
+------------------
+
+Options are grouped into sections which share some properties with the well
+known dict objects:
+
+* the key is the name,
+* you can get, set and remove an option,
+* the value is a unicode string.
+
+MutableSection is needed to set or remove an option, ReadOnlySection should
+be used otherwise.
+
+The Store object
+----------------
+
+This is an implementation-level object that should rarely be used directly.
+
+* it can be local or remote
+
+* locking
+
+  All lock operations should be implemented via transport objects. (True for
+  Store).
+
+* option life cycle
+
+  Working trees, branches and repositories should define a config attribute
+  following the same life cycle as their lock: the associated config file is
+  read once and written once if needed. This should minimize the file system
+  accesses or the network requests. There is no known racing scenarios for
+  configuration options, changing the existing implementation to this less
+  constrained one shouldn't introduce any. Yet, in order to detect such
+  racing scenarios, we can add a check that the current content of the
+  configuration file is the expected one before writing the new content and
+  emit warnings if differences occur. The checks should be performed for the
+  modified values only. As of today (and in the foreseeable future), the
+  size of the configuration files are small enough to be kept in memory (see
+  http://pad.lv/832042).
+
+The Stack object
+-----------------
+
+This the object that provides access to the needed features:
+
+* getting an option value,
+
+* setting an option value,
+
+* deleting an option value,
+
+* handling a list of configuration files and for each of them a section
+  matcher providing the sections that should be tried in the given order to
+  find an option.
+
+* handling a Store and a section where option creation, modification and
+  deletion will occur.
+
+Depending on the files involved, a working tree, branch or repository object
+(or more generally a context) should be provided to access the corresponding
+configuration files. Note that providing a working tree object also
+implicitly provides the associated branch and repository object so only one
+of them is required (or none for configuration files specific to the user
+like ``breezy.conf``).
+
+Getting an option value
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Depending on the option, there are various places where it can be defined
+and several ways to override these settings when needed.
+
+The following lists all possible places where a configuration option can
+be defined, but some options will make sense in only some of them. The
+first to define a value for an option wins (None is therefore used to
+express that an option is not set).
+
+* command-line
+  ``-Ooption=value`` see http://pad.lv/491196.
+
+* ``~/.config/breezy/locations.conf``
+
+  When an option is set in ``locations.conf`` it overrides any other
+  configuration file. This should be used with care as it allows setting a
+  different value than what is recommended by the project
+
+* ``tree`` (Not Implemented Yet)
+
+  The options related to the working tree.
+
+  This includes all options related to commits, ignored files, junk files,
+  etc.
+
+  Note that the sections defined there can use relative paths if some
+  options should apply to a subtree or some specific files only.
+
+  See http://pad.lv/430538 and http://pad.lv/654998.
+
+* ``branch`` located in ``.bzr/branch/branch.conf``
+
+  The options related to the branch.
+
+  Sections can be defined for colocated branches or loom threads.
+
+* ``repository`` (Not Implemented Yet)
+
+  The options related to the repository.
+
+  Using an option to describe whether or not a repository is shared could
+  help address http://pad.lv/342119 but this will probably requires a format
+  bump).
+
+* ``project`` (Not Implemented Yet)
+
+  The options common to all branches and working trees for a project.
+
+* ``organization`` (Not Implemented Yet)
+
+  The options common to all branches and working trees for an organization.
+
+  See http://pad.lv/419854.
+
+* ``system`` (Not Implemented Yet but see http://pad.lv/419854 and
+  https://code.launchpad.net/~thomir/bzr/add-global-config/+merge/69592)
+
+  The options common to all users of a system (may be /etc/bzr/defaults
+  or /usr/local/etc/bzr/defaults or
+  /Library/Preferences/com.canonical.defaults  or c:\windows\breezy.conf
+  (someone fix this one please ;) depending on the OS).
+
+* ``breezy.conf``
+
+  The options the user has selected for the host he is using.
+
+  Sections can be defined for both remote and local branches to define
+  default values (i.e. the most common use of ``locations.conf`` today).
+
+* default (implemented by the OptionRegistry)
+
+  The options defined in the ``bzr`` source code.
+
+  This will be implemented via the Option objects.
+
+Plugins can define additional configuration files as they see fit and
+insert them in this list, see their documentation for details.
+
+Compatibility
+=============
+
+There are ways to keep the same files while ensuring compatibility via various
+tricks but there are cases where using new files to replace the old ones is
+definitely easier:
+
+* no need to ensure that the new files are correctly handled by old bzr
+  versions,
+
+* making it clear for users that there is a switch and let them migrate at
+  their own pace.
+
+The known cases so far are described below.
+
+Obvious at this point:
+
+* Branch provides ``get_config`` for the old design and ``get_config_stack``
+  for the new design so that both designs are supported. Once the store
+  sharing is implemented, we may want to use an attribute for the stack and
+  deprecate both ``get_config`` and ``get_config_stack``.
+
+* Sections names in ``breezy.conf`` are arbitrary (except ``DEFAULT``) so
+  it's easier to leave the file untouched and let plugin authors and users
+  migrate away (or not) from them. For ``bzr`` itself, that means
+  ``DEFAULT`` is the only section used for most of the options and provides
+  user defaults. ``ALIASES`` requires a specific stack but only the ``bzr
+  alias`` command cares about that.
+
+* Option policies should be deprecated:
+
+  * The ``norecurse`` policy is useless, all options are recursive by
+    default. If specific values are needed for specific paths, they can just
+    be defined as such (in the appropriate sections or files).
+
+  * The ``appendpath`` policy should be implemented via interpolation and a
+    ``relpath`` option provided by the configuration framework
+    (http://pad.lv/832013).
+
+* Section order in ``locations.conf`` has issues which make a migration to a
+  different way to organize the sections (hence the file content) far easier
+  with a new file.
+
+* ``locations.conf`` is really for overrides but many users have been using it
+  to provide defaults. There is no way to know if the whole content has been
+  used for defaults or overrides or a mix of both. So there is no way to
+  migrate this automatically.
+
+Unclear at this point:
+
+* [BOOKMARKS] section can be replaced by ``bookmarks.xxx`` options (the
+  bookmarks plugins already uses ``bookmarks_xxx`` in branch.conf since no
+  sections were supported there). The easiest here is probably to just merge
+  the plugin into core and use the appropriate option names consistently. A
+  ``config:`` directory service may even be better as any option can be used
+  as a bookmark. This allows things like::
+
+    [/whatever/path]
+    my_push = lp:<launchpad.login>/xxx/{nick}
+    web_site=ftp://example.com/
+
+    bzr push config:web_site
+
+  Which means we completely replace the plugin and don't need to care about
+  migrating the section.
+
+* [ALIASES] section can be replaced by corresponding bzr.alias.xxx
+  options. This could be automated by creating the corresponding options ?
+
+* I don't know about other sections, feedback welcome. Plugin authors are
+  encouraged to migrate to the new name space scheme by prefixing their
+  options with their plugin name.
+
+Notes
+=====
+
+These are random notes about concepts, ideas or issues not implemented yet.
+
+Developer facing concepts
+-------------------------
+
+Option
+~~~~~~
+
+* list of allowed Config IDs (this allows a list of possible config files in
+  breezy.conf only option and use it while bootstrapping the config
+  creations). 
+
+* blacklist of config IDs (some options *can't* be stored (modified) by the
+  user)
+
+An alternative is to just let the devs decide which stack they use for a
+given option, ``stacked_on_location`` for example is said to relate to the
+branch only and changing it or setting it in a different config file may not
+be appropriate. This may not be a good example as there is also the
+``default_stack_on`` option which can be set only in ``control.conf``
+though...
+
+Stack
+~~~~~
+
+* a lazy cache for the option values (should be reset on modifications as
+  interpolations will make it tricky to update incrementally) (see FIXME in
+  config.py Stack.get()))
+
+* ensures that the Stores involved generate as less IOs as possible (see
+  http://pad.lv/832042)
+
+* ensures that the transaction is the object life time (i.e. modifications
+  will be taken into account *iff* they are committed explicitly).
+
+StackRegistry
+~~~~~~~~~~~~~
+
+* ensures that a config ID is a unique identifier
+* register Stacks
+
+Store
+~~~~~
+
+* ensures that the transaction is the object life time (i.e. modifications
+  will be taken into account *iff* they are committed explicitly).
+
+Examples
+--------
+
+store examples:
+~~~~~~~~~~~~~~~
+
+* ConfigObj (breezy.conf)
+
+* DB (<scheme>://breezy.launchpad.net/breezy.conf)
+
+
+Why and when locking config files matter
+----------------------------------------
+
+This is relevant for http://pad.lv/832042.
+
+``bzr`` behavior, as well as the objects it acts upon, is configured via a
+set of so-called configuration files.
+
+These files allow to define working trees, branches and repositories, their
+relationships and how ``bzr`` should handle them.
+
+The default behavior of ``bzr`` is aimed at making this configuration as
+transparent as possible by keeping track of how these objects are created
+and modified when they are used. In short, they are useless until you want
+to change the default behavior in some specific context.
+
+We mostly **read** config options. Therefore all we care about is to
+guarantee that:
+
+* we get a valid config file at all times when reading,
+
+* we always leave a valid config file when writing (via the rename dance)
+
+From there, conceptually, all operations can clearly define whether or not
+they need to modify a config file and do so only when they succeed. All
+modifications occurring during such an operation are delayed until the very
+end of the operation.
+
+Now, we want to minimize the overlapping times where one bzr operation has
+changed a value and another concurrent operation is unaware of this
+modification.
+
+These overlapping periods are *as of today* rare.
+
+The only known case, http://pad.lv/525571 has been fixed in bzr-2.1.3. The
+bug there was triggered when two processes tried to write the same config
+file at the same time leaving an invalid file in the end.
+
+Such a period can be recognized and detected though: when changing an option
+value, if the preserved original value is different in the config file,
+someone else modified it and the operation can be invalid because it relied
+on the original value.
+
+For the sake of the example, if an option value represent a global unique ID
+via a simple counter (very bad idea), if two operations try to increment it,
+both will use the same value that won't be unique anymore. Checking the
+value present in the file when trying to save the updated value with
+identify such a collision.
+
+An assumption is floating around: it should be enough to report when an
+operation is modifying an already modified option and observe that no-one
+reports such occurrences.
+
+Note that this assumption is made in a context where *no* known scenarios
+exist in the bzr code base not in any plugin (for a best effort value of
+'any', feedback highly welcome, bug reports even ;)
+
+With this in mind, we can change the definition of config options, stores
+and stacks to ensure that:
+
+* a config file is read only once when in read access,
+
+* a config file is read only once and written only once when in write
+  access, adding the check mentioned above will require *one* additional
+  read.
+
+A reader can then safely assume that reading a config file gives it a valid
+(and coherent) definition of the configuration when the operation
+starts. All the operation has to do is to declare which config files may be
+modified by an operation (whether or not we can be liberal on this 'may be'
+is yet to be defined).

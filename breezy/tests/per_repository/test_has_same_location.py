@@ -20,9 +20,6 @@ from breezy import (
     controldir,
     transport,
     )
-from breezy.bzr.remote import (
-    RemoteRepositoryFormat,
-    )
 from breezy.tests import (
     TestNotApplicable,
     )
@@ -87,16 +84,9 @@ class TestHasSameLocation(TestCaseWithRepository):
         CopyConverter creates a second repository in one bzrdir.
         """
         repo = self.make_repository('repo')
-        if repo.control_transport.base == repo.controldir.control_transport.base:
-            raise TestNotApplicable(
-                "%r has repository files directly in the bzrdir"
-                % (repo,))
-            # This test only applies to repository formats where the repo
-            # control_files are separate from other bzrdir files, i.e. metadir
-            # formats.
         repo.control_transport.copy_tree('.', '../repository.backup')
         backup_transport = repo.control_transport.clone('../repository.backup')
-        if isinstance(repo._format, RemoteRepositoryFormat):
+        if not repo._format.supports_overriding_transport:
             raise TestNotApplicable("remote repositories don't support overriding "
                                     "transport")
         backup_repo = repo._format.open(repo.controldir,
@@ -119,8 +109,7 @@ class TestHasSameLocation(TestCaseWithRepository):
                 self.get_vfs_only_url()).delete_tree('other')
             other_repo = self.make_repository('other', format='knit')
         # Make sure the other_repo is not a RemoteRepository.
-        other_bzrdir = controldir.ControlDir.open(self.get_vfs_only_url('other'))
+        other_bzrdir = controldir.ControlDir.open(
+            self.get_vfs_only_url('other'))
         other_repo = other_bzrdir.open_repository()
         self.assertDifferentRepo(repo, other_repo)
-
-

@@ -37,7 +37,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
         f = getattr(fmt, 'supports_views')
         if f is None:
             raise TestSkipped("format %s doesn't declare whether it "
-                "supports views, assuming not" % fmt)
+                              "supports views, assuming not" % fmt)
         if not f():
             raise TestNotApplicable("format %s doesn't support views" % fmt)
         super(TestTreeViews, self).setUp()
@@ -65,7 +65,7 @@ class TestTreeViews(TestCaseWithWorkingTree):
         self.assertEqual(view_dict, views)
         # test setting a current view which does not exist
         self.assertRaises(_mod_views.NoSuchView,
-            wt.views.set_view_info, 'yet-another', view_dict)
+                          wt.views.set_view_info, 'yet-another', view_dict)
         current, views = wt.views.get_view_info()
         self.assertEqual(view_current, current)
         self.assertEqual(view_dict, views)
@@ -131,15 +131,15 @@ class TestTreeViews(TestCaseWithWorkingTree):
         wt.views.delete_view(view_name)
         # now you can't look it up
         self.assertRaises(_mod_views.NoSuchView,
-            wt.views.lookup_view, view_name)
+                          wt.views.lookup_view, view_name)
         # and it's not in the dictionary
         self.assertEqual(wt.views.get_view_info()[1], {})
         # and you can't remove it a second time
         self.assertRaises(_mod_views.NoSuchView,
-            wt.views.delete_view, view_name)
+                          wt.views.delete_view, view_name)
         # or remove a view that never existed
         self.assertRaises(_mod_views.NoSuchView,
-            wt.views.delete_view, view_name + '2')
+                          wt.views.delete_view, view_name + '2')
 
     def test_check_path_in_view(self):
         wt = self.make_branch_and_tree('wt')
@@ -177,12 +177,12 @@ class TestUnsupportedViews(TestCaseWithWorkingTree):
     def test_view_methods_raise(self):
         wt = self.make_branch_and_tree('wt')
         self.assertRaises(_mod_views.ViewsNotSupported,
-                wt.views.set_view_info, 'bar', {'bar': ['bars/']})
+                          wt.views.set_view_info, 'bar', {'bar': ['bars/']})
         self.assertRaises(_mod_views.ViewsNotSupported,
-                wt.views.get_view_info)
+                          wt.views.get_view_info)
         self.assertRaises(_mod_views.ViewsNotSupported,
-            wt.views.lookup_view, 'foo')
+                          wt.views.lookup_view, 'foo')
         self.assertRaises(_mod_views.ViewsNotSupported,
-            wt.views.set_view, 'foo', 'bar')
+                          wt.views.set_view, 'foo', 'bar')
         self.assertRaises(_mod_views.ViewsNotSupported,
-            wt.views.delete_view, 'foo')
+                          wt.views.delete_view, 'foo')

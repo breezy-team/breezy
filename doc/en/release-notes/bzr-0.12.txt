@@ -46,7 +46,7 @@ Improvements
   to allow modules to be loaded on request.
   (John Arbash Meinel, Adeodato Simó)
 
-API Incompatability
+API Incompatibility
 *******************
 
 * LogFormatter subclasses show now expect the 'revno' parameter to

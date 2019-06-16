@@ -1,0 +1,14 @@
+Breezy branding
+===============
+
+``Breezy`` (with that capitalisation) is the name of the project and our current implementation.
+
+``breezy`` is the name of the Python package.
+
+``brz`` is the command line tool.
+
+``Bazaar`` is the name of the old project, as well as the name of the formats.
+
+``bzr`` is the name of the old binary.
+
+Slogan: "Like bzr, but with more b-s in"

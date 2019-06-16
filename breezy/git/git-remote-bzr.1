@@ -1,0 +1,33 @@
+.TH "GIT\-REMOTE\-BZR" "1" "12/17/2011" "breezy-git 0\&.6\&.6" "Git Manual"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.SH "NAME"
+git-remote-bzr \- Git remote support for Bazaar repositories
+.SH "SYNOPSIS"
+.sp
+.nf
+git clone bzr::<source\-repo> [<destination>]
+git fetch bzr::<source\-repo> [<destination>]
+.fi
+.sp
+.SH "DESCRIPTION"
+.sp
+This command provides support for using \fIbzr\fR repositories as Git remotes, through the breezy-git plugin. At the moment it supports cloning from, fetching from and pushing into Bazaar repositories. Fetch support is still experimental, and may be slow.
+.SH "BUGS"
+.sp
+Please report bugs at \fUhttps://launchpad.net/brz-git/+filebug\fR
+.SH "LICENSE"
+breezy-git and git-remote-bzr are licensed under the GNU GPL, version 2 or later.
+.SH "SEE ALSO"
+.sp
+\fBgit-remote-helpers\fR(1), \fBbreezy\fR(1)
+.SH "BAZAAR"
+.sp
+Part of the \fBbreezy\fR(1) suite
+.SH "AUTHOR"
+.sp
+breezy-git, git-remote-bzr and this manual page were written by Jelmer Vernooĳ.

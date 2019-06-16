@@ -24,93 +24,77 @@ class TestListFiles(TestCaseWithTree):
     def test_list_files_with_root(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('', 'V', 'directory', 'root-id'),
-                    ('a', 'V', 'file', 'a-id'),
-                    ('b', 'V', 'directory', 'b-id'),
-                    ('b/c', 'V', 'file', 'c-id'),
-                   ]
-        tree.lock_read()
-        try:
-            actual = [(path, status, kind, file_id)
-                      for path, status, kind, file_id, ie in
-                          tree.list_files(include_root=True)]
-        finally:
-            tree.unlock()
+        expected = [('', 'V', 'directory', tree.path2id('')),
+                    ('a', 'V', 'file', tree.path2id('a')),
+                    ('b', 'V', 'directory', tree.path2id('b')),
+                    ('b/c', 'V', 'file', tree.path2id('b/c')),
+                    ]
+        with tree.lock_read():
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
+                      tree.list_files(include_root=True)]
         self.assertEqual(expected, actual)
 
     def test_list_files_no_root(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('a', 'V', 'file', 'a-id'),
-                    ('b', 'V', 'directory', 'b-id'),
-                    ('b/c', 'V', 'file', 'c-id'),
-                   ]
-        tree.lock_read()
-        try:
-            actual = [(path, status, kind, file_id)
-                      for path, status, kind, file_id, ie in
-                          tree.list_files()]
-        finally:
-            tree.unlock()
+        expected = [('a', 'V', 'file', tree.path2id('a')),
+                    ('b', 'V', 'directory', tree.path2id('b')),
+                    ('b/c', 'V', 'file', tree.path2id('b/c')),
+                    ]
+        with tree.lock_read():
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
+                      tree.list_files()]
         self.assertEqual(expected, actual)
 
     def test_list_files_with_root_no_recurse(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('', 'V', 'directory', 'root-id'),
-                    ('a', 'V', 'file', 'a-id'),
-                    ('b', 'V', 'directory', 'b-id'),
-                   ]
-        tree.lock_read()
-        try:
-            actual = [(path, status, kind, file_id)
-                for path, status, kind, file_id, ie in
-                    tree.list_files(include_root=True, recursive=False)]
-        finally:
-            tree.unlock()
+        expected = [('', 'V', 'directory', tree.path2id('')),
+                    ('a', 'V', 'file', tree.path2id('a')),
+                    ]
+        expected.append(
+            ('b', 'V', 'directory', tree.path2id('b')))
+        with tree.lock_read():
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
+                      tree.list_files(include_root=True, recursive=False)]
         self.assertEqual(expected, actual)
 
     def test_list_files_no_root_no_recurse(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('a', 'V', 'file', 'a-id'),
-                    ('b', 'V', 'directory', 'b-id'),
-                   ]
-        tree.lock_read()
-        try:
-            actual = [(path, status, kind, file_id)
-                for path, status, kind, file_id, ie in
-                    tree.list_files(recursive=False)]
-        finally:
-            tree.unlock()
+        expected = [('a', 'V', 'file', tree.path2id('a'))]
+        expected.append(
+            ('b', 'V', 'directory', tree.path2id('b')))
+        with tree.lock_read():
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
+                      tree.list_files(recursive=False)]
         self.assertEqual(expected, actual)
 
     def test_list_files_from_dir(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('c', 'V', 'file', 'c-id'),
-                   ]
-        tree.lock_read()
-        try:
-            actual = [(path, status, kind, file_id)
-                      for path, status, kind, file_id, ie in
-                          tree.list_files(from_dir='b')]
-        finally:
-            tree.unlock()
+        expected = [('c', 'V', 'file', tree.path2id('b/c')),
+                    ]
+        with tree.lock_read():
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
+                      tree.list_files(from_dir=u'b')]
         self.assertEqual(expected, actual)
 
     def test_list_files_from_dir_no_recurse(self):
         # The test trees don't have much nesting so test with an explicit root
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content(work_tree)
-        expected = [('a', 'V', 'file', 'a-id'),
-                    ('b', 'V', 'directory', 'b-id'),
-                   ]
-        tree.lock_read()
-        try:
-            actual = [(path, status, kind, file_id)
-                      for path, status, kind, file_id, ie in
-                          tree.list_files(from_dir='', recursive=False)]
-        finally:
-            tree.unlock()
+        expected = [('a', 'V', 'file', tree.path2id('a'))]
+        expected.append(
+            ('b', 'V', 'directory', tree.path2id('b')))
+
+        with tree.lock_read():
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
+                      tree.list_files(from_dir='', recursive=False)]
         self.assertEqual(expected, actual)

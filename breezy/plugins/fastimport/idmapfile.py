@@ -31,7 +31,7 @@ def save_id_map(filename, revision_ids):
     """
     with open(filename, 'wb') as f:
         for commit_id in revision_ids:
-            f.write("%s %s\n" % (commit_id, revision_ids[commit_id]))
+            f.write(b"%s %s\n" % (commit_id, revision_ids[commit_id]))
 
 
 def load_id_map(filename):
@@ -51,12 +51,9 @@ def load_id_map(filename):
     result = {}
     count = 0
     if os.path.exists(filename):
-        f = open(filename)
-        try:
+        with open(filename) as f:
             for line in f:
                 parts = line[:-1].split(' ', 1)
                 result[parts[0]] = parts[1]
                 count += 1
-        finally:
-            f.close()
     return result, count

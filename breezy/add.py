@@ -22,10 +22,12 @@ import sys
 import os
 
 from . import (
+    errors,
     osutils,
     ui,
     )
 from .i18n import gettext
+
 
 class AddAction(object):
     """A class which defines what action to take when adding a file."""
@@ -57,12 +59,12 @@ class AddAction(object):
             self._to_file.write('adding %s\n' % _quote(path))
         return None
 
-    def skip_file(self, tree, path, kind, stat_value = None):
+    def skip_file(self, tree, path, kind, stat_value=None):
         """Test whether the given file should be skipped or not.
-        
+
         The default action never skips. Note this is only called during
         recursive adds
-        
+
         :param tree: The tree we are working in
         :param path: The path being added
         :param kind: The kind of object being added.
@@ -77,7 +79,7 @@ class AddWithSkipLargeAction(AddAction):
 
     _maxSize = None
 
-    def skip_file(self, tree, path, kind, stat_value = None):
+    def skip_file(self, tree, path, kind, stat_value=None):
         if kind != 'file':
             return False
         opt_name = 'add.maximum_file_size'
@@ -85,13 +87,13 @@ class AddWithSkipLargeAction(AddAction):
             config = tree.get_config_stack()
             self._maxSize = config.get(opt_name)
         if stat_value is None:
-            file_size = os.path.getsize(path);
+            file_size = os.path.getsize(path)
         else:
-            file_size = stat_value.st_size;
+            file_size = stat_value.st_size
         if self._maxSize > 0 and file_size > self._maxSize:
             ui.ui_factory.show_warning(gettext(
                 "skipping {0} (larger than {1} of {2} bytes)").format(
-                path, opt_name,  self._maxSize))
+                path, opt_name, self._maxSize))
             return True
         return False
 
@@ -117,7 +119,7 @@ class AddFromBaseAction(AddAction):
             # we aren't doing anything special, so let the default
             # reporter happen
             file_id = super(AddFromBaseAction, self).__call__(
-                        inv, parent_ie, path, kind)
+                inv, parent_ie, path, kind)
         return file_id
 
     def _get_base_file_id(self, path, parent_ie):
@@ -127,10 +129,12 @@ class AddFromBaseAction(AddAction):
         we look for a file with the same name in that directory.
         Else, we look for an entry in the base tree with the same path.
         """
-        if self.base_tree.has_id(parent_ie.file_id):
-            base_path = osutils.pathjoin(
-                self.base_tree.id2path(parent_ie.file_id),
-                osutils.basename(path))
+        try:
+            parent_path = self.base_tree.id2path(parent_ie.file_id)
+        except errors.NoSuchId:
+            pass
+        else:
+            base_path = osutils.pathjoin(parent_path, osutils.basename(path))
             base_id = self.base_tree.path2id(base_path)
             if base_id is not None:
                 return (base_id, base_path)

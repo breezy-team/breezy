@@ -29,8 +29,8 @@ class TestCheck(TestCaseWithWorkingTree):
         if not isinstance(tree, InventoryWorkingTree):
             raise TestNotApplicable(
                 "_get_check_refs only relevant for inventory working trees")
-        self.assertEqual({('trees', 'null:')},
-            set(tree._get_check_refs()))
+        self.assertEqual({('trees', b'null:')},
+                         set(tree._get_check_refs()))
 
     def test__get_check_refs_basis(self):
         # with a basis, all current bzr trees cache it and so need the
@@ -41,7 +41,7 @@ class TestCheck(TestCaseWithWorkingTree):
                 "_get_check_refs only relevant for inventory working trees")
         revid = tree.commit('first post')
         self.assertEqual({('trees', revid)},
-            set(tree._get_check_refs()))
+                         set(tree._get_check_refs()))
 
     def test__check_with_refs(self):
         # _check can be called with a dict of the things required.

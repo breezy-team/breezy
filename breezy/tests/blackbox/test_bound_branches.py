@@ -51,7 +51,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
     def test_simple_binding(self):
         tree = self.make_branch_and_tree('base')
         self.build_tree(['base/a', 'base/b'])
-        tree.add('a', 'b')
+        tree.add('a', b'b')
         tree.commit(message='init')
 
         tree.controldir.sprout('child')
@@ -94,7 +94,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
     def test_bound_commit(self):
         child_tree = self.create_branches()[1]
 
-        self.build_tree_contents([('child/a', 'new contents')])
+        self.build_tree_contents([('child/a', b'new contents')])
         child_tree.commit(message='child')
 
         self.check_revno(2, 'child')
@@ -107,14 +107,14 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         base_tree, child_tree = self.create_branches()
 
         self.build_tree_contents([
-            ('base/a',  'new base contents\n'   ),
-            ('child/b', 'new b child contents\n')])
+            ('base/a', b'new base contents\n'),
+            ('child/b', b'new b child contents\n')])
         base_tree.commit(message='base')
         self.check_revno(2, 'base')
 
         self.check_revno(1, 'child')
         self.assertRaises(errors.BoundBranchOutOfDate, child_tree.commit,
-                                                            message='child')
+                          message='child')
         self.check_revno(1, 'child')
 
         child_tree.update()
@@ -134,14 +134,14 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         # Refresh the child tree object as 'unbind' modified it
         child2_tree = controldir.ControlDir.open('child2').open_workingtree()
         self.assertRaises(errors.CommitToDoubleBoundBranch,
-                child2_tree.commit, message='child2', allow_pointless=True)
+                          child2_tree.commit, message='child2', allow_pointless=True)
 
     def test_unbinding(self):
         base_tree, child_tree = self.create_branches()
 
         self.build_tree_contents([
-            ('base/a',  'new base contents\n'   ),
-            ('child/b', 'new b child contents\n')])
+            ('base/a', b'new base contents\n'),
+            ('child/b', b'new b child contents\n')])
 
         base_tree.commit(message='base')
         self.check_revno(2, 'base')
@@ -171,8 +171,9 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
     def test_pull_updates_both(self):
         base_tree = self.create_branches()[0]
-        newchild_tree = base_tree.controldir.sprout('newchild').open_workingtree()
-        self.build_tree_contents([('newchild/b', 'newchild b contents\n')])
+        newchild_tree = base_tree.controldir.sprout(
+            'newchild').open_workingtree()
+        self.build_tree_contents([('newchild/b', b'newchild b contents\n')])
         newchild_tree.commit(message='newchild')
         self.check_revno(2, 'newchild')
 
@@ -184,8 +185,9 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
     def test_pull_local_updates_local(self):
         base_tree = self.create_branches()[0]
-        newchild_tree = base_tree.controldir.sprout('newchild').open_workingtree()
-        self.build_tree_contents([('newchild/b', 'newchild b contents\n')])
+        newchild_tree = base_tree.controldir.sprout(
+            'newchild').open_workingtree()
+        self.build_tree_contents([('newchild/b', b'newchild b contents\n')])
         newchild_tree.commit(message='newchild')
         self.check_revno(2, 'newchild')
 
@@ -221,7 +223,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         child_tree.commit(message='merged')
         self.check_revno(3, 'child')
         self.assertEqual(child_tree.branch.last_revision(),
-                          base_tree.branch.last_revision())
+                         base_tree.branch.last_revision())
 
     def test_bind_parent_ahead(self):
         base_tree = self.create_branches()[0]
@@ -293,7 +295,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         other_tree = child_tree.controldir.sprout('other').open_workingtree()
         other_branch = other_tree.branch
 
-        self.build_tree_contents([('other/c', 'file c\n')])
+        self.build_tree_contents([('other/c', b'file c\n')])
         other_tree.add('c')
         other_tree.commit(message='adding c')
         new_rev_id = other_branch.last_revision()
@@ -322,19 +324,19 @@ class TestBoundBranches(tests.TestCaseWithTransport):
 
         other_tree = child_tree.controldir.sprout('other').open_workingtree()
 
-        self.build_tree_contents([('other/a', 'new contents\n')])
+        self.build_tree_contents([('other/a', b'new contents\n')])
         other_tree.commit(message='changed a')
         self.check_revno(2, 'other')
         self.build_tree_contents([
-            ('other/a', 'new contents\nand then some\n')])
+            ('other/a', b'new contents\nand then some\n')])
         other_tree.commit(message='another a')
         self.check_revno(3, 'other')
         self.build_tree_contents([
-            ('other/a', 'new contents\nand then some\nand some more\n')])
+            ('other/a', b'new contents\nand then some\nand some more\n')])
         other_tree.commit('yet another a')
         self.check_revno(4, 'other')
 
-        self.build_tree_contents([('child/a', 'also changed a\n')])
+        self.build_tree_contents([('child/a', b'also changed a\n')])
         child_tree.commit(message='child modified a')
 
         self.check_revno(2, 'child')
@@ -350,7 +352,7 @@ class TestBoundBranches(tests.TestCaseWithTransport):
         """Test --directory option"""
         tree = self.make_branch_and_tree('base')
         self.build_tree(['base/a', 'base/b'])
-        tree.add('a', 'b')
+        tree.add('a', b'b')
         tree.commit(message='init')
         branch = tree.branch
         tree.controldir.sprout('child')

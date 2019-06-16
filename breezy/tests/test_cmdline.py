@@ -21,6 +21,7 @@ from .. import (
     )
 from .features import backslashdir_feature
 
+
 class TestSplitter(tests.TestCase):
 
     def assertAsTokens(self, expected, line, single_quotes_allowed=False):
@@ -42,21 +43,21 @@ class TestSplitter(tests.TestCase):
 
     def test_posix_quotations(self):
         self.assertAsTokens([(True, u'foo bar')], u"'foo bar'",
-            single_quotes_allowed=True)
+                            single_quotes_allowed=True)
         self.assertAsTokens([(True, u'foo bar')], u"'fo''o b''ar'",
-            single_quotes_allowed=True)
+                            single_quotes_allowed=True)
         self.assertAsTokens([(True, u'foo bar')], u'"fo""o b""ar"',
-            single_quotes_allowed=True)
+                            single_quotes_allowed=True)
         self.assertAsTokens([(True, u'foo bar')], u'"fo"\'o b\'"ar"',
-            single_quotes_allowed=True)
+                            single_quotes_allowed=True)
 
     def test_nested_quotations(self):
         self.assertAsTokens([(True, u'foo"" bar')], u"\"foo\\\"\\\" bar\"")
         self.assertAsTokens([(True, u'foo\'\' bar')], u"\"foo'' bar\"")
         self.assertAsTokens([(True, u'foo\'\' bar')], u"\"foo'' bar\"",
-            single_quotes_allowed=True)
+                            single_quotes_allowed=True)
         self.assertAsTokens([(True, u'foo"" bar')], u"'foo\"\" bar'",
-            single_quotes_allowed=True)
+                            single_quotes_allowed=True)
 
     def test_empty_result(self):
         self.assertAsTokens([], u'')
@@ -73,12 +74,12 @@ class TestSplitter(tests.TestCase):
 
     def test_unicode_chars(self):
         self.assertAsTokens([(False, u'f\xb5\xee'), (False, u'\u1234\u3456')],
-                             u'f\xb5\xee \u1234\u3456')
+                            u'f\xb5\xee \u1234\u3456')
 
     def test_newline_in_quoted_section(self):
         self.assertAsTokens([(True, u'foo\nbar\nbaz\n')], u'"foo\nbar\nbaz\n"')
         self.assertAsTokens([(True, u'foo\nbar\nbaz\n')], u"'foo\nbar\nbaz\n'",
-            single_quotes_allowed=True)
+                            single_quotes_allowed=True)
 
     def test_escape_chars(self):
         self.assertAsTokens([(False, u'foo\\bar')], u'foo\\bar')
@@ -94,9 +95,9 @@ class TestSplitter(tests.TestCase):
 
     def test_multiple_quoted_args(self):
         self.assertAsTokens([(True, u'x x'), (True, u'y y')],
-            u'"x x" "y y"')
+                            u'"x x" "y y"')
         self.assertAsTokens([(True, u'x x'), (True, u'y y')],
-            u'"x x" \'y y\'', single_quotes_allowed=True)
+                            u'"x x" \'y y\'', single_quotes_allowed=True)
 
     def test_n_backslashes_handling(self):
         # https://bugs.launchpad.net/bzr/+bug/528944

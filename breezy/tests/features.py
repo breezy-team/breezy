@@ -19,6 +19,7 @@
 
 from __future__ import absolute_import
 
+import importlib
 import os
 import subprocess
 import stat
@@ -68,6 +69,7 @@ class _SymlinkFeature(Feature):
     def feature_name(self):
         return 'symlinks'
 
+
 SymlinkFeature = _SymlinkFeature()
 
 
@@ -79,6 +81,7 @@ class _HardlinkFeature(Feature):
     def feature_name(self):
         return 'hardlinks'
 
+
 HardlinkFeature = _HardlinkFeature()
 
 
@@ -89,6 +92,7 @@ class _OsFifoFeature(Feature):
 
     def feature_name(self):
         return 'filesystem fifos'
+
 
 OsFifoFeature = _OsFifoFeature()
 
@@ -113,6 +117,7 @@ class _UnicodeFilenameFeature(Feature):
             # The filesystem allows the Unicode filename and the file exists,
             # for some reason.
             return True
+
 
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
@@ -179,7 +184,7 @@ class ModuleAvailableFeature(Feature):
                 for warning_category in self.ignore_warnings:
                     warnings.simplefilter('ignore', warning_category)
                 try:
-                    self._module = __import__(self.module_name)
+                    self._module = importlib.import_module(self.module_name)
                 except ImportError:
                     return False
                 return True
@@ -233,7 +238,7 @@ class _HTTPSServerFeature(Feature):
 
     def _probe(self):
         try:
-            import ssl
+            import ssl  # noqa: F401
             return True
         except ImportError:
             return False
@@ -253,6 +258,7 @@ class _ByteStringNamedFilesystem(Feature):
             return True
         return False
 
+
 ByteStringNamedFilesystem = _ByteStringNamedFilesystem()
 
 
@@ -263,6 +269,7 @@ class _UTF8Filesystem(Feature):
         if osutils._fs_enc.upper() in ('UTF-8', 'UTF8'):
             return True
         return False
+
 
 UTF8Filesystem = _UTF8Filesystem()
 
@@ -279,7 +286,7 @@ class _BreakinFeature(Feature):
             # We trigger SIGBREAK via a Console api so we need ctypes to
             # access the function
             try:
-                import ctypes
+                import ctypes  # noqa: F401
             except OSError:
                 return False
         return True
@@ -302,15 +309,16 @@ class _CaseInsCasePresFilenameFeature(Feature):
             name = osutils.normpath(name)
             base, rel = osutils.split(name)
             found_rel = osutils.canonical_relpath(base, name)
-            return (found_rel == rel
-                    and os.path.isfile(name.upper())
-                    and os.path.isfile(name.lower()))
+            return (found_rel == rel and
+                    os.path.isfile(name.upper()) and
+                    os.path.isfile(name.lower()))
         finally:
             os.close(fileno)
             os.remove(name)
 
     def feature_name(self):
         return "case-insensitive case-preserving filesystem"
+
 
 CaseInsCasePresFilenameFeature = _CaseInsCasePresFilenameFeature()
 
@@ -334,7 +342,7 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         else:
             root = tests.TestCaseWithMemoryTransport.TEST_ROOT
         tdir = osutils.mkdtemp(prefix='case-sensitive-probe-', suffix='',
-            dir=root)
+                               dir=root)
         name_a = osutils.pathjoin(tdir, 'a')
         name_A = osutils.pathjoin(tdir, 'A')
         os.mkdir(name_a)
@@ -344,6 +352,7 @@ class _CaseInsensitiveFilesystemFeature(Feature):
 
     def feature_name(self):
         return 'case-insensitive filesystem'
+
 
 CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
 
@@ -360,6 +369,7 @@ class _CaseSensitiveFilesystemFeature(Feature):
 
     def feature_name(self):
         return 'case-sensitive filesystem'
+
 
 # new coding style is for feature instances to be lowercase
 case_sensitive_filesystem_feature = _CaseSensitiveFilesystemFeature()
@@ -392,10 +402,10 @@ paramiko = ModuleAvailableFeature('paramiko')
 pywintypes = ModuleAvailableFeature('pywintypes')
 subunit = ModuleAvailableFeature('subunit')
 testtools = ModuleAvailableFeature('testtools')
+flake8 = ModuleAvailableFeature('flake8.api.legacy')
 
-compiled_patiencediff_feature = ModuleAvailableFeature(
-    'breezy._patiencediff_c')
 lsprof_feature = ModuleAvailableFeature('breezy.lsprof')
+pkg_resources_feature = ModuleAvailableFeature('pkg_resources')
 
 
 class _BackslashDirSeparatorFeature(Feature):
@@ -411,6 +421,7 @@ class _BackslashDirSeparatorFeature(Feature):
     def feature_name(self):
         return "Filesystem treats '\\' as a directory separator."
 
+
 backslashdir_feature = _BackslashDirSeparatorFeature()
 
 
@@ -419,6 +430,7 @@ class _ChownFeature(Feature):
 
     def _probe(self):
         return os.name == 'posix' and hasattr(os, 'chown')
+
 
 chown_feature = _ChownFeature()
 
@@ -481,11 +493,12 @@ class _StraceFeature(Feature):
     def _probe(self):
         try:
             proc = subprocess.Popen(['strace'],
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE)
+                                    stderr=subprocess.PIPE,
+                                    stdout=subprocess.PIPE)
             proc.communicate()
             return True
         except OSError as e:
+            import errno
             if e.errno == errno.ENOENT:
                 # strace is not installed
                 return False
@@ -506,7 +519,7 @@ class _AttribFeature(Feature):
             return False
         try:
             proc = subprocess.Popen(['attrib', '.'], stdout=subprocess.PIPE)
-        except OSError as e:
+        except OSError:
             return False
         return (0 == proc.wait())
 
@@ -532,13 +545,38 @@ class Win32Feature(Feature):
 win32_feature = Win32Feature()
 
 
-class _ColorFeature(Feature):
+class _BackslashFilenameFeature(Feature):
+    """Does the filesystem support backslashes in filenames?"""
 
     def _probe(self):
-        from breezy._termcolor import allow_color
-        return allow_color()
+
+        try:
+            fileno, name = tempfile.mkstemp(prefix='bzr\\prefix')
+        except (IOError, OSError):
+            return False
+        else:
+            try:
+                os.stat(name)
+            except (IOError, OSError):
+                # mkstemp succeeded but the file wasn't actually created
+                return False
+            os.close(fileno)
+            os.remove(name)
+            return True
+
+
+BackslashFilenameFeature = _BackslashFilenameFeature()
+
+
+class PathFeature(Feature):
+    """Feature testing whether a particular path exists."""
+
+    def __init__(self, path):
+        super(PathFeature, self).__init__()
+        self.path = path
+
+    def _probe(self):
+        return os.path.exists(self.path)
 
     def feature_name(self):
-        return "Terminal supports color."
-
-ColorFeature = _ColorFeature()
+        return "%s exists" % self.path

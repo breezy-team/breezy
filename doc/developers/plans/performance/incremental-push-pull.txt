@@ -1,0 +1,279 @@
+Incremental push/pull
+=====================
+
+This use case covers pulling in or pushing out some number of revisions which
+is typically a small fraction of the number already present in the target
+repository. Pushing and pulling are defined as branch level operations for ease
+of interaction with VCS systems that have no repository abstraction (such as
+bzr-svn or GNU Arch) but within bzrlib's core they are currently the
+responsibility of the Repository object.
+
+Functional Requirements
+-----------------------
+
+A push or pull operation must:
+ * Copy all the data to reconstruct the selected revisions in the target
+   branch. This is the goal of push and pull after all.
+ * Reject corrupt data. As brz has no innate mechanism for discarding corrupted
+   data, corrupted data should not be incorporated accidentally.
+
+Factors which should add work for push/pull
+-------------------------------------------
+
+ * Baseline overhead: The time to connect to both branches.
+ * Actual new data in the revisions being pulled (drives the amount of data to
+   move around, includes the commit messages etc)
+ * Number of revisions in the two repositories (scaling affects the
+   determination of what revisions to move around).
+
+Push/pull overview
+------------------
+
+1. New data is identified in the source repository.
+2. That data is read from the source repository.
+3. The same data is verified and written to the target repository in such a
+   manner that it's not visible to readers until it's ready for use.
+
+New data identification
+~~~~~~~~~~~~~~~~~~~~~~~
+
+We have a single top level data object: revisions. Everything else is
+subordinate to revisions, so determining the revisions to propagate should be
+all thats needed. This depends on revisions with partial data - such as those
+with no signature - being flagged in some efficient manner.
+
+We could do this in two manners: determine revisions to sync and signatures to sync in two passes, or change the 'value' of a revision implicitly when the signature is different. E.g. by using merkle hash trees with the signature data a separate component the signatures will naturally be identified to sync.
+
+We want to only exchange data proportional to the number of new revisions and
+signatures in the system though. One way to achieve this for revisions is to
+walk the graph out from the desired tips until the surface area intersection is
+found. For signatures a set difference seems to be needed as there is no DAG of signatures: the presence of one has no implications on the presence of another, so a full pass over the set of signatures would be required to confirm no new signatures are needed (let alone replaced signatures).
+
+IFF we can determine 'new revisions' and 'new signatures' without full graph access then we can scale acceptable for push and pull.
+
+Ghosts are revisions which are not present in a particular repository. Filling ghosts refers to removing ghosts in the target repository when the ghost is present in the source repository. Filling ghosts can be either an explicit or implicit action. The common case is no ghosts.
+
+Set synchronisation approaches
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A set synchronisation approach is one which synchronises two sets without
+regard for innate structure. This can be very efficient but requires adding a
+new node to be processed with every commit. Caching of the results of the
+various set based syncs I've seen is possible but because the data structures
+look different depending on the tip revision being synced up to the cache needs
+to be very complex. I recommend not using such an approach for the common case
+pull because of the failure to scale. We can use such an approach for
+synchronisation of new signatures and ghosts, which should be an explicit
+option in both cases.
+
+DAG synchronisation approaches
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A DAG based approach to synchronistion is one that uses the DAG structure to
+determine the difference in present nodes. It can as a result operate from the
+tip of the DAG backwards. A dag based approach should allow incremental access
+to data and not require a full-graph scan for incremental operations.
+
+File level scaling
+^^^^^^^^^^^^^^^^^^
+
+We should read roughly as much of the revision level graph as is needed from
+each repository to determine the node difference.  If requested we should
+perform a detailed scan to pick up ghost revisions and revisions which have had
+signatures added. This should not be the default as it requires full history
+access in both cases.
+
+Expected file IO and access pattern:
+
+ * Common case: repo with many branches of one project, to the same.
+
+   1. Source and Target branch tips read.
+   2. Find the tip of each branch in their repo (will require reading some of
+      the revision graph but is typically near the end of the graph).
+   3. Read and parse increasing amounts of the revision graph until one is
+      found to be a subset of the other, or a complete list of revisions to be
+      transmitted is created.
+
+ * Uncommon cases:
+
+   1. Repositories with many projects or branches which are very old may
+      require reading a lot of unrelated graph data.
+
+   1. Initial push/pull scenarios should not require reading an entire graph.
+
+
+API scaling
+^^^^^^^^^^^
+
+ 1. Get branch tips.
+ 2. Determine one sided graph difference. To avoid obtaining a full graph over
+    the wire this needs to be done without reference to the full graph, and
+    with some logarthmic scaling algorithm. There are several already available
+    for this.
+
+With ghost and new-signature detection:
+
+ * File IO access pattern will read the entire graph on the 'target' side - if
+   no ghosts are present then stop, otherwise seek the new revisions on the
+   source side with the regular algorithm and also explicitly search for the
+   ghost points from the target; plus a set difference search is needed on
+   signatures.
+
+ * Semantic level can probably be tuned, but as it's also complex I suggest
+   deferring analysis for optimal behaviour of this use case.
+
+
+Data reading
+~~~~~~~~~~~~
+
+When transferring information about a revision the graph of data for the
+revision is walked: revision -> inventory, revision -> matching signature,
+inventory -> file ids:revision pairs.
+
+File level scaling
+^^^^^^^^^^^^^^^^^^
+
+As we're reading already committed data, as long as nothing is mutating data on
+disk reading should be race free. We will:
+
+ - read each revision object
+ - read the matching inventory delta
+ - attempt to read a signature object
+ - parse the inventory delta
+ - read the fileid:revisionid compressed chunk for each line in the inventory
+   delta
+
+Theres no point validating that the data read is valid, as transmission through to the client writing the data might invalidate it; we need to validate before we write.
+
+API scaling
+^^^^^^^^^^^
+
+Given that we have established the revisions needed, a single API call should
+suffice to obtain all data; the API should present the data in such an order
+that it can be validated as it arrives and thus not require large scale
+buffering on disk. Specifically each item of data should be validatable (e.g.
+for some file data we want the fileid:revisionid:validationhash + content).
+
+
+Data Verification and writing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+New data written to a repository should be completed intact when it is made
+visible. This suggests that either all the data for a revision must be made
+atomically visible (e.g. by renaming a single file) or the leaf nodes of the
+reference graph must become visible first.
+
+Data is referred to via the following graph:
+revision -> revision
+revision -> signature
+revision -> inventory
+inventory -> fileid:revisionid
+fileid:revisionid -> fileid:revisionid
+
+Data is verifiable via a different ordering:
+signature -> revision -> inventory -> fileid:revisionid texts.
+
+We dont gpg verify each revision today; this analysis only speaks to hash
+verification of contents.
+
+To validate a revision we need to validate the data it refers to. But to
+validate the contents of a revision we need the new texts in the inventory for
+the revision - to check a fileid:revisionid we need to know the expected sha1
+of the full text and thus also need to read the delta chain to construct the
+text as we accept it to determine if it's valid. Providing separate validators
+for the chosen representation would address this.
+e.g: For an inventory entry FILEID:REVISIONID we store the validator of the
+full text :SHA1:. If we also stored the validator of the chosen disk
+representation (:DELTASHA1:) we could validate the transmitted representation
+without expanding the delta in the common case. If that failed we could expand
+the delta chain and try against the full text validator, and finally fail. As
+different delta generators might generate different deltas, :DELTASHA1: should
+not become part of the revision validator, only the inventory disk encoding. In
+a related manner a transmission format that allowed cheap validation of content
+without applying locally stored deltas would be advantageous because no local
+reads would be incurred to validate new content. For instance, always sending a
+full text for any file, possibly with a delta-chain when transmitting multiple
+revisionids of the file, would allow this. (git pack-files have this property).
+
+Overview summary
+^^^^^^^^^^^^^^^^
+
+A single-file local format would allow safe atomic addition of data while
+allowing optimisal transmission order of data. Failing this the validation of
+data should be tuned to not require reading local texts during data addition
+even in the presence of delta chains. We should have transmission-validators
+separate from content validators that allow validation of the delta-transmitted
+form of objects.
+
+File level scaling
+^^^^^^^^^^^^^^^^^^
+
+* Every new file text requires transmission and local serialisation.
+* Every commit requires transmission and storage of a revision, signature and inventory.
+
+Thus 4000 commits to a 50000 path tree of 10 files on averages requires (with
+knits) between 26 writes (2*(3+10)) and 80006 (2*(4000*10 + 3)) writes. In all
+cases there are 4000 * 13 distinct objects to record.
+
+Grouping data by fileid, content and metadata, gives the figures above.
+Data grouping:
+
+* File per full identifier (fileid:revisionid:meta|content): 104000
+* Delta-chain per object: object id count * constant overhead per object id
+  (26 -> 80006)
+* Collation/pack file: 1
+
+Performance for these depends heavily on implementation:
+ - Using full ids we could name by validator or by id, giving best performance
+   that depends on either receiving data in validator order or in id order.
+ - using delta-chain per object we get least seek overhead and syscall overhead
+   if we recieve in topological order within the object id, and object ids in
+   lexical order.
+ - Using a collation/pack file we can stream it into place and validate as we go,
+   giving near ideal performance.
+
+API scaling
+^^^^^^^^^^^
+
+The api for writing new data recieved over the network will need to be geared
+to the transmission and local storage method. What we need is for the
+transmission method to reasonably closely match the desired write ordering
+locally. This suggests that once we decide on the best local storage means we
+should design the api.
+
+
+take N commits from A to B, if B is local then merge changes into the tree.
+copy ebough data to recreate snapshots
+avoid ending up wth corrupt/bad data
+
+Notes from London
+-----------------
+
+ #. setup
+
+   look at graph of revisions for ~N comits to deretmine eligibility for
+   if preserve mainline is on, check LH only
+
+    identify objects to send that are not on the client repo
+      - revision - may be proportional to the graph
+      - inventory - proportional to work
+      - texts     - proportional to work
+      - signatures - ???
+
+ #. data transmission
+
+  * send data proportional to the new information
+  * validate the data:
+
+   #. validate the sha1 of the full text of each transmitted text.
+   #. validate the sha1:name mapping in each newly referenced inventory item.
+   #. validate the sha1 of the XML of each inventory against the revision.
+      **this is proportional to tree size and must be fixed**
+
+ #. write the data to the local repo.
+    The API should output the file texts needed by the merge as by product of the transmission
+
+ #. tree application
+
+Combine the output from the transmission step with additional 'new work data' for anything already in the local repository that is new in this tree.
+should write new files and stat existing files proportional to the count of the new work and the size of the full texts.

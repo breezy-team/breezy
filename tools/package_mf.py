@@ -32,8 +32,8 @@ class CustomModuleFinder(modulefinder.ModuleFinder):
     def __init__(self, path=None, debug=0, excludes=[], replace_paths=[]):
         if path is None:
             path = [os.path.dirname(os.__file__)]    # only python std lib
-        modulefinder.ModuleFinder.__init__(self, path, debug, excludes,
-            replace_paths)
+        modulefinder.ModuleFinder.__init__(
+            self, path, debug, excludes, replace_paths)
 
     def run_package(self, package_path):
         """Recursively process each module in package with run_script method.

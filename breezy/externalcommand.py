@@ -35,7 +35,7 @@ class ExternalCommand(Command):
         bzrpath = os.environ.get('BZRPATH', '')
 
         for dir in bzrpath.split(os.pathsep):
-            ## Empty directories are not real paths
+            # Empty directories are not real paths
             if not dir:
                 continue
             # This needs to be os.path.join() or windows cannot
@@ -45,7 +45,6 @@ class ExternalCommand(Command):
                 return ExternalCommand(path)
 
         return None
-
 
     def __init__(self, path):
         self.path = path
@@ -63,4 +62,3 @@ class ExternalCommand(Command):
         m = 'external command from %s\n\n' % self.path
         pipe = os.popen('%s --help' % self.path)
         return m + pipe.read()
-

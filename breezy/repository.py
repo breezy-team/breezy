@@ -18,18 +18,15 @@ from __future__ import absolute_import
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-import itertools
 import time
 
 from breezy import (
     config,
     controldir,
     debug,
-    generate_ids,
     graph,
     osutils,
     revision as _mod_revision,
-    testament as _mod_testament,
     gpg,
     )
 from breezy.bundle import serializer
@@ -47,7 +44,6 @@ from .lock import _RelockDebugMixin, LogicalLockResult
 from .sixish import (
     text_type,
     viewitems,
-    viewvalues,
     )
 from .trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
@@ -103,8 +99,8 @@ class CommitBuilder(object):
 
         if committer is None:
             self._committer = self._config_stack.get('email')
-        elif not isinstance(committer, unicode):
-            self._committer = committer.decode() # throw if non-ascii
+        elif not isinstance(committer, text_type):
+            self._committer = committer.decode()  # throw if non-ascii
         else:
             self._committer = committer
 
@@ -140,7 +136,8 @@ class CommitBuilder(object):
 
     def _validate_unicode_text(self, text, context):
         """Verify things like commit messages don't have bogus characters."""
-        if '\r' in text:
+        # TODO(jelmer): Make this repository-format specific
+        if u'\r' in text:
             raise ValueError('Invalid value for %s: %r' % (context, text))
 
     def _validate_revprops(self, revprops):
@@ -150,6 +147,7 @@ class CommitBuilder(object):
             if not isinstance(value, (text_type, str)):
                 raise ValueError('revision property (%s) is not a valid'
                                  ' (unicode) string: %r' % (key, value))
+            # TODO(jelmer): Make this repository-format specific
             self._validate_unicode_text(value,
                                         'revision property (%s)' % (key,))
 
@@ -184,10 +182,6 @@ class CommitBuilder(object):
         """
         raise NotImplementedError(self.finish_inventory)
 
-    def _gen_revision_id(self):
-        """Return new revision-id."""
-        return generate_ids.gen_revision_id(self._committer, self._timestamp)
-
     def _generate_revision_if_needed(self, revision_id):
         """Create a revision id if None was supplied.
 
@@ -219,7 +213,7 @@ class CommitBuilder(object):
             to basis_revision_id. The iterator must not include any items with
             a current kind of None - missing items must be either filtered out
             or errored-on beefore record_iter_changes sees the item.
-        :return: A generator of (file_id, relpath, fs_hash) tuples for use with
+        :return: A generator of (relpath, fs_hash) tuples for use with
             tree._observed_sha1.
         """
         raise NotImplementedError(self.record_iter_changes)
@@ -239,7 +233,29 @@ class RepositoryWriteLockResult(LogicalLockResult):
 
     def __repr__(self):
         return "RepositoryWriteLockResult(%s, %s)" % (self.repository_token,
-            self.unlock)
+                                                      self.unlock)
+
+
+class WriteGroup(object):
+    """Context manager that manages a write group.
+
+    Raising an exception will result in the write group being aborted.
+    """
+
+    def __init__(self, repository, suppress_errors=False):
+        self.repository = repository
+        self._suppress_errors = suppress_errors
+
+    def __enter__(self):
+        self.repository.start_write_group()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.repository.abort_write_group(self._suppress_errors)
+            return False
+        else:
+            self.repository.commit_write_group()
 
 
 ######################################################################
@@ -257,6 +273,10 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     base class for most Bazaar repositories.
     """
 
+    # Does this repository implementation support random access to
+    # items in the tree, or just bulk fetching/pushing of data?
+    supports_random_access = True
+
     def abort_write_group(self, suppress_errors=False):
         """Commit the contents accrued within the current write group.
 
@@ -270,8 +290,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             # has an unlock or relock occured ?
             if suppress_errors:
                 mutter(
-                '(suppressed) mismatched lock context and write group. %r, %r',
-                self._write_group, self.get_transaction())
+                    '(suppressed) mismatched lock context and write group. %r, %r',
+                    self._write_group, self.get_transaction())
                 return
             raise errors.BzrError(
                 'mismatched lock context and write group. %r, %r' %
@@ -517,7 +537,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 if committers:
                     all_committers = set()
                 revisions = [r for (r, p) in graph.iter_ancestry([revid])
-                            if r != _mod_revision.NULL_REVISION]
+                             if r != _mod_revision.NULL_REVISION]
                 last_revision = None
                 if not committers:
                     # ignore the revisions in the middle - just grab first and last
@@ -531,9 +551,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 if committers:
                     result['committers'] = len(all_committers)
                 result['firstrev'] = (first_revision.timestamp,
-                    first_revision.timezone)
+                                      first_revision.timezone)
                 result['latestrev'] = (last_revision.timestamp,
-                    last_revision.timezone)
+                                       last_revision.timezone)
             return result
 
     def find_branches(self, using=False):
@@ -545,6 +565,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         if using and not self.is_shared():
             return self.controldir.list_branches()
+
         class Evaluator(object):
 
             def __init__(self):
@@ -574,8 +595,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         return ret
 
     def search_missing_revision_ids(self, other,
-            find_ghosts=True, revision_ids=None, if_present_ids=None,
-            limit=None):
+                                    find_ghosts=True, revision_ids=None, if_present_ids=None,
+                                    limit=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
@@ -609,14 +630,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Commit the contents accrued within the current write group.
 
         :seealso: start_write_group.
-        
+
         :return: it may return an opaque hint that can be passed to 'pack'.
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
             raise errors.BzrError('mismatched lock context %r and '
-                'write group %r.' %
-                (self.get_transaction(), self._write_group))
+                                  'write group %r.' %
+                                  (self.get_transaction(), self._write_group))
         result = self._commit_write_group()
         self._write_group = None
         return result
@@ -687,11 +708,11 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         # TODO: lift out to somewhere common with RemoteRepository
         # <https://bugs.launchpad.net/bzr/+bug/401646>
         if (self.has_same_location(source)
-            and self._has_same_fallbacks(source)):
+                and self._has_same_fallbacks(source)):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and
-                not _mod_revision.is_null(revision_id)):
+                    not _mod_revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
         inter = InterRepository.get(source, self)
@@ -798,7 +819,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             # created, but on some old all-in-one formats it's not needed
             try:
                 dest_repo = self._format.initialize(
-                        a_controldir, shared=shared)
+                    a_controldir, shared=shared)
             except errors.UninitializableFormat:
                 dest_repo = a_controldir.open_repository()
         return dest_repo
@@ -868,33 +889,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
           so that only those file-ids, their parents and their
           children are included.
         """
-        # Get the revision-ids of interest
-        required_trees = set()
-        for revision in revisions:
-            required_trees.add(revision.revision_id)
-            required_trees.update(revision.parent_ids[:1])
-
-        # Get the matching filtered trees. Note that it's more
-        # efficient to pass filtered trees to changes_from() rather
-        # than doing the filtering afterwards. changes_from() could
-        # arguably do the filtering itself but it's path-based, not
-        # file-id based, so filtering before or afterwards is
-        # currently easier.
-        if specific_fileids is None:
-            trees = dict((t.get_revision_id(), t) for
-                t in self.revision_trees(required_trees))
-        else:
-            trees = dict((t.get_revision_id(), t) for
-                t in self._filtered_revision_trees(required_trees,
-                specific_fileids))
-
-        # Calculate the deltas
-        for revision in revisions:
-            if not revision.parent_ids:
-                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
-            else:
-                old_tree = trees[revision.parent_ids[0]]
-            yield trees[revision.revision_id].changes_from(old_tree)
+        raise NotImplementedError(self.get_deltas_for_revisions)
 
     def get_revision_delta(self, revision_id, specific_fileids=None):
         """Return the delta for one revision.
@@ -912,9 +907,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 [r], specific_fileids=specific_fileids))[0]
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        with self.lock_write():
-            signature = gpg_strategy.sign(plaintext)
-            self.add_signature_text(revision_id, signature)
+        raise NotImplementedError(self.store_revision_signature)
 
     def add_signature_text(self, revision_id, signature):
         """Store a signature text for a revision.
@@ -952,16 +945,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         partial_history = [known_revid]
         distance_from_known = known_revno - revno
         if distance_from_known < 0:
-            raise ValueError(
-                'requested revno (%d) is later than given known revno (%d)'
-                % (revno, known_revno))
+            raise errors.RevnoOutOfBounds(revno, (0, known_revno))
         try:
             _iter_for_revno(
                 self, partial_history, stop_index=distance_from_known)
         except errors.RevisionNotPresent as err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.
-                raise
+                raise errors.NoSuchRevision(self, known_revid)
             # This is a stacked repository with no fallbacks, or a there's a
             # left-hand ghost.  Either way, even though the revision named in
             # the error isn't in this repo, we know it's the next step in this
@@ -981,11 +972,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
-        from .reconcile import RepoReconciler
-        with self.lock_write():
-            reconciler = RepoReconciler(self, thorough=thorough)
-            reconciler.reconcile()
-            return reconciler
+        raise NotImplementedError(self.reconcile)
 
     def _refresh_data(self):
         """Helper called from lock_* to ensure coherency with disk.
@@ -1012,7 +999,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Return Trees for revisions in this repository.
 
         :param revision_ids: a sequence of revision-ids;
-          a revision-id may not be None or 'null:'
+          a revision-id may not be None or b'null:'
         """
         raise NotImplementedError(self.revision_trees)
 
@@ -1056,13 +1043,13 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             elif revision_id is None:
                 raise ValueError('get_parent_map(None) is not valid')
             else:
-                query_keys.append((revision_id ,))
+                query_keys.append((revision_id,))
         vf = self.revisions.without_fallbacks()
         for (revision_id,), parent_keys in viewitems(
                 vf.get_parent_map(query_keys)):
             if parent_keys:
                 result[revision_id] = tuple([parent_revid
-                    for (parent_revid,) in parent_keys])
+                                             for (parent_revid,) in parent_keys])
             else:
                 result[revision_id] = (_mod_revision.NULL_REVISION,)
         return result
@@ -1091,7 +1078,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """Return the graph walker for this repository format"""
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
-            not self.has_same_location(other_repository)):
+                not self.has_same_location(other_repository)):
             parents_provider = graph.StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
@@ -1112,10 +1099,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         raise NotImplementedError(self.make_working_trees)
 
     def sign_revision(self, revision_id, gpg_strategy):
-        with self.lock_write():
-            testament = _mod_testament.Testament.from_revision(self, revision_id)
-            plaintext = testament.as_short_text()
-            self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+        raise NotImplementedError(self.sign_revision)
 
     def verify_revision_signature(self, revision_id, gpg_strategy):
         """Verify the signature on a revision.
@@ -1125,16 +1109,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
 
         :return: gpg.SIGNATURE_VALID or a failed SIGNATURE_ value
         """
-        with self.lock_read():
-            if not self.has_signature_for_revision_id(revision_id):
-                return gpg.SIGNATURE_NOT_SIGNED, None
-            signature = self.get_signature_text(revision_id)
-
-            testament = _mod_testament.Testament.from_revision(
-                    self, revision_id)
-            plaintext = testament.as_short_text()
-
-            return gpg_strategy.verify(signature, plaintext)
+        raise NotImplementedError(self.verify_revision_signature)
 
     def verify_revision_signatures(self, revision_ids, gpg_strategy):
         """Verify revision signatures for a number of revisions.
@@ -1166,11 +1141,11 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         :param callback_refs: A dict of check-refs to resolve and callback
             the check/_check method on the items listed as wanting the ref.
             see breezy.check.
-        :param check_repo: If False do not check the repository contents, just 
+        :param check_repo: If False do not check the repository contents, just
             calculate the data callback_refs requires and call them back.
         """
         return self._check(revision_ids=revision_ids, callback_refs=callback_refs,
-            check_repo=check_repo)
+                           check_repo=check_repo)
 
     def _check(self, revision_ids=None, callback_refs=None, check_repo=True):
         raise NotImplementedError(self.check)
@@ -1202,7 +1177,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         # weave repositories refuse to store revisionids that are non-ascii.
         if revision_id is not None:
             # weaves require ascii revision ids.
-            if isinstance(revision_id, unicode):
+            if isinstance(revision_id, text_type):
                 try:
                     revision_id.encode('ascii')
                 except UnicodeEncodeError:
@@ -1321,6 +1296,15 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     # Is it possible for revisions to be present without being referenced
     # somewhere ?
     supports_unreferenced_revisions = None
+    # Does this format store the current Branch.nick in a revision when
+    # creating commits?
+    supports_storing_branch_nick = True
+    # Does the format support overriding the transport to use
+    supports_overriding_transport = True
+    # Does the format support setting custom revision properties?
+    supports_custom_revision_properties = True
+    # Does the format record per-file revision metadata?
+    records_per_file_revision = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -1380,8 +1364,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
             raise errors.BadConversionTarget(
                 'Does not support rich root data.', target_format,
                 from_format=self)
-        if (self.supports_tree_reference and 
-            not getattr(target_format, 'supports_tree_reference', False)):
+        if (self.supports_tree_reference
+                and not getattr(target_format, 'supports_tree_reference', False)):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format,
                 from_format=self)
@@ -1410,19 +1394,19 @@ class RepositoryFormat(controldir.ControlComponentFormat):
 # the repository is not separately opened are similar.
 
 format_registry.register_lazy(
-    'Bazaar-NG Knit Repository Format 1',
+    b'Bazaar-NG Knit Repository Format 1',
     'breezy.bzr.knitrepo',
     'RepositoryFormatKnit1',
     )
 
 format_registry.register_lazy(
-    'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
+    b'Bazaar Knit Repository Format 3 (bzr 0.15)\n',
     'breezy.bzr.knitrepo',
     'RepositoryFormatKnit3',
     )
 
 format_registry.register_lazy(
-    'Bazaar Knit Repository Format 4 (bzr 1.0)\n',
+    b'Bazaar Knit Repository Format 4 (bzr 1.0)\n',
     'breezy.bzr.knitrepo',
     'RepositoryFormatKnit4',
     )
@@ -1431,47 +1415,47 @@ format_registry.register_lazy(
 # post-subtrees to allow ease of testing.
 # NOTE: These are experimental in 0.92. Stable in 1.0 and above
 format_registry.register_lazy(
-    'Bazaar pack repository format 1 (needs bzr 0.92)\n',
+    b'Bazaar pack repository format 1 (needs bzr 0.92)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack1',
     )
 format_registry.register_lazy(
-    'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
+    b'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack3',
     )
 format_registry.register_lazy(
-    'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
+    b'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack4',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
+    b'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
+    b'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5RichRoot',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
+    b'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack5RichRootBroken',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
+    b'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack6',
     )
 format_registry.register_lazy(
-    'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
+    b'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatKnitPack6RichRoot',
     )
 format_registry.register_lazy(
-    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+    b'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
     'breezy.bzr.groupcompress_repo',
     'RepositoryFormat2a',
     )
@@ -1479,13 +1463,13 @@ format_registry.register_lazy(
 # Development formats.
 # Check their docstrings to see if/when they are obsolete.
 format_registry.register_lazy(
-    ("Bazaar development format 2 with subtree support "
-        "(needs bzr.dev from before 1.8)\n"),
+    (b"Bazaar development format 2 with subtree support "
+        b"(needs bzr.dev from before 1.8)\n"),
     'breezy.bzr.knitpack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
     )
 format_registry.register_lazy(
-    'Bazaar development format 8\n',
+    b'Bazaar development format 8\n',
     'breezy.bzr.groupcompress_repo',
     'RepositoryFormat2aSubtree',
     )
@@ -1573,10 +1557,10 @@ class InterRepository(InterObject):
         """
         if source.supports_rich_root() != target.supports_rich_root():
             raise errors.IncompatibleRepositories(source, target,
-                "different rich-root support")
+                                                  "different rich-root support")
         if source._serializer != target._serializer:
             raise errors.IncompatibleRepositories(source, target,
-                "different serializers")
+                                                  "different serializers")
 
 
 class CopyConverter(object):
@@ -1598,33 +1582,33 @@ class CopyConverter(object):
         :param to_convert: The disk object to convert.
         :param pb: a progress bar to use for progress information.
         """
-        pb = ui.ui_factory.nested_progress_bar()
-        self.count = 0
-        self.total = 4
-        # this is only useful with metadir layouts - separated repo content.
-        # trigger an assertion if not such
-        repo._format.get_format_string()
-        self.repo_dir = repo.controldir
-        pb.update(gettext('Moving repository to repository.backup'))
-        self.repo_dir.transport.move('repository', 'repository.backup')
-        backup_transport =  self.repo_dir.transport.clone('repository.backup')
-        repo._format.check_conversion_target(self.target_format)
-        self.source_repo = repo._format.open(self.repo_dir,
-            _found=True,
-            _override_transport=backup_transport)
-        pb.update(gettext('Creating new repository'))
-        converted = self.target_format.initialize(self.repo_dir,
-                                                  self.source_repo.is_shared())
-        converted.lock_write()
-        try:
-            pb.update(gettext('Copying content'))
-            self.source_repo.copy_content_into(converted)
-        finally:
-            converted.unlock()
-        pb.update(gettext('Deleting old repository content'))
-        self.repo_dir.transport.delete_tree('repository.backup')
-        ui.ui_factory.note(gettext('repository converted'))
-        pb.finished()
+        with ui.ui_factory.nested_progress_bar() as pb:
+            self.count = 0
+            self.total = 4
+            # this is only useful with metadir layouts - separated repo content.
+            # trigger an assertion if not such
+            repo._format.get_format_string()
+            self.repo_dir = repo.controldir
+            pb.update(gettext('Moving repository to repository.backup'))
+            self.repo_dir.transport.move('repository', 'repository.backup')
+            backup_transport = self.repo_dir.transport.clone(
+                'repository.backup')
+            repo._format.check_conversion_target(self.target_format)
+            self.source_repo = repo._format.open(self.repo_dir,
+                                                 _found=True,
+                                                 _override_transport=backup_transport)
+            pb.update(gettext('Creating new repository'))
+            converted = self.target_format.initialize(self.repo_dir,
+                                                      self.source_repo.is_shared())
+            converted.lock_write()
+            try:
+                pb.update(gettext('Copying content'))
+                self.source_repo.copy_content_into(converted)
+            finally:
+                converted.unlock()
+            pb.update(gettext('Deleting old repository content'))
+            self.repo_dir.transport.delete_tree('repository.backup')
+            ui.ui_factory.note(gettext('repository converted'))
 
 
 def _strip_NULL_ghosts(revision_graph):
@@ -1634,7 +1618,7 @@ def _strip_NULL_ghosts(revision_graph):
         del revision_graph[_mod_revision.NULL_REVISION]
     for key, parents in viewitems(revision_graph):
         revision_graph[key] = tuple(parent for parent in parents if parent
-            in revision_graph)
+                                    in revision_graph)
     return revision_graph
 
 
@@ -1655,13 +1639,13 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
     start_revision = partial_history_cache[-1]
     graph = repo.get_graph()
     iterator = graph.iter_lefthand_ancestry(start_revision,
-        (_mod_revision.NULL_REVISION,))
+                                            (_mod_revision.NULL_REVISION,))
     try:
         # skip the last revision in the list
         next(iterator)
         while True:
             if (stop_index is not None and
-                len(partial_history_cache) > stop_index):
+                    len(partial_history_cache) > stop_index):
                 break
             if partial_history_cache[-1] == stop_revision:
                 break

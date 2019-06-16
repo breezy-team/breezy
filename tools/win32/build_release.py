@@ -13,10 +13,10 @@ VERSIONS = {
 }
 
 # This will be passed to 'make' to ensure we build with the right python
-PYTHON='/cygdrive/c/Python25/python'
+PYTHON = '/cygdrive/c/Python25/python'
 
 # Create the final build in this directory
-TARGET_ROOT='release'
+TARGET_ROOT = 'release'
 
 DEBUG_SUBPROCESS = True
 

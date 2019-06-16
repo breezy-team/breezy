@@ -17,6 +17,8 @@
 
 from __future__ import absolute_import
 
+import operator
+
 from ... import (
     branch,
     commands,
@@ -59,7 +61,7 @@ def collapse_by_person(revisions, canonical_committer):
             info[2][username] = info[2].setdefault(username, 0) + 1
     res = [(len(revs), revs, emails, fnames)
            for revs, emails, fnames in committer_to_info.values()]
-    res.sort(reverse=True)
+    res.sort(reverse=True, key=operator.itemgetter(0))
     return res
 
 
@@ -95,7 +97,7 @@ def collapse_email_and_users(email_users, combo_count):
             # email
             for user in usernames:
                 if not user:
-                    continue # The mysterious ('', '') user
+                    continue  # The mysterious ('', '') user
                 # When mapping, use case-insensitive names
                 low_user = user.lower()
                 user_id = username_to_id.get(low_user)
@@ -131,7 +133,7 @@ def collapse_email_and_users(email_users, combo_count):
     combo_to_best_combo = {}
     for cur_id, combos in id_to_combos.items():
         best_combo = sorted(combos,
-                            key=lambda x:combo_count[x],
+                            key=lambda x: combo_count[x],
                             reverse=True)[0]
         for combo in combos:
             combo_to_best_combo[combo] = best_combo
@@ -141,12 +143,11 @@ def collapse_email_and_users(email_users, combo_count):
 def get_revisions_and_committers(a_repo, revids):
     """Get the Revision information, and the best-match for committer."""
 
-    email_users = {} # user@email.com => User Name
+    email_users = {}  # user@email.com => User Name
     combo_count = {}
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb:
         trace.note('getting revisions')
-        revisions = a_repo.iter_revisions(revids)
+        revisions = list(a_repo.iter_revisions(revids))
         for count, (revid, rev) in enumerate(revisions):
             pb.update('checking', count, len(revids))
             for author in rev.get_apparent_authors():
@@ -156,25 +157,20 @@ def get_revisions_and_committers(a_repo, revids):
                 email_users.setdefault(email, set()).add(username)
                 combo = (username, email)
                 combo_count[combo] = combo_count.setdefault(combo, 0) + 1
-    finally:
-        pb.finished()
-    return revisions, collapse_email_and_users(email_users, combo_count)
+    return ((rev for (revid, rev) in revisions),
+            collapse_email_and_users(email_users, combo_count))
 
 
 def get_info(a_repo, revision):
     """Get all of the information for a particular revision"""
-    pb = ui.ui_factory.nested_progress_bar()
-    a_repo.lock_read()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb, a_repo.lock_read():
         trace.note('getting ancestry')
         graph = a_repo.get_graph()
         ancestry = [
             r for (r, ps) in graph.iter_ancestry([revision])
             if ps is not None and r != NULL_REVISION]
-        revs, canonical_committer = get_revisions_and_committers(a_repo, ancestry)
-    finally:
-        a_repo.unlock()
-        pb.finished()
+        revs, canonical_committer = get_revisions_and_committers(
+            a_repo, ancestry)
 
     return collapse_by_person(revs, canonical_committer)
 
@@ -184,16 +180,12 @@ def get_diff_info(a_repo, start_rev, end_rev):
 
     This lets us figure out what has actually changed between 2 revisions.
     """
-    pb = ui.ui_factory.nested_progress_bar()
-    a_repo.lock_read()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb, a_repo.lock_read():
         graph = a_repo.get_graph()
         trace.note('getting ancestry diff')
         ancestry = graph.find_difference(start_rev, end_rev)[1]
-        revs, canonical_committer = get_revisions_and_committers(a_repo, ancestry)
-    finally:
-        a_repo.unlock()
-        pb.finished()
+        revs, canonical_committer = get_revisions_and_committers(
+            a_repo, ancestry)
 
     return collapse_by_person(revs, canonical_committer)
 
@@ -204,10 +196,10 @@ def display_info(info, to_file, gather_class_stats=None):
     for count, revs, emails, fullnames in info:
         # Get the most common email name
         sorted_emails = sorted(((count, email)
-                               for email, count in emails.items()),
+                                for email, count in emails.items()),
                                reverse=True)
         sorted_fullnames = sorted(((count, fullname)
-                                  for fullname, count in fullnames.items()),
+                                   for fullname, count in fullnames.items()),
                                   reverse=True)
         if sorted_fullnames[0][1] == '' and sorted_emails[0][1] == '':
             to_file.write('%4d %s\n'
@@ -238,7 +230,8 @@ def display_info(info, to_file, gather_class_stats=None):
             for name, count in sorted(classes.items(), key=classify_key):
                 if name is None:
                     name = "Unknown"
-                to_file.write("     %4.0f%% %s\n" % ((float(count) / total) * 100.0, name))
+                to_file.write("     %4.0f%% %s\n" %
+                              ((float(count) / total) * 100.0, name))
 
 
 class cmd_committer_statistics(commands.Command):
@@ -246,8 +239,8 @@ class cmd_committer_statistics(commands.Command):
 
     aliases = ['stats', 'committer-stats']
     takes_args = ['location?']
-    takes_options = ['revision', 
-            option.Option('show-class', help="Show the class of contributions.")]
+    takes_options = ['revision',
+                     option.Option('show-class', help="Show the class of contributions.")]
 
     encoding_type = 'replace'
 
@@ -288,6 +281,8 @@ class cmd_ancestor_growth(commands.Command):
 
     encoding_type = 'replace'
 
+    hidden = True
+
     def run(self, location='.'):
         try:
             wt = workingtree.WorkingTree.open_containing(location)[0]
@@ -314,20 +309,17 @@ class cmd_ancestor_growth(commands.Command):
 def gather_class_stats(repository, revs):
     ret = {}
     total = 0
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
+    with ui.ui_factory.nested_progress_bar() as pb:
         with repository.lock_read():
             i = 0
             for delta in repository.get_deltas_for_revisions(revs):
                 pb.update("classifying commits", i, len(revs))
                 for c in classify_delta(delta):
-                    if not c in ret:
+                    if c not in ret:
                         ret[c] = 0
                     ret[c] += 1
                     total += 1
                 i += 1
-    finally:
-        pb.finished()
     return ret, total
 
 
@@ -338,6 +330,7 @@ def classify_key(item):
 
 def display_credits(credits, to_file):
     (coders, documenters, artists, translators) = credits
+
     def print_section(name, lst):
         if len(lst) == 0:
             return
@@ -367,24 +360,22 @@ def find_credits(repository, revid):
         ancestry = [r for (r, ps) in graph.iter_ancestry([revid])
                     if ps is not None and r != NULL_REVISION]
         revs = repository.get_revisions(ancestry)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
+        with ui.ui_factory.nested_progress_bar() as pb:
             iterator = zip(revs, repository.get_deltas_for_revisions(revs))
-            for i, (rev,delta) in enumerate(iterator):
+            for i, (rev, delta) in enumerate(iterator):
                 pb.update("analysing revisions", i, len(revs))
                 # Don't count merges
                 if len(rev.parent_ids) > 1:
                     continue
                 for c in set(classify_delta(delta)):
                     for author in rev.get_apparent_authors():
-                        if not author in ret[c]:
+                        if author not in ret[c]:
                             ret[c][author] = 0
                         ret[c][author] += 1
-        finally:
-            pb.finished()
+
     def sort_class(name):
         return [author
-            for author, _  in sorted(ret[name].items(), key=classify_key)]
+                for author, _ in sorted(ret[name].items(), key=classify_key)]
     return (sort_class("code"), sort_class("documentation"), sort_class("art"), sort_class("translation"))
 
 

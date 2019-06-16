@@ -1,0 +1,359 @@
+Directory fingerprints
+======================
+
+.. contents:: :local:
+
+Introduction
+------------
+
+The basic idea is that for a directory in a tree (committed or otherwise), we
+will have a single scalar value.  If these values are the same, the contents of
+the subtree under that directory are necessarily the same.
+
+This is intended to help with these use cases, by allowing them to quickly skip
+over directories with no relevant changes, and to detect when a directory has
+changed:
+
+* diff/status (both local trees and historical trees)
+* merge
+* log -v
+* log on a directory
+* commit
+
+
+Use-case oriented APIs
+----------------------
+
+Most of this will be hidden behind the Tree interface.  This should cover
+``log -v``, ``diff``, ``status``, ``merge`` (and implicit merge during
+push, pull, update)::
+
+  tree.iter_changes(other_tree)
+  tree.get_file_lines(file_id)   # and get_file, get_file_text
+
+``commit``
+~~~~~~~~~~
+
+Commit is similar to ``iter_changes``, but different because it needs to
+compare to all the trees.  Commit currently needs to compare the working
+tree to all the parent trees, which is needed to update the last_modified
+field and would be unnecessary if we removed that field (for both files
+and directories) and did not store per-file graphs.
+This would potentially speed up commit after merge.
+
+Verbose commit also displays the merged files, which does
+require looking at all parents of files that aren't identical
+to the left-hand parent.
+
+``log``
+~~~~~~~
+
+Log is interested in two operations: finding the revisions that touched
+anything inside a directory, and getting the differences between
+consecutive revisions (possibly filtered to a directory)::
+
+  find_touching_revisions(branch, file_id) # should be on Branch?
+
+Log shows the revisions that merged a change.  At the moment that is not
+included in the per-file graph, and it would also not be visible if the
+directories were hashed.
+
+
+
+
+Open questions
+--------------
+
+* Is this a good idea at all?
+
+  If changing a file changes all its parent directories up to the root it
+  will cause more churn on commit.  (We currently update the all-in-one
+  inventory, but only have to update one line of it.)
+
+  Every time a child changes, we'll get a new node in the per-directory
+  graph.  This is generally useful: it allows bzr log to do the default
+  mode easily, which is to show all changes under that directory.  The
+  less common operation, ``log --no-recursive`` is still possible by
+  looking only at when the directory itself was renamed, added or removed.
+  (That is what the directory graph describes in bzr 0.18 and it is rarely
+  useful.)
+
+
+* Should these be hashes or revision ids or something else?
+
+  Pros of using hashes: hashes are easy to generate by a foreign branch
+  plugin (e.g. bzr-svn).  They don't need to get recursive last-changed
+  from the foreign branch, or to walk back through history.  They just
+  need the relevant directory state, which any system we support can
+  answer.
+
+  Hashes converge: if you modify and then modify back, you get the same
+  hash.  This is a pro because you can detect that there were ultimately
+  no significant changes.  And also a con: you cannot use these hashes to form a graph
+  because they get cycles.
+
+
+* Are the values unique across the whole tree, or only when comparing
+  different versions of the same object?
+
+  If we use last-changed revisions, then they will be very not unique
+  across the whole tree.  To look up the contents, you must pass a
+  composite key like ``(file_id, last_changed)``.
+
+  If we use hashes they will be same only when the two contain the same
+  contents.  Since we say that file ids must be unique, this
+  means they will match if and only if they are empty.  We might relax
+  that in future when we introduce path tokens.
+
+
+* Is it reasonable to assume hashes won't collide?
+
+  The odds of SHA-1 hashes colliding "accidentally" are vanishingly small.
+
+  It is possible that a `preimage attack`_ against SHA-1 may be discovered
+  in the future.  Since we're not proposing in this document to make
+  revision-ids be SHA-1, if SHA-1 was obsoleted then we could rewrite the
+  contents of revisions but would not need to rename revisions.  So the
+  impact of such a migration should just be a format upgrade, and a
+  recommendation (but not requirement) to re-sign revisions.
+
+.. _`preimage attack`: http://tools.ietf.org/html/rfc4270
+
+
+* If we use hashes, should it be the hash of the
+  representation stored for a directory?
+
+  In other words, should we pun the representation of the directory with
+  the form used for validation.
+
+  If there's some data stored that's not in the hash it's problematic.
+  The hash in no longer (effectively) uniquely identifies the
+  representation.
+
+  It is desirable that we have a hash that covers all data, to guard
+  against bugs, transmission errors, or users trying to hand-hack files.
+  Since we need one hash of everything in the tree, perhaps we should also
+  use it for the fingerprint.
+
+  Testaments explicitly separate the form used for hashing/signing from
+  the form used for storage.  This allows us to change the storage form
+  without breaking existing GPG signatures.  The downside is that we need
+  to do work O(tree) to make a testament, and this slows down signing,
+  verifying and generating bundles.  It also means that there is some
+  stored data which is not protected by the signature: this data is less
+  important, but corruption of it would still cause problems.
+  We have encountered some specific problems with disagreement between
+  inventories as to the last-change of files, which is currently unsigned.
+  These problems can be introduced by ghosts.
+
+  If we hash the representation, there is still a way to support old
+  signatures, assuming that we never discard irreplaceable information.
+  The signature should say what format it applies to (similar to
+  testaments), and we could transform in memory the tree back to that
+  format.
+
+
+* Is hashing substantially slower than other possible approaches?
+
+  We already hash all the plain files.  Except in unusual cases, the
+  directory metadata will be substantially smaller: perhaps 200:1 as a
+  rule of thumb.
+
+  When building a bzr tree, we spend on the order of 100ms hashing all the
+  source lines to validate them (about 13MB of source).
+
+
+* Can you calculate one from a directory in the working tree?  Without a basis?
+
+  This seems possible with either hashes or revision ids.
+
+  Using last_changed means that calculating the fingerprint from a working
+  tree necessarily requires reading the inventory for the basis
+  revision, so that we know when unchanged files were last changed.  With
+  hashes we could calculate them using the working tree information alone.
+  It's true that we will often then compare that information to the basis
+  tree (e.g. for simple ``bzr diff``), but we may only have to compare at
+  the top level, and sometimes we're comparing to a
+  different tree.  This also touches on whether we should store
+  ``last_modified`` for files, rather than directories.
+
+  For revision ids we need to assign a value to use for uncommitted
+  changes, but see below about the problems of this.
+
+  In some ways it would be elegant to say (hypothetical)::
+
+    wt.get_root().get_last_modified() == branch.get_last_revision()
+
+  to know that nothing was changed; but this may not be much better than
+  ::
+
+    wt.get_root().get_hash() ==
+      branch.get_basis().get_root().get_hash()
+
+
+* Can you use this to compare (directories from) two working trees?
+
+  If you can generate it from a working tree, you should be able to use it
+  to compare them.
+
+  This does rule out for example using ``last_modified=None`` or
+  ``='current:'`` to mean "changed in the working tree."  Even if this is
+  not supported there seems some risk that we would get the same
+  fingerprint for trees that are actually different.
+
+  We could assign a
+  hypothetical revision id to the tree for uncommitted files.  In that
+  case there is some risk that the not-yet-committed id would become
+  visible or committed.
+
+
+* Can we use an "approximate basis"?
+
+  When using radix trees, you may need context beyond the specific
+  directory being compared.
+
+
+* Can you get the fingerprint of parents directories with only selected file ids
+  taken from the working tree?
+
+  With hashes, we'd want to carry through the unselected files and
+  directories from the values they had in the parent revision.
+
+
+* Are unbalanced trees a significant problem?  Trees can be unbalanced by having
+  many directories (deep or wide), or many files per directory.
+
+  For small trees like bzr, 744 of 874 are in the breezy subtree.  In
+  general, larger trees are more balanced, because humans, editors and
+  other tools have trouble managing very unbalanced trees.  But there are
+  exceptions: Aaron has one tree with 20,000 generated but versioned
+  entries in one directory.
+
+
+* Should we use a radix tree approach where fingerprints are calculated on a synthetic
+  tree that is by definition balanced, even when the actual tree is unbalanced?
+
+
+* What are the specific advantages of using recursive-last-modified rather than
+  hashes?
+
+  It may be a smaller step change.
+
+  It's a bidirectional link: given a directory text identifier ``(file_id,
+  last_changed)`` you can look up the revision that last changed it.
+
+  From the preceding, even without the per-file graph you can skip through
+  the history of this file: go to the last-changed revision, look at all
+  its parents and repeat.
+
+
+* Is it a smaller change to use recursive-last-modified on directories?
+
+  Probably yes:
+
+  1. We can just put it into the current inventory format without changing
+     anything else.
+
+     By contrast to use a hash we'd have to either split up the inventory
+     as stored, or change the sort order for the inventory, or synthesize
+     per-directory inventories in memory for hashing.
+
+     However, XML is somewhat redundant and slow to parse/generate; and
+     reading the whole thing before comparing some sections is only a
+     partial win.  It may be a smaller change but we'd be preserving
+     things we want to change.
+
+  1. At present we rarely hash storage representations, only file texts.
+     This is not a large technical change, but it is a conceptual change.
+     This has some consequences for how we can upgrade it in future: all
+     the changed directories need to be rewritten up to the revision level.
+
+  1. If we address directories by hash we need hash-addressed
+     storage.
+
+  1. If we address directories by hash then for consistency we'd probably
+     (not necessarily) want to address file texts by hash.
+
+  1. The per-file graph can't be indexed by hash because they can converge, so we
+     need to either rework or dispose of the per-file graph.
+
+
+* Any possibilities for avoiding hashes recurring?
+
+  1. Hash along with an identification of the parents (as in hg).  Then you
+     can't convert a tree without all its basis trees, and there is still
+     convergence when the same merge is done by two people, and you can't
+     create it directly from the working tree.
+
+  1. Include last-modified revision id in the hash.
+
+  1. Index by ``(revision, hash)`` or vice versa.
+
+  1. Store a per-file graph and allow it to have repeated keys.  The graph
+     would tell you about all the parent texts ever seen; you would need
+     to use revision graph information to resolve ambiguities.
+
+
+* What are the specific disadvantages of using recursive-last-modified rather than
+  hashes?
+
+  To calculate the last-changed revision, given the last-changed
+  information of the contained files, you need to look at the revision
+  graph.  They're not enough because you need to know the relations
+  between the mentioned revisions.  In a merge it's possible the correct
+  directory last-modified will not be the same as that of any of the files
+  within it.  This can also happen when a file is removed (deleted or
+  renamed) from a directory.
+
+
+* Should we split up storage of the inventories?
+
+  This is not quite the same but connected.
+
+
+* How does this relate to per-file/per-directory hashes?
+
+  If the version of a file or directory is identified by a hash, we can't
+  use that to point into a per-file graph.  We can have a graph indexed by
+  ``(file_id, hash, revision_id)``.  The last-modified could be stored as
+  part of this graph.
+
+  The graph would no longer be core data; it could be always present but
+  might be rebuilt.  Treating it as non-core data may make some changes
+  like shallow branches easier?
+
+
+* How do you ask a tree for a given text?
+
+  Right now we say ::
+
+    revision_tree.get_file_lines(file_id)
+
+  so the choice of storage is hidden behind the revision tree: it could be
+  accessed by ``(file_id, last_changed)`` or by hash or otherwise.
+
+  At the moment the Repository exports a friend api to RevisionTree,
+  currently usually talking in VersionedFiles.
+
+  We probably wouldn't want Repository to expose a ``get_text_for_sha1()``
+  interface because that would be very difficult to support on old
+  repositories or on foreign branches.
+
+
+Conclusions
+-----------
+
+
+Design changes
+--------------
+
+
+
+
+API changes
+-----------
+
+
+..
+  vim: filetype=rst textwidth=78 expandtab spelllang=en spell
+

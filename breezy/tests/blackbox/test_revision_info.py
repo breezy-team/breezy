@@ -36,20 +36,20 @@ class TestRevisionInfo(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
 
         # Make history with a non-mainline rev
-        wt.commit('Commit one', rev_id='a@r-0-1')
-        wt.commit('Commit two', rev_id='a@r-0-1.1.1')
-        wt.set_parent_ids(['a@r-0-1', 'a@r-0-1.1.1'])
-        wt.branch.set_last_revision_info(1, 'a@r-0-1')
-        wt.commit('Commit three', rev_id='a@r-0-2')
+        wt.commit('Commit one', rev_id=b'a@r-0-1')
+        wt.commit('Commit two', rev_id=b'a@r-0-1.1.1')
+        wt.set_parent_ids([b'a@r-0-1', b'a@r-0-1.1.1'])
+        wt.branch.set_last_revision_info(1, b'a@r-0-1')
+        wt.commit('Commit three', rev_id=b'a@r-0-2')
 
         # This is expected to work even if the working tree is removed
         wt.controldir.destroy_workingtree()
 
         # Expected return values
         values = {
-            '1'    : '1 a@r-0-1\n',
+            '1': '1 a@r-0-1\n',
             '1.1.1': '1.1.1 a@r-0-1.1.1\n',
-            '2'    : '2 a@r-0-2\n'
+            '2': '2 a@r-0-2\n'
         }
 
         # Make sure with no arg it defaults to the head
@@ -59,24 +59,24 @@ class TestRevisionInfo(TestCaseWithTransport):
         self.check_output(values['1'], 'revision-info 1')
         self.check_output(values['1.1.1'], 'revision-info 1.1.1')
         self.check_output(values['2'], 'revision-info 2')
-        self.check_output(values['1']+values['2'], 'revision-info 1 2')
-        self.check_output('    '+values['1']+
-                                 values['1.1.1']+
-                          '    '+values['2'],
+        self.check_output(values['1'] + values['2'], 'revision-info 1 2')
+        self.check_output('    ' + values['1']
+                          + values['1.1.1']
+                          + '    ' + values['2'],
                           'revision-info 1 1.1.1 2')
-        self.check_output(values['2']+values['1'], 'revision-info 2 1')
+        self.check_output(values['2'] + values['1'], 'revision-info 2 1')
 
         # Check as above, only using the '--revision' syntax
 
         self.check_output(values['1'], 'revision-info -r 1')
         self.check_output(values['1.1.1'], 'revision-info --revision 1.1.1')
         self.check_output(values['2'], 'revision-info -r 2')
-        self.check_output(values['1']+values['2'], 'revision-info -r 1..2')
-        self.check_output('    '+values['1']+
-                                 values['1.1.1']+
-                          '    '+values['2'],
+        self.check_output(values['1'] + values['2'], 'revision-info -r 1..2')
+        self.check_output('    ' + values['1']
+                          + values['1.1.1']
+                          + '    ' + values['2'],
                           'revision-info -r 1..1.1.1..2')
-        self.check_output(values['2']+values['1'], 'revision-info -r 2..1')
+        self.check_output(values['2'] + values['1'], 'revision-info -r 2..1')
 
         # Now try some more advanced revision specifications
 
@@ -88,17 +88,17 @@ class TestRevisionInfo(TestCaseWithTransport):
         """Test that 'brz revision-info' honors the '-d' option."""
         wt = self.make_branch_and_tree('branch')
 
-        wt.commit('Commit one', rev_id='a@r-0-1')
+        wt.commit('Commit one', rev_id=b'a@r-0-1')
         self.check_output('1 a@r-0-1\n', 'revision-info -d branch')
 
     def test_revision_info_tree(self):
         # Make branch and checkout
         wt = self.make_branch_and_tree('branch')
-        wt.commit('Commit one', rev_id='a@r-0-1')
+        wt.commit('Commit one', rev_id=b'a@r-0-1')
 
         # Make checkout and move the branch forward
         wt.branch.create_checkout('checkout', lightweight=True)
-        wt.commit('Commit two', rev_id='a@r-0-2')
+        wt.commit('Commit two', rev_id=b'a@r-0-2')
 
         # Make sure the checkout gives the right answer for branch and
         # tree
@@ -110,18 +110,19 @@ class TestRevisionInfo(TestCaseWithTransport):
         b = self.make_branch('branch')
 
         # Try getting the --tree revision-info
-        out,err = self.run_bzr('revision-info --tree -d branch', retcode=3)
+        out, err = self.run_bzr('revision-info --tree -d branch', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('brz: ERROR: No WorkingTree exists for "branch".\n',
-            err)
+                         err)
 
     def test_revision_info_not_in_history(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None))])
-        builder.build_snapshot('B-id', ['A-id'], [])
-        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.build_snapshot(None, [
+            ('add', ('', b'root-id', 'directory', None))],
+            revision_id=b'A-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'B-id')
+        builder.build_snapshot([b'A-id'], [], revision_id=b'C-id')
         builder.finish_series()
         self.check_output('  1 A-id\n??? B-id\n  2 C-id\n',
                           'revision-info -d branch'

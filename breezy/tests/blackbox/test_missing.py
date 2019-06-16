@@ -38,7 +38,7 @@ class TestMissing(tests.TestCaseWithTransport):
         # XXX: This still needs a test that missing is quiet when there are
         # missing revisions.
         a_tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('a', 'initial\n')])
+        self.build_tree_contents([('a', b'initial\n')])
         a_tree.add('a')
         a_tree.commit(message='initial')
 
@@ -52,13 +52,13 @@ class TestMissing(tests.TestCaseWithTransport):
 
         # create a source branch
         a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/a', 'initial\n')])
+        self.build_tree_contents([('a/a', b'initial\n')])
         a_tree.add('a')
         a_tree.commit(message='initial')
 
         # clone and add a differing revision
         b_tree = a_tree.controldir.sprout('b').open_workingtree()
-        self.build_tree_contents([('b/a', 'initial\nmore\n')])
+        self.build_tree_contents([('b/a', b'initial\nmore\n')])
         b_tree.commit(message='more')
 
         def run_missing(args, retcode=1, working_dir=None):
@@ -138,7 +138,7 @@ class TestMissing(tests.TestCaseWithTransport):
         lines7 = run_missing_a(['--show-ids'])
         self.assertLength(11, lines7)
 
-        lines8 =  run_missing_a(['--verbose'])
+        lines8 = run_missing_a(['--verbose'])
         self.assertEqual("modified:", lines8[-2])
         self.assertEqual("  a", lines8[-1])
 
@@ -155,12 +155,12 @@ class TestMissing(tests.TestCaseWithTransport):
         self.assertEqualDiff('This branch has no new revisions.',
                              run_missing_a(['--mine-only'], retcode=0)[0])
         self.assertEqualDiff('Other branch has no new revisions.',
-                              run_missing_a(['--theirs-only'], retcode=0)[0])
+                             run_missing_a(['--theirs-only'], retcode=0)[0])
 
     def test_missing_filtered(self):
         # create a source branch
         a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/a', 'initial\n')])
+        self.build_tree_contents([('a/a', b'initial\n')])
         a_tree.add('a')
         a_tree.commit(message='r1')
         # clone and add differing revisions
@@ -171,28 +171,28 @@ class TestMissing(tests.TestCaseWithTransport):
             b_tree.commit(message='b%d' % i)
 
         # local
-        out,err = self.run_bzr('missing ../b --my-revision 3',
-                               retcode=1, working_dir='a')
+        out, err = self.run_bzr('missing ../b --my-revision 3',
+                                retcode=1, working_dir='a')
         self.assertMessages(out, ('a3', 'b2', 'b3', 'b4', 'b5'), ('a2', 'a4'))
 
-        out,err = self.run_bzr('missing ../b --my-revision 3..4',
-                               retcode=1, working_dir='a')
+        out, err = self.run_bzr('missing ../b --my-revision 3..4',
+                                retcode=1, working_dir='a')
         self.assertMessages(out, ('a3', 'a4'), ('a2', 'a5'))
 
-        #remote
-        out,err = self.run_bzr('missing ../b -r 3',
-                               retcode=1, working_dir='a')
+        # remote
+        out, err = self.run_bzr('missing ../b -r 3',
+                                retcode=1, working_dir='a')
         self.assertMessages(out, ('a2', 'a3', 'a4', 'a5', 'b3'), ('b2', 'b4'))
 
-        out,err = self.run_bzr('missing ../b -r 3..4',
-                               retcode=1, working_dir='a')
+        out, err = self.run_bzr('missing ../b -r 3..4',
+                                retcode=1, working_dir='a')
         self.assertMessages(out, ('b3', 'b4'), ('b2', 'b5'))
 
-        #both
-        out,err = self.run_bzr('missing ../b --my-revision 3..4 -r 3..4',
-                               retcode=1, working_dir='a')
+        # both
+        out, err = self.run_bzr('missing ../b --my-revision 3..4 -r 3..4',
+                                retcode=1, working_dir='a')
         self.assertMessages(out, ('a3', 'a4', 'b3', 'b4'),
-            ('a2', 'a5', 'b2', 'b5'))
+                            ('a2', 'a5', 'b2', 'b5'))
 
     def test_missing_check_last_location(self):
         # check that last location shown as filepath not file URL
@@ -221,13 +221,13 @@ class TestMissing(tests.TestCaseWithTransport):
 
         # create a source branch
         a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/a', 'initial\n')])
+        self.build_tree_contents([('a/a', b'initial\n')])
         a_tree.add('a')
         a_tree.commit(message='initial')
 
         # clone and add a differing revision
         b_tree = a_tree.controldir.sprout('b').open_workingtree()
-        self.build_tree_contents([('b/a', 'initial\nmore\n')])
+        self.build_tree_contents([('b/a', b'initial\nmore\n')])
         b_tree.commit(message='more')
 
         out2, err2 = self.run_bzr('missing --directory a b', retcode=1)
@@ -240,13 +240,13 @@ class TestMissing(tests.TestCaseWithTransport):
 
         # create a source branch
         a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([('a/a', 'initial\n')])
+        self.build_tree_contents([('a/a', b'initial\n')])
         a_tree.add('a')
         a_tree.commit(message='initial')
 
         # clone and add a differing revision
         b_tree = a_tree.controldir.sprout('b').open_workingtree()
-        self.build_tree_contents([('b/a', 'initial\nmore\n')])
+        self.build_tree_contents([('b/a', b'initial\nmore\n')])
         b_tree.commit(message='more')
         b_tree.branch.tags.set_tag('a-tag', b_tree.last_revision())
 
