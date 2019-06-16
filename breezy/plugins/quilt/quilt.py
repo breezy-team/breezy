@@ -38,7 +38,7 @@ class QuiltPatches(object):
         if patches_dir is None:
             if tree.has_filename('.pc/.quilt_patches'):
                 patches_dir = tree.get_file_text('.pc/.quilt_patches').decode(
-                    osutils._fs_enc)
+                    osutils._fs_enc).rstrip('\n')
             else:
                 patches_dir = DEFAULT_PATCHES_DIR
         self.patches_dir = patches_dir
