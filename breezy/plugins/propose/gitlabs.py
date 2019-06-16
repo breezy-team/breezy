@@ -22,6 +22,7 @@ import json
 import os
 
 from ... import (
+    bedding,
     branch as _mod_branch,
     controldir,
     errors,
@@ -96,9 +97,7 @@ class GitlabLoginError(errors.BzrError):
 
 
 def default_config_path():
-    from breezy.config import config_dir
-    import os
-    return os.path.join(config_dir(), 'gitlab.conf')
+    return os.path.join(bedding.config_dir(), 'gitlab.conf')
 
 
 def store_gitlab_token(name, url, private_token):
