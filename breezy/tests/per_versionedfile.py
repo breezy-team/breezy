@@ -1550,8 +1550,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         else:
             f.add_chunks(key1, [], [b'b\n', b'c\n'])
         keys = f.keys()
-        self.assertTrue(key0 in keys)
-        self.assertTrue(key1 in keys)
+        self.assertIn(key0, keys)
+        self.assertIn(key1, keys)
         records = []
         for record in f.get_record_stream([key0, key1], 'unordered', True):
             records.append((record.key, record.get_bytes_as('fulltext')))
