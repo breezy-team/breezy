@@ -40,7 +40,7 @@ def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
 
 
 def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
-           store_uncommitted=False):
+           store_uncommitted=False, possible_transports=None):
     """Switch the branch associated with a checkout.
 
     :param control_dir: ControlDir of the checkout to change
