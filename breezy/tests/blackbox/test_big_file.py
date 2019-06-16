@@ -21,6 +21,7 @@ These are meant to ensure that Breezy never keeps full copies of files in
 memory.
 """
 
+import errno
 import os
 import resource
 
@@ -50,8 +51,12 @@ def make_big_file(path):
 class TestAdd(tests.TestCaseWithTransport):
 
     def writeBigFile(self, path):
-        make_big_file(path)
         self.addCleanup(os.unlink, path)
+        try:
+            make_big_file(path)
+        except EnvironmentError as e:
+            if e.errno == errno.ENOSPC:
+                self.skipTest('not enough disk space for big file')
 
     def setUp(self):
         super(TestAdd, self).setUp()
