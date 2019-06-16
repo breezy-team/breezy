@@ -448,8 +448,11 @@ class BzrDir(controldir.ControlDir):
 
         # Create/update the result working tree
         if (create_tree_if_local and not result.has_workingtree()
-            and isinstance(target_transport, local.LocalTransport)
-                and (result_repo is None or result_repo.make_working_trees())):
+                and isinstance(target_transport, local.LocalTransport)
+                and (result_repo is None or result_repo.make_working_trees())
+                and result.open_branch(
+                    name="",
+                    possible_transports=possible_transports).name == result_branch.name):
             wt = result.create_workingtree(
                 accelerator_tree=accelerator_tree, hardlink=hardlink,
                 from_branch=result_branch)
@@ -1092,6 +1095,11 @@ class BzrDirMeta1(BzrDir):
             name = self._get_selected_branch()
         format = self.find_branch_format(name=name)
         format.check_support_status(unsupported)
+        if possible_transports is None:
+            possible_transports = []
+        else:
+            possible_transports = list(possible_transports)
+        possible_transports.append(self.root_transport)
         return format.open(self, name=name,
                            _found=True, ignore_fallbacks=ignore_fallbacks,
                            possible_transports=possible_transports)

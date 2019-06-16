@@ -35,6 +35,7 @@ from ...workingtree import WorkingTree
 from .. import (
     tests,
     )
+from ...tests.script import TestCaseWithTransportAndScript
 from ...tests.features import PluginLoadedFeature
 
 
@@ -391,6 +392,30 @@ class SwitchTests(ExternalBase):
             basis_tree = tree.basis_tree()
             with basis_tree.lock_read():
                 self.assertEqual([], list(tree.iter_changes(basis_tree)))
+
+
+class SwitchScriptTests(TestCaseWithTransportAndScript):
+
+    def test_switch_preserves(self):
+        # See https://bugs.launchpad.net/brz/+bug/1820606
+        self.run_script("""
+$ brz init --git r
+Created a standalone tree (format: git)
+$ cd r
+$ echo original > file.txt
+$ brz add
+adding file.txt
+$ brz ci -q -m "Initial"
+$ echo "entered on master branch" > file.txt
+$ brz stat
+modified:
+  file.txt
+$ brz switch -b other
+2>Tree is up to date at revision 1.
+2>Switched to branch other
+$ cat file.txt
+entered on master branch
+""")
 
 
 class GrepTests(ExternalBase):
