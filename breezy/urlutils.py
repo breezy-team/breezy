@@ -162,11 +162,11 @@ else:
 unquote = urlparse.unquote
 
 
-def escape(relpath):
+def escape(relpath, safe='/~'):
     """Escape relpath to be a valid url."""
     if not isinstance(relpath, str) and sys.version_info[0] == 2:
         relpath = relpath.encode('utf-8')
-    return quote(relpath, safe='/~')
+    return quote(relpath, safe=safe)
 
 
 def file_relpath(base, path):

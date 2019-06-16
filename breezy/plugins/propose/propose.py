@@ -22,6 +22,7 @@ from ... import (
     errors,
     hooks,
     registry,
+    urlutils,
     )
 
 
@@ -225,9 +226,15 @@ class Hoster(object):
         raise NotImplementedError(self.hosts)
 
     @classmethod
-    def probe(cls, branch):
+    def probe_from_branch(cls, branch):
         """Create a Hoster object if this hoster knows about a branch."""
-        raise NotImplementedError(cls.probe)
+        url = urlutils.split_segment_parameters(branch.user_url)[0]
+        return cls.probe_from_url(url)
+
+    @classmethod
+    def probe_from_url(cls, url):
+        """Create a Hoster object if this hoster knows about a URL."""
+        raise NotImplementedError(cls.probe_from_url)
 
     # TODO(jelmer): Some way of cleaning up old branch proposals/branches
 
@@ -259,7 +266,7 @@ def get_hoster(branch, possible_hosters=None):
                 return hoster
     for name, hoster_cls in hosters.items():
         try:
-            hoster = hoster_cls.probe(branch)
+            hoster = hoster_cls.probe_from_branch(branch)
         except UnsupportedHoster:
             pass
         else:
