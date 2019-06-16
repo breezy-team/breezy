@@ -604,8 +604,8 @@ class Commit(object):
         if master_last != first_tree_parent:
             if master_last != breezy.revision.NULL_REVISION:
                 raise errors.OutOfDateTree(self.work_tree)
-        if (self.branch.repository.has_revision(first_tree_parent) and
-                old_revno is not None):
+        if (old_revno is not None and
+                self.branch.repository.has_revision(first_tree_parent)):
             new_revno = old_revno + 1
         else:
             # ghost parents never appear in revision history.
