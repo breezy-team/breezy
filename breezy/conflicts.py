@@ -646,7 +646,7 @@ class TextConflict(Conflict):
 
     rformat = '%(class)s(%(path)r, %(file_id)r)'
 
-    _conflict_re = re.compile('^(<{7}|={7}|>{7})')
+    _conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
 
     def associated_filenames(self):
         return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
