@@ -978,6 +978,38 @@ class VersionedFiles(object):
         """
         raise NotImplementedError(self.add_lines)
 
+    def add_chunks(self, key, parents, chunk_iter, parent_texts=None,
+                   left_matching_blocks=None, nostore_sha=None, random_id=False,
+                   check_content=True):
+        """Add a text to the store from a chunk iterable.
+
+        :param key: The key tuple of the text to add. If the last element is
+            None, a CHK string will be generated during the addition.
+        :param parents: The parents key tuples of the text to add.
+        :param chunk_iter: An iterable over bytestrings.
+        :param parent_texts: An optional dictionary containing the opaque
+            representations of some or all of the parents of version_id to
+            allow delta optimisations.  VERY IMPORTANT: the texts must be those
+            returned by add_lines or data corruption can be caused.
+        :param left_matching_blocks: a hint about which areas are common
+            between the text and its left-hand-parent.  The format is
+            the SequenceMatcher.get_matching_blocks format.
+        :param nostore_sha: Raise ExistingContent and do not add the lines to
+            the versioned file if the digest of the lines matches this.
+        :param random_id: If True a random id has been selected rather than
+            an id determined by some deterministic process such as a converter
+            from a foreign VCS. When True the backend may choose not to check
+            for uniqueness of the resulting key within the versioned file, so
+            this should only be done when the result is expected to be unique
+            anyway.
+        :param check_content: If True, the lines supplied are verified to be
+            bytestrings that are correctly formed lines.
+        :return: The text sha1, the number of bytes in the text, and an opaque
+                 representation of the inserted version which can be provided
+                 back to future add_lines calls in the parent_texts dictionary.
+        """
+        raise NotImplementedError(self.add_chunks)
+
     def add_mpdiffs(self, records):
         """Add mpdiffs to this VersionedFile.
 
