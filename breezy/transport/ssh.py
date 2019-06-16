@@ -30,6 +30,7 @@ from binascii import hexlify
 
 from .. import (
     config,
+    bedding,
     errors,
     osutils,
     trace,
@@ -312,7 +313,7 @@ class ParamikoVendor(SSHVendor):
             save_host_keys()
         if server_key != our_server_key:
             filename1 = os.path.expanduser('~/.ssh/known_hosts')
-            filename2 = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
+            filename2 = _ssh_host_keys_config_dir()
             raise errors.TransportError(
                 'Host keys for %s do not match!  %s != %s' %
                 (host, our_server_key_hex, server_key_hex),
@@ -610,6 +611,10 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
     return False
 
 
+def _ssh_host_keys_config_dir():
+    return osutils.pathjoin(bedding.config_dir(), 'ssh_host_keys')
+
+
 def load_host_keys():
     """
     Load system host keys (probably doesn't work on windows) and any
@@ -621,7 +626,7 @@ def load_host_keys():
             os.path.expanduser('~/.ssh/known_hosts'))
     except IOError as e:
         trace.mutter('failed to load system host keys: ' + str(e))
-    brz_hostkey_path = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
+    brz_hostkey_path = _ssh_host_keys_config_dir()
     try:
         BRZ_HOSTKEYS = paramiko.util.load_host_keys(brz_hostkey_path)
     except IOError as e:
@@ -634,8 +639,8 @@ def save_host_keys():
     Save "discovered" host keys in $(config)/ssh_host_keys/.
     """
     global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
-    bzr_hostkey_path = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
-    config.ensure_config_dir_exists()
+    bzr_hostkey_path = _ssh_host_keys_config_dir()
+    bedding.ensure_config_dir_exists()
 
     try:
         with open(bzr_hostkey_path, 'w') as f:

@@ -2344,49 +2344,6 @@ class TestEnvironmentErrors(tests.TestCase):
             pywintypes.error(errno.EINVAL, "Invalid parameter", "Caller")))
 
 
-class TestXDGCacheDir(tests.TestCaseInTempDir):
-    # must be in temp dir because tests for the existence of the breezy
-    # subdirectory of $XDG_CACHE_HOME
-
-    def setUp(self):
-        super(TestXDGCacheDir, self).setUp()
-        if sys.platform in ('darwin', 'win32'):
-            raise tests.TestNotApplicable(
-                'XDG cache dir not used on this platform')
-        self.overrideEnv('HOME', self.test_home_dir)
-        # BZR_HOME overrides everything we want to test so unset it.
-        self.overrideEnv('BZR_HOME', None)
-
-    def test_xdg_cache_dir_exists(self):
-        """When ~/.cache/breezy exists, use it as the cache dir."""
-        cachedir = osutils.pathjoin(self.test_home_dir, '.cache')
-        newdir = osutils.pathjoin(cachedir, 'breezy')
-        try:
-            from xdg import BaseDirectory
-        except ImportError:
-            pass
-        else:
-            self.overrideAttr(BaseDirectory, "xdg_cache_home", cachedir)
-        os.makedirs(newdir)
-        self.assertEqual(osutils.cache_dir(), newdir)
-
-    def test_xdg_cache_home_unix(self):
-        """When XDG_CACHE_HOME is set, use it."""
-        if sys.platform in ('nt', 'win32'):
-            raise tests.TestNotApplicable(
-                'XDG cache dir not used on this platform')
-        xdgcachedir = osutils.pathjoin(self.test_home_dir, 'xdgcache')
-        self.overrideEnv('XDG_CACHE_HOME', xdgcachedir)
-        try:
-            from xdg import BaseDirectory
-        except ImportError:
-            pass
-        else:
-            self.overrideAttr(BaseDirectory, "xdg_cache_home", xdgcachedir)
-        newdir = osutils.pathjoin(xdgcachedir, 'breezy')
-        os.makedirs(newdir)
-        self.assertEqual(osutils.cache_dir(), newdir)
-
 class SupportsExecutableTests(tests.TestCaseInTempDir):
 
     def test_returns_bool(self):

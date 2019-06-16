@@ -2634,39 +2634,6 @@ def is_environment_error(evalue):
     return False
 
 
-def cache_dir():
-    """Return the cache directory to use."""
-    if sys.platform in ("nt", "win32"):
-        from bzrlib.win32utils import get_local_appdata_location
-        s = get_local_appdata_location()
-        # This can return a unicode string or a plain string in
-        # user encoding
-        if isinstance(s, bytes):
-            s = s.decode(bzrlib.user_encoding)
-        cache_dir = s.encode(_fs_enc)
-    else:
-        try:
-            from xdg import BaseDirectory
-        except ImportError:
-            xdg_cache_dir = os.environ.get('XDG_CACHE_HOME', None)
-        else:
-            xdg_cache_dir = BaseDirectory.xdg_cache_home
-        if xdg_cache_dir is not None:
-            cache_dir = os.path.join(xdg_cache_dir, "breezy")
-        else:
-            cache_dir = None
-        if cache_dir is not None and not isinstance(cache_dir, text_type):
-            cache_dir = cache_dir.encode(_fs_enc)
-
-    if cache_dir is None:
-        cache_dir = os.path.expanduser('~/.cache/breezy')
-
-    if not os.path.exists(cache_dir):
-        os.makedirs(cache_dir)
-
-    return cache_dir
-
-
 def get_fs_type(path):
     """Return the filesystem type for the partition a path is in.
 
