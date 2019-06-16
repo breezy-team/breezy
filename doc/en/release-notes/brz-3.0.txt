@@ -8,8 +8,11 @@ Breezy Release Notes
 bzr 3.0.1
 #########
 
-:3.0.1: NOT RELEASED YET
+:3.0.1: 2019-06-16
 
+brz 3.0.1 is the second release of ``Breezy``, a fork of Bazaar. For more
+information, see our release announcement on the Bazaar mailing list and
+README.
 
 External Compatibility Breaks
 *****************************
