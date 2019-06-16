@@ -2645,12 +2645,9 @@ def read_mtab(path):
             if line.startswith(b'#'):
                 continue
             cols = line.split()
-            if not cols:
+            if len(cols) < 3:
                 continue
-            try:
-                yield cols[1], cols[2].decode('ascii', 'replace')
-            except IndexError:
-                trace.mutter('Invalid entry in fstab: %r', cols)
+            yield cols[1], cols[2].decode('ascii', 'replace')
 
 
 MTAB_PATH = '/etc/mtab'
@@ -2659,8 +2656,9 @@ class FilesystemFinder(object):
     """Find the filesystem for a particular path."""
 
     def __init__(self, mountpoints):
-        self._mountpoints = mountpoints
-        self._mountpoints.sort(key=lambda x: len(x[0]), reverse=True)
+        def key(x):
+            return len(x[0])
+        self._mountpoints = sorted(mountpoints, key=key, reverse=True)
 
     @classmethod
     def from_mtab(cls):
@@ -2672,7 +2670,7 @@ class FilesystemFinder(object):
         # TODO(jelmer): Use inotify to be notified when /etc/mtab changes and
         # we need to re-read it.
         try:
-            return cls(list(read_mtab(MTAB_PATH)))
+            return cls(read_mtab(MTAB_PATH))
         except EnvironmentError as e:
             trace.mutter('Unable to read mtab: %s', e)
             return cls([])
