@@ -2647,7 +2647,7 @@ def read_mtab(path):
             cols = line.split()
             if len(cols) < 3:
                 continue
-            yield cols[1].decode(_fs_enc, 'replace'), cols[2].decode('ascii', 'replace')
+            yield cols[1], cols[2].decode('ascii', 'replace')
 
 
 MTAB_PATH = '/etc/mtab'
@@ -2701,7 +2701,7 @@ def get_fs_type(path):
     if _FILESYSTEM_FINDER is None:
         _FILESYSTEM_FINDER = FilesystemFinder.from_mtab()
 
-    if not PY3 and not isinstance(path, str):
+    if not isinstance(path, bytes):
         path = path.encode(_fs_enc)
 
     return _FILESYSTEM_FINDER.find(path)

@@ -2380,16 +2380,19 @@ class GetFsTypeTests(tests.TestCaseInTempDir):
         self.overrideAttr(
             osutils, '_FILESYSTEM_FINDER',
             osutils.FilesystemFinder(
-                [('/', 'ext4'), ('/home', 'vfat'), ('/home/jelmer', 'ext2')]))
+                [(b'/', 'ext4'), (b'/home', 'vfat'),
+                 (b'/home/jelmer', 'ext2')]))
+        self.assertEqual(osutils.get_fs_type(b'/home/jelmer/blah'), 'ext2')
         self.assertEqual(osutils.get_fs_type('/home/jelmer/blah'), 'ext2')
-        self.assertEqual(osutils.get_fs_type('/home/jelmer'), 'ext2')
-        self.assertEqual(osutils.get_fs_type('/home/martin'), 'vfat')
-        self.assertEqual(osutils.get_fs_type('/home'), 'vfat')
-        self.assertEqual(osutils.get_fs_type('/other'), 'ext4')
+        self.assertEqual(osutils.get_fs_type(b'/home/jelmer'), 'ext2')
+        self.assertEqual(osutils.get_fs_type(b'/home/martin'), 'vfat')
+        self.assertEqual(osutils.get_fs_type(b'/home'), 'vfat')
+        self.assertEqual(osutils.get_fs_type(b'/other'), 'ext4')
 
     def test_returns_none(self):
         self.overrideAttr(
             osutils, '_FILESYSTEM_FINDER',
             osutils.FilesystemFinder([]))
         self.assertIs(osutils.get_fs_type('/home/jelmer/blah'), None)
+        self.assertIs(osutils.get_fs_type(b'/home/jelmer/blah'), None)
         self.assertIs(osutils.get_fs_type('/home/jelmer'), None)
