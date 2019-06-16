@@ -1210,8 +1210,8 @@ class cmd_pull(Command):
         possible_transports = []
         if location is not None:
             try:
-                mergeable = bundle.read_mergeable_from_url(location,
-                                                           possible_transports=possible_transports)
+                mergeable = bundle.read_mergeable_from_url(
+                    location, possible_transports=possible_transports)
             except errors.NotABundle:
                 mergeable = None
 
@@ -6277,9 +6277,8 @@ class cmd_switch(Command):
         from . import switch
         tree_location = directory
         revision = _get_one_revision('switch', revision)
-        possible_transports = []
-        control_dir = controldir.ControlDir.open_containing(tree_location,
-                                                            possible_transports=possible_transports)[0]
+        control_dir = controldir.ControlDir.open_containing(tree_location)[0]
+        possible_transports = [control_dir.root_transport]
         if to_location is None:
             if revision is None:
                 raise errors.BzrCommandError(gettext('You must supply either a'
@@ -6292,6 +6291,8 @@ class cmd_switch(Command):
         except errors.NotBranchError:
             branch = None
             had_explicit_nick = False
+        else:
+            possible_transports.append(branch.user_transport)
         if create_branch:
             if branch is None:
                 raise errors.BzrCommandError(
@@ -6308,17 +6309,19 @@ class cmd_switch(Command):
                 source_branch=branch).open_branch()
         else:
             try:
-                to_branch = Branch.open(to_location,
-                                        possible_transports=possible_transports)
+                to_branch = Branch.open(
+                    to_location, possible_transports=possible_transports)
             except errors.NotBranchError:
                 to_branch = open_sibling_branch(
                     control_dir, to_location,
                     possible_transports=possible_transports)
             if revision is not None:
                 revision = revision.as_revision_id(to_branch)
+        possible_transports.append(to_branch.user_transport)
         try:
             switch.switch(control_dir, to_branch, force, revision_id=revision,
-                          store_uncommitted=store)
+                          store_uncommitted=store,
+                          possible_transports=possible_transports)
         except controldir.BranchReferenceLoop:
             raise errors.BzrCommandError(
                 gettext('switching would create a branch reference loop. '

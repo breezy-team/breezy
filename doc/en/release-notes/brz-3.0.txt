@@ -35,8 +35,12 @@ Bug Fixes
 
 * Fix a nasty corner case merging changes into a tree with changed
   symlinks when pushing from bzr into git.
+  (Jelmer Vernooĳ)
 
 * Fix installation on Windows. (Raoul Snyman, #1818947)
+
+* Fix switching between branches while preserving uncommitted changes in git.
+  (Jelmer Vernooĳ, #1820606)
 
 * Return consist errors from ``Branch.get_revid`` and
   ``Repository.get_revid_for_revno`` when the revision
@@ -72,6 +76,7 @@ Testing
 *******
 
 None.
+
 
 brz 3.0.0
 #########
