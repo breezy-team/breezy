@@ -23,4 +23,4 @@ breezy.conf (whose location is shown by 'brz --version')::
 
 Breezy will work normally but some operations may be slower.
 
-The specific modules that failed, and why, are listed in .brz.log.
+The specific modules that failed, and why, are listed in brz.log.
