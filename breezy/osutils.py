@@ -2634,27 +2634,77 @@ def is_environment_error(evalue):
     return False
 
 
+def read_mtab(path):
+    """Read an fstab-style file and extract mountpoint+filesystem information.
+
+    :param path: Path to read from
+    :yield: Tuples with mountpoints (as bytestrings) and filesystem names
+    """
+    with open(path, 'rb') as f:
+        for line in f:
+            if line.startswith(b'#'):
+                continue
+            cols = line.split()
+            if len(cols) < 3:
+                continue
+            yield cols[1], cols[2].decode('ascii', 'replace')
+
+
+MTAB_PATH = '/etc/mtab'
+
+class FilesystemFinder(object):
+    """Find the filesystem for a particular path."""
+
+    def __init__(self, mountpoints):
+        def key(x):
+            return len(x[0])
+        self._mountpoints = sorted(mountpoints, key=key, reverse=True)
+
+    @classmethod
+    def from_mtab(cls):
+        """Create a FilesystemFinder from an mtab-style file.
+
+        Note that this will silenty ignore mtab if it doesn't exist or can not
+        be opened.
+        """
+        # TODO(jelmer): Use inotify to be notified when /etc/mtab changes and
+        # we need to re-read it.
+        try:
+            return cls(read_mtab(MTAB_PATH))
+        except EnvironmentError as e:
+            trace.mutter('Unable to read mtab: %s', e)
+            return cls([])
+
+    def find(self, path):
+        """Find the filesystem used by a particular path.
+
+        :param path: Path to find (bytestring or text type)
+        :return: Filesystem name (as text type) or None, if the filesystem is
+            unknown.
+        """
+        for mountpoint, filesystem in self._mountpoints:
+            if is_inside(mountpoint, path):
+                return filesystem
+        return None
+
+
+_FILESYSTEM_FINDER = None
+
+
 def get_fs_type(path):
     """Return the filesystem type for the partition a path is in.
 
     :param path: Path to search filesystem type for
     :return: A FS type, as string. E.g. "ext2"
     """
-    # TODO(jelmer): It would be nice to avoid an extra dependency here, but the only
-    # alternative is reading platform-specific files under /proc :(
-    try:
-        import psutil
-    except ImportError as e:
-        raise errors.DependencyNotPresent('psutil', e)
+    global _FILESYSTEM_FINDER
+    if _FILESYSTEM_FINDER is None:
+        _FILESYSTEM_FINDER = FilesystemFinder.from_mtab()
 
-    if not PY3 and not isinstance(path, str):
+    if not isinstance(path, bytes):
         path = path.encode(_fs_enc)
 
-    for part in sorted(psutil.disk_partitions(), key=lambda x: len(x.mountpoint), reverse=True):
-        if is_inside(part.mountpoint, path):
-            return part.fstype
-    # Unable to parse the file? Since otherwise at least the entry for / should match..
-    return None
+    return _FILESYSTEM_FINDER.find(path)
 
 
 if PY3:
