@@ -569,8 +569,9 @@ class VersionedFileCommitBuilder(CommitBuilder):
 
     def _add_file_to_weave(self, file_id, fileobj, parents, nostore_sha):
         parent_keys = tuple([(file_id, parent) for parent in parents])
-        return self.repository.texts.add_lines(
-            (file_id, self._new_revision_id), parent_keys, fileobj.readlines(),
+        return self.repository.texts.add_chunks(
+            (file_id, self._new_revision_id), parent_keys,
+            osutils.file_iterator(fileobj),
             nostore_sha=nostore_sha, random_id=self.random_revid)[0:2]
 
 

@@ -1295,18 +1295,56 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                  back to future add_lines calls in the parent_texts dictionary.
         """
         self._index._check_write_ok()
-        self._check_add(key, lines, random_id, check_content)
+        if check_content:
+            self._check_lines_not_unicode(lines)
+            self._check_lines_are_lines(lines)
+        return self.add_chunks(
+            key, parents, iter(lines), parent_texts, left_matching_blocks,
+            nostore_sha, random_id)
+
+    def add_chunks(self, key, parents, chunk_iter, parent_texts=None,
+                   left_matching_blocks=None, nostore_sha=None, random_id=False):
+        """Add a text to the store.
+
+        :param key: The key tuple of the text to add.
+        :param parents: The parents key tuples of the text to add.
+        :param chunk_iter: An iterator over chunks. Chunks
+            don't need to be file lines; the only requirement is that they
+            are bytes.
+        :param parent_texts: An optional dictionary containing the opaque
+            representations of some or all of the parents of version_id to
+            allow delta optimisations.  VERY IMPORTANT: the texts must be those
+            returned by add_lines or data corruption can be caused.
+        :param left_matching_blocks: a hint about which areas are common
+            between the text and its left-hand-parent.  The format is
+            the SequenceMatcher.get_matching_blocks format.
+        :param nostore_sha: Raise ExistingContent and do not add the lines to
+            the versioned file if the digest of the lines matches this.
+        :param random_id: If True a random id has been selected rather than
+            an id determined by some deterministic process such as a converter
+            from a foreign VCS. When True the backend may choose not to check
+            for uniqueness of the resulting key within the versioned file, so
+            this should only be done when the result is expected to be unique
+            anyway.
+        :return: The text sha1, the number of bytes in the text, and an opaque
+                 representation of the inserted version which can be provided
+                 back to future add_lines calls in the parent_texts dictionary.
+        """
+        self._index._check_write_ok()
+        self._check_add(key, random_id)
         if parents is None:
             # The caller might pass None if there is no graph data, but kndx
             # indexes can't directly store that, so we give them
             # an empty tuple instead.
             parents = ()
         # double handling for now. Make it work until then.
-        length = sum(map(len, lines))
-        record = ChunkedContentFactory(key, parents, None, lines)
-        sha1 = list(self._insert_record_stream([record], random_id=random_id,
-                                               nostore_sha=nostore_sha))[0]
-        return sha1, length, None
+        # TODO(jelmer): problematic for big files: let's not keep the list of
+        # chunks in memory.
+        chunks = list(chunk_iter)
+        record = ChunkedContentFactory(key, parents, None, chunks)
+        sha1 = list(self._insert_record_stream(
+            [record], random_id=random_id, nostore_sha=nostore_sha))[0]
+        return sha1, sum(map(len, chunks)), None
 
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
@@ -1338,7 +1376,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         self._index._graph_index.clear_cache()
         self._index._int_cache.clear()
 
-    def _check_add(self, key, lines, random_id, check_content):
+    def _check_add(self, key, random_id):
         """check that version_id and lines are safe to add."""
         version_id = key[-1]
         if version_id is not None:
@@ -1349,9 +1387,6 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         # probably check that the existing content is identical to what is
         # being inserted, and otherwise raise an exception.  This would make
         # the bundle code simpler.
-        if check_content:
-            self._check_lines_not_unicode(lines)
-            self._check_lines_are_lines(lines)
 
     def get_parent_map(self, keys):
         """Get a map of the graph parents of keys.
