@@ -37,7 +37,7 @@ from subprocess import call
 
 verbose = False
 
-IMAGE_DIRECTIVE_PATTERN = re.compile(u'^..\\s+image::\\s+(.*)\`\s+$')
+IMAGE_DIRECTIVE_PATTERN = re.compile(u'^..\\s+image::\\s+(.*)\\`\\s+$')
 DIRECTIVE_ELEMENT_PATTERN = re.compile(u'^\\s+:[^:]+:\\s+')
 
 class Converter(object):

@@ -24,6 +24,7 @@ import os
 import shutil
 
 from .... import (
+    bedding,
     config,
     errors,
     trace,
@@ -164,7 +165,7 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a.smart_add([tree_a.basedir])
         tree_a.commit('initial')
 
-        config.ensure_config_dir_exists()
+        bedding.ensure_config_dir_exists()
         config.GlobalStack().set('quilt.tree_policy', 'applied')
 
         tree_a.branch.create_checkout("b")

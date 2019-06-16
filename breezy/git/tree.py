@@ -828,10 +828,11 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             oldkind == 'directory' and newkind == 'directory' and
                 oldpath_decoded == newpath_decoded):
             continue
-        yield (fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
-               (oldversioned, newversioned),
-               (oldparent, newparent), (oldname, newname),
-               (oldkind, newkind), (oldexe, newexe))
+        yield _mod_tree.TreeChange(
+            fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
+            (oldversioned, newversioned),
+            (oldparent, newparent), (oldname, newname),
+            (oldkind, newkind), (oldexe, newexe))
 
 
 class InterGitTrees(_mod_tree.InterTree):

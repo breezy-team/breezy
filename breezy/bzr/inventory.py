@@ -492,10 +492,10 @@ class InventoryFile(InventoryEntry):
 
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
-        self.text_sha1 = work_tree.get_file_sha1(path, self.file_id)
+        self.text_sha1 = work_tree.get_file_sha1(path)
         # FIXME: 20050930 probe for the text size when getting sha1
         # in _read_tree_state
-        self.executable = work_tree.is_executable(path, self.file_id)
+        self.executable = work_tree.is_executable(path)
 
     def __repr__(self):
         return ("%s(%r, %r, parent_id=%r, sha1=%r, len=%s, revision=%s)"
@@ -2104,8 +2104,9 @@ class CHKInventory(CommonInventory):
                 # Could happen when only the revision changed for a directory
                 # for instance.
                 continue
-            yield (file_id, (path_in_source, path_in_target), changed_content,
-                   versioned, parent, name, kind, executable)
+            yield (
+                file_id, (path_in_source, path_in_target), changed_content,
+                versioned, parent, name, kind, executable)
 
     def __len__(self):
         """Return the number of entries in the inventory."""

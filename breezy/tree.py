@@ -65,6 +65,8 @@ class TreeEntry(object):
     """An entry that implements the minimum interface used by commands.
     """
 
+    __slots__ = []
+
     def __eq__(self, other):
         # yes, this is ugly, TODO: best practice __eq__ style.
         return (isinstance(other, TreeEntry)
@@ -79,6 +81,8 @@ class TreeEntry(object):
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
 
+    __slots__ = []
+
     kind = 'directory'
 
     def kind_character(self):
@@ -87,6 +91,8 @@ class TreeDirectory(TreeEntry):
 
 class TreeFile(TreeEntry):
     """See TreeEntry. This is a regular file in a working tree."""
+
+    __slots__ = []
 
     kind = 'file'
 
@@ -97,6 +103,8 @@ class TreeFile(TreeEntry):
 class TreeLink(TreeEntry):
     """See TreeEntry. This is a symlink in a working tree."""
 
+    __slots__ = []
+
     kind = 'symlink'
 
     def kind_character(self):
@@ -106,10 +114,59 @@ class TreeLink(TreeEntry):
 class TreeReference(TreeEntry):
     """See TreeEntry. This is a reference to a nested tree in a working tree."""
 
+    __slots__ = []
+
     kind = 'tree-reference'
 
     def kind_character(self):
         return '+'
+
+
+class TreeChange(object):
+    """Describes the changes between the same item in two different trees."""
+
+    __slots__ = ['file_id', 'path', 'changed_content', 'versioned', 'parent_id',
+                 'name', 'kind', 'executable']
+
+    def __init__(self, file_id, path, changed_content, versioned, parent_id,
+                 name, kind, executable):
+        self.file_id = file_id
+        self.path = path
+        self.changed_content = changed_content
+        self.versioned = versioned
+        self.parent_id = parent_id
+        self.name = name
+        self.kind = kind
+        self.executable = executable
+
+    def __len__(self):
+        return len(self.__slots__)
+
+    def __tuple__(self):
+        return (self.file_id, self.path, self.changed_content, self.versioned,
+                self.parent_id, self.name, self.kind, self.executable)
+
+    def __eq__(self, other):
+        if isinstance(other, TreeChange):
+            return tuple(self) == tuple(other)
+        if isinstance(other, tuple):
+            return tuple(self) == other
+        return False
+
+    def __lt__(self, other):
+        return tuple(self) < tuple(other)
+
+    def __getitem__(self, i):
+        if isinstance(i, slice):
+            return tuple(self).__getitem__(i)
+        return getattr(self, self.__slots__[i])
+
+    def discard_new(self):
+        return self.__class__(
+            self.file_id, (self.path[0], None), self.changed_content,
+            (self.versioned[0], None), (self.parent_id[0], None),
+            (self.name[0], None), (self.kind[0], None),
+            (self.executable[0], None))
 
 
 class Tree(object):
@@ -762,8 +819,9 @@ class InterTree(InterObject):
             changes = True
         else:
             changes = False
-        return (file_id, (source_path, target_path), changed_content,
-                versioned, parent, name, kind, executable), changes
+        return TreeChange(
+            file_id, (source_path, target_path), changed_content,
+            versioned, parent, name, kind, executable), changes
 
     def compare(self, want_unchanged=False, specific_files=None,
                 extra_trees=None, require_versioned=False, include_root=False,
@@ -882,11 +940,12 @@ class InterTree(InterObject):
                 target_kind, target_executable, target_stat = \
                     self.target._comparison_data(
                         fake_entry, unversioned_path[1])
-                yield (None, (None, unversioned_path[1]), True, (False, False),
-                       (None, None),
-                       (None, unversioned_path[0][-1]),
-                       (None, target_kind),
-                       (None, target_executable))
+                yield TreeChange(
+                    None, (None, unversioned_path[1]), True, (False, False),
+                    (None, None),
+                    (None, unversioned_path[0][-1]),
+                    (None, target_kind),
+                    (None, target_executable))
             source_path, source_entry = from_data.get(target_entry.file_id,
                                                       (None, None))
             result, changes = self._changes_from_entries(source_entry,
@@ -918,11 +977,12 @@ class InterTree(InterObject):
             unversioned_path = all_unversioned.popleft()
             to_kind, to_executable, to_stat = \
                 self.target._comparison_data(fake_entry, unversioned_path[1])
-            yield (None, (None, unversioned_path[1]), True, (False, False),
-                   (None, None),
-                   (None, unversioned_path[0][-1]),
-                   (None, to_kind),
-                   (None, to_executable))
+            yield TreeChange(
+                None, (None, unversioned_path[1]), True, (False, False),
+                (None, None),
+                (None, unversioned_path[0][-1]),
+                (None, to_kind),
+                (None, to_executable))
         # Yield all remaining source paths
         for path, from_entry in from_entries_by_dir:
             file_id = from_entry.file_id
@@ -943,8 +1003,9 @@ class InterTree(InterObject):
             changed_content = from_kind is not None
             # the parent's path is necessarily known at this point.
             changed_file_ids.append(file_id)
-            yield(file_id, (path, to_path), changed_content, versioned, parent,
-                  name, kind, executable)
+            yield TreeChange(
+                file_id, (path, to_path), changed_content, versioned, parent,
+                name, kind, executable)
         changed_file_ids = set(changed_file_ids)
         if specific_files is not None:
             for result in self._handle_precise_ids(precise_file_ids,
@@ -1043,18 +1104,18 @@ class InterTree(InterObject):
                 new_parent_id = result[4][1]
                 precise_file_ids.add(new_parent_id)
                 if changes:
-                    if (result[6][0] == 'directory' and
-                            result[6][1] != 'directory'):
+                    if (result.kind[0] == 'directory' and
+                            result.kind[1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
                         if source_entry is None:
                             # Reusing a discarded change.
                             source_entry = self._get_entry(
-                                self.source, result[1][0])
+                                self.source, result.path[0])
                         precise_file_ids.update(
                             child.file_id
-                            for child in self.source.iter_child_entries(result[1][0]))
-                    changed_file_ids.add(result[0])
+                            for child in self.source.iter_child_entries(result.path[0]))
+                    changed_file_ids.add(result.file_id)
                     yield result
 
     def file_content_matches(
@@ -1067,8 +1128,6 @@ class InterTree(InterObject):
 
         :param source_path: Path of the file in the source tree
         :param target_path: Path of the file in the target tree
-        :param source_file_id: Optional file id of the file in the source tree
-        :param target_file_id: Optional file id of the file in the target tree
         :param source_stat: Optional stat value of the file in the source tree
         :param target_stat: Optional stat value of the file in the target tree
         :return: Boolean indicating whether the files have the same contents
@@ -1084,12 +1143,12 @@ class InterTree(InterObject):
             # Fall back to SHA1 for now
             if source_verifier_kind != "SHA1":
                 source_sha1 = self.source.get_file_sha1(
-                    source_path, source_file_id, source_stat)
+                    source_path, source_stat)
             else:
                 source_sha1 = source_verifier_data
             if target_verifier_kind != "SHA1":
                 target_sha1 = self.target.get_file_sha1(
-                    target_path, target_file_id, target_stat)
+                    target_path, target_stat)
             else:
                 target_sha1 = target_verifier_data
             return (source_sha1 == target_sha1)

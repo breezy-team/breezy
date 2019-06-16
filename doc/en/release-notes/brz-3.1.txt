@@ -40,11 +40,18 @@ Improvements
   ``brz propose``, for hosting sites that support it.
   (Jelmer Vernooĳ)
 
+* Automatically upgrade to branch format 8 when setting branch references.
+  (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where brz would previously crash or give incorrect
    or undesirable results.
+
+* Print a sensible error message when conversion for an option fails
+  (i.e. when a non-int is specified as the value for an integer
+  parameter) (#237844, Jelmer Vernooĳ)
 
 Documentation
 *************

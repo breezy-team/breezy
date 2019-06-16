@@ -4078,6 +4078,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_commit',
         'breezy.tests.test_commit_merge',
         'breezy.tests.test_config',
+        'breezy.tests.test_bedding',
         'breezy.tests.test_conflicts',
         'breezy.tests.test_controldir',
         'breezy.tests.test_counted_lock',

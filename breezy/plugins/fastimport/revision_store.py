@@ -25,6 +25,7 @@ from ... import (
     osutils,
     revision as _mod_revision,
     )
+from ...tree import TreeChange
 from ...bzr import (
     inventory,
     )
@@ -118,49 +119,53 @@ class _TreeShim(object):
                 old_ie = None
                 if ie is None:
                     raise AssertionError('How is both old and new None?')
-                    change = (file_id,
-                              (old_path, new_path),
-                              False,
-                              (False, False),
-                              (None, None),
-                              (None, None),
-                              (None, None),
-                              (None, None),
-                              )
-                change = (file_id,
-                          (old_path, new_path),
-                          True,
-                          (False, True),
-                          (None, ie.parent_id),
-                          (None, ie.name),
-                          (None, ie.kind),
-                          (None, ie.executable),
-                          )
+                    change = TreeChange(
+                        file_id,
+                        (old_path, new_path),
+                        False,
+                        (False, False),
+                        (None, None),
+                        (None, None),
+                        (None, None),
+                        (None, None),
+                        )
+                change = TreeChange(
+                    file_id,
+                    (old_path, new_path),
+                    True,
+                    (False, True),
+                    (None, ie.parent_id),
+                    (None, ie.name),
+                    (None, ie.kind),
+                    (None, ie.executable),
+                    )
             else:
                 if ie is None:
-                    change = (file_id,
-                              (old_path, new_path),
-                              True,
-                              (True, False),
-                              (old_ie.parent_id, None),
-                              (old_ie.name, None),
-                              (old_ie.kind, None),
-                              (old_ie.executable, None),
-                              )
+                    change = TreeChange(
+                        file_id,
+                        (old_path, new_path),
+                        True,
+                        (True, False),
+                        (old_ie.parent_id, None),
+                        (old_ie.name, None),
+                        (old_ie.kind, None),
+                        (old_ie.executable, None),
+                        )
                 else:
                     content_modified = (ie.text_sha1 != old_ie.text_sha1 or
                                         ie.text_size != old_ie.text_size)
                     # TODO: ie.kind != old_ie.kind
                     # TODO: symlinks changing targets, content_modified?
-                    change = (file_id,
-                              (old_path, new_path),
-                              content_modified,
-                              (True, True),
-                              (old_ie.parent_id, ie.parent_id),
-                              (old_ie.name, ie.name),
-                              (old_ie.kind, ie.kind),
-                              (old_ie.executable, ie.executable),
-                              )
+                    change = TreeChange(
+                        file_id,
+                        (old_path, new_path),
+                        content_modified,
+                        (True, True),
+                        (old_ie.parent_id, ie.parent_id),
+                        (old_ie.name, ie.name),
+                        (old_ie.kind, ie.kind),
+                        (old_ie.executable, ie.executable),
+                        )
             yield change
 
 

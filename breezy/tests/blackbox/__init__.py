@@ -40,6 +40,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_ancestry',
         'test_annotate',
         'test_bisect',
+        'test_big_file',
         'test_branch',
         'test_branches',
         'test_break_lock',
