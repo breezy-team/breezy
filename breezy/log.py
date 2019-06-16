@@ -1091,11 +1091,6 @@ def _get_revision_limits(branch, start_revision, end_revision):
             raise TypeError(start_revision)
         end_rev_id = end_revision.rev_id
         end_revno = end_revision.revno
-    if end_revno is None:
-        try:
-            end_revno = branch.revno()
-        except errors.GhostRevisionsHaveNoRevno:
-            end_revno = None
 
     if branch.last_revision() != _mod_revision.NULL_REVISION:
         if (start_rev_id == _mod_revision.NULL_REVISION
