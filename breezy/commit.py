@@ -158,13 +158,16 @@ class ReportCommitToLog(NullCommitReporter):
             unescape_for_display(location, 'utf-8'))
 
     def completed(self, revno, rev_id):
-        self._note(gettext('Committed revision %d.'), revno)
-        # self._note goes to the console too; so while we want to log the
-        # rev_id, we can't trivially only log it. (See bug 526425). Long
-        # term we should rearrange the reporting structure, but for now
-        # we just mutter seperately. We mutter the revid and revno together
-        # so that concurrent bzr invocations won't lead to confusion.
-        mutter('Committed revid %s as revno %d.', rev_id, revno)
+        if revno is not None:
+            self._note(gettext('Committed revision %d.'), revno)
+            # self._note goes to the console too; so while we want to log the
+            # rev_id, we can't trivially only log it. (See bug 526425). Long
+            # term we should rearrange the reporting structure, but for now
+            # we just mutter seperately. We mutter the revid and revno together
+            # so that concurrent bzr invocations won't lead to confusion.
+            mutter('Committed revid %s as revno %d.', rev_id, revno)
+        else:
+            self._note(gettext('Committed revid %s.'), rev_id)
 
     def deleted(self, path):
         self._note(gettext('deleted %s'), path)
@@ -373,6 +376,9 @@ class Commit(object):
         # Setup the bound branch variables as needed.
         self._check_bound_branch(operation, possible_master_transports)
 
+        if self.config_stack is None:
+            self.config_stack = self.work_tree.get_config_stack()
+
         # Check that the working tree is up to date
         old_revno, old_revid, new_revno = self._check_out_of_date_tree()
 
@@ -381,8 +387,6 @@ class Commit(object):
             self.reporter = reporter
         elif self.reporter is None:
             self.reporter = self._select_reporter()
-        if self.config_stack is None:
-            self.config_stack = self.work_tree.get_config_stack()
 
         # Setup the progress bar. As the number of files that need to be
         # committed in unknown, progress is reported as stages.
@@ -587,19 +591,25 @@ class Commit(object):
             # - in a checkout scenario the tree may have no
             # parents but the branch may do.
             first_tree_parent = breezy.revision.NULL_REVISION
-        try:
-            old_revno, master_last = self.master_branch.last_revision_info()
-        except errors.UnsupportedOperation:
+        if (self.master_branch._format.stores_revno() or
+                self.config_stack.get('calculate_revnos')):
+            try:
+                old_revno, master_last = self.master_branch.last_revision_info()
+            except errors.UnsupportedOperation:
+                master_last = self.master_branch.last_revision()
+                old_revno = self.branch.revision_id_to_revno(master_last)
+        else:
             master_last = self.master_branch.last_revision()
-            old_revno = self.branch.revision_id_to_revno(master_last)
+            old_revno = None
         if master_last != first_tree_parent:
             if master_last != breezy.revision.NULL_REVISION:
                 raise errors.OutOfDateTree(self.work_tree)
-        if self.branch.repository.has_revision(first_tree_parent):
+        if (self.branch.repository.has_revision(first_tree_parent) and
+                old_revno is not None):
             new_revno = old_revno + 1
         else:
             # ghost parents never appear in revision history.
-            new_revno = 1
+            new_revno = None
         return old_revno, master_last, new_revno
 
     def _process_pre_hooks(self, old_revno, new_revno):

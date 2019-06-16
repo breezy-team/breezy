@@ -193,6 +193,16 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(['log', '-Ocalculate_revnos=no'])
         self.assertNotContainsRe(output, 'revno: 1')
 
+    def test_commit_without_revno(self):
+        repo = GitRepo.init(self.test_dir)
+        output, error = self.run_bzr(
+            ['commit', '-Ocalculate_revnos=yes', '--unchanged', '-m', 'one'])
+        self.assertContainsRe(error, 'Committed revision 1.')
+        output, error = self.run_bzr(
+            ['commit', '-Ocalculate_revnos=no', '--unchanged', '-m', 'two'])
+        self.assertNotContainsRe(error, 'Committed revision 2.')
+        self.assertContainsRe(error, 'Committed revid .*.')
+
     def test_tags(self):
         git_repo, commit_sha1 = self.simple_commit()
         git_repo.refs[b"refs/tags/foo"] = commit_sha1
