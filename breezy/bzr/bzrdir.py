@@ -394,7 +394,7 @@ class BzrDir(controldir.ControlDir):
             fetch_spec_factory.add_revision_ids([revision_id])
             fetch_spec_factory.source_branch_stop_revision_id = revision_id
         if possible_transports is None:
-            possible_transports = [self.root_transport]
+            possible_transports = []
         else:
             possible_transports = list(possible_transports) + [
                 self.root_transport]
@@ -452,7 +452,7 @@ class BzrDir(controldir.ControlDir):
                 and (result_repo is None or result_repo.make_working_trees())
                 and result.open_branch(
                     name="",
-                    possible_transports=[source_branch.user_transport]).name == result_branch.name):
+                    possible_transports=possible_transports).name == result_branch.name):
             wt = result.create_workingtree(
                 accelerator_tree=accelerator_tree, hardlink=hardlink,
                 from_branch=result_branch)

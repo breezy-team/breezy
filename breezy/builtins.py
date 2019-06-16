@@ -1210,8 +1210,8 @@ class cmd_pull(Command):
         possible_transports = []
         if location is not None:
             try:
-                mergeable = bundle.read_mergeable_from_url(location,
-                                                           possible_transports=possible_transports)
+                mergeable = bundle.read_mergeable_from_url(
+                    location, possible_transports=possible_transports)
             except errors.NotABundle:
                 mergeable = None
 
