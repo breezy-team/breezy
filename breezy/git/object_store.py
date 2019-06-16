@@ -275,11 +275,12 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             if blob_id is None:
                 new_blobs.append((change.path[1], change.file_id))
             else:
-                shamap[path[1]] = blob_id
+                # TODO(jelmer): This code path does not have any test coverage.
+                shamap[change.path[1]] = blob_id
                 if add_cache_entry is not None:
                     add_cache_entry(
                         ("blob", blob_id),
-                        (file_id, tree.get_file_revision(change.path[1])), change.path[1])
+                        (change.file_id, tree.get_file_revision(change.path[1])), change.path[1])
         elif change.kind[1] == "symlink":
             target = tree.get_symlink_target(change.path[1])
             blob = symlink_to_blob(target)
