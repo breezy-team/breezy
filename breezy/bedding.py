@@ -169,8 +169,10 @@ def crash_dir():
 
 def cache_dir():
     """Return the cache directory to use."""
+    base = osutils.path_from_environ('BRZ_HOME')
     if sys.platform in "win32":
-        base = win32utils.get_local_appdata_location()
+        if base is None:
+            base = win32utils.get_local_appdata_location()
         if base is None:
             base = win32utils.get_home_location()
     else:

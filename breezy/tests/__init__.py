@@ -155,9 +155,9 @@ isolated_environ = {
     'BZREMAIL': None,  # may still be present in the environment
     'EMAIL': 'jrandom@example.com',  # set EMAIL as brz does not guess
     'BRZ_PROGRESS_BAR': None,
-    # This should trap leaks to ~/.brz.log. This occurs when tests use TestCase
-    # as a base class instead of TestCaseInTempDir. Tests inheriting from
-    # TestCase should not use disk resources, BRZ_LOG is one.
+    # Trap leaks to $XDG_CACHE_HOME/breezy/brz.log. This occurs when tests use
+    # TestCase as a base class instead of TestCaseInTempDir. Tests inheriting
+    # from TestCase should not use disk resources, BRZ_LOG is one.
     'BRZ_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
     'BRZ_PLUGIN_PATH': '-site',
     'BRZ_DISABLE_PLUGINS': None,
@@ -2684,7 +2684,7 @@ class TestCaseWithMemoryTransport(TestCase):
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
         try:
-            # Make sure we get a readable and accessible home for .brz.log
+            # Make sure we get a readable and accessible home for brz.log
             # and/or config files, and not fallback to weird defaults (see
             # http://pad.lv/825027).
             self.assertIs(None, os.environ.get('BRZ_HOME', None))
