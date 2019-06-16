@@ -409,7 +409,7 @@ class TestAutoResolve(TestCaseWithTransport):
     def _auto_resolve(self, tree):
         """Call auto_resolve on tree expecting deprecation"""
         return self.applyDeprecated(
-            symbol_versioning.deprecated_in((2, 6, 0)),
+            symbol_versioning.deprecated_in((3, 0, 1)),
             tree.auto_resolve,)
 
     def test_auto_resolve(self):
@@ -454,7 +454,7 @@ class TestAutoResolve(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello/'])
         tree.add('hello', b'hello-id')
-        file_conflict = conflicts.TextConflict('file', b'hello-id')
+        file_conflict = conflicts.TextConflict('hello', b'hello-id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
         self._auto_resolve(tree)
 
