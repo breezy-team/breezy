@@ -118,8 +118,8 @@ class TestMergeHook(TestCaseWithTransport):
         self.build_tree(
             ['a/debian/', 'a/debian/patches/', 'a/debian/source/', 'a/.pc/'])
         self.build_tree_contents([
-            ('a/.pc/.quilt_patches', 'debian/patches'),
-            ('a/.pc/.version', '2'),
+            ('a/.pc/.quilt_patches', 'debian/patches\n'),
+            ('a/.pc/.version', '2\n'),
             ('a/debian/source/format', '3.0 (quilt)'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
@@ -179,8 +179,8 @@ class TestMergeHook(TestCaseWithTransport):
 
         self.build_tree(['a/debian/', 'a/debian/patches/', 'a/.pc/'])
         self.build_tree_contents([
-            ('a/.pc/.quilt_patches', 'debian/patches'),
-            ('a/.pc/.version', '2'),
+            ('a/.pc/.quilt_patches', 'debian/patches\n'),
+            ('a/.pc/.version', '2\n'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
         tree_a.smart_add([tree_a.basedir])
@@ -202,8 +202,8 @@ class TestMergeHook(TestCaseWithTransport):
 
         self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/', 'a/.pc/'])
         self.build_tree_contents([
-            ('a/.pc/.quilt_patches', 'debian/patches'),
-            ('a/.pc/.version', '2'),
+            ('a/.pc/.quilt_patches', 'debian/patches\n'),
+            ('a/.pc/.version', '2\n'),
             ('a/debian/source/format', '3.0 (quilt)'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
@@ -227,8 +227,8 @@ class TestMergeHook(TestCaseWithTransport):
 
         self.build_tree(['a/debian/', 'a/debian/patches/', 'a/debian/source/', 'a/.pc/'])
         self.build_tree_contents([
-            ('a/.pc/.quilt_patches', 'debian/patches'),
-            ('a/.pc/.version', '2'),
+            ('a/.pc/.quilt_patches', 'debian/patches\n'),
+            ('a/.pc/.version', '2\n'),
             ('a/debian/source/format', '3.0 (quilt)'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH)])
@@ -248,8 +248,8 @@ class TestMergeHook(TestCaseWithTransport):
         tree_a.get_config_stack().set('quilt.smart_merge', False)
         self.build_tree(['a/debian/', 'a/debian/patches/', 'a/.pc/'])
         self.build_tree_contents([
-            ('a/.pc/.quilt_patches', 'debian/patches'),
-            ('a/.pc/.version', '2'),
+            ('a/.pc/.quilt_patches', 'debian/patches\n'),
+            ('a/.pc/.version', '2\n'),
             ('a/debian/patches/series', 'patch1\n'),
             ('a/debian/patches/patch1', TRIVIAL_PATCH),
             ("a/a", "")])

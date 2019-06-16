@@ -27,8 +27,6 @@ from . import wrapper
 
 QuiltError = wrapper.QuiltError
 
-DEFAULT_PATCHES_DIR = 'patches'
-
 
 class QuiltPatches(object):
     """Management object for a stack of quilt patches."""
@@ -40,11 +38,16 @@ class QuiltPatches(object):
                 patches_dir = tree.get_file_text('.pc/.quilt_patches').decode(
                     osutils._fs_enc).rstrip('\n')
             else:
-                patches_dir = DEFAULT_PATCHES_DIR
+                patches_dir = wrapper.DEFAULT_PATCHES_DIR
         self.patches_dir = patches_dir
         if series_file is None:
-            series_file = os.path.join(patches_dir, 'series')
+            if tree.has_filename('.pc/.quilt_series'):
+                series_file = tree.get_file_text('.pc/.quilt_series').decode(
+                    osutils._fs_enc).rstrip('\n')
+            else:
+                series_file = wrapper.DEFAULT_SERIES_FILE
         self.series_file = series_file
+        self.series_path = os.path.join(self.patches_dir, self.series_file)
 
     @classmethod
     def find(cls, tree):
@@ -59,7 +62,7 @@ class QuiltPatches(object):
         return wrapper.quilt_upgrade(self.tree.basedir)
 
     def series(self):
-        return wrapper.quilt_series(self.tree, self.series_file)
+        return wrapper.quilt_series(self.tree, self.series_path)
 
     def applied(self):
         return wrapper.quilt_applied(self.tree)
