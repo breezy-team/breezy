@@ -1368,8 +1368,8 @@ class Merge3Merger(object):
             return 'delete', None
         else:
             raise AssertionError(
-                'winner is OTHER, but file_id %r not in THIS or OTHER tree'
-                % (file_id,))
+                'winner is OTHER, but file %r not in THIS or OTHER tree'
+                % (merge_hook_params.base_path,))
 
     def merge_contents(self, merge_hook_params):
         """Fallback merge logic after user installed hooks."""
