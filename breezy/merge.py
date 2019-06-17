@@ -1068,13 +1068,12 @@ class Merge3Merger(object):
         modified_hashes = {}
         for path in results.modified_paths:
             wt_relpath = self.working_tree.relpath(path)
-            file_id = self.working_tree.path2id(wt_relpath)
-            if file_id is None:
+            if not self.working_tree.is_versioned(wt_relpath):
                 continue
             hash = self.working_tree.get_file_sha1(wt_relpath)
             if hash is None:
                 continue
-            modified_hashes[file_id] = hash
+            modified_hashes[wt_relpath] = hash
         self.working_tree.set_merge_modified(modified_hashes)
 
     @staticmethod
