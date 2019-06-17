@@ -1307,8 +1307,8 @@ class Merge3Merger(object):
                     self.tt.version_file(file_id, trans_id)
                     transform.create_from_tree(
                         self.tt, trans_id, self.other_tree,
-                        other_path, file_id=file_id,
-                        filter_tree_path=self._get_filter_tree_path(file_id))
+                        other_path,
+                        filter_tree_path=self._get_filter_tree_path(other_path))
                     inhibit_content_conflict = True
             elif params.other_kind is None:  # file_id is not in OTHER
                 # Is the name used for a different file_id ?
@@ -1360,14 +1360,13 @@ class Merge3Merger(object):
 
     def _default_other_winner_merge(self, merge_hook_params):
         """Replace this contents with other."""
-        file_id = merge_hook_params.file_id
         trans_id = merge_hook_params.trans_id
         if merge_hook_params.other_path is not None:
             # OTHER changed the file
             transform.create_from_tree(
                 self.tt, trans_id, self.other_tree,
-                merge_hook_params.other_path, file_id=file_id,
-                filter_tree_path=self._get_filter_tree_path(file_id))
+                merge_hook_params.other_path,
+                filter_tree_path=self._get_filter_tree_path(merge_hook_params.other_path))
             return 'done', None
         elif merge_hook_params.this_path is not None:
             # OTHER deleted the file
@@ -1452,17 +1451,18 @@ class Merge3Merger(object):
                                               other_lines)
             file_group.append(trans_id)
 
-    def _get_filter_tree_path(self, file_id):
+    def _get_filter_tree_path(self, path):
         if self.this_tree.supports_content_filtering():
             # We get the path from the working tree if it exists.
             # That fails though when OTHER is adding a file, so
             # we fall back to the other tree to find the path if
             # it doesn't exist locally.
-            try:
-                return self.this_tree.id2path(file_id)
-            except errors.NoSuchId:
-                return self.other_tree.id2path(file_id)
-        # Skip the id2path lookup for older formats
+            filter_path = _mod_tree.find_previous_path(
+                self.other_tree, self.working_tree, path)
+            if filter_path is None:
+                filter_path = path
+            return filter_path
+        # Skip the lookup for older formats
         return None
 
     def _dump_conflicts(self, name, paths, parent_id, file_id, this_lines=None,
@@ -1497,7 +1497,7 @@ class Merge3Merger(object):
         for suffix, tree, path, lines in data:
             if path is not None:
                 trans_id = self._conflict_file(
-                    name, parent_id, path, tree, file_id, suffix, lines,
+                    name, parent_id, path, tree, suffix, lines,
                     filter_tree_path)
                 file_group.append(trans_id)
                 if set_version and not versioned:
@@ -1505,14 +1505,14 @@ class Merge3Merger(object):
                     versioned = True
         return file_group
 
-    def _conflict_file(self, name, parent_id, path, tree, file_id, suffix,
+    def _conflict_file(self, name, parent_id, path, tree, suffix,
                        lines=None, filter_tree_path=None):
         """Emit a single conflict file."""
         name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
         transform.create_from_tree(
             self.tt, trans_id, tree, path,
-            file_id=file_id, chunks=lines,
+            chunks=lines,
             filter_tree_path=filter_tree_path)
         return trans_id
 
