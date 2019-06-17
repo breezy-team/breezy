@@ -774,7 +774,7 @@ class Merge3Merger(object):
         operation.run()
 
     def _do_merge(self, operation):
-        self.tt = transform.TreeTransform(self.working_tree, None)
+        self.tt = self.working_tree.get_transform()
         operation.add_cleanup(self.tt.finalize)
         self._compute_transform()
         results = self.tt.apply(no_conflicts=True)

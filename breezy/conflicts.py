@@ -26,7 +26,6 @@ lazy_import(globals(), """
 import errno
 
 from breezy import (
-    cleanup,
     errors,
     osutils,
     rio,
@@ -465,10 +464,8 @@ class Conflict(object):
         raise NotImplementedError(self.action_take_other)
 
     def _resolve_with_cleanups(self, tree, *args, **kwargs):
-        tt = transform.TreeTransform(tree)
-        op = cleanup.OperationWithCleanups(self._resolve)
-        op.add_cleanup(tt.finalize)
-        op.run_simple(tt, *args, **kwargs)
+        with tree.get_transform() as tt:
+            self._resolve(tt, *args, **kwargs)
 
 
 class PathConflict(Conflict):
@@ -786,8 +783,7 @@ class ParentLoop(HandledPathConflict):
         pass
 
     def action_take_other(self, tree):
-        tt = transform.TreeTransform(tree)
-        try:
+        with tree.get_transform() as tt:
             p_tid = tt.trans_id_file_id(self.file_id)
             parent_tid = tt.get_tree_parent(p_tid)
             cp_tid = tt.trans_id_file_id(self.conflict_file_id)
@@ -796,8 +792,6 @@ class ParentLoop(HandledPathConflict):
             tt.adjust_path(osutils.basename(self.conflict_path),
                            parent_tid, p_tid)
             tt.apply()
-        finally:
-            tt.finalize()
 
 
 class UnversionedParent(HandledConflict):

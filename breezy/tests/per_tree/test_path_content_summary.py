@@ -88,7 +88,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/path'])
         tree.add(['path'])
-        tt = transform.TreeTransform(tree)
+        tt = tree.get_transform()
         self.addCleanup(tt.finalize)
         tt.set_executability(True, tt.trans_id_tree_path('path'))
         tt.apply()

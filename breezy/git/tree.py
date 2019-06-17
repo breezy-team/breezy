@@ -1403,6 +1403,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
     def _live_entry(self, relpath):
         raise NotImplementedError(self._live_entry)
 
+    def get_transform(self, pb=None):
+        from ..transform import TreeTransform
+        return TreeTransform(self, pb=None)
+
+
 
 class InterIndexGitTree(InterGitTrees):
     """InterTree that works between a Git revision tree and an index."""
