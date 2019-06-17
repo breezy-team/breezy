@@ -215,11 +215,12 @@ class InventoryTree(Tree):
                 raise errors.NotADirectory(path)
             return iter(viewvalues(ie.children))
 
-    def _get_plan_merge_data(self, file_id, other, base):
+    def _get_plan_merge_data(self, path, other, base):
         from . import versionedfile
+        file_id = self.path2id(path)
         vf = versionedfile._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(
-            self.id2path(file_id), file_id, vf, b'this:')
+            path, file_id, vf, b'this:')
         last_revision_b = other._get_file_revision(
             other.id2path(file_id), file_id, vf, b'other:')
         if base is None:
@@ -229,7 +230,7 @@ class InventoryTree(Tree):
                 base.id2path(file_id), file_id, vf, b'base:')
         return vf, last_revision_a, last_revision_b, last_revision_base
 
-    def plan_file_merge(self, file_id, other, base=None):
+    def plan_file_merge(self, path, other, base=None):
         """Generate a merge plan based on annotations.
 
         If the file contains uncommitted changes in this tree, they will be
@@ -237,12 +238,12 @@ class InventoryTree(Tree):
         uncommitted changes in the other tree, they will be assigned to the
         'other:' pseudo-revision.
         """
-        data = self._get_plan_merge_data(file_id, other, base)
+        data = self._get_plan_merge_data(path, other, base)
         vf, last_revision_a, last_revision_b, last_revision_base = data
         return vf.plan_merge(last_revision_a, last_revision_b,
                              last_revision_base)
 
-    def plan_file_lca_merge(self, file_id, other, base=None):
+    def plan_file_lca_merge(self, path, other, base=None):
         """Generate a merge plan based lca-newness.
 
         If the file contains uncommitted changes in this tree, they will be
@@ -250,7 +251,7 @@ class InventoryTree(Tree):
         uncommitted changes in the other tree, they will be assigned to the
         'other:' pseudo-revision.
         """
-        data = self._get_plan_merge_data(file_id, other, base)
+        data = self._get_plan_merge_data(path, other, base)
         vf, last_revision_a, last_revision_b, last_revision_base = data
         return vf.plan_lca_merge(last_revision_a, last_revision_b,
                                  last_revision_base)

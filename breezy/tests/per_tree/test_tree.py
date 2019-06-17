@@ -51,7 +51,6 @@ class TestPlanFileMerge(TestCaseWithTree):
         work_a = self.make_branch_and_tree('wta')
         self.build_tree_contents([('wta/file', b'a\nb\nc\nd\n')])
         work_a.add('file')
-        file_id = work_a.path2id('file')
         work_a.commit('base version')
         work_b = work_a.controldir.sprout('wtb').open_workingtree()
         self.build_tree_contents([('wta/file', b'b\nc\nd\ne\n')])
@@ -72,7 +71,7 @@ class TestPlanFileMerge(TestCaseWithTree):
             ('unchanged', b'd\n'),
             ('new-a', b'e\n'),
             ('new-b', b'f\n'),
-        ], list(tree_a.plan_file_merge(file_id, tree_b)))
+        ], list(tree_a.plan_file_merge('file', tree_b)))
 
 
 class TestReference(TestCaseWithTree):
