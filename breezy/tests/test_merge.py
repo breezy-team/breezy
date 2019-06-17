@@ -2261,13 +2261,9 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
         # Have to use a real WT, because BranchBuilder doesn't support exec bit
         wt = self.get_wt_from_builder(builder)
-        tt = transform.TreeTransform(wt)
-        try:
+        with wt.get_transform() as tt:
             tt.set_executability(True, tt.trans_id_tree_path('foo'))
             tt.apply()
-        except:
-            tt.finalize()
-            raise
         self.assertTrue(wt.is_executable('foo'))
         wt.commit('F-id', rev_id=b'F-id')
         # Reset to D, so that we can merge F
