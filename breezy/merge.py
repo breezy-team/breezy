@@ -1515,13 +1515,6 @@ class Merge3Merger(object):
             filter_tree_path=filter_tree_path)
         return trans_id
 
-    def merge_executable(self, paths, file_id, file_status):
-        """Perform a merge on the execute bit."""
-        executable = [self.executable(t, p, file_id)
-                      for t, p in zip([self.base_tree, self.other_tree, self.this_tree], paths)]
-        self._merge_executable(paths, file_id, executable, file_status,
-                               resolver=self._three_way)
-
     def _merge_executable(self, paths, file_id, executable, file_status,
                           resolver):
         """Perform a merge on the execute bit."""
