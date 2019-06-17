@@ -805,16 +805,18 @@ class Merge3Merger(object):
         with ui.ui_factory.nested_progress_bar() as child_pb:
             for num, (file_id, changed, paths3, parents3, names3,
                       executable3) in enumerate(entries):
+                trans_id = self.tt.trans_id_file_id(file_id)
+
                 # Try merging each entry
                 child_pb.update(gettext('Preparing file merge'),
                                 num, len(entries))
-                self._merge_names(file_id, paths3, parents3,
+                self._merge_names(trans_id, paths3, parents3,
                                   names3, resolver=resolver)
                 if changed:
-                    file_status = self._do_merge_contents(paths3, file_id)
+                    file_status = self._do_merge_contents(paths3, trans_id, file_id)
                 else:
                     file_status = 'unmodified'
-                self._merge_executable(paths3, file_id, executable3,
+                self._merge_executable(paths3, trans_id, executable3,
                                        file_status, resolver=resolver)
         self.tt.fixup_new_roots()
         self._finish_computing_transform()
@@ -1182,8 +1184,8 @@ class Merge3Merger(object):
         # At this point, the lcas disagree, and the tip disagree
         return 'conflict'
 
-    def _merge_names(self, file_id, paths, parents, names, resolver):
-        """Perform a merge on file_id names and parents"""
+    def _merge_names(self, trans_id, paths, parents, names, resolver):
+        """Perform a merge on file names and parents"""
         base_name, other_name, this_name = names
         base_parent, other_parent, this_parent = parents
         unused_base_path, other_path, this_path = paths
@@ -1202,8 +1204,7 @@ class Merge3Merger(object):
             # Creating helpers (.OTHER or .THIS) here cause problems down the
             # road if a ContentConflict needs to be created so we should not do
             # that
-            trans_id = self.tt.trans_id_file_id(file_id)
-            self._raw_conflicts.append(('path conflict', trans_id, file_id,
+            self._raw_conflicts.append(('path conflict', trans_id,
                                         this_parent, this_name,
                                         other_parent, other_name))
         if other_path is None:
@@ -1225,10 +1226,9 @@ class Merge3Merger(object):
                 parent_trans_id = transform.ROOT_PARENT
             else:
                 parent_trans_id = self.tt.trans_id_file_id(parent_id)
-            self.tt.adjust_path(name, parent_trans_id,
-                                self.tt.trans_id_file_id(file_id))
+            self.tt.adjust_path(name, parent_trans_id, trans_id)
 
-    def _do_merge_contents(self, paths, file_id):
+    def _do_merge_contents(self, paths, trans_id, file_id):
         """Performs a merge on file_id contents."""
         def contents_pair(tree, path):
             if path is None:
@@ -1272,7 +1272,6 @@ class Merge3Merger(object):
             return "unmodified"
         # We have a hypothetical conflict, but if we have files, then we
         # can try to merge the content
-        trans_id = self.tt.trans_id_file_id(file_id)
         params = MergeFileHookParams(
             self, file_id, (base_path, other_path,
                             this_path), trans_id, this_pair[0],
@@ -1515,7 +1514,7 @@ class Merge3Merger(object):
             filter_tree_path=filter_tree_path)
         return trans_id
 
-    def _merge_executable(self, paths, file_id, executable, file_status,
+    def _merge_executable(self, paths, trans_id, executable, file_status,
                           resolver):
         """Perform a merge on the execute bit."""
         base_executable, other_executable, this_executable = executable
@@ -1532,7 +1531,6 @@ class Merge3Merger(object):
                 winner = "other"
         if winner == 'this' and file_status != "modified":
             return
-        trans_id = self.tt.trans_id_file_id(file_id)
         if self.tt.final_kind(trans_id) != "file":
             return
         if winner == "this":
@@ -1545,7 +1543,6 @@ class Merge3Merger(object):
             elif base_path is not None:
                 executability = base_executable
         if executability is not None:
-            trans_id = self.tt.trans_id_file_id(file_id)
             self.tt.set_executability(executability, trans_id)
 
     def cook_conflicts(self, fs_conflicts):
@@ -1556,8 +1553,7 @@ class Merge3Merger(object):
         for conflict in self._raw_conflicts:
             conflict_type = conflict[0]
             if conflict_type == 'path conflict':
-                (trans_id, file_id,
-                 this_parent, this_name,
+                (trans_id, this_parent, this_name,
                  other_parent, other_name) = conflict[1:]
                 if this_parent is None or this_name is None:
                     this_path = '<deleted>'
@@ -1577,6 +1573,7 @@ class Merge3Merger(object):
                         parent_path = fp.get_path(
                             self.tt.trans_id_file_id(other_parent))
                     other_path = osutils.pathjoin(parent_path, other_name)
+                file_id = self.tt.final_file_id(trans_id)
                 c = _mod_conflicts.Conflict.factory(
                     'path conflict', path=this_path,
                     conflict_path=other_path,
