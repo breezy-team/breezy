@@ -166,7 +166,7 @@ Memory representation::
 
  vector of all directories, and vector of the childen ?
    i.e.
-     root_entrie = (direntry for root, [parent_direntries_for_root]),
+     root_entries = (direntry for root, [parent_direntries_for_root]),
      dirblocks = [
      ('', ['data for achild', 'data for bchild', 'data for cchild'])
      ('dir', ['achild', 'cchild', 'echild'])

@@ -214,11 +214,13 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev1 = subtree.commit('commit in subdir')
         rev1_tree = subtree.basis_tree()
         rev1_tree.lock_read()
+        # Trigger reading of inventory
         rev1_tree.root_inventory
         self.addCleanup(rev1_tree.unlock)
         rev2 = subtree.commit('second commit in subdir', allow_pointless=True)
         rev2_tree = subtree.basis_tree()
         rev2_tree.lock_read()
+        # Trigger reading of inventory
         rev2_tree.root_inventory
         self.addCleanup(rev2_tree.unlock)
 
@@ -242,8 +244,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         result_rev2_tree = tree.revision_tree(rev2)
         # compare - there should be no differences between the handed and
         # returned trees
-        self.assertTreesEqual(rev1_tree, result_rev1_tree)
         self.assertTreesEqual(rev2_tree, result_rev2_tree)
+        self.assertRaises(
+            errors.NoSuchRevisionInTree, self.assertTreesEqual, rev1_tree,
+            result_rev1_tree)
 
     def test_dirstate_doesnt_cache_non_parent_trees(self):
         """Getting parent trees from a dirstate tree does not read from the
