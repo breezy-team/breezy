@@ -825,8 +825,9 @@ class Merge3Merger(object):
         This is the second half of _compute_transform.
         """
         with ui.ui_factory.nested_progress_bar() as child_pb:
-            fs_conflicts = transform.resolve_conflicts(self.tt, child_pb,
-                                                       lambda t, c: transform.conflict_pass(t, c, self.other_tree))
+            fs_conflicts = transform.resolve_conflicts(
+                self.tt, child_pb,
+                lambda t, c: transform.conflict_pass(t, c, self.other_tree))
         if self.change_reporter is not None:
             from breezy import delta
             delta.report_changes(
