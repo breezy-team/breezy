@@ -40,7 +40,7 @@ def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
 
 
 def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
-           store_uncommitted=False):
+           store_uncommitted=False, possible_transports=None):
     """Switch the branch associated with a checkout.
 
     :param control_dir: ControlDir of the checkout to change
@@ -148,15 +148,12 @@ def _set_branch_location(control, to_branch, current_branch, force=False):
                     'Unable to connect to current master branch %(target)s: '
                     '%(error)s To switch anyway, use --force.') %
                     e.__dict__)
-            b.lock_write()
-            try:
+            with b.lock_write():
                 b.set_bound_location(None)
                 b.pull(to_branch, overwrite=True,
                        possible_transports=possible_transports)
                 b.set_bound_location(to_branch.base)
                 b.set_parent(b.get_master_branch().get_parent())
-            finally:
-                b.unlock()
         else:
             # If this is a standalone tree and the new branch
             # is derived from this one, create a lightweight checkout.
