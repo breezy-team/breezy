@@ -165,6 +165,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(
             'Pushing from a Bazaar to a Git repository. For better '
             'performance, push into a Bazaar repository.\n'
+            'All changes applied successfully.\n'
             'Pushed up to revision 2.\n', error)
 
     def test_log(self):
