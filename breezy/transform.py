@@ -2631,7 +2631,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         if wt.get_root_id() != tree.get_root_id():
             wt.set_root_id(tree.get_root_id())
             wt.flush()
-    tt = TreeTransform(wt)
+    tt = wt.get_transform()
     divert = set()
     try:
         pp.next_phase()
@@ -2898,7 +2898,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
     """Revert a working tree's contents to those of a target tree."""
     pb = ui.ui_factory.nested_progress_bar()
     try:
-        with target_tree.lock_read(), TreeTransform(working_tree, pb) as tt:
+        with target_tree.lock_read(), working_tree.get_transform(pb) as tt:
             pp = ProgressPhase("Revert phase", 3, pb)
             conflicts, merge_modified = _prepare_revert_transform(
                 working_tree, target_tree, tt, filenames, backups, pp)
@@ -3271,7 +3271,7 @@ def link_tree(target_tree, source_tree):
     :param target_tree: Tree to change
     :param source_tree: Tree to hard-link from
     """
-    with TreeTransform(target_tree) as tt:
+    with target_tree.get_transform() as tt:
         for change in target_tree.iter_changes(source_tree, include_unchanged=True):
             if change.changed_content:
                 continue
