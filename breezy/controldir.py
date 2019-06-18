@@ -443,12 +443,12 @@ class ControlDir(ControlComponent):
             try:
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:
-                push_result.branch_push_result = source.push(br_to,
-                                                             overwrite, stop_revision=revision_id, lossy=lossy)
+                push_result.branch_push_result = source.push(
+                    br_to, overwrite, stop_revision=revision_id, lossy=lossy)
                 push_result.workingtree_updated = False
             except errors.NoWorkingTree:
-                push_result.branch_push_result = source.push(br_to,
-                                                             overwrite, stop_revision=revision_id, lossy=lossy)
+                push_result.branch_push_result = source.push(
+                    br_to, overwrite, stop_revision=revision_id, lossy=lossy)
                 push_result.workingtree_updated = None  # Not applicable
             else:
                 with tree_to.lock_write():
