@@ -162,6 +162,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         else:
             self.case_sensitive = False
 
+    def get_transform(self, pb=None):
+        from ..transform import TreeTransform
+        return TreeTransform(self, pb=pb, case_sensitive=self.case_sensitive)
+
     def _setup_directory_is_tree_reference(self):
         if self._branch.repository._format.supports_tree_reference:
             self._directory_is_tree_reference = \

@@ -209,6 +209,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         else:
             self.case_sensitive = False
 
+    def get_transform(self, pb=None):
+        from ..transform import TreeTransform
+        return TreeTransform(self, pb=pb, case_sensitive=self.case_sensitive)
+
     def merge_modified(self):
         return {}
 
