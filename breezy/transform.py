@@ -1201,6 +1201,45 @@ class TreeTransformBase(object):
             if kind == 'symlink':
                 self.create_symlink(content.decode('utf-8'), trans_id)
 
+    def create_file(self, contents, trans_id, mode_id=None, sha1=None):
+        """Schedule creation of a new file.
+
+        :seealso: new_file.
+
+        :param contents: an iterator of strings, all of which will be written
+            to the target destination.
+        :param trans_id: TreeTransform handle
+        :param mode_id: If not None, force the mode of the target file to match
+            the mode of the object referenced by mode_id.
+            Otherwise, we will try to preserve mode bits of an existing file.
+        :param sha1: If the sha1 of this content is already known, pass it in.
+            We can use it to prevent future sha1 computations.
+        """
+        raise NotImplementedError(self.create_file)
+
+    def create_directory(self, trans_id):
+        """Schedule creation of a new directory.
+
+        See also new_directory.
+        """
+        raise NotImplementedError(self.create_directory)
+
+    def create_symlink(self, target, trans_id):
+        """Schedule creation of a new symbolic link.
+
+        target is a bytestring.
+        See also new_symlink.
+        """
+        raise NotImplementedError(self.create_symlink)
+
+    def create_hardlink(self, path, trans_id):
+        """Schedule creation of a hard link"""
+        raise NotImplementedError(self.create_hardlink)
+
+    def cancel_creation(self, trans_id):
+        """Cancel the creation of new file contents."""
+        raise NotImplementedError(self.cancel_creation)
+
 
 class DiskTreeTransform(TreeTransformBase):
     """Tree transform storing its contents on disk."""
@@ -3232,8 +3271,7 @@ def link_tree(target_tree, source_tree):
     :param target_tree: Tree to change
     :param source_tree: Tree to hard-link from
     """
-    tt = TreeTransform(target_tree)
-    try:
+    with TreeTransform(target_tree) as tt:
         for change in target_tree.iter_changes(source_tree, include_unchanged=True):
             if change.changed_content:
                 continue
@@ -3245,5 +3283,3 @@ def link_tree(target_tree, source_tree):
             tt.delete_contents(trans_id)
             tt.create_hardlink(source_tree.abspath(change.path[0]), trans_id)
         tt.apply()
-    finally:
-        tt.finalize()
