@@ -2636,8 +2636,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                             divert.add(file_id)
                     if (file_id not in divert
                         and _content_match(
-                            tree, entry, tree_path, file_id, kind,
-                            target_path)):
+                            tree, entry, tree_path, kind, target_path)):
                         tt.delete_contents(tt.trans_id_tree_path(tree_path))
                         if kind == 'directory':
                             reparent = True
@@ -2746,7 +2745,7 @@ def _reparent_transform_children(tt, old_parent, new_parent):
     return by_parent[old_parent]
 
 
-def _content_match(tree, entry, tree_path, file_id, kind, target_path):
+def _content_match(tree, entry, tree_path, kind, target_path):
     if entry.kind != kind:
         return False
     if entry.kind == "directory":
