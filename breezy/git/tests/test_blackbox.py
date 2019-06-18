@@ -150,6 +150,17 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(b"", output)
         self.assertTrue(error.endswith(b"Created new branch.\n"))
 
+    def test_push_without_calculate_revnos(self):
+        self.run_bzr(['init', '--git', 'bla'])
+        self.run_bzr(['init', '--git', 'foo'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        output, error = self.run_bzr(
+            ['push', '-Ocalculate_revnos=no', '-d', 'foo', 'bla'])
+        self.assertEqual("", output)
+        self.assertContainsRe(
+            error,
+            'Pushed up to revision git(.*).\n')
+
     def test_push_lossy_non_mainline(self):
         self.run_bzr(['init', '--git', 'bla'])
         self.run_bzr(['init', 'foo'])
