@@ -21,6 +21,7 @@ import os
 from .. import (
     conflicts,
     errors,
+    symbol_versioning,
     trace,
     transport,
     workingtree,
