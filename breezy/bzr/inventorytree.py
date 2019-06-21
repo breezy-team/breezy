@@ -456,7 +456,7 @@ class MutableInventoryTree(MutableTree, InventoryTree):
 
     def get_transform(self, pb=None):
         from ..transform import TreeTransform
-        return TreeTransform(self, pb=None)
+        return TreeTransform(self, pb=pb)
 
 
 class _SmartAddHelper(object):
