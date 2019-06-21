@@ -211,7 +211,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def get_transform(self, pb=None):
         from ..transform import TreeTransform
-        return TreeTransform(self, pb=pb, case_sensitive=self.case_sensitive)
+        return TreeTransform(self, pb=pb)
 
     def merge_modified(self):
         return {}
