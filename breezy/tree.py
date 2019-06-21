@@ -347,7 +347,7 @@ class Tree(object):
         if self.supports_tree_reference():
             for path, entry in self.iter_entries_by_dir():
                 if entry.kind == 'tree-reference':
-                    yield path, entry.file_id
+                    yield path
 
     def kind(self, path):
         raise NotImplementedError("Tree subclass %s must implement kind"
