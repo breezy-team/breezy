@@ -406,6 +406,10 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.copy_one)
 
+    def get_transform(self, pb=None):
+        """Return a transform object for use with this tree."""
+        raise NotImplementedError(self.get_transform)
+
 
 class MutableTreeHooks(hooks.Hooks):
     """A dictionary mapping a hook name to a list of callables for mutabletree

@@ -68,7 +68,7 @@ class ShelfCreator(object):
         :param file_list: The files to make more similar to the target.
         """
         self.work_tree = work_tree
-        self.work_transform = transform.TreeTransform(work_tree)
+        self.work_transform = work_tree.get_transform()
         try:
             self.target_tree = target_tree
             self.shelf_transform = transform.TransformPreview(self.target_tree)

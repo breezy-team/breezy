@@ -477,13 +477,12 @@ class TestMerge(TestCaseWithTransport):
             this_tree, b'rev2b', other_branch=other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
-        tt = tree_merger.make_preview_transform()
-        self.addCleanup(tt.finalize)
-        preview_tree = tt.get_preview_tree()
-        with this_tree.get_file('file') as tree_file:
-            self.assertEqual(b'1\n2a\n', tree_file.read())
-        with preview_tree.get_file('file') as preview_file:
-            self.assertEqual(b'2b\n1\n2a\n', preview_file.read())
+        with tree_merger.make_preview_transform() as tt:
+            preview_tree = tt.get_preview_tree()
+            with this_tree.get_file('file') as tree_file:
+                self.assertEqual(b'1\n2a\n', tree_file.read())
+            with preview_tree.get_file('file') as preview_file:
+                self.assertEqual(b'2b\n1\n2a\n', preview_file.read())
 
     def test_do_merge(self):
         this_tree = self.make_branch_and_tree('this')
@@ -2261,13 +2260,9 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
         # Have to use a real WT, because BranchBuilder doesn't support exec bit
         wt = self.get_wt_from_builder(builder)
-        tt = transform.TreeTransform(wt)
-        try:
+        with wt.get_transform() as tt:
             tt.set_executability(True, tt.trans_id_tree_path('foo'))
             tt.apply()
-        except:
-            tt.finalize()
-            raise
         self.assertTrue(wt.is_executable('foo'))
         wt.commit('F-id', rev_id=b'F-id')
         # Reset to D, so that we can merge F
@@ -3108,8 +3103,8 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
 
     def test_uses_this_branch(self):
         builder = self.make_text_conflict()
-        tt = builder.make_preview_transform()
-        self.addCleanup(tt.finalize)
+        with builder.make_preview_transform() as tt:
+            pass
 
     def test_affected_files_cached(self):
         """Ensures that the config variable is cached"""
