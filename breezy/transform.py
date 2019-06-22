@@ -2853,7 +2853,7 @@ def new_by_entry(path, tt, entry, parent_id, tree):
         raise errors.BadFileKindError(name, kind)
 
 
-def create_from_tree(tt, trans_id, tree, path, file_id=None, chunks=None,
+def create_from_tree(tt, trans_id, tree, path, chunks=None,
                      filter_tree_path=None):
     """Create new file contents according to tree contents.
 

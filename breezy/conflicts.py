@@ -517,7 +517,7 @@ class PathConflict(Conflict):
             tid = tt.trans_id_tree_path(path_to_create)
             tree = self._revision_tree(tt._tree, revid)
             transform.create_from_tree(
-                tt, tid, tree, tree.id2path(file_id), file_id=file_id)
+                tt, tid, tree, tree.id2path(file_id))
             tt.version_file(file_id, tid)
         else:
             tid = tt.trans_id_file_id(file_id)
