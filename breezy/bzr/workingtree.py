@@ -897,9 +897,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def set_merge_modified(self, modified_hashes):
         def iter_stanzas():
-            for file_id in modified_hashes:
+            for path, sha1 in modified_hashes.items():
+                file_id = self.path2id(path)
+                if file_id is None:
+                    continue
                 yield _mod_rio.Stanza(file_id=file_id.decode('utf8'),
-                                      hash=modified_hashes[file_id])
+                                      hash=sha1)
         with self.lock_tree_write():
             self._put_rio('merge-hashes', iter_stanzas(),
                           MERGE_MODIFIED_HEADER_1)
@@ -930,12 +933,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     # RioReader reads in Unicode, so convert file_ids back to
                     # utf8
                     file_id = cache_utf8.encode(s.get("file_id"))
-                    if not self.has_id(file_id):
+                    try:
+                        path = self.id2path(file_id)
+                    except errors.NoSuchId:
                         continue
                     text_hash = s.get("hash").encode('ascii')
-                    path = self.id2path(file_id)
                     if text_hash == self.get_file_sha1(path):
-                        merge_hashes[file_id] = text_hash
+                        merge_hashes[path] = text_hash
                 return merge_hashes
             finally:
                 hashfile.close()

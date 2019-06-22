@@ -2965,7 +2965,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 keep_content = False
                 if wt_kind == 'file' and (backups or target_kind is None):
                     wt_sha1 = working_tree.get_file_sha1(wt_path)
-                    if merge_modified.get(file_id) != wt_sha1:
+                    if merge_modified.get(wt_path) != wt_sha1:
                         # acquire the basis tree lazily to prevent the
                         # expense of accessing it when it's not needed ?
                         # (Guessing, RBC, 200702)
@@ -3015,10 +3015,12 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     basis_path = find_previous_path(target_tree, basis_tree, target_path)
                     if (basis_path is not None and
                             new_sha1 == basis_tree.get_file_sha1(basis_path)):
-                        if file_id in merge_modified:
-                            del merge_modified[file_id]
+                        # If the new contents of the file match what is in basis,
+                        # then there is no need to store in merge_modified.
+                        if basis_path in merge_modified:
+                            del merge_modified[basis_path]
                     else:
-                        merge_modified[file_id] = new_sha1
+                        merge_modified[target_path] = new_sha1
 
                     # preserve the execute bit when backing up
                     if keep_content and wt_executable == target_executable:

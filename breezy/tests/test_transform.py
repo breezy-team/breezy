@@ -1816,7 +1816,7 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.get_file('i.OTHER').read(),
                          b'h\ni\nj\nk\n')
         self.assertEqual(os.path.exists(this.wt.abspath('i.BASE')), False)
-        modified = [b'a', b'b', b'c', b'h', b'i']
+        modified = ['a', 'b', 'c', 'h', 'i']
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))
