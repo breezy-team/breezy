@@ -2024,9 +2024,11 @@ class BranchPushResult(_Result):
         if not is_quiet():
             if self.old_revid != self.new_revid:
                 if self.new_revno is not None:
-                    note(gettext('Pushed up to revision %d.') % self.new_revno)
+                    note(gettext('Pushed up to revision %d.'),
+                         self.new_revno)
                 else:
-                    note(gettext('Pushed up to revision id %s.') % self.new_revid)
+                    note(gettext('Pushed up to revision id %s.'),
+                         self.new_revid.decode('utf-8'))
             if tag_updates:
                 note(ngettext('%d tag updated.', '%d tags updated.',
                               len(tag_updates)) % len(tag_updates))

@@ -160,7 +160,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual("", output)
         self.assertContainsRe(
             error,
-            'Pushed up to revision git(.*).\n')
+            'Pushed up to revision id git(.*).\n')
 
     def test_push_lossy_non_mainline(self):
         self.run_bzr(['init', '--git', 'bla'])
