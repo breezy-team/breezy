@@ -16,166 +16,138 @@
 
 """Helpers for managing cleanup functions and the errors they might raise.
 
-The usual way to run cleanup code in Python is::
-
-    try:
-        do_something()
-    finally:
-        cleanup_something()
-
-However if both `do_something` and `cleanup_something` raise an exception
-Python will forget the original exception and propagate the one from
-cleanup_something.  Unfortunately, this is almost always much less useful than
-the original exception.
-
-If you want to be certain that the first, and only the first, error is raised,
-then use::
-
-    operation = OperationWithCleanups(do_something)
-    operation.add_cleanup(cleanup_something)
-    operation.run_simple()
-
-This is more inconvenient (because you need to make every try block a
-function), but will ensure that the first error encountered is the one raised,
-while also ensuring all cleanups are run.  See OperationWithCleanups for more
-details.
+This currently just contains a copy of contextlib.ExitStack, available
+even on older versions of Python.
 """
 
 from __future__ import absolute_import
 
 from collections import deque
-from . import (
-    debug,
-    trace,
-    )
+import sys
 
 
-def _log_cleanup_error(exc):
-    trace.mutter('Cleanup failed:')
-    trace.log_exception_quietly()
-    if 'cleanup' in debug.debug_flags:
-        trace.warning('brz: warning: Cleanup failed: %s', exc)
+try:
+    from contextlib import ExitStack
+except ImportError:
+    # Copied from the Python standard library on Python 3.4.
+
+    def _reraise_with_existing_context(exc_details):
+        # Use 3 argument raise in Python 2,
+        # but use exec to avoid SyntaxError in Python 3
+        exc_type, exc_value, exc_tb = exc_details
+        exec ("raise exc_type, exc_value, exc_tb")
 
 
-def _run_cleanup(func, *args, **kwargs):
-    """Run func(*args, **kwargs), logging but not propagating any error it
-    raises.
+    # Inspired by discussions on http://bugs.python.org/issue13585
+    class ExitStack(object):
+        """Context manager for dynamic management of a stack of exit callbacks
 
-    :returns: True if func raised no errors, else False.
-    """
-    try:
-        func(*args, **kwargs)
-    except KeyboardInterrupt:
-        raise
-    except Exception as exc:
-        _log_cleanup_error(exc)
-        return False
-    return True
+        For example:
 
+            with ExitStack() as stack:
+                files = [stack.enter_context(open(fname)) for fname in filenames]
+                # All opened files will automatically be closed at the end of
+                # the with statement, even if attempts to open files later
+                # in the list raise an exception
 
-def _run_cleanups(funcs):
-    """Run a series of cleanup functions."""
-    for func, args, kwargs in funcs:
-        _run_cleanup(func, *args, **kwargs)
-
-
-class ObjectWithCleanups(object):
-    """A mixin for objects that hold a cleanup list.
-
-    Subclass or client code can call add_cleanup and then later `cleanup_now`.
-    """
-
-    def __init__(self):
-        self.cleanups = deque()
-
-    def add_cleanup(self, cleanup_func, *args, **kwargs):
-        """Add a cleanup to run.
-
-        Cleanups may be added at any time.
-        Cleanups will be executed in LIFO order.
         """
-        self.cleanups.appendleft((cleanup_func, args, kwargs))
+        def __init__(self):
+            self._exit_callbacks = deque()
 
-    def cleanup_now(self):
-        _run_cleanups(self.cleanups)
-        self.cleanups.clear()
+        def pop_all(self):
+            """Preserve the context stack by transferring it to a new instance"""
+            new_stack = type(self)()
+            new_stack._exit_callbacks = self._exit_callbacks
+            self._exit_callbacks = deque()
+            return new_stack
 
+        def _push_cm_exit(self, cm, cm_exit):
+            """Helper to correctly register callbacks to __exit__ methods"""
+            def _exit_wrapper(*exc_details):
+                return cm_exit(cm, *exc_details)
+            _exit_wrapper.__self__ = cm
+            self.push(_exit_wrapper)
 
-class OperationWithCleanups(ObjectWithCleanups):
-    """A way to run some code with a dynamic cleanup list.
+        def push(self, exit):
+            """Registers a callback with the standard __exit__ method signature
 
-    This provides a way to add cleanups while the function-with-cleanups is
-    running.
+            Can suppress exceptions the same way __exit__ methods can.
 
-    Typical use::
+            Also accepts any object with an __exit__ method (registering a call
+            to the method instead of the object itself)
+            """
+            # We use an unbound method rather than a bound method to follow
+            # the standard lookup behaviour for special methods
+            _cb_type = type(exit)
+            try:
+                exit_method = _cb_type.__exit__
+            except AttributeError:
+                # Not a context manager, so assume its a callable
+                self._exit_callbacks.append(exit)
+            else:
+                self._push_cm_exit(exit, exit_method)
+            return exit # Allow use as a decorator
 
-        operation = OperationWithCleanups(some_func)
-        operation.run(args...)
+        def callback(self, callback, *args, **kwds):
+            """Registers an arbitrary callback and arguments.
 
-    where `some_func` is::
+            Cannot suppress exceptions.
+            """
+            def _exit_wrapper(exc_type, exc, tb):
+                callback(*args, **kwds)
+            # We changed the signature, so using @wraps is not appropriate, but
+            # setting __wrapped__ may still help with introspection
+            _exit_wrapper.__wrapped__ = callback
+            self.push(_exit_wrapper)
+            return callback # Allow use as a decorator
 
-        def some_func(operation, args, ...):
-            do_something()
-            operation.add_cleanup(something)
-            # etc
+        def enter_context(self, cm):
+            """Enters the supplied context manager
 
-    Note that the first argument passed to `some_func` will be the
-    OperationWithCleanups object.  To invoke `some_func` without that, use
-    `run_simple` instead of `run`.
-    """
+            If successful, also pushes its __exit__ method as a callback and
+            returns the result of the __enter__ method.
+            """
+            # We look up the special methods on the type to match the with statement
+            _cm_type = type(cm)
+            _exit = _cm_type.__exit__
+            result = _cm_type.__enter__(cm)
+            self._push_cm_exit(cm, _exit)
+            return result
 
-    def __init__(self, func):
-        super(OperationWithCleanups, self).__init__()
-        self.func = func
+        def close(self):
+            """Immediately unwind the context stack"""
+            self.__exit__(None, None, None)
 
-    def run(self, *args, **kwargs):
-        return _do_with_cleanups(
-            self.cleanups, self.func, self, *args, **kwargs)
+        def __enter__(self):
+            return self
 
-    def run_simple(self, *args, **kwargs):
-        return _do_with_cleanups(
-            self.cleanups, self.func, *args, **kwargs)
+        def __exit__(self, *exc_details):
+            received_exc = exc_details[0] is not None
 
+            # We manipulate the exception state so it behaves as though
+            # we were actually nesting multiple with statements
+            frame_exc = sys.exc_info()[1]
+            def _make_context_fixer(frame_exc):
+                return lambda new_exc, old_exc: None
+            _fix_exception_context = _make_context_fixer(frame_exc)
 
-def _do_with_cleanups(cleanup_funcs, func, *args, **kwargs):
-    """Run `func`, then call all the cleanup_funcs.
-
-    All the cleanup_funcs are guaranteed to be run.  The first exception raised
-    by func or any of the cleanup_funcs is the one that will be propagted by
-    this function (subsequent errors are caught and logged).
-
-    Conceptually similar to::
-
-        try:
-            return func(*args, **kwargs)
-        finally:
-            for cleanup, cargs, ckwargs in cleanup_funcs:
-                cleanup(*cargs, **ckwargs)
-
-    It avoids several problems with using try/finally directly:
-     * an exception from func will not be obscured by a subsequent exception
-       from a cleanup.
-     * an exception from a cleanup will not prevent other cleanups from
-       running (but the first exception encountered is still the one
-       propagated).
-
-    Unike `_run_cleanup`, `_do_with_cleanups` can propagate an exception from a
-    cleanup, but only if there is no exception from func.
-    """
-    try:
-        result = func(*args, **kwargs)
-    except BaseException:
-        # We have an exception from func already, so suppress cleanup errors.
-        _run_cleanups(cleanup_funcs)
-        raise
-    # No exception from func, so allow first cleanup error to propgate.
-    pending_cleanups = iter(cleanup_funcs)
-    try:
-        for cleanup, c_args, c_kwargs in pending_cleanups:
-            cleanup(*c_args, **c_kwargs)
-    except BaseException:
-        # Still run the remaining cleanups but suppress any further errors.
-        _run_cleanups(pending_cleanups)
-        raise
-    # No error, so we can return the result
-    return result
+            # Callbacks are invoked in LIFO order to match the behaviour of
+            # nested context managers
+            suppressed_exc = False
+            pending_raise = False
+            while self._exit_callbacks:
+                cb = self._exit_callbacks.pop()
+                try:
+                    if cb(*exc_details):
+                        suppressed_exc = True
+                        pending_raise = False
+                        exc_details = (None, None, None)
+                except:
+                    new_exc_details = sys.exc_info()
+                    # simulate the stack of exceptions by setting the context
+                    _fix_exception_context(new_exc_details[1], exc_details[1])
+                    pending_raise = True
+                    exc_details = new_exc_details
+            if pending_raise:
+                _reraise_with_existing_context(exc_details)
+            return received_exc and suppressed_exc

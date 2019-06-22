@@ -370,7 +370,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
 
 
 def get_trees_and_branches_to_diff_locked(
-        path_list, revision_specs, old_url, new_url, add_cleanup, apply_view=True):
+        path_list, revision_specs, old_url, new_url, exit_stack, apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
 
     This method works out the trees to be diff'ed and the files of
@@ -387,8 +387,8 @@ def get_trees_and_branches_to_diff_locked(
     :param new_url:
         The url of the new branch or tree. If None, the tree to use is
         taken from the first path, if any, or the current working tree.
-    :param add_cleanup:
-        a callable like Command.add_cleanup.  get_trees_and_branches_to_diff
+    :param exit_stack:
+        an ExitStack object. get_trees_and_branches_to_diff
         will register cleanups that must be run to unlock the trees, etc.
     :param apply_view:
         if True and a view is set, apply the view or check that the paths
@@ -397,7 +397,7 @@ def get_trees_and_branches_to_diff_locked(
         a tuple of (old_tree, new_tree, old_branch, new_branch,
         specific_files, extra_trees) where extra_trees is a sequence of
         additional trees to search in for file-ids.  The trees and branches
-        will be read-locked until the cleanups registered via the add_cleanup
+        will be read-locked until the cleanups registered via the exit_stack
         param are run.
     """
     # Get the old and new revision specs
@@ -429,11 +429,9 @@ def get_trees_and_branches_to_diff_locked(
 
     def lock_tree_or_branch(wt, br):
         if wt is not None:
-            wt.lock_read()
-            add_cleanup(wt.unlock)
+            exit_stack.enter_context(wt.lock_read())
         elif br is not None:
-            br.lock_read()
-            add_cleanup(br.unlock)
+            exit_stack.enter_context(br.lock_read())
 
     # Get the old location
     specific_files = []

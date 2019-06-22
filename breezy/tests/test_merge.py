@@ -3179,26 +3179,23 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
         :param merge_as: the path in a tree to add the new directory as.
         :returns: the conflicts from 'do_merge'.
         """
-        operation = cleanup.OperationWithCleanups(self._merge_into)
-        return operation.run(location, merge_as)
-
-    def _merge_into(self, op, location, merge_as):
-        # Open and lock the various tree and branch objects
-        wt, subdir_relpath = WorkingTree.open_containing(merge_as)
-        op.add_cleanup(wt.lock_write().unlock)
-        branch_to_merge, subdir_to_merge = _mod_branch.Branch.open_containing(
-            location)
-        op.add_cleanup(branch_to_merge.lock_read().unlock)
-        other_tree = branch_to_merge.basis_tree()
-        op.add_cleanup(other_tree.lock_read().unlock)
-        # Perform the merge
-        merger = _mod_merge.MergeIntoMerger(
-            this_tree=wt, other_tree=other_tree, other_branch=branch_to_merge,
-            target_subdir=subdir_relpath, source_subpath=subdir_to_merge)
-        merger.set_base_revision(_mod_revision.NULL_REVISION, branch_to_merge)
-        conflicts = merger.do_merge()
-        merger.set_pending()
-        return conflicts
+        with cleanup.ExitStack() as stack:
+            # Open and lock the various tree and branch objects
+            wt, subdir_relpath = WorkingTree.open_containing(merge_as)
+            stack.enter_context(wt.lock_write())
+            branch_to_merge, subdir_to_merge = _mod_branch.Branch.open_containing(
+                location)
+            stack.enter_context(branch_to_merge.lock_read())
+            other_tree = branch_to_merge.basis_tree()
+            stack.enter_context(other_tree.lock_read())
+            # Perform the merge
+            merger = _mod_merge.MergeIntoMerger(
+                this_tree=wt, other_tree=other_tree, other_branch=branch_to_merge,
+                target_subdir=subdir_relpath, source_subpath=subdir_to_merge)
+            merger.set_base_revision(_mod_revision.NULL_REVISION, branch_to_merge)
+            conflicts = merger.do_merge()
+            merger.set_pending()
+            return conflicts
 
     def assertTreeEntriesEqual(self, expected_entries, tree):
         """Assert that 'tree' contains the expected inventory entries.

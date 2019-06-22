@@ -697,14 +697,14 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
             # GZ 2017-03-28: The rollbacks variable was shadowed in the loop below
             # missing those added here, but there's also no test coverage for this.
-            rollbacks = cleanup.ObjectWithCleanups()
+            rollbacks = cleanup.ExitStack()
 
             def move_one(old_entry, from_path_utf8, minikind, executable,
                          fingerprint, packed_stat, size,
                          to_block, to_key, to_path_utf8):
                 state._make_absent(old_entry)
                 from_key = old_entry[0]
-                rollbacks.add_cleanup(
+                rollbacks.callback(
                     state.update_minimal,
                     from_key,
                     minikind,
@@ -723,7 +723,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 added_entry_index, _ = state._find_entry_index(
                     to_key, to_block[1])
                 new_entry = to_block[1][added_entry_index]
-                rollbacks.add_cleanup(state._make_absent, new_entry)
+                rollbacks.callback(state._make_absent, new_entry)
 
             for from_rel in from_paths:
                 # from_rel is 'pathinroot/foo/bar'
@@ -780,7 +780,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                         osutils.rename(from_rel_abs, to_rel_abs)
                     except OSError as e:
                         raise errors.BzrMoveFailedError(from_rel, to_rel, e[1])
-                    rollbacks.add_cleanup(
+                    rollbacks.callback(
                         osutils.rename, to_rel_abs, from_rel_abs)
                 try:
                     # perform the rename in the inventory next if needed: its easy
@@ -790,7 +790,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                         from_entry = inv.get_entry(from_id)
                         current_parent = from_entry.parent_id
                         inv.rename(from_id, to_dir_id, from_tail)
-                        rollbacks.add_cleanup(
+                        rollbacks.callback(
                             inv.rename, from_id, current_parent, from_tail)
                     # finally do the rename in the dirstate, which is a little
                     # tricky to rollback, but least likely to need it.
@@ -871,7 +871,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                                                     to_path_utf8)
                         update_dirblock(from_rel_utf8, to_key, to_rel_utf8)
                 except BaseException:
-                    rollbacks.cleanup_now()
+                    rollbacks.close()
                     raise
                 result.append((from_rel, to_rel))
                 state._mark_modified()

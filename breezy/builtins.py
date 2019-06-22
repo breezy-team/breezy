@@ -552,7 +552,7 @@ class cmd_repair_workingtree(Command):
 
     def run(self, revision=None, directory='.', force=False):
         tree, _ = WorkingTree.open_containing(directory)
-        self.add_cleanup(tree.lock_tree_write().unlock)
+        self.enter_context(tree.lock_tree_write())
         if not force:
             try:
                 tree.check_state()
@@ -602,14 +602,14 @@ class cmd_revno(Command):
         if tree:
             try:
                 wt = WorkingTree.open_containing(location)[0]
-                self.add_cleanup(wt.lock_read().unlock)
+                self.enter_context(wt.lock_read())
             except (errors.NoWorkingTree, errors.NotLocalUrl):
                 raise errors.NoWorkingTree(location)
             b = wt.branch
             revid = wt.last_revision()
         else:
             b = Branch.open_containing(location)[0]
-            self.add_cleanup(b.lock_read().unlock)
+            self.enter_context(b.lock_read())
             if revision:
                 if len(revision) != 1:
                     raise errors.BzrCommandError(gettext(
@@ -646,11 +646,11 @@ class cmd_revision_info(Command):
         try:
             wt = WorkingTree.open_containing(directory)[0]
             b = wt.branch
-            self.add_cleanup(wt.lock_read().unlock)
+            self.enter_context(wt.lock_read())
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             wt = None
             b = Branch.open_containing(directory)[0]
-            self.add_cleanup(b.lock_read().unlock)
+            self.enter_context(b.lock_read())
         revision_ids = []
         if revision is not None:
             revision_ids.extend(rev.as_revision_id(b) for rev in revision)
@@ -766,7 +766,7 @@ class cmd_add(Command):
                 to_file=self.outf, should_print=(not is_quiet()))
 
         if base_tree:
-            self.add_cleanup(base_tree.lock_read().unlock)
+            self.enter_context(base_tree.lock_read())
         tree, file_list = tree_files_for_add(file_list)
         added, ignored = tree.smart_add(
             file_list, not no_recurse, action=action, save=not dry_run)
@@ -872,17 +872,17 @@ class cmd_inventory(Command):
 
         revision = _get_one_revision('inventory', revision)
         work_tree, file_list = WorkingTree.open_containing_paths(file_list)
-        self.add_cleanup(work_tree.lock_read().unlock)
+        self.enter_context(work_tree.lock_read())
         if revision is not None:
             tree = revision.as_tree(work_tree.branch)
 
             extra_trees = [work_tree]
-            self.add_cleanup(tree.lock_read().unlock)
+            self.enter_context(tree.lock_read())
         else:
             tree = work_tree
             extra_trees = []
 
-        self.add_cleanup(tree.lock_read().unlock)
+        self.enter_context(tree.lock_read())
         if file_list is not None:
             paths = tree.find_related_paths_across_trees(
                 file_list, extra_trees, require_versioned=True)
@@ -937,7 +937,7 @@ class cmd_cp(Command):
             if file_name == '':
                 raise errors.BzrCommandError(
                     gettext("can not copy root of branch"))
-        self.add_cleanup(tree.lock_tree_write().unlock)
+        self.enter_context(tree.lock_tree_write())
         into_existing = osutils.isdir(names_list[-1])
         if not into_existing:
             try:
@@ -1030,7 +1030,7 @@ class cmd_mv(Command):
             if file_name == '':
                 raise errors.BzrCommandError(
                     gettext("can not move root of branch"))
-        self.add_cleanup(tree.lock_tree_write().unlock)
+        self.enter_context(tree.lock_tree_write())
         self._run(tree, names_list, rel_names, after)
 
     def run_auto(self, names_list, after, dry_run):
@@ -1042,7 +1042,7 @@ class cmd_mv(Command):
                 gettext('--after cannot be specified with --auto.'))
         work_tree, file_list = WorkingTree.open_containing_paths(
             names_list, default_directory='.')
-        self.add_cleanup(work_tree.lock_tree_write().unlock)
+        self.enter_context(work_tree.lock_tree_write())
         rename_map.RenameMap.guess_renames(
             work_tree.basis_tree(), work_tree, dry_run)
 
@@ -1196,11 +1196,11 @@ class cmd_pull(Command):
         try:
             tree_to = WorkingTree.open_containing(directory)[0]
             branch_to = tree_to.branch
-            self.add_cleanup(tree_to.lock_write().unlock)
+            self.enter_context(tree_to.lock_write())
         except errors.NoWorkingTree:
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
-            self.add_cleanup(branch_to.lock_write().unlock)
+            self.enter_context(branch_to.lock_write())
             if show_base:
                 warning(gettext("No working tree, ignoring --show-base"))
 
@@ -1240,7 +1240,7 @@ class cmd_pull(Command):
         else:
             branch_from = Branch.open(location,
                                       possible_transports=possible_transports)
-            self.add_cleanup(branch_from.lock_read().unlock)
+            self.enter_context(branch_from.lock_read())
             # Remembers if asked explicitly or no previous location is set
             if (remember
                     or (remember is None and branch_to.get_parent() is None)):
@@ -1472,7 +1472,7 @@ class cmd_branch(Command):
         if files_from is not None and files_from != from_location:
             accelerator_tree = WorkingTree.open(files_from)
         revision = _get_one_revision('branch', revision)
-        self.add_cleanup(br_from.lock_read().unlock)
+        self.enter_context(br_from.lock_read())
         if revision is not None:
             revision_id = revision.as_revision_id(br_from)
         else:
@@ -1696,9 +1696,9 @@ class cmd_renames(Command):
     @display_command
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
-        self.add_cleanup(tree.lock_read().unlock)
+        self.enter_context(tree.lock_read())
         old_tree = tree.basis_tree()
-        self.add_cleanup(old_tree.lock_read().unlock)
+        self.enter_context(old_tree.lock_read())
         renames = []
         iterator = tree.iter_changes(old_tree, include_unchanged=True)
         for change in iterator:
@@ -1769,11 +1769,10 @@ class cmd_update(Command):
             possible_transports=possible_transports)
         if master is not None:
             branch_location = master.base
-            tree.lock_write()
+            self.enter_context(tree.lock_write())
         else:
             branch_location = tree.branch.base
-            tree.lock_tree_write()
-        self.add_cleanup(tree.unlock)
+            self.enter_context(tree.lock_tree_write())
         # get rid of the final '/' and be ready for display
         branch_location = urlutils.unescape_for_display(
             branch_location.rstrip('/'),
@@ -1901,7 +1900,7 @@ class cmd_remove(Command):
         if file_list is not None:
             file_list = [f for f in file_list]
 
-        self.add_cleanup(tree.lock_write().unlock)
+        self.enter_context(tree.lock_write())
         # Heuristics should probably all move into tree.remove_smart or
         # some such?
         if new:
@@ -1970,7 +1969,7 @@ class cmd_revision_history(Command):
     @display_command
     def run(self, location="."):
         branch = Branch.open_containing(location)[0]
-        self.add_cleanup(branch.lock_read().unlock)
+        self.enter_context(branch.lock_read())
         graph = branch.repository.get_graph()
         history = list(graph.iter_lefthand_ancestry(branch.last_revision(),
                                                     [_mod_revision.NULL_REVISION]))
@@ -1998,7 +1997,7 @@ class cmd_ancestry(Command):
             b = wt.branch
             last_revision = wt.last_revision()
 
-        self.add_cleanup(b.repository.lock_read().unlock)
+        self.enter_context(b.repository.lock_read())
         graph = b.repository.get_graph()
         revisions = [revid for revid, parents in
                      graph.iter_ancestry([last_revision])]
@@ -2353,7 +2352,7 @@ class cmd_diff(Command):
         (old_tree, new_tree,
          old_branch, new_branch,
          specific_files, extra_trees) = get_trees_and_branches_to_diff_locked(
-            file_list, revision, old, new, self.add_cleanup, apply_view=True)
+            file_list, revision, old, new, self._exit_stack, apply_view=True)
         # GNU diff on Windows uses ANSI encoding for filenames
         path_encoding = osutils.get_diff_header_encoding()
         return show_diff_trees(old_tree, new_tree, self.outf,
@@ -2381,9 +2380,9 @@ class cmd_deleted(Command):
     @display_command
     def run(self, show_ids=False, directory=u'.'):
         tree = WorkingTree.open_containing(directory)[0]
-        self.add_cleanup(tree.lock_read().unlock)
+        self.enter_context(tree.lock_read())
         old = tree.basis_tree()
-        self.add_cleanup(old.lock_read().unlock)
+        self.enter_context(old.lock_read())
         for path, ie in old.iter_entries_by_dir():
             if not tree.has_id(ie.file_id):
                 self.outf.write(path)
@@ -2404,7 +2403,7 @@ class cmd_modified(Command):
     @display_command
     def run(self, null=False, directory=u'.'):
         tree = WorkingTree.open_containing(directory)[0]
-        self.add_cleanup(tree.lock_read().unlock)
+        self.enter_context(tree.lock_read())
         td = tree.changes_from(tree.basis_tree())
         self.cleanup_now()
         for path, id, kind, text_modified, meta_modified in td.modified:
@@ -2425,9 +2424,9 @@ class cmd_added(Command):
     @display_command
     def run(self, null=False, directory=u'.'):
         wt = WorkingTree.open_containing(directory)[0]
-        self.add_cleanup(wt.lock_read().unlock)
+        self.enter_context(wt.lock_read())
         basis = wt.basis_tree()
-        self.add_cleanup(basis.lock_read().unlock)
+        self.enter_context(basis.lock_read())
         for path in wt.all_versioned_paths():
             if basis.has_filename(path):
                 continue
@@ -2761,7 +2760,7 @@ class cmd_log(Command):
         if file_list:
             # find the file ids to log and check for directory filtering
             b, file_info_list, rev1, rev2 = _get_info_for_log_files(
-                revision, file_list, self.add_cleanup)
+                revision, file_list, self._exit_stack)
             for relpath, file_id, kind in file_info_list:
                 if file_id is None:
                     raise errors.BzrCommandError(gettext(
@@ -2785,7 +2784,7 @@ class cmd_log(Command):
                 location = '.'
             dir, relpath = controldir.ControlDir.open_containing(location)
             b = dir.open_branch()
-            self.add_cleanup(b.lock_read().unlock)
+            self.enter_context(b.lock_read())
             rev1, rev2 = _get_revision_range(revision, b, self.name())
 
         if b.get_config_stack().get('validate_signatures_in_log'):
@@ -3016,7 +3015,7 @@ class cmd_ls(Command):
                 view_str = views.view_display_str(view_files)
                 note(gettext("Ignoring files outside view. View is %s") % view_str)
 
-        self.add_cleanup(tree.lock_read().unlock)
+        self.enter_context(tree.lock_read())
         for fp, fc, fkind, entry in tree.list_files(
                 include_root=False, from_dir=relpath, recursive=recursive):
             # Apply additional masking
@@ -3193,7 +3192,7 @@ class cmd_ignore(Command):
         ignores.tree_ignores_add_patterns(tree, name_pattern_list)
         ignored = globbing.Globster(name_pattern_list)
         matches = []
-        self.add_cleanup(tree.lock_read().unlock)
+        self.enter_context(tree.lock_read())
         for filename, fc, fkind, entry in tree.list_files():
             id = getattr(entry, 'file_id', None)
             if id is not None:
@@ -3224,7 +3223,7 @@ class cmd_ignored(Command):
     @display_command
     def run(self, directory=u'.'):
         tree = WorkingTree.open_containing(directory)[0]
-        self.add_cleanup(tree.lock_read().unlock)
+        self.enter_context(tree.lock_read())
         for path, file_class, kind, entry in tree.list_files():
             if file_class != 'I':
                 continue
@@ -3315,7 +3314,7 @@ class cmd_export(Command):
         (tree, b, subdir) = controldir.ControlDir.open_containing_tree_or_branch(
             branch_or_subdir)
         if tree is not None:
-            self.add_cleanup(tree.lock_read().unlock)
+            self.enter_context(tree.lock_read())
 
         if uncommitted:
             if tree is None:
@@ -3379,7 +3378,7 @@ class cmd_cat(Command):
                                                  " one revision specifier"))
         tree, branch, relpath = \
             _open_directory_or_containing_tree_or_branch(filename, directory)
-        self.add_cleanup(branch.lock_read().unlock)
+        self.enter_context(branch.lock_read())
         return self._run(tree, branch, relpath, filename, revision,
                          name_from_revision, filters)
 
@@ -3389,7 +3388,7 @@ class cmd_cat(Command):
         if tree is None:
             tree = b.basis_tree()
         rev_tree = _get_one_revision_tree('cat', revision, branch=b)
-        self.add_cleanup(rev_tree.lock_read().unlock)
+        self.enter_context(rev_tree.lock_read())
 
         if name_from_revision:
             # Try in revision if requested
@@ -3903,7 +3902,7 @@ class cmd_whoami(Command):
                 c = Branch.open_containing(u'.')[0].get_config_stack()
             else:
                 b = Branch.open(directory)
-                self.add_cleanup(b.lock_write().unlock)
+                self.enter_context(b.lock_write())
                 c = b.get_config_stack()
         else:
             c = _mod_config.GlobalStack()
@@ -4281,8 +4280,8 @@ class cmd_find_merge_base(Command):
 
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
-        self.add_cleanup(branch1.lock_read().unlock)
-        self.add_cleanup(branch2.lock_read().unlock)
+        self.enter_context(branch1.lock_read())
+        self.enter_context(branch2.lock_read())
         last1 = ensure_null(branch1.last_revision())
         last2 = ensure_null(branch2.last_revision())
 
@@ -4434,8 +4433,8 @@ class cmd_merge(Command):
         change_reporter = delta._ChangeReporter(
             unversioned_filter=tree.is_ignored, view_info=view_info)
         pb = ui.ui_factory.nested_progress_bar()
-        self.add_cleanup(pb.finished)
-        self.add_cleanup(tree.lock_write().unlock)
+        self.enter_context(pb)
+        self.enter_context(tree.lock_write())
         if location is not None:
             try:
                 mergeable = _mod_mergeable.read_mergeable_from_url(
@@ -4503,7 +4502,7 @@ class cmd_merge(Command):
     def _get_preview(self, merger):
         tree_merger = merger.make_merger()
         tt = tree_merger.make_preview_transform()
-        self.add_cleanup(tt.finalize)
+        self.enter_context(tt)
         result_tree = tt.get_preview_tree()
         return result_tree
 
@@ -4724,7 +4723,7 @@ class cmd_remerge(Command):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
         tree, file_list = WorkingTree.open_containing_paths(file_list)
-        self.add_cleanup(tree.lock_write().unlock)
+        self.enter_context(tree.lock_write())
         parents = tree.get_parent_ids()
         if len(parents) != 2:
             raise errors.BzrCommandError(
@@ -4847,7 +4846,7 @@ class cmd_revert(Command):
     def run(self, revision=None, no_backup=False, file_list=None,
             forget_merges=None):
         tree, file_list = WorkingTree.open_containing_paths(file_list)
-        self.add_cleanup(tree.lock_tree_write().unlock)
+        self.enter_context(tree.lock_tree_write())
         if forget_merges:
             tree.set_parent_ids(tree.get_parent_ids()[:1])
         else:
@@ -4996,7 +4995,7 @@ class cmd_missing(Command):
             restrict = 'remote'
 
         local_branch = Branch.open_containing(directory)[0]
-        self.add_cleanup(local_branch.lock_read().unlock)
+        self.enter_context(local_branch.lock_read())
 
         parent = local_branch.get_parent()
         if other_branch is None:
@@ -5013,7 +5012,7 @@ class cmd_missing(Command):
         if remote_branch.base == local_branch.base:
             remote_branch = local_branch
         else:
-            self.add_cleanup(remote_branch.lock_read().unlock)
+            self.enter_context(remote_branch.lock_read())
 
         local_revid_range = _revision_range_to_revid_range(
             _get_revision_range(my_revision, local_branch,
@@ -5085,7 +5084,7 @@ class cmd_missing(Command):
             message(gettext("Branches are up to date.\n"))
         self.cleanup_now()
         if not status_code and parent is None and other_branch is not None:
-            self.add_cleanup(local_branch.lock_write().unlock)
+            self.enter_context(local_branch.lock_write())
             # handle race conditions - a parent might be set while we run.
             if local_branch.get_parent() is None:
                 local_branch.set_parent(remote_branch.base)
@@ -5178,7 +5177,7 @@ class cmd_testament(Command):
             b = Branch.open_containing(branch)[0]
         else:
             b = Branch.open(branch)
-        self.add_cleanup(b.lock_read().unlock)
+        self.enter_context(b.lock_read())
         if revision is None:
             rev_id = b.last_revision()
         else:
@@ -5221,11 +5220,11 @@ class cmd_annotate(Command):
         wt, branch, relpath = \
             _open_directory_or_containing_tree_or_branch(filename, directory)
         if wt is not None:
-            self.add_cleanup(wt.lock_read().unlock)
+            self.enter_context(wt.lock_read())
         else:
-            self.add_cleanup(branch.lock_read().unlock)
+            self.enter_context(branch.lock_read())
         tree = _get_one_revision_tree('annotate', revision, branch=branch)
-        self.add_cleanup(tree.lock_read().unlock)
+        self.enter_context(tree.lock_read())
         if wt is not None and revision is None:
             if not wt.is_versioned(relpath):
                 raise errors.NotVersionedError(relpath)
@@ -5256,7 +5255,7 @@ class cmd_re_sign(Command):
             raise errors.BzrCommandError(
                 gettext('You must supply either --revision or a revision_id'))
         b = WorkingTree.open_containing(directory)[0].branch
-        self.add_cleanup(b.lock_write().unlock)
+        self.enter_context(b.lock_write())
         return self._run(b, revision_id_list, revision)
 
     def _run(self, b, revision_id_list, revision):
@@ -5402,9 +5401,9 @@ class cmd_uncommit(Command):
             b = control.open_branch()
 
         if tree is not None:
-            self.add_cleanup(tree.lock_write().unlock)
+            self.enter_context(tree.lock_write())
         else:
-            self.add_cleanup(b.lock_write().unlock)
+            self.enter_context(b.lock_write())
         return self._run(b, tree, dry_run, verbose, revision, force,
                          local, keep_tags, location)
 
@@ -5987,7 +5986,7 @@ class cmd_tag(Command):
             revision=None,
             ):
         branch, relpath = Branch.open_containing(directory)
-        self.add_cleanup(branch.lock_write().unlock)
+        self.enter_context(branch.lock_write())
         if delete:
             if tag_name is None:
                 raise errors.BzrCommandError(
@@ -6051,7 +6050,7 @@ class cmd_tags(Command):
         if not tags:
             return
 
-        self.add_cleanup(branch.lock_read().unlock)
+        self.enter_context(branch.lock_read())
         if revision:
             # Restrict to the specified range
             tags = self._tags_for_range(branch, revision)
@@ -6615,7 +6614,7 @@ class cmd_shelve(Command):
         if directory is None:
             directory = u'.'
         tree = WorkingTree.open_containing(directory)[0]
-        self.add_cleanup(tree.lock_read().unlock)
+        self.enter_context(tree.lock_read())
         manager = tree.get_shelf_manager()
         shelves = manager.active_shelves()
         if len(shelves) == 0:

@@ -496,7 +496,7 @@ class Command(object):
 
         Functions will be called in LIFO order.
         """
-        self._operation.add_cleanup(cleanup_func, *args, **kwargs)
+        self._exit_stack.callback(cleanup_func, *args, **kwargs)
 
     def cleanup_now(self):
         """Execute and empty pending cleanup functions immediately.
@@ -511,7 +511,10 @@ class Command(object):
         as it releases all resources, this may release locks that the command
         wants to hold, so use should be done with care.
         """
-        self._operation.cleanup_now()
+        self._exit_stack.close()
+
+    def enter_context(self, cm):
+        return self._exit_stack.enter_context(cm)
 
     def _usage(self):
         """Return single-line grammar for this command.
@@ -779,11 +782,10 @@ class Command(object):
         def run(*args, **kwargs):
             for hook in Command.hooks['pre_command']:
                 hook(self)
-            self._operation = cleanup.OperationWithCleanups(class_run)
             try:
-                return self._operation.run_simple(*args, **kwargs)
+                with cleanup.ExitStack() as self._exit_stack:
+                    return class_run(*args, **kwargs)
             finally:
-                del self._operation
                 for hook in Command.hooks['post_command']:
                     hook(self)
         self.run = run
@@ -799,7 +801,7 @@ class Command(object):
         an exception to raise up.
 
         This method is automatically wrapped by Command.__init__ with a
-        cleanup operation, stored as self._operation. This can be used
+        ExitStack, stored as self._exit_stack. This can be used
         via self.add_cleanup to perform automatic cleanups at the end of
         run().
 
