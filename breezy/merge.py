@@ -807,7 +807,7 @@ class Merge3Merger(object):
                 # Try merging each entry
                 child_pb.update(gettext('Preparing file merge'),
                                 num, len(entries))
-                self._merge_names(trans_id, paths3, parents3,
+                self._merge_names(trans_id, file_id, paths3, parents3,
                                   names3, resolver=resolver)
                 if changed:
                     file_status = self._do_merge_contents(paths3, trans_id, file_id)
@@ -1182,7 +1182,7 @@ class Merge3Merger(object):
         # At this point, the lcas disagree, and the tip disagree
         return 'conflict'
 
-    def _merge_names(self, trans_id, paths, parents, names, resolver):
+    def _merge_names(self, trans_id, file_id, paths, parents, names, resolver):
         """Perform a merge on file names and parents"""
         base_name, other_name, this_name = names
         base_parent, other_parent, this_parent = parents
@@ -1202,7 +1202,7 @@ class Merge3Merger(object):
             # Creating helpers (.OTHER or .THIS) here cause problems down the
             # road if a ContentConflict needs to be created so we should not do
             # that
-            self._raw_conflicts.append(('path conflict', trans_id,
+            self._raw_conflicts.append(('path conflict', trans_id, file_id,
                                         this_parent, this_name,
                                         other_parent, other_name))
         if other_path is None:
@@ -1551,7 +1551,8 @@ class Merge3Merger(object):
         for conflict in self._raw_conflicts:
             conflict_type = conflict[0]
             if conflict_type == 'path conflict':
-                (trans_id, this_parent, this_name,
+                (trans_id, file_id,
+                 this_parent, this_name,
                  other_parent, other_name) = conflict[1:]
                 if this_parent is None or this_name is None:
                     this_path = '<deleted>'
@@ -1571,7 +1572,6 @@ class Merge3Merger(object):
                         parent_path = fp.get_path(
                             self.tt.trans_id_file_id(other_parent))
                     other_path = osutils.pathjoin(parent_path, other_name)
-                file_id = self.tt.final_file_id(trans_id)
                 c = _mod_conflicts.Conflict.factory(
                     'path conflict', path=this_path,
                     conflict_path=other_path,
