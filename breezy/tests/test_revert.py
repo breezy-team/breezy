@@ -85,7 +85,7 @@ class TestRevert(tests.TestCaseWithTransport):
 
     def tree_with_executable(self):
         tree = self.make_branch_and_tree('tree')
-        tt = transform.TreeTransform(tree)
+        tt = tree.get_transform()
         tt.new_file('newfile', tt.root, [b'helooo!'], b'newfile-id', True)
         tt.apply()
         with tree.lock_write():
@@ -95,7 +95,7 @@ class TestRevert(tests.TestCaseWithTransport):
 
     def test_preserve_execute(self):
         tree = self.tree_with_executable()
-        tt = transform.TreeTransform(tree)
+        tt = tree.get_transform()
         newfile = tt.trans_id_tree_path('newfile')
         tt.delete_contents(newfile)
         tt.create_file([b'Woooorld!'], newfile)
@@ -111,7 +111,7 @@ class TestRevert(tests.TestCaseWithTransport):
 
     def test_revert_executable(self):
         tree = self.tree_with_executable()
-        tt = transform.TreeTransform(tree)
+        tt = tree.get_transform()
         newfile = tt.trans_id_tree_path('newfile')
         tt.set_executability(False, newfile)
         tt.apply()
@@ -124,11 +124,14 @@ class TestRevert(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
         tree.add('file')
-        tree.commit('added file', rev_id=b'rev1')
+        rev1 = tree.commit('added file')
+        with tree.lock_read():
+            file_sha = tree.get_file_sha1('file')
         os.unlink('file')
         tree.commit('removed file')
         self.assertPathDoesNotExist('file')
-        tree.revert(old_tree=tree.branch.repository.revision_tree(b'rev1'))
+        tree.revert(old_tree=tree.branch.repository.revision_tree(rev1))
+        self.assertEqual({'file': file_sha}, tree.merge_modified())
         self.assertPathExists('file')
         tree.revert()
         self.assertPathDoesNotExist('file')

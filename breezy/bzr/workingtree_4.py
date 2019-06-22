@@ -563,7 +563,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             relpath = pathjoin(key[0].decode('utf8'), key[1].decode('utf8'))
             try:
                 if self.kind(relpath) == 'tree-reference':
-                    yield relpath, key[2]
+                    yield relpath
             except errors.NoSuchFile:
                 # path is missing on disk.
                 continue

@@ -107,7 +107,7 @@ class TestReference(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(
-            [(u'subtree', subtree.get_root_id())],
+            [u'subtree'],
             list(tree.iter_references()))
 
     def test_get_root_id(self):

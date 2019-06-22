@@ -20,13 +20,13 @@
 from __future__ import absolute_import
 
 import os
+import re
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 
 from breezy import (
-    cleanup,
     errors,
     osutils,
     rio,
@@ -84,6 +84,8 @@ resolve_action_registry = registry.Registry()
 
 
 resolve_action_registry.register(
+    'auto', 'auto', 'Detect whether conflict has been resolved by user.')
+resolve_action_registry.register(
     'done', 'done', 'Marks the conflict as resolved.')
 resolve_action_registry.register(
     'take-this', 'take_this',
@@ -137,38 +139,27 @@ class cmd_resolve(commands.Command):
         else:
             tree, file_list = workingtree.WorkingTree.open_containing_paths(
                 file_list, directory)
-            if file_list is None:
-                if action is None:
-                    # FIXME: There is a special case here related to the option
-                    # handling that could be clearer and easier to discover by
-                    # providing an --auto action (bug #344013 and #383396) and
-                    # make it mandatory instead of implicit and active only
-                    # when no file_list is provided -- vila 091229
+            if action is None:
+                if file_list is None:
                     action = 'auto'
-            else:
-                if action is None:
-                    action = 'done'
-        if action == 'auto':
-            if file_list is None:
-                un_resolved, resolved = tree.auto_resolve()
-                if len(un_resolved) > 0:
-                    trace.note(ngettext('%d conflict auto-resolved.',
-                                        '%d conflicts auto-resolved.', len(resolved)),
-                               len(resolved))
-                    trace.note(gettext('Remaining conflicts:'))
-                    for conflict in un_resolved:
-                        trace.note(text_type(conflict))
-                    return 1
                 else:
-                    trace.note(gettext('All conflicts resolved.'))
-                    return 0
+                    action = 'done'
+        before, after = resolve(tree, file_list, action=action)
+        # GZ 2012-07-27: Should unify UI below now that auto is less magical.
+        if action == 'auto' and file_list is None:
+            if after > 0:
+                trace.note(
+                    ngettext('%d conflict auto-resolved.',
+                             '%d conflicts auto-resolved.', before - after),
+                    before - after)
+                trace.note(gettext('Remaining conflicts:'))
+                for conflict in tree.conflicts():
+                    trace.note(text_type(conflict))
+                return 1
             else:
-                # FIXME: This can never occur but the block above needs some
-                # refactoring to transfer tree.auto_resolve() to
-                # conflict.auto(tree) --vila 091242
-                pass
+                trace.note(gettext('All conflicts resolved.'))
+                return 0
         else:
-            before, after = resolve(tree, file_list, action=action)
             trace.note(ngettext('{0} conflict resolved, {1} remaining',
                                 '{0} conflicts resolved, {1} remaining',
                                 before - after).format(before - after, after))
@@ -453,6 +444,9 @@ class Conflict(object):
                 if e.errno != errno.ENOENT:
                     raise
 
+    def action_auto(self, tree):
+        raise NotImplementedError(self.action_auto)
+
     def action_done(self, tree):
         """Mark the conflict as solved once it has been handled."""
         # This method does nothing but simplifies the design of upper levels.
@@ -465,10 +459,8 @@ class Conflict(object):
         raise NotImplementedError(self.action_take_other)
 
     def _resolve_with_cleanups(self, tree, *args, **kwargs):
-        tt = transform.TreeTransform(tree)
-        op = cleanup.OperationWithCleanups(self._resolve)
-        op.add_cleanup(tt.finalize)
-        op.run_simple(tt, *args, **kwargs)
+        with tree.get_transform() as tt:
+            self._resolve(tt, *args, **kwargs)
 
 
 class PathConflict(Conflict):
@@ -651,6 +643,8 @@ class TextConflict(Conflict):
 
     rformat = '%(class)s(%(path)r, %(file_id)r)'
 
+    _conflict_re = re.compile(b'^(<{7}|={7}|>{7})')
+
     def associated_filenames(self):
         return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
 
@@ -680,6 +674,22 @@ class TextConflict(Conflict):
         tt.unversion_file(item_tid)
         tt.version_file(self.file_id, winner_tid)
         tt.apply()
+
+    def action_auto(self, tree):
+        # GZ 2012-07-27: Using NotImplementedError to signal that a conflict
+        #                can't be auto resolved does not seem ideal.
+        try:
+            kind = tree.kind(self.path)
+        except errors.NoSuchFile:
+            return
+        if kind != 'file':
+            raise NotImplementedError("Conflict is not a file")
+        conflict_markers_in_line = self._conflict_re.search
+        # GZ 2012-07-27: What if not tree.has_id(self.file_id) due to removal?
+        with tree.get_file(self.path) as f:
+            for line in f:
+                if conflict_markers_in_line(line):
+                    raise NotImplementedError("Conflict markers present")
 
     def action_take_this(self, tree):
         self._resolve_with_cleanups(tree, 'THIS')
@@ -786,8 +796,7 @@ class ParentLoop(HandledPathConflict):
         pass
 
     def action_take_other(self, tree):
-        tt = transform.TreeTransform(tree)
-        try:
+        with tree.get_transform() as tt:
             p_tid = tt.trans_id_file_id(self.file_id)
             parent_tid = tt.get_tree_parent(p_tid)
             cp_tid = tt.trans_id_file_id(self.conflict_file_id)
@@ -796,8 +805,6 @@ class ParentLoop(HandledPathConflict):
             tt.adjust_path(osutils.basename(self.conflict_path),
                            parent_tid, p_tid)
             tt.apply()
-        finally:
-            tt.finalize()
 
 
 class UnversionedParent(HandledConflict):

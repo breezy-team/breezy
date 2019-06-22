@@ -575,17 +575,15 @@ class BzrBranch8(BzrBranch):
         """
         return self._get_all_reference_info().get(path, (None, None))
 
-    def reference_parent(self, path, file_id=None, possible_transports=None):
-        """Return the parent branch for a tree-reference file_id.
+    def reference_parent(self, path, possible_transports=None):
+        """Return the parent branch for a tree-reference.
 
-        :param file_id: The file_id of the tree reference
-        :param path: The path of the file_id in the tree
-        :return: A branch associated with the file_id
+        :param path: The path of the nested tree in the tree
+        :return: A branch associated with the nested tree
         """
         branch_location = self.get_reference_info(path)[0]
         if branch_location is None:
-            return Branch.reference_parent(self, path, file_id,
-                                           possible_transports)
+            return Branch.reference_parent(self, path, possible_transports)
         branch_location = urlutils.join(self.user_url, branch_location)
         return Branch.open(branch_location,
                            possible_transports=possible_transports)

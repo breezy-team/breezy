@@ -69,6 +69,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    breezy.
 
+* New ``Tree.get_transform`` method for getting a ``TreeTransform``
+  object. (Jelmer Vernooij)
+
 Internals
 *********
 
