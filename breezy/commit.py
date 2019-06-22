@@ -498,6 +498,9 @@ class Commit(object):
                     self.branch.fetch(self.master_branch, self.rev_id)
 
             # and now do the commit locally.
+            if new_revno is None:
+                # Keep existing behaviour around ghosts
+                new_revno = 1
             self.branch.set_last_revision_info(new_revno, self.rev_id)
         else:
             try:
