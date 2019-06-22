@@ -27,7 +27,6 @@ from breezy.bzr.testament import (
     StrictTestament,
     StrictTestament3,
     )
-from breezy.transform import TreeTransform
 from breezy.tests.features import (
     SymlinkFeature,
     )
@@ -51,7 +50,7 @@ class TestamentSetup(TestCaseWithTransport):
                                   ('src/foo.c', b'int main()\n{\n}\n')])
         self.wt.add(['hello', 'src', 'src/foo.c'],
                     [b'hello-id', b'src-id', b'foo.c-id'])
-        tt = TreeTransform(self.wt)
+        tt = self.wt.get_transform()
         trans_id = tt.trans_id_tree_path('hello')
         tt.set_executability(True, trans_id)
         tt.apply()

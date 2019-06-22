@@ -142,6 +142,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                     ('zz_dir', 'directory'),
                     ], files)
 
+    def test_get_transform(self):
+        tree = self.make_branch_and_tree('tree')
+        with tree.get_transform():
+            pass
+
     def test_list_files_kind_change(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/filename'])
@@ -731,7 +736,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree_contents([('tree/somefile', b'hello')])
         with tree.lock_write():
             tree.add(['somefile'])
-            d = {tree.path2id('somefile'): osutils.sha_string(b'hello')}
+            d = {'somefile': osutils.sha_string(b'hello')}
             if tree.supports_merge_modified():
                 tree.set_merge_modified(d)
                 mm = tree.merge_modified()

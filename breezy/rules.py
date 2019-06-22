@@ -24,7 +24,7 @@ from __future__ import absolute_import
 import configobj
 
 from . import (
-    config,
+    bedding,
     cmdline,
     errors,
     globbing,
@@ -162,14 +162,14 @@ class _StackedRulesSearcher(_RulesSearcher):
         return ()
 
 
-def rules_filename():
-    """Return the default rules filename."""
-    return osutils.pathjoin(config.config_dir(), 'rules')
+def rules_path():
+    """Return the default rules file path."""
+    return osutils.pathjoin(bedding.config_dir(), 'rules')
 
 
 def reset_rules():
     global _per_user_searcher
-    _per_user_searcher = _IniBasedRulesSearcher(rules_filename())
+    _per_user_searcher = _IniBasedRulesSearcher(rules_path())
 
 
 reset_rules()

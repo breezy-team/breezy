@@ -27,6 +27,7 @@ from testtools import matchers
 from .. import (
     branch,
     config,
+    bedding,
     controldir,
     diff,
     errors,
@@ -517,96 +518,6 @@ class TestConfig(tests.TestCase):
                          change_editor.command_template)
 
 
-class TestConfigPath(tests.TestCase):
-
-    def setUp(self):
-        super(TestConfigPath, self).setUp()
-        self.overrideEnv('HOME', '/home/bogus')
-        self.overrideEnv('XDG_CACHE_HOME', '')
-        if sys.platform == 'win32':
-            self.overrideEnv(
-                'BRZ_HOME',
-                r'C:\Documents and Settings\bogus\Application Data')
-            self.brz_home = \
-                'C:/Documents and Settings/bogus/Application Data/breezy'
-        else:
-            self.brz_home = '/home/bogus/.config/breezy'
-
-    def test_config_dir(self):
-        self.assertEqual(config.config_dir(), self.brz_home)
-
-    def test_config_dir_is_unicode(self):
-        self.assertIsInstance(config.config_dir(), text_type)
-
-    def test_config_filename(self):
-        self.assertEqual(config.config_filename(),
-                         self.brz_home + '/breezy.conf')
-
-    def test_locations_config_filename(self):
-        self.assertEqual(config.locations_config_filename(),
-                         self.brz_home + '/locations.conf')
-
-    def test_authentication_config_filename(self):
-        self.assertEqual(config.authentication_config_filename(),
-                         self.brz_home + '/authentication.conf')
-
-
-class TestConfigPathFallback(tests.TestCaseInTempDir):
-
-    def setUp(self):
-        super(TestConfigPathFallback, self).setUp()
-        self.overrideEnv('HOME', self.test_dir)
-        self.overrideEnv('XDG_CACHE_HOME', '')
-        self.bzr_home = os.path.join(self.test_dir, '.bazaar')
-        os.mkdir(self.bzr_home)
-
-    def test_config_dir(self):
-        self.assertEqual(config.config_dir(), self.bzr_home)
-
-    def test_config_dir_is_unicode(self):
-        self.assertIsInstance(config.config_dir(), text_type)
-
-    def test_config_filename(self):
-        self.assertEqual(config.config_filename(),
-                         self.bzr_home + '/bazaar.conf')
-
-    def test_locations_config_filename(self):
-        self.assertEqual(config.locations_config_filename(),
-                         self.bzr_home + '/locations.conf')
-
-    def test_authentication_config_filename(self):
-        self.assertEqual(config.authentication_config_filename(),
-                         self.bzr_home + '/authentication.conf')
-
-
-class TestXDGConfigDir(tests.TestCaseInTempDir):
-    # must be in temp dir because config tests for the existence of the bazaar
-    # subdirectory of $XDG_CONFIG_HOME
-
-    def setUp(self):
-        if sys.platform == 'win32':
-            raise tests.TestNotApplicable(
-                'XDG config dir not used on this platform')
-        super(TestXDGConfigDir, self).setUp()
-        self.overrideEnv('HOME', self.test_home_dir)
-        # BRZ_HOME overrides everything we want to test so unset it.
-        self.overrideEnv('BRZ_HOME', None)
-
-    def test_xdg_config_dir_exists(self):
-        """When ~/.config/bazaar exists, use it as the config dir."""
-        newdir = osutils.pathjoin(self.test_home_dir, '.config', 'bazaar')
-        os.makedirs(newdir)
-        self.assertEqual(config.config_dir(), newdir)
-
-    def test_xdg_config_home(self):
-        """When XDG_CONFIG_HOME is set, use it."""
-        xdgconfigdir = osutils.pathjoin(self.test_home_dir, 'xdgconfig')
-        self.overrideEnv('XDG_CONFIG_HOME', xdgconfigdir)
-        newdir = osutils.pathjoin(xdgconfigdir, 'bazaar')
-        os.makedirs(newdir)
-        self.assertEqual(config.config_dir(), newdir)
-
-
 class TestIniConfig(tests.TestCaseInTempDir):
 
     def make_config_parser(self, s):
@@ -1014,7 +925,7 @@ class TestGetConfig(tests.TestCaseInTempDir):
         finally:
             config.ConfigObj = oldparserclass
         self.assertIsInstance(parser, InstrumentedConfigObj)
-        self.assertEqual(parser._calls, [('__init__', config.config_filename(),
+        self.assertEqual(parser._calls, [('__init__', bedding.config_path(),
                                           'utf-8')])
 
 
@@ -1084,7 +995,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         branch.set_push_location('http://foobar')
         local_path = osutils.getcwd().encode('utf8')
         # Surprisingly ConfigObj doesn't create a trailing newline
-        self.check_file_contents(config.locations_config_filename(),
+        self.check_file_contents(bedding.locations_config_path(),
                                  b'[%s/branch]\n'
                                  b'push_location = http://foobar\n'
                                  b'push_location:policy = norecurse\n'
@@ -1279,7 +1190,7 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
             config.ConfigObj = oldparserclass
         self.assertIsInstance(parser, InstrumentedConfigObj)
         self.assertEqual(parser._calls,
-                         [('__init__', config.locations_config_filename(),
+                         [('__init__', bedding.locations_config_path(),
                            'utf-8')])
 
     def test_get_global_config(self):
@@ -4196,7 +4107,7 @@ scheme=ftp
 user=joe
 port=port # Error: Not an int
 """)
-        self.overrideAttr(config, 'authentication_config_filename',
+        self.overrideAttr(bedding, 'authentication_config_path',
                           lambda: self.path)
         osutils.chmod_if_possible(self.path, 0o755)
 
@@ -4709,50 +4620,6 @@ class TestBase64CredentialStore(tests.TestCase):
 # test_user_prompted ?
 class TestAuthenticationRing(tests.TestCaseWithTransport):
     pass
-
-
-class TestAutoUserId(tests.TestCase):
-    """Test inferring an automatic user name."""
-
-    def test_auto_user_id(self):
-        """Automatic inference of user name.
-
-        This is a bit hard to test in an isolated way, because it depends on
-        system functions that go direct to /etc or perhaps somewhere else.
-        But it's reasonable to say that on Unix, with an /etc/mailname, we ought
-        to be able to choose a user name with no configuration.
-        """
-        if sys.platform == 'win32':
-            raise tests.TestSkipped(
-                "User name inference not implemented on win32")
-        realname, address = config._auto_user_id()
-        if os.path.exists('/etc/mailname'):
-            self.assertIsNot(None, realname)
-            self.assertIsNot(None, address)
-        else:
-            self.assertEqual((None, None), (realname, address))
-
-
-class TestDefaultMailDomain(tests.TestCaseInTempDir):
-    """Test retrieving default domain from mailname file"""
-
-    def test_default_mail_domain_simple(self):
-        with open('simple', 'w') as f:
-            f.write("domainname.com\n")
-        r = config._get_default_mail_domain('simple')
-        self.assertEqual('domainname.com', r)
-
-    def test_default_mail_domain_no_eol(self):
-        with open('no_eol', 'w') as f:
-            f.write("domainname.com")
-        r = config._get_default_mail_domain('no_eol')
-        self.assertEqual('domainname.com', r)
-
-    def test_default_mail_domain_multiple_lines(self):
-        with open('multiple_lines', 'w') as f:
-            f.write("domainname.com\nsome other text\n")
-        r = config._get_default_mail_domain('multiple_lines')
-        self.assertEqual('domainname.com', r)
 
 
 class EmailOptionTests(tests.TestCase):

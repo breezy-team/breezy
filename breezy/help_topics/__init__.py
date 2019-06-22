@@ -601,8 +601,8 @@ known_env_variables = [
     ("BRZ_HOME (Win32)", "Directory holding breezy config dir. Overrides APPDATA and HOME."),
     ("BZR_REMOTE_PATH", "Full name of remote 'brz' command (for brz+ssh:// URLs)."),
     ("BRZ_SSH", "Path to SSH client, or one of paramiko, openssh, sshcorp, plink or lsh."),
-    ("BRZ_LOG", "Location of .brz.log (use '/dev/null' to suppress log)."),
-    ("BRZ_LOG (Win32)", "Location of .brz.log (use 'NUL' to suppress log)."),
+    ("BRZ_LOG", "Location of brz.log (use '/dev/null' to suppress log)."),
+    ("BRZ_LOG (Win32)", "Location of brz.log (use 'NUL' to suppress log)."),
     ("BRZ_COLUMNS", "Override implicit terminal width."),
     ("BRZ_CONCURRENCY", "Number of processes that can be run concurrently (selftest)"),
     ("BRZ_PROGRESS_BAR", "Override the progress display. Values are 'none' or 'text'."),
@@ -634,7 +634,7 @@ _files = \
     r"""Files
 
 :On Unix:   ~/.config/breezy/breezy.conf
-:On Windows: C:\\Documents and Settings\\username\\Application Data\\Breezy\\2.0\\breezy.conf
+:On Windows: %APPDATA%\\breezy\\breezy.conf
 
 Contains the user's default configuration. The section ``[DEFAULT]`` is
 used to define general configuration that will be applied everywhere.

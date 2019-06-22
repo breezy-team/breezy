@@ -21,7 +21,6 @@ import os
 from breezy import (
     osutils,
     )
-from breezy.transform import TreeTransform
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -33,7 +32,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.b_id = b"b-20051208024829-849e76f7968d7a86"
         wt = self.make_branch_and_tree('b1')
         b = wt.branch
-        tt = TreeTransform(wt)
+        tt = wt.get_transform()
         tt.new_file('a', tt.root, [b'a test\n'], self.a_id, True)
         tt.new_file('b', tt.root, [b'b test\n'], self.b_id, False)
         tt.apply()

@@ -524,7 +524,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if self.supports_tree_reference():
             for path, entry in self.iter_entries_by_dir():
                 if entry.kind == 'tree-reference':
-                    yield path, self.mapping.generate_file_id(b'')
+                    yield path
 
     def get_revision_id(self):
         """See RevisionTree.get_revision_id."""
@@ -1136,7 +1136,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         # TODO(jelmer): Implement a more efficient version of this
         for path, entry in self.iter_entries_by_dir():
             if entry.kind == 'tree-reference':
-                yield path, self.mapping.generate_file_id(b'')
+                yield path
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self.path2id(path)
@@ -1402,6 +1402,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
 
     def _live_entry(self, relpath):
         raise NotImplementedError(self._live_entry)
+
+    def get_transform(self, pb=None):
+        from ..transform import TreeTransform
+        return TreeTransform(self, pb=pb)
+
 
 
 class InterIndexGitTree(InterGitTrees):

@@ -38,6 +38,7 @@ from .. import (
     )
 from .. import TestCaseWithTransport
 from ..matchers import ContainsNoVfsCalls
+from ..test_bedding import override_whoami
 
 
 class TestCommit(TestCaseWithTransport):
@@ -868,11 +869,7 @@ altered in u2
         with open('foo/foo.txt', 'w') as f:
             f.write('hello')
         self.run_bzr(['add'], working_dir='foo')
-        self.overrideEnv('EMAIL', None)
-        self.overrideEnv('BRZ_EMAIL', None)
-        # Also, make sure that it's not inferred from mailname.
-        self.overrideAttr(config, '_auto_user_id',
-                          lambda: (None, None))
+        override_whoami(self)
         self.run_bzr_error(
             ['Unable to determine your name'],
             ['commit', '-m', 'initial'], working_dir='foo')

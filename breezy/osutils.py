@@ -2634,37 +2634,61 @@ def is_environment_error(evalue):
     return False
 
 
-def cache_dir():
-    """Return the cache directory to use."""
-    if sys.platform in ("nt", "win32"):
-        from bzrlib.win32utils import get_local_appdata_location
-        s = get_local_appdata_location()
-        # This can return a unicode string or a plain string in
-        # user encoding
-        if isinstance(s, bytes):
-            s = s.decode(bzrlib.user_encoding)
-        cache_dir = s.encode(_fs_enc)
-    else:
+def read_mtab(path):
+    """Read an fstab-style file and extract mountpoint+filesystem information.
+
+    :param path: Path to read from
+    :yield: Tuples with mountpoints (as bytestrings) and filesystem names
+    """
+    with open(path, 'rb') as f:
+        for line in f:
+            if line.startswith(b'#'):
+                continue
+            cols = line.split()
+            if len(cols) < 3:
+                continue
+            yield cols[1], cols[2].decode('ascii', 'replace')
+
+
+MTAB_PATH = '/etc/mtab'
+
+class FilesystemFinder(object):
+    """Find the filesystem for a particular path."""
+
+    def __init__(self, mountpoints):
+        def key(x):
+            return len(x[0])
+        self._mountpoints = sorted(mountpoints, key=key, reverse=True)
+
+    @classmethod
+    def from_mtab(cls):
+        """Create a FilesystemFinder from an mtab-style file.
+
+        Note that this will silenty ignore mtab if it doesn't exist or can not
+        be opened.
+        """
+        # TODO(jelmer): Use inotify to be notified when /etc/mtab changes and
+        # we need to re-read it.
         try:
-            from xdg import BaseDirectory
-        except ImportError:
-            xdg_cache_dir = os.environ.get('XDG_CACHE_HOME', None)
-        else:
-            xdg_cache_dir = BaseDirectory.xdg_cache_home
-        if xdg_cache_dir is not None:
-            cache_dir = os.path.join(xdg_cache_dir, "breezy")
-        else:
-            cache_dir = None
-        if cache_dir is not None and not isinstance(cache_dir, text_type):
-            cache_dir = cache_dir.encode(_fs_enc)
+            return cls(read_mtab(MTAB_PATH))
+        except EnvironmentError as e:
+            trace.mutter('Unable to read mtab: %s', e)
+            return cls([])
 
-    if cache_dir is None:
-        cache_dir = os.path.expanduser('~/.cache/breezy')
+    def find(self, path):
+        """Find the filesystem used by a particular path.
 
-    if not os.path.exists(cache_dir):
-        os.makedirs(cache_dir)
+        :param path: Path to find (bytestring or text type)
+        :return: Filesystem name (as text type) or None, if the filesystem is
+            unknown.
+        """
+        for mountpoint, filesystem in self._mountpoints:
+            if is_inside(mountpoint, path):
+                return filesystem
+        return None
 
-    return cache_dir
+
+_FILESYSTEM_FINDER = None
 
 
 def get_fs_type(path):
@@ -2673,21 +2697,14 @@ def get_fs_type(path):
     :param path: Path to search filesystem type for
     :return: A FS type, as string. E.g. "ext2"
     """
-    # TODO(jelmer): It would be nice to avoid an extra dependency here, but the only
-    # alternative is reading platform-specific files under /proc :(
-    try:
-        import psutil
-    except ImportError as e:
-        raise errors.DependencyNotPresent('psutil', e)
+    global _FILESYSTEM_FINDER
+    if _FILESYSTEM_FINDER is None:
+        _FILESYSTEM_FINDER = FilesystemFinder.from_mtab()
 
-    if not PY3 and not isinstance(path, str):
+    if not isinstance(path, bytes):
         path = path.encode(_fs_enc)
 
-    for part in sorted(psutil.disk_partitions(), key=lambda x: len(x.mountpoint), reverse=True):
-        if is_inside(part.mountpoint, path):
-            return part.fstype
-    # Unable to parse the file? Since otherwise at least the entry for / should match..
-    return None
+    return _FILESYSTEM_FINDER.find(path)
 
 
 if PY3:

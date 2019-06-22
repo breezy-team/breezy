@@ -43,7 +43,6 @@ from . import (
     features,
     test_commit,
     )
-from ..transform import TreeTransform
 from ..tree import find_previous_path
 
 
@@ -618,7 +617,7 @@ class BundleTester(object):
             ])
         self.build_tree_contents([('b1/sub/sub/emptyfile.txt', b''),
                                   ('b1/dir/nolastnewline.txt', b'bloop')])
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         tt.new_file('executable', tt.root, [b'#!/bin/sh\n'], b'exe-1', True)
         tt.apply()
         # have to fix length of file-id so that we can predictably rewrite
@@ -638,7 +637,7 @@ class BundleTester(object):
         self.tree1.remove(
             ['sub/sub/nonempty.txt', 'sub/sub/emptyfile.txt', 'sub/sub'
              ])
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('executable')
         tt.set_executability(False, trans_id)
         tt.apply()
@@ -699,7 +698,7 @@ class BundleTester(object):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         tt.new_symlink(link_name, tt.root, link_target, link_id)
         tt.apply()
         self.tree1.commit('add symlink', rev_id=b'l@cset-0-1')
@@ -710,7 +709,7 @@ class BundleTester(object):
             self.assertEqual(
                 link_target, bund_tree.get_symlink_target(link_name))
 
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path(link_name)
         tt.adjust_path('link2', tt.root, trans_id)
         tt.delete_contents(trans_id)
@@ -724,7 +723,7 @@ class BundleTester(object):
             self.assertEqual(new_link_target,
                              bund_tree.get_symlink_target('link2'))
 
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('link2')
         tt.delete_contents(trans_id)
         tt.create_symlink('jupiter', trans_id)
@@ -732,7 +731,7 @@ class BundleTester(object):
         self.tree1.commit('just change symlink target', rev_id=b'l@cset-0-3')
         bundle = self.get_valid_bundle(b'l@cset-0-2', b'l@cset-0-3')
 
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('link2')
         tt.delete_contents(trans_id)
         tt.apply()
@@ -751,7 +750,7 @@ class BundleTester(object):
     def test_binary_bundle(self):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
 
         # Add
         tt.new_file('file', tt.root, [
@@ -763,7 +762,7 @@ class BundleTester(object):
         self.get_valid_bundle(b'null:', b'b@cset-0-1')
 
         # Delete
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('file')
         tt.delete_contents(trans_id)
         tt.apply()
@@ -771,7 +770,7 @@ class BundleTester(object):
         self.get_valid_bundle(b'b@cset-0-1', b'b@cset-0-2')
 
         # Rename & modify
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('file2')
         tt.adjust_path('file3', tt.root, trans_id)
         tt.delete_contents(trans_id)
@@ -781,7 +780,7 @@ class BundleTester(object):
         self.get_valid_bundle(b'b@cset-0-2', b'b@cset-0-3')
 
         # Modify
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('file3')
         tt.delete_contents(trans_id)
         tt.create_file([b'\x00file\rcontents'], trans_id)
@@ -795,12 +794,12 @@ class BundleTester(object):
     def test_last_modified(self):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         tt.new_file('file', tt.root, [b'file'], b'file')
         tt.apply()
         self.tree1.commit('create file', rev_id=b'a@lmod-0-1')
 
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('file')
         tt.delete_contents(trans_id)
         tt.create_file([b'file2'], trans_id)
@@ -808,7 +807,7 @@ class BundleTester(object):
         self.tree1.commit('modify text', rev_id=b'a@lmod-0-2a')
 
         other = self.get_checkout(b'a@lmod-0-1')
-        tt = TreeTransform(other)
+        tt = other.get_transform()
         trans_id = tt.trans_id_tree_path('file2')
         tt.delete_contents(trans_id)
         tt.create_file([b'file2'], trans_id)

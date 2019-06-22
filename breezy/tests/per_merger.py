@@ -28,7 +28,6 @@ from . import (
     TestCaseWithTransport,
     )
 from .test_merge_core import MergeBuilder
-from ..transform import TreeTransform
 
 
 def load_tests(loader, standard_tests, pattern):
@@ -170,7 +169,7 @@ class TestMergeImplementation(TestCaseWithTransport):
                 b'e\n', 'test/foo')
 
     def get_limbodir_deletiondir(self, wt):
-        transform = TreeTransform(wt)
+        transform = wt.get_transform()
         limbodir = transform._limbodir
         deletiondir = transform._deletiondir
         transform.finalize()

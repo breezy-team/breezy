@@ -35,6 +35,8 @@ from breezy.tests import (
     features,
     )
 
+from ..test_bedding import override_whoami
+
 
 class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
@@ -849,15 +851,11 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_committer_no_username(self):
         # Ensure that when no username is available but a committer is
         # supplied, commit works.
-        self.overrideEnv('EMAIL', None)
-        self.overrideEnv('BRZ_EMAIL', None)
-        # Also, make sure that it's not inferred from mailname.
-        self.overrideAttr(config, '_auto_user_id',
-                          lambda: (None, None))
+        override_whoami(self)
         tree = self.make_branch_and_tree(".")
         with tree.lock_write():
             # Make sure no username is available.
-            self.assertRaises(config.NoWhoami, tree.branch.get_commit_builder,
+            self.assertRaises(errors.NoWhoami, tree.branch.get_commit_builder,
                               [])
             builder = tree.branch.get_commit_builder(
                 [], committer='me@example.com')

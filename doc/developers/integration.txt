@@ -5,7 +5,7 @@ Integrating with Breezy
 This document provides some general observations on integrating with
 Breezy and some recipes for typical tasks.  It is intended to be useful to
 someone developing either a plugin or some other piece of software that
-integrates with bzr.  If you want to know about a topic that's not covered
+integrates with brz.  If you want to know about a topic that's not covered
 here, just ask us.
 
 
@@ -14,50 +14,37 @@ here, just ask us.
 Starting with breezy
 ====================
 
-Within bzr
+Within brz
 ----------
 
-When using breezy within the ``bzr`` program (for instance as a bzr
+When using breezy within the ``brz`` program (for instance as a brz
 plugin), breezy's global state is already available for use.
 
-From outside bzr
+From outside brz
 ----------------
 
-To use breezy outside of ``bzr`` some global state needs to be setup.
+To use breezy outside of ``brz`` some global state needs to be setup.
 breezy needs ways to handle user input, passwords, a place to emit
 progress bars, logging setup appropriately for your program. The easiest
-way to set all this up in the same fashion ``bzr`` does is to call
-``breezy.initialize``. 
+way to set all this up in the same fashion ``brz`` does is to call
+``breezy.initialize``.
 
 This returns a context manager within which breezy functions will work
-correctly. See the pydoc for ``breezy.initialize`` for more information. 
+correctly. See the pydoc for ``breezy.initialize`` for more information.
 (You can get away without entering the context manager, because the setup
 work happens directly from ``initialize``.)
 
-In Python 2.4 the ``with`` keyword is not supported and
-so you need to use the context manager manually::
 
-  # This sets up your ~/.bzr.log, ui factory and so on and so forth. It is
-  # not safe to use as a doctest.
-  library_state = breezy.initialize()
-  library_state.__enter__()
-  try:
-      pass
-      # do stuff here
-  finally:
-      library_state.__exit__(None, None, None)
-
-
-Running bzr commands
+Running brz commands
 ====================
 
 To run command-line commands in-process::
 
   from breezy.commands import get_command
-  
+
   cmd = get_command('version')
   cmd.run([])
-  
+
 This will send output through the current UIFactory; you can redirect this
 elsewhere through the parameters to `breezy.initialize`.
 
@@ -69,7 +56,7 @@ To manipulate the Working Tree we need a valid WorkingTree object, which
 is loaded from the workingtree.py file, eg::
 
   from breezy import workingtree
-  wt = workingtree.WorkingTree.open('/home/jebw/bzrtest')
+  wt = workingtree.WorkingTree.open('/home/jebw/brztest')
 
 
 This gives us a WorkingTree object, which has various methods spread over
@@ -114,17 +101,17 @@ For example::
 Adding Files
 ------------
 
-If you want to add files the same way ``bzr add`` does, you can use
+If you want to add files the same way ``brz add`` does, you can use
 MutableTree.smart_add.  By default, this is recursive. Paths can either be
 absolute or relative to the workingtree::
 
   wt.smart_add(['dir1/filea.txt', 'fileb.txt',
-                '/home/jebw/bzrtesttree/filec.txt'])
+                '/home/jebw/brztesttree/filec.txt'])
 
 
 For more precise control over which files to add, use MutableTree.add::
 
-  wt.add(['dir1/filea.txt', 'fileb.txt', '/home/jebw/bzrtesttree/filec.txt'])
+  wt.add(['dir1/filea.txt', 'fileb.txt', '/home/jebw/brztesttree/filec.txt'])
 
 
 Removing Files
@@ -241,7 +228,7 @@ To work with a branch you need a branch object, created from your branch::
 
   from breezy import branch
 
-  b = branch.Branch.open('/home/jebw/bzrtest')
+  b = branch.Branch.open('/home/jebw/brztest')
 
 
 Branching from an existing branch
@@ -249,14 +236,14 @@ Branching from an existing branch
 
 To branch you create a branch object representing the branch you are
 branching from, and supply a path/url to the new branch location.
-The following code clones the bzr.dev branch (the latest copy of the Breezy
+The following code clones the brz trunk branch (the latest copy of the Breezy
 source code) - be warned it has to download 60meg so takes a while to run
 with no feedback::
 
   from breezy import branch
 
-  b = branch.Branch.open('http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev')
-  nb = b.controldir.sprout('/tmp/newBzrBranch').open_branch()
+  b = branch.Branch.open('bzr+ssh://bazaar.launchpad.net/+branch/brz/')
+  nb = b.controldir.sprout('/tmp/newBrzBzranch').open_branch()
 
 
 This provides no feedback, since Breezy automatically uses the 'silent' UI.
@@ -271,7 +258,7 @@ just call push with the other branch as a parameter::
   from breezy import branch
 
   b1 = branch.Branch.open('file:///home/user/mybranch')
-  b2 = branch.Branch.open('http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev')
+  b2 = branch.Branch.open('bzr+ssh://bazaar.launchpad.net/+branch/brz/')
   b1.push(b2)
 
 
@@ -295,12 +282,12 @@ This performs a Lightweight checkout from an existing Branch::
   from breezy import bzrdir
 
   accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch('http:URL')
-  source.create_checkout('/tmp/newBzrCheckout', None, True, accelerator_tree)
+  source.create_checkout('/tmp/newBrzCheckout', None, True, accelerator_tree)
 
 
 To make a heavyweight checkout, change the last line to::
 
-  source.create_checkout('/tmp/newBzrCheckout', None, False, accelerator_tree
+  source.create_checkout('/tmp/newBrzCheckout', None, False, accelerator_tree
 
 
 History Operations

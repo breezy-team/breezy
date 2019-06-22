@@ -1666,9 +1666,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('tree2')
         tt = TreeTransform(tree2)
         foo_trans_id = tt.create_path('foo', tt.root)
-        create_from_tree(tt, foo_trans_id, tree1, 'foo', file_id=b'foo-id')
+        create_from_tree(tt, foo_trans_id, tree1, 'foo')
         bar_trans_id = tt.create_path('bar', tt.root)
-        create_from_tree(tt, bar_trans_id, tree1, 'bar', file_id=b'bar-id')
+        create_from_tree(tt, bar_trans_id, tree1, 'bar')
         tt.apply()
         self.assertEqual('directory', osutils.file_kind('tree2/foo'))
         self.assertFileEqual(b'baz', 'tree2/bar')
@@ -1681,8 +1681,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('tree2')
         tt = TreeTransform(tree2)
         foo_trans_id = tt.create_path('foo', tt.root)
-        create_from_tree(tt, foo_trans_id, tree1, 'foo', file_id=b'foo-id',
-                         chunks=[b'qux'])
+        create_from_tree(tt, foo_trans_id, tree1, 'foo', chunks=[b'qux'])
         tt.apply()
         self.assertFileEqual(b'qux', 'tree2/foo')
 
@@ -1693,7 +1692,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tree1.add('foo', b'foo-id')
         tt = TreeTransform(self.make_branch_and_tree('tree2'))
         foo_trans_id = tt.create_path('foo', tt.root)
-        create_from_tree(tt, foo_trans_id, tree1, 'foo', file_id=b'foo-id')
+        create_from_tree(tt, foo_trans_id, tree1, 'foo')
         tt.apply()
         self.assertEqual('bar', os.readlink('tree2/foo'))
 
@@ -1816,7 +1815,7 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.get_file('i.OTHER').read(),
                          b'h\ni\nj\nk\n')
         self.assertEqual(os.path.exists(this.wt.abspath('i.BASE')), False)
-        modified = [b'a', b'b', b'c', b'h', b'i']
+        modified = ['a', 'b', 'c', 'h', 'i']
         merge_modified = this.wt.merge_modified()
         self.assertSubset(merge_modified, modified)
         self.assertEqual(len(merge_modified), len(modified))

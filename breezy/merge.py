@@ -637,7 +637,7 @@ class Merger(object):
         for hook in Merger.hooks['post_merge']:
             hook(merge)
         if self.recurse == 'down':
-            for relpath, file_id in self.this_tree.iter_references():
+            for relpath in self.this_tree.iter_references():
                 sub_tree = self.this_tree.get_nested_tree(relpath)
                 other_revision = self.other_tree.get_reference_revision(
                     relpath)
@@ -645,8 +645,7 @@ class Merger(object):
                     continue
                 sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
                 sub_merge.merge_type = self.merge_type
-                other_branch = self.other_branch.reference_parent(
-                    relpath, file_id)
+                other_branch = self.other_branch.reference_parent(relpath)
                 sub_merge.set_other_revision(other_revision, other_branch)
                 base_tree_path = _mod_tree.find_previous_path(
                     self.this_tree, self.base_tree, relpath)
@@ -774,7 +773,7 @@ class Merge3Merger(object):
         operation.run()
 
     def _do_merge(self, operation):
-        self.tt = transform.TreeTransform(self.working_tree, None)
+        self.tt = self.working_tree.get_transform()
         operation.add_cleanup(self.tt.finalize)
         self._compute_transform()
         results = self.tt.apply(no_conflicts=True)
@@ -825,8 +824,9 @@ class Merge3Merger(object):
         This is the second half of _compute_transform.
         """
         with ui.ui_factory.nested_progress_bar() as child_pb:
-            fs_conflicts = transform.resolve_conflicts(self.tt, child_pb,
-                                                       lambda t, c: transform.conflict_pass(t, c, self.other_tree))
+            fs_conflicts = transform.resolve_conflicts(
+                self.tt, child_pb,
+                lambda t, c: transform.conflict_pass(t, c, self.other_tree))
         if self.change_reporter is not None:
             from breezy import delta
             delta.report_changes(
@@ -1068,13 +1068,12 @@ class Merge3Merger(object):
         modified_hashes = {}
         for path in results.modified_paths:
             wt_relpath = self.working_tree.relpath(path)
-            file_id = self.working_tree.path2id(wt_relpath)
-            if file_id is None:
+            if not self.working_tree.is_versioned(wt_relpath):
                 continue
             hash = self.working_tree.get_file_sha1(wt_relpath)
             if hash is None:
                 continue
-            modified_hashes[file_id] = hash
+            modified_hashes[wt_relpath] = hash
         self.working_tree.set_merge_modified(modified_hashes)
 
     @staticmethod
@@ -1307,8 +1306,8 @@ class Merge3Merger(object):
                     self.tt.version_file(file_id, trans_id)
                     transform.create_from_tree(
                         self.tt, trans_id, self.other_tree,
-                        other_path, file_id=file_id,
-                        filter_tree_path=self._get_filter_tree_path(file_id))
+                        other_path,
+                        filter_tree_path=self._get_filter_tree_path(other_path))
                     inhibit_content_conflict = True
             elif params.other_kind is None:  # file_id is not in OTHER
                 # Is the name used for a different file_id ?
@@ -1360,14 +1359,13 @@ class Merge3Merger(object):
 
     def _default_other_winner_merge(self, merge_hook_params):
         """Replace this contents with other."""
-        file_id = merge_hook_params.file_id
         trans_id = merge_hook_params.trans_id
         if merge_hook_params.other_path is not None:
             # OTHER changed the file
             transform.create_from_tree(
                 self.tt, trans_id, self.other_tree,
-                merge_hook_params.other_path, file_id=file_id,
-                filter_tree_path=self._get_filter_tree_path(file_id))
+                merge_hook_params.other_path,
+                filter_tree_path=self._get_filter_tree_path(merge_hook_params.other_path))
             return 'done', None
         elif merge_hook_params.this_path is not None:
             # OTHER deleted the file
@@ -1452,17 +1450,18 @@ class Merge3Merger(object):
                                               other_lines)
             file_group.append(trans_id)
 
-    def _get_filter_tree_path(self, file_id):
+    def _get_filter_tree_path(self, path):
         if self.this_tree.supports_content_filtering():
             # We get the path from the working tree if it exists.
             # That fails though when OTHER is adding a file, so
             # we fall back to the other tree to find the path if
             # it doesn't exist locally.
-            try:
-                return self.this_tree.id2path(file_id)
-            except errors.NoSuchId:
-                return self.other_tree.id2path(file_id)
-        # Skip the id2path lookup for older formats
+            filter_path = _mod_tree.find_previous_path(
+                self.other_tree, self.working_tree, path)
+            if filter_path is None:
+                filter_path = path
+            return filter_path
+        # Skip the lookup for older formats
         return None
 
     def _dump_conflicts(self, name, paths, parent_id, file_id, this_lines=None,
@@ -1497,7 +1496,7 @@ class Merge3Merger(object):
         for suffix, tree, path, lines in data:
             if path is not None:
                 trans_id = self._conflict_file(
-                    name, parent_id, path, tree, file_id, suffix, lines,
+                    name, parent_id, path, tree, suffix, lines,
                     filter_tree_path)
                 file_group.append(trans_id)
                 if set_version and not versioned:
@@ -1505,14 +1504,14 @@ class Merge3Merger(object):
                     versioned = True
         return file_group
 
-    def _conflict_file(self, name, parent_id, path, tree, file_id, suffix,
+    def _conflict_file(self, name, parent_id, path, tree, suffix,
                        lines=None, filter_tree_path=None):
         """Emit a single conflict file."""
         name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
         transform.create_from_tree(
             self.tt, trans_id, tree, path,
-            file_id=file_id, chunks=lines,
+            chunks=lines,
             filter_tree_path=filter_tree_path)
         return trans_id
 

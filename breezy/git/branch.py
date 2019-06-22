@@ -803,12 +803,11 @@ class LocalGitBranch(GitBranch):
         return GitMemoryTree(self, self.repository._git.object_store,
                              self.head)
 
-    def reference_parent(self, path, file_id=None, possible_transports=None):
-        """Return the parent branch for a tree-reference file_id
+    def reference_parent(self, path, possible_transports=None):
+        """Return the parent branch for a tree-reference.
 
-        :param path: The path of the file_id in the tree
-        :param file_id: Optional file_id of the tree reference
-        :return: A branch associated with the file_id
+        :param path: The path of the nested tree in the tree
+        :return: A branch associated with the nested tree
         """
         # FIXME should provide multiple branches, based on config
         url = urlutils.join(self.user_url, path)

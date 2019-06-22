@@ -68,7 +68,7 @@ class ShelfCreator(object):
         :param file_list: The files to make more similar to the target.
         """
         self.work_tree = work_tree
-        self.work_transform = transform.TreeTransform(work_tree)
+        self.work_transform = work_tree.get_transform()
         try:
             self.target_tree = target_tree
             self.shelf_transform = transform.TransformPreview(self.target_tree)
@@ -208,8 +208,7 @@ class ShelfCreator(object):
     def _content_from_tree(tt, tree, file_id):
         trans_id = tt.trans_id_file_id(file_id)
         tt.delete_contents(trans_id)
-        transform.create_from_tree(tt, trans_id, tree, tree.id2path(file_id),
-                                   file_id)
+        transform.create_from_tree(tt, trans_id, tree, tree.id2path(file_id))
 
     def shelve_content_change(self, file_id):
         """Shelve a kind change or binary file content change.
@@ -267,7 +266,7 @@ class ShelfCreator(object):
                 else:
                     transform.create_from_tree(
                         to_transform, s_trans_id, tree,
-                        tree.id2path(file_id), file_id)
+                        tree.id2path(file_id))
         if version:
             to_transform.version_file(file_id, s_trans_id)
 

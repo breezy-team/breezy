@@ -23,7 +23,6 @@ from breezy import (
     errors,
     mutabletree,
     tests,
-    transform,
     )
 from breezy.osutils import has_symlinks
 from breezy.tree import TreeChange
@@ -415,7 +414,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self._make_abc_tree(tree)
         self.build_tree(['d/'], transport=tree.controldir.root_transport)
         tree.add(['d'], [b'd-id'])
-        tt = transform.TreeTransform(tree)
+        tt = tree.get_transform()
         trans_id = tt.trans_id_tree_path('b')
         parent_trans_id = tt.trans_id_tree_path('d')
         tt.adjust_path('e', parent_trans_id, trans_id)

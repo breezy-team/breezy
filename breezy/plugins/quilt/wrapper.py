@@ -32,6 +32,10 @@ from ... import (
     )
 
 
+DEFAULT_PATCHES_DIR = 'patches'
+DEFAULT_SERIES_FILE = 'series'
+
+
 class QuiltError(errors.BzrError):
 
     _fmt = "An error (%(retcode)d) occurred running quilt: %(stderr)s%(extra)s"
@@ -68,11 +72,11 @@ def run_quilt(
     if patches_dir is not None:
         env["QUILT_PATCHES"] = patches_dir
     else:
-        env["QUILT_PATCHES"] = os.path.join(working_dir, "patches")
+        env["QUILT_PATCHES"] = os.path.join(working_dir, DEFAULT_PATCHES_DIR)
     if series_file is not None:
         env["QUILT_SERIES"] = series_file
     else:
-        env["QUILT_SERIES"] = os.path.join(env["QUILT_PATCHES"], "series")
+        env["QUILT_SERIES"] = DEFAULT_SERIES_FILE
     # Hide output if -q is in use.
     if quiet is None:
         quiet = trace.is_quiet()
@@ -212,14 +216,14 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
         raise
 
 
-def quilt_series(tree, series_file):
+def quilt_series(tree, series_path):
     """Find the list of patches.
 
     :param tree: Tree to read from
     """
     try:
         return [patch.rstrip(b"\n").decode(osutils._fs_enc) for patch in
-                tree.get_file_lines(series_file)
+                tree.get_file_lines(series_path)
                 if patch.strip() != b""]
     except (IOError, OSError) as e:
         if e.errno == errno.ENOENT:

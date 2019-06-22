@@ -1538,6 +1538,26 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         records.sort()
         self.assertEqual([(key0, b'a\nb\n'), (key1, b'b\nc\n')], records)
 
+    def test_add_chunks(self):
+        f = self.get_versionedfiles()
+        key0 = self.get_simple_key(b'r0')
+        key1 = self.get_simple_key(b'r1')
+        key2 = self.get_simple_key(b'r2')
+        keyf = self.get_simple_key(b'foo')
+        f.add_chunks(key0, [], [b'a', b'\nb\n'])
+        if self.graph:
+            f.add_chunks(key1, [key0], [b'b', b'\n', b'c\n'])
+        else:
+            f.add_chunks(key1, [], [b'b\n', b'c\n'])
+        keys = f.keys()
+        self.assertIn(key0, keys)
+        self.assertIn(key1, keys)
+        records = []
+        for record in f.get_record_stream([key0, key1], 'unordered', True):
+            records.append((record.key, record.get_bytes_as('fulltext')))
+        records.sort()
+        self.assertEqual([(key0, b'a\nb\n'), (key1, b'b\nc\n')], records)
+
     def test_annotate(self):
         files = self.get_versionedfiles()
         self.get_diamond_files(files)

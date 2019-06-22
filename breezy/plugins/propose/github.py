@@ -32,6 +32,7 @@ from .propose import (
     )
 
 from ... import (
+    bedding,
     branch as _mod_branch,
     controldir,
     errors,
@@ -39,7 +40,7 @@ from ... import (
     urlutils,
     version_string as breezy_version,
     )
-from ...config import AuthenticationConfig, GlobalStack, config_dir
+from ...config import AuthenticationConfig, GlobalStack
 from ...errors import InvalidHttpResponse
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
@@ -55,12 +56,12 @@ API_GITHUB_URL = 'https://api.github.com'
 
 
 def store_github_token(scheme, host, token):
-    with open(os.path.join(config_dir(), 'github.conf'), 'w') as f:
+    with open(os.path.join(bedding.config_dir(), 'github.conf'), 'w') as f:
         f.write(token)
 
 
 def retrieve_github_token(scheme, host):
-    path = os.path.join(config_dir(), 'github.conf')
+    path = os.path.join(bedding.config_dir(), 'github.conf')
     if not os.path.exists(path):
         return None
     with open(path, 'r') as f:
@@ -363,7 +364,6 @@ class GitHub(Hoster):
             yield GitHubMergeProposal(
                 self.transport.request('GET', issue['pull_request']['url']).json)
 
-    @convert_github_error
     def get_proposal_by_url(self, url):
         raise UnsupportedHoster(url)
 

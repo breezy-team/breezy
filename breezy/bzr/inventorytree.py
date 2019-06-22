@@ -454,6 +454,10 @@ class MutableInventoryTree(MutableTree, InventoryTree):
                                          inventory, new_revid)
         self.set_parent_trees([(new_revid, rev_tree)])
 
+    def get_transform(self, pb=None):
+        from ..transform import TreeTransform
+        return TreeTransform(self, pb=pb)
+
 
 class _SmartAddHelper(object):
     """Helper for MutableTree.smart_add."""

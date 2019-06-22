@@ -1409,8 +1409,8 @@ class Branch(controldir.ControlComponent):
                                            hardlink=hardlink)
         basis_tree = tree.basis_tree()
         with basis_tree.lock_read():
-            for path, file_id in basis_tree.iter_references():
-                reference_parent = self.reference_parent(path, file_id)
+            for path in basis_tree.iter_references():
+                reference_parent = self.reference_parent(path)
                 reference_parent.create_checkout(
                     tree.abspath(path),
                     basis_tree.get_reference_revision(path), lightweight)
@@ -1423,12 +1423,11 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self.reconcile)
 
-    def reference_parent(self, path, file_id=None, possible_transports=None):
+    def reference_parent(self, path, possible_transports=None):
         """Return the parent branch for a tree-reference file_id
 
-        :param path: The path of the file_id in the tree
-        :param file_id: Optional file_id of the tree reference
-        :return: A branch associated with the file_id
+        :param path: The path of the nested tree in the tree
+        :return: A branch associated with the nested tree
         """
         # FIXME should provide multiple branches, based on config
         return Branch.open(self.controldir.root_transport.clone(path).base,
