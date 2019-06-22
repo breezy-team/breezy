@@ -30,10 +30,16 @@ New Features
  * The 'quilt' plugin, extracted from brz-debian, is now
    bundled. (Jelmer Vernooĳ)
 
-* Directly read mtab rather than using psutil when trying to figure out
-  filesystem types. This removes a dependency that not all users may
-  have installed and speeds up import time since psutil brings in
-  various other modules. (Jelmer Vernooĳ)
+ * A new ``calculate_revnos`` configuration option (defaults to enabled)
+   can be used to disable revno display for branch formats that
+   do not natively store revnos. This speeds up ``brz log`` on
+   the Samba git branch by 33%.
+   (Jelmer Vernooĳ)
+
+ * Directly read mtab rather than using psutil when trying to figure out
+   filesystem types. This removes a dependency that not all users may
+   have installed and speeds up import time since psutil brings in
+   various other modules. (Jelmer Vernooĳ)
 
 Improvements
 ************

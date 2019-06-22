@@ -82,12 +82,21 @@ from .urls import (
     )
 
 
+def _calculate_revnos(branch):
+    if branch._format.stores_revno():
+        return True
+    config = branch.get_config_stack()
+    return config.get('calculate_revnos')
+
+
 class GitPullResult(branch.PullResult):
     """Result of a pull from a Git branch."""
 
     def _lookup_revno(self, revid):
         if not isinstance(revid, bytes):
             raise TypeError(revid)
+        if not _calculate_revnos(self.target_branch):
+            return None
         # Try in source branch first, it'll be faster
         with self.target_branch.lock_read():
             return self.target_branch.revision_id_to_revno(revid)
@@ -323,6 +332,10 @@ class GitBranchFormat(branch.BranchFormat):
 
     def set_reference(self, controldir, name, target):
         return controldir.set_branch_reference(target, name)
+
+    def stores_revno(self):
+        """True if this branch format store revision numbers."""
+        return False
 
 
 class LocalGitBranchFormat(GitBranchFormat):
@@ -808,6 +821,8 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
         raise TypeError(revid)
     # Try in source branch first, it'll be faster
     with local_branch.lock_read():
+        if not _calculate_revnos(local_branch):
+            return None
         try:
             return local_branch.revision_id_to_revno(revid)
         except errors.NoSuchRevision:
@@ -816,6 +831,8 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
                 return graph.find_distance_to_null(
                     revid, [(revision.NULL_REVISION, 0)])
             except errors.GhostRevisionsHaveNoRevno:
+                if not _calculate_revnos(remote_branch):
+                    return None
                 # FIXME: Check using graph.find_distance_to_null() ?
                 with remote_branch.lock_read():
                     return remote_branch.revision_id_to_revno(revid)
