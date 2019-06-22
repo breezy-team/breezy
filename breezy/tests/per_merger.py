@@ -310,10 +310,8 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         return builder
 
     def create_file_needing_contents_merge(self, builder, name):
-        file_id = name.encode('ascii')+b'-id'
-        builder.add_file(
-                file_id, builder.tree_root, name,
-                b"text1", True)
+        file_id = name.encode('ascii') + b'-id'
+        builder.add_file(file_id, builder.tree_root, name, b"text1", True)
         builder.change_contents(file_id, other=b"text4", this=b"text3")
 
     def test_change_vs_change(self):
