@@ -386,8 +386,8 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
     :param indent: Added at the beginning of all output lines (for merged
         revisions).
 
-    :param predicate: A callable receiving a path and a file id and
-        returning True if the path should be displayed.
+    :param predicate: A callable receiving a path returning True if the path
+        should be displayed.
 
     :param classify: Add special symbols to indicate file kind.
     """
@@ -437,7 +437,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
 
             for item in files:
                 path, file_id, kind = item[:3]
-                if (predicate is not None and not predicate(path, file_id)):
+                if (predicate is not None and not predicate(path)):
                     continue
                 if not header_shown and not short_status:
                     to_file.write(indent + long_status_name + ':\n')
