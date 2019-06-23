@@ -416,7 +416,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
         (path, file_id, old_kind, new_kind) = item
         to_file.write(' (%s => %s)' % (old_kind, new_kind))
 
-    def show_path(path, file_id, kind, meta_modified,
+    def show_path(path, kind, meta_modified,
                   default_format, with_file_id_format):
         dec_path = decorate_path(path, kind, meta_modified)
         if show_ids:
@@ -447,7 +447,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
                     meta_modified = item[4]
 
                 to_file.write(prefix)
-                show_path(path, file_id, kind, meta_modified,
+                show_path(path, kind, meta_modified,
                           default_format, with_file_id_format)
                 if show_more is not None:
                     show_more(item)
