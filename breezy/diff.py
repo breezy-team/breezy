@@ -19,7 +19,6 @@ from __future__ import absolute_import
 import difflib
 import os
 import re
-import string
 import sys
 
 from .lazy_import import lazy_import
@@ -30,7 +29,6 @@ import subprocess
 import tempfile
 
 from breezy import (
-    cmdline,
     controldir,
     errors,
     osutils,
@@ -52,12 +50,6 @@ from .tree import FileTimestampUnavailable
 
 
 DEFAULT_CONTEXT_AMOUNT = 3
-
-
-class AtTemplate(string.Template):
-    """Templating class that uses @ instead of $."""
-
-    delimiter = '@'
 
 
 # TODO: Rather than building a changeset object, we should probably
@@ -790,11 +782,8 @@ class DiffFromTool(DiffPath):
         self._root = osutils.mkdtemp(prefix='brz-diff-')
 
     @classmethod
-    def from_string(klass, command_string, old_tree, new_tree, to_file,
+    def from_string(klass, command_template, old_tree, new_tree, to_file,
                     path_encoding='utf-8'):
-        command_template = cmdline.split(command_string)
-        if '@' not in command_string:
-            command_template.extend(['@old_path', '@new_path'])
         return klass(command_template, old_tree, new_tree, to_file,
                      path_encoding)
 
@@ -810,7 +799,7 @@ class DiffFromTool(DiffPath):
 
     def _get_command(self, old_path, new_path):
         my_map = {'old_path': old_path, 'new_path': new_path}
-        command = [AtTemplate(t).substitute(my_map) for t in
+        command = [t.format(**my_map) for t in
                    self.command_template]
         if sys.platform == 'win32':  # Popen doesn't accept unicode on win32
             command_encoded = []
