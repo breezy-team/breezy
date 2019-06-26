@@ -2554,7 +2554,7 @@ option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
 option_registry.register(
-    Option('locks.steal_dead', default=False, from_unicode=bool_from_store,
+    Option('locks.steal_dead', default=True, from_unicode=bool_from_store,
            help='''\
 Steal locks that appears to be dead.
 
