@@ -80,16 +80,9 @@ class SSHVendorManager(object):
         """Clear previously cached lookup result."""
         self._cached_ssh_vendor = None
 
-    def _get_vendor_by_environment(self, environment=None):
-        """Return the vendor or None based on BRZ_SSH environment variable.
-
-        :raises UnknownSSH: if the BRZ_SSH environment variable contains
-                            unknown vendor name
-        """
-        if environment is None:
-            environment = os.environ
-        if 'BRZ_SSH' in environment:
-            vendor_name = environment['BRZ_SSH']
+    def _get_vendor_by_config(self):
+        vendor_name = config.GlobalStack().get('ssh')
+        if vendor_name is not None:
             try:
                 vendor = self._ssh_vendors[vendor_name]
             except KeyError:
@@ -161,12 +154,14 @@ class SSHVendorManager(object):
         if self._cached_ssh_vendor is None:
             vendor = self._get_vendor_by_environment(environment)
             if vendor is None:
-                vendor = self._get_vendor_by_inspection()
+                vendor = self._get_vendor_by_config()
                 if vendor is None:
-                    trace.mutter('falling back to default implementation')
-                    vendor = self._default_ssh_vendor
+                    vendor = self._get_vendor_by_inspection()
                     if vendor is None:
-                        raise errors.SSHVendorNotFound()
+                        trace.mutter('falling back to default implementation')
+                        vendor = self._default_ssh_vendor
+                        if vendor is None:
+                            raise errors.SSHVendorNotFound()
             self._cached_ssh_vendor = vendor
         return self._cached_ssh_vendor
 
