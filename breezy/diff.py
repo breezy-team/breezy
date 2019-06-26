@@ -30,6 +30,7 @@ import subprocess
 import tempfile
 
 from breezy import (
+    cleanup,
     cmdline,
     controldir,
     errors,
@@ -524,23 +525,18 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         context = DEFAULT_CONTEXT_AMOUNT
     if format_cls is None:
         format_cls = DiffTree
-    with old_tree.lock_read():
+    with cleanup.ExitStack() as exit_stack:
+        exit_stack.enter_context(old_tree.lock_read())
         if extra_trees is not None:
             for tree in extra_trees:
-                tree.lock_read()
-        new_tree.lock_read()
-        try:
-            differ = format_cls.from_trees_options(old_tree, new_tree, to_file,
-                                                   path_encoding,
-                                                   external_diff_options,
-                                                   old_label, new_label, using,
-                                                   context_lines=context)
-            return differ.show_diff(specific_files, extra_trees)
-        finally:
-            new_tree.unlock()
-            if extra_trees is not None:
-                for tree in extra_trees:
-                    tree.unlock()
+                exit_stack.enter_context(tree.lock_read())
+        exit_stack.enter_context(new_tree.lock_read())
+        differ = format_cls.from_trees_options(old_tree, new_tree, to_file,
+                                               path_encoding,
+                                               external_diff_options,
+                                               old_label, new_label, using,
+                                               context_lines=context)
+        return differ.show_diff(specific_files, extra_trees)
 
 
 def _patch_header_date(tree, path):

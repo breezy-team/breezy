@@ -63,19 +63,12 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
     """
     if include_merged is None:
         include_merged = False
-    local_branch.lock_read()
-    try:
-        remote_branch.lock_read()
-        try:
-            return _find_unmerged(
-                local_branch, remote_branch, restrict=restrict,
-                include_merged=include_merged, backward=backward,
-                local_revid_range=local_revid_range,
-                remote_revid_range=remote_revid_range)
-        finally:
-            remote_branch.unlock()
-    finally:
-        local_branch.unlock()
+    with local_branch.lock_read(), remote_branch.lock_read():
+        return _find_unmerged(
+            local_branch, remote_branch, restrict=restrict,
+            include_merged=include_merged, backward=backward,
+            local_revid_range=local_revid_range,
+            remote_revid_range=remote_revid_range)
 
 
 def _enumerate_mainline(ancestry, graph, tip_revno, tip, backward=True):

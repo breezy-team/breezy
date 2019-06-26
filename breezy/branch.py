@@ -20,6 +20,7 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 from breezy import (
+    cleanup,
     config as _mod_config,
     debug,
     memorytree,
@@ -2221,7 +2222,8 @@ class GenericInterBranch(InterBranch):
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
         """
-        with self.target.lock_write():
+        with cleanup.ExitStack() as exit_stack:
+            exit_stack.enter_context(self.target.lock_write())
             bound_location = self.target.get_bound_location()
             if local and not bound_location:
                 raise errors.LocalRequiresBoundBranch()
@@ -2240,20 +2242,16 @@ class GenericInterBranch(InterBranch):
                 # not pulling from master, so we need to update master.
                 master_branch = self.target.get_master_branch(
                     possible_transports)
-                master_branch.lock_write()
-            try:
-                if master_branch:
-                    # pull from source into master.
-                    master_branch.pull(
-                        self.source, overwrite, stop_revision, run_hooks=False)
-                return self._pull(
-                    overwrite, stop_revision, _hook_master=master_branch,
-                    run_hooks=run_hooks,
-                    _override_hook_target=_override_hook_target,
-                    merge_tags_to_master=not source_is_master)
-            finally:
-                if master_branch:
-                    master_branch.unlock()
+                exit_stack.enter_context(master_branch.lock_write())
+            if master_branch:
+                # pull from source into master.
+                master_branch.pull(
+                    self.source, overwrite, stop_revision, run_hooks=False)
+            return self._pull(
+                overwrite, stop_revision, _hook_master=master_branch,
+                run_hooks=run_hooks,
+                _override_hook_target=_override_hook_target,
+                merge_tags_to_master=not source_is_master)
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
              _override_hook_source_branch=None):
