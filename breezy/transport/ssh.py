@@ -144,7 +144,7 @@ class SSHVendorManager(object):
         return self._get_vendor_by_version_string(version,
                                                   os.path.splitext(os.path.basename(path))[0])
 
-    def get_vendor(self, environment=None):
+    def get_vendor(self):
         """Find out what version of SSH is on the system.
 
         :raises SSHVendorNotFound: if no any SSH vendor is found
@@ -152,16 +152,14 @@ class SSHVendorManager(object):
                             unknown vendor name
         """
         if self._cached_ssh_vendor is None:
-            vendor = self._get_vendor_by_environment(environment)
+            vendor = self._get_vendor_by_config()
             if vendor is None:
-                vendor = self._get_vendor_by_config()
+                vendor = self._get_vendor_by_inspection()
                 if vendor is None:
-                    vendor = self._get_vendor_by_inspection()
+                    trace.mutter('falling back to default implementation')
+                    vendor = self._default_ssh_vendor
                     if vendor is None:
-                        trace.mutter('falling back to default implementation')
-                        vendor = self._default_ssh_vendor
-                        if vendor is None:
-                            raise errors.SSHVendorNotFound()
+                        raise errors.SSHVendorNotFound()
             self._cached_ssh_vendor = vendor
         return self._cached_ssh_vendor
 
