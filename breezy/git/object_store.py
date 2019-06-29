@@ -529,7 +529,7 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[self[base_sha1].tree]
-            root_key_data = (tree.get_root_id(), tree.get_revision_id())
+            root_key_data = (tree.path2id(''), tree.get_revision_id())
         if not lossy and self.mapping.BZR_FILE_IDS_FILE is not None:
             b = self._create_fileid_map_blob(tree)
             if b is not None:
@@ -631,8 +631,8 @@ class BazaarObjectStore(BaseObjectStore):
             path,
             bzr_tree.iter_child_entries(path),
             get_ie_sha1, unusual_modes, self.mapping.BZR_DUMMY_FILE,
-            bzr_tree.get_root_id() == fileid)
-        if (bzr_tree.get_root_id() == fileid and
+            bzr_tree.path2id('') == fileid)
+        if (bzr_tree.path2id('') == fileid and
                 self.mapping.BZR_FILE_IDS_FILE is not None):
             if tree is None:
                 tree = Tree()

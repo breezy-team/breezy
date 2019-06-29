@@ -2638,7 +2638,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                                    current_revision_id, revision.parent_ids))
             if self._converting_to_rich_root:
                 self._revision_id_to_root_id[current_revision_id] = \
-                    tree.get_root_id()
+                    tree.path2id('')
             # Determine which texts are in present in this revision but not in
             # any of the available parents.
             texts_possibly_new_in_tree = set()

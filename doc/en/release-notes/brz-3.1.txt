@@ -78,6 +78,9 @@ API Changes
 * New ``Tree.get_transform`` method for getting a ``TreeTransform``
   object. (Jelmer Vernooij)
 
+* The ``Tree.get_root_id`` method has been removed. Use
+  ``Tree.path2id('')`` instead. (Jelmer Vernooĳ)
+
 Internals
 *********
 

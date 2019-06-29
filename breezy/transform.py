@@ -455,7 +455,7 @@ class TreeTransformBase(object):
             return None
         # the file is old; the old id is still valid
         if self._new_root == trans_id:
-            return self._tree.get_root_id()
+            return self._tree.path2id('')
         return self._tree.path2id(path)
 
     def final_file_id(self, trans_id):
@@ -1823,7 +1823,7 @@ class TreeTransform(DiskTreeTransform):
                     child_pb.update(gettext('removing file'),
                                     num, total_entries)
                 if trans_id == self._new_root:
-                    file_id = self._tree.get_root_id()
+                    file_id = self._tree.path2id('')
                 else:
                     file_id = self.tree_file_id(trans_id)
                 # File-id isn't really being deleted, just moved
@@ -2102,9 +2102,6 @@ class _PreviewTree(inventorytree.InventoryTree):
         """This Tree does not use inventory as its backing data."""
         raise NotImplementedError(_PreviewTree.root_inventory)
 
-    def get_root_id(self):
-        return self._transform.final_file_id(self._transform.root)
-
     def all_file_ids(self):
         tree_ids = set(self._transform._tree.all_file_ids())
         tree_ids.difference_update(self._transform.tree_file_id(t)
@@ -2288,7 +2285,7 @@ class _PreviewTree(inventorytree.InventoryTree):
         else:
             if from_dir is None and include_root is True:
                 root_entry = inventory.make_entry(
-                    'directory', '', ROOT_PARENT, self.get_root_id())
+                    'directory', '', ROOT_PARENT, self.path2id(''))
                 yield '', 'V', 'directory', root_entry
             entries = self._iter_entries_for_dir(from_dir or '')
             for path, entry in entries:
@@ -2620,7 +2617,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     file_trans_id = {}
     top_pb = ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
-    if tree.get_root_id() is not None:
+    if tree.path2id('') is not None:
         # This is kind of a hack: we should be altering the root
         # as part of the regular tree shape diff logic.
         # The conditional test here is to avoid doing an
@@ -2628,14 +2625,14 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         # is set within the tree, nor setting the root and thus
         # marking the tree as dirty, because we use two different
         # idioms here: tree interfaces and inventory interfaces.
-        if wt.get_root_id() != tree.get_root_id():
-            wt.set_root_id(tree.get_root_id())
+        if wt.path2id('') != tree.path2id(''):
+            wt.set_root_id(tree.path2id(''))
             wt.flush()
     tt = wt.get_transform()
     divert = set()
     try:
         pp.next_phase()
-        file_trans_id[wt.get_root_id()] = tt.trans_id_tree_path('')
+        file_trans_id[wt.path2id('')] = tt.trans_id_tree_path('')
         with ui.ui_factory.nested_progress_bar() as pb:
             deferred_contents = []
             num = 0

@@ -113,7 +113,7 @@ class TestReference(TestCaseWithTree):
     def test_get_root_id(self):
         # trees should return some kind of root id; it can be none
         tree = self.make_branch_and_tree('tree')
-        root_id = tree.get_root_id()
+        root_id = tree.path2id('')
         if root_id is not None:
             self.assertIsInstance(root_id, bytes)
 

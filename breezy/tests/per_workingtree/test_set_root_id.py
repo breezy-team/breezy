@@ -36,25 +36,22 @@ class TestSetRootId(TestCaseWithWorkingTree):
             self.skipTest('format does not support setting file ids')
         # setting the root id allows it to be read via get_root_id.
         root_id = u'\xe5n-id'.encode('utf8')
-        tree.lock_write()
-        try:
-            old_id = tree.get_root_id()
+        with tree.lock_write():
+            old_id = tree.path2id('')
             tree.set_root_id(root_id)
-            self.assertEqual(root_id, tree.get_root_id())
+            self.assertEqual(root_id, tree.path2id(''))
             # set root id should not have triggered a flush of the tree,
             # so check a new tree sees the old state.
             reference_tree = tree.controldir.open_workingtree()
-            self.assertEqual(old_id, reference_tree.get_root_id())
-        finally:
-            tree.unlock()
+            self.assertEqual(old_id, reference_tree.path2id(''))
         # having unlocked the tree, the value should have been
         # preserved into the next lock, which is an implicit read
         # lock around the get_root_id call.
-        self.assertEqual(root_id, tree.get_root_id())
+        self.assertEqual(root_id, tree.path2id(''))
         # and if we get a new working tree instance, then the value
         # should still be retained
         tree = tree.controldir.open_workingtree()
-        self.assertEqual(root_id, tree.get_root_id())
+        self.assertEqual(root_id, tree.path2id(''))
         tree._validate()
 
     def test_set_root_id(self):
@@ -63,12 +60,12 @@ class TestSetRootId(TestCaseWithWorkingTree):
             self.skipTest('format does not support setting file ids')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        orig_root_id = tree.get_root_id()
+        orig_root_id = tree.path2id('')
         self.assertNotEqual(b'custom-root-id', orig_root_id)
         self.assertEqual('', tree.id2path(orig_root_id))
         self.assertRaises(errors.NoSuchId, tree.id2path, 'custom-root-id')
         tree.set_root_id(b'custom-root-id')
-        self.assertEqual(b'custom-root-id', tree.get_root_id())
+        self.assertEqual(b'custom-root-id', tree.path2id(''))
         self.assertEqual(b'custom-root-id', tree.path2id(''))
         self.assertEqual('', tree.id2path(b'custom-root-id'))
         self.assertRaises(errors.NoSuchId, tree.id2path, orig_root_id)

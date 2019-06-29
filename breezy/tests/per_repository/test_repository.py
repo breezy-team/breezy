@@ -485,7 +485,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        root_id = rev_tree.get_root_id()
         self.assertEqual(revid, rev_tree.get_file_revision(u''))
 
     def test_pointless_commit(self):

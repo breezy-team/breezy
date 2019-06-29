@@ -170,8 +170,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
             except errors.PathNotChild:
                 raise BadReferenceTarget(self, sub_tree,
                                          'Target not inside tree.')
-            sub_tree_id = sub_tree.get_root_id()
-            if sub_tree_id == self.get_root_id():
+            sub_tree_id = sub_tree.path2id('')
+            if sub_tree_id == self.path2id(''):
                 raise BadReferenceTarget(self, sub_tree,
                                          'Trees have the same root id.')
             if self.has_id(sub_tree_id):
@@ -465,11 +465,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))
-
-    def get_root_id(self):
-        """Return the id of this trees root"""
-        with self.lock_read():
-            return self._get_entry(path='')[0][2]
 
     def has_id(self, file_id):
         state = self.current_dirstate()
@@ -1548,7 +1543,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormatMetaDir):
                 wt.flush()
                 # if the basis has a root id we have to use that; otherwise we
                 # use a new random one
-                basis_root_id = basis.get_root_id()
+                basis_root_id = basis.path2id('')
                 if basis_root_id is not None:
                     wt._set_root_id(basis_root_id)
                     wt.flush()
@@ -1746,9 +1741,6 @@ class DirStateRevisionTree(InventoryTree):
         """
         pred = self.has_filename
         return set((p for p in paths if not pred(p)))
-
-    def get_root_id(self):
-        return self.path2id('')
 
     def id2path(self, file_id):
         "Convert a file-id to a path."

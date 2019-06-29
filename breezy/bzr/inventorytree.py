@@ -773,10 +773,6 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def get_reference_revision(self, path):
         return self._path2ie(path).reference_revision
 
-    def get_root_id(self):
-        if self.root_inventory.root:
-            return self.root_inventory.root.file_id
-
     def kind(self, path):
         return self._path2ie(path).kind
 

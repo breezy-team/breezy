@@ -339,11 +339,6 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     todo.append((store, subpath, hexsha))
         return ret
 
-    def get_root_id(self):
-        if self.tree is None:
-            return None
-        return self.path2id("")
-
     def has_or_had_id(self, file_id):
         try:
             self.id2path(file_id)
@@ -491,7 +486,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             else:
                 specific_files = set([p.encode('utf-8')
                                       for p in specific_files])
-        todo = deque([(self.store, b"", self.tree, self.get_root_id())])
+        todo = deque([(self.store, b"", self.tree, self.path2id(''))])
         if specific_files is None or u"" in specific_files:
             yield u"", self._get_dir_ie(b"", None)
         while todo:
@@ -997,9 +992,6 @@ class MutableGitIndexTree(mutabletree.MutableTree):
 
     def _set_root_id(self, file_id):
         raise errors.UnsupportedOperation(self._set_root_id, self)
-
-    def get_root_id(self):
-        return self.path2id(u"")
 
     def _add(self, files, ids, kinds):
         for (path, file_id, kind) in zip(files, ids, kinds):
