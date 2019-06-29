@@ -43,10 +43,10 @@ class TestExitStack(tests.TestCase):
         expected = [
             ((), {}),
             ((1,), {}),
-            ((1,2), {}),
+            ((1, 2), {}),
             ((), dict(example=1)),
             ((1,), dict(example=1)),
-            ((1,2), dict(example=1)),
+            ((1, 2), dict(example=1)),
         ]
         result = []
         def _exit(*args, **kwds):
@@ -63,10 +63,6 @@ class TestExitStack(tests.TestCase):
                 else:
                     f = stack.callback(_exit)
                 self.assertIs(f, _exit)
-            for wrapper in stack._exit_callbacks:
-                self.assertIs(wrapper.__wrapped__, _exit)
-                self.assertNotEqual(wrapper.__name__, _exit.__name__)
-                self.assertIsNone(wrapper.__doc__, _exit.__doc__)
         self.assertEqual(result, expected)
 
     def test_push(self):
@@ -88,20 +84,14 @@ class TestExitStack(tests.TestCase):
                 self.check_exc(*exc_details)
         with ExitStack() as stack:
             stack.push(_expect_ok)
-            self.assertIs(stack._exit_callbacks[-1], _expect_ok)
             cm = ExitCM(_expect_ok)
             stack.push(cm)
-            self.assertIs(stack._exit_callbacks[-1].__self__, cm)
             stack.push(_suppress_exc)
-            self.assertIs(stack._exit_callbacks[-1], _suppress_exc)
             cm = ExitCM(_expect_exc)
             stack.push(cm)
-            self.assertIs(stack._exit_callbacks[-1].__self__, cm)
             stack.push(_expect_exc)
-            self.assertIs(stack._exit_callbacks[-1], _expect_exc)
             stack.push(_expect_exc)
-            self.assertIs(stack._exit_callbacks[-1], _expect_exc)
-            1/0
+            1 / 0
 
     def test_enter_context(self):
         class TestCM(object):
@@ -118,7 +108,6 @@ class TestExitStack(tests.TestCase):
                 result.append(4)
             self.assertIsNotNone(_exit)
             stack.enter_context(cm)
-            self.assertIs(stack._exit_callbacks[-1].__self__, cm)
             result.append(2)
         self.assertEqual(result, [1, 2, 3, 4])
 
@@ -150,13 +139,13 @@ class TestExitStack(tests.TestCase):
         def _raise():
             with ExitStack() as stack:
                 stack.push(lambda *exc: False)
-                1/0
+                1 / 0
         self.assertRaises(ZeroDivisionError, _raise)
 
     def test_exit_suppress(self):
         with ExitStack() as stack:
             stack.push(lambda *exc: True)
-            1/0
+            1 / 0
 
     def test_exit_exception_chaining_reference(self):
         # Sanity check to make sure that ExitStack chaining matches
@@ -297,7 +286,7 @@ class TestExitStack(tests.TestCase):
                 self.assertIs(exc.__context__.__context__, exc2)
                 self.assertIs(exc.__context__.__context__.__context__, exc1)
                 self.assertIsNone(
-                        exc.__context__.__context__.__context__.__context__)
+                    exc.__context__.__context__.__context__.__context__)
 
     def test_exit_exception_with_existing_context(self):
         # Addresses a lack of test coverage discovered after checking in a
@@ -336,14 +325,14 @@ class TestExitStack(tests.TestCase):
         try:
             with ExitStack() as stack:
                 stack.push(suppress_exc)
-                1/0
+                1 / 0
         except IndexError as exc:
             self.fail("Expected no exception, got IndexError")
 
     def test_exit_exception_chaining_suppress(self):
         with ExitStack() as stack:
             stack.push(lambda *exc: True)
-            stack.push(lambda *exc: 1/0)
+            stack.push(lambda *exc: 1 / 0)
             stack.push(lambda *exc: {}[1])
 
     def test_excessive_nesting(self):
@@ -353,18 +342,21 @@ class TestExitStack(tests.TestCase):
                 stack.callback(int)
 
     def test_instance_bypass(self):
-        class Example(object): pass
+        class Example(object):
+            pass
         cm = Example()
         cm.__exit__ = object()
         stack = ExitStack()
         self.assertRaises(AttributeError, stack.enter_context, cm)
         stack.push(cm)
-        self.assertIs(stack._exit_callbacks[-1], cm)
+        # self.assertIs(stack._exit_callbacks[-1], cm)
 
     def test_dont_reraise_RuntimeError(self):
         # https://bugs.python.org/issue27122
-        class UniqueException(Exception): pass
-        class UniqueRuntimeError(RuntimeError): pass
+        class UniqueException(Exception):
+            pass
+        class UniqueRuntimeError(RuntimeError):
+            pass
 
         @contextmanager
         def second():
@@ -399,6 +391,3 @@ class TestExitStack(tests.TestCase):
             self.assertIs(exc.__context__, exc.__cause__)
             self.assertIsNone(exc.__cause__.__context__)
             self.assertIsNone(exc.__cause__.__cause__)
-
-
-

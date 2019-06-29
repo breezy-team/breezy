@@ -35,7 +35,7 @@ except ImportError:
         # Use 3 argument raise in Python 2,
         # but use exec to avoid SyntaxError in Python 3
         exc_type, exc_value, exc_tb = exc_details
-        exec ("raise exc_type, exc_value, exc_tb")
+        exec("raise exc_type, exc_value, exc_tb")
 
 
     # Inspired by discussions on http://bugs.python.org/issue13585
