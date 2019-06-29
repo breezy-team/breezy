@@ -777,7 +777,7 @@ class DiffText(DiffPath):
         except errors.BinaryFile:
             self.to_file.write(
                 ("Binary files %s and %s differ\n" %
-                 (from_label, to_label)).encode(self.path_encoding, 'replace'))
+                 (from_path, to_path)).encode(self.path_encoding, 'replace'))
         return self.CHANGED
 
 
