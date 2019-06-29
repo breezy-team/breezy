@@ -64,6 +64,9 @@ Bug Fixes
   (i.e. when a non-int is specified as the value for an integer
   parameter) (#237844, Jelmer Vernooĳ)
 
+* Don't include timestamps in filenames when reporting on binary
+  files in diff. (Jelmer Vernooĳ, #71307)
+
 Documentation
 *************
 
