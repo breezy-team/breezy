@@ -149,7 +149,8 @@ class TreeDeltaFromGitChangesTests(TestCase):
                     (b'a' * 40, b'a' * 40))]
         self.assertEqual(
             delta,
-            tree_delta_from_git_changes(changes, default_mapping,
+            tree_delta_from_git_changes(
+                changes, default_mapping,
                 (GitFileIdMap({u'a': b'a-id', '': b'TREE_ROOT'}, default_mapping),
                  GitFileIdMap({u'a': b'a-id', '': b'TREE_ROOT'}, default_mapping))))
 

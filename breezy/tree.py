@@ -140,29 +140,24 @@ class TreeChange(object):
         self.executable = executable
 
     def __repr__(self):
-        return "%s%r" % (self.__class__.__name__, tuple(self))
+        return "%s%r" % (self.__class__.__name__, self._as_tuple())
 
     def __len__(self):
         return len(self.__slots__)
 
-    def __tuple__(self):
+    def _as_tuple(self):
         return (self.file_id, self.path, self.changed_content, self.versioned,
                 self.parent_id, self.name, self.kind, self.executable)
 
     def __eq__(self, other):
         if isinstance(other, TreeChange):
-            return tuple(self) == tuple(other)
+            return self._as_tuple() == other._as_tuple()
         if isinstance(other, tuple):
-            return tuple(self) == other
+            return self._as_tuple() == other
         return False
 
     def __lt__(self, other):
-        return tuple(self) < tuple(other)
-
-    def __getitem__(self, i):
-        if isinstance(i, slice):
-            return tuple(self).__getitem__(i)
-        return getattr(self, self.__slots__[i])
+        return self._as_tuple() < other._as_tuple()
 
     def meta_modified(self):
         if self.versioned == (True, True):

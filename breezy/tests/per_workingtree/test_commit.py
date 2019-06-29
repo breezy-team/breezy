@@ -158,7 +158,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         changes = list(tree.iter_changes(tree.basis_tree()))
-        self.assertEqual([(None, 'b'), (None, 'c')], [c[1] for c in changes])
+        self.assertEqual([(None, 'b'), (None, 'c')], [c.path for c in changes])
 
     def test_commit_exclude_subtree_of_selected(self):
         tree = self.make_branch_and_tree('.')
@@ -170,7 +170,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         changes = list(tree.iter_changes(tree.basis_tree()))
         self.assertEqual(1, len(changes))
-        self.assertEqual((None, 'a/b'), changes[0][1])
+        self.assertEqual((None, 'a/b'), changes[0].path)
 
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')

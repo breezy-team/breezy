@@ -663,7 +663,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        changes = [c[1] for c in
+        changes = [c.path for c in
                    tree.iter_changes(basis, want_unversioned=True)]
         self.assertEqual([(None, 'unversioned'),
                           (None, 'versioned/unversioned'),
