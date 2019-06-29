@@ -481,8 +481,7 @@ class BzrFastExporter(object):
 
         changes = tree_new.changes_from(tree_old)
 
-        # Make "modified" have 3-tuples, as added does
-        my_modified = [x[0:3] for x in changes.modified]
+        my_modified = list(changes.modified)
 
         # The potential interaction between renames and deletes is messy.
         # Handle it here ...
@@ -493,36 +492,36 @@ class BzrFastExporter(object):
             yield cmd
 
         # Map kind changes to a delete followed by an add
-        for path, id_, kind1, kind2 in changes.kind_changed:
+        for change in changes.kind_changed:
             path = self._adjust_path_for_renames(path, renamed, revision_id)
             # IGC: I don't understand why a delete is needed here.
             # In fact, it seems harmful? If you uncomment this line,
             # please file a bug explaining why you needed to.
             # yield commands.FileDeleteCommand(path)
-            my_modified.append((path, id_, kind2))
+            my_modified.append(change)
 
         # Record modifications
         files_to_get = []
-        for path, id_, kind in changes.added + my_modified + rd_modifies:
-            if kind == 'file':
+        for change in changes.added + my_modified + rd_modifies:
+            if change.kind[1] == 'file':
                 files_to_get.append(
-                    (path,
-                     (path, helpers.kind_to_mode(
-                         'file', tree_new.is_executable(path)))))
-            elif kind == 'symlink':
+                    (change.path[1],
+                     (change.path[1], helpers.kind_to_mode(
+                         'file', change.executable[1]))))
+            elif change.kind[1] == 'symlink':
                 yield commands.FileModifyCommand(
-                    path.encode("utf-8"),
+                    change.path[1].encode("utf-8"),
                     helpers.kind_to_mode('symlink', False),
-                    None, tree_new.get_symlink_target(path))
-            elif kind == 'directory':
+                    None, tree_new.get_symlink_target(change.path[1]))
+            elif change.kind[1] == 'directory':
                 if not self.plain_format:
                     yield commands.FileModifyCommand(
-                        path.encode("utf-8"),
+                        change.path[1].encode("utf-8"),
                         helpers.kind_to_mode('directory', False), None,
                         None)
             else:
                 self.warning("cannot export '%s' of kind %s yet - ignoring" %
-                             (path, kind))
+                             (change.path[1], change.kind[1]))
         for (path, mode), chunks in tree_new.iter_files_bytes(
                 files_to_get):
             yield commands.FileModifyCommand(
@@ -556,37 +555,36 @@ class BzrFastExporter(object):
 
         must_be_renamed = {}
         old_to_new = {}
-        deleted_paths = set([p for p, _, _ in deletes])
-        for (oldpath, newpath, id_, kind,
-                text_modified, meta_modified) in renames:
-            emit = kind != 'directory' or not self.plain_format
-            if newpath in deleted_paths:
+        deleted_paths = set([change.path[0] for change in deletes])
+        for change in renames:
+            emit = change.kind[1] != 'directory' or not self.plain_format
+            if change.path[1] in deleted_paths:
                 if emit:
                     file_cmds.append(commands.FileDeleteCommand(
-                        newpath.encode("utf-8")))
-                deleted_paths.remove(newpath)
-            if (self.is_empty_dir(tree_old, oldpath)):
-                self.note("Skipping empty dir %s in rev %s" % (oldpath,
+                        change.path[1].encode("utf-8")))
+                deleted_paths.remove(change.path[1])
+            if (self.is_empty_dir(tree_old, change.path[0])):
+                self.note("Skipping empty dir %s in rev %s" % (change.path[0],
                                                                revision_id))
                 continue
             # oldpath = self._adjust_path_for_renames(oldpath, renamed,
             #    revision_id)
-            renamed.append([oldpath, newpath])
-            old_to_new[oldpath] = newpath
+            renamed.append(change.path)
+            old_to_new[change.path[0]] = change.path[1]
             if emit:
                 file_cmds.append(
-                    commands.FileRenameCommand(oldpath.encode("utf-8"), newpath.encode("utf-8")))
-            if text_modified or meta_modified:
-                modifies.append((newpath, id_, kind))
+                    commands.FileRenameCommand(change.path[0].encode("utf-8"), change.path[1].encode("utf-8")))
+            if change.changed_content or change.meta_modified():
+                modifies.append(change)
 
             # Renaming a directory implies all children must be renamed.
             # Note: changes_from() doesn't handle this
-            if kind == 'directory' and tree_old.kind(oldpath) == 'directory':
-                for p, e in tree_old.iter_entries_by_dir(specific_files=[oldpath]):
+            if kind == 'directory' and tree_old.kind(change.path[0]) == 'directory':
+                for p, e in tree_old.iter_entries_by_dir(specific_files=[change.path[0]]):
                     if e.kind == 'directory' and self.plain_format:
                         continue
-                    old_child_path = osutils.pathjoin(oldpath, p)
-                    new_child_path = osutils.pathjoin(newpath, p)
+                    old_child_path = osutils.pathjoin(change.path[0], p)
+                    new_child_path = osutils.pathjoin(change.path[1], p)
                     must_be_renamed[old_child_path] = new_child_path
 
         # Add children not already renamed
@@ -602,13 +600,13 @@ class BzrFastExporter(object):
                                                             new_child_path.encode("utf-8")))
 
         # Record remaining deletes
-        for path, id_, kind in deletes:
-            if path not in deleted_paths:
+        for change in deletes:
+            if change.path[0] not in deleted_paths:
                 continue
-            if kind == 'directory' and self.plain_format:
+            if change.kind[0] == 'directory' and self.plain_format:
                 continue
             #path = self._adjust_path_for_renames(path, renamed, revision_id)
-            file_cmds.append(commands.FileDeleteCommand(path.encode("utf-8")))
+            file_cmds.append(commands.FileDeleteCommand(change.path[0].encode("utf-8")))
         return file_cmds, modifies, renamed
 
     def _adjust_path_for_renames(self, path, renamed, revision_id):

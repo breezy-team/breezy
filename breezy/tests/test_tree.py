@@ -141,7 +141,7 @@ class TestTree(TestCaseWithTransport):
         self.assertEqual(len(delta.added), 0)
         delta = wt.changes_from(wt.basis_tree(), include_root=True)
         self.assertEqual(len(delta.added), 1)
-        self.assertEqual(delta.added[0][0], '')
+        self.assertEqual(delta.added[0].path[1], '')
 
     def test_changes_from_with_require_versioned(self):
         """Ensure the require_versioned option does what's expected."""

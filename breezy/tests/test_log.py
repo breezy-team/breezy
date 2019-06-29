@@ -158,7 +158,7 @@ class TestShowLog(tests.TestCaseWithTransport):
             # By default we expect an empty list
             expected = kw.get(n, [])
             # strip out only the path components
-            got = [x[0] for x in getattr(delta, n)]
+            got = [x.path[1] or x.path[0] for x in getattr(delta, n)]
             self.assertEqual(expected, got)
 
     def assertInvalidRevisonNumber(self, br, start, end):

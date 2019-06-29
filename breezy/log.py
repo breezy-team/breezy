@@ -1794,12 +1794,15 @@ class GnuChangelogLogFormatter(LogFormatter):
 
         if revision.delta is not None and revision.delta.has_changed():
             for c in revision.delta.added + revision.delta.removed + revision.delta.modified:
-                path, = c[:1]
+                if c.path[0] is None:
+                    path = c.path[1]
+                else:
+                    path = c.path[0]
                 to_file.write('\t* %s:\n' % (path,))
             for c in revision.delta.renamed:
                 oldpath, newpath = c[:2]
                 # For renamed files, show both the old and the new path
-                to_file.write('\t* %s:\n\t* %s:\n' % (oldpath, newpath))
+                to_file.write('\t* %s:\n\t* %s:\n' % (c.path[0], c.path[1]))
             to_file.write('\n')
 
         if not revision.rev.message:

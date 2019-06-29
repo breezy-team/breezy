@@ -1907,7 +1907,7 @@ class cmd_remove(Command):
         if new:
             added = tree.changes_from(tree.basis_tree(),
                                       specific_files=file_list).added
-            file_list = sorted([f[0] for f in added], reverse=True)
+            file_list = sorted([f.path[1] for f in added], reverse=True)
             if len(file_list) == 0:
                 raise errors.BzrCommandError(gettext('No matching files.'))
         elif file_list is None:
@@ -2407,11 +2407,11 @@ class cmd_modified(Command):
         self.add_cleanup(tree.lock_read().unlock)
         td = tree.changes_from(tree.basis_tree())
         self.cleanup_now()
-        for path, id, kind, text_modified, meta_modified in td.modified:
+        for change in td.modified:
             if null:
-                self.outf.write(path + '\0')
+                self.outf.write(change.path[1] + '\0')
             else:
-                self.outf.write(osutils.quotefn(path) + '\n')
+                self.outf.write(osutils.quotefn(change.path[1]) + '\n')
 
 
 class cmd_added(Command):

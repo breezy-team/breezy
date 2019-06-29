@@ -23,27 +23,21 @@ from breezy import (
 from .sixish import (
     StringIO,
     )
+from .tree import TreeChange
 
 
 class TreeDelta(object):
     """Describes changes from one tree to another.
 
-    Contains seven lists:
+    Contains seven lists with TreeChange objects.
 
     added
-        (path, id, kind)
     removed
-        (path, id, kind)
     renamed
-        (oldpath, newpath, id, kind, text_modified, meta_modified)
     kind_changed
-        (path, id, old_kind, new_kind)
     modified
-        (path, id, kind, text_modified, meta_modified)
     unchanged
-        (path, id, kind)
     unversioned
-        (path, None, kind)
 
     Each id is listed only once.
 
@@ -97,20 +91,6 @@ class TreeDelta(object):
                     or self.renamed
                     or self.kind_changed)
 
-    def touches_file_id(self, file_id):
-        """Return True if file_id is modified by this delta."""
-        for l in self.added, self.removed, self.modified:
-            for v in l:
-                if v[1] == file_id:
-                    return True
-        for v in self.renamed:
-            if v[2] == file_id:
-                return True
-        for v in self.kind_changed:
-            if v[1] == file_id:
-                return True
-        return False
-
     def get_changes_as_text(self, show_ids=False, show_unchanged=False,
                             short_status=False):
         output = StringIO()
@@ -130,7 +110,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
             require_versioned=require_versioned,
             want_unversioned=want_unversioned):
         if change.versioned == (False, False):
-            delta.unversioned.append((change.path[1], None, change.kind[1]))
+            delta.unversioned.append(change)
             continue
         if not include_root and (None, None) == change.parent_id:
             continue
@@ -139,47 +119,44 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
             for x in range(2))
         if fully_present[0] != fully_present[1]:
             if fully_present[1] is True:
-                delta.added.append((change.path[1], change.file_id, change.kind[1]))
+                delta.added.append(change)
             else:
                 if change.kind[0] == 'symlink' and not new_tree.supports_symlinks():
                     trace.warning(
                         'Ignoring "%s" as symlinks '
                         'are not supported on this filesystem.' % (change.path[0],))
                 else:
-                    delta.removed.append(
-                        (change.path[0], change.file_id, change.kind[0]))
+                    delta.removed.append(change)
         elif fully_present[0] is False:
-            delta.missing.append((change.path[1], change.file_id, change.kind[1]))
+            delta.missing.append(change)
         elif change.name[0] != change.name[1] or change.parent_id[0] != change.parent_id[1]:
             # If the name changes, or the parent_id changes, we have a rename
             # (if we move a parent, that doesn't count as a rename for the
             # file)
-            delta.renamed.append(
-                (change.path[0], change.path[1], change.file_id,
-                    change.kind[1], change.changed_content,
-                    (change.executable[0] != change.executable[1])))
+            delta.renamed.append(change)
         elif change.kind[0] != change.kind[1]:
-            delta.kind_changed.append(
-                (change.path[1], change.file_id, change.kind[0], change.kind[1]))
+            delta.kind_changed.append(change)
         elif change.changed_content or change.executable[0] != change.executable[1]:
-            delta.modified.append((change.path[1], change.file_id, change.kind[1],
-                                   change.changed_content,
-                                   (change.executable[0] != change.executable[1])))
+            delta.modified.append(change)
         else:
-            delta.unchanged.append((change.path[1], change.file_id, change.kind[1]))
+            delta.unchanged.append(change)
 
-    delta.removed.sort()
-    delta.added.sort()
-    delta.renamed.sort()
+    def change_key(change):
+        if change.path[0] is None:
+            path = change.path[1]
+        else:
+            path = change.path[0]
+        return (path, change.file_id)
 
-    def missing_key(change):
-        return (change[0] or '', change[1])
-    delta.missing.sort(key=missing_key)
+    delta.removed.sort(key=change_key)
+    delta.added.sort(key=change_key)
+    delta.renamed.sort(key=change_key)
+    delta.missing.sort(key=change_key)
     # TODO: jam 20060529 These lists shouldn't need to be sorted
     #       since we added them in alphabetical order.
-    delta.modified.sort()
-    delta.unchanged.sort()
-    delta.unversioned.sort()
+    delta.modified.sort(key=change_key)
+    delta.unchanged.sort(key=change_key)
+    delta.unversioned.sort(key=change_key)
 
     return delta
 
@@ -243,11 +220,10 @@ class _ChangeReporter(object):
             self.output("Operating on whole tree but only reporting on "
                         "'%s' view." % (self.view_name,))
 
-    def report(self, file_id, paths, versioned, renamed, modified, exe_change,
+    def report(self, paths, versioned, renamed, modified, exe_change,
                kind):
         """Report one change to a file
 
-        :param file_id: The file_id of the file
         :param path: The old and new paths as generated by Tree.iter_changes.
         :param versioned: may be 'added', 'removed', 'unchanged', or
             'unversioned.
@@ -333,40 +309,39 @@ def report_changes(change_iterator, reporter):
         }
 
     def path_key(change):
-        if change[1][0] is not None:
-            path = change[1][0]
+        if change.path[0] is not None:
+            path = change.path[0]
         else:
-            path = change[1][1]
+            path = change.path[1]
         return osutils.splitpath(path)
-    for (file_id, path, content_change, versioned, parent_id, name, kind,
-         executable) in sorted(change_iterator, key=path_key):
+    for change in sorted(change_iterator, key=path_key):
         exe_change = False
         # files are "renamed" if they are moved or if name changes, as long
         # as it had a value
-        if None not in name and None not in parent_id and\
-                (name[0] != name[1] or parent_id[0] != parent_id[1]):
+        if None not in change.name and None not in change.parent_id and\
+                (change.name[0] != change.name[1] or change.parent_id[0] != change.parent_id[1]):
             renamed = True
         else:
             renamed = False
-        if kind[0] != kind[1]:
-            if kind[0] is None:
+        if change.kind[0] != change.kind[1]:
+            if change.kind[0] is None:
                 modified = "created"
-            elif kind[1] is None:
+            elif change.kind[1] is None:
                 modified = "deleted"
             else:
                 modified = "kind changed"
         else:
-            if content_change:
+            if change.changed_content:
                 modified = "modified"
-            elif kind[0] is None:
+            elif change.kind[0] is None:
                 modified = "missing"
             else:
                 modified = "unchanged"
-            if kind[1] == "file":
-                exe_change = (executable[0] != executable[1])
-        versioned_change = versioned_change_map[versioned]
-        reporter.report(file_id, path, versioned_change, renamed, modified,
-                        exe_change, kind)
+            if change.kind[1] == "file":
+                exe_change = (change.executable[0] != change.executable[1])
+        versioned_change = versioned_change_map[change.versioned]
+        reporter.report(change.path, versioned_change, renamed, modified,
+                        exe_change, change.kind)
 
 
 def report_delta(to_file, delta, short_status=False, show_ids=False,
@@ -404,17 +379,20 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
         return path
 
     def show_more_renamed(item):
-        (oldpath, file_id, kind,
-         text_modified, meta_modified, newpath) = item
-        dec_new_path = decorate_path(newpath, kind, meta_modified)
+        dec_new_path = decorate_path(item.path[1], item.kind[1], item.meta_modified())
         to_file.write(' => %s' % dec_new_path)
-        if text_modified or meta_modified:
-            extra_modified.append((newpath, file_id, kind,
-                                   text_modified, meta_modified))
+        if item.changed_content or item.meta_modified():
+            extra_modified.append(TreeChange(
+                item.file_id, (item.path[1], item.path[1]),
+                item.changed_content,
+                item.versioned,
+                (item.parent_id[1], item.parent_id[1]),
+                (item.name[1], item.name[1]),
+                (item.kind[1], item.kind[1]),
+                item.executable))
 
     def show_more_kind_changed(item):
-        (path, file_id, old_kind, new_kind) = item
-        to_file.write(' (%s => %s)' % (old_kind, new_kind))
+        to_file.write(' (%s => %s)' % (item.kind[0], item.kind[1]))
 
     def show_path(path, kind, meta_modified,
                   default_format, with_file_id_format):
@@ -436,35 +414,31 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
             prefix = indent + prefix + '  '
 
             for item in files:
-                path, file_id, kind = item[:3]
-                if (predicate is not None and not predicate(path)):
+                if item.path[0] is None:
+                    path = item.path[1]
+                    kind = item.kind[1]
+                else:
+                    path = item.path[0]
+                    kind = item.kind[0]
+                if predicate is not None and not predicate(path):
                     continue
                 if not header_shown and not short_status:
                     to_file.write(indent + long_status_name + ':\n')
                     header_shown = True
-                meta_modified = None
-                if len(item) == 5:
-                    meta_modified = item[4]
-
                 to_file.write(prefix)
-                show_path(path, kind, meta_modified,
+                show_path(path, kind, item.meta_modified(),
                           default_format, with_file_id_format)
                 if show_more is not None:
                     show_more(item)
-                if show_ids:
-                    to_file.write(' %s' % file_id.decode('utf-8'))
+                if show_ids and getattr(item, 'file_id', None):
+                    to_file.write(' %s' % item.file_id.decode('utf-8'))
                 to_file.write('\n')
 
     show_list(delta.removed, 'removed', 'D')
     show_list(delta.added, 'added', 'A')
     show_list(delta.missing, 'missing', '!')
     extra_modified = []
-    # Reorder delta.renamed tuples so that all lists share the same
-    # order for their 3 first fields and that they also begin like
-    # the delta.modified tuples
-    renamed = [(p, i, k, tm, mm, np)
-               for p, np, i, k, tm, mm in delta.renamed]
-    show_list(renamed, 'renamed', 'R', with_file_id_format='%s',
+    show_list(delta.renamed, 'renamed', 'R', with_file_id_format='%s',
               show_more=show_more_renamed)
     show_list(delta.kind_changed, 'kind changed', 'K',
               with_file_id_format='%s',
