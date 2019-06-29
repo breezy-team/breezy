@@ -1017,12 +1017,12 @@ def _update_fileids(delta, fileids, stop_on):
     """
     if stop_on == 'add':
         for item in delta.added:
-            if item[1] in fileids:
-                fileids.remove(item[1])
+            if item.file_id in fileids:
+                fileids.remove(item.file_id)
     elif stop_on == 'delete':
         for item in delta.removed:
-            if item[1] in fileids:
-                fileids.remove(item[1])
+            if item.file_id in fileids:
+                fileids.remove(item.file_id)
 
 
 def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
