@@ -1600,12 +1600,9 @@ class CopyConverter(object):
             pb.update(gettext('Creating new repository'))
             converted = self.target_format.initialize(self.repo_dir,
                                                       self.source_repo.is_shared())
-            converted.lock_write()
-            try:
+            with converted.lock_write():
                 pb.update(gettext('Copying content'))
                 self.source_repo.copy_content_into(converted)
-            finally:
-                converted.unlock()
             pb.update(gettext('Deleting old repository content'))
             self.repo_dir.transport.delete_tree('repository.backup')
             ui.ui_factory.note(gettext('repository converted'))

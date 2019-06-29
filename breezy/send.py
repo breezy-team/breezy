@@ -142,11 +142,8 @@ def send(target_branch, revision, public_branch, remember,
                     os.mkdir(output, 0o755)
                 for (filename, lines) in directive.to_files():
                     path = os.path.join(output, filename)
-                    outfile = open(path, 'wb')
-                    try:
+                    with open(path, 'wb') as outfile:
                         outfile.writelines(lines)
-                    finally:
-                        outfile.close()
             else:
                 if output == '-':
                     outfile = to_file

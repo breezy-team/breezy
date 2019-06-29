@@ -886,12 +886,9 @@ class DiffFromTool(DiffPath):
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
-        source = tree.get_file(relpath)
-        try:
-            with open(full_path, 'wb') as target:
-                osutils.pumpfile(source, target)
-        finally:
-            source.close()
+        with tree.get_file(relpath) as source, \
+                open(full_path, 'wb') as target:
+            osutils.pumpfile(source, target)
         try:
             mtime = tree.get_file_mtime(relpath)
         except FileTimestampUnavailable:
