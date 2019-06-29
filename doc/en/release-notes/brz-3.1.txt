@@ -54,6 +54,9 @@ Improvements
 * Automatically upgrade to branch format 8 when setting branch references.
   (Jelmer Vernooĳ)
 
+* The ``brz inventory`` command now accepts a ``--include-root``
+  argument to show the tree root. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
