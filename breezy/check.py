@@ -37,6 +37,7 @@ check_refs are tuples (kind, value). Currently defined kinds are:
 from __future__ import absolute_import
 
 from . import (
+    cleanup,
     errors,
     )
 from .controldir import ControlDir
@@ -54,36 +55,34 @@ class Check(object):
         raise NotImplementedError(self.report_results)
 
 
-def scan_branch(branch, needed_refs, to_unlock):
+def scan_branch(branch, needed_refs, exit_stack):
     """Scan a branch for refs.
 
     :param branch:  The branch to schedule for checking.
     :param needed_refs: Refs we are accumulating.
-    :param to_unlock: The unlock list accumulating.
+    :param exit_stack: The exit stack accumulating.
     """
     note(gettext("Checking branch at '%s'.") % (branch.base,))
-    branch.lock_read()
-    to_unlock.append(branch)
+    exit_stack.enter_context(branch.lock_read())
     branch_refs = branch._get_check_refs()
     for ref in branch_refs:
         reflist = needed_refs.setdefault(ref, [])
         reflist.append(branch)
 
 
-def scan_tree(base_tree, tree, needed_refs, to_unlock):
+def scan_tree(base_tree, tree, needed_refs, exit_stack):
     """Scan a tree for refs.
 
     :param base_tree: The original tree check opened, used to detect duplicate
         tree checks.
     :param tree:  The tree to schedule for checking.
     :param needed_refs: Refs we are accumulating.
-    :param to_unlock: The unlock list accumulating.
+    :param exit_stack: The exit stack accumulating.
     """
     if base_tree is not None and tree.basedir == base_tree.basedir:
         return
     note(gettext("Checking working tree at '%s'.") % (tree.basedir,))
-    tree.lock_read()
-    to_unlock.append(tree)
+    exit_stack.enter_context(tree.lock_read())
     tree_refs = tree._get_check_refs()
     for ref in tree_refs:
         reflist = needed_refs.setdefault(ref, [])
@@ -102,14 +101,13 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
     except errors.NotBranchError:
         base_tree = branch = repo = None
 
-    to_unlock = []
-    needed_refs = {}
-    try:
+    with cleanup.ExitStack() as exit_stack:
+        needed_refs = {}
         if base_tree is not None:
             # If the tree is a lightweight checkout we won't see it in
             # repo.find_branches - add now.
             if do_tree:
-                scan_tree(None, base_tree, needed_refs, to_unlock)
+                scan_tree(None, base_tree, needed_refs, exit_stack)
             branch = base_tree.branch
         if branch is not None:
             # We have a branch
@@ -117,8 +115,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                 # The branch is in a shared repository
                 repo = branch.repository
         if repo is not None:
-            repo.lock_read()
-            to_unlock.append(repo)
+            exit_stack.enter_context(repo.lock_read())
             branches = repo.find_branches(using=True)
             saw_tree = False
             if do_branch or do_tree:
@@ -130,9 +127,9 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                         except (errors.NotLocalUrl, errors.NoWorkingTree):
                             pass
                         else:
-                            scan_tree(base_tree, tree, needed_refs, to_unlock)
+                            scan_tree(base_tree, tree, needed_refs, exit_stack)
                     if do_branch:
-                        scan_branch(branch, needed_refs, to_unlock)
+                        scan_branch(branch, needed_refs, exit_stack)
             if do_branch and not branches:
                 note(gettext("No branch found at specified location."))
             if do_tree and base_tree is None and not saw_tree:
@@ -151,6 +148,3 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                 note(gettext("No branch found at specified location."))
             if do_repo:
                 note(gettext("No repository found at specified location."))
-    finally:
-        for thing in to_unlock:
-            thing.unlock()
