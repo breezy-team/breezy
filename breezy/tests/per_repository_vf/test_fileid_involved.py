@@ -138,7 +138,8 @@ class FileIdInvolvedBase(TestCaseWithRepository):
 
         l2 = [change.file_id for change in delta.added] + \
              [change.file_id for change in delta.renamed] + \
-             [change.file_id for change in delta.modified]
+             [change.file_id for change in delta.modified] + \
+             [change.file_id for change in delta.copied]
         return set(l2)
 
 

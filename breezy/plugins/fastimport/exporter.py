@@ -502,7 +502,7 @@ class BzrFastExporter(object):
 
         # Record modifications
         files_to_get = []
-        for change in changes.added + my_modified + rd_modifies:
+        for change in changes.added + changed.copied + my_modified + rd_modifies:
             if change.kind[1] == 'file':
                 files_to_get.append(
                     (change.path[1],

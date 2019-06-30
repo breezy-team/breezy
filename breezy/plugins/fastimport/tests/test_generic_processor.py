@@ -125,7 +125,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             that must have been changed in the delta.
         """
         renamed = changes.renamed
-        added = changes.added
+        added = changes.added + changes.copied
         removed = changes.removed
         modified = changes.modified
         kind_changed = changes.kind_changed

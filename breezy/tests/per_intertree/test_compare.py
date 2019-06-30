@@ -82,6 +82,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_empty_to_abc_content(self):
@@ -98,6 +99,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_dangling(self):
@@ -125,6 +127,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_abc_content_to_empty(self):
@@ -142,6 +145,7 @@ class TestCompare(TestCaseWithTwoTrees):
                           ('b/c', 'file'),
                           ], [(c.path[0], c.kind[0]) for c in d.removed])
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_content_modification(self):
@@ -159,6 +163,7 @@ class TestCompare(TestCaseWithTwoTrees):
              for c in d.modified])
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_meta_modification(self):
@@ -176,6 +181,7 @@ class TestCompare(TestCaseWithTwoTrees):
              for c in d.modified])
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_file_rename(self):
@@ -189,6 +195,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
+        self.assertEqual([], d.copied)
         self.assertEqual(
             [('a', 'd', 'file', False, False)],
             [(c.path[0], c.path[1], c.kind[1], c.changed_content, c.meta_modified())
@@ -206,6 +213,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
+        self.assertEqual([], d.copied)
         self.assertEqual(
             [('a', 'd', 'file', True, False)],
             [(c.path[0], c.path[1], c.kind[1], c.changed_content, c.meta_modified())
@@ -227,6 +235,7 @@ class TestCompare(TestCaseWithTwoTrees):
             [('b/c', 'e', 'file', False, True)],
             [(c.path[0], c.path[1], c.kind[1], c.changed_content, c.meta_modified())
              for c in d.renamed])
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_empty_to_abc_content_a_only(self):
@@ -243,6 +252,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_empty_to_abc_content_a_and_c_only(self):
@@ -261,6 +271,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_empty_to_abc_content_c_only(self):
@@ -277,6 +288,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_empty_to_abc_content_b_only(self):
@@ -293,6 +305,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_unchanged_with_renames_and_modifications(self):
@@ -312,6 +325,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual(
             [(u'b', 'directory'), (u'b/c', 'file')],
             [(c.path[0], c.kind[0]) for c in d.unchanged])
+        self.assertEqual([], d.copied)
 
     def test_extra_trees_finds_ids(self):
         """Ask for a delta between two trees with a path present in a third."""
@@ -345,6 +359,7 @@ class TestCompare(TestCaseWithTwoTrees):
             [(c.path[1], c.kind[1], c.changed_content, c.meta_modified()) for c in d.modified])
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
 
     def test_require_versioned(self):
@@ -380,6 +395,7 @@ class TestCompare(TestCaseWithTwoTrees):
                           for c in d.modified])
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
         self.assertEqual([], d.unversioned)
 
@@ -400,6 +416,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.unchanged)
         expected_unversioned = [(u'dir', 'directory'),
                                 (u'file', 'file')]
