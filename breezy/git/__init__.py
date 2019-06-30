@@ -33,6 +33,7 @@ from .. import (  # noqa: F401
     __version__ as breezy_version,
     errors as brz_errors,
     trace,
+    urlutils,
     version_info,
     )
 
@@ -112,7 +113,6 @@ class LocalGitProber(Prober):
                 external_url.startswith("https:")):
             # Already handled by RemoteGitProber
             raise brz_errors.NotBranchError(path=transport.base)
-        from .. import urlutils
         if urlutils.split(transport.base)[1] == ".git":
             raise brz_errors.NotBranchError(path=transport.base)
         if not transport.has_any(['objects', '.git/objects', '.git']):
@@ -155,7 +155,6 @@ class RemoteGitProber(Prober):
         # breezy.git, since it's called for every repository that's
         # accessed over HTTP, whether it's Git, Bzr or something else.
         # Importing Dulwich and the other support code adds unnecessray slowdowns.
-        from .. import urlutils
         base_url, _ = urlutils.split_segment_parameters(
             transport.external_url())
         url = urlutils.URL.from_string(base_url)
