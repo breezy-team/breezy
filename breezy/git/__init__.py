@@ -142,6 +142,12 @@ def user_agent_for_github():
     return "git/Breezy/%s" % breezy_version
 
 
+def is_github_url(url):
+    (scheme, user, password, host, port,
+     path) = urlutils.parse_url(url)
+    return host == "github.com"
+
+
 class RemoteGitProber(Prober):
 
     def probe_http_transport(self, transport):
@@ -159,9 +165,7 @@ class RemoteGitProber(Prober):
         headers = {"Content-Type": "application/x-git-upload-pack-request",
                    "Accept": "application/x-git-upload-pack-result",
                    }
-        (scheme, user, password, host, port,
-         path) = urlutils.parse_url(url)
-        if host == "github.com":
+        if is_github_url(url):
             # GitHub requires we lie.
             # https://github.com/dulwich/dulwich/issues/562
             headers["User-Agent"] = user_agent_for_github()
