@@ -1016,7 +1016,7 @@ def _update_fileids(delta, fileids, stop_on):
       fileids set once their add or remove entry is detected respectively
     """
     if stop_on == 'add':
-        for item in delta.added, delta.copied:
+        for item in delta.added + delta.copied:
             if item.file_id in fileids:
                 fileids.remove(item.file_id)
     elif stop_on == 'delete':
