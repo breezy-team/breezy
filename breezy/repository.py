@@ -564,7 +564,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         :param using: If True, list only branches using this repository.
         """
         if using and not self.is_shared():
-            return self.controldir.list_branches()
+            for branch in self.controldir.list_branches():
+                yield branch
+            return
 
         class Evaluator(object):
 
@@ -585,14 +587,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 value = (controldir.list_branches(), None)
                 return True, value
 
-        ret = []
         for branches, repository in controldir.ControlDir.find_controldirs(
                 self.user_transport, evaluate=Evaluator()):
             if branches is not None:
-                ret.extend(branches)
+                for branch in branches:
+                    yield branch
             if not using and repository is not None:
-                ret.extend(repository.find_branches())
-        return ret
+                for branch in repository.find_branches():
+                    yield branch
 
     def search_missing_revision_ids(self, other,
                                     find_ghosts=True, revision_ids=None, if_present_ids=None,
