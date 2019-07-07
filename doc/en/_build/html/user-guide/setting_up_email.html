@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Configuring email &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Configuring email &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="shared_repository_layouts.html" title="Advanced shared repository layouts"
              accesskey="P">previous</a> |
@@ -65,14 +63,14 @@ does them.</p>
 <p>The order of precedence is</p>
 <blockquote>
 <div><ol class="arabic simple">
-<li>If the <code class="docutils literal notranslate"><span class="pre">BZR_EMAIL</span></code> environment variable is set.</li>
-<li>If an email is set for your current branch in the <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>
-file.</li>
-<li>If an email is set four your current branch in the
-<code class="docutils literal notranslate"><span class="pre">.brz/branch/branch.conf</span></code> file.</li>
-<li>If an email is set in the <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> default configuration file.</li>
-<li>If the <cite>EMAIL</cite> environment variable is set.</li>
-<li>Breezy will try to guess based on your username and the hostname.</li>
+<li><p>If the <code class="docutils literal notranslate"><span class="pre">BZR_EMAIL</span></code> environment variable is set.</p></li>
+<li><p>If an email is set for your current branch in the <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>
+file.</p></li>
+<li><p>If an email is set four your current branch in the
+<code class="docutils literal notranslate"><span class="pre">.brz/branch/branch.conf</span></code> file.</p></li>
+<li><p>If an email is set in the <code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> default configuration file.</p></li>
+<li><p>If the <cite>EMAIL</cite> environment variable is set.</p></li>
+<li><p>Breezy will try to guess based on your username and the hostname.</p></li>
 </ol>
 </div></blockquote>
 <p>To check on what Breezy thinks your current email is, use the <code class="docutils literal notranslate"><span class="pre">whoami</span></code>
@@ -160,8 +158,6 @@ bounces, or which goes through an anti-spam service such as
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -189,7 +185,7 @@ bounces, or which goes through an anti-spam service such as
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

@@ -7,7 +7,7 @@
 
 .ie \n(.g .ds Aq \(aq
 .el .ds Aq '
-.TH brz 1 "2019\-03\-06" "3.0.0.1" "Breezy"
+.TH brz 1 "2019\-06\-16" "3.0.1" "Breezy"
 .SH "NAME"
 brz \- Breezy next\-generation distributed version control
 .SH "SYNOPSIS"
@@ -2397,6 +2397,8 @@ Show list of renamed files.
 
 Options:
     \-\-action ARG              How to resolve the conflict.
+    \-\-auto                    Detect whether conflict has been
+                              resolved by user.
     \-\-done                    Marks the conflict as resolved.
     \-\-take\-other              Resolve the conflict taking the merged
                               version into account.

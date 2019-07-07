@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>co-located branches &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>co-located branches &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -22,7 +20,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -78,14 +76,16 @@ urlencoded at first to avoid ambiguity, though perhaps it would be
 possible to support heuristics later when interpreting user-specified URLs.</p>
 <p>An example URL would be:</p>
 <blockquote>
-<div>bzr://bazaar.launchpad.net/~jelmer/bzr/bzr.dev,colo-urls</div></blockquote>
+<div><p>bzr://bazaar.launchpad.net/~jelmer/bzr/bzr.dev,colo-urls</p>
+</div></blockquote>
 <p>The segment after the comma will initially be interpreted as a colocated
 branch name but we would like to keep the option to allow
 key=value style specifications in the future and DWIM for segments that
 do not contain an =. Following the RFC the comma would be interpreted within
 the scope of a path segment. In other words, in the URL:</p>
 <blockquote>
-<div>git://git.debian.org/pkg-python-debian/python-debian.git,unstable/README</div></blockquote>
+<div><p>git://git.debian.org/pkg-python-debian/python-debian.git,unstable/README</p>
+</div></blockquote>
 <p>unstable is interpreted as the colocated branch living in the python-debian.git
 control directory; README is a path inside of the branch.</p>
 <p>Control directories will also have the notion of an “active” branch. This is
@@ -109,12 +109,12 @@ will be used.</p>
 <p>The methods that will have to be extended are:</p>
 <blockquote>
 <div><ul class="simple">
-<li>BzrDir.open_branch()</li>
-<li>BzrDir.create_branch()</li>
-<li>BzrDir.destroy_branch()</li>
-<li>BzrDir.get_branch_transport()</li>
-<li>BranchFormat.initialise()</li>
-<li>BranchFormat.open()</li>
+<li><p>BzrDir.open_branch()</p></li>
+<li><p>BzrDir.create_branch()</p></li>
+<li><p>BzrDir.destroy_branch()</p></li>
+<li><p>BzrDir.get_branch_transport()</p></li>
+<li><p>BranchFormat.initialise()</p></li>
+<li><p>BranchFormat.open()</p></li>
 </ul>
 </div></blockquote>
 <p>A new BzrDir.list_branches() method will return all colocated branches
@@ -195,8 +195,6 @@ lp:bzr-colocated plugin</p>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -220,7 +218,7 @@ lp:bzr-colocated plugin</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

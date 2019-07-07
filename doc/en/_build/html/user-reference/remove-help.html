@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>remove &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>remove &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="remerge-help.html" title="remerge"
              accesskey="P">previous</a> |
@@ -41,78 +39,57 @@
             
   <div class="section" id="remove">
 <h1>remove<a class="headerlink" href="#remove" title="Permalink to this headline">¶</a></h1>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Remove files or directories.</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz remove [FILE…]</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
-<col class="option" />
-<col class="description" />
-<tbody valign="top">
-<tr><td class="option-group">
-<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
-<td><p class="first last">Show help message.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--new</span></kbd></td>
-<td><p class="first last">Only remove files that have never been committed.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
-<td><p class="first last">Only display errors and warnings.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--usage</span></kbd></td>
-<td><p class="first last">Show usage message and options.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
-<td><p class="first last">Display more information.</p>
-</td></tr>
-</tbody>
-</table>
-<dl class="docutils">
-<dt>Deletion Strategy:</dt>
-<dd><table class="first last docutils option-list" frame="void" rules="none">
-<col class="option" />
-<col class="description" />
-<tbody valign="top">
-<tr><td class="option-group">
-<kbd><span class="option">--keep</span></kbd></td>
-<td><p class="first last">Delete from brz but leave the working copy.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--no-backup</span></kbd></td>
-<td><p class="first last">Don’t backup changed files.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--safe</span></kbd></td>
-<td><p class="first last">Backup changed files (default).</p>
-</td></tr>
-</tbody>
-</table>
+<dl class="field-list">
+<dt class="field-odd">Purpose</dt>
+<dd class="field-odd"><p>Remove files or directories.</p>
+</dd>
+<dt class="field-even">Usage</dt>
+<dd class="field-even"><p>brz remove [FILE…]</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><dl class="option-list">
+<dt><kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></dt>
+<dd><p>Show help message.</p>
+</dd>
+<dt><kbd><span class="option">--new</span></kbd></dt>
+<dd><p>Only remove files that have never been committed.</p>
+</dd>
+<dt><kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></dt>
+<dd><p>Only display errors and warnings.</p>
+</dd>
+<dt><kbd><span class="option">--usage</span></kbd></dt>
+<dd><p>Show usage message and options.</p>
+</dd>
+<dt><kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></dt>
+<dd><p>Display more information.</p>
 </dd>
 </dl>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">This makes Breezy stop tracking changes to the specified files. Breezy will
+<dl>
+<dt>Deletion Strategy:</dt><dd><dl class="option-list">
+<dt><kbd><span class="option">--keep</span></kbd></dt>
+<dd><p>Delete from brz but leave the working copy.</p>
+</dd>
+<dt><kbd><span class="option">--no-backup</span></kbd></dt>
+<dd><p>Don’t backup changed files.</p>
+</dd>
+<dt><kbd><span class="option">--safe</span></kbd></dt>
+<dd><p>Backup changed files (default).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Description</dt>
+<dd class="field-even"><p>This makes Breezy stop tracking changes to the specified files. Breezy will
 delete them if they can easily be recovered using revert otherwise they
 will be backed up (adding an extension of the form .~#~). If no options or
 parameters are given Breezy will scan for files that are being tracked by
 Breezy but missing in your tree and stop tracking them for you.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Aliases:</th><td class="field-body"><p class="first last">rm, del</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Aliases</dt>
+<dd class="field-odd"><p>rm, del</p>
+</dd>
+</dl>
 </div>
 
 
@@ -138,8 +115,6 @@ Breezy but missing in your tree and stop tracking them for you.</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -167,7 +142,7 @@ Breezy but missing in your tree and stop tracking them for you.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

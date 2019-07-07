@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Bazaar Windows Shell Extension Options &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Bazaar Windows Shell Extension Options &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -22,7 +20,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="../index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -40,25 +38,28 @@
 <h1>Bazaar Windows Shell Extension Options<a class="headerlink" href="#bazaar-windows-shell-extension-options" title="Permalink to this headline">¶</a></h1>
 <div class="contents local topic" id="contents">
 <ul class="simple">
-<li><a class="reference internal" href="#introduction" id="id1">Introduction</a></li>
-<li><a class="reference internal" href="#background-information" id="id2">Background Information</a><ul>
-<li><a class="reference internal" href="#the-facts-about-shell-extensions" id="id3">The facts about shell extensions</a></li>
-<li><a class="reference internal" href="#analysis-of-tortoisesvn-code" id="id4">Analysis of TortoiseSVN code</a></li>
-<li><a class="reference internal" href="#analysis-of-existing-tortoisebzr-code" id="id5">Analysis of existing TortoiseBzr code</a></li>
+<li><p><a class="reference internal" href="#introduction" id="id1">Introduction</a></p></li>
+<li><p><a class="reference internal" href="#background-information" id="id2">Background Information</a></p>
+<ul>
+<li><p><a class="reference internal" href="#the-facts-about-shell-extensions" id="id3">The facts about shell extensions</a></p></li>
+<li><p><a class="reference internal" href="#analysis-of-tortoisesvn-code" id="id4">Analysis of TortoiseSVN code</a></p></li>
+<li><p><a class="reference internal" href="#analysis-of-existing-tortoisebzr-code" id="id5">Analysis of existing TortoiseBzr code</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#detailed-implementation-strategy" id="id6">Detailed Implementation Strategy</a><ul>
-<li><a class="reference internal" href="#external-command-processor" id="id7">External Command Processor</a></li>
-<li><a class="reference internal" href="#performance-considerations" id="id8">Performance considerations</a></li>
-<li><a class="reference internal" href="#rpc-options" id="id9">RPC options</a></li>
-<li><a class="reference internal" href="#vista-versus-xp" id="id10">Vista versus XP</a></li>
-<li><a class="reference internal" href="#reuse-of-tsvncache" id="id11">Reuse of TSVNCache?</a></li>
-<li><a class="reference internal" href="#reuse-of-this-code-by-mercurial-or-other-python-based-vcs-systems" id="id12">Reuse of this code by Mercurial or other Python based VCS systems?</a></li>
+<li><p><a class="reference internal" href="#detailed-implementation-strategy" id="id6">Detailed Implementation Strategy</a></p>
+<ul>
+<li><p><a class="reference internal" href="#external-command-processor" id="id7">External Command Processor</a></p></li>
+<li><p><a class="reference internal" href="#performance-considerations" id="id8">Performance considerations</a></p></li>
+<li><p><a class="reference internal" href="#rpc-options" id="id9">RPC options</a></p></li>
+<li><p><a class="reference internal" href="#vista-versus-xp" id="id10">Vista versus XP</a></p></li>
+<li><p><a class="reference internal" href="#reuse-of-tsvncache" id="id11">Reuse of TSVNCache?</a></p></li>
+<li><p><a class="reference internal" href="#reuse-of-this-code-by-mercurial-or-other-python-based-vcs-systems" id="id12">Reuse of this code by Mercurial or other Python based VCS systems?</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#implementation-plan" id="id13">Implementation plan</a></li>
-<li><a class="reference internal" href="#alternative-implementation-strategies" id="id14">Alternative Implementation Strategies</a><ul>
-<li><a class="reference internal" href="#implement-completely-in-python" id="id15">Implement Completely in Python</a></li>
+<li><p><a class="reference internal" href="#implementation-plan" id="id13">Implementation plan</a></p></li>
+<li><p><a class="reference internal" href="#alternative-implementation-strategies" id="id14">Alternative Implementation Strategies</a></p>
+<ul>
+<li><p><a class="reference internal" href="#implement-completely-in-python" id="id15">Implement Completely in Python</a></p></li>
 </ul>
 </li>
 </ul>
@@ -73,17 +74,17 @@ and the Python implemented TortoiseBzr, and discusses alternative
 implementation strategies, and the reasons they were not chosen.</p>
 <p>The following points summarize the  strategy:</p>
 <ul class="simple">
-<li>Main shell extension code will be implemented in C++, and be as thin as
+<li><p>Main shell extension code will be implemented in C++, and be as thin as
 possible.  It will not directly do any VCS work, but instead will perform
-all operations via either external applications or an RPC server.</li>
-<li>Most VCS operations will be performed by external applications.  For
+all operations via either external applications or an RPC server.</p></li>
+<li><p>Most VCS operations will be performed by external applications.  For
 example, committing changes or viewing history will spawn a child
-process that provides its own UI.</li>
-<li>For operations where spawning a child process is not practical, an
+process that provides its own UI.</p></li>
+<li><p>For operations where spawning a child process is not practical, an
 external RPC server will be implemented in Python and will directly use
 the VCS library. In the short term, there will be no attempt to create a
 general purpose RPC mechanism, but instead will be focused on keeping the
-C++ RPC client as thin, fast and dumb as possible.</li>
+C++ RPC client as thin, fast and dumb as possible.</p></li>
 </ul>
 </div>
 <div class="section" id="background-information">
@@ -98,14 +99,14 @@ into other processes which take advantage of the Windows shell (although
 obviously this DLL is free to do whatever it likes).</p>
 <p>For the sake of this discussion, there are 2 categories of shell extensions:</p>
 <ul class="simple">
-<li>Ones that create a new “namespace”. The file-system itself is an example of
+<li><p>Ones that create a new “namespace”. The file-system itself is an example of
 such a namespace, as is the “Recycle Bin”. For a user-created example,
 picture a new tree under “My Computer” which allows you to browse a remote
 server - it creates a new, stand-alone tree that doesn’t really interact
-with the existing namespaces.</li>
-<li>Ones that enhance existing namespaces, including the filesystem. An example
+with the existing namespaces.</p></li>
+<li><p>Ones that enhance existing namespaces, including the filesystem. An example
 would be an extension which uses Icon Overlays to modify how existing files
-on disk are displayed or add items to their context menu, for example.</li>
+on disk are displayed or add items to their context menu, for example.</p></li>
 </ul>
 <p>The latter category is the kind of shell extension relevant for TortoiseBzr,
 and it has an important implication - it will be pulled into any process
@@ -349,46 +350,46 @@ talk to Bazaar. The code is thread-safe, but not particularly thread-friendly
 (ie, fairly coarse-grained locks are taken in most cases).</p>
 <p>In practice, this give us 2 options - “fork” or “port”:</p>
 <ul>
-<li><p class="first">Fork the existing C++ code, replacing the existing source-control code with
+<li><p>Fork the existing C++ code, replacing the existing source-control code with
 code that talks to Bazaar. This would involve introducing a Python layer,
 but only at the layers where we need to talk to bzrlib. The bulk of the
 code would remain in C++.</p>
 <p>This would have the following benefits:</p>
 <ul class="simple">
-<li>May offer significant performance advantages in some cases (eg, a
-cache-hit would never enter Python at all.)</li>
-<li>Quickest time to a prototype working - the existing working code can be
-used quicker.</li>
+<li><p>May offer significant performance advantages in some cases (eg, a
+cache-hit would never enter Python at all.)</p></li>
+<li><p>Quickest time to a prototype working - the existing working code can be
+used quicker.</p></li>
 </ul>
 <p>And the following drawbacks:</p>
 <ul class="simple">
-<li>More complex to develop. People wishing to hack on it must be on Windows,
-know C++ and own the most recent MSVC8.</li>
-<li>More complex to build and package: people making binaries must be on
-Windows and have the most recent MSVC8.</li>
-<li>Is tied to Windows - it would be impractical for this to be
+<li><p>More complex to develop. People wishing to hack on it must be on Windows,
+know C++ and own the most recent MSVC8.</p></li>
+<li><p>More complex to build and package: people making binaries must be on
+Windows and have the most recent MSVC8.</p></li>
+<li><p>Is tied to Windows - it would be impractical for this to be
 cross-platform, even just for test purposes (although parts of it
-obviously could).</li>
+obviously could).</p></li>
 </ul>
 </li>
-<li><p class="first">Port the existing C++ code to Python. We would do this almost
+<li><p>Port the existing C++ code to Python. We would do this almost
 “line-for-line”, and attempt to keep many optimizations in place (or at
 least document what the optimizations were for ones we consider dubious).
 For the windows versions, pywin32 and ctypes would be leaned on - there
 would be no C++ at all.</p>
 <p>This would have the following benefits:</p>
 <ul class="simple">
-<li>Only need Python and Python skills to hack on it.</li>
-<li>No C++ compiler needed means easier to cut releases</li>
-<li>Python makes it easier to understand and maintain - it should appear much
-less complex than the C++ version.</li>
+<li><p>Only need Python and Python skills to hack on it.</p></li>
+<li><p>No C++ compiler needed means easier to cut releases</p></li>
+<li><p>Python makes it easier to understand and maintain - it should appear much
+less complex than the C++ version.</p></li>
 </ul>
 <p>And the following drawbacks:</p>
 <ul class="simple">
-<li>Will be slower in some cases - eg, a cache-hit will involve executing
-Python code.</li>
-<li>Will take longer to get a minimal system working. In practice this
-probably means the initial versions will not be as sophisticated.</li>
+<li><p>Will be slower in some cases - eg, a cache-hit will involve executing
+Python code.</p></li>
+<li><p>Will take longer to get a minimal system working. In practice this
+probably means the initial versions will not be as sophisticated.</p></li>
 </ul>
 </li>
 </ul>
@@ -420,27 +421,27 @@ but we would hope it is possible in the future.</p>
 <h2><a class="toc-backref" href="#id13">Implementation plan</a><a class="headerlink" href="#implementation-plan" title="Permalink to this headline">¶</a></h2>
 <p>The following is a high-level set of milestones for the implementation:</p>
 <ul class="simple">
-<li>Design the RPC mechanism used for icon overlays (ie, binary format used for
-communication).</li>
-<li>Create Python prototype of the C++ “shim”: modify the existing TBZR Python
+<li><p>Design the RPC mechanism used for icon overlays (ie, binary format used for
+communication).</p></li>
+<li><p>Create Python prototype of the C++ “shim”: modify the existing TBZR Python
 code so that all references to “bzrlib” are removed. Implement the client
 side of the RPC mechanism and implement icon overlays using this RPC
-mechanism.</li>
-<li>Create initial implementation of RPC server in Python. This will use
+mechanism.</p></li>
+<li><p>Create initial implementation of RPC server in Python. This will use
 bzrlib, but will also maintain a local cache to achieve the required
 performance. File crawling and watching will not be implemented at this
-stage, but caching will (although cache persistence might be skipped).</li>
-<li>Analyze performance of prototype. Verify that technique is feasible and
-will offer reasonable performance and user experience.</li>
-<li>Implement file watching, crawling etc by “porting” TSVNCache code to
-Python, as described above.</li>
-<li>Implement C++ shim: replace the Python prototype with a light-weight C++
+stage, but caching will (although cache persistence might be skipped).</p></li>
+<li><p>Analyze performance of prototype. Verify that technique is feasible and
+will offer reasonable performance and user experience.</p></li>
+<li><p>Implement file watching, crawling etc by “porting” TSVNCache code to
+Python, as described above.</p></li>
+<li><p>Implement C++ shim: replace the Python prototype with a light-weight C++
 version. We will fork the current TSVN sources, including its new
 support for sharing icon overlays (although advice on how to setup this
-fork is needed!)</li>
-<li>Implement property pages and context menus in C++. Expand RPC server as
-necessary.</li>
-<li>Create binary for alpha releases, then go round-and-round until it’s baked.</li>
+fork is needed!)</p></li>
+<li><p>Implement property pages and context menus in C++. Expand RPC server as
+necessary.</p></li>
+<li><p>Create binary for alpha releases, then go round-and-round until it’s baked.</p></li>
 </ul>
 </div>
 <div class="section" id="alternative-implementation-strategies">
@@ -514,8 +515,6 @@ resource hogging.</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -539,7 +538,7 @@ resource hogging.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

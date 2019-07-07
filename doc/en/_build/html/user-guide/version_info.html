@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Exporting version information &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Exporting version information &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="hooks.html" title="Using hooks"
              accesskey="P">previous</a> |
@@ -83,20 +81,20 @@ information file as simply as:</p>
 <p>This generates a file which contains 3 dictionaries:</p>
 <blockquote>
 <div><ul class="simple">
-<li><cite>version_info</cite>: A dictionary containing the basic information about the
-current state.</li>
-<li><cite>revisions</cite>: A dictionary listing all of the revisions in the
+<li><p><cite>version_info</cite>: A dictionary containing the basic information about the
+current state.</p></li>
+<li><p><cite>revisions</cite>: A dictionary listing all of the revisions in the
 history of the tree, along with the commit times and commit
 message.  This defaults to being empty unless <code class="docutils literal notranslate"><span class="pre">--all</span></code> or
 <code class="docutils literal notranslate"><span class="pre">--include-history</span></code> is supplied. This is useful if you want to
 track what bug fixes, etc, might be included in the released
-version. But for many projects it is more information than needed.</li>
-<li><cite>file_revisions</cite>: A dictionary listing the last-modified revision
+version. But for many projects it is more information than needed.</p></li>
+<li><p><cite>file_revisions</cite>: A dictionary listing the last-modified revision
 for all files in the project. This can be used similarly to how
 <code class="docutils literal notranslate"><span class="pre">$Id$</span></code> keywords are used in CVS-controlled files. The last
 modified date can be determined by looking in the <code class="docutils literal notranslate"><span class="pre">revisions</span></code>
 map. This is also empty by default, and enabled only by <code class="docutils literal notranslate"><span class="pre">--all</span></code>
-or <code class="docutils literal notranslate"><span class="pre">--include-file-revisions</span></code>.</li>
+or <code class="docutils literal notranslate"><span class="pre">--include-file-revisions</span></code>.</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -157,8 +155,6 @@ set the <code class="docutils literal notranslate"><span class="pre">clean</span
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -186,7 +182,7 @@ set the <code class="docutils literal notranslate"><span class="pre">clean</span
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

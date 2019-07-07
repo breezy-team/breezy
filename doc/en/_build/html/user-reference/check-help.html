@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>check &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>check &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="cat-help.html" title="cat"
              accesskey="P">previous</a> |
@@ -41,76 +39,58 @@
             
   <div class="section" id="check">
 <h1>check<a class="headerlink" href="#check" title="Permalink to this headline">¶</a></h1>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Validate working tree structure, branch consistency and repository history.</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz check [PATH]</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
-<col class="option" />
-<col class="description" />
-<tbody valign="top">
-<tr><td class="option-group">
-<kbd><span class="option">--branch</span></kbd></td>
-<td><p class="first last">Check the branch related to the current directory.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
-<td><p class="first last">Show help message.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
-<td><p class="first last">Only display errors and warnings.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--repo</span></kbd></td>
-<td><p class="first last">Check the repository related to the current directory.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--tree</span></kbd></td>
-<td><p class="first last">Check the working tree related to the current directory.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--usage</span></kbd></td>
-<td><p class="first last">Show usage message and options.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
-<td><p class="first last">Display more information.</p>
-</td></tr>
-</tbody>
-</table>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">This command checks various invariants about branch and repository storage
+<dl class="field-list">
+<dt class="field-odd">Purpose</dt>
+<dd class="field-odd"><p>Validate working tree structure, branch consistency and repository history.</p>
+</dd>
+<dt class="field-even">Usage</dt>
+<dd class="field-even"><p>brz check [PATH]</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><dl class="option-list">
+<dt><kbd><span class="option">--branch</span></kbd></dt>
+<dd><p>Check the branch related to the current directory.</p>
+</dd>
+<dt><kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></dt>
+<dd><p>Show help message.</p>
+</dd>
+<dt><kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></dt>
+<dd><p>Only display errors and warnings.</p>
+</dd>
+<dt><kbd><span class="option">--repo</span></kbd></dt>
+<dd><p>Check the repository related to the current directory.</p>
+</dd>
+<dt><kbd><span class="option">--tree</span></kbd></dt>
+<dd><p>Check the working tree related to the current directory.</p>
+</dd>
+<dt><kbd><span class="option">--usage</span></kbd></dt>
+<dd><p>Show usage message and options.</p>
+</dd>
+<dt><kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></dt>
+<dd><p>Display more information.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Description</dt>
+<dd class="field-even"><p>This command checks various invariants about branch and repository storage
 to detect data corruption or brz bugs.</p>
 <p>The working tree and branch checks will only give output if a problem is
 detected. The output fields of the repository check are:</p>
-<dl class="docutils">
-<dt>revisions</dt>
-<dd><p class="first last">This is just the number of revisions checked.  It doesn’t
+<dl class="simple">
+<dt>revisions</dt><dd><p>This is just the number of revisions checked.  It doesn’t
 indicate a problem.</p>
 </dd>
-<dt>versionedfiles</dt>
-<dd><p class="first last">This is just the number of versionedfiles checked.  It
+<dt>versionedfiles</dt><dd><p>This is just the number of versionedfiles checked.  It
 doesn’t indicate a problem.</p>
 </dd>
-<dt>unreferenced ancestors</dt>
-<dd><p class="first last">Texts that are ancestors of other texts, but
+<dt>unreferenced ancestors</dt><dd><p>Texts that are ancestors of other texts, but
 are not properly referenced by the revision ancestry.  This is a
 subtle problem that Breezy can work around.</p>
 </dd>
-<dt>unique file texts</dt>
-<dd><p class="first last">This is the total number of unique file contents
+<dt>unique file texts</dt><dd><p>This is the total number of unique file contents
 seen in the checked revisions.  It does not indicate a problem.</p>
 </dd>
-<dt>repeated file texts</dt>
-<dd><p class="first last">This is the total number of repeated texts seen
+<dt>repeated file texts</dt><dd><p>This is the total number of repeated texts seen
 in the checked revisions.  Texts can be repeated when their file
 entries are modified, but the file contents are not.  It does not
 indicate a problem.</p>
@@ -118,9 +98,9 @@ indicate a problem.</p>
 </dl>
 <p>If no restrictions are specified, all data that is found at the given
 location will be checked.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Examples:</th><td class="field-body"><p class="first">Check the tree and branch at ‘foo’:</p>
+</dd>
+<dt class="field-odd">Examples</dt>
+<dd class="field-odd"><p>Check the tree and branch at ‘foo’:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">check</span> <span class="o">--</span><span class="n">tree</span> <span class="o">--</span><span class="n">branch</span> <span class="n">foo</span>
 </pre></div>
 </div>
@@ -132,13 +112,11 @@ location will be checked.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">check</span> <span class="n">baz</span>
 </pre></div>
 </div>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">See also:</th><td class="field-body"><p class="first last"><a class="reference internal" href="reconcile-help.html"><span class="doc">reconcile</span></a></p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">See also</dt>
+<dd class="field-even"><p><a class="reference internal" href="reconcile-help.html"><span class="doc">reconcile</span></a></p>
+</dd>
+</dl>
 </div>
 
 
@@ -164,8 +142,6 @@ location will be checked.</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -193,7 +169,7 @@ location will be checked.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Centralized Workflow Tutorial &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Centralized Workflow Tutorial &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="using_breezy_with_launchpad.html" title="Using Breezy with Launchpad"
              accesskey="P">previous</a> |
@@ -204,18 +202,17 @@ aren’t quite complete yet. So we will create a new public branch on
 <p>We now have a place to make any fixes we need to <code class="docutils literal notranslate"><span class="pre">doodle</span></code>. And we would
 not interrupt people who are working on other parts of the code.  Because
 we have a checkout, any commits made in the <code class="docutils literal notranslate"><span class="pre">~/work/sigil/doodle-fixes/</span></code>
-will also show up on <code class="docutils literal notranslate"><span class="pre">centralhost</span></code>. <a class="footnote-reference" href="#nestedbranches" id="id1">[1]</a> It is also
+will also show up on <code class="docutils literal notranslate"><span class="pre">centralhost</span></code>. <a class="footnote-reference brackets" href="#nestedbranches" id="id1">1</a> It is also
 possible to have two developers collaborate on one of these branches, just
 like they would have collaborated on the <code class="docutils literal notranslate"><span class="pre">dev</span></code> branch.</p>
-<table class="docutils footnote" frame="void" id="nestedbranches" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>It may look odd to have a branch in a subdirectory of
+<dl class="footnote brackets">
+<dt class="label" id="nestedbranches"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>It may look odd to have a branch in a subdirectory of
 another branch. This is just fine, and you can think of it as a
 hierarchical namespace where the nested branch is derived from the
-outer branch.</td></tr>
-</tbody>
-</table>
+outer branch.</p>
+</dd>
+</dl>
 </div>
 <div class="section" id="merging-changes-back">
 <h3>Merging changes back<a class="headerlink" href="#merging-changes-back" title="Permalink to this headline">¶</a></h3>
@@ -235,20 +232,19 @@ conflicts. That way you don’t accidentally commit the conflict markers.
 The command <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">status</span></code> will show the conflicts along with the other
 changes, or you can use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">conflicts</span></code> to just list conflicts. Use
 <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span> <span class="pre">file/name</span></code> or <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span> <span class="pre">--all</span></code> once conflicts have
-been handled. <a class="footnote-reference" href="#resolve" id="id2">[2]</a> If you have a conflict that is particularly
+been handled. <a class="footnote-reference brackets" href="#resolve" id="id2">2</a> If you have a conflict that is particularly
 difficult to solve you may want to use the <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">remerge</span></code> command. It
 will let you try different merge algorithms, as well as let you see the
 original source lines (<code class="docutils literal notranslate"><span class="pre">--show-base</span></code>).</p>
-<table class="docutils footnote" frame="void" id="resolve" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Some systems make you resolve conflicts as part of the merge
+<dl class="footnote brackets">
+<dt class="label" id="resolve"><span class="brackets"><a class="fn-backref" href="#id2">2</a></span></dt>
+<dd><p>Some systems make you resolve conflicts as part of the merge
 process. We have found that it is usually easier to resolve conflicts
 when you have the view of the entire tree, rather than just a single
 file. It gives you much more context, and also lets you run tests as
-you resolve the problems.</td></tr>
-</tbody>
-</table>
+you resolve the problems.</p>
+</dd>
+</dl>
 </div>
 <div class="section" id="recommended-branching">
 <h3>Recommended Branching<a class="headerlink" href="#recommended-branching" title="Permalink to this headline">¶</a></h3>
@@ -316,8 +312,6 @@ well share the storage as well.</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -345,7 +339,7 @@ well share the storage as well.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

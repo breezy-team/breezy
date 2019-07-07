@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Revision Identifiers &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Revision Identifiers &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="other-formats-help.html" title="Other Storage Formats"
              accesskey="P">previous</a> |
@@ -63,50 +61,55 @@ to be open-ended, that is, they include one end but not the other.  For example:
 while “brz diff -r 3647..3649” includes the changes done in revisions 3648 and
 3649, but not 3647.</p>
 <p>The keywords used as revision selection methods are the following:</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">revid:</th><td class="field-body">Selects a revision using the revision id.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">submit:</th><td class="field-body">Selects a common ancestor with the submit branch.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">ancestor:</th><td class="field-body">Selects a common ancestor with a second branch.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">date:</th><td class="field-body">Selects a revision on the basis of a datestamp.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">branch:</th><td class="field-body">Selects the last revision of a specified branch.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">tag:</th><td class="field-body">Selects a revision identified by a tag name.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">revno:</th><td class="field-body">Selects a revision using a number.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">before:</th><td class="field-body">Selects the parent of the revision specified.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">annotate:</th><td class="field-body">Select the revision that last modified the specified line.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">mainline:</th><td class="field-body">Select mainline revision that merged the specified revision.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">last:</th><td class="field-body">Selects the nth revision from the end.</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">revid</dt>
+<dd class="field-odd"><p>Selects a revision using the revision id.</p>
+</dd>
+<dt class="field-even">submit</dt>
+<dd class="field-even"><p>Selects a common ancestor with the submit branch.</p>
+</dd>
+<dt class="field-odd">ancestor</dt>
+<dd class="field-odd"><p>Selects a common ancestor with a second branch.</p>
+</dd>
+<dt class="field-even">date</dt>
+<dd class="field-even"><p>Selects a revision on the basis of a datestamp.</p>
+</dd>
+<dt class="field-odd">branch</dt>
+<dd class="field-odd"><p>Selects the last revision of a specified branch.</p>
+</dd>
+<dt class="field-even">tag</dt>
+<dd class="field-even"><p>Selects a revision identified by a tag name.</p>
+</dd>
+<dt class="field-odd">revno</dt>
+<dd class="field-odd"><p>Selects a revision using a number.</p>
+</dd>
+<dt class="field-even">before</dt>
+<dd class="field-even"><p>Selects the parent of the revision specified.</p>
+</dd>
+<dt class="field-odd">annotate</dt>
+<dd class="field-odd"><p>Select the revision that last modified the specified line.</p>
+</dd>
+<dt class="field-even">mainline</dt>
+<dd class="field-even"><p>Select mainline revision that merged the specified revision.</p>
+</dd>
+<dt class="field-odd">last</dt>
+<dd class="field-odd"><p>Selects the nth revision from the end.</p>
+</dd>
+</dl>
 <p>In addition, plugins can provide other keywords.</p>
 <p>A detailed description of each keyword is given below.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">revid:</th><td class="field-body"><p class="first">Supply a specific revision id, that can be used to specify any
+<dl class="field-list">
+<dt class="field-odd">revid</dt>
+<dd class="field-odd"><p>Supply a specific revision id, that can be used to specify any
 revision id in the ancestry of the branch.
 Including merges, and pending merges.
 Examples:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">revid</span><span class="p">:</span><span class="n">aaaa</span><span class="nd">@bbbb</span><span class="o">-</span><span class="mi">123456789</span> <span class="o">-&gt;</span> <span class="n">Select</span> <span class="n">revision</span> <span class="s1">&#39;aaaa@bbbb-123456789&#39;</span>
 </pre></div>
 </div>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">submit:</th><td class="field-body"><p class="first">Diffing against this shows all the changes that were made in this branch,
+</dd>
+<dt class="field-even">submit</dt>
+<dd class="field-even"><p>Diffing against this shows all the changes that were made in this branch,
 and is a good predictor of what merge will do.  The submit branch is
 used by the bundle and merge directive commands.  If no submit branch
 is specified, the parent branch is used instead.</p>
@@ -117,9 +120,9 @@ a revision that was merged.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bzr diff -r submit:
 </pre></div>
 </div>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">ancestor:</th><td class="field-body"><p class="first">Supply the path to a branch to select the common ancestor.</p>
+</dd>
+<dt class="field-odd">ancestor</dt>
+<dd class="field-odd"><p>Supply the path to a branch to select the common ancestor.</p>
 <p>The common ancestor is the last revision that existed in both
 branches. Usually this is the branch point, but it could also be
 a revision that was merged.</p>
@@ -131,9 +134,9 @@ have not merged from the remote branch.</p>
 $ bzr diff -r ancestor:../../mainline/branch
 </pre></div>
 </div>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">date:</th><td class="field-body"><p class="first">Supply a datestamp to select the first revision that matches the date.
+</dd>
+<dt class="field-even">date</dt>
+<dd class="field-even"><p>Supply a datestamp to select the first revision that matches the date.
 Date can be ‘yesterday’, ‘today’, ‘tomorrow’ or a YYYY-MM-DD string.
 Matches the first entry after a given date (either at midnight or
 at a specified time).</p>
@@ -147,19 +150,19 @@ at a specified time).</p>
                              <span class="n">August</span> <span class="mi">14</span><span class="n">th</span><span class="p">,</span> <span class="mi">2006</span> <span class="n">at</span> <span class="mi">5</span><span class="p">:</span><span class="mi">10</span><span class="n">pm</span><span class="o">.</span>
 </pre></div>
 </div>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">branch:</th><td class="field-body"><p class="first">Supply the path to a branch to select its last revision.</p>
+</dd>
+<dt class="field-odd">branch</dt>
+<dd class="field-odd"><p>Supply the path to a branch to select its last revision.</p>
 <p>Examples:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">branch</span><span class="p">:</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">branch</span>
 </pre></div>
 </div>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">tag:</th><td class="field-body"><p class="first">Tags are stored in the branch and created by the ‘tag’ command.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">revno:</th><td class="field-body"><p class="first">Use an integer to specify a revision in the history of the branch.
+</dd>
+<dt class="field-even">tag</dt>
+<dd class="field-even"><p>Tags are stored in the branch and created by the ‘tag’ command.</p>
+</dd>
+<dt class="field-odd">revno</dt>
+<dd class="field-odd"><p>Use an integer to specify a revision in the history of the branch.
 Optionally a branch can be specified.  A negative number will count
 from the end of the branch (-1 is the last revision, -2 the previous
 one). If the negative number is larger than the branch’s history, the
@@ -175,9 +178,9 @@ Examples:</p>
                              <span class="n">your</span> <span class="n">history</span> <span class="ow">is</span> <span class="n">very</span> <span class="n">long</span><span class="o">.</span>
 </pre></div>
 </div>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">before:</th><td class="field-body"><p class="first">Supply any revision spec to return the parent of that revision.  This is
+</dd>
+<dt class="field-even">before</dt>
+<dd class="field-even"><p>Supply any revision spec to return the parent of that revision.  This is
 mostly useful when inspecting revisions that are not in the revision history
 of a branch.</p>
 <p>It is an error to request the parent of the null revision (before:0).</p>
@@ -191,28 +194,26 @@ of a branch.</p>
          <span class="n">This</span> <span class="ow">is</span> <span class="n">equivalent</span> <span class="n">to</span><span class="p">:</span>  <span class="n">bzr</span> <span class="n">diff</span> <span class="o">-</span><span class="n">c</span> <span class="mi">1913</span>
 </pre></div>
 </div>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">annotate:</th><td class="field-body"><p class="first">Select the revision that last modified the specified line.  Line is
+</dd>
+<dt class="field-odd">annotate</dt>
+<dd class="field-odd"><p>Select the revision that last modified the specified line.  Line is
 specified as path:number.  Path is a relative path to the file.  Numbers
 start at 1, and are relative to the current version, not the last-
 committed version of the file.</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">mainline:</th><td class="field-body"><p class="first">Select the revision that merged the specified revision into mainline.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">last:</th><td class="field-body"><p class="first">Supply a positive number to get the nth revision from the end.
+</dd>
+<dt class="field-even">mainline</dt>
+<dd class="field-even"><p>Select the revision that merged the specified revision into mainline.</p>
+</dd>
+<dt class="field-odd">last</dt>
+<dd class="field-odd"><p>Supply a positive number to get the nth revision from the end.
 This is the same as supplying negative numbers to the ‘revno:’ spec.
 Examples:</p>
-<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">last</span><span class="p">:</span><span class="mi">1</span>        <span class="o">-&gt;</span> <span class="k">return</span> <span class="n">the</span> <span class="n">last</span> <span class="n">revision</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">last</span><span class="p">:</span><span class="mi">1</span>        <span class="o">-&gt;</span> <span class="k">return</span> <span class="n">the</span> <span class="n">last</span> <span class="n">revision</span>
 <span class="n">last</span><span class="p">:</span><span class="mi">3</span>        <span class="o">-&gt;</span> <span class="k">return</span> <span class="n">the</span> <span class="n">revision</span> <span class="mi">2</span> <span class="n">before</span> <span class="n">the</span> <span class="n">end</span><span class="o">.</span>
 </pre></div>
 </div>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </div>
 
 
@@ -238,8 +239,6 @@ Examples:</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -267,7 +266,7 @@ Examples:</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

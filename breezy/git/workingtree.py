@@ -1202,26 +1202,33 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     (index, subpath) = self._lookup_index(entry.path)
                     index[subpath] = index_entry_from_stat(st, entry.sha, 0)
 
+    def _update_git_tree(self, old_revision, new_revision, change_reporter=None,
+                         show_base=False):
+        basis_tree = self.revision_tree(old_revision)
+        if new_revision != old_revision:
+            with basis_tree.lock_read():
+                new_basis_tree = self.branch.basis_tree()
+                merge.merge_inner(
+                    self.branch,
+                    new_basis_tree,
+                    basis_tree,
+                    this_tree=self,
+                    change_reporter=change_reporter,
+                    show_base=show_base)
+
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
              show_base=False):
         with self.lock_write(), source.lock_read():
             old_revision = self.branch.last_revision()
-            basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
                                      possible_transports=possible_transports,
                                      local=local)
-            new_revision = self.branch.last_revision()
-            if new_revision != old_revision:
-                with basis_tree.lock_read():
-                    new_basis_tree = self.branch.basis_tree()
-                    merge.merge_inner(
-                        self.branch,
-                        new_basis_tree,
-                        basis_tree,
-                        this_tree=self,
-                        change_reporter=change_reporter,
-                        show_base=show_base)
+            self._update_git_tree(
+                old_revision=old_revision,
+                new_revision=self.branch.last_revision(),
+                change_reporter=change_reporter,
+                show_base=show_base)
             return count
 
     def add_reference(self, sub_tree):

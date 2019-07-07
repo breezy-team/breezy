@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Advanced shared repository layouts &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Advanced shared repository layouts &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="organizing_your_workspace.html" title="Organizing your workspace"
              accesskey="P">previous</a> |
@@ -133,26 +131,25 @@ can checkout all of “<code class="docutils literal notranslate"><span class="p
 <p>This layout can be used for Breezy, but it is not generally recommended.</p>
 <blockquote>
 <div><ol class="arabic simple">
-<li><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">branch/checkout/get</span></code> is a single branch at a time.
-So you don’t get the benefit of getting all mainlines with a single command. <a class="footnote-reference" href="#id2" id="id1">[1]</a></li>
-<li>It is less obvious of whether <code class="docutils literal notranslate"><span class="pre">repository/trunk/foo</span></code> is the <code class="docutils literal notranslate"><span class="pre">trunk</span></code> of project
+<li><p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">branch/checkout/get</span></code> is a single branch at a time.
+So you don’t get the benefit of getting all mainlines with a single command. <a class="footnote-reference brackets" href="#id2" id="id1">1</a></p></li>
+<li><p>It is less obvious of whether <code class="docutils literal notranslate"><span class="pre">repository/trunk/foo</span></code> is the <code class="docutils literal notranslate"><span class="pre">trunk</span></code> of project
 <code class="docutils literal notranslate"><span class="pre">foo</span></code> or it is just the <code class="docutils literal notranslate"><span class="pre">foo</span></code> directory in the <code class="docutils literal notranslate"><span class="pre">trunk</span></code> branch.
 Some of this confusion is due to SVN, because it uses the same “namespace”
 for files in a project that it uses for branches of a project.
 In Breezy, there is a clear distinction of what files make up a project, versus
 the location of the Branch. (After all, there is only one <code class="docutils literal notranslate"><span class="pre">.brz/</span></code> directory per branch,
-versus many <code class="docutils literal notranslate"><span class="pre">.svn/</span></code> directories in the checkout).</li>
+versus many <code class="docutils literal notranslate"><span class="pre">.svn/</span></code> directories in the checkout).</p></li>
 </ol>
 </div></blockquote>
-<table class="docutils footnote" frame="void" id="id2" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Note: <a class="reference external" href="http://wiki.bazaar.canonical.com/NestedTrees">NestedTreeSupport</a> can provide a way to create “meta-projects” which
+<dl class="footnote brackets">
+<dt class="label" id="id2"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>Note: <a class="reference external" href="http://wiki.bazaar.canonical.com/NestedTrees">NestedTreeSupport</a> can provide a way to create “meta-projects” which
 aggregate multiple projects regardless of the repository layout.
 Letting you <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">checkout</span></code> one project, and have it grab all the necessary
-sub-projects.</td></tr>
-</tbody>
-</table>
+sub-projects.</p>
+</dd>
+</dl>
 </div>
 </div>
 <div class="section" id="nested-style-project-branch-sub-branch">
@@ -358,12 +355,12 @@ the number of developers, how often you create a new branch, what sort of
 lifecycles your branches go through. Some questions to ask yourself:</p>
 <blockquote>
 <div><ol class="arabic simple">
-<li>Do you create a few long-lived branches, or do you create lots of “mini” feature branches
+<li><p>Do you create a few long-lived branches, or do you create lots of “mini” feature branches
 (Along with this is: Would you <em>like</em> to create lots of mini feature branches, but can’t
-because they are a pain in your current VCS?)</li>
-<li>Are you a single developer, or a large team?</li>
-<li>If a team, do you plan on generally having everyone working on the same branch at the same
-time? Or will you have a “stable” branch that people are expected to track.</li>
+because they are a pain in your current VCS?)</p></li>
+<li><p>Are you a single developer, or a large team?</p></li>
+<li><p>If a team, do you plan on generally having everyone working on the same branch at the same
+time? Or will you have a “stable” branch that people are expected to track.</p></li>
 </ol>
 </div></blockquote>
 </div>
@@ -392,8 +389,6 @@ time? Or will you have a “stable” branch that people are expected to track.<
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -421,7 +416,7 @@ time? Or will you have a “stable” branch that people are expected to track.<
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

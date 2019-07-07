@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Breezy Developer Guide &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Breezy Developer Guide &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="bug-handling.html" title="Tracking Bugs in Breezy"
              accesskey="P">previous</a> |
@@ -64,9 +62,9 @@ perhaps someone else has already fixed it?</p>
 <p>To answer these questions and more, take a moment to explore the
 overall Breezy Platform. Here are some links to browse:</p>
 <ul class="simple">
-<li>The Plugins page on the Wiki - <a class="reference external" href="http://wiki.bazaar.canonical.com/BzrPlugins">http://wiki.bazaar.canonical.com/BzrPlugins</a></li>
-<li>The Breezy product family on Launchpad - <a class="reference external" href="https://launchpad.net/breezy">https://launchpad.net/breezy</a></li>
-<li>Bug Tracker for the core product - <a class="reference external" href="https://bugs.launchpad.net/brz/">https://bugs.launchpad.net/brz/</a></li>
+<li><p>The Plugins page on the Wiki - <a class="reference external" href="http://wiki.bazaar.canonical.com/BzrPlugins">http://wiki.bazaar.canonical.com/BzrPlugins</a></p></li>
+<li><p>The Breezy product family on Launchpad - <a class="reference external" href="https://launchpad.net/breezy">https://launchpad.net/breezy</a></p></li>
+<li><p>Bug Tracker for the core product - <a class="reference external" href="https://bugs.launchpad.net/brz/">https://bugs.launchpad.net/brz/</a></p></li>
 </ul>
 <p>If nothing else, perhaps you’ll find inspiration in how other developers
 have solved their challenges.</p>
@@ -90,9 +88,9 @@ on the IRC channel and/or on the mailing list. There are many advantages
 to involving the community before you spend much time on a change.
 These include:</p>
 <ul class="simple">
-<li>you get to build on the wisdom of others, saving time</li>
-<li>if others can direct you to similar code, it minimises the work to be done</li>
-<li>it assists everyone in coordinating direction, priorities and effort.</li>
+<li><p>you get to build on the wisdom of others, saving time</p></li>
+<li><p>if others can direct you to similar code, it minimises the work to be done</p></li>
+<li><p>it assists everyone in coordinating direction, priorities and effort.</p></li>
 </ul>
 <p>In summary, maximising the input from others typically minimises the
 total effort required to get your changes merged. The community is
@@ -155,11 +153,11 @@ for example). Alternatively, you can suffix with the bug number
 <h4>Review cover letters<a class="headerlink" href="#review-cover-letters" title="Permalink to this headline">¶</a></h4>
 <p>Please put a “cover letter” on your merge request explaining:</p>
 <ul class="simple">
-<li>the reason <strong>why</strong> you’re making this change</li>
-<li><strong>how</strong> this change achieves this purpose</li>
-<li>anything else you may have fixed in passing</li>
-<li>anything significant that you thought of doing, such as a more
-extensive fix or a different approach, but didn’t or couldn’t do now</li>
+<li><p>the reason <strong>why</strong> you’re making this change</p></li>
+<li><p><strong>how</strong> this change achieves this purpose</p></li>
+<li><p>anything else you may have fixed in passing</p></li>
+<li><p>anything significant that you thought of doing, such as a more
+extensive fix or a different approach, but didn’t or couldn’t do now</p></li>
 </ul>
 <p>A good cover letter makes reviewers’ lives easier because they can decide
 from the letter whether they agree with the purpose and approach, and then
@@ -174,17 +172,16 @@ to the size and complexity of the patch.</p>
 <h4>Why make a local copy of bzr.dev?<a class="headerlink" href="#why-make-a-local-copy-of-bzr-dev" title="Permalink to this headline">¶</a></h4>
 <p>Making a local mirror of bzr.dev is not strictly necessary, but it means</p>
 <ul>
-<li><p class="first">You can use that copy of bzr.dev as your main brz executable, and keep it
-up-to-date using <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">pull</span></code>.</p>
-</li>
-<li><p class="first">Certain operations are faster, and can be done when offline.  For example:</p>
+<li><p>You can use that copy of bzr.dev as your main brz executable, and keep it
+up-to-date using <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">pull</span></code>.</p></li>
+<li><p>Certain operations are faster, and can be done when offline.  For example:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">bundle</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span> <span class="pre">-r</span> <span class="pre">ancestor:...</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">merge</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">bundle</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span> <span class="pre">-r</span> <span class="pre">ancestor:...</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">merge</span></code></p></li>
 </ul>
 </li>
-<li><p class="first">When it’s time to create your next branch, it’s more convenient.  When you
+<li><p>When it’s time to create your next branch, it’s more convenient.  When you
 have further contributions to make, you should do them in their own branch:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd ~/bzr
 $ brz branch bzr.dev additional_fixes
@@ -199,18 +196,18 @@ $ cd additional_fixes # hack, hack, hack
 <h3>Understanding the Development Process<a class="headerlink" href="#understanding-the-development-process" title="Permalink to this headline">¶</a></h3>
 <p>The development team follows many practices including:</p>
 <ul class="simple">
-<li>a public roadmap and planning process in which anyone can participate</li>
-<li>time based milestones everyone can work towards and plan around</li>
-<li>extensive code review and feedback to contributors</li>
-<li>complete and rigorous test coverage on any code contributed</li>
-<li>automated validation that all tests still pass before code is merged
-into the main code branch.</li>
+<li><p>a public roadmap and planning process in which anyone can participate</p></li>
+<li><p>time based milestones everyone can work towards and plan around</p></li>
+<li><p>extensive code review and feedback to contributors</p></li>
+<li><p>complete and rigorous test coverage on any code contributed</p></li>
+<li><p>automated validation that all tests still pass before code is merged
+into the main code branch.</p></li>
 </ul>
 <p>The key tools we use to enable these practices are:</p>
 <ul class="simple">
-<li>Launchpad - <a class="reference external" href="https://launchpad.net/">https://launchpad.net/</a></li>
-<li>Breezy - <a class="reference external" href="https://www.breezy-vcs.org/">https://www.breezy-vcs.org/</a></li>
-<li>Patch Queue Manager - <a class="reference external" href="https://launchpad.net/pqm/">https://launchpad.net/pqm/</a></li>
+<li><p>Launchpad - <a class="reference external" href="https://launchpad.net/">https://launchpad.net/</a></p></li>
+<li><p>Breezy - <a class="reference external" href="https://www.breezy-vcs.org/">https://www.breezy-vcs.org/</a></p></li>
+<li><p>Patch Queue Manager - <a class="reference external" href="https://launchpad.net/pqm/">https://launchpad.net/pqm/</a></p></li>
 </ul>
 <p>For further information, see &lt;<a class="reference external" href="https://www.breezy-vcs.org/developers/">https://www.breezy-vcs.org/developers/</a>&gt;.</p>
 </div>
@@ -223,18 +220,16 @@ popular alternatives.</p>
 the number of changes you may be making, the complexity of the changes, etc.
 As a starting suggestion though:</p>
 <ul>
-<li><p class="first">create a local copy of the main development branch (bzr.dev) by using
+<li><p>create a local copy of the main development branch (bzr.dev) by using
 this command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">branch</span> <span class="n">lp</span><span class="p">:</span><span class="n">brz</span> <span class="n">bzr</span><span class="o">.</span><span class="n">dev</span>
 </pre></div>
 </div>
 </li>
-<li><p class="first">keep your copy of bzr.dev pristine (by not developing in it) and keep
-it up to date (by using brz pull)</p>
-</li>
-<li><p class="first">create a new branch off your local bzr.dev copy for each issue
-(bug or feature) you are working on.</p>
-</li>
+<li><p>keep your copy of bzr.dev pristine (by not developing in it) and keep
+it up to date (by using brz pull)</p></li>
+<li><p>create a new branch off your local bzr.dev copy for each issue
+(bug or feature) you are working on.</p></li>
 </ul>
 <p>This approach makes it easy to go back and make any required changes
 after a code review. Resubmitting the change is then simple with no
@@ -245,15 +240,14 @@ the associated branch can be deleted or archived as you wish.</p>
 <div class="section" id="navigating-the-code-base">
 <h3>Navigating the Code Base<a class="headerlink" href="#navigating-the-code-base" title="Permalink to this headline">¶</a></h3>
 <p>Some of the key files in this directory are:</p>
-<dl class="docutils">
-<dt>bzr</dt>
-<dd>The command you run to start Breezy itself.  This script is pretty
-short and just does some checks then jumps into bzrlib.</dd>
-<dt>README.rst</dt>
-<dd>This file covers a brief introduction to Breezy and lists some of its
-key features.</dd>
-<dt>setup.py</dt>
-<dd>Installs Breezy system-wide or to your home directory.  To perform
+<dl class="simple">
+<dt>bzr</dt><dd><p>The command you run to start Breezy itself.  This script is pretty
+short and just does some checks then jumps into bzrlib.</p>
+</dd>
+<dt>README.rst</dt><dd><p>This file covers a brief introduction to Breezy and lists some of its
+key features.</p>
+</dd>
+<dt>setup.py</dt><dd><p>Installs Breezy system-wide or to your home directory.  To perform
 development work on Breezy it is not required to run this file - you
 can simply run the Breezy command from the top level directory of your
 development copy. Note: That if you run setup.py this will create a
@@ -261,30 +255,33 @@ development copy. Note: That if you run setup.py this will create a
 with this but don’t be confused by it. The build process puts a copy
 of the main code base into this build directory, along with some other
 files. You don’t need to go in here for anything discussed in this
-guide.</dd>
-<dt>bzrlib</dt>
-<dd>Possibly the most exciting folder of all, bzrlib holds the main code
+guide.</p>
+</dd>
+<dt>bzrlib</dt><dd><p>Possibly the most exciting folder of all, bzrlib holds the main code
 base. This is where you will go to edit python files and contribute to
-Breezy.</dd>
-<dt>doc</dt>
-<dd>Holds documentation on a whole range of things on Breezy from the
+Breezy.</p>
+</dd>
+<dt>doc</dt><dd><p>Holds documentation on a whole range of things on Breezy from the
 origination of ideas within the project to information on Breezy
 features and use cases.  Within this directory there is a subdirectory
 for each translation into a human language.  All the documentation
-is in the ReStructuredText markup language.</dd>
-<dt>doc/developers</dt>
-<dd>Documentation specifically targeted at Breezy and plugin developers.
-(Including this document.)</dd>
+is in the ReStructuredText markup language.</p>
+</dd>
+<dt>doc/developers</dt><dd><p>Documentation specifically targeted at Breezy and plugin developers.
+(Including this document.)</p>
+</dd>
 </dl>
 <p>doc/en/release-notes/</p>
 <blockquote>
-<div>Detailed changes in each Breezy release (there is one file by series:
+<div><p>Detailed changes in each Breezy release (there is one file by series:
 bzr-2.3.txt, bzr-2.4.txt, etc) that can affect users or plugin
-developers.</div></blockquote>
+developers.</p>
+</div></blockquote>
 <p>doc/en/whats-new/</p>
 <blockquote>
-<div>High-level summaries of changes in each Breezy release (there is one
-file by series: whats-new-in-2.3.txt, whats-new-in-2.4.txt, etc).</div></blockquote>
+<div><p>High-level summaries of changes in each Breezy release (there is one
+file by series: whats-new-in-2.3.txt, whats-new-in-2.4.txt, etc).</p>
+</div></blockquote>
 <p>Automatically-generated API reference information is available at
 &lt;<a class="reference external" href="https://www.breezy-vcs.org/developers/api/">https://www.breezy-vcs.org/developers/api/</a>&gt;.</p>
 <p>See also the <a class="reference external" href="https://www.breezy-vcs.org/developers/overview.html">Breezy Architectural Overview</a>.</p>
@@ -306,8 +303,9 @@ parameter to branch.commit - that’s fine. On the other hand, if I add a
 keyword parameter to branch.commit which is a <em>required</em> transaction
 object, I should rename the API - i.e. to ‘branch.commit_transaction’.</p>
 <blockquote>
-<div>(Actually, that may break code that provides a new implementation of
-<code class="docutils literal notranslate"><span class="pre">commit</span></code> and doesn’t expect to receive the parameter.)</div></blockquote>
+<div><p>(Actually, that may break code that provides a new implementation of
+<code class="docutils literal notranslate"><span class="pre">commit</span></code> and doesn’t expect to receive the parameter.)</p>
+</div></blockquote>
 <p>When renaming such supported API’s, be sure to leave a deprecated_method (or
 _function or …) behind which forwards to the new API. See the
 bzrlib.symbol_versioning module for decorators that take care of the
@@ -393,11 +391,11 @@ tracebacks:</p>
 </div>
 <div class="section" id="jargon">
 <h3>Jargon<a class="headerlink" href="#jargon" title="Permalink to this headline">¶</a></h3>
-<dl class="docutils">
-<dt>revno</dt>
-<dd>Integer identifier for a revision on the main line of a branch.
+<dl class="simple">
+<dt>revno</dt><dd><p>Integer identifier for a revision on the main line of a branch.
 Revision 0 is always the null revision; others are 1-based
-indexes into the branch’s revision history.</dd>
+indexes into the branch’s revision history.</p>
+</dd>
 </dl>
 </div>
 <div class="section" id="unicode-and-encoding-support">
@@ -415,28 +413,28 @@ representation, based on the console encoding.  Also, the class attribute
 <code class="docutils literal notranslate"><span class="pre">encoding_type</span></code> will effect how unprintable characters will be
 handled.  This parameter can take one of 3 values:</p>
 <blockquote>
-<div><dl class="docutils">
-<dt>replace</dt>
-<dd>Unprintable characters will be represented with a suitable replacement
+<div><dl class="simple">
+<dt>replace</dt><dd><p>Unprintable characters will be represented with a suitable replacement
 marker (typically ‘?’), and no exception will be raised. This is for
 any command which generates text for the user to review, rather than
 for automated processing.
 For example: <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">log</span></code> should not fail if one of the entries has text
-that cannot be displayed.</dd>
-<dt>strict</dt>
-<dd>Attempting to print an unprintable character will cause a UnicodeError.
+that cannot be displayed.</p>
+</dd>
+<dt>strict</dt><dd><p>Attempting to print an unprintable character will cause a UnicodeError.
 This is for commands that are intended more as scripting support, rather
 than plain user review.
 For example: <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">ls</span></code> is designed to be used with shell scripting. One
 use would be <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">ls</span> <span class="pre">--null</span> <span class="pre">--unknowns</span> <span class="pre">|</span> <span class="pre">xargs</span> <span class="pre">-0</span> <span class="pre">rm</span></code>.  If <code class="docutils literal notranslate"><span class="pre">bzr</span></code>
 printed a filename with a ‘?’, the wrong file could be deleted. (At the
 very least, the correct file would not be deleted). An error is used to
-indicate that the requested action could not be performed.</dd>
-<dt>exact</dt>
-<dd>Do not attempt to automatically convert Unicode strings. This is used
+indicate that the requested action could not be performed.</p>
+</dd>
+<dt>exact</dt><dd><p>Do not attempt to automatically convert Unicode strings. This is used
 for commands that must handle conversion themselves.
 For example: <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">diff</span></code> needs to translate Unicode paths, but should
-not change the exact text of the contents of the files.</dd>
+not change the exact text of the contents of the files.</p>
+</dd>
 </dl>
 </div></blockquote>
 </div>
@@ -457,9 +455,9 @@ valid characters are generated where possible.</p>
 three scenarios:</p>
 <blockquote>
 <div><ul class="simple">
-<li>User with no C compiler</li>
-<li>User with C compiler</li>
-<li>Developers</li>
+<li><p>User with no C compiler</p></li>
+<li><p>User with C compiler</p></li>
+<li><p>Developers</p></li>
 </ul>
 </div></blockquote>
 <p>The recommended way to install Breezy is to have a C compiler so that the
@@ -494,13 +492,13 @@ propose and submit changes, a smaller team is reponsible for pulling those
 changes together into a cohesive whole. In addition to the general developer
 stuff covered above, “core” developers have responsibility for:</p>
 <ul class="simple">
-<li>reviewing changes</li>
-<li>planning releases</li>
-<li>managing releases (see <a class="reference external" href="https://www.breezy-vcs.org/developers/releasing.html">Releasing Breezy</a>)</li>
+<li><p>reviewing changes</p></li>
+<li><p>planning releases</p></li>
+<li><p>managing releases (see <a class="reference external" href="https://www.breezy-vcs.org/developers/releasing.html">Releasing Breezy</a>)</p></li>
 </ul>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Removing barriers to community participation is a key reason for adopting
+<p class="admonition-title">Note</p>
+<p>Removing barriers to community participation is a key reason for adopting
 distributed VCS technology. While DVCS removes many technical barriers,
 a small number of social barriers are often necessary instead.
 By documenting how the above things are done, we hope to
@@ -514,9 +512,9 @@ differences between core and non-core contributors to a minimum.</p>
 development is keeping everyone else aware of what you’re working on.
 There are numerous ways to do this:</p>
 <ol class="arabic simple">
-<li>Assign bugs to yourself in Launchpad</li>
-<li>Mention it on the mailing list</li>
-<li>Mention it on IRC</li>
+<li><p>Assign bugs to yourself in Launchpad</p></li>
+<li><p>Mention it on the mailing list</p></li>
+<li><p>Mention it on IRC</p></li>
 </ol>
 <p>As well as the email notifcations that occur when merge requests are sent
 and reviewed, you can keep others informed of where you’re spending your
@@ -551,14 +549,14 @@ developers, partially because of their depth of product knowledge.</p>
 <p>With respect to bug triage, core developers are encouraged to play an
 active role with particular attention to the following tasks:</p>
 <ul class="simple">
-<li>keeping the number of unconfirmed bugs low</li>
-<li>ensuring the priorities are generally right (everything as critical - or
-medium - is meaningless)</li>
-<li>looking out for regressions and turning those around sooner rather than later.</li>
+<li><p>keeping the number of unconfirmed bugs low</p></li>
+<li><p>ensuring the priorities are generally right (everything as critical - or
+medium - is meaningless)</p></li>
+<li><p>looking out for regressions and turning those around sooner rather than later.</p></li>
 </ul>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">As well as prioritizing bugs and nominating them against a
+<p class="admonition-title">Note</p>
+<p>As well as prioritizing bugs and nominating them against a
 target milestone, Launchpad lets core developers offer to mentor others in
 fixing them.</p>
 </div>
@@ -616,8 +614,6 @@ fixing them.</p>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -645,7 +641,7 @@ fixing them.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

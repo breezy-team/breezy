@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Configuring Breezy &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Configuring Breezy &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="getting_help.html" title="Getting help"
              accesskey="P">previous</a> |
@@ -78,11 +76,11 @@ which shouldn’t be reached by the proxy.  (See
 configure Breezy, they all share some common properties though.
 An option has:</p>
 <ul class="simple">
-<li>a name which is generally a valid python identifier,</li>
-<li>a value which is a string. In some cases, Breezy will be able
+<li><p>a name which is generally a valid python identifier,</p></li>
+<li><p>a value which is a string. In some cases, Breezy will be able
 to recognize special values like ‘True’, ‘False’ to infer a
 boolean type, but basically, as a user, you will always specify
-a value as a string.</li>
+a value as a string.</p></li>
 </ul>
 <p>Options are grouped in various contexts so the option name
 uniquely identifies it in this context. When needed, options can
@@ -94,11 +92,11 @@ be made persistent by recording them in a configuration file.</p>
 <code class="docutils literal notranslate"><span class="pre">C:\Documents</span> <span class="pre">and</span> <span class="pre">Settings\&lt;username&gt;\Application</span> <span class="pre">Data\Breezy\2.0</span></code> on
 Windows. There are three primary configuration files in this location:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> describes default configuration options,</li>
-<li><code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> describes configuration information for
-specific branch locations,</li>
-<li><code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> describes credential information for
-remote servers.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> describes default configuration options,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> describes configuration information for
+specific branch locations,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> describes credential information for
+remote servers.</p></li>
 </ul>
 <p>Each branch can also contain a configuration file that sets values specific
 to that branch. This file is found at <code class="docutils literal notranslate"><span class="pre">.brz/branch/branch.conf</span></code> within the
@@ -128,13 +126,13 @@ configuration option.</p>
 given order for matching definitions.</p>
 <blockquote>
 <div><ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> is searched first for a section whose name matches the
-location considered (working tree, branch or remote branch),</li>
-<li>the current <code class="docutils literal notranslate"><span class="pre">branch.conf</span></code> is searched next,</li>
-<li><code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> is searched next,</li>
-<li>finally, some options can have default values generally defined in the
+<li><p><code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> is searched first for a section whose name matches the
+location considered (working tree, branch or remote branch),</p></li>
+<li><p>the current <code class="docutils literal notranslate"><span class="pre">branch.conf</span></code> is searched next,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> is searched next,</p></li>
+<li><p>finally, some options can have default values generally defined in the
 code itself and not displayed by <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">config</span></code> (see <a class="reference external" href="../user-reference/index.html#configuration-settings">Configuration
-Settings</a>).</li>
+Settings</a>).</p></li>
 </ul>
 </div></blockquote>
 <p>This is better understood by using <code class="docutils literal notranslate"><span class="pre">`brz</span> <span class="pre">config</span></code> with no arguments, which
@@ -235,8 +233,6 @@ quotation marks.  For example:</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -264,7 +260,7 @@ quotation marks.  For example:</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

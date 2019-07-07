@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Authentication Settings &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Authentication Settings &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="working-trees-help.html" title="Working Trees"
              accesskey="P">previous</a> |
@@ -78,14 +76,14 @@ of your urls with others).</p>
 <p>There are two kinds of authentication used by the various schemes supported by
 brz:</p>
 <ol class="arabic simple">
-<li>user and password</li>
+<li><p>user and password</p></li>
 </ol>
 <p><code class="docutils literal notranslate"><span class="pre">FTP</span></code> needs a (<code class="docutils literal notranslate"><span class="pre">user</span></code>, <code class="docutils literal notranslate"><span class="pre">password</span></code>) to authenticate against a <code class="docutils literal notranslate"><span class="pre">host</span></code>
 <code class="docutils literal notranslate"><span class="pre">SFTP</span></code> can use either a password or a host key to authenticate. However,
 ssh agents are a better, more secure solution. So we have chosen to not provide
 our own less secure method.</p>
 <ol class="arabic simple" start="2">
-<li>user, realm and password</li>
+<li><p>user, realm and password</p></li>
 </ol>
 <p><code class="docutils literal notranslate"><span class="pre">HTTP</span></code> and <code class="docutils literal notranslate"><span class="pre">HTTPS</span></code> needs a (<code class="docutils literal notranslate"><span class="pre">user,</span> <span class="pre">realm,</span> <span class="pre">password</span></code>) to authenticate
 against a host. But, by using <code class="docutils literal notranslate"><span class="pre">.htaccess</span></code> files, for example, it is possible
@@ -100,34 +98,34 @@ authentication definitions (<code class="docutils literal notranslate"><span cla
 <code class="docutils literal notranslate"><span class="pre">password</span></code>).</p>
 <blockquote>
 <div><ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">scheme</span></code>: can be empty (meaning the rest of the definition can be used
+<li><p><code class="docutils literal notranslate"><span class="pre">scheme</span></code>: can be empty (meaning the rest of the definition can be used
 for any scheme), <code class="docutils literal notranslate"><span class="pre">SFTP</span></code> and <code class="docutils literal notranslate"><span class="pre">bzr+ssh</span></code> should not be used here, <code class="docutils literal notranslate"><span class="pre">ssh</span></code>
 should be used instead since this is the real scheme regarding
-authentication,</li>
-<li><code class="docutils literal notranslate"><span class="pre">host</span></code>: can be empty (to act as a default for any host),</li>
-<li><code class="docutils literal notranslate"><span class="pre">port</span></code> can be empty (useful when an host provides several servers for the
+authentication,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">host</span></code>: can be empty (to act as a default for any host),</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">port</span></code> can be empty (useful when an host provides several servers for the
 same scheme), only numerical values are allowed, this should be used only
-when the server uses a port different than the scheme standard port,</li>
-<li><code class="docutils literal notranslate"><span class="pre">path</span></code>: can be empty (FTP or SFTP will never user it),</li>
-<li><code class="docutils literal notranslate"><span class="pre">user</span></code>: can be empty (<code class="docutils literal notranslate"><span class="pre">bzr</span></code> will default to python’s
-<code class="docutils literal notranslate"><span class="pre">getpass.get_user()</span></code>),</li>
-<li><code class="docutils literal notranslate"><span class="pre">password</span></code>: can be empty if you prefer to always be prompted for your
-password.</li>
+when the server uses a port different than the scheme standard port,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code>: can be empty (FTP or SFTP will never user it),</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">user</span></code>: can be empty (<code class="docutils literal notranslate"><span class="pre">bzr</span></code> will default to python’s
+<code class="docutils literal notranslate"><span class="pre">getpass.get_user()</span></code>),</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">password</span></code>: can be empty if you prefer to always be prompted for your
+password.</p></li>
 </ul>
 </div></blockquote>
 <p>Multiple definitions can be provided and, for a given URL, brz will select a
 (<code class="docutils literal notranslate"><span class="pre">user</span></code> [, <code class="docutils literal notranslate"><span class="pre">password</span></code>]) based on the following rules :</p>
 <blockquote>
 <div><ol class="arabic simple">
-<li>the first match wins,</li>
-<li>empty fields match everything,</li>
-<li><code class="docutils literal notranslate"><span class="pre">scheme</span></code> matches even if decorators are used in the requested URL,</li>
-<li><code class="docutils literal notranslate"><span class="pre">host</span></code> matches exactly or act as a domain if it starts with ‘.’
+<li><p>the first match wins,</p></li>
+<li><p>empty fields match everything,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scheme</span></code> matches even if decorators are used in the requested URL,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">host</span></code> matches exactly or act as a domain if it starts with ‘.’
 (<code class="docutils literal notranslate"><span class="pre">project.bzr.sf.net</span></code> will match <code class="docutils literal notranslate"><span class="pre">.bzr.sf.net</span></code> but <code class="docutils literal notranslate"><span class="pre">projectbzr.sf.net</span></code>
-will not match <code class="docutils literal notranslate"><span class="pre">bzr.sf.net</span></code>).</li>
-<li><code class="docutils literal notranslate"><span class="pre">port</span></code> matches if included in the requested URL (exact matches only)</li>
-<li><code class="docutils literal notranslate"><span class="pre">path</span></code> matches if included in the requested URL (and by rule #2 above,
-empty paths will match any provided path).</li>
+will not match <code class="docutils literal notranslate"><span class="pre">bzr.sf.net</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">port</span></code> matches if included in the requested URL (exact matches only)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code> matches if included in the requested URL (and by rule #2 above,
+empty paths will match any provided path).</p></li>
 </ol>
 </div></blockquote>
 </div>
@@ -140,14 +138,14 @@ apply except for the variable policies.</p>
 and should appear as the <em>last</em> section.</p>
 <p>Each section should define:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">user</span></code>: the login to be used,</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">user</span></code>: the login to be used,</p></li>
 </ul>
 <p>Each section could define:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">host</span></code>: the remote server,</li>
-<li><code class="docutils literal notranslate"><span class="pre">port</span></code>: the port the server is listening,</li>
-<li><code class="docutils literal notranslate"><span class="pre">path</span></code>: the branch location,</li>
-<li><code class="docutils literal notranslate"><span class="pre">password</span></code>: the password.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">host</span></code>: the remote server,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">port</span></code>: the port the server is listening,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code>: the branch location,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">password</span></code>: the password.</p></li>
 </ul>
 </div>
 <div class="section" id="examples">
@@ -225,13 +223,14 @@ proxy, and the two branches use different authentication policies:</p>
 <p>The following are not yet implemented but planned as parts of a work in
 progress:</p>
 <ul class="simple">
-<li>add a  <code class="docutils literal notranslate"><span class="pre">password_encoding</span></code> field allowing:<ul>
-<li>storing the passwords in various obfuscating encodings (base64 for one),</li>
-<li>delegate password storage to plugins (.netrc for example).</li>
+<li><p>add a  <code class="docutils literal notranslate"><span class="pre">password_encoding</span></code> field allowing:</p>
+<ul>
+<li><p>storing the passwords in various obfuscating encodings (base64 for one),</p></li>
+<li><p>delegate password storage to plugins (.netrc for example).</p></li>
 </ul>
 </li>
-<li>update the credentials when the user is prompted for user or password,</li>
-<li>add a <code class="docutils literal notranslate"><span class="pre">verify_certificates</span></code> field for <code class="docutils literal notranslate"><span class="pre">HTTPS</span></code>.</li>
+<li><p>update the credentials when the user is prompted for user or password,</p></li>
+<li><p>add a <code class="docutils literal notranslate"><span class="pre">verify_certificates</span></code> field for <code class="docutils literal notranslate"><span class="pre">HTTPS</span></code>.</p></li>
 </ul>
 <p>The <code class="docutils literal notranslate"><span class="pre">password_encoding</span></code> and <code class="docutils literal notranslate"><span class="pre">verify_certificates</span></code> fields are recognized but
 ignored in the actual implementation.</p>
@@ -261,8 +260,6 @@ ignored in the actual implementation.</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -290,7 +287,7 @@ ignored in the actual implementation.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

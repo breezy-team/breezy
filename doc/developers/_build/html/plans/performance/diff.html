@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>diff Performance Analysis &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>diff Performance Analysis &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -22,7 +20,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="../../index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -40,18 +38,19 @@
 <h1>diff Performance Analysis<a class="headerlink" href="#diff-performance-analysis" title="Permalink to this headline">¶</a></h1>
 <div class="contents local topic" id="contents">
 <ul class="simple">
-<li><a class="reference internal" href="#minimal-work" id="id1">Minimal Work</a><ul>
-<li><a class="reference internal" href="#reuse-of-historical-comparisons" id="id2">Reuse of historical comparisons</a></li>
-<li><a class="reference internal" href="#historical-tree-against-historical-tree" id="id3">Historical Tree Against Historical Tree</a></li>
-<li><a class="reference internal" href="#basis-against-historical-tree" id="id4">Basis Against Historical Tree</a></li>
-<li><a class="reference internal" href="#basis-against-basis" id="id5">Basis Against Basis</a></li>
-<li><a class="reference internal" href="#working-tree-against-basis" id="id6">Working Tree Against Basis</a></li>
-<li><a class="reference internal" href="#working-tree-against-historical-tree" id="id7">Working Tree Against Historical Tree</a></li>
-<li><a class="reference internal" href="#working-tree-against-working-tree" id="id8">Working Tree Against Working Tree</a></li>
+<li><p><a class="reference internal" href="#minimal-work" id="id1">Minimal Work</a></p>
+<ul>
+<li><p><a class="reference internal" href="#reuse-of-historical-comparisons" id="id2">Reuse of historical comparisons</a></p></li>
+<li><p><a class="reference internal" href="#historical-tree-against-historical-tree" id="id3">Historical Tree Against Historical Tree</a></p></li>
+<li><p><a class="reference internal" href="#basis-against-historical-tree" id="id4">Basis Against Historical Tree</a></p></li>
+<li><p><a class="reference internal" href="#basis-against-basis" id="id5">Basis Against Basis</a></p></li>
+<li><p><a class="reference internal" href="#working-tree-against-basis" id="id6">Working Tree Against Basis</a></p></li>
+<li><p><a class="reference internal" href="#working-tree-against-historical-tree" id="id7">Working Tree Against Historical Tree</a></p></li>
+<li><p><a class="reference internal" href="#working-tree-against-working-tree" id="id8">Working Tree Against Working Tree</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#api-changes" id="id9">API Changes</a></li>
-<li><a class="reference internal" href="#storage-considerations" id="id10">Storage considerations</a></li>
+<li><p><a class="reference internal" href="#api-changes" id="id9">API Changes</a></p></li>
+<li><p><a class="reference internal" href="#storage-considerations" id="id10">Storage considerations</a></p></li>
 </ul>
 </div>
 <div class="section" id="minimal-work">
@@ -88,8 +87,8 @@ can be extracted and combined with other comparisons.  This comparision
 extraction should be possible at the inventory and file-content levels.</p>
 <p>Minimum work:</p>
 <ol class="arabic simple">
-<li>Extract and combine inventory comparisons</li>
-<li>Extract and combine text comparisions for modified texts</li>
+<li><p>Extract and combine inventory comparisons</p></li>
+<li><p>Extract and combine text comparisions for modified texts</p></li>
 </ol>
 </div>
 <div class="section" id="basis-against-historical-tree">
@@ -113,10 +112,10 @@ comparison is latent, but present.  The only issue is extracting it.</p>
 file-id, to facilitate removal of stale data.</p>
 <p>Minimum work:</p>
 <ol class="arabic simple">
-<li>Scan working tree for modified files</li>
-<li>Retrieve cached comparisons</li>
-<li>Perform comparisons on files with no cached comparisons</li>
-<li>Cache comparisons for files with no cached comparisons</li>
+<li><p>Scan working tree for modified files</p></li>
+<li><p>Retrieve cached comparisons</p></li>
+<li><p>Perform comparisons on files with no cached comparisons</p></li>
+<li><p>Cache comparisons for files with no cached comparisons</p></li>
 </ol>
 </div>
 <div class="section" id="working-tree-against-historical-tree">
@@ -138,16 +137,16 @@ Against Historical Tree.</p>
 <p>Desired API:</p>
 <blockquote>
 <div><ul class="simple">
-<li>Tree.get_comparision(file_id, tree)</li>
+<li><p>Tree.get_comparision(file_id, tree)</p></li>
 </ul>
 </div></blockquote>
 <p>This probably entails:</p>
 <blockquote>
 <div><ul class="simple">
-<li>WorkingTree.store_comparison(file_id, revision_id, sha1, comparison)</li>
-<li>WorkingTree.get_comparison(file_id, revision_id, sha1)</li>
-<li>Repository.get_comparision(file_id, revision_id, revision_id)</li>
-<li>merge_comparisions(comparison, comparision)</li>
+<li><p>WorkingTree.store_comparison(file_id, revision_id, sha1, comparison)</p></li>
+<li><p>WorkingTree.get_comparison(file_id, revision_id, sha1)</p></li>
+<li><p>Repository.get_comparision(file_id, revision_id, revision_id)</p></li>
+<li><p>merge_comparisions(comparison, comparision)</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -208,8 +207,6 @@ the inventories of two historical trees.</p>
             <form class="search" action="../../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -233,7 +230,7 @@ the inventories of two historical trees.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

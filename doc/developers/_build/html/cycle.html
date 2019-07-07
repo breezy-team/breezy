@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Breezy Release Cycles &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Breezy Release Cycles &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -22,7 +20,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -38,14 +36,11 @@
             
   <div class="section" id="breezy-release-cycles">
 <h1>Breezy Release Cycles<a class="headerlink" href="#breezy-release-cycles" title="Permalink to this headline">¶</a></h1>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">status:</th><td class="field-body">Current policy, as of 2017-11.</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">status</dt>
+<dd class="field-odd"><p>Current policy, as of 2017-11.</p>
+</dd>
+</dl>
 <p>Our users want easy access to bug fixes without other changes to the
 core product. They also want a Just Works experience across the full
 Breezy ecosystem. To deliver the first and enable the second, we’re
@@ -55,9 +50,9 @@ better availability of bug fixes in OS distributions, more freedom to
 remove old code, and less work for in packaging.</p>
 <p>See also:</p>
 <ul class="simple">
-<li><a class="reference external" href="index.html">Breezy Developer Document Catalog</a></li>
-<li><a class="reference external" href="releasing.html">Releasing Bazaar</a> – the process for actually making
-a release or release candidate.</li>
+<li><p><a class="reference external" href="index.html">Breezy Developer Document Catalog</a></p></li>
+<li><p><a class="reference external" href="releasing.html">Releasing Bazaar</a> – the process for actually making
+a release or release candidate.</p></li>
 </ul>
 <div class="section" id="the-process">
 <h2>The Process<a class="headerlink" href="#the-process" title="Permalink to this headline">¶</a></h2>
@@ -128,34 +123,41 @@ that you just want to land on the 2.0.x stable release series.)</p>
 <h3>Terminology<a class="headerlink" href="#terminology" title="Permalink to this headline">¶</a></h3>
 <p>Major releases (2.0.0 or 2.1.0)</p>
 <blockquote>
-<div>The big ones, every six months, intended to ship in distributions and
-to be used by stability-oriented users.</div></blockquote>
+<div><p>The big ones, every six months, intended to ship in distributions and
+to be used by stability-oriented users.</p>
+</div></blockquote>
 <p>Release candidate (2.0.0rc1)</p>
 <blockquote>
-<div>A preview of a major release, made one or a few weeks beforehand at the
+<div><p>A preview of a major release, made one or a few weeks beforehand at the
 time the release branch is created.  There should be few if any changes
 from the rc to the stable release.  We should avoid the confusing phrasing
 “release candidate 2.0.0rc1 is released”; instead use “available.”
 Starting with the 2.3 series we don’t plan on making release candidates
-anymore.</div></blockquote>
+anymore.</p>
+</div></blockquote>
 <p>Bugfix releases (2.0.1)</p>
 <blockquote>
-<div>Based on the previous major release or bugfix; contains only bugfixes
-and perhaps documentation or translation corrections.</div></blockquote>
+<div><p>Based on the previous major release or bugfix; contains only bugfixes
+and perhaps documentation or translation corrections.</p>
+</div></blockquote>
 <p>Stable series</p>
 <blockquote>
-<div>A major release and its descendant bugfix releases.</div></blockquote>
+<div><p>A major release and its descendant bugfix releases.</p>
+</div></blockquote>
 <p>Stable release</p>
 <blockquote>
-<div>Either a major release or a bugfix release.</div></blockquote>
+<div><p>Either a major release or a bugfix release.</p>
+</div></blockquote>
 <p>Beta release (3.0.0beta1)</p>
 <blockquote>
-<div>Made from trunk every month, except for the month there’s a major
+<div><p>Made from trunk every month, except for the month there’s a major
 release.  Stable and suitable for users who want the latest code and
-can live with some changes from month to month.</div></blockquote>
+can live with some changes from month to month.</p>
+</div></blockquote>
 <p>Development series</p>
 <blockquote>
-<div>The development releases leading up to a stable release.</div></blockquote>
+<div><p>The development releases leading up to a stable release.</p>
+</div></blockquote>
 </div>
 <div class="section" id="bug-work">
 <h3>Bug Work<a class="headerlink" href="#bug-work" title="Permalink to this headline">¶</a></h3>
@@ -280,43 +282,43 @@ announcement is published, people will be able to easily install it.</p>
 <p>Every week the release manager should send a mail to the Bazaar list
 covering these points (as appropriate):</p>
 <ul class="simple">
-<li>Early communication about changing dependencies or defaults</li>
-<li>Reminder re lifecycle and where we’re up to right now, in particular the
-dates for the next release and/or candidate.</li>
-<li>Summary of recent successes and pending work.</li>
-<li>Reminder re release objectives</li>
-<li>Reminder re things needing attention, e.g. bug triage, reviews, testing
-of certain things, etc.</li>
+<li><p>Early communication about changing dependencies or defaults</p></li>
+<li><p>Reminder re lifecycle and where we’re up to right now, in particular the
+dates for the next release and/or candidate.</p></li>
+<li><p>Summary of recent successes and pending work.</p></li>
+<li><p>Reminder re release objectives</p></li>
+<li><p>Reminder re things needing attention, e.g. bug triage, reviews, testing
+of certain things, etc.</p></li>
 </ul>
 </div>
 </div>
 <div class="section" id="questions">
 <h2>Questions<a class="headerlink" href="#questions" title="Permalink to this headline">¶</a></h2>
-<dl class="docutils">
-<dt>Do users actually want this?</dt>
-<dd>Apparently yes, because it’s often requested and often raised as a
-problem.</dd>
-<dt>Would this confuse users?</dt>
-<dd>It shouldn’t, because it’s a fairly standard scheme.</dd>
-<dt>Won’t it take more time to fix bugs in multiple places?</dt>
-<dd>It shouldn’t, because we’ll only do this when the stable bugfix seems
+<dl class="simple">
+<dt>Do users actually want this?</dt><dd><p>Apparently yes, because it’s often requested and often raised as a
+problem.</p>
+</dd>
+<dt>Would this confuse users?</dt><dd><p>It shouldn’t, because it’s a fairly standard scheme.</p>
+</dd>
+<dt>Won’t it take more time to fix bugs in multiple places?</dt><dd><p>It shouldn’t, because we’ll only do this when the stable bugfix seems
 economical.  When we fix bugs today in both trunk and release branches
-it normally does not take much more time.</dd>
-<dt>What about bzr in Ubuntu LTS, with a five-year support life?</dt>
-<dd>Most bugs are either fixed within six months, or not fixed at all, or
+it normally does not take much more time.</p>
+</dd>
+<dt>What about bzr in Ubuntu LTS, with a five-year support life?</dt><dd><p>Most bugs are either fixed within six months, or not fixed at all, or
 not very important, or fixed as part of a large rework of the code
 that would be too large to backport.  However, if there are fixes that
 are especially desired in an old release and feasible to do, we can do
-them without making a general commitment.</dd>
-<dt>Will anyone test the beta releases?</dt>
-<dd>Probably yes, our most active users will run them, but if people would
-really rather not test them, forcing them is not helpful.</dd>
-<dt>Isn’t this a step backwards to a slower, less-agile process?</dt>
-<dd>No, our trunk stays releasable, and we ship every month.  We’re just
+them without making a general commitment.</p>
+</dd>
+<dt>Will anyone test the beta releases?</dt><dd><p>Probably yes, our most active users will run them, but if people would
+really rather not test them, forcing them is not helpful.</p>
+</dd>
+<dt>Isn’t this a step backwards to a slower, less-agile process?</dt><dd><p>No, our trunk stays releasable, and we ship every month.  We’re just
 cutting out things that hold us back (continuous rather than episodic
-API stability; RCs every month) and giving users what they demand.</dd>
-<dt>How about calling the monthly releases “milestone” or “next” not “beta”?</dt>
-<dd>Those words are less scary but they also have less clear meanings.</dd>
+API stability; RCs every month) and giving users what they demand.</p>
+</dd>
+<dt>How about calling the monthly releases “milestone” or “next” not “beta”?</dt><dd><p>Those words are less scary but they also have less clear meanings.</p>
+</dd>
 </dl>
 </div>
 <div class="section" id="expected-benefits">
@@ -324,18 +326,18 @@ API stability; RCs every month) and giving users what they demand.</dd>
 <p>If this plan works, we’ll expect to see the following changes.  If they
 don’t occur, we’ll think again:</p>
 <ul class="simple">
-<li>We see a distribution curve of users and bug reports across nightly, monthly
-and stable releases, indicating that each has value.</li>
-<li>API changes are easier or safer to make during beta periods, without
-being held back by fears of compatibility or</li>
-<li>The stable releases are actually stable and don’t introduce regressions
-or break plugins.</li>
-<li>Many bugs are fixed in stable branches, without developers feeling this
-is a waste of time.</li>
-<li>Distributions ship the stable releases in their stable releases and the
-bugfix releases in their bugfix releases.</li>
-<li>Plugin authors follow this policy, making their own bugfix releases.</li>
-<li>Users like it.</li>
+<li><p>We see a distribution curve of users and bug reports across nightly, monthly
+and stable releases, indicating that each has value.</p></li>
+<li><p>API changes are easier or safer to make during beta periods, without
+being held back by fears of compatibility or</p></li>
+<li><p>The stable releases are actually stable and don’t introduce regressions
+or break plugins.</p></li>
+<li><p>Many bugs are fixed in stable branches, without developers feeling this
+is a waste of time.</p></li>
+<li><p>Distributions ship the stable releases in their stable releases and the
+bugfix releases in their bugfix releases.</p></li>
+<li><p>Plugin authors follow this policy, making their own bugfix releases.</p></li>
+<li><p>Users like it.</p></li>
 </ul>
 <p>After doing this for the 2.0 cycle (September 2009 through to early
 2010), it seems to be going well.</p>
@@ -344,34 +346,34 @@ bugfix releases in their bugfix releases.</li>
 <h2>Reviewing for the Stable Branch<a class="headerlink" href="#reviewing-for-the-stable-branch" title="Permalink to this headline">¶</a></h2>
 <p>These are guidelines and can be interpreted case-by-case.</p>
 <ul class="simple">
-<li>All changes to the stable branch should fix a bug, even if you would not
+<li><p>All changes to the stable branch should fix a bug, even if you would not
 normally file a bug for the change.  The bug description should if at
 all possible explain how to manually verify the bug in a way that will
 fail before and pass after the change.  (These are requirements for the
-SRU process.)</li>
-<li>The change should be reasonably small and conservative.</li>
-<li>Remember that the patch will be read during the SRU
+SRU process.)</p></li>
+<li><p>The change should be reasonably small and conservative.</p></li>
+<li><p>Remember that the patch will be read during the SRU
 process and so keeping the patch small is useful even beyond keeping the
 logical changes small.  Avoid doing mechanical bulk changes on the
-stable branch.</li>
-<li>Use particular care for things that may behave differently across
+stable branch.</p></li>
+<li><p>Use particular care for things that may behave differently across
 platforms, encodings or locales.  It’s harder to thoroughly test these
-things before a release.</li>
-<li>Generally speaking, just cleaning things up is not a sufficient reason
-to make changes to the stable branch.  It has to actually fix a bug.</li>
-<li>Changes to the stable branch should include tests as usual.</li>
-<li>Don’t change or remove existing APIs that might be used by plugins, even
+things before a release.</p></li>
+<li><p>Generally speaking, just cleaning things up is not a sufficient reason
+to make changes to the stable branch.  It has to actually fix a bug.</p></li>
+<li><p>Changes to the stable branch should include tests as usual.</p></li>
+<li><p>Don’t change or remove existing APIs that might be used by plugins, even
 if they are underscore-prefixed.  Adding APIs that are also being added
-to the trunk branch may make sense.</li>
-<li>Keeping consistency with trunk is useful, but less important than
-keeping the stable branch stable.</li>
-<li>(more items welcome)</li>
+to the trunk branch may make sense.</p></li>
+<li><p>Keeping consistency with trunk is useful, but less important than
+keeping the stable branch stable.</p></li>
+<li><p>(more items welcome)</p></li>
 </ul>
 </div>
 <div class="section" id="references">
 <h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li>List thread “<a class="reference external" href="https://lists.ubuntu.com/archives/bazaar/2009q3/060882.html">[rfc] six-month stable release cycles</a>”, July 2009.</li>
+<li><p>List thread “<a class="reference external" href="https://lists.ubuntu.com/archives/bazaar/2009q3/060882.html">[rfc] six-month stable release cycles</a>”, July 2009.</p></li>
 </ol>
 </div>
 </div>
@@ -425,8 +427,6 @@ keeping the stable branch stable.</li>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -450,7 +450,7 @@ keeping the stable branch stable.</li>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

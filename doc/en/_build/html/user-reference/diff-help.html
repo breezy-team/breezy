@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>diff &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>diff &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="deleted-help.html" title="deleted"
              accesskey="P">previous</a> |
@@ -41,84 +39,60 @@
             
   <div class="section" id="diff">
 <h1>diff<a class="headerlink" href="#diff" title="Permalink to this headline">¶</a></h1>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Show differences in the working tree, between revisions or branches.</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz diff [FILE…]</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
-<col class="option" />
-<col class="description" />
-<tbody valign="top">
-<tr><td class="option-group" colspan="2">
-<kbd><span class="option">-c <var>ARG</var></span>, <span class="option">--change=<var>ARG</var></span></kbd></td>
-</tr>
-<tr><td>&#160;</td><td><p class="first last">Select changes introduced by the specified revision.
+<dl class="field-list">
+<dt class="field-odd">Purpose</dt>
+<dd class="field-odd"><p>Show differences in the working tree, between revisions or branches.</p>
+</dd>
+<dt class="field-even">Usage</dt>
+<dd class="field-even"><p>brz diff [FILE…]</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><dl class="option-list">
+<dt><kbd><span class="option">-c <var>ARG</var></span>, <span class="option">--change=<var>ARG</var></span></kbd></dt>
+<dd><p>Select changes introduced by the specified revision.
 See also “help revisionspec”.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--context=<var>ARG</var></span></kbd></td>
-<td><p class="first last">How many lines of context to show.</p>
-</td></tr>
-<tr><td class="option-group" colspan="2">
-<kbd><span class="option">--diff-options=<var>ARG</var></span></kbd></td>
-</tr>
-<tr><td>&#160;</td><td><p class="first last">Pass these options to the external diff program.</p>
-</td></tr>
-<tr><td class="option-group" colspan="2">
-<kbd><span class="option">-F <var>ARG</var></span>, <span class="option">--format=<var>ARG</var></span></kbd></td>
-</tr>
-<tr><td>&#160;</td><td><p class="first last">Diff format to use.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
-<td><p class="first last">Show help message.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--new=<var>ARG</var></span></kbd></td>
-<td><p class="first last">Branch/tree to compare to.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--old=<var>ARG</var></span></kbd></td>
-<td><p class="first last">Branch/tree to compare from.</p>
-</td></tr>
-<tr><td class="option-group" colspan="2">
-<kbd><span class="option">-p <var>ARG</var></span>, <span class="option">--prefix=<var>ARG</var></span></kbd></td>
-</tr>
-<tr><td>&#160;</td><td><p class="first last">Set prefixes added to old and new filenames, as two
+</dd>
+<dt><kbd><span class="option">--context=<var>ARG</var></span></kbd></dt>
+<dd><p>How many lines of context to show.</p>
+</dd>
+<dt><kbd><span class="option">--diff-options=<var>ARG</var></span></kbd></dt>
+<dd><p>Pass these options to the external diff program.</p>
+</dd>
+<dt><kbd><span class="option">-F <var>ARG</var></span>, <span class="option">--format=<var>ARG</var></span></kbd></dt>
+<dd><p>Diff format to use.</p>
+</dd>
+<dt><kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></dt>
+<dd><p>Show help message.</p>
+</dd>
+<dt><kbd><span class="option">--new=<var>ARG</var></span></kbd></dt>
+<dd><p>Branch/tree to compare to.</p>
+</dd>
+<dt><kbd><span class="option">--old=<var>ARG</var></span></kbd></dt>
+<dd><p>Branch/tree to compare from.</p>
+</dd>
+<dt><kbd><span class="option">-p <var>ARG</var></span>, <span class="option">--prefix=<var>ARG</var></span></kbd></dt>
+<dd><p>Set prefixes added to old and new filenames, as two
 values separated by a colon. (eg “old/:new/”).</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
-<td><p class="first last">Only display errors and warnings.</p>
-</td></tr>
-<tr><td class="option-group" colspan="2">
-<kbd><span class="option">-r <var>ARG</var></span>, <span class="option">--revision=<var>ARG</var></span></kbd></td>
-</tr>
-<tr><td>&#160;</td><td><p class="first last">See “help revisionspec” for details.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--usage</span></kbd></td>
-<td><p class="first last">Show usage message and options.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--using=<var>ARG</var></span></kbd></td>
-<td><p class="first last">Use this command to compare files.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
-<td><p class="first last">Display more information.</p>
-</td></tr>
-</tbody>
-</table>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">If no arguments are given, all changes for the current tree are listed.
+</dd>
+<dt><kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></dt>
+<dd><p>Only display errors and warnings.</p>
+</dd>
+<dt><kbd><span class="option">-r <var>ARG</var></span>, <span class="option">--revision=<var>ARG</var></span></kbd></dt>
+<dd><p>See “help revisionspec” for details.</p>
+</dd>
+<dt><kbd><span class="option">--usage</span></kbd></dt>
+<dd><p>Show usage message and options.</p>
+</dd>
+<dt><kbd><span class="option">--using=<var>ARG</var></span></kbd></dt>
+<dd><p>Use this command to compare files.</p>
+</dd>
+<dt><kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></dt>
+<dd><p>Display more information.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Description</dt>
+<dd class="field-even"><p>If no arguments are given, all changes for the current tree are listed.
 If files are given, only the changes in those files are listed.
 Remote and multiple branches can be compared by using the –old and
 –new options. If not provided, the default for both is derived from
@@ -132,15 +106,15 @@ is, the command does not show the changes introduced by the first
 revision in the range.  This differs from the interpretation of
 revision ranges used by “brz log” which includes the first revision
 in the range.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Exit values:</th><td class="field-body"><p class="first">1 - changed
+</dd>
+<dt class="field-odd">Exit values</dt>
+<dd class="field-odd"><p>1 - changed
 2 - unrepresentable changes
 3 - error
 0 - no change</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Examples:</th><td class="field-body"><p class="first">Shows the difference in the working tree versus the last commit:</p>
+</dd>
+<dt class="field-even">Examples</dt>
+<dd class="field-even"><p>Shows the difference in the working tree versus the last commit:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span>
 </pre></div>
 </div>
@@ -199,16 +173,14 @@ another parent, use:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">diff</span> <span class="o">--</span><span class="n">using</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">diff</span> <span class="o">--</span><span class="n">diff</span><span class="o">-</span><span class="n">options</span> <span class="o">-</span><span class="n">wu</span>
 </pre></div>
 </div>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Aliases:</th><td class="field-body"><p class="first">di, dif</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">See also:</th><td class="field-body"><p class="first last"><a class="reference internal" href="status-help.html"><span class="doc">status</span></a></p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Aliases</dt>
+<dd class="field-odd"><p>di, dif</p>
+</dd>
+<dt class="field-even">See also</dt>
+<dd class="field-even"><p><a class="reference internal" href="status-help.html"><span class="doc">status</span></a></p>
+</dd>
+</dl>
 </div>
 
 
@@ -234,8 +206,6 @@ another parent, use:</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -263,7 +233,7 @@ another parent, use:</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

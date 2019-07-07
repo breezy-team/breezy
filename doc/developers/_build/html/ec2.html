@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Breezy Windows EC2 Server &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Breezy Windows EC2 Server &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="ppa.html" title="Managing the Breezy PPA"
              accesskey="P">previous</a> |
@@ -51,21 +49,21 @@ but we aim to use it for the production Windows installer build of 1.13 in
 March.</p>
 <p>See also:</p>
 <ul class="simple">
-<li><a class="reference external" href="index.html">Breezy Developer Documentation Catalog</a>.</li>
+<li><p><a class="reference external" href="index.html">Breezy Developer Documentation Catalog</a>.</p></li>
 </ul>
 <div class="section" id="goals">
 <h2>Goals<a class="headerlink" href="#goals" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>The instance is only running (and incurring charges) when it’s needed
-for testing or packaging.</li>
-<li>It can be started or stopped by anyone on the team using a
-straightforward script.</li>
-<li>Multiple people can get into the same instance at the same time, e.g.
-if one person needs to pass work on to some one else.</li>
-<li>We keep snapshot of the OS and tool chain so that we can roll back if
-we need to.</li>
-<li>branches and similar information are kept on stable storage that
-survives rollbacks of the OS state, and that can be backed up.</li>
+<li><p>The instance is only running (and incurring charges) when it’s needed
+for testing or packaging.</p></li>
+<li><p>It can be started or stopped by anyone on the team using a
+straightforward script.</p></li>
+<li><p>Multiple people can get into the same instance at the same time, e.g.
+if one person needs to pass work on to some one else.</p></li>
+<li><p>We keep snapshot of the OS and tool chain so that we can roll back if
+we need to.</p></li>
+<li><p>branches and similar information are kept on stable storage that
+survives rollbacks of the OS state, and that can be backed up.</p></li>
 </ul>
 <p>Later on we may try automated Windows testing in a similar setup.</p>
 </div>
@@ -111,16 +109,13 @@ apparently not.</p>
 <div class="section" id="preparation">
 <h3>Preparation<a class="headerlink" href="#preparation" title="Permalink to this headline">¶</a></h3>
 <ul>
-<li><p class="first">Be in the brz core team.  If you are interested in helping with
-Windows packaging, testing or development just ask.</p>
-</li>
-<li><p class="first">Install the
-<a class="reference external" href="http://developer.amazonwebservices.com/connect/entry.jspa?externalID=368&amp;categoryID=88">Amazon EC2 API tools</a> (needs-packaging <a class="reference external" href="https://bugs.launchpad.net/ubuntu/+bug/330930">bug 330930</a>)</p>
-</li>
-<li><p class="first">Create an Amazon Web Services account, sign up for S3 and EC2, and do
-the various steps to create authentication devices.</p>
-</li>
-<li><p class="first">Create a private key and certificate for yourself.
+<li><p>Be in the brz core team.  If you are interested in helping with
+Windows packaging, testing or development just ask.</p></li>
+<li><p>Install the
+<a class="reference external" href="http://developer.amazonwebservices.com/connect/entry.jspa?externalID=368&amp;categoryID=88">Amazon EC2 API tools</a> (needs-packaging <a class="reference external" href="https://bugs.launchpad.net/ubuntu/+bug/330930">bug 330930</a>)</p></li>
+<li><p>Create an Amazon Web Services account, sign up for S3 and EC2, and do
+the various steps to create authentication devices.</p></li>
+<li><p>Create a private key and certificate for yourself.
 Check these environment variables are set and exported, e.g. by setting
 them in the file <code class="docutils literal notranslate"><span class="pre">~/.aws</span></code>.  Make sure the files are private.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>export EC2_PRIVATE_KEY=~/.ec2/pk-XXXXXX.pem
@@ -136,18 +131,14 @@ ssh-add ~/.ec2/id_rsa
 </div>
 <p>You can now ‘. ~/.aws’ to get the ec2 commands available.</p>
 </li>
-<li><p class="first">(Unix images only) run ec2-add-keypair SOMENAME, e.g. ‘bzr’. Put the
-result (minus the first line) somewhere like ~/.ec2/id_rsa and chmod go-rw.</p>
-</li>
-<li><p class="first">A useful Unix image is <a class="reference external" href="http://developer.amazonwebservices.com/connect/entry.jspa?externalID=1762&amp;categoryID=101">ami-bdfe19d4</a>, Eric Hammonds 64-bit Ubuntu image.</p>
-</li>
-<li><p class="first">Install the rdesktop client, to actually access the machine.</p>
-</li>
-<li><p class="first">Possibly read some of the <a class="reference external" href="http://aws.amazon.com/">EC2 documentation</a> for background.</p>
-</li>
+<li><p>(Unix images only) run ec2-add-keypair SOMENAME, e.g. ‘bzr’. Put the
+result (minus the first line) somewhere like ~/.ec2/id_rsa and chmod go-rw.</p></li>
+<li><p>A useful Unix image is <a class="reference external" href="http://developer.amazonwebservices.com/connect/entry.jspa?externalID=1762&amp;categoryID=101">ami-bdfe19d4</a>, Eric Hammonds 64-bit Ubuntu image.</p></li>
+<li><p>Install the rdesktop client, to actually access the machine.</p></li>
+<li><p>Possibly read some of the <a class="reference external" href="http://aws.amazon.com/">EC2 documentation</a> for background.</p></li>
 </ul>
 <ul>
-<li><p class="first">Create a security group for your that allows rdesktop access and icmp with:</p>
+<li><p>Create a security group for your that allows rdesktop access and icmp with:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ec2</span><span class="o">-</span><span class="n">add</span><span class="o">-</span><span class="n">group</span> <span class="n">desolation</span><span class="o">-</span><span class="n">group</span> <span class="o">-</span><span class="n">d</span> <span class="s1">&#39;bzr win32 build machine&#39;</span>
 <span class="n">ec2</span><span class="o">-</span><span class="n">authorize</span> <span class="n">desolation</span><span class="o">-</span><span class="n">group</span> <span class="o">-</span><span class="n">p</span> <span class="mi">3389</span> <span class="o">-</span><span class="n">s</span> <span class="mf">1.2</span><span class="o">.</span><span class="mf">3.4</span><span class="o">/</span><span class="mi">32</span>
 <span class="n">ec2</span><span class="o">-</span><span class="n">authorize</span> <span class="n">desolation</span><span class="o">-</span><span class="n">group</span> <span class="o">-</span><span class="n">t</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span> <span class="o">-</span><span class="n">P</span> <span class="n">icmp</span>
@@ -161,10 +152,10 @@ in.</p>
 <div class="section" id="to-start-up-an-instance">
 <h3>To start up an instance<a class="headerlink" href="#to-start-up-an-instance" title="Permalink to this headline">¶</a></h3>
 <ol class="arabic simple">
-<li>Get the right AMI image ID from another developer.</li>
+<li><p>Get the right AMI image ID from another developer.</p></li>
 </ol>
 <ol class="arabic">
-<li><p class="first">Start the instance:</p>
+<li><p>Start the instance:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ec2-run-instances $image_id -g desolation-group
 </pre></div>
 </div>
@@ -173,7 +164,7 @@ like <code class="docutils literal notranslate"><span class="pre">i-31a74258</sp
 </li>
 </ol>
 <ol class="arabic">
-<li><p class="first">Actually starting the machine will take a few minutes.  Once it’s in
+<li><p>Actually starting the machine will take a few minutes.  Once it’s in
 the <em>running</em> state, get the machine’s public IP with</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ec2</span><span class="o">-</span><span class="n">describe</span><span class="o">-</span><span class="n">instances</span>
 </pre></div>
@@ -181,7 +172,7 @@ the <em>running</em> state, get the machine’s public IP with</p>
 </li>
 </ol>
 <ol class="arabic">
-<li><p class="first">and then connect</p>
+<li><p>and then connect</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>rdesktop -g 1200x850 -u Administrator $machine_ip
 </pre></div>
 </div>
@@ -193,7 +184,7 @@ the <em>running</em> state, get the machine’s public IP with</p>
 <div class="section" id="to-save-a-system-snapshot-as-an-image">
 <h3>To save a system snapshot as an image<a class="headerlink" href="#to-save-a-system-snapshot-as-an-image" title="Permalink to this headline">¶</a></h3>
 <ol class="arabic">
-<li><p class="first">Bundle the current state.  <em>Doing this will reboot the machine.</em>
+<li><p>Bundle the current state.  <em>Doing this will reboot the machine.</em>
 You need to choose a unique s3 bucket name,
 typically based on a domain or email address, which can contain
 any number of images.  You also need a name unique within the bucket
@@ -209,14 +200,14 @@ it needs your AWS S3 access key and secret key, which should be set in
 </li>
 </ol>
 <ol class="arabic">
-<li><p class="first">This will take several minutes:  You can check progress with</p>
+<li><p>This will take several minutes:  You can check progress with</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ec2</span><span class="o">-</span><span class="n">describe</span><span class="o">-</span><span class="n">bundle</span><span class="o">-</span><span class="n">tasks</span>
 </pre></div>
 </div>
 </li>
 </ol>
 <ol class="arabic">
-<li><p class="first">Register the files as an image, e.g.:</p>
+<li><p>Register the files as an image, e.g.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>  <span class="n">ec2</span><span class="o">-</span><span class="n">register</span> <span class="n">ec2</span><span class="o">.</span><span class="n">sourcefrog</span><span class="o">.</span><span class="n">net</span><span class="o">/</span><span class="n">desolation</span><span class="o">-</span><span class="n">vs2008</span><span class="o">-</span><span class="mi">2009021</span>
 
 <span class="n">This</span> <span class="n">will</span> <span class="n">give</span> <span class="n">you</span> <span class="n">an</span> <span class="n">AMI</span> <span class="nb">id</span> <span class="k">for</span> <span class="n">the</span> <span class="n">image</span><span class="o">.</span>
@@ -225,7 +216,7 @@ it needs your AWS S3 access key and secret key, which should be set in
 </li>
 </ol>
 <ol class="arabic">
-<li><p class="first">Give access to other team members identified by their Amazon account id:</p>
+<li><p>Give access to other team members identified by their Amazon account id:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ec2-modify-image-attributes $ami_id -l -a 123412341234
 </pre></div>
 </div>
@@ -288,8 +279,6 @@ it needs your AWS S3 access key and secret key, which should be set in
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -317,7 +306,7 @@ it needs your AWS S3 access key and secret key, which should be set in
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

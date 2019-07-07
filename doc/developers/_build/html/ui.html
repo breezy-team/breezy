@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Interacting with the user &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Interacting with the user &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="transports.html" title="Developer guide to breezy transports"
              accesskey="P">previous</a> |
@@ -80,13 +78,13 @@ keyed by the confirmation id.</p>
 use them.  (Because code may move or the check may for implementation
 reasons be done elsewhere, they need not perfectly correspond to the place
 they’re used, and they should stay stable even when the code moves.)</p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">breezy.builtins.uncommit</span></code></dt>
-<dd>Before the <code class="docutils literal notranslate"><span class="pre">uncommit</span></code> command actually changes the branch.</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">breezy.lockdir.break</span></code></dt>
-<dd>Before breaking a lock.</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">breezy.msgeditor.unchanged</span></code></dt>
-<dd>Proceed even though the user made no changes to the template message.</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">breezy.builtins.uncommit</span></code></dt><dd><p>Before the <code class="docutils literal notranslate"><span class="pre">uncommit</span></code> command actually changes the branch.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">breezy.lockdir.break</span></code></dt><dd><p>Before breaking a lock.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">breezy.msgeditor.unchanged</span></code></dt><dd><p>Proceed even though the user made no changes to the template message.</p>
+</dd>
 </dl>
 <p>Interactive confirmations can be overridden by using a
 <cite>ConfirmationUserInterfacePolicy</cite> decorator as the default
@@ -103,7 +101,7 @@ mechanism.</p>
 <p>We can distinguish two types of output from the library:</p>
 <blockquote>
 <div><ol class="arabic">
-<li><p class="first">Structured data representing the progress or result of an
+<li><p>Structured data representing the progress or result of an
 operation.  For example, for a commit command this will be a list
 of the modified files and the finally committed revision number
 and id.</p>
@@ -112,11 +110,10 @@ to a callback parameter.</p>
 <p>A special case of this is progress indicators for long-lived
 operations, where the caller should pass a ProgressBar object.</p>
 </li>
-<li><p class="first">Unstructured log/debug messages, mostly for the benefit of the
+<li><p>Unstructured log/debug messages, mostly for the benefit of the
 developers or users trying to debug problems.  This should always
 be sent through <code class="docutils literal notranslate"><span class="pre">breezy.trace</span></code> and Python <code class="docutils literal notranslate"><span class="pre">logging</span></code>, so that
-it can be redirected by the client.</p>
-</li>
+it can be redirected by the client.</p></li>
 </ol>
 </div></blockquote>
 <p>The distinction between the two is a bit subjective, but in general if
@@ -166,8 +163,8 @@ see <a class="reference external" href="https://bugs.launchpad.net/bugs/544297">
 which unit should be used when. Roughly speaking, IEC standard applies
 for base-2 units and SI standard applies for base-10 units:</p>
 <ul class="simple">
-<li>for network bandwidth and disk sizes, use base-10 (Mbits/s, kB/s, GB)</li>
-<li>for RAM sizes, use base-2 (GiB, TiB)</li>
+<li><p>for network bandwidth and disk sizes, use base-10 (Mbits/s, kB/s, GB)</p></li>
+<li><p>for RAM sizes, use base-2 (GiB, TiB)</p></li>
 </ul>
 </div>
 </div>
@@ -192,13 +189,13 @@ pipelines.</p>
 <p>Recommended values are:</p>
 <blockquote>
 <div><ol class="arabic simple" start="0">
-<li>OK.</li>
-<li>Conflicts in merge-like operations, or changes are present in
-diff-like operations.</li>
-<li>Unrepresentable diff changes (i.e. binary files that we cannot show
-a diff of).</li>
-<li>An error or exception has occurred.</li>
-<li>An internal error occurred (one that shows a traceback.)</li>
+<li><p>OK.</p></li>
+<li><p>Conflicts in merge-like operations, or changes are present in
+diff-like operations.</p></li>
+<li><p>Unrepresentable diff changes (i.e. binary files that we cannot show
+a diff of).</p></li>
+<li><p>An error or exception has occurred.</p></li>
+<li><p>An internal error occurred (one that shows a traceback.)</p></li>
 </ol>
 </div></blockquote>
 <p>Errors are handled through Python exceptions. Exceptions should be defined
@@ -227,13 +224,13 @@ error’s instance dict.</p>
 that exception specifically, or when it needs a substantially different
 format string.</p>
 <ol class="arabic simple">
-<li>If it is something that a caller can recover from, a custom exception
-is reasonable.</li>
-<li>If it is a data consistency issue, using a builtin like
-<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>/<code class="docutils literal notranslate"><span class="pre">TypeError</span></code> is reasonable.</li>
-<li>If it is a programmer error (using an api incorrectly)
-<code class="docutils literal notranslate"><span class="pre">AssertionError</span></code> is reasonable.</li>
-<li>Otherwise, use <code class="docutils literal notranslate"><span class="pre">BzrError</span></code> or <code class="docutils literal notranslate"><span class="pre">InternalBzrError</span></code>.</li>
+<li><p>If it is something that a caller can recover from, a custom exception
+is reasonable.</p></li>
+<li><p>If it is a data consistency issue, using a builtin like
+<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>/<code class="docutils literal notranslate"><span class="pre">TypeError</span></code> is reasonable.</p></li>
+<li><p>If it is a programmer error (using an api incorrectly)
+<code class="docutils literal notranslate"><span class="pre">AssertionError</span></code> is reasonable.</p></li>
+<li><p>Otherwise, use <code class="docutils literal notranslate"><span class="pre">BzrError</span></code> or <code class="docutils literal notranslate"><span class="pre">InternalBzrError</span></code>.</p></li>
 </ol>
 <p>Exception strings should start with a capital letter and should not have a
 final fullstop.  If long, they may contain newlines to break the text.</p>
@@ -289,8 +286,6 @@ final fullstop.  If long, they may contain newlines to break the text.</p>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -318,7 +313,7 @@ final fullstop.  If long, they may contain newlines to break the text.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

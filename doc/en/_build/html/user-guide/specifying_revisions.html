@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Specifying revisions &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Specifying revisions &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="bug_trackers.html" title="Bug trackers"
              accesskey="P">previous</a> |
@@ -69,53 +67,53 @@ be one. For commands where this is relevant, the <code class="docutils literal n
 <p>The revision, or the bounds of the range, can be given using
 different format specifications as shown below.</p>
 <blockquote>
-<div><table border="1" class="docutils">
+<div><table class="docutils align-default">
 <colgroup>
-<col width="38%" />
-<col width="62%" />
+<col style="width: 38%" />
+<col style="width: 62%" />
 </colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td>argument type</td>
-<td>description</td>
+<tbody>
+<tr class="row-odd"><td><p>argument type</p></td>
+<td><p>description</p></td>
 </tr>
-<tr class="row-even"><td><em>number</em></td>
-<td>revision number</td>
+<tr class="row-even"><td><p><em>number</em></p></td>
+<td><p>revision number</p></td>
 </tr>
-<tr class="row-odd"><td><strong>revno</strong>:<em>number</em></td>
-<td>revision number</td>
+<tr class="row-odd"><td><p><strong>revno</strong>:<em>number</em></p></td>
+<td><p>revision number</p></td>
 </tr>
-<tr class="row-even"><td><strong>last</strong>:<em>number</em></td>
-<td>negative revision number</td>
+<tr class="row-even"><td><p><strong>last</strong>:<em>number</em></p></td>
+<td><p>negative revision number</p></td>
 </tr>
-<tr class="row-odd"><td><em>guid</em></td>
-<td>globally unique revision id</td>
+<tr class="row-odd"><td><p><em>guid</em></p></td>
+<td><p>globally unique revision id</p></td>
 </tr>
-<tr class="row-even"><td><strong>revid</strong>:<em>guid</em></td>
-<td>globally unique revision id</td>
+<tr class="row-even"><td><p><strong>revid</strong>:<em>guid</em></p></td>
+<td><p>globally unique revision id</p></td>
 </tr>
-<tr class="row-odd"><td><strong>before</strong>:<em>rev</em></td>
-<td>leftmost parent of ‘’rev’‘</td>
+<tr class="row-odd"><td><p><strong>before</strong>:<em>rev</em></p></td>
+<td><p>leftmost parent of ‘’rev’‘</p></td>
 </tr>
-<tr class="row-even"><td><em>date-value</em></td>
-<td>first entry after a given date</td>
+<tr class="row-even"><td><p><em>date-value</em></p></td>
+<td><p>first entry after a given date</p></td>
 </tr>
-<tr class="row-odd"><td><strong>date</strong>:<em>date-value</em></td>
-<td>first entry after a given date</td>
+<tr class="row-odd"><td><p><strong>date</strong>:<em>date-value</em></p></td>
+<td><p>first entry after a given date</p></td>
 </tr>
-<tr class="row-even"><td><em>tag-name</em></td>
-<td>revision matching a given tag</td>
+<tr class="row-even"><td><p><em>tag-name</em></p></td>
+<td><p>revision matching a given tag</p></td>
 </tr>
-<tr class="row-odd"><td><strong>tag</strong>:<em>tag-name</em></td>
-<td>revision matching a given tag</td>
+<tr class="row-odd"><td><p><strong>tag</strong>:<em>tag-name</em></p></td>
+<td><p>revision matching a given tag</p></td>
 </tr>
-<tr class="row-even"><td><strong>ancestor</strong>:<em>path</em></td>
-<td>last merged revision from a branch</td>
+<tr class="row-even"><td><p><strong>ancestor</strong>:<em>path</em></p></td>
+<td><p>last merged revision from a branch</p></td>
 </tr>
-<tr class="row-odd"><td><strong>branch</strong>:<em>path</em></td>
-<td>latest revision on another branch</td>
+<tr class="row-odd"><td><p><strong>branch</strong>:<em>path</em></p></td>
+<td><p>latest revision on another branch</p></td>
 </tr>
-<tr class="row-even"><td><strong>submit</strong>:<em>path</em></td>
-<td>common ancestor with submit branch</td>
+<tr class="row-even"><td><p><strong>submit</strong>:<em>path</em></p></td>
+<td><p>common ancestor with submit branch</p></td>
 </tr>
 </tbody>
 </table>
@@ -149,11 +147,11 @@ revision.</p>
 </div>
 <div class="section" id="before">
 <h3>before<a class="headerlink" href="#before" title="Permalink to this headline">¶</a></h3>
-<dl class="docutils">
-<dt><strong>before</strong></dt>
-<dd>‘’rev’’ specifies the leftmost parent of ‘’rev’‘, that is the revision
+<dl class="simple">
+<dt><strong>before</strong></dt><dd><p>‘’rev’’ specifies the leftmost parent of ‘’rev’‘, that is the revision
 that appears before ‘’rev’’ in the revision history, or the revision that
-was current when ‘’rev’’ was committed.</dd>
+was current when ‘’rev’’ was committed.</p>
+</dd>
 </dl>
 <p>‘’rev’’ can be any revision specifier and may be chained.</p>
 <p>For example:</p>
@@ -166,20 +164,20 @@ revno: 2
 </div>
 <div class="section" id="date">
 <h3>date<a class="headerlink" href="#date" title="Permalink to this headline">¶</a></h3>
-<dl class="docutils">
-<dt><strong>date</strong></dt>
-<dd>‘’value’’ matches the first history entry after a given date, either at
-midnight or at a specified time.</dd>
+<dl class="simple">
+<dt><strong>date</strong></dt><dd><p>‘’value’’ matches the first history entry after a given date, either at
+midnight or at a specified time.</p>
+</dd>
 </dl>
 <p>Legal values are:</p>
 <blockquote>
 <div><ul class="simple">
-<li><strong>yesterday</strong></li>
-<li><strong>today</strong></li>
-<li><strong>tomorrow</strong></li>
-<li>A <strong>YYYY-MM-DD</strong> format date.</li>
-<li>A <strong>YYYY-MM-DD,HH:MM:SS</strong> format date/time, seconds are optional (note the
-comma)</li>
+<li><p><strong>yesterday</strong></p></li>
+<li><p><strong>today</strong></p></li>
+<li><p><strong>tomorrow</strong></p></li>
+<li><p>A <strong>YYYY-MM-DD</strong> format date.</p></li>
+<li><p>A <strong>YYYY-MM-DD,HH:MM:SS</strong> format date/time, seconds are optional (note the
+comma)</p></li>
 </ul>
 </div></blockquote>
 <p>The proper way of saying “give me all the log entries for today” is:</p>
@@ -189,11 +187,11 @@ comma)</li>
 </div>
 <div class="section" id="ancestor">
 <h3>Ancestor<a class="headerlink" href="#ancestor" title="Permalink to this headline">¶</a></h3>
-<dl class="docutils">
-<dt><strong>ancestor</strong>:<em>path</em></dt>
-<dd>specifies the common ancestor between the current branch and a
+<dl class="simple">
+<dt><strong>ancestor</strong>:<em>path</em></dt><dd><p>specifies the common ancestor between the current branch and a
 different branch. This is the same ancestor that would be used for
-merging purposes.</dd>
+merging purposes.</p>
+</dd>
 </dl>
 <p><em>path</em> may be the URL of a remote branch, or the file path to a local branch.</p>
 <p>For example, to see what changes were made on a branch since it was forked
@@ -204,9 +202,9 @@ off <code class="docutils literal notranslate"><span class="pre">../parent</span
 </div>
 <div class="section" id="branch">
 <h3>Branch<a class="headerlink" href="#branch" title="Permalink to this headline">¶</a></h3>
-<dl class="docutils">
-<dt>branch</dt>
-<dd><code class="docutils literal notranslate"><span class="pre">path</span></code> specifies the latest revision in another branch.</dd>
+<dl class="simple">
+<dt>branch</dt><dd><p><code class="docutils literal notranslate"><span class="pre">path</span></code> specifies the latest revision in another branch.</p>
+</dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">path</span></code> may be the URL of a remote branch, or the file path to a local branch.</p>
 <p>For example, to get the differences between this and another branch:</p>
@@ -240,8 +238,6 @@ off <code class="docutils literal notranslate"><span class="pre">../parent</span
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -269,7 +265,7 @@ off <code class="docutils literal notranslate"><span class="pre">../parent</span
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

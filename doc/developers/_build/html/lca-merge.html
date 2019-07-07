@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>LCA Merge &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>LCA Merge &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="inventory.html" title="Inventories"
              accesskey="P">previous</a> |
@@ -59,10 +57,10 @@ that differ.  Next, we try to determine why they differ; this is
 essential to the merge operation, because it affects how we resolve the
 differences.  In this merger, there are three possible outcomes:</p>
 <ol class="arabic simple">
-<li>The line was added in this version: “new-this”</li>
-<li>The line was deleted in the other version: “killed-other”</li>
-<li>The line was preserved as part of merge resolution in this version,
-but deleted in the other version: “conflicted-this”</li>
+<li><p>The line was added in this version: “new-this”</p></li>
+<li><p>The line was deleted in the other version: “killed-other”</p></li>
+<li><p>The line was preserved as part of merge resolution in this version,
+but deleted in the other version: “conflicted-this”</p></li>
 </ol>
 <p>Option 3 is new, but I believe it is essential.  When each side has made
 a conflicting merge resolution, we should let the user decide how to
@@ -96,43 +94,43 @@ conflict, and let the user handle the issue.</p>
 a three-way merge.  Since there’s only one LCA, we cannot get the
 “conflicted-this” outcome, only “new-this” or “killed-other.  Let’s look
 at the typical description of three-way merges:</p>
-<table border="1" class="docutils">
+<table class="docutils align-default">
 <colgroup>
-<col width="17%" />
-<col width="20%" />
-<col width="23%" />
-<col width="40%" />
+<col style="width: 17%" />
+<col style="width: 20%" />
+<col style="width: 23%" />
+<col style="width: 40%" />
 </colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td>THIS</td>
-<td>BASE</td>
-<td>OTHER</td>
-<td>OUT</td>
+<tbody>
+<tr class="row-odd"><td><p>THIS</p></td>
+<td><p>BASE</p></td>
+<td><p>OTHER</p></td>
+<td><p>OUT</p></td>
 </tr>
-<tr class="row-even"><td>A</td>
-<td>A</td>
-<td>A</td>
-<td>A</td>
+<tr class="row-even"><td><p>A</p></td>
+<td><p>A</p></td>
+<td><p>A</p></td>
+<td><p>A</p></td>
 </tr>
-<tr class="row-odd"><td>A</td>
-<td>B</td>
-<td>A</td>
-<td>A</td>
+<tr class="row-odd"><td><p>A</p></td>
+<td><p>B</p></td>
+<td><p>A</p></td>
+<td><p>A</p></td>
 </tr>
-<tr class="row-even"><td>A</td>
-<td>B</td>
-<td>B</td>
-<td>A</td>
+<tr class="row-even"><td><p>A</p></td>
+<td><p>B</p></td>
+<td><p>B</p></td>
+<td><p>A</p></td>
 </tr>
-<tr class="row-odd"><td>A</td>
-<td>A</td>
-<td>B</td>
-<td>B</td>
+<tr class="row-odd"><td><p>A</p></td>
+<td><p>A</p></td>
+<td><p>B</p></td>
+<td><p>B</p></td>
 </tr>
-<tr class="row-even"><td>A</td>
-<td>B</td>
-<td>C</td>
-<td>*conflict*</td>
+<tr class="row-even"><td><p>A</p></td>
+<td><p>B</p></td>
+<td><p>C</p></td>
+<td><p>*conflict*</p></td>
 </tr>
 </tbody>
 </table>
@@ -181,13 +179,13 @@ revision of LCA merge will handle this case as merge3 would.</p>
 <div class="section" id="why-a-new-name">
 <h2>Why a new name<a class="headerlink" href="#why-a-new-name" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li>It was time.  Although knit / annotate merge and newness merge have
+<li><p>It was time.  Although knit / annotate merge and newness merge have
 tried to emulate the behavior of the original weave merge algorithm,
-<code class="docutils literal notranslate"><span class="pre">--merge-type=weave</span></code> hasn’t been based on weaves for a long time.</li>
-<li>Behavior differences.  This algorithm should behave like a three-way
+<code class="docutils literal notranslate"><span class="pre">--merge-type=weave</span></code> hasn’t been based on weaves for a long time.</p></li>
+<li><p>Behavior differences.  This algorithm should behave like a three-way
 merge in the common case, while its predecessors did not.  It also has
 explicit support for handling conflicting merge resolutions, so it
-should behave better in criss-cross merge scenarios.</li>
+should behave better in criss-cross merge scenarios.</p></li>
 </ol>
 </div>
 <div class="section" id="performance">
@@ -205,17 +203,17 @@ analysis time and in text comparison time.</p>
 <div class="section" id="possible-flaws">
 <h1>Possible flaws<a class="headerlink" href="#possible-flaws" title="Permalink to this headline">¶</a></h1>
 <ol class="arabic simple">
-<li>Inaccurate LCA selection.  Our current LCA algorithm uses
+<li><p>Inaccurate LCA selection.  Our current LCA algorithm uses
 <code class="docutils literal notranslate"><span class="pre">Graph.heads()</span></code>, which is known to be flawed.  It may occasionally give
 bad results.  This risk is mitigated by the fact that the per-file graphs
 tend to be simpler than the revision graph.  And since we’re already using
 this LCA algorithm, this is not an additional risk.  I hope that John Meinel
-will soon have a fixed version of <code class="docutils literal notranslate"><span class="pre">Graph.heads</span></code> for us.</li>
-<li>False matches.  Weaves have a concept of line identity, but knits and
+will soon have a fixed version of <code class="docutils literal notranslate"><span class="pre">Graph.heads</span></code> for us.</p></li>
+<li><p>False matches.  Weaves have a concept of line identity, but knits and
 later formats do not.  So a line may appear to be common to two files, when
 in fact it was introduced separately into each for entirely different
 reasons.  This risk is the same for three-way merging.  It is mitigated by
-using Patience sequence matching, which a longest-common-subsequence match.</li>
+using Patience sequence matching, which a longest-common-subsequence match.</p></li>
 </ol>
 </div>
 <div class="section" id="acknowledgements">
@@ -224,11 +222,11 @@ using Patience sequence matching, which a longest-common-subsequence match.</li>
 our default, but this work would not have been possible without the work
 of others, especially:</p>
 <ul class="simple">
-<li>Martin Pool’s weave merge and knit/annotate merge algorithms.</li>
-<li>Bram Cohen’s discussions of merge algorithms</li>
-<li>Andrew Tridgell’s dissection of BitKeeper merge</li>
-<li>Nathaniel Smith’s analysis of why criss-cross histories necessarily
-produce poor three-way merges.</li>
+<li><p>Martin Pool’s weave merge and knit/annotate merge algorithms.</p></li>
+<li><p>Bram Cohen’s discussions of merge algorithms</p></li>
+<li><p>Andrew Tridgell’s dissection of BitKeeper merge</p></li>
+<li><p>Nathaniel Smith’s analysis of why criss-cross histories necessarily
+produce poor three-way merges.</p></li>
 </ul>
 </div>
 
@@ -281,8 +279,6 @@ produce poor three-way merges.</li>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -310,7 +306,7 @@ produce poor three-way merges.</li>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

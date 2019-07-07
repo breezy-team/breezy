@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Branching a project &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Branching a project &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="partner_intro.html" title="Working with another"
              accesskey="P">previous</a> |
@@ -52,37 +50,37 @@ via SSH, a secure protocol built-in to most SSH servers.
 Breezy is <em>very</em> flexible in this regard with support for
 lots of protocols some of which are given below.</p>
 <blockquote>
-<div><table border="1" class="docutils">
+<div><table class="docutils align-default">
 <colgroup>
-<col width="17%" />
-<col width="83%" />
+<col style="width: 17%" />
+<col style="width: 83%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Prefix</th>
-<th class="head">Description</th>
+<thead>
+<tr class="row-odd"><th class="head"><p>Prefix</p></th>
+<th class="head"><p>Description</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>file://</td>
-<td>Access using the standard filesystem (default).</td>
+<tbody>
+<tr class="row-even"><td><p>file://</p></td>
+<td><p>Access using the standard filesystem (default).</p></td>
 </tr>
-<tr class="row-odd"><td>bzr+ssh:/</td>
-<td>Access over SSH (best remote option).</td>
+<tr class="row-odd"><td><p>bzr+ssh:/</p></td>
+<td><p>Access over SSH (best remote option).</p></td>
 </tr>
-<tr class="row-even"><td>sftp://</td>
-<td>Access using SFTP (most SSH servers provide SFTP).</td>
+<tr class="row-even"><td><p>sftp://</p></td>
+<td><p>Access using SFTP (most SSH servers provide SFTP).</p></td>
 </tr>
-<tr class="row-odd"><td>bzr://</td>
-<td>Fast access using the Breezy smart server.</td>
+<tr class="row-odd"><td><p>bzr://</p></td>
+<td><p>Fast access using the Breezy smart server.</p></td>
 </tr>
-<tr class="row-even"><td>ftp://</td>
-<td>Access using passive FTP.</td>
+<tr class="row-even"><td><p>ftp://</p></td>
+<td><p>Access using passive FTP.</p></td>
 </tr>
-<tr class="row-odd"><td>http://</td>
-<td>Access to branches exported by a web server.</td>
+<tr class="row-odd"><td><p>http://</p></td>
+<td><p>Access to branches exported by a web server.</p></td>
 </tr>
-<tr class="row-even"><td>https://</td>
-<td>Encrypted access to branches exported by a web server.</td>
+<tr class="row-even"><td><p>https://</p></td>
+<td><p>Encrypted access to branches exported by a web server.</p></td>
 </tr>
 </tbody>
 </table>
@@ -103,8 +101,8 @@ which directory.)</p>
 tilde like so: <code class="docutils literal notranslate"><span class="pre">bzr+ssh://example.com/~/public_html</span></code> should map to
 <code class="docutils literal notranslate"><span class="pre">public_html</span></code> within your home directory.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Access over HTTP or HTTPS is read-only by default.
+<p class="admonition-title">Note</p>
+<p>Access over HTTP or HTTPS is read-only by default.
 See <a class="reference external" href="http_smart_server.html#pushing-over-the-http-smart-server">Pushing over the HTTP smart server</a> for
 details on configuring read-write access.</p>
 </div>
@@ -207,8 +205,6 @@ use the <code class="docutils literal notranslate"><span class="pre">info</span>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -236,7 +232,7 @@ use the <code class="docutils literal notranslate"><span class="pre">info</span>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Initial push / pull &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Initial push / pull &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -22,7 +20,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="../../index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -50,46 +48,52 @@ scales with the size of the file.</p>
 <p>Assume current repo format.  Attempt to achieve parity with <code class="docutils literal notranslate"><span class="pre">cp</span> <span class="pre">-r</span></code>.  Read
 each file only 1 time.</p>
 <ul class="simple">
-<li>read knit graph for revisions</li>
-<li>write filtered copy of revision knit O(d+a)</li>
-<li>write filtered copy of knit index O(d)</li>
-<li>Open knit index for inventory</li>
-<li>Write a filtered copy of inventory knit and simultaneously not all referenced
-file-ids O(b+d)</li>
-<li>Write filtered copy of inventory knit index O(d)</li>
-<li>For each referenced file-id:<ul>
-<li>Open knit index for each file knit O(e)</li>
-<li>If acceptable threshold of irrelevant data hard-link O(f)</li>
-<li>Otherwise write filtered copy of text knit and simultaneously write
-the fulltext to tree transform O(h)</li>
+<li><p>read knit graph for revisions</p></li>
+<li><p>write filtered copy of revision knit O(d+a)</p></li>
+<li><p>write filtered copy of knit index O(d)</p></li>
+<li><p>Open knit index for inventory</p></li>
+<li><p>Write a filtered copy of inventory knit and simultaneously not all referenced
+file-ids O(b+d)</p></li>
+<li><p>Write filtered copy of inventory knit index O(d)</p></li>
+<li><p>For each referenced file-id:</p>
+<ul>
+<li><p>Open knit index for each file knit O(e)</p></li>
+<li><p>If acceptable threshold of irrelevant data hard-link O(f)</p></li>
+<li><p>Otherwise write filtered copy of text knit and simultaneously write
+the fulltext to tree transform O(h)</p></li>
 </ul>
 </li>
-<li>Write format markers O(1)</li>
+<li><p>Write format markers O(1)</p></li>
 </ul>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">a:</th><td class="field-body">size of aggregate revision metadata</td>
-</tr>
-<tr class="field-even field"><th class="field-name">b:</th><td class="field-body">size of inventory changes for all revisions</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">c:</th><td class="field-body">size of text changes for all files and all revisions (e * g)</td>
-</tr>
-<tr class="field-even field"><th class="field-name">d:</th><td class="field-body">number of relevant revisions</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">e:</th><td class="field-body">number of relevant versioned files</td>
-</tr>
-<tr class="field-even field"><th class="field-name">f:</th><td class="field-body">size of the particular versioned file knit index</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">g:</th><td class="field-body">size of the filtered versioned file knit</td>
-</tr>
-<tr class="field-even field"><th class="field-name">h:</th><td class="field-body">size of the versioned file fulltext</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">i:</th><td class="field-body">size of the largest file fulltext</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">a</dt>
+<dd class="field-odd"><p>size of aggregate revision metadata</p>
+</dd>
+<dt class="field-even">b</dt>
+<dd class="field-even"><p>size of inventory changes for all revisions</p>
+</dd>
+<dt class="field-odd">c</dt>
+<dd class="field-odd"><p>size of text changes for all files and all revisions (e * g)</p>
+</dd>
+<dt class="field-even">d</dt>
+<dd class="field-even"><p>number of relevant revisions</p>
+</dd>
+<dt class="field-odd">e</dt>
+<dd class="field-odd"><p>number of relevant versioned files</p>
+</dd>
+<dt class="field-even">f</dt>
+<dd class="field-even"><p>size of the particular versioned file knit index</p>
+</dd>
+<dt class="field-odd">g</dt>
+<dd class="field-odd"><p>size of the filtered versioned file knit</p>
+</dd>
+<dt class="field-even">h</dt>
+<dd class="field-even"><p>size of the versioned file fulltext</p>
+</dd>
+<dt class="field-odd">i</dt>
+<dd class="field-odd"><p>size of the largest file fulltext</p>
+</dd>
+</dl>
 </div>
 <div class="section" id="smart-network-case">
 <h2>Smart Network Case<a class="headerlink" href="#smart-network-case" title="Permalink to this headline">¶</a></h2>
@@ -116,9 +120,9 @@ Push: same as disk case, but write all files at once.</p>
 <div class="section" id="wants">
 <h2>Wants<a class="headerlink" href="#wants" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Read partial graph</li>
-<li>Read multiple segments of multiple files on HTTP and SFTP</li>
-<li>Write multiple files over SFTP</li>
+<li><p>Read partial graph</p></li>
+<li><p>Read multiple segments of multiple files on HTTP and SFTP</p></li>
+<li><p>Write multiple files over SFTP</p></li>
 </ul>
 </div>
 </div>
@@ -172,8 +176,6 @@ Push: same as disk case, but write all files at once.</p>
             <form class="search" action="../../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -197,7 +199,7 @@ Push: same as disk case, but write all files at once.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

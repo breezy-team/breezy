@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Breezy Code Style Guide &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Breezy Code Style Guide &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="code-review.html" title="Reviewing proposed changes to Breezy"
              accesskey="P">previous</a> |
@@ -146,12 +144,12 @@ consider this good style.  Instead, say more explicitly
 <div class="section" id="module-imports">
 <h2>Module Imports<a class="headerlink" href="#module-imports" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Imports should be done at the top-level of the file, unless there is
+<li><p>Imports should be done at the top-level of the file, unless there is
 a strong reason to have them lazily loaded when a particular
 function runs.  Import statements have a cost, so try to make sure
-they don’t run inside hot functions.</li>
-<li>Module names should always be given fully-qualified,
-i.e. <code class="docutils literal notranslate"><span class="pre">breezy.hashcache</span></code> not just <code class="docutils literal notranslate"><span class="pre">hashcache</span></code>.</li>
+they don’t run inside hot functions.</p></li>
+<li><p>Module names should always be given fully-qualified,
+i.e. <code class="docutils literal notranslate"><span class="pre">breezy.hashcache</span></code> not just <code class="docutils literal notranslate"><span class="pre">hashcache</span></code>.</p></li>
 </ul>
 </div>
 <div class="section" id="naming">
@@ -183,21 +181,21 @@ immediately when the object apparently becomes unreferenced, or at some
 later time, or possibly never at all.  Therefore we have restrictions on
 what can be done inside them.</p>
 <ol class="arabic simple" start="0">
-<li>If you think you need to use a <code class="docutils literal notranslate"><span class="pre">__del__</span></code> method ask another
+<li><p>If you think you need to use a <code class="docutils literal notranslate"><span class="pre">__del__</span></code> method ask another
 developer for alternatives.  If you do need to use one, explain
-why in a comment.</li>
-<li>Never rely on a <code class="docutils literal notranslate"><span class="pre">__del__</span></code> method running.  If there is code that
+why in a comment.</p></li>
+<li><p>Never rely on a <code class="docutils literal notranslate"><span class="pre">__del__</span></code> method running.  If there is code that
 must run, instead have a <code class="docutils literal notranslate"><span class="pre">finally</span></code> block or an <code class="docutils literal notranslate"><span class="pre">addCleanup</span></code> call an
-explicit <code class="docutils literal notranslate"><span class="pre">close</span></code> method.</li>
-<li>Never <code class="docutils literal notranslate"><span class="pre">import</span></code> from inside a <code class="docutils literal notranslate"><span class="pre">__del__</span></code> method, or you may crash the
-interpreter!!</li>
-<li>Prior to bzr 2.4, we sometimes used to raise warnings from del methods
+explicit <code class="docutils literal notranslate"><span class="pre">close</span></code> method.</p></li>
+<li><p>Never <code class="docutils literal notranslate"><span class="pre">import</span></code> from inside a <code class="docutils literal notranslate"><span class="pre">__del__</span></code> method, or you may crash the
+interpreter!!</p></li>
+<li><p>Prior to bzr 2.4, we sometimes used to raise warnings from del methods
 that the object was not cleaned up or closed.  We no longer do this:
 failure to close the object doesn’t cause a test failure; the warning
 appears an arbitrary long time after the problem occurred (the object
 being leaked); merely having a del method inhibits Python gc; the
 warnings appear to users and upset them; they can also break tests that
-are checking what appears on stderr.</li>
+are checking what appears on stderr.</p></li>
 </ol>
 <p>In short, just don’t use <code class="docutils literal notranslate"><span class="pre">__del__</span></code>.</p>
 </div>
@@ -208,7 +206,7 @@ cleanups invoked from <code class="docutils literal notranslate"><span class="pr
 generally uninteresting compared to the original exception.  <code class="docutils literal notranslate"><span class="pre">breezy</span></code>
 has some facilities you can use to mitigate this.</p>
 <ul>
-<li><p class="first">In <code class="docutils literal notranslate"><span class="pre">Command</span></code> subclasses, prefer the <code class="docutils literal notranslate"><span class="pre">add_cleanup</span></code> method to using
+<li><p>In <code class="docutils literal notranslate"><span class="pre">Command</span></code> subclasses, prefer the <code class="docutils literal notranslate"><span class="pre">add_cleanup</span></code> method to using
 <code class="docutils literal notranslate"><span class="pre">try</span></code>/<code class="docutils literal notranslate"><span class="pre">finally</span></code> blocks.  E.g. to acquire a lock and ensure it will
 always be released when the command is done:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">add_cleanup</span><span class="p">(</span><span class="n">branch</span><span class="o">.</span><span class="n">lock_read</span><span class="p">()</span><span class="o">.</span><span class="n">unlock</span><span class="p">)</span>
@@ -219,16 +217,14 @@ mismatched lock/unlock pairs (and other kinds of resource
 acquire/release) because there isn’t a large block of code separating
 them.</p>
 </li>
-<li><p class="first">Use the <code class="docutils literal notranslate"><span class="pre">only_raises</span></code> decorator (from <code class="docutils literal notranslate"><span class="pre">breezy.decorators</span></code>) when
+<li><p>Use the <code class="docutils literal notranslate"><span class="pre">only_raises</span></code> decorator (from <code class="docutils literal notranslate"><span class="pre">breezy.decorators</span></code>) when
 defining methods that are typically called in <code class="docutils literal notranslate"><span class="pre">finally</span></code> blocks, such
 as <code class="docutils literal notranslate"><span class="pre">unlock</span></code> methods.  For example, <code class="docutils literal notranslate"><span class="pre">&#64;only_raises(LockNotHeld,</span>
 <span class="pre">LockBroken)</span></code>.  All errors that are unlikely to be a knock-on failure
-from a previous failure should be allowed.</p>
-</li>
-<li><p class="first">Consider using the <code class="docutils literal notranslate"><span class="pre">OperationWithCleanups</span></code> helper from
+from a previous failure should be allowed.</p></li>
+<li><p>Consider using the <code class="docutils literal notranslate"><span class="pre">OperationWithCleanups</span></code> helper from
 <code class="docutils literal notranslate"><span class="pre">breezy.cleanup</span></code> anywhere else you have a <code class="docutils literal notranslate"><span class="pre">finally</span></code> block that
-might fail.</p>
-</li>
+might fail.</p></li>
 </ul>
 </div>
 <div class="section" id="factories">
@@ -385,26 +381,26 @@ A source test checks that it is not used.  It is ok to explicitly raise
 AssertionError.</p>
 <p>Rationale:</p>
 <ul class="simple">
-<li>It makes the behaviour vary depending on whether brz is run with -O
+<li><p>It makes the behaviour vary depending on whether brz is run with -O
 or not, therefore giving a chance for bugs that occur in one case or
 the other, several of which have already occurred: assertions with
 side effects, code which can’t continue unless the assertion passes,
 cases where we should give the user a proper message rather than an
-assertion failure.</li>
-<li>It’s not that much shorter than an explicit if/raise.</li>
-<li>It tends to lead to fuzzy thinking about whether the check is
-actually needed or not, and whether it’s an internal error or not</li>
-<li>It tends to cause look-before-you-leap patterns.</li>
-<li>It’s unsafe if the check is needed to protect the integrity of the
-user’s data.</li>
-<li>It tends to give poor messages since the developer can get by with
-no explanatory text at all.</li>
-<li>We can’t rely on people always running with -O in normal use, so we
-can’t use it for tests that are actually expensive.</li>
-<li>Expensive checks that help developers are better turned on from the
-test suite or a -D flag.</li>
-<li>If used instead of <code class="docutils literal notranslate"><span class="pre">self.assert*()</span></code> in tests it makes them falsely
-pass with -O.</li>
+assertion failure.</p></li>
+<li><p>It’s not that much shorter than an explicit if/raise.</p></li>
+<li><p>It tends to lead to fuzzy thinking about whether the check is
+actually needed or not, and whether it’s an internal error or not</p></li>
+<li><p>It tends to cause look-before-you-leap patterns.</p></li>
+<li><p>It’s unsafe if the check is needed to protect the integrity of the
+user’s data.</p></li>
+<li><p>It tends to give poor messages since the developer can get by with
+no explanatory text at all.</p></li>
+<li><p>We can’t rely on people always running with -O in normal use, so we
+can’t use it for tests that are actually expensive.</p></li>
+<li><p>Expensive checks that help developers are better turned on from the
+test suite or a -D flag.</p></li>
+<li><p>If used instead of <code class="docutils literal notranslate"><span class="pre">self.assert*()</span></code> in tests it makes them falsely
+pass with -O.</p></li>
 </ul>
 </div>
 <div class="section" id="emacs-setup">
@@ -459,12 +455,12 @@ Use <code class="docutils literal notranslate"><span class="pre">try/finally</sp
 variable:</p>
 <blockquote>
 <div><ul class="simple">
-<li>If importing a module, not an attribute, and the module is a top-level
+<li><p>If importing a module, not an attribute, and the module is a top-level
 module (i.e. has no dots in the name), then it’s ok to use the builtin
-<code class="docutils literal notranslate"><span class="pre">__import__</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">__import__(module_name)</span></code>.</li>
-<li>In all other cases, prefer <code class="docutils literal notranslate"><span class="pre">breezy.pyutils.get_named_object</span></code> to the
+<code class="docutils literal notranslate"><span class="pre">__import__</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">__import__(module_name)</span></code>.</p></li>
+<li><p>In all other cases, prefer <code class="docutils literal notranslate"><span class="pre">breezy.pyutils.get_named_object</span></code> to the
 built-in <code class="docutils literal notranslate"><span class="pre">__import__</span></code>.  <code class="docutils literal notranslate"><span class="pre">__import__</span></code> has some subtleties and
-unintuitive behaviours that make it hard to use correctly.</li>
+unintuitive behaviours that make it hard to use correctly.</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -519,8 +515,6 @@ unintuitive behaviours that make it hard to use correctly.</li>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -548,7 +542,7 @@ unintuitive behaviours that make it hard to use correctly.</li>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

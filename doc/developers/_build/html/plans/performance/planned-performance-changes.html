@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Planned changes to the bzr core &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Planned changes to the bzr core &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -22,7 +20,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="../../index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -62,55 +60,55 @@ unknown, and disk format, not interoperable.</p>
 thus do not pose a significant migration issue.</p>
 <blockquote>
 <div><ul class="simple">
-<li>For our 20 core use cases, we plan to add targeted API’s to bzrlib that are
+<li><p>For our 20 core use cases, we plan to add targeted API’s to bzrlib that are
 repository-representation agnostic. These will instead reflect the shape of
-data access most optimal for that case.</li>
-<li>Deprecate ‘versioned files’ as a library concept. Instead of asking for
+data access most optimal for that case.</p></li>
+<li><p>Deprecate ‘versioned files’ as a library concept. Instead of asking for
 information about a file-over-time as a special case, we will move to an API
 that assumes less coupling between the historical information and the
 ability to obtain texts/deltas etc. Specifically, we need to remove all
 API’s that act in terms of on disk representation except those within a
-given repository implementation.</li>
-<li>Create a validator for revisions that is more amenable to use by other parts
+given repository implementation.</p></li>
+<li><p>Create a validator for revisions that is more amenable to use by other parts
 of the code base than just the gpg signing facility. This can be done today
 without changing disk, possibly with a performance hit until the disk
 formats match the validatory logic. It will be hard to tell if we have the
 right routine for that until all the disk changes are complete, so while
 this is a library only change, it’s likely one that will be delayed to near
-the end of the process.</li>
-<li>Add an explicit API for managing cached annotations. While annotations are
+the end of the process.</p></li>
+<li><p>Add an explicit API for managing cached annotations. While annotations are
 considered a cache this is not exposed in such a way that cache operations
 like ‘drop the cache’ can be performed. On current disk formats the cache is
 mandatory, but an API to manage would allow refreshing of the cache (e.g.
-after ghosts are filled in during baz conversions).</li>
-<li>Use the _iter_changes API to perform merges. This is a small change that may
+after ghosts are filled in during baz conversions).</p></li>
+<li><p>Use the _iter_changes API to perform merges. This is a small change that may
 remove the need to use inventories in merge, making a dramatic difference to
 merge performance once the tree shape comparison optimisations are
-implemented.</li>
-<li>Create a network-efficient revision graph API. This is the logic at the
+implemented.</p></li>
+<li><p>Create a network-efficient revision graph API. This is the logic at the
 start of push and pull operations, which currently scales O(graph size).
 Fixing the scaling can be done, but there are tradeoffs to latency and
-performance to consider, making it a little tricky to get right.</li>
-<li>Working tree disk operation ordering. We plan to change the order in which
+performance to consider, making it a little tricky to get right.</p></li>
+<li><p>Working tree disk operation ordering. We plan to change the order in which
 some operations are done (specifically TreeTransform ones) to improve
 performance. There is already a 66% performance boost in that area going
-through review.</li>
-<li>Stop requiring full memory copies of files. Currently bzr requires that it
+through review.</p></li>
+<li><p>Stop requiring full memory copies of files. Currently bzr requires that it
 can hold 3 copies of any file it’s versioning in memory. Solving this is
 tricky, particularly without performance regressions on small files, but
 without solving it versioning of .iso and other large objects will continue
-to be extremely painful.</li>
-<li>Add an API for per-file graph access that alllows incremental access and is
-suitable for on-demand generation if desired.</li>
-<li>Repository stacking API. Allowing multiple databases to be stacked to give a
+to be extremely painful.</p></li>
+<li><p>Add an API for per-file graph access that alllows incremental access and is
+suitable for on-demand generation if desired.</p></li>
+<li><p>Repository stacking API. Allowing multiple databases to be stacked to give a
 single ‘repository’ will allow implementation of some long desired features
 like history horizons, and bundle usage where the bundle is not added to the
-local repository just to examine its contents.</li>
-<li>Revision data manipulation API. We need a single streaming API for adding
+local repository just to examine its contents.</p></li>
+<li><p>Revision data manipulation API. We need a single streaming API for adding
 data to or getting it from a repository. This will need to allow hints such
 as ‘optimise for size’, or ‘optimise for fast-addition’ to meet the various
 users planned, but it is a core part of the library today, and it’s not
-sufficiently clean to let us simplify/remove a lot of related code today.</li>
+sufficiently clean to let us simplify/remove a lot of related code today.</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -118,22 +116,22 @@ sufficiently clean to let us simplify/remove a lot of related code today.</li>
 <h2>Interoperable disk changes<a class="headerlink" href="#interoperable-disk-changes" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><ul class="simple">
-<li>New container format to allow single-file description of multiple named
+<li><p>New container format to allow single-file description of multiple named
 objects. This will provide the basis for transmission of revisions over the
 network, the new bundle format, and possibly a new repository format as
-well. [Core implemented]</li>
-<li>Separate the annotation cache from the storage of actual file texts and make
+well. [Core implemented]</p></li>
+<li><p>Separate the annotation cache from the storage of actual file texts and make
 the annotation style, and when to do it, configurable. This will reduce data
 sent over the wire when repositories have had ‘needs-annotations’ turned
 off, which very large trees may choose to do - generating just-in-time
 annotations may be desirable for those trees (even when performing
-annotation based merges).</li>
-<li>Repository disk operation ordering. The order that tasks access data within
+annotation based merges).</p></li>
+<li><p>Repository disk operation ordering. The order that tasks access data within
 the repository and the layout of the data should be harmonised. This will
 require disk format changes but does not inherently alter the model, so it’s
 straight forward to export from a repository that has been optimised in this
-way to a 0.16 based repository.</li>
-<li>Inventory representation. An inventory is a logical description of the shape
+way to a 0.16 based repository.</p></li>
+<li><p>Inventory representation. An inventory is a logical description of the shape
 of a version controlled tree. Currently we operate on the whole inventory as
 a tree broken down per directory, but we store it as a flat file. This scale
 very poorly as even a minor change between inventories requires us to scan
@@ -143,10 +141,10 @@ the serialisation of inventories so that comparing two inventories can be
 done in some smaller time - e.g. O(log N) scaling. Whatever form this takes,
 a repository that can export it directly will be able to perform operations
 between two historical trees much more efficiently than the current
-repositories.</li>
-<li>Greatest distance from origin cache. This is a possible change to introduce,
+repositories.</p></li>
+<li><p>Greatest distance from origin cache. This is a possible change to introduce,
 but it may be unnecessary - listed here for completeness till it has been
-established as [un]needed.</li>
+established as [un]needed.</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -154,16 +152,16 @@ established as [un]needed.</li>
 <h2>Possibly non-interoperable disk changes<a class="headerlink" href="#possibly-non-interoperable-disk-changes" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><ul>
-<li><p class="first">Removing of derivable data from the core of bzr. Much of the data that bzr
+<li><p>Removing of derivable data from the core of bzr. Much of the data that bzr
 stores is derivable from the users source files. For instance the
 annotations that record who introduced a line. Given the full history for a
 repository we can recreate that at any time. We want to remove the
 dependence of the core of bzr on any data that is derivable, because doing
 this will give us the freedom to:</p>
 <ul class="simple">
-<li>Improve the derivation algorithm over time.</li>
-<li>Deal with bugs in the derivation algorithms without having ‘corrupt
-repositories’ or such things.</li>
+<li><p>Improve the derivation algorithm over time.</p></li>
+<li><p>Deal with bugs in the derivation algorithms without having ‘corrupt
+repositories’ or such things.</p></li>
 </ul>
 <p>However, some of the data that is technically derived, like the per-file
 merge graph, is both considered core, and can be generated differently when
@@ -173,8 +171,8 @@ inability to export from a format where that is derived data to bzr 0.16’s
 formats without errors occuring in those circumstances. Some of the data
 that may be considered for this includes:</p>
 <ul class="simple">
-<li>Per file merge graphs</li>
-<li>Annotations</li>
+<li><p>Per file merge graphs</p></li>
+<li><p>Annotations</p></li>
 </ul>
 </li>
 </ul>
@@ -184,18 +182,18 @@ that may be considered for this includes:</p>
 <h2>Non-interoperable disk changes<a class="headerlink" href="#non-interoperable-disk-changes" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><ul class="simple">
-<li>Drop the per-file merge graph ‘cache’ currently held in the FILE-ID.kndx
+<li><p>Drop the per-file merge graph ‘cache’ currently held in the FILE-ID.kndx
 files. A specific case of removing derivable data, this may allow smaller
 inventory metadata and also make it easier to allow two different trees (in
 terms of last-change made, e.g. if one is a working tree) to be compared
-using a hash-tree style approach.</li>
-<li>Use hash based names for some objects in the bzr database. Because it would force
+using a hash-tree style approach.</p></li>
+<li><p>Use hash based names for some objects in the bzr database. Because it would force
 total-knowledge-of-history on the graph revision objects will not be namable
 via hash’s and neither will revisio signatures. Other than that though we
 can in principle use hash’s e.g. SHA1 for everything else. There are many
 unanswered questions about hash based naming related to locality of
 reference impacts, which need to be answered before this becomes a definite
-item.</li>
+item.</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -250,8 +248,6 @@ item.</li>
             <form class="search" action="../../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -275,7 +271,7 @@ item.</li>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>
