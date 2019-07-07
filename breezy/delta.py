@@ -386,8 +386,8 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
     :param indent: Added at the beginning of all output lines (for merged
         revisions).
 
-    :param predicate: A callable receiving a path and a file id and
-        returning True if the path should be displayed.
+    :param predicate: A callable receiving a path returning True if the path
+        should be displayed.
 
     :param classify: Add special symbols to indicate file kind.
     """
@@ -416,7 +416,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
         (path, file_id, old_kind, new_kind) = item
         to_file.write(' (%s => %s)' % (old_kind, new_kind))
 
-    def show_path(path, file_id, kind, meta_modified,
+    def show_path(path, kind, meta_modified,
                   default_format, with_file_id_format):
         dec_path = decorate_path(path, kind, meta_modified)
         if show_ids:
@@ -437,7 +437,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
 
             for item in files:
                 path, file_id, kind = item[:3]
-                if (predicate is not None and not predicate(path, file_id)):
+                if (predicate is not None and not predicate(path)):
                     continue
                 if not header_shown and not short_status:
                     to_file.write(indent + long_status_name + ':\n')
@@ -447,7 +447,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
                     meta_modified = item[4]
 
                 to_file.write(prefix)
-                show_path(path, file_id, kind, meta_modified,
+                show_path(path, kind, meta_modified,
                           default_format, with_file_id_format)
                 if show_more is not None:
                     show_more(item)

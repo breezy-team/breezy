@@ -344,7 +344,7 @@ A  f4
         d, long_status, short_status = self._get_delta()
         out = StringIO()
 
-        def always(path, file_id):
+        def always(path):
             return True
         _mod_delta.report_delta(out, d, short_status=True, predicate=always)
         self.assertEqual(short_status, out.getvalue())
@@ -353,7 +353,7 @@ A  f4
         d, long_status, short_status = self._get_delta()
         out = StringIO()
 
-        def only_f2(path, file_id):
+        def only_f2(path):
             return path == 'f2'
         _mod_delta.report_delta(out, d, short_status=True, predicate=only_f2)
         self.assertEqual("A  f2\n", out.getvalue())
@@ -362,16 +362,7 @@ A  f4
         d, long_status, short_status = self._get_delta()
         out = StringIO()
 
-        def only_f2(path, file_id):
+        def only_f2(path):
             return path == 'f2'
         _mod_delta.report_delta(out, d, short_status=False, predicate=only_f2)
-        self.assertEqual("added:\n  f2\n", out.getvalue())
-
-    def test_long_status_id_predicate(self):
-        d, long_status, short_status = self._get_delta()
-        out = StringIO()
-
-        def only_f2_id(path, file_id):
-            return file_id == b'f2-id'
-        _mod_delta.report_delta(out, d, predicate=only_f2_id)
         self.assertEqual("added:\n  f2\n", out.getvalue())
