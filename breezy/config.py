@@ -91,6 +91,7 @@ import stat
 
 from breezy import (
     atomicfile,
+    cmdline,
     controldir,
     debug,
     directory_service,
@@ -328,6 +329,11 @@ class Config(object):
         cmd = self._get_change_editor()
         if cmd is None:
             return None
+        cmd = cmd.replace('@old_path', '{old_path}')
+        cmd = cmd.replace('@new_path', '{new_path}')
+        cmd = cmdline.split(cmd)
+        if '{old_path}' not in cmd:
+            cmd.extend(['{old_path}', '{new_path}'])
         return diff.DiffFromTool.from_string(cmd, old_tree, new_tree,
                                              sys.stdout)
 
@@ -831,7 +837,7 @@ class IniBasedConfig(Config):
         return POLICY_NONE
 
     def _get_change_editor(self):
-        return self.get_user_option('change_editor')
+        return self.get_user_option('change_editor', expand=False)
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
@@ -2554,7 +2560,7 @@ option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
 option_registry.register(
-    Option('locks.steal_dead', default=False, from_unicode=bool_from_store,
+    Option('locks.steal_dead', default=True, from_unicode=bool_from_store,
            help='''\
 Steal locks that appears to be dead.
 
@@ -2663,6 +2669,10 @@ option_registry.register(
            default=300.0, from_unicode=float_from_store,
            help="If we wait for a new request from a client for more than"
                 " X seconds, consider the client idle, and hangup."))
+option_registry.register(
+    Option('ssh',
+           default=None, override_from_env=['BRZ_SSH'],
+           help='SSH vendor to use.'))
 option_registry.register(
     Option('stacked_on_location',
            default=None,

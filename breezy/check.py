@@ -116,7 +116,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                 repo = branch.repository
         if repo is not None:
             exit_stack.enter_context(repo.lock_read())
-            branches = repo.find_branches(using=True)
+            branches = list(repo.find_branches(using=True))
             saw_tree = False
             if do_branch or do_tree:
                 for branch in branches:

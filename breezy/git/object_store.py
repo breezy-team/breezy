@@ -42,6 +42,7 @@ from .. import (
     osutils,
     ui,
     )
+from ..tree import find_previous_path
 from ..lock import LogicalLockResult
 from ..revision import (
     NULL_REVISION,
@@ -228,24 +229,21 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         base_tree = tree._repository.revision_tree(NULL_REVISION)
         other_parent_trees = []
 
-    def find_unchanged_parent_ie(file_id, kind, other, parent_trees):
+    def find_unchanged_parent_ie(path, kind, other, parent_trees):
         for ptree in parent_trees:
-            try:
-                ppath = ptree.id2path(file_id)
-            except errors.NoSuchId:
-                pass
-            else:
+            ppath = find_previous_path(tree, ptree, path)
+            if ppath is not None:
                 pkind = ptree.kind(ppath)
                 if kind == "file":
                     if (pkind == "file" and
                             ptree.get_file_sha1(ppath) == other):
                         return (
-                            file_id, ptree.get_file_revision(ppath))
+                            ptree.path2id(ppath), ptree.get_file_revision(ppath))
                 if kind == "symlink":
                     if (pkind == "symlink" and
                             ptree.get_symlink_target(ppath) == other):
                         return (
-                            file_id, ptree.get_file_revision(ppath))
+                            ptree.path2id(ppath), ptree.get_file_revision(ppath))
         raise KeyError
 
     # Find all the changed blobs
@@ -257,7 +255,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             blob_id = None
             try:
                 (pfile_id, prevision) = find_unchanged_parent_ie(
-                    change.file_id, change.kind[1], sha1, other_parent_trees)
+                    change.path[1], change.kind[1], sha1, other_parent_trees)
             except KeyError:
                 pass
             else:
@@ -290,7 +288,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     blob, (change.file_id, tree.get_file_revision(change.path[1])), change.path[1])
             try:
                 find_unchanged_parent_ie(
-                    change.file_id, change.kind[1], target, other_parent_trees)
+                    change.path[1], change.kind[1], target, other_parent_trees)
             except KeyError:
                 if change.changed_content:
                     yield (change.path[1], blob,
