@@ -57,6 +57,15 @@ Improvements
 * The ``ssh`` configuration variable can be used to set the default
   SSH implementation. (Jelmer Vernooĳ, #650757)
 
+* The substitution variables for the ``change_editor`` configuration
+  option are now "{old_path}" and "{new_path}" rather than "@old_path" and
+  "@new_path". The former is more consistent with the way substitutions
+  work in other configuration options. The old syntax is still supported.
+  (Jelmer Vernooĳ, #708718)
+
+* The ``brz inventory`` command now accepts a ``--include-root``
+  argument to show the tree root. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
@@ -66,6 +75,9 @@ Bug Fixes
 * Print a sensible error message when conversion for an option fails
   (i.e. when a non-int is specified as the value for an integer
   parameter) (#237844, Jelmer Vernooĳ)
+
+* Ignore UnknownFormatErrors when scanning for control directories.
+  (Jelmer Vernooĳ, #468332)
 
 Documentation
 *************
@@ -80,6 +92,12 @@ API Changes
 
 * New ``Tree.get_transform`` method for getting a ``TreeTransform``
   object. (Jelmer Vernooij)
+
+* ``Repository.find_branches`` now returns an iterator rather than a
+  list. (Jelmer Vernooĳ, #413970)
+
+* New ``Tree.get_nested_tree`` method for retrieving a nested tree.
+  (Jelmer Vernooĳ)
 
 Internals
 *********

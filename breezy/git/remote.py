@@ -59,6 +59,7 @@ from ..transport import (
 
 from . import (
     lazy_check_versions,
+    is_github_url,
     user_agent_for_github,
     )
 lazy_check_versions()
@@ -689,7 +690,8 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             `redirect_location` properties, and `read` is a consumable read
             method for the response data.
         """
-        headers['User-agent'] = user_agent_for_github()
+        if is_github_url(url):
+            headers['User-agent'] = user_agent_for_github()
         headers["Pragma"] = "no-cache"
         if allow_compression:
             headers["Accept-Encoding"] = "gzip"

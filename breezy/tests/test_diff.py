@@ -867,26 +867,28 @@ class TestDiffTree(tests.TestCaseWithTransport):
 class TestDiffFromTool(tests.TestCaseWithTransport):
 
     def test_from_string(self):
-        diff_obj = diff.DiffFromTool.from_string('diff', None, None, None)
+        diff_obj = diff.DiffFromTool.from_string(
+            ['diff', '{old_path}', '{new_path}'],
+            None, None, None)
         self.addCleanup(diff_obj.finish)
-        self.assertEqual(['diff', '@old_path', '@new_path'],
+        self.assertEqual(['diff', '{old_path}', '{new_path}'],
                          diff_obj.command_template)
 
     def test_from_string_u5(self):
-        diff_obj = diff.DiffFromTool.from_string('diff "-u 5"',
-                                                 None, None, None)
+        diff_obj = diff.DiffFromTool.from_string(
+            ['diff', "-u 5", '{old_path}', '{new_path}'], None, None, None)
         self.addCleanup(diff_obj.finish)
-        self.assertEqual(['diff', '-u 5', '@old_path', '@new_path'],
+        self.assertEqual(['diff', '-u 5', '{old_path}', '{new_path}'],
                          diff_obj.command_template)
         self.assertEqual(['diff', '-u 5', 'old-path', 'new-path'],
                          diff_obj._get_command('old-path', 'new-path'))
 
     def test_from_string_path_with_backslashes(self):
         self.requireFeature(features.backslashdir_feature)
-        tool = 'C:\\Tools\\Diff.exe'
+        tool = ['C:\\Tools\\Diff.exe', '{old_path}', '{new_path}']
         diff_obj = diff.DiffFromTool.from_string(tool, None, None, None)
         self.addCleanup(diff_obj.finish)
-        self.assertEqual(['C:\\Tools\\Diff.exe', '@old_path', '@new_path'],
+        self.assertEqual(['C:\\Tools\\Diff.exe', '{old_path}', '{new_path}'],
                          diff_obj.command_template)
         self.assertEqual(['C:\\Tools\\Diff.exe', 'old-path', 'new-path'],
                          diff_obj._get_command('old-path', 'new-path'))
@@ -894,7 +896,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
     def test_execute(self):
         output = BytesIO()
         diff_obj = diff.DiffFromTool([sys.executable, '-c',
-                                      'print("@old_path @new_path")'],
+                                      'print("{old_path} {new_path}")'],
                                      None, None, output)
         self.addCleanup(diff_obj.finish)
         diff_obj._execute('old', 'new')
@@ -922,7 +924,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         basis_tree.lock_read()
         self.addCleanup(basis_tree.unlock)
         diff_obj = diff.DiffFromTool([sys.executable, '-c',
-                                      'print "@old_path @new_path"'],
+                                      'print "{old_path} {new_path}"'],
                                      basis_tree, tree, output)
         diff_obj._prepare_files('file', 'file', file_id=b'file-id')
         # The old content should be readonly
@@ -958,7 +960,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         diff_obj = diff.DiffFromTool([sys.executable, '-c',
-                                      'print "@old_path @new_path"'],
+                                      'print "{old_path} {new_path}"'],
                                      old_tree, tree, output)
         self.addCleanup(diff_obj.finish)
         self.assertContainsRe(diff_obj._root, 'brz-diff-[^/]*')
@@ -980,7 +982,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
     def test_encodable_filename(self):
         # Just checks file path for external diff tool.
         # We cannot change CPython's internal encoding used by os.exec*.
-        diffobj = diff.DiffFromTool(['dummy', '@old_path', '@new_path'],
+        diffobj = diff.DiffFromTool(['dummy', '{old_path}', '{new_path}'],
                                     None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
             encoding = scenario['encoding']
@@ -995,7 +997,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             self.assertTrue(fullpath.startswith(diffobj._root + '/safe'))
 
     def test_unencodable_filename(self):
-        diffobj = diff.DiffFromTool(['dummy', '@old_path', '@new_path'],
+        diffobj = diff.DiffFromTool(['dummy', '{old_path}', '{new_path}'],
                                     None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
             encoding = scenario['encoding']
