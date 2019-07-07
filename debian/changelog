@@ -1,6 +1,7 @@
 breezy (3.0.1-1) UNRELEASED; urgency=medium
 
   * New upstream release.
+  * Drop patch 24_revno_order: merged upstream.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 07 Jul 2019 12:15:32 +0000
 
