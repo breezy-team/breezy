@@ -857,6 +857,8 @@ class cmd_inventory(Command):
     takes_options = [
         'revision',
         'show-ids',
+        Option('include-root',
+               help='Include the entry for the root of the tree, if any.'),
         Option('kind',
                help='List entries of a particular kind: file, directory, '
                     'symlink.',
@@ -865,7 +867,8 @@ class cmd_inventory(Command):
     takes_args = ['file*']
 
     @display_command
-    def run(self, revision=None, show_ids=False, kind=None, file_list=None):
+    def run(self, revision=None, show_ids=False, kind=None, include_root=False,
+            file_list=None):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise errors.BzrCommandError(
                 gettext('invalid kind %r specified') % (kind,))
@@ -895,7 +898,7 @@ class cmd_inventory(Command):
         for path, entry in sorted(entries):
             if kind and kind != entry.kind:
                 continue
-            if path == "":
+            if path == "" and not include_root:
                 continue
             if show_ids:
                 self.outf.write('%-50s %s\n' % (
