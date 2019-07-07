@@ -54,6 +54,15 @@ Improvements
 * Automatically upgrade to branch format 8 when setting branch references.
   (Jelmer Vernooĳ)
 
+* The substitution variables for the ``change_editor`` configuration
+  option are now "{old_path}" and "{new_path}" rather than "@old_path" and
+  "@new_path". The former is more consistent with the way substitutions
+  work in other configuration options. The old syntax is still supported.
+  (Jelmer Vernooĳ, #708718)
+
+* The ``brz inventory`` command now accepts a ``--include-root``
+  argument to show the tree root. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
@@ -66,6 +75,9 @@ Bug Fixes
 
 * Don't include timestamps in filenames when reporting on binary
   files in diff. (Jelmer Vernooĳ, #71307)
+
+* Ignore UnknownFormatErrors when scanning for control directories.
+  (Jelmer Vernooĳ, #468332)
 
 Documentation
 *************
@@ -80,6 +92,12 @@ API Changes
 
 * New ``Tree.get_transform`` method for getting a ``TreeTransform``
   object. (Jelmer Vernooij)
+
+* ``Repository.find_branches`` now returns an iterator rather than a
+  list. (Jelmer Vernooĳ, #413970)
+
+* New ``Tree.get_nested_tree`` method for retrieving a nested tree.
+  (Jelmer Vernooĳ)
 
 Internals
 *********
