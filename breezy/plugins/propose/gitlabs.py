@@ -252,7 +252,7 @@ class GitLab(Hoster):
     def _fork_project(self, project_name):
         path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
         response = self._api_request('POST', path)
-        if response != 200:
+        if response != 201:
             raise InvalidHttpResponse(path, response.text)
         return json.loads(response.data)
 
