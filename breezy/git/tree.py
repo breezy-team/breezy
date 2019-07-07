@@ -253,6 +253,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def __init__(self, repository, revision_id):
         self._revision_id = revision_id
         self._repository = repository
+        self._submodules = None
         self.store = repository._git.object_store
         if not isinstance(revision_id, bytes):
             raise TypeError(revision_id)
@@ -273,11 +274,37 @@ class GitRevisionTree(revisiontree.RevisionTree):
             self._fileid_map = self.mapping.get_fileid_map(
                 self.store.__getitem__, self.tree)
 
-    def _get_nested_repository(self, path):
-        nested_repo_transport = self._repository.user_transport.clone(path)
+    def _submodule_info(self):
+        if self._submodules is None:
+            try:
+                with self.get_file('.gitmodules') as f:
+                    config = GitConfigFile.from_file(f)
+                    self._submodules = {
+                        path: (url, section)
+                        for path, url, section in parse_submodules(config)}
+            except errors.NoSuchFile:
+                self._submodules = {}
+        return self._submodules
+
+    def _get_submodule_repository(self, relpath):
+        if not isinstance(relpath, bytes):
+            raise TypeError(relpath)
+        try:
+            info = self._submodule_info()[relpath]
+        except KeyError:
+            nested_repo_transport = self._repository.user_transport.clone(relpath.decode('utf-8'))
+        else:
+            nested_repo_transport = self._repository.control_transport.clone(
+                posixpath.join('modules', info[0]))
         nested_controldir = _mod_controldir.ControlDir.open_from_transport(
             nested_repo_transport)
         return nested_controldir.find_repository()
+
+    def get_nested_tree(self, path):
+        encoded_path = path.encode('utf-8')
+        nested_repo = self._get_submodule_repository(encoded_path)
+        ref_rev = self.get_reference_revision(path)
+        return nested_repo.revision_tree(ref_rev)
 
     def supports_rename_tracking(self):
         return False
@@ -565,7 +592,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         """See RevisionTree.get_symlink_target."""
         (store, mode, hexsha) = self._lookup_path(path)
         if S_ISGITLINK(mode):
-            nested_repo = self._get_nested_repository(path)
+            nested_repo = self._get_submodule_repository(path.encode('utf-8'))
             return nested_repo.lookup_foreign_revision_id(hexsha)
         else:
             return None
@@ -590,7 +617,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         elif kind == 'symlink':
             return (kind, None, None, store[hexsha].data.decode('utf-8'))
         elif kind == 'tree-reference':
-            nested_repo = self._get_nested_repository(path)
+            nested_repo = self._get_submodule_repository(path.encode('utf-8'))
             return (kind, None, None,
                     nested_repo.lookup_foreign_revision_id(hexsha))
         else:
