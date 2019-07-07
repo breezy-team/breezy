@@ -733,13 +733,19 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
     repo = branch.repository
     graph = repo.get_graph()
     if start_rev_id is None and end_rev_id is None:
-        try:
-            br_revno, br_rev_id = branch.last_revision_info()
-        except errors.GhostRevisionsHaveNoRevno:
+        if branch._format.stores_revno() or \
+                config.GlobalStack().get('calculate_revnos'):
+            try:
+                br_revno, br_rev_id = branch.last_revision_info()
+            except errors.GhostRevisionsHaveNoRevno:
+                br_rev_id = branch.last_revision()
+                cur_revno = None
+            else:
+                cur_revno = br_revno
+        else:
             br_rev_id = branch.last_revision()
             cur_revno = None
-        else:
-            cur_revno = br_revno
+
         graph_iter = graph.iter_lefthand_ancestry(br_rev_id,
                                                   (_mod_revision.NULL_REVISION,))
         while True:
@@ -1091,11 +1097,6 @@ def _get_revision_limits(branch, start_revision, end_revision):
             raise TypeError(start_revision)
         end_rev_id = end_revision.rev_id
         end_revno = end_revision.revno
-    if end_revno is None:
-        try:
-            end_revno = branch.revno()
-        except errors.GhostRevisionsHaveNoRevno:
-            end_revno = None
 
     if branch.last_revision() != _mod_revision.NULL_REVISION:
         if (start_rev_id == _mod_revision.NULL_REVISION

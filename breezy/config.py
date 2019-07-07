@@ -2482,6 +2482,16 @@ as fixed using ``bzr commit --fixes``, if no explicit
 bug tracker was specified.
 '''))
 option_registry.register(
+    Option('calculate_revnos', default=True,
+           from_unicode=bool_from_store,
+           help='''\
+Calculate revision numbers if they are not known.
+
+Always show revision numbers, even for branch formats that don't store them
+natively (such as Git). Calculating the revision number requires traversing
+the left hand ancestry of the branch and can be slow on very large branches.
+'''))
+option_registry.register(
     Option('check_signatures', default=CHECK_IF_POSSIBLE,
            from_unicode=signature_policy_from_unicode,
            help='''\

@@ -123,6 +123,16 @@ def iter_tokens():
         yield name, section
 
 
+def get_credentials_by_url(url):
+    for name, credentials in iter_tokens():
+        if 'url' not in credentials:
+            continue
+        if credentials['url'].rstrip('/') == url.rstrip('/'):
+            return credentials
+    else:
+        return None
+
+
 def parse_gitlab_url(url):
     (scheme, user, password, host, port, path) = urlutils.parse_url(
         url)
@@ -231,7 +241,7 @@ class GitLab(Hoster):
         self.check()
 
     def _get_project(self, project_name):
-        path = 'projects/:%s' % urlutils.quote(str(project_name), '')
+        path = 'projects/%s' % urlutils.quote(str(project_name), '')
         response = self._api_request('GET', path)
         if response.status == 404:
             raise NoSuchProject(project_name)
@@ -240,7 +250,7 @@ class GitLab(Hoster):
         raise InvalidHttpResponse(path, response.text)
 
     def _fork_project(self, project_name):
-        path = 'projects/:%s/fork' % urlutils.quote(str(project_name), '')
+        path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
         response = self._api_request('POST', path)
         if response != 200:
             raise InvalidHttpResponse(path, response.text)
@@ -251,7 +261,7 @@ class GitLab(Hoster):
 
     def _list_merge_requests(self, owner=None, project=None, state=None):
         if project is not None:
-            path = 'projects/:%s/merge_requests' % urlutils.quote(str(project_name), '')
+            path = 'projects/%s/merge_requests' % urlutils.quote(str(project_name), '')
         else:
             path = 'merge_requests'
         parameters = {}
@@ -272,7 +282,7 @@ class GitLab(Hoster):
             self, title, source_project_id, target_project_id,
             source_branch_name, target_branch_name, description,
             labels=None):
-        path = 'projects/:%s/merge_requests' % source_project_id
+        path = 'projects/%s/merge_requests' % source_project_id
         response = self._api_request(
             'POST', path, fields={
                 'title': title,
@@ -387,7 +397,10 @@ class GitLab(Hoster):
             raise UnsupportedHoster(url)
         transport = get_transport(
             'https://%s' % host, possible_transports=possible_transports)
-        return cls(transport)
+        credentials = get_credentials_by_url(transport.base)
+        if credentials is not None:
+            return cls(transport, credentials.get('private_token'))
+        raise UnsupportedHoster(url)
 
     @classmethod
     def iter_instances(cls):

@@ -1662,6 +1662,10 @@ class BranchFormat(controldir.ControlComponentFormat):
         """True if uncommitted changes can be stored in this branch."""
         return True
 
+    def stores_revno(self):
+        """True if this branch format store revision numbers."""
+        return True
+
 
 class BranchHooks(Hooks):
     """A dictionary mapping hook name to a list of callables for branch hooks.
@@ -2020,7 +2024,12 @@ class BranchPushResult(_Result):
         tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
             if self.old_revid != self.new_revid:
-                note(gettext('Pushed up to revision %d.') % self.new_revno)
+                if self.new_revno is not None:
+                    note(gettext('Pushed up to revision %d.'),
+                         self.new_revno)
+                else:
+                    note(gettext('Pushed up to revision id %s.'),
+                         self.new_revid.decode('utf-8'))
             if tag_updates:
                 note(ngettext('%d tag updated.', '%d tags updated.',
                               len(tag_updates)) % len(tag_updates))

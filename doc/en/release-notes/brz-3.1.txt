@@ -30,10 +30,16 @@ New Features
  * The 'quilt' plugin, extracted from brz-debian, is now
    bundled. (Jelmer Vernooĳ)
 
-* Directly read mtab rather than using psutil when trying to figure out
-  filesystem types. This removes a dependency that not all users may
-  have installed and speeds up import time since psutil brings in
-  various other modules. (Jelmer Vernooĳ)
+ * A new ``calculate_revnos`` configuration option (defaults to enabled)
+   can be used to disable revno display for branch formats that
+   do not natively store revnos. This speeds up ``brz log`` on
+   the Samba git branch by 33%.
+   (Jelmer Vernooĳ)
+
+ * Directly read mtab rather than using psutil when trying to figure out
+   filesystem types. This removes a dependency that not all users may
+   have installed and speeds up import time since psutil brings in
+   various other modules. (Jelmer Vernooĳ)
 
 Improvements
 ************
@@ -48,6 +54,9 @@ Improvements
 * Automatically upgrade to branch format 8 when setting branch references.
   (Jelmer Vernooĳ)
 
+* The ``brz inventory`` command now accepts a ``--include-root``
+  argument to show the tree root. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
@@ -57,6 +66,9 @@ Bug Fixes
 * Print a sensible error message when conversion for an option fails
   (i.e. when a non-int is specified as the value for an integer
   parameter) (#237844, Jelmer Vernooĳ)
+
+* Ignore UnknownFormatErrors when scanning for control directories.
+  (Jelmer Vernooĳ, #468332)
 
 Documentation
 *************
@@ -71,6 +83,9 @@ API Changes
 
 * New ``Tree.get_transform`` method for getting a ``TreeTransform``
   object. (Jelmer Vernooij)
+
+* New ``Tree.get_nested_tree`` method for retrieving a nested tree.
+  (Jelmer Vernooĳ)
 
 Internals
 *********

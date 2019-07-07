@@ -151,6 +151,17 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(b"", output)
         self.assertTrue(error.endswith(b"Created new branch.\n"))
 
+    def test_push_without_calculate_revnos(self):
+        self.run_bzr(['init', '--git', 'bla'])
+        self.run_bzr(['init', '--git', 'foo'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        output, error = self.run_bzr(
+            ['push', '-Ocalculate_revnos=no', '-d', 'foo', 'bla'])
+        self.assertEqual("", output)
+        self.assertContainsRe(
+            error,
+            'Pushed up to revision id git(.*).\n')
+
     def test_push_lossy_non_mainline(self):
         self.run_bzr(['init', '--git', 'bla'])
         self.run_bzr(['init', 'foo'])
@@ -185,6 +196,25 @@ class TestGitBlackBox(ExternalBase):
 
         # Check that bzr log does not fail and includes the revision.
         output, error = self.run_bzr(['log', '-v'])
+        self.assertContainsRe(output, 'revno: 1')
+
+    def test_log_without_revno(self):
+        # Smoke test for "bzr log -v" in a git repository.
+        self.simple_commit()
+
+        # Check that bzr log does not fail and includes the revision.
+        output, error = self.run_bzr(['log', '-Ocalculate_revnos=no'])
+        self.assertNotContainsRe(output, 'revno: 1')
+
+    def test_commit_without_revno(self):
+        repo = GitRepo.init(self.test_dir)
+        output, error = self.run_bzr(
+            ['commit', '-Ocalculate_revnos=yes', '--unchanged', '-m', 'one'])
+        self.assertContainsRe(error, 'Committed revision 1.')
+        output, error = self.run_bzr(
+            ['commit', '-Ocalculate_revnos=no', '--unchanged', '-m', 'two'])
+        self.assertNotContainsRe(error, 'Committed revision 2.')
+        self.assertContainsRe(error, 'Committed revid .*.')
 
     def test_tags(self):
         git_repo, commit_sha1 = self.simple_commit()

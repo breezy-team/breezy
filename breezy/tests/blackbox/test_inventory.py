@@ -48,6 +48,10 @@ class TestInventory(TestCaseWithTransport):
     def test_inventory(self):
         self.assertInventoryEqual('a\nb\nb/c\n')
 
+    def test_inventory_include_root(self):
+        self.assertInventoryEqual('\na\nb\nb/c\n', '--include-root')
+        self.assertInventoryEqual('b\nb/c\n', '--include-root b')
+
     def test_inventory_kind(self):
         self.assertInventoryEqual('a\nb/c\n', '--kind file')
         self.assertInventoryEqual('b\n', '--kind directory')

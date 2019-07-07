@@ -3264,7 +3264,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
             ('unchanged', b'd\n'),
             ('new-a', b'e\n'),
             ('new-b', b'f\n'),
-        ], list(tree_a.plan_file_merge(b'file-id', tree_b)))
+        ], list(tree_a.plan_file_merge('file', tree_b)))
 
     def test_plan_file_merge_revision_tree(self):
         work_a = self.make_branch_and_tree('wta')
@@ -3287,7 +3287,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
             ('unchanged', b'd\n'),
             ('new-a', b'e\n'),
             ('new-b', b'f\n'),
-        ], list(tree_a.plan_file_merge(b'file-id', tree_b)))
+        ], list(tree_a.plan_file_merge('file', tree_b)))
 
     def test_walkdirs(self):
         preview = self.get_empty_preview()

@@ -541,7 +541,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                 commit_message=commit_message,
                 reviewers=[self.launchpad.people[reviewer].self_link
                            for reviewer in reviewers],
-                review_types=[None for reviewer in reviewers])
+                review_types=['' for reviewer in reviewers])
         except WebserviceFailure as e:
             # Urgh.
             if (b'There is already a branch merge proposal '

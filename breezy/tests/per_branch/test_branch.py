@@ -1131,3 +1131,9 @@ class TestUncommittedChanges(per_branch.TestCaseWithBranch):
         self.bind(branch, tree.branch)
         unshelver = branch.get_unshelver(tree)
         self.assertIsNot(None, unshelver)
+
+
+class TestFormatMetadata(per_branch.TestCaseWithBranch):
+
+    def test_stores_revno(self):
+        self.assertIn(self.branch_format.stores_revno(), (True, False))

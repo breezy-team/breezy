@@ -21,6 +21,7 @@ from breezy import (
     revisiontree,
     tests,
     )
+from breezy.tree import MissingNestedTree
 from breezy.bzr import (
     workingtree_4,
     )
@@ -51,7 +52,6 @@ class TestPlanFileMerge(TestCaseWithTree):
         work_a = self.make_branch_and_tree('wta')
         self.build_tree_contents([('wta/file', b'a\nb\nc\nd\n')])
         work_a.add('file')
-        file_id = work_a.path2id('file')
         work_a.commit('base version')
         work_b = work_a.controldir.sprout('wtb').open_workingtree()
         self.build_tree_contents([('wta/file', b'b\nc\nd\ne\n')])
@@ -72,7 +72,7 @@ class TestPlanFileMerge(TestCaseWithTree):
             ('unchanged', b'd\n'),
             ('new-a', b'e\n'),
             ('new-b', b'f\n'),
-        ], list(tree_a.plan_file_merge(file_id, tree_b)))
+        ], list(tree_a.plan_file_merge('file', tree_b)))
 
 
 class TestReference(TestCaseWithTree):
@@ -83,14 +83,11 @@ class TestReference(TestCaseWithTree):
 
     def create_nested(self):
         work_tree = self.make_branch_and_tree('wt')
-        work_tree.lock_write()
-        try:
+        with work_tree.lock_write():
             self.skip_if_no_reference(work_tree)
             subtree = self.make_branch_and_tree('wt/subtree')
             subtree.commit('foo')
             work_tree.add_reference(subtree)
-        finally:
-            work_tree.unlock()
         tree = self._convert_tree(work_tree)
         self.skip_if_no_reference(tree)
         return tree, subtree
@@ -110,6 +107,15 @@ class TestReference(TestCaseWithTree):
         self.assertEqual(
             [u'subtree'],
             list(tree.iter_references()))
+
+    def test_get_nested_tree(self):
+        tree, subtree = self.create_nested()
+        try:
+            changes = subtree.changes_from(tree.get_nested_tree('subtree'))
+            self.assertFalse(changes.has_changed())
+        except MissingNestedTree:
+            # Also okay.
+            pass
 
     def test_get_root_id(self):
         # trees should return some kind of root id; it can be none
