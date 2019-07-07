@@ -67,6 +67,9 @@ Bug Fixes
   (i.e. when a non-int is specified as the value for an integer
   parameter) (#237844, Jelmer Vernooĳ)
 
+* Ignore UnknownFormatErrors when scanning for control directories.
+  (Jelmer Vernooĳ, #468332)
+
 Documentation
 *************
 
