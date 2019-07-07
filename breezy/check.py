@@ -119,7 +119,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
         if repo is not None:
             repo.lock_read()
             to_unlock.append(repo)
-            branches = repo.find_branches(using=True)
+            branches = list(repo.find_branches(using=True))
             saw_tree = False
             if do_branch or do_tree:
                 for branch in branches:
