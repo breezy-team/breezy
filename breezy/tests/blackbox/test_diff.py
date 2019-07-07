@@ -333,7 +333,7 @@ class TestDiff(DiffBase):
         os.unlink('a')
         output = self.run_bzr('diff', retcode=1)
         self.assertEqual(
-            "=== removed file 'a'\nBinary files a and a differ\n",
+            "=== removed file 'a'\nBinary files old/a and new/a differ\n",
             output[0])
 
 
