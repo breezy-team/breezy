@@ -2670,6 +2670,10 @@ option_registry.register(
            help="If we wait for a new request from a client for more than"
                 " X seconds, consider the client idle, and hangup."))
 option_registry.register(
+    Option('ssh',
+           default=None, override_from_env=['BRZ_SSH'],
+           help='SSH vendor to use.'))
+option_registry.register(
     Option('stacked_on_location',
            default=None,
            help="""The location where this branch is stacked on."""))
