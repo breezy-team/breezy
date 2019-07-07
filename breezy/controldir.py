@@ -561,7 +561,8 @@ class ControlDir(ControlComponent):
             recurse = True
             try:
                 controldir = klass.open_from_transport(current_transport)
-            except (errors.NotBranchError, errors.PermissionDenied):
+            except (errors.NotBranchError, errors.PermissionDenied,
+                    errors.UnknownFormatError):
                 pass
             else:
                 recurse, value = evaluate(controldir)

@@ -199,9 +199,9 @@ class cmd_propose_merge(Command):
                 prerequisite_branch=prerequisite_branch, labels=labels,
                 commit_message=commit_message)
         except _mod_propose.MergeProposalExists as e:
-            raise errors.BzrCommandError(gettext(
-                'There is already a branch merge proposal: %s') % e.url)
-        note(gettext('Merge proposal created: %s') % proposal.url)
+            note(gettext('There is already a branch merge proposal: %s'), e.url)
+        else:
+            note(gettext('Merge proposal created: %s') % proposal.url)
 
 
 class cmd_find_merge_proposal(Command):
