@@ -84,6 +84,9 @@ API Changes
 * New ``Tree.get_transform`` method for getting a ``TreeTransform``
   object. (Jelmer Vernooij)
 
+* ``Repository.find_branches`` now returns an iterator rather than a
+  list. (Jelmer Vernooĳ, #413970)
+
 * New ``Tree.get_nested_tree`` method for retrieving a nested tree.
   (Jelmer Vernooĳ)
 
