@@ -383,10 +383,14 @@ class BzrGitMapping(foreign.VcsMapping):
             encoding = commit.encoding.decode('ascii')
         else:
             encoding = 'utf-8'
-        message, metadata = self._decode_commit_message(
-            None, commit.message, encoding)
-        if metadata.revision_id:
-            return metadata.revision_id
+        try:
+            message, metadata = self._decode_commit_message(
+                None, commit.message, encoding)
+        except UnicodeDecodeError:
+            pass
+        else:
+            if metadata.revision_id:
+                return metadata.revision_id
         return self.revision_id_foreign_to_bzr(commit.id)
 
     def import_commit(self, commit, lookup_parent_revid):

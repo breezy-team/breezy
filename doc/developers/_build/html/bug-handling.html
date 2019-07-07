@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Tracking Bugs in Breezy &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Tracking Bugs in Breezy &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="profiling.html" title="Profiling"
              accesskey="P">previous</a> |
@@ -48,19 +46,19 @@
 itself.  Bugs in Breezy are recorded in Launchpad.</p>
 <p>See also:</p>
 <ul class="simple">
-<li><a class="reference external" href="index.html">Breezy Developer Documents</a>.</li>
-<li><a class="reference external" href="cycle.html">The Breezy Development Cycle</a>.</li>
-<li><a class="reference external" href="../en/user-guide/index.html">The Breezy User Guide</a> – for
-information on integrating Breezy with other bug trackers.</li>
+<li><p><a class="reference external" href="index.html">Breezy Developer Documents</a>.</p></li>
+<li><p><a class="reference external" href="cycle.html">The Breezy Development Cycle</a>.</p></li>
+<li><p><a class="reference external" href="../en/user-guide/index.html">The Breezy User Guide</a> – for
+information on integrating Breezy with other bug trackers.</p></li>
 </ul>
 <div class="section" id="links">
 <h2>Links<a class="headerlink" href="#links" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><a class="reference external" href="https://bugs.launchpad.net/brz">Breezy bugs home page</a>.</li>
-<li><a class="reference external" href="https://bugs.launchpad.net/brz/+bugs?search=Search&amp;field.importance=Critical&amp;field.status=New&amp;field.status=Incomplete&amp;field.status=Confirmed&amp;field.status=Triaged&amp;field.status=In+Progress&amp;field.status=Fix+Committed">Critical bugs</a>.</li>
-<li><a class="reference external" href="https://bugs.launchpad.net/brz/+bugs">Open bugs by importance</a>.</li>
-<li><a class="reference external" href="https://bugs.launchpad.net/brz/+bugs?field.searchtext=&amp;orderby=-date_last_updated&amp;search=Search&amp;field.status%3Alist=NEW&amp;field.status%3Alist=INCOMPLETE_WITH_RESPONSE&amp;field.status%3Alist=INCOMPLETE_WITHOUT_RESPONSE&amp;field.status%3Alist=CONFIRMED&amp;field.status%3Alist=TRIAGED&amp;field.status%3Alist=INPROGRESS&amp;field.status%3Alist=FIXCOMMITTED&amp;field.assignee=&amp;field.bug_reporter=&amp;field.omit_dupes=on&amp;field.has_patch=&amp;field.has_no_package=">Open bugs most recently changed first</a>.</li>
-<li><a class="reference external" href="http://tinyurl.com/brz-bugs-by-dupes">Most commonly duplicated bugs</a>.</li>
+<li><p><a class="reference external" href="https://bugs.launchpad.net/brz">Breezy bugs home page</a>.</p></li>
+<li><p><a class="reference external" href="https://bugs.launchpad.net/brz/+bugs?search=Search&amp;field.importance=Critical&amp;field.status=New&amp;field.status=Incomplete&amp;field.status=Confirmed&amp;field.status=Triaged&amp;field.status=In+Progress&amp;field.status=Fix+Committed">Critical bugs</a>.</p></li>
+<li><p><a class="reference external" href="https://bugs.launchpad.net/brz/+bugs">Open bugs by importance</a>.</p></li>
+<li><p><a class="reference external" href="https://bugs.launchpad.net/brz/+bugs?field.searchtext=&amp;orderby=-date_last_updated&amp;search=Search&amp;field.status%3Alist=NEW&amp;field.status%3Alist=INCOMPLETE_WITH_RESPONSE&amp;field.status%3Alist=INCOMPLETE_WITHOUT_RESPONSE&amp;field.status%3Alist=CONFIRMED&amp;field.status%3Alist=TRIAGED&amp;field.status%3Alist=INPROGRESS&amp;field.status%3Alist=FIXCOMMITTED&amp;field.assignee=&amp;field.bug_reporter=&amp;field.omit_dupes=on&amp;field.has_patch=&amp;field.has_no_package=">Open bugs most recently changed first</a>.</p></li>
+<li><p><a class="reference external" href="http://tinyurl.com/brz-bugs-by-dupes">Most commonly duplicated bugs</a>.</p></li>
 </ul>
 </div>
 <div class="section" id="generalities">
@@ -83,10 +81,10 @@ report, but they generally care more about getting bugs fixed.</p>
 <p>The aim of investigating bugs before starting concentrated work on them is
 therefore only to:</p>
 <ul class="simple">
-<li>determine if they are critical or high priority (and
-should displace existing work)</li>
-<li>garden sufficiently to keep the database usable: meaningful summaries,
-and duplicates removed</li>
+<li><p>determine if they are critical or high priority (and
+should displace existing work)</p></li>
+<li><p>garden sufficiently to keep the database usable: meaningful summaries,
+and duplicates removed</p></li>
 </ul>
 <p>It’s OK to fix some bugs that just annoy you, even if they’re not
 rationally high.</p>
@@ -110,13 +108,13 @@ engine, rather than Launchpad’s search.</p>
 <h2>Priorities<a class="headerlink" href="#priorities" title="Permalink to this headline">¶</a></h2>
 <p>The suggested priorities for bug work are:</p>
 <ol class="arabic simple">
-<li>Fix critical bugs.</li>
-<li>Get existing fixes through review and landed.</li>
-<li>Fix bugs that are already in progress.</li>
-<li>Look at bugs already assigned to you, and either start them, or change
-your mind and unassign them.</li>
-<li>Take new bugs from the top of the stack.</li>
-<li>Triage new bugs.</li>
+<li><p>Fix critical bugs.</p></li>
+<li><p>Get existing fixes through review and landed.</p></li>
+<li><p>Fix bugs that are already in progress.</p></li>
+<li><p>Look at bugs already assigned to you, and either start them, or change
+your mind and unassign them.</p></li>
+<li><p>Take new bugs from the top of the stack.</p></li>
+<li><p>Triage new bugs.</p></li>
 </ol>
 <p>It’s not strict and of course there is personal discretion but our work
 should be biased to the top of this hierarchy.</p>
@@ -130,66 +128,63 @@ for each bug to be clear.)</p>
 clear bugs.</p>
 <p>Examples of good bugs:</p>
 <ul class="simple">
-<li>“ValueError in frob_foo when committing changed symlink” - although
+<li><p>“ValueError in frob_foo when committing changed symlink” - although
 there may be many possible things that could cause a ValueError there,
 you should at least know when you’ve fixed the problem described in this
-bug.</li>
-<li>“Unclear message about incompatible repositories” - even though the user
+bug.</p></li>
+<li><p>“Unclear message about incompatible repositories” - even though the user
 may not agree the new message is sufficiently clear, at least you know
-when you’ve tried to fix it.</li>
+when you’ve tried to fix it.</p></li>
 </ul>
 <p>Examples of bad bugs:</p>
 <ul class="simple">
-<li>“Commit is too slow” - how fast is fast enough to close it?  “Commit
-reads the working tree twice” is clearer.</li>
+<li><p>“Commit is too slow” - how fast is fast enough to close it?  “Commit
+reads the working tree twice” is clearer.</p></li>
 </ul>
 </div>
 <div class="section" id="bug-status">
 <h2>Bug Status<a class="headerlink" href="#bug-status" title="Permalink to this headline">¶</a></h2>
-<dl class="docutils">
-<dt>New</dt>
-<dd>The bug has just been filed and hasn’t been examined by a developer
-yet.</dd>
-<dt>Incomplete</dt>
-<dd><p class="first">The bug requires more information from the reporter to make progress.</p>
-<p class="last">Only set this state if it’s impossible or uneconomical to make
+<dl>
+<dt>New</dt><dd><p>The bug has just been filed and hasn’t been examined by a developer
+yet.</p>
+</dd>
+<dt>Incomplete</dt><dd><p>The bug requires more information from the reporter to make progress.</p>
+<p>Only set this state if it’s impossible or uneconomical to make
 progress on the bug without that information.  The bug will expire if
 it remains in this state for two months.</p>
 </dd>
-<dt>Confirmed</dt>
-<dd>This bug has been confirmed by at least one other person (developer or otherwise).</dd>
-<dt>Triaged</dt>
-<dd>The bug report has been seen by a developer and we agree it’s a bug.
+<dt>Confirmed</dt><dd><p>This bug has been confirmed by at least one other person (developer or otherwise).</p>
+</dd>
+<dt>Triaged</dt><dd><p>The bug report has been seen by a developer and we agree it’s a bug.
 You don’t have to reproduce the bug to mark it Triaged.  (Generally
 it’s not a good idea for a developer to spend time reproducing the bug
-until they’re going to work on it.)</dd>
-<dt>In Progress</dt>
-<dd><p class="first">Someone has started working on this.  We can deliver the value of the
+until they’re going to work on it.)</p>
+</dd>
+<dt>In Progress</dt><dd><p>Someone has started working on this.  We can deliver the value of the
 work already done by finishing and shipping the fix.</p>
-<p class="last">The bug keeps this state from the time someone does non-trivial
+<p>The bug keeps this state from the time someone does non-trivial
 analysis, until the fix is merged to a release or trunk branch (when
 it is Fix Released), or until they give up on it (back to New or
 Confirmed) or decide it is Invalid or Incomplete.</p>
 </dd>
-<dt>Won’t Fix</dt>
-<dd>The behaviour complained about is intentional and we won’t fix it.
+<dt>Won’t Fix</dt><dd><p>The behaviour complained about is intentional and we won’t fix it.
 Needless to say, be thoughtful before using this status, and consider if
-the user experience can be improved in some other way.</dd>
-<dt>Invalid</dt>
-<dd>The reporter was confused, and this is not actually a bug.
-Again, be sensitive in explaining this to the user.</dd>
-<dt>Fix Committed</dt>
-<dd>Don’t use this.  If set on old bug, it probably means In Progress,
-with the fix waiting for review.  See Launchpad <a class="reference external" href="https://bugs.launchpad.net/launchpad/+bug/163694">bug 163694</a>.</dd>
-<dt>Fix Released</dt>
-<dd><p class="first">The fix for this bug is now in the Breezy branch that this task is for.
+the user experience can be improved in some other way.</p>
+</dd>
+<dt>Invalid</dt><dd><p>The reporter was confused, and this is not actually a bug.
+Again, be sensitive in explaining this to the user.</p>
+</dd>
+<dt>Fix Committed</dt><dd><p>Don’t use this.  If set on old bug, it probably means In Progress,
+with the fix waiting for review.  See Launchpad <a class="reference external" href="https://bugs.launchpad.net/launchpad/+bug/163694">bug 163694</a>.</p>
+</dd>
+<dt>Fix Released</dt><dd><p>The fix for this bug is now in the Breezy branch that this task is for.
 The branch for the default task on a bug is trunk.</p>
 <p>We use this value even though the fix may not have been been included
 in a release yet because all the developer activity around it is
 complete and we want to both avoid bug spam when releases happen, and
 keep the list of bugs that developers see when they look at the bug
 tracker trimmed to those that require action.</p>
-<p class="last">When setting a bug task to fix released, the bug target milestone
+<p>When setting a bug task to fix released, the bug target milestone
 should be set to the release the fix will be included in (or was
 included in, if you are updating an old bug). Don’t spend too much
 time updating this if you don’t immediately know: its not critical
@@ -199,24 +194,24 @@ that it be set.</p>
 </div>
 <div class="section" id="bug-importance">
 <h2>Bug Importance<a class="headerlink" href="#bug-importance" title="Permalink to this headline">¶</a></h2>
-<dl class="docutils">
-<dt>Critical</dt>
-<dd>This is a serious bug that could cause data loss, stop Breezy being
+<dl class="simple">
+<dt>Critical</dt><dd><p>This is a serious bug that could cause data loss, stop Breezy being
 usable in an important case, or represents a regression in something
 previously working.  We should fix critical bugs before doing other
 work, or seriously consider whether the bug is really critical
-or whether the other change is more urgent.</dd>
-<dt>High</dt>
-<dd>This is a bug that can seriously interfere with people’s use of
+or whether the other change is more urgent.</p>
+</dd>
+<dt>High</dt><dd><p>This is a bug that can seriously interfere with people’s use of
 Breezy.  We should seriously consider fixing these bugs before
-working on new features.</dd>
-<dt>Medium</dt>
-<dd>A regular bug.  We’d like to fix them, but there may be a long delay.</dd>
-<dt>Low</dt>
-<dd>Something suboptimal that may affect an unimportant case or have a
-fairly easy workaround.</dd>
-<dt>Wishlist</dt>
-<dd>These will basically never get done.</dd>
+working on new features.</p>
+</dd>
+<dt>Medium</dt><dd><p>A regular bug.  We’d like to fix them, but there may be a long delay.</p>
+</dd>
+<dt>Low</dt><dd><p>Something suboptimal that may affect an unimportant case or have a
+fairly easy workaround.</p>
+</dd>
+<dt>Wishlist</dt><dd><p>These will basically never get done.</p>
+</dd>
 </dl>
 <p>Bugs rated Medium or lower are unlikely to get fixed unless they either
 pique the interest of a developer or are escalated due eg to many users
@@ -263,43 +258,43 @@ including the bug number.
 <div class="section" id="tags">
 <h2>Tags<a class="headerlink" href="#tags" title="Permalink to this headline">¶</a></h2>
 <p>Here are some bug tags we use.  In Launchpad Bugs tags are currently of limited use, so don’t feel obliged to tag bugs unless you’re finding it useful.</p>
-<dl class="docutils">
-<dt>authentication</dt>
-<dd>authenticating to servers</dd>
-<dt>backport</dt>
-<dd>candidate for backporting to an update of the previous release</dd>
-<dt>dirstate</dt>
-<dd>WorkingTree4</dd>
-<dt>easy</dt>
-<dd>should be possible to finish in an hour or two</dd>
-<dt>hpss</dt>
-<dd>bugs about the High-Performance Smart Server, i.e. bzr+ssh://, etc.</dd>
-<dt>hpssvfs</dt>
-<dd>bugs for causes of VFS methods of the smart server</dd>
-<dt>launchpad</dt>
-<dd>bugs about interactions with launchpad (typically this means breezy.plugins.launchpad).</dd>
-<dt>locale</dt>
-<dd>problems using locales other than English</dd>
-<dt>memory</dt>
-<dd>problems where we use too much memory for some reason</dd>
-<dt>newformat</dt>
-<dd>fixing this would need a new disk format</dd>
-<dt>performance</dt>
-<dd>bugs about performance problems.</dd>
-<dt>regression</dt>
-<dd>bugs which represent an aspect of Breezy becoming accidentally less good than it was.</dd>
-<dt>test</dt>
-<dd>needs changes to the test framework</dd>
-<dt>transport</dt>
-<dd>virtual filesystem for HTTP, SFTP, etc.</dd>
-<dt>trivial</dt>
-<dd>should be very easy to fix (10-20 minutes) and easily landed: typically
-just spelling errors and the like</dd>
-<dt>ui</dt>
-<dd>bugs relating to the Breezy user interface, e.g. confusing error messages.</dd>
-<dt>win32</dt>
-<dd>bugs that mainly affects Windows. Also there is cygwin and win98 tags for
-marking specific bugs.</dd>
+<dl class="simple">
+<dt>authentication</dt><dd><p>authenticating to servers</p>
+</dd>
+<dt>backport</dt><dd><p>candidate for backporting to an update of the previous release</p>
+</dd>
+<dt>dirstate</dt><dd><p>WorkingTree4</p>
+</dd>
+<dt>easy</dt><dd><p>should be possible to finish in an hour or two</p>
+</dd>
+<dt>hpss</dt><dd><p>bugs about the High-Performance Smart Server, i.e. bzr+ssh://, etc.</p>
+</dd>
+<dt>hpssvfs</dt><dd><p>bugs for causes of VFS methods of the smart server</p>
+</dd>
+<dt>launchpad</dt><dd><p>bugs about interactions with launchpad (typically this means breezy.plugins.launchpad).</p>
+</dd>
+<dt>locale</dt><dd><p>problems using locales other than English</p>
+</dd>
+<dt>memory</dt><dd><p>problems where we use too much memory for some reason</p>
+</dd>
+<dt>newformat</dt><dd><p>fixing this would need a new disk format</p>
+</dd>
+<dt>performance</dt><dd><p>bugs about performance problems.</p>
+</dd>
+<dt>regression</dt><dd><p>bugs which represent an aspect of Breezy becoming accidentally less good than it was.</p>
+</dd>
+<dt>test</dt><dd><p>needs changes to the test framework</p>
+</dd>
+<dt>transport</dt><dd><p>virtual filesystem for HTTP, SFTP, etc.</p>
+</dd>
+<dt>trivial</dt><dd><p>should be very easy to fix (10-20 minutes) and easily landed: typically
+just spelling errors and the like</p>
+</dd>
+<dt>ui</dt><dd><p>bugs relating to the Breezy user interface, e.g. confusing error messages.</p>
+</dd>
+<dt>win32</dt><dd><p>bugs that mainly affects Windows. Also there is cygwin and win98 tags for
+marking specific bugs.</p>
+</dd>
 </dl>
 <p>You can see the full list of tags in use at
 &lt;<a class="reference external" href="https://bugs.launchpad.net/brz/+bugs">https://bugs.launchpad.net/brz/+bugs</a>&gt;.  As of September 2008 the
@@ -356,8 +351,6 @@ list is on the right.</p>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -385,7 +378,7 @@ list is on the right.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>LCA Tree Merging &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>LCA Tree Merging &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="content-filtering.html" title="Content Filtering"
              accesskey="P">previous</a> |
@@ -81,12 +79,11 @@ changes to be “bar.c”, we simply conflict and expect the user to sort it out
 <h3>Resolution Algorithm<a class="headerlink" href="#resolution-algorithm" title="Permalink to this headline">¶</a></h3>
 <p>(This can be seen as <code class="docutils literal notranslate"><span class="pre">breezy.merge.Merge3Merger._lca_multi_way`</span></code></p>
 <ol class="arabic">
-<li><p class="first">If <code class="docutils literal notranslate"><span class="pre">THIS</span></code> and <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> have the same value, use it. There is no need to
+<li><p>If <code class="docutils literal notranslate"><span class="pre">THIS</span></code> and <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> have the same value, use it. There is no need to
 inspect any other values in this case. Either nothing was changed (all
 interesting nodes would have the same value), or we have “accidental
-convergence” (both sides made the same change.).</p>
-</li>
-<li><p class="first">Find the values from <code class="docutils literal notranslate"><span class="pre">LCA1</span></code> and <code class="docutils literal notranslate"><span class="pre">LCA2</span></code> which are not the same as
+convergence” (both sides made the same change.).</p></li>
+<li><p>Find the values from <code class="docutils literal notranslate"><span class="pre">LCA1</span></code> and <code class="docutils literal notranslate"><span class="pre">LCA2</span></code> which are not the same as
 <code class="docutils literal notranslate"><span class="pre">BASE</span></code>. The idea here is to provide a rudimentary “heads” comparison.
 Often, the whole tree graph will have a criss-cross, but the per-file
 (per-scalar) graph would be linear, and the value in one LCA strictly
@@ -98,11 +95,10 @@ per-scalar graph.</p>
 <p>If there are no LCA values that are different from <code class="docutils literal notranslate"><span class="pre">BASE</span></code>, we use a simple
 3-way merge with <code class="docutils literal notranslate"><span class="pre">BASE</span></code> as the base value.</p>
 </li>
-<li><p class="first">Find the unique set of LCA values that do not include the <code class="docutils literal notranslate"><span class="pre">BASE</span></code> value.
+<li><p>Find the unique set of LCA values that do not include the <code class="docutils literal notranslate"><span class="pre">BASE</span></code> value.
 If there is only one unique LCA value, we again use three-way merge logic
-using that unique value as the base.</p>
-</li>
-<li><p class="first">At this point, we have determined that we have at least 2 unique values in
+using that unique value as the base.</p></li>
+<li><p>At this point, we have determined that we have at least 2 unique values in
 our LCAs which means that <code class="docutils literal notranslate"><span class="pre">THIS</span></code> and <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> would both have to resolve
 the conflict. If they resolved it in the same way, we would have caught that
 in step 1. So they either both picked a different LCA value, or one (or
@@ -111,13 +107,12 @@ both) chose a new value to use.</p>
 <p>If <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> and <code class="docutils literal notranslate"><span class="pre">THIS</span></code> both have values that are not LCA values, we also
 conflict. (Same as 3-way, both sides modified a value in different ways.)</p>
 </li>
-<li><p class="first">(optional) The only tricky part is this: if <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> has a LCA value, but
+<li><p>(optional) The only tricky part is this: if <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> has a LCA value, but
 <code class="docutils literal notranslate"><span class="pre">THIS</span></code> does not, then we go with <code class="docutils literal notranslate"><span class="pre">THIS</span></code>, and conversely if <code class="docutils literal notranslate"><span class="pre">THIS</span></code> has
 an LCA value, but <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> does not, then we go with <code class="docutils literal notranslate"><span class="pre">OTHER</span></code>. The idea is
 that <code class="docutils literal notranslate"><span class="pre">THIS</span></code> and <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> may have resolved things in the same way, and
 then later changed the value to something newer. (They could have also
-resolved it differently, and then one side updated again.)</p>
-</li>
+resolved it differently, and then one side updated again.)</p></li>
 </ol>
 </div>
 <div class="section" id="inventoryentry-revision">
@@ -138,10 +133,10 @@ point.</p>
 </div>
 <p>For a single entry, the last modified revision in <code class="docutils literal notranslate"><span class="pre">D</span></code> is:</p>
 <ol class="arabic simple">
-<li><code class="docutils literal notranslate"><span class="pre">A</span></code> if neither <code class="docutils literal notranslate"><span class="pre">B</span></code> or <code class="docutils literal notranslate"><span class="pre">C</span></code> modified it</li>
-<li><code class="docutils literal notranslate"><span class="pre">B</span></code> if <code class="docutils literal notranslate"><span class="pre">B</span></code> modified and <code class="docutils literal notranslate"><span class="pre">C</span></code> did not</li>
-<li><code class="docutils literal notranslate"><span class="pre">C</span></code> if <code class="docutils literal notranslate"><span class="pre">C</span></code> modified and <code class="docutils literal notranslate"><span class="pre">B</span></code> did not</li>
-<li><code class="docutils literal notranslate"><span class="pre">D</span></code> if <code class="docutils literal notranslate"><span class="pre">B</span></code> and <code class="docutils literal notranslate"><span class="pre">C</span></code> modified it</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">A</span></code> if neither <code class="docutils literal notranslate"><span class="pre">B</span></code> or <code class="docutils literal notranslate"><span class="pre">C</span></code> modified it</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">B</span></code> if <code class="docutils literal notranslate"><span class="pre">B</span></code> modified and <code class="docutils literal notranslate"><span class="pre">C</span></code> did not</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">C</span></code> if <code class="docutils literal notranslate"><span class="pre">C</span></code> modified and <code class="docutils literal notranslate"><span class="pre">B</span></code> did not</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">D</span></code> if <code class="docutils literal notranslate"><span class="pre">B</span></code> and <code class="docutils literal notranslate"><span class="pre">C</span></code> modified it</p></li>
 </ol>
 <p>This means that if the last modified revision is the same, there have been no
 changes in the intermediate time. If <code class="docutils literal notranslate"><span class="pre">OTHER</span></code> also has the same last modified
@@ -201,8 +196,6 @@ need to create a new last modified revision as part of the merge.)</p>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -230,7 +223,7 @@ need to create a new last modified revision as part of the merge.)</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

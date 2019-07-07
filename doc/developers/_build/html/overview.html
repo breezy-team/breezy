@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Breezy Architectural Overview &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Breezy Architectural Overview &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="ec2.html" title="Breezy Windows EC2 Server"
              accesskey="P">previous</a> |
@@ -63,17 +61,15 @@ the Breezy mailing list, or simply file a bug report.</p>
 <p>All IDs are globally unique identifiers.  Inside breezy they are almost
 always represented as UTF-8 encoded bytestrings (i.e. <code class="docutils literal notranslate"><span class="pre">str</span></code> objects).</p>
 <p>The main two IDs are:</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Revision IDs:</th><td class="field-body">The unique identifier of a single revision, such as
-<code class="docutils literal notranslate"><span class="pre">pqm&#64;pqm.ubuntu.com-20110201161347-ao76mv267gc1b5v2</span></code></td>
-</tr>
-<tr class="field-even field"><th class="field-name">File IDs:</th><td class="field-body">The unique identifier of a single file.</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Revision IDs</dt>
+<dd class="field-odd"><p>The unique identifier of a single revision, such as
+<code class="docutils literal notranslate"><span class="pre">pqm&#64;pqm.ubuntu.com-20110201161347-ao76mv267gc1b5v2</span></code></p>
+</dd>
+<dt class="field-even">File IDs</dt>
+<dd class="field-even"><p>The unique identifier of a single file.</p>
+</dd>
+</dl>
 <p>By convention, in the breezy API, parameters of methods that are expected
 to be IDs (as opposed to keys, revision numbers, or some other handle)
 will end in <code class="docutils literal notranslate"><span class="pre">id</span></code>, e.g.  <code class="docutils literal notranslate"><span class="pre">revid</span></code> or <code class="docutils literal notranslate"><span class="pre">file_id</span></code>.</p>
@@ -180,8 +176,8 @@ is also in the form of URL components.</p>
 <h4>More information<a class="headerlink" href="#more-information" title="Permalink to this headline">¶</a></h4>
 <p>See also:</p>
 <ul class="simple">
-<li><a class="reference external" href="transports.html">Developer guide to breezy transports</a></li>
-<li>API docs for <code class="docutils literal notranslate"><span class="pre">breezy.transport.Transport</span></code></li>
+<li><p><a class="reference external" href="transports.html">Developer guide to breezy transports</a></p></li>
+<li><p>API docs for <code class="docutils literal notranslate"><span class="pre">breezy.transport.Transport</span></code></p></li>
 </ul>
 </div>
 </div>
@@ -198,16 +194,14 @@ other subclasses of <code class="docutils literal notranslate"><span class="pre"
 <h3>Tree<a class="headerlink" href="#tree" title="Permalink to this headline">¶</a></h3>
 <p>A representation of a directory of files (and other directories and
 symlinks etc).  The most important kinds of Tree are:</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">WorkingTree:</th><td class="field-body">the files on disk editable by the user</td>
-</tr>
-<tr class="field-even field"><th class="field-name">RevisionTree:</th><td class="field-body">a tree as recorded at some point in the past</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">WorkingTree</dt>
+<dd class="field-odd"><p>the files on disk editable by the user</p>
+</dd>
+<dt class="field-even">RevisionTree</dt>
+<dd class="field-even"><p>a tree as recorded at some point in the past</p>
+</dd>
+</dl>
 <p>Trees can map file paths to file-ids and vice versa (although trees such
 as WorkingTree may have unversioned files not described in that mapping).
 Trees have an inventory and parents (an ordered list of zero or more
@@ -232,18 +226,18 @@ formats).</p>
 directory on disk, where the user can directly modify the files.</p>
 <p>Responsibilities:</p>
 <ul class="simple">
-<li>Maintaining a WorkingTree on disk at a file path.</li>
-<li>Maintaining the basis inventory (the inventory of the last commit done)</li>
-<li>Maintaining the working inventory.</li>
-<li>Maintaining the pending merges list.</li>
-<li>Maintaining the stat cache.</li>
-<li>Maintaining the last revision the working tree was updated to.</li>
-<li>Knows where its Branch is located.</li>
+<li><p>Maintaining a WorkingTree on disk at a file path.</p></li>
+<li><p>Maintaining the basis inventory (the inventory of the last commit done)</p></li>
+<li><p>Maintaining the working inventory.</p></li>
+<li><p>Maintaining the pending merges list.</p></li>
+<li><p>Maintaining the stat cache.</p></li>
+<li><p>Maintaining the last revision the working tree was updated to.</p></li>
+<li><p>Knows where its Branch is located.</p></li>
 </ul>
 <p>Dependencies:</p>
 <ul class="simple">
-<li>a Branch</li>
-<li>local access to the working tree</li>
+<li><p>a Branch</p></li>
+<li><p>local access to the working tree</p></li>
 </ul>
 </div>
 <div class="section" id="branch">
@@ -252,17 +246,17 @@ directory on disk, where the user can directly modify the files.</p>
 more people have been committing to.</p>
 <p>A Branch is responsible for:</p>
 <ul class="simple">
-<li>Holding user preferences that are set in a Branch.</li>
-<li>Holding the ‘tip’: the last revision to be committed to this Branch.
-(And the revno of that revision.)</li>
-<li>Knowing how to open the Repository that holds its history.</li>
-<li>Allowing write locks to be taken out to prevent concurrent alterations to the branch.</li>
+<li><p>Holding user preferences that are set in a Branch.</p></li>
+<li><p>Holding the ‘tip’: the last revision to be committed to this Branch.
+(And the revno of that revision.)</p></li>
+<li><p>Knowing how to open the Repository that holds its history.</p></li>
+<li><p>Allowing write locks to be taken out to prevent concurrent alterations to the branch.</p></li>
 </ul>
 <p>Depends on:</p>
 <ul class="simple">
-<li>URL access to its base directory.</li>
-<li>A Transport to access its files.</li>
-<li>A Repository to hold its history.</li>
+<li><p>URL access to its base directory.</p></li>
+<li><p>A Transport to access its files.</p></li>
+<li><p>A Repository to hold its history.</p></li>
 </ul>
 </div>
 <div class="section" id="repository">
@@ -271,17 +265,18 @@ more people have been committing to.</p>
 and graph relationships between them.  A repository holds a bag of
 revision data that can be pointed to by various branches:</p>
 <ul class="simple">
-<li>Maintains storage of various history data at a URL:<ul>
-<li>Revisions (Must have a matching inventory)</li>
-<li>Digital Signatures</li>
-<li>Inventories for each Revision. (Must have all the file texts available).</li>
-<li>File texts</li>
+<li><p>Maintains storage of various history data at a URL:</p>
+<ul>
+<li><p>Revisions (Must have a matching inventory)</p></li>
+<li><p>Digital Signatures</p></li>
+<li><p>Inventories for each Revision. (Must have all the file texts available).</p></li>
+<li><p>File texts</p></li>
 </ul>
 </li>
-<li>Synchronizes concurrent access to the repository by different
+<li><p>Synchronizes concurrent access to the repository by different
 processes.  (Most repository implementations use a physical mutex only
 for a short period, and effectively support multiple readers and
-writers.)</li>
+writers.)</p></li>
 </ul>
 <div class="section" id="stacked-repositories">
 <h4>Stacked Repositories<a class="headerlink" href="#stacked-repositories" title="Permalink to this headline">¶</a></h4>
@@ -317,24 +312,24 @@ the same.</p>
 <h3>Branch<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
 <p>A branch directly contains:</p>
 <ul class="simple">
-<li>the ID of the current revision that branch (a.k.a. the “tip”)</li>
-<li>some settings for that branch (the values in “branch.conf”)</li>
-<li>the set of tags for that branch (not supported in all formats)</li>
+<li><p>the ID of the current revision that branch (a.k.a. the “tip”)</p></li>
+<li><p>some settings for that branch (the values in “branch.conf”)</p></li>
+<li><p>the set of tags for that branch (not supported in all formats)</p></li>
 </ul>
 <p>A branch implicitly references:</p>
 <ul class="simple">
-<li>A repository.  The repository might be colocated in the same directory
-as the branch, or it might be somewhere else entirely.</li>
+<li><p>A repository.  The repository might be colocated in the same directory
+as the branch, or it might be somewhere else entirely.</p></li>
 </ul>
 </div>
 <div class="section" id="id2">
 <h3>Repository<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
 <p>A repository contains:</p>
 <ul class="simple">
-<li>a revision store</li>
-<li>an inventory store</li>
-<li>a text store</li>
-<li>a signature store</li>
+<li><p>a revision store</p></li>
+<li><p>an inventory store</p></li>
+<li><p>a text store</p></li>
+<li><p>a signature store</p></li>
 </ul>
 <p>A store is a key-value mapping.  This says nothing about the layout on
 disk, just that conceptually there are distinct stores, each with a
@@ -352,18 +347,19 @@ format).</p>
 <p>As described in <a class="reference external" href="https://www.breezy-vcs.org/doc/en/user-guide/core_concepts.html">Core Concepts</a> a revision describes a snapshot of the
 tree of files and some metadata about them.</p>
 <ul class="simple">
-<li>metadata:<ul>
-<li>parent revisions (an ordered sequence of zero or more revision IDs)</li>
-<li>commit message</li>
-<li>author(s)</li>
-<li>timestamp</li>
-<li>(and all other revision properties)</li>
+<li><p>metadata:</p>
+<ul>
+<li><p>parent revisions (an ordered sequence of zero or more revision IDs)</p></li>
+<li><p>commit message</p></li>
+<li><p>author(s)</p></li>
+<li><p>timestamp</p></li>
+<li><p>(and all other revision properties)</p></li>
 </ul>
 </li>
-<li>an inventory ID (that inventory describes the tree contents).  Is often
+<li><p>an inventory ID (that inventory describes the tree contents).  Is often
 the same as the revision ID, but doesn’t have to be (e.g. if no files
 were changed between two revisions then both revisions will refer to
-the same inventory).</li>
+the same inventory).</p></li>
 </ul>
 </div>
 <div class="section" id="inventory-store">
@@ -373,40 +369,44 @@ usually be a revision with the same key in the revision store, but there
 are rare cases where this is not true.)</p>
 <p>An inventory object contains:</p>
 <ul class="simple">
-<li>a set of inventory entries</li>
+<li><p>a set of inventory entries</p></li>
 </ul>
 <p>An inventory entry has the following attributes</p>
 <ul class="simple">
-<li>a file-id (a GUID, or the special value TREE_ROOT for the root entry of
-inventories created by older versions of bzr)</li>
-<li>a revision-id, a GUID (generally corresponding to the ID of a
+<li><p>a file-id (a GUID, or the special value TREE_ROOT for the root entry of
+inventories created by older versions of bzr)</p></li>
+<li><p>a revision-id, a GUID (generally corresponding to the ID of a
 revision).  The combination of (file-id, revision-id) is a key into the
-texts store.</li>
-<li>a kind: one of file, directory, symlink, tree-reference (tree-reference
-is only supported in unsupported developer formats)</li>
-<li>parent-id: the file-id of the directory that contains this entry (this
-value is unset for the root of the tree).</li>
-<li>name: the name of the file/directory/etc in that parent directory</li>
-<li>executable: a flag indicating if the executable bit is set for that
-file.</li>
+texts store.</p></li>
+<li><p>a kind: one of file, directory, symlink, tree-reference (tree-reference
+is only supported in unsupported developer formats)</p></li>
+<li><p>parent-id: the file-id of the directory that contains this entry (this
+value is unset for the root of the tree).</p></li>
+<li><p>name: the name of the file/directory/etc in that parent directory</p></li>
+<li><p>executable: a flag indicating if the executable bit is set for that
+file.</p></li>
 </ul>
 <p>An inventory entry will have other attributes, depending on the kind:</p>
 <ul class="simple">
-<li>file:<ul>
-<li>SHA1</li>
-<li>size</li>
+<li><p>file:</p>
+<ul>
+<li><p>SHA1</p></li>
+<li><p>size</p></li>
 </ul>
 </li>
-<li>directory<ul>
-<li>children</li>
+<li><p>directory</p>
+<ul>
+<li><p>children</p></li>
 </ul>
 </li>
-<li>symlink<ul>
-<li>symlink_target</li>
+<li><p>symlink</p>
+<ul>
+<li><p>symlink_target</p></li>
 </ul>
 </li>
-<li>tree-reference<ul>
-<li>reference_revision</li>
+<li><p>tree-reference</p>
+<ul>
+<li><p>reference_revision</p></li>
 </ul>
 </li>
 </ul>
@@ -478,8 +478,6 @@ those of the revision store.</p>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -507,7 +505,7 @@ those of the revision store.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

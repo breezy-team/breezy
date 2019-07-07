@@ -107,7 +107,8 @@ class RevisionSpec_git(RevisionSpec):
     def _match_on(self, branch, revs):
         loc = self.spec.find(':')
         git_sha1 = self.spec[loc + 1:].encode("utf-8")
-        if len(git_sha1) > 40 or not valid_git_sha1(git_sha1):
+        if (len(git_sha1) > 40 or len(git_sha1) < 4 or
+                not valid_git_sha1(git_sha1)):
             raise InvalidRevisionSpec(self.user_spec, branch)
         from . import (
             lazy_check_versions,

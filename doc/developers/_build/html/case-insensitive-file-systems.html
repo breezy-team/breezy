@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Case Insensitive File Systems &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Case Insensitive File Systems &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="repository-stream.html" title="Repository Streams"
              accesskey="P">previous</a> |
@@ -55,17 +53,17 @@ with GNU/Linux systems, so the current operating system doesn’t necessarily re
 capabilities of the file-system.</p>
 <p>Bazaar supports 3 kinds of file-systems, each to different degrees.</p>
 <ul class="simple">
-<li>Case-sensitive file-systems: This is the file-system generally used on
+<li><p>Case-sensitive file-systems: This is the file-system generally used on
 GNU/Linux: 2 files can differ only by case, and the exact case must be used
-when opening a file.</li>
-<li>Case-insensitive, case-preserving (cicp) file-systems: This is the
+when opening a file.</p></li>
+<li><p>Case-insensitive, case-preserving (cicp) file-systems: This is the
 file-system generally used on Windows; FAT32 is an example of such a
 file-system.  Although existing files can be opened using any case, the
 exact case used to create the file is preserved and available for programs
-to query.  Two files that differ only by case is not allowed.</li>
-<li>Case-insensitive: This is the file-system used by very old Windows versions
+to query.  Two files that differ only by case is not allowed.</p></li>
+<li><p>Case-insensitive: This is the file-system used by very old Windows versions
 and is rarely encountered “in the wild”.  Two files that differ only by
-case is not allowed and the case used to create a file is not preserved.</li>
+case is not allowed and the case used to create a file is not preserved.</p></li>
 </ul>
 <p>As can be implied by the above descriptions, only the first two are considered
 relevant to a modern Bazaar.</p>
@@ -89,18 +87,18 @@ projects which wish to work with Windows would, by convention, avoid filenames
 that differ only by case.</p>
 <p>The rules for such fixups turn out to be quite simple:</p>
 <ul class="simple">
-<li>If an argument refers to an existing inventory item, we fixup the argument
+<li><p>If an argument refers to an existing inventory item, we fixup the argument
 using the inventory.  This is, basically, all commands that take a filename
-or directory argument <em>other</em> than ‘add’ and in some cases ‘mv’</li>
-<li>If an argument refers to an existing filename for the creation of an
+or directory argument <em>other</em> than ‘add’ and in some cases ‘mv’</p></li>
+<li><p>If an argument refers to an existing filename for the creation of an
 inventory item (eg, add), then the case of the existing file on the disk
 will be used.  However, Bazaar must still check the inventory to prevent
-accidentally creating 2 inventory items that differ only by case.</li>
-<li>If an argument results in the creation of a <em>new</em> filename (eg, a move
+accidentally creating 2 inventory items that differ only by case.</p></li>
+<li><p>If an argument results in the creation of a <em>new</em> filename (eg, a move
 destination), the argument will be used as specified.  Breezy will create
 a file and inventory item that exactly matches the case specified (although
 as above, care must be taken to avoid creating two inventory items that
-differ only by case.)</li>
+differ only by case.)</p></li>
 </ul>
 </div>
 <div class="section" id="implementation-of-support-for-these-file-systems">
@@ -111,14 +109,14 @@ the time it is simply converting a string specified by the user to the
 “canonical” form as stored in either the inventory or filesystem.  These
 boil down to the following new API functions:</p>
 <ul class="simple">
-<li>osutils.canonical_relpath() - like osutils.relpath() but adjust the case
-of the result to match any existing items.</li>
-<li>Tree.get_canonical_inventory_path - somewhat like Tree.get_symlink_target(),
+<li><p>osutils.canonical_relpath() - like osutils.relpath() but adjust the case
+of the result to match any existing items.</p></li>
+<li><p>Tree.get_canonical_inventory_path - somewhat like Tree.get_symlink_target(),
 Tree.get_file() etc; returns a name with the case adjusted to match
-existing inventory items.</li>
-<li>osutils.canonical_relpaths() and Tree.get_canonical_inventory_paths() - like
+existing inventory items.</p></li>
+<li><p>osutils.canonical_relpaths() and Tree.get_canonical_inventory_paths() - like
 the ‘singular’ versions above, but accept and return sequences and therefore
-offer more optimization opportunities when working with multiple names.</li>
+offer more optimization opportunities when working with multiple names.</p></li>
 </ul>
 <p>The only complication is the requirement that Bazaar not allow the creation
 of items that differ only by case on such file-systems.  For this requirement,
@@ -176,8 +174,6 @@ case-insensitive and cicp file-systems can be treated the same.  The
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -205,7 +201,7 @@ case-insensitive and cicp file-systems can be treated the same.  The
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

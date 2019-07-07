@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Configuration Settings &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Configuration Settings &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="bugs-help.html" title="Bug Tracker Settings"
              accesskey="P">previous</a> |
@@ -63,8 +61,8 @@ the ordinary command line progress bar.</p>
 <h3>BRZ_SIGQUIT_PDB<a class="headerlink" href="#brz-sigquit-pdb" title="Permalink to this headline">¶</a></h3>
 <p>Control whether SIGQUIT behaves normally or invokes a breakin debugger.</p>
 <ul class="simple">
-<li>0 = Standard SIGQUIT behavior (normally, exit with a core dump)</li>
-<li>1 = Invoke breakin debugger (default)</li>
+<li><p>0 = Standard SIGQUIT behavior (normally, exit with a core dump)</p></li>
+<li><p>1 = Invoke breakin debugger (default)</p></li>
 </ul>
 </div>
 <div class="section" id="brz-home">
@@ -79,8 +77,8 @@ the ordinary command line progress bar.</p>
 <h3>BRZ_PDB<a class="headerlink" href="#brz-pdb" title="Permalink to this headline">¶</a></h3>
 <p>Control whether to launch a debugger on error.</p>
 <ul class="simple">
-<li>0 = Standard behavior</li>
-<li>1 = Launch debugger</li>
+<li><p>0 = Standard behavior</p></li>
+<li><p>1 = Launch debugger</p></li>
 </ul>
 </div>
 <div class="section" id="bzr-remote-path">
@@ -106,10 +104,10 @@ will disable logging.</p>
 <p>The path to the plugins directory that Breezy should use.
 If not set, Breezy will search for plugins in:</p>
 <ul class="simple">
-<li>the user specific plugin directory (containing the <code class="docutils literal notranslate"><span class="pre">user</span></code> plugins),</li>
-<li>the breezy directory (containing the <code class="docutils literal notranslate"><span class="pre">core</span></code> plugins),</li>
-<li>the site specific plugin directory if applicable (containing
-the <code class="docutils literal notranslate"><span class="pre">site</span></code> plugins).</li>
+<li><p>the user specific plugin directory (containing the <code class="docutils literal notranslate"><span class="pre">user</span></code> plugins),</p></li>
+<li><p>the breezy directory (containing the <code class="docutils literal notranslate"><span class="pre">core</span></code> plugins),</p></li>
+<li><p>the site specific plugin directory if applicable (containing
+the <code class="docutils literal notranslate"><span class="pre">site</span></code> plugins).</p></li>
 </ul>
 <p>If <code class="docutils literal notranslate"><span class="pre">BZR_PLUGIN_PATH</span></code> is set in any fashion, it will change the
 the way the plugin are searched.</p>
@@ -123,11 +121,11 @@ in <code class="docutils literal notranslate"><span class="pre">user</span></cod
 <p>If you need to change the order or remove one of these
 directories, you should use special values:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">-user</span></code>, <code class="docutils literal notranslate"><span class="pre">-core</span></code>, <code class="docutils literal notranslate"><span class="pre">-site</span></code> will remove the corresponding
-path from the default values,</li>
-<li><code class="docutils literal notranslate"><span class="pre">+user</span></code>, <code class="docutils literal notranslate"><span class="pre">+core</span></code>, <code class="docutils literal notranslate"><span class="pre">+site</span></code> will add the corresponding path
+<li><p><code class="docutils literal notranslate"><span class="pre">-user</span></code>, <code class="docutils literal notranslate"><span class="pre">-core</span></code>, <code class="docutils literal notranslate"><span class="pre">-site</span></code> will remove the corresponding
+path from the default values,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">+user</span></code>, <code class="docutils literal notranslate"><span class="pre">+core</span></code>, <code class="docutils literal notranslate"><span class="pre">+site</span></code> will add the corresponding path
 before the remaining default values (and also remove it from
-the default values).</li>
+the default values).</p></li>
 </ul>
 <p>Note that the special values ‘user’, ‘core’ and ‘site’ should be
 used literally, they will be substituted by the corresponding,
@@ -211,11 +209,11 @@ Windows. (You can check the location for your system by using
 <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">version</span></code>.)</p>
 <p>There are three primary configuration files in this location:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> describes default configuration options,</li>
-<li><code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> describes configuration information for
-specific branch locations,</li>
-<li><code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> describes credential information for
-remote servers.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">breezy.conf</span></code> describes default configuration options,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">locations.conf</span></code> describes configuration information for
+specific branch locations,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> describes credential information for
+remote servers.</p></li>
 </ul>
 <p>Each branch can also contain a configuration file that sets values specific
 to that branch. This file is found at <code class="docutils literal notranslate"><span class="pre">.bzr/branch/branch.conf</span></code> within the
@@ -274,16 +272,16 @@ any locations they contain.  Policies can be used to change how an
 option value is interpreted for contained locations.  Currently
 there are three policies available:</p>
 <blockquote>
-<div><dl class="docutils">
-<dt>none:</dt>
-<dd>the value is interpreted the same for contained locations.  This is
-the default behaviour.</dd>
-<dt>norecurse:</dt>
-<dd>the value is only used for the exact location specified by the
-section name.</dd>
-<dt>appendpath:</dt>
-<dd>for contained locations, any additional path components are
-appended to the value.</dd>
+<div><dl class="simple">
+<dt>none:</dt><dd><p>the value is interpreted the same for contained locations.  This is
+the default behaviour.</p>
+</dd>
+<dt>norecurse:</dt><dd><p>the value is only used for the exact location specified by the
+section name.</p>
+</dd>
+<dt>appendpath:</dt><dd><p>for contained locations, any additional path components are
+appended to the value.</p>
+</dd>
 </dl>
 </div></blockquote>
 <p>Policies are specified by keys with names of the form “&lt;option_name&gt;:policy”.
@@ -429,29 +427,29 @@ value is <code class="docutils literal notranslate"><span class="pre">long</span
 <h3>check_signatures<a class="headerlink" href="#check-signatures" title="Permalink to this headline">¶</a></h3>
 <p>Reserved for future use.  These options will allow a policy for branches to
 require signatures.</p>
-<dl class="docutils">
-<dt>require</dt>
-<dd>The gnupg signature for revisions must be present and must be valid.</dd>
-<dt>ignore</dt>
-<dd>Do not check gnupg signatures of revisions.</dd>
-<dt>check-available</dt>
-<dd>(default) If gnupg signatures for revisions are present, check them.
+<dl class="simple">
+<dt>require</dt><dd><p>The gnupg signature for revisions must be present and must be valid.</p>
+</dd>
+<dt>ignore</dt><dd><p>Do not check gnupg signatures of revisions.</p>
+</dd>
+<dt>check-available</dt><dd><p>(default) If gnupg signatures for revisions are present, check them.
 Breezy will fail if it finds a bad signature, but will not fail if
-no signature is present.</dd>
+no signature is present.</p>
+</dd>
 </dl>
 </div>
 <div class="section" id="create-signatures">
 <h3>create_signatures<a class="headerlink" href="#create-signatures" title="Permalink to this headline">¶</a></h3>
 <p>Defines the behaviour of signing revisions on commits.  By default bzr will not
 sign new commits.</p>
-<dl class="docutils">
-<dt>always</dt>
-<dd>Sign every new revision that is committed.  If the signing fails then the
-commit will not be made.</dd>
-<dt>when-required</dt>
-<dd>Reserved for future use.</dd>
-<dt>never</dt>
-<dd>Reserved for future use.</dd>
+<dl class="simple">
+<dt>always</dt><dd><p>Sign every new revision that is committed.  If the signing fails then the
+commit will not be made.</p>
+</dd>
+<dt>when-required</dt><dd><p>Reserved for future use.</p>
+</dd>
+<dt>never</dt><dd><p>Reserved for future use.</p>
+</dd>
 </dl>
 <p>In future it is planned that <code class="docutils literal notranslate"><span class="pre">when-required</span></code> will sign newly
 committed revisions only when the branch requires them.  <code class="docutils literal notranslate"><span class="pre">never</span></code> will refuse
@@ -473,12 +471,12 @@ address, key fingerprint or full key ID.  When unset or when set to
 <h3>recurse<a class="headerlink" href="#recurse" title="Permalink to this headline">¶</a></h3>
 <p>Only useful in <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>. Defines whether or not the
 configuration for this section applies to subdirectories:</p>
-<dl class="docutils">
-<dt>true</dt>
-<dd>(default) This section applies to subdirectories as well.</dd>
-<dt>false</dt>
-<dd>This section only applies to the branch at this directory and not
-branches below it.</dd>
+<dl class="simple">
+<dt>true</dt><dd><p>(default) This section applies to subdirectories as well.</p>
+</dd>
+<dt>false</dt><dd><p>This section only applies to the branch at this directory and not
+branches below it.</p>
+</dd>
 </dl>
 </div>
 <div class="section" id="id1">
@@ -486,9 +484,9 @@ branches below it.</dd>
 <p>(Default: “bzr”).  The path to the command that should be used to run the smart
 server for bzr.  This value may only be specified in locations.conf, because:</p>
 <ul class="simple">
-<li>it’s needed before branch.conf is accessible</li>
-<li>allowing remote branch.conf files to specify commands would be a security
-risk</li>
+<li><p>it’s needed before branch.conf is accessible</p></li>
+<li><p>allowing remote branch.conf files to specify commands would be a security
+risk</p></li>
 </ul>
 <p>It is overridden by the BZR_REMOTE_PATH environment variable.</p>
 </div>
@@ -518,40 +516,41 @@ By default, bzr will try to use <code class="docutils literal notranslate"><span
 will try <code class="docutils literal notranslate"><span class="pre">xdg-email</span></code>. If either of these fails, it will fall back to
 <code class="docutils literal notranslate"><span class="pre">editor</span></code>.</p>
 <p>Supported values for specific clients:</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">claws:</th><td class="field-body">Use Claws.  This skips a dialog for attaching files.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">evolution:</th><td class="field-body">Use Evolution.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">kmail:</th><td class="field-body">Use KMail.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">mutt:</th><td class="field-body">Use Mutt.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">thunderbird:</th><td class="field-body">Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
-this works around some bugs that xdg-email doesn’t handle.</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">claws</dt>
+<dd class="field-odd"><p>Use Claws.  This skips a dialog for attaching files.</p>
+</dd>
+<dt class="field-even">evolution</dt>
+<dd class="field-even"><p>Use Evolution.</p>
+</dd>
+<dt class="field-odd">kmail</dt>
+<dd class="field-odd"><p>Use KMail.</p>
+</dd>
+<dt class="field-even">mutt</dt>
+<dd class="field-even"><p>Use Mutt.</p>
+</dd>
+<dt class="field-odd">thunderbird</dt>
+<dd class="field-odd"><p>Use Mozilla Thunderbird or Icedove.  For Thunderbird/Icedove 1.5,
+this works around some bugs that xdg-email doesn’t handle.</p>
+</dd>
+</dl>
 <p>Supported generic values are:</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">default:</th><td class="field-body">See above.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">editor:</th><td class="field-body">Use your editor to compose the merge request.  This also uses
+<dl class="field-list simple">
+<dt class="field-odd">default</dt>
+<dd class="field-odd"><p>See above.</p>
+</dd>
+<dt class="field-even">editor</dt>
+<dd class="field-even"><p>Use your editor to compose the merge request.  This also uses
 your commit id, (see <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">whoami</span></code>), smtp_server and (optionally)
-smtp_username and smtp_password.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">mapi:</th><td class="field-body">Use your preferred e-mail client on Windows.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">xdg-email:</th><td class="field-body">Use xdg-email to run your preferred mail program</td>
-</tr>
-</tbody>
-</table>
+smtp_username and smtp_password.</p>
+</dd>
+<dt class="field-odd">mapi</dt>
+<dd class="field-odd"><p>Use your preferred e-mail client on Windows.</p>
+</dd>
+<dt class="field-even">xdg-email</dt>
+<dd class="field-even"><p>Use xdg-email to run your preferred mail program</p>
+</dd>
+</dl>
 </div>
 <div class="section" id="repository-fdatasync">
 <h3>repository.fdatasync<a class="headerlink" href="#repository-fdatasync" title="Permalink to this headline">¶</a></h3>
@@ -576,16 +575,16 @@ not publically-accessible).  Used (and set) by <code class="docutils literal not
 bzr. Mentioning a warning in this list tells bzr to not emit it.</p>
 <p>Valid values:</p>
 <ul class="simple">
-<li><dl class="first docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">format_deprecation</span></code>:</dt>
-<dd>whether the format deprecation warning is shown on repositories that are
-using deprecated formats.</dd>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">format_deprecation</span></code>:</dt><dd><p>whether the format deprecation warning is shown on repositories that are
+using deprecated formats.</p>
+</dd>
 </dl>
 </li>
-<li><dl class="first docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">insecure_permissions</span></code>:</dt>
-<dd>whether a warning is shown if <code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> can be read
-by other users.</dd>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">insecure_permissions</span></code>:</dt><dd><p>whether a warning is shown if <code class="docutils literal notranslate"><span class="pre">authentication.conf</span></code> can be read
+by other users.</p>
+</dd>
 </dl>
 </li>
 </ul>
@@ -731,8 +730,6 @@ default in tools such as <code class="docutils literal notranslate"><span class=
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -760,7 +757,7 @@ default in tools such as <code class="docutils literal notranslate"><span class=
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

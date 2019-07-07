@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Breezy Tutorial &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Breezy Tutorial &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="../mini-tutorial/index.html" title="Breezy in five minutes"
              accesskey="P">previous</a> |
@@ -129,7 +127,7 @@ email address. Breezy is smart enough to automatically generate an email
 address by looking up your username and hostname. If you don’t like the
 guess that Breezy makes, then three options exist:</p>
 <ol class="arabic">
-<li><p class="first">Set an email address via <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">whoami</span></code>.  This is the simplest way.</p>
+<li><p>Set an email address via <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">whoami</span></code>.  This is the simplest way.</p>
 <p>To set a global identity, use:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">whoami</span> <span class="s2">&quot;Your Name &lt;email@example.com&gt;&quot;</span>
 </pre></div>
@@ -140,7 +138,7 @@ the branch folder and use:</p>
 </pre></div>
 </div>
 </li>
-<li><p class="first">Setting the email address in the <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/breezy.conf</span></code> <a class="footnote-reference" href="#id2" id="id1">[1]</a> by
+<li><p>Setting the email address in the <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/breezy.conf</span></code> <a class="footnote-reference brackets" href="#id2" id="id1">1</a> by
 adding the following lines.  Please note that  <code class="docutils literal notranslate"><span class="pre">[DEFAULT]</span></code> is case
 sensitive:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">DEFAULT</span><span class="p">]</span>
@@ -155,22 +153,20 @@ adding the following lines:</p>
 </pre></div>
 </div>
 </li>
-<li><p class="first">Overriding the two previous options by setting the global environment
+<li><p>Overriding the two previous options by setting the global environment
 variable <code class="docutils literal notranslate"><span class="pre">$brz_EMAIL</span></code> or <code class="docutils literal notranslate"><span class="pre">$EMAIL</span></code> (<code class="docutils literal notranslate"><span class="pre">$brz_EMAIL</span></code> will take
-precedence) to your full email address.</p>
-</li>
+precedence) to your full email address.</p></li>
 </ol>
-<table class="docutils footnote" frame="void" id="id2" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label">[1]</td><td><em>(<a class="fn-backref" href="#id1">1</a>, <a class="fn-backref" href="#id5">2</a>)</em> On Windows, the users configuration files can be found in the
+<dl class="footnote brackets">
+<dt class="label" id="id2"><span class="brackets">1</span><span class="fn-backref">(<a href="#id1">1</a>,<a href="#id5">2</a>)</span></dt>
+<dd><p>On Windows, the users configuration files can be found in the
 application data directory. So instead of <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/breezy.conf</span></code>
 the configuration file can be found as:
 <code class="docutils literal notranslate"><span class="pre">C:\Documents</span> <span class="pre">and</span> <span class="pre">Settings\&lt;username&gt;\Application</span> <span class="pre">Data\Breezy\2.0\breezy.conf</span></code>.
 The same is true for <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>, <code class="docutils literal notranslate"><span class="pre">ignore</span></code>, and the
-<code class="docutils literal notranslate"><span class="pre">plugins</span></code> directory.</td></tr>
-</tbody>
-</table>
+<code class="docutils literal notranslate"><span class="pre">plugins</span></code> directory.</p>
+</dd>
+</dl>
 </div>
 <div class="section" id="creating-a-branch">
 <h2>Creating a branch<a class="headerlink" href="#creating-a-branch" title="Permalink to this headline">¶</a></h2>
@@ -207,16 +203,15 @@ to it will be recorded by the system:</p>
 </div>
 <p>If you add the wrong file, simply use <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">remove</span></code> to make it
 unversioned again.  This does not delete the working copy in this case,
-though it may in others <a class="footnote-reference" href="#id4" id="id3">[2]</a>.</p>
-<table class="docutils footnote" frame="void" id="id4" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label">[2]</td><td><em>(<a class="fn-backref" href="#id3">1</a>, <a class="fn-backref" href="#id6">2</a>)</em> <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">remove</span></code> will remove the working copy if it is currently
+though it may in others <a class="footnote-reference brackets" href="#id4" id="id3">2</a>.</p>
+<dl class="footnote brackets">
+<dt class="label" id="id4"><span class="brackets">2</span><span class="fn-backref">(<a href="#id3">1</a>,<a href="#id6">2</a>)</span></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">remove</span></code> will remove the working copy if it is currently
 versioned, but has no changes from the last committed version.  You
 can force the file to always be kept with the <code class="docutils literal notranslate"><span class="pre">--keep</span></code> option to
-<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">remove</span></code>, or force it to always be deleted with <code class="docutils literal notranslate"><span class="pre">--force</span></code>.</td></tr>
-</tbody>
-</table>
+<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">remove</span></code>, or force it to always be deleted with <code class="docutils literal notranslate"><span class="pre">--force</span></code>.</p>
+</dd>
+</dl>
 </div>
 <div class="section" id="branch-locations">
 <h2>Branch locations<a class="headerlink" href="#branch-locations" title="Permalink to this headline">¶</a></h2>
@@ -447,7 +442,7 @@ commit the automatically created <code class="docutils literal notranslate"><spa
 <p>There are some ignored files which are not project specific, but more user
 specific. Things like editor temporary files, or personal temporary files.
 Rather than add these ignores to every project, brz supports a global
-ignore file in <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/ignore</span></code> <a class="footnote-reference" href="#id2" id="id5">[1]</a>. It has the same syntax as the
+ignore file in <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/ignore</span></code> <a class="footnote-reference brackets" href="#id2" id="id5">1</a>. It has the same syntax as the
 per-project ignore file.</p>
 </div>
 </div>
@@ -494,7 +489,7 @@ and intelligently merge them:</p>
 directory.  This is a bit different to CVS, which requires that you also
 do <code class="docutils literal notranslate"><span class="pre">cvs</span> <span class="pre">remove</span></code>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">remove</span></code> makes the file un-versioned, but may or may not delete the
-working copy <a class="footnote-reference" href="#id4" id="id6">[2]</a>.  This is useful when you add the wrong file, or decide that
+working copy <a class="footnote-reference brackets" href="#id4" id="id6">2</a>.  This is useful when you add the wrong file, or decide that
 a file should actually not be versioned.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>% rm -r src
 % brz remove -v hello.txt
@@ -576,21 +571,19 @@ server.  Just mirror the files to your server, including the .bzr
 directory.  One can push a branch (or the changes for a branch) by one of
 the following three methods:</p>
 <ul>
-<li><p class="first">The best method is to use brz itself to do it.</p>
+<li><p>The best method is to use brz itself to do it.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span> <span class="n">brz</span> <span class="n">push</span> <span class="n">brz</span><span class="o">+</span><span class="n">ssh</span><span class="p">:</span><span class="o">//</span><span class="n">servername</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">directory</span>
 </pre></div>
 </div>
 <p>(The destination directory must already exist unless the
 <code class="docutils literal notranslate"><span class="pre">--create-prefix</span></code> option is used.)</p>
 </li>
-<li><p class="first">Another option is the <code class="docutils literal notranslate"><span class="pre">rspush</span></code> plugin that comes with brzTools, which
+<li><p>Another option is the <code class="docutils literal notranslate"><span class="pre">rspush</span></code> plugin that comes with brzTools, which
 uses rsync to push the changes to the revision history and the working
-tree.</p>
-</li>
-<li><p class="first">You can also copy the files around manually, by sending a tarball, or using
+tree.</p></li>
+<li><p>You can also copy the files around manually, by sending a tarball, or using
 rsync, or other related file transfer methods.  This is usually less safe
-than using <code class="docutils literal notranslate"><span class="pre">push</span></code>, but may be faster or easier in some situations.</p>
-</li>
+than using <code class="docutils literal notranslate"><span class="pre">push</span></code>, but may be faster or easier in some situations.</p></li>
 </ul>
 </div>
 <div class="section" id="moving-changes-between-trees">
@@ -636,8 +629,6 @@ The more different they are, the greater the chance of conflicts.</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -665,7 +656,7 @@ The more different they are, the greater the chance of conflicts.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

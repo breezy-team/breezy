@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Using stacked branches &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Using stacked branches &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="filtered_views.html" title="Filtered views"
              accesskey="P">previous</a> |
@@ -60,13 +58,13 @@ them faster to create and more storage efficient. In these respects,
 stacked branches are similar to shared repositories. However, stacked
 branches have additional benefits:</p>
 <ul class="simple">
-<li>The new branch can be in a completely different location to the
-branch being stacked on.</li>
-<li>Deleting the stacked branch really deletes the revisions (rather
-than leaving them in a shared repository).</li>
-<li>Security is improved over shared repositories, because the stacked-on
+<li><p>The new branch can be in a completely different location to the
+branch being stacked on.</p></li>
+<li><p>Deleting the stacked branch really deletes the revisions (rather
+than leaving them in a shared repository).</p></li>
+<li><p>Security is improved over shared repositories, because the stacked-on
 repository can be physically readonly to developers committing to stacked
-branches.</li>
+branches.</p></li>
 </ul>
 </div>
 <div class="section" id="creating-a-stacked-branch">
@@ -86,9 +84,9 @@ used as the <em>stacked-on</em> location. Otherwise, <code class="docutils liter
 <p>Direct creation of a stacked checkout is expected to be supported soon.
 In the meantime, a two step process is required:</p>
 <ol class="arabic simple">
-<li>Create a stacked branch as shown above.</li>
-<li>Convert the branch into a checkout using either the <code class="docutils literal notranslate"><span class="pre">reconfigure</span></code>
-or <code class="docutils literal notranslate"><span class="pre">bind</span></code> command.</li>
+<li><p>Create a stacked branch as shown above.</p></li>
+<li><p>Convert the branch into a checkout using either the <code class="docutils literal notranslate"><span class="pre">reconfigure</span></code>
+or <code class="docutils literal notranslate"><span class="pre">bind</span></code> command.</p></li>
 </ol>
 </div>
 <div class="section" id="pushing-a-stacked-branch">
@@ -181,8 +179,6 @@ repository.</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -210,7 +206,7 @@ repository.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

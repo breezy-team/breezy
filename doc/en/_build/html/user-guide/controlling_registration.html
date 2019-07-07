@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Controlling file registration &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Controlling file registration &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="starting_a_project.html" title="Starting a project"
              accesskey="P">previous</a> |
@@ -48,9 +46,9 @@ and under the current directory that Breezy thinks ought to be
 version controlled. These things may be:</p>
 <blockquote>
 <div><ul class="simple">
-<li>files</li>
-<li>directories</li>
-<li>symbolic links.</li>
+<li><p>files</p></li>
+<li><p>directories</p></li>
+<li><p>symbolic links.</p></li>
 </ul>
 </div></blockquote>
 <p>Breezy has default rules for deciding which files are
@@ -128,19 +126,18 @@ directly editing the <code class="docutils literal notranslate"><span class="pre
 <p>There are some ignored files which are not project specific, but more user
 specific. Things like editor temporary files, or personal temporary files.
 Rather than add these ignores to every project, brz supports a global
-ignore file in <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/ignore</span></code> <a class="footnote-reference" href="#id2" id="id1">[1]</a>. It has the same syntax as the
+ignore file in <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/ignore</span></code> <a class="footnote-reference brackets" href="#id2" id="id1">1</a>. It has the same syntax as the
 per-project ignore file.</p>
-<table class="docutils footnote" frame="void" id="id2" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>On Windows, the users configuration files can be found in the
+<dl class="footnote brackets">
+<dt class="label" id="id2"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>On Windows, the users configuration files can be found in the
 application data directory. So instead of <code class="docutils literal notranslate"><span class="pre">~/.config/breezy/branch.conf</span></code>
 the configuration file can be found as:
 <code class="docutils literal notranslate"><span class="pre">C:\Documents</span> <span class="pre">and</span> <span class="pre">Settings\&lt;username&gt;\Application</span> <span class="pre">Data\Breezy\3.0\branch.conf</span></code>.
 The same is true for <code class="docutils literal notranslate"><span class="pre">locations.conf</span></code>, <code class="docutils literal notranslate"><span class="pre">ignore</span></code>, and the
-<code class="docutils literal notranslate"><span class="pre">plugins</span></code> directory.</td></tr>
-</tbody>
-</table>
+<code class="docutils literal notranslate"><span class="pre">plugins</span></code> directory.</p>
+</dd>
+</dl>
 </div>
 </div>
 
@@ -167,8 +164,6 @@ The same is true for <code class="docutils literal notranslate"><span class="pre
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -196,7 +191,7 @@ The same is true for <code class="docutils literal notranslate"><span class="pre
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

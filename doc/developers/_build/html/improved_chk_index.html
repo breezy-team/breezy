@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>CHK Optimized index &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>CHK Optimized index &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -22,7 +20,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -61,41 +59,39 @@ good starting point. The other thing to consider, is that for 1M revisions and
 1M files, we’ll probably have 10-20M CHK pages, so we want to make sure we
 have an index that can scale up efficiently.</p>
 <ol class="arabic simple">
-<li>A compressed sha hash is 20-bytes</li>
-<li>Pack files can be &gt; 4GB, we could use an 8-byte (64-bit) pointer, or we
+<li><p>A compressed sha hash is 20-bytes</p></li>
+<li><p>Pack files can be &gt; 4GB, we could use an 8-byte (64-bit) pointer, or we
 could store a 5-byte pointer for a cap at 1TB. 8-bytes still seems like
-overkill, even if it is the natural next size up.</li>
-<li>An individual group would never be longer than 2^32, but they will often
+overkill, even if it is the natural next size up.</p></li>
+<li><p>An individual group would never be longer than 2^32, but they will often
 be bigger than 2^16. 3 bytes for length (16MB) would be the minimum safe
 length, and may not be safe if we expand groups for large content (like ISOs).
-So probably 4-bytes for group length is necessary.</li>
-<li>A given start offset has to fit in the group, so another 4-bytes.</li>
-<li>Uncompressed length of record is based on original size, so 4-bytes is
-expected as well.</li>
-<li>That leaves us with 20+8+4+4+4 = 40 bytes per record. At the moment, btree
+So probably 4-bytes for group length is necessary.</p></li>
+<li><p>A given start offset has to fit in the group, so another 4-bytes.</p></li>
+<li><p>Uncompressed length of record is based on original size, so 4-bytes is
+expected as well.</p></li>
+<li><p>That leaves us with 20+8+4+4+4 = 40 bytes per record. At the moment, btree
 compression gives us closer to 38.5 bytes per record. We don’t have perfect
 compression, but we also don’t have &gt;4GB pack files (and if we did, the first
-4GB are all under then 2^32 barrier :).</li>
+4GB are all under then 2^32 barrier :).</p></li>
 </ol>
 <p>If we wanted to go back to the ‘’minimal’’ amount of data that we would need to
 store.</p>
 <ol class="arabic">
-<li><p class="first">8 bytes of a sha hash are generally going to be more than enough to fully
+<li><p>8 bytes of a sha hash are generally going to be more than enough to fully
 determine the entry (see <a class="reference internal" href="#partial-hash">Partial hash</a>). We could support some amount of
 collision in an index record, in exchange for resolving it inside the
 content. At least in theory, we don’t <em>have</em> to record the whole 20-bytes
 for the sha1 hash. (8-bytes gives us less than 1 in 1000 chance of
-a single collision for 10M nodes in an index)</p>
-</li>
-<li><p class="first">We could record the start and length of each group in a separate location,
+a single collision for 10M nodes in an index)</p></li>
+<li><p>We could record the start and length of each group in a separate location,
 and then have each record reference the group by an ‘offset’. This is because
 we expect to have many records in the same group (something like 10k or so,
 though we’ve fit &gt;64k under some circumstances). At a minimum, we have one
 record per group so we have to store at least one reference anyway. So the
 maximum overhead is just the size and cost of the dereference (and normally
-will be much much better than that.)</p>
-</li>
-<li><p class="first">If a group reference is an 8-byte start, and a 4-byte length, and we have
+will be much much better than that.)</p></li>
+<li><p>If a group reference is an 8-byte start, and a 4-byte length, and we have
 10M keys, but get at least 1k records per group, then we would have 10k
 groups.  So we would need 120kB to record all the group offsets, and then
 each individual record would only need a 2-byte group number, rather than a
@@ -111,9 +107,8 @@ small.) Using 100 bytes per 10M chk records, we have 1GB of compressed chk
 data, split into 4MB groups or 250 total groups. Still &lt;&lt; 64k groups.
 Conversions could create 1 chk record at a time, creating a group for each,
 but they would be foolish to not commit a write group after 10k revisions
-(assuming 6 CHK pages each).</p>
-</li>
-<li><p class="first">We want to know the start-and-length of a record in the decompressed
+(assuming 6 CHK pages each).</p></li>
+<li><p>We want to know the start-and-length of a record in the decompressed
 stream. This could actually be moved into a mini-index inside the group
 itself. Initial testing showed that storing an expanded “key =&gt;
 start,offset” consumed a considerable amount of compressed space. (about
@@ -125,14 +120,14 @@ entries per group. So without much loss of generality, we could probably get
 away with a 2-byte ‘group entry’ number. (which then generates an 8-byte
 offset + endpoint as a header in the group itself.)</p>
 </li>
-<li><p class="first">So for 1M keys, an ideal chk+group index would be:</p>
+<li><p>So for 1M keys, an ideal chk+group index would be:</p>
 <blockquote>
 <div><ol class="loweralpha simple">
-<li>6-byte hash prefix</li>
-<li>2-byte group number</li>
-<li>2-byte entry in group number</li>
-<li>a separate lookup of 12-byte group number to offset + length</li>
-<li>a variable width mini-index that splits X bits of the key. (to maintain
+<li><p>6-byte hash prefix</p></li>
+<li><p>2-byte group number</p></li>
+<li><p>2-byte entry in group number</p></li>
+<li><p>a separate lookup of 12-byte group number to offset + length</p></li>
+<li><p>a variable width mini-index that splits X bits of the key. (to maintain
 small keys, low chance of collision, this is <em>not</em> redundant with the
 value stored in (a)) This should then dereference into a location in
 the index. This should probably be a 4-byte reference. It is unlikely,
@@ -141,7 +136,7 @@ takes 1.6M chk nodes to do so.  At the smallest end, this will probably
 be a 256-way (8-bits) fan out, at the high end it could go up to
 64k-way (16-bits) or maybe even 1M-way (20-bits). (64k-way should
 handle up to 5-16M nodes and still allow a cheap &lt;4k read to find the
-final entry.)</li>
+final entry.)</p></li>
 </ol>
 </div></blockquote>
 </li>
@@ -153,25 +148,21 @@ final entry.)</li>
 <p>So 101MiB which breaks down as 100MiB for the actual entries, 0.75MiB for the
 group records, and 0.25MiB for the mini index.</p>
 <ol class="arabic">
-<li><p class="first">Looking up a key would involve:</p>
+<li><p>Looking up a key would involve:</p>
 <ol class="loweralpha">
-<li><p class="first">Read <code class="docutils literal notranslate"><span class="pre">XX</span></code> bytes to get the header, and various config for the index.
-Such as length of the group records, length of mini index, etc.</p>
-</li>
-<li><p class="first">Find the offset in the mini index for the first YY bits of the key. Read
+<li><p>Read <code class="docutils literal notranslate"><span class="pre">XX</span></code> bytes to get the header, and various config for the index.
+Such as length of the group records, length of mini index, etc.</p></li>
+<li><p>Find the offset in the mini index for the first YY bits of the key. Read
 the 4 byte pointer stored at that location (which may already be in the
-first content if we pre-read a minimum size.)</p>
-</li>
-<li><p class="first">Jump to the location indicated, and read enough bytes to find the
+first content if we pre-read a minimum size.)</p></li>
+<li><p>Jump to the location indicated, and read enough bytes to find the
 correct 12-byte record. The mini-index only indicates the start of
 records that start with the given prefix. A 64k-way index resolves 10MB
 records down to 160 possibilities. So at 12 bytes each, to read all would
-cost 1920 bytes to be read.</p>
-</li>
-<li><p class="first">Determine the offset for the group entry, which is the known <code class="docutils literal notranslate"><span class="pre">start</span> <span class="pre">of</span>
-<span class="pre">groups</span></code> location + 12B*offset number. Read its 12-byte record.</p>
-</li>
-<li><p class="first">Switch to the .pack file, and read the group header to determine where in
+cost 1920 bytes to be read.</p></li>
+<li><p>Determine the offset for the group entry, which is the known <code class="docutils literal notranslate"><span class="pre">start</span> <span class="pre">of</span>
+<span class="pre">groups</span></code> location + 12B*offset number. Read its 12-byte record.</p></li>
+<li><p>Switch to the .pack file, and read the group header to determine where in
 the stream the given record exists. At this point, you have enough
 information to read the entire group block. For local ops, you could
 only read enough to get the header, and then only read enough to
@@ -182,7 +173,7 @@ to exactly the entry that you care about, and read its 8-byte
 (start,length in uncompressed) info.  If we wanted more redundancy we
 could store the 20-byte hash, but the content can verify itself.</p>
 </li>
-<li><p class="first">If the size of these mini headers becomes critical (8 bytes per record
+<li><p>If the size of these mini headers becomes critical (8 bytes per record
 is 8% overhead for 100 byte records), we could also compress this mini
 header. Changing the number of bytes per entry is unlikely to be
 efficient, because groups standardize on 4MiB wide, which is &gt;&gt;64KiB for
@@ -520,8 +511,6 @@ likely necessary to allow for arbitrary cases.</p>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -545,7 +534,7 @@ likely necessary to allow for arbitrary cases.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

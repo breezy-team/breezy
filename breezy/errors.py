@@ -2138,10 +2138,11 @@ class NoSuchTag(BzrError):
 class TagsNotSupported(BzrError):
 
     _fmt = ("Tags not supported by %(branch)s;"
-            " you may be able to use brz upgrade.")
+            " you may be able to use 'brz upgrade %(branch_url)s'.")
 
     def __init__(self, branch):
         self.branch = branch
+        self.branch_url = branch.user_url
 
 
 class TagAlreadyExists(BzrError):
@@ -2452,3 +2453,13 @@ class ChangesAlreadyStored(BzrCommandError):
 
     _fmt = ('Cannot store uncommitted changes because this branch already'
             ' stores uncommitted changes.')
+
+
+class RevnoOutOfBounds(InternalBzrError):
+
+    _fmt = ("The requested revision number %(revno)d is outside of the "
+            "expected boundaries (%(minimum)d <= %(maximum)d).")
+
+    def __init__(self, revno, bounds):
+        InternalBzrError.__init__(
+            self, revno=revno, minimum=bounds[0], maximum=bounds[1])

@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Breezy System Administrator’s Guide &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Breezy System Administrator’s Guide &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -19,7 +17,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -38,71 +36,83 @@
 <div class="contents topic" id="contents">
 <p class="topic-title first">Contents</p>
 <ul class="simple">
-<li><a class="reference internal" href="#breezy-system-administrator-s-guide" id="id10">Breezy System Administrator’s Guide</a><ul>
-<li><a class="reference internal" href="#introduction" id="id11">Introduction</a><ul>
-<li><a class="reference internal" href="#scope-of-this-guide" id="id12">Scope of this guide</a></li>
-<li><a class="reference internal" href="#what-you-need-to-run-a-bazaar-server" id="id13">What you need to run a Bazaar server</a></li>
+<li><p><a class="reference internal" href="#breezy-system-administrator-s-guide" id="id10">Breezy System Administrator’s Guide</a></p>
+<ul>
+<li><p><a class="reference internal" href="#introduction" id="id11">Introduction</a></p>
+<ul>
+<li><p><a class="reference internal" href="#scope-of-this-guide" id="id12">Scope of this guide</a></p></li>
+<li><p><a class="reference internal" href="#what-you-need-to-run-a-bazaar-server" id="id13">What you need to run a Bazaar server</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#simple-setups" id="id14">Simple Setups</a><ul>
-<li><a class="reference internal" href="#smart-server" id="id15">Smart server</a></li>
+<li><p><a class="reference internal" href="#simple-setups" id="id14">Simple Setups</a></p>
+<ul>
+<li><p><a class="reference internal" href="#smart-server" id="id15">Smart server</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#other-setups" id="id16">Other Setups</a><ul>
-<li><a class="reference internal" href="#dumb-servers" id="id17">Dumb servers</a></li>
-<li><a class="reference internal" href="#smart-server-over-http-s" id="id18">Smart server over HTTP(S)</a></li>
-<li><a class="reference internal" href="#direct-smart-server-access" id="id19">Direct Smart Server Access</a></li>
+<li><p><a class="reference internal" href="#other-setups" id="id16">Other Setups</a></p>
+<ul>
+<li><p><a class="reference internal" href="#dumb-servers" id="id17">Dumb servers</a></p></li>
+<li><p><a class="reference internal" href="#smart-server-over-http-s" id="id18">Smart server over HTTP(S)</a></p></li>
+<li><p><a class="reference internal" href="#direct-smart-server-access" id="id19">Direct Smart Server Access</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id3" id="id20">Migration</a><ul>
-<li><a class="reference internal" href="#fast-import" id="id21">Fast Import</a></li>
-<li><a class="reference internal" href="#subversion-conversion" id="id22">Subversion Conversion</a></li>
+<li><p><a class="reference internal" href="#id3" id="id20">Migration</a></p>
+<ul>
+<li><p><a class="reference internal" href="#fast-import" id="id21">Fast Import</a></p></li>
+<li><p><a class="reference internal" href="#subversion-conversion" id="id22">Subversion Conversion</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#extending-bazaar-with-hooks-and-plugins" id="id23">Extending Bazaar with Hooks and Plugins</a><ul>
-<li><a class="reference internal" href="#email-notification" id="id24">Email Notification</a></li>
-<li><a class="reference internal" href="#feed-generation" id="id25">Feed Generation</a></li>
-<li><a class="reference internal" href="#mirroring" id="id26">Mirroring</a></li>
-<li><a class="reference internal" href="#other-useful-plugins" id="id27">Other Useful Plugins</a></li>
+<li><p><a class="reference internal" href="#extending-bazaar-with-hooks-and-plugins" id="id23">Extending Bazaar with Hooks and Plugins</a></p>
+<ul>
+<li><p><a class="reference internal" href="#email-notification" id="id24">Email Notification</a></p></li>
+<li><p><a class="reference internal" href="#feed-generation" id="id25">Feed Generation</a></p></li>
+<li><p><a class="reference internal" href="#mirroring" id="id26">Mirroring</a></p></li>
+<li><p><a class="reference internal" href="#other-useful-plugins" id="id27">Other Useful Plugins</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#web-based-code-browsing" id="id28">Web-based code browsing</a><ul>
-<li><a class="reference internal" href="#loggerhead" id="id29">Loggerhead</a></li>
-<li><a class="reference internal" href="#other-web-interfaces" id="id30">Other web interfaces</a></li>
+<li><p><a class="reference internal" href="#web-based-code-browsing" id="id28">Web-based code browsing</a></p>
+<ul>
+<li><p><a class="reference internal" href="#loggerhead" id="id29">Loggerhead</a></p></li>
+<li><p><a class="reference internal" href="#other-web-interfaces" id="id30">Other web interfaces</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#integration-with-other-tools" id="id31">Integration with Other Tools</a><ul>
-<li><a class="reference internal" href="#patch-queue-manager-pqm" id="id32">Patch Queue Manager (PQM)</a></li>
-<li><a class="reference internal" href="#bug-trackers" id="id33">Bug Trackers</a></li>
-<li><a class="reference internal" href="#continuous-integration-tools" id="id34">Continuous Integration Tools</a></li>
-<li><a class="reference internal" href="#bundle-buggy" id="id35">Bundle Buggy</a></li>
+<li><p><a class="reference internal" href="#integration-with-other-tools" id="id31">Integration with Other Tools</a></p>
+<ul>
+<li><p><a class="reference internal" href="#patch-queue-manager-pqm" id="id32">Patch Queue Manager (PQM)</a></p></li>
+<li><p><a class="reference internal" href="#bug-trackers" id="id33">Bug Trackers</a></p></li>
+<li><p><a class="reference internal" href="#continuous-integration-tools" id="id34">Continuous Integration Tools</a></p></li>
+<li><p><a class="reference internal" href="#bundle-buggy" id="id35">Bundle Buggy</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#security" id="id36">Security</a><ul>
-<li><a class="reference internal" href="#authentication" id="id37">Authentication</a></li>
-<li><a class="reference internal" href="#access-control" id="id38">Access Control</a></li>
+<li><p><a class="reference internal" href="#security" id="id36">Security</a></p>
+<ul>
+<li><p><a class="reference internal" href="#authentication" id="id37">Authentication</a></p></li>
+<li><p><a class="reference internal" href="#access-control" id="id38">Access Control</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#id7" id="id39">Back-up and Restore</a><ul>
-<li><a class="reference internal" href="#filesystem-backups" id="id40">Filesystem Backups</a></li>
-<li><a class="reference internal" href="#bazaar-as-its-own-backup" id="id41">Bazaar as its own backup</a></li>
-<li><a class="reference internal" href="#restoring-from-backups" id="id42">Restoring from Backups</a></li>
+<li><p><a class="reference internal" href="#id7" id="id39">Back-up and Restore</a></p>
+<ul>
+<li><p><a class="reference internal" href="#filesystem-backups" id="id40">Filesystem Backups</a></p></li>
+<li><p><a class="reference internal" href="#bazaar-as-its-own-backup" id="id41">Bazaar as its own backup</a></p></li>
+<li><p><a class="reference internal" href="#restoring-from-backups" id="id42">Restoring from Backups</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#upgrades" id="id43">Upgrades</a><ul>
-<li><a class="reference internal" href="#software-upgrades" id="id44">Software upgrades</a></li>
-<li><a class="reference internal" href="#disk-format-upgrades" id="id45">Disk format upgrades</a></li>
-<li><a class="reference internal" href="#plugin-upgrades" id="id46">Plugin upgrades</a></li>
+<li><p><a class="reference internal" href="#upgrades" id="id43">Upgrades</a></p>
+<ul>
+<li><p><a class="reference internal" href="#software-upgrades" id="id44">Software upgrades</a></p></li>
+<li><p><a class="reference internal" href="#disk-format-upgrades" id="id45">Disk format upgrades</a></p></li>
+<li><p><a class="reference internal" href="#plugin-upgrades" id="id46">Plugin upgrades</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#advanced-topics" id="id47">Advanced Topics</a><ul>
-<li><a class="reference internal" href="#system-monitoring" id="id48">System Monitoring</a></li>
-<li><a class="reference internal" href="#capacity-planning-tips" id="id49">Capacity Planning Tips</a></li>
-<li><a class="reference internal" href="#clustering" id="id50">Clustering</a></li>
-<li><a class="reference internal" href="#multi-site-setups" id="id51">Multi-site Setups</a></li>
+<li><p><a class="reference internal" href="#advanced-topics" id="id47">Advanced Topics</a></p>
+<ul>
+<li><p><a class="reference internal" href="#system-monitoring" id="id48">System Monitoring</a></p></li>
+<li><p><a class="reference internal" href="#capacity-planning-tips" id="id49">Capacity Planning Tips</a></p></li>
+<li><p><a class="reference internal" href="#clustering" id="id50">Clustering</a></p></li>
+<li><p><a class="reference internal" href="#multi-site-setups" id="id51">Multi-site Setups</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#licence" id="id52">Licence</a></li>
+<li><p><a class="reference internal" href="#licence" id="id52">Licence</a></p></li>
 </ul>
 </li>
 </ul>
@@ -227,14 +237,13 @@ developers <code class="docutils literal notranslate"><span class="pre">alice</s
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ brz log bzr+ssh://server.example.com/~alice/fix-2047
 </pre></div>
 </div>
-<p>to refer to one of Alice’s branches. <a class="footnote-reference" href="#id2" id="id1">[1]</a></p>
-<table class="docutils footnote" frame="void" id="id2" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>The version of Bazaar installed on the server must be at least 2.1.0b1
-or newer to support <code class="docutils literal notranslate"><span class="pre">/~/</span></code> in bzr+ssh URLs.</td></tr>
-</tbody>
-</table>
+<p>to refer to one of Alice’s branches. <a class="footnote-reference brackets" href="#id2" id="id1">1</a></p>
+<dl class="footnote brackets">
+<dt class="label" id="id2"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>The version of Bazaar installed on the server must be at least 2.1.0b1
+or newer to support <code class="docutils literal notranslate"><span class="pre">/~/</span></code> in bzr+ssh URLs.</p>
+</dd>
+</dl>
 </div>
 <div class="section" id="using-a-restricted-ssh-account-to-host-multiple-users-and-repositories">
 <h4>Using a restricted SSH account to host multiple users and repositories<a class="headerlink" href="#using-a-restricted-ssh-account-to-host-multiple-users-and-repositories" title="Permalink to this headline">¶</a></h4>
@@ -689,21 +698,21 @@ technologies that it builds on.  Some of these must be installed to use
 loggerhead, although some of them are optional.  From the loggerhead <cite>README</cite>
 file, these are</p>
 <ol class="arabic simple">
-<li>SimpleTAL for templating.
+<li><p>SimpleTAL for templating.
 On Ubuntu, <cite>sudo apt-get install python-simpletal</cite>
-or download from <a class="reference external" href="http://www.owlfish.com/software/simpleTAL/download.html">http://www.owlfish.com/software/simpleTAL/download.html</a></li>
-<li>simplejson for producing JSON data.
+or download from <a class="reference external" href="http://www.owlfish.com/software/simpleTAL/download.html">http://www.owlfish.com/software/simpleTAL/download.html</a></p></li>
+<li><p>simplejson for producing JSON data.
 On Ubuntu, <cite>sudo apt-get install python-simplejson</cite>
-or use <cite>easy_install simplejson</cite>.</li>
-<li>Paste for the server. (You need version 1.2 or newer of Paste.)
+or use <cite>easy_install simplejson</cite>.</p></li>
+<li><p>Paste for the server. (You need version 1.2 or newer of Paste.)
 On Ubuntu, <cite>sudo apt-get install python-paste</cite>
-or use <cite>easy_install Paste</cite></li>
-<li>Paste Deploy  (optional, needed when proxying through Apache)
+or use <cite>easy_install Paste</cite></p></li>
+<li><p>Paste Deploy  (optional, needed when proxying through Apache)
 On Ubuntu, <cite>sudo apt-get install python-pastedeploy</cite>
-or use <cite>easy_install PasteDeploy</cite></li>
-<li>flup (optional, needed to use FastCGI, SCGI or AJP)
+or use <cite>easy_install PasteDeploy</cite></p></li>
+<li><p>flup (optional, needed to use FastCGI, SCGI or AJP)
 On Ubuntu, <cite>sudo apt-get install python-flup</cite>
-or use <cite>easy_install flup</cite></li>
+or use <cite>easy_install flup</cite></p></li>
 </ol>
 <p>Although directions for installing these on Ubuntu are given, most other
 GNU/Linux distributions should package these dependencies, making installation
@@ -759,18 +768,18 @@ Windows servers would be welcomed at <a class="reference external" href="http://
 <p>There are a number of other web interfaces available for Bazaar branches (see
 the list at <a class="reference external" href="http://wiki.bazaar.canonical.com/WebInterfaces">http://wiki.bazaar.canonical.com/WebInterfaces</a>) and we will just
 mention a couple of them here for their advantages in particular situations.</p>
-<dl class="docutils">
-<dt>trac+bzr (<a class="reference external" href="http://launchpad.net/trac-bzr">http://launchpad.net/trac-bzr</a>)</dt>
-<dd>Trac is a popular web app that integrates a browser for branches, an issue
+<dl class="simple">
+<dt>trac+bzr (<a class="reference external" href="http://launchpad.net/trac-bzr">http://launchpad.net/trac-bzr</a>)</dt><dd><p>Trac is a popular web app that integrates a browser for branches, an issue
 tracker and a wiki.  trac+bzr is a trac extension that allows for the
-trac to be used with Bazaar.</dd>
-<dt>webbzr (<a class="reference external" href="http://thoughts.enseed.com/webbzr">http://thoughts.enseed.com/webbzr</a>)</dt>
-<dd>This is a notable solution because it is written in pure PHP for web hosts
+trac to be used with Bazaar.</p>
+</dd>
+<dt>webbzr (<a class="reference external" href="http://thoughts.enseed.com/webbzr">http://thoughts.enseed.com/webbzr</a>)</dt><dd><p>This is a notable solution because it is written in pure PHP for web hosts
 that don’t provide a way to run arbitrary Python applications such as Trac
-or Loggerhead.</dd>
-<dt>Redmine (<a class="reference external" href="http://redmine.org/">http://redmine.org/</a>)</dt>
-<dd>Like trac, Redmine is a full project management application using the Ruby
-on Rails framework.  It includes support for Bazaar branches.</dd>
+or Loggerhead.</p>
+</dd>
+<dt>Redmine (<a class="reference external" href="http://redmine.org/">http://redmine.org/</a>)</dt><dd><p>Like trac, Redmine is a full project management application using the Ruby
+on Rails framework.  It includes support for Bazaar branches.</p>
+</dd>
 </dl>
 </div>
 </div>
@@ -1317,8 +1326,6 @@ the terms of the GNU General Public License version 2 or later.  See
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -1342,7 +1349,7 @@ the terms of the GNU General Public License version 2 or later.  See
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Analysing a specific use case &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Analysing a specific use case &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -22,7 +20,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="../../index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -38,20 +36,19 @@
             
   <div class="section" id="analysing-a-specific-use-case">
 <h1>Analysing a specific use case<a class="headerlink" href="#analysing-a-specific-use-case" title="Permalink to this headline">¶</a></h1>
-<dl class="docutils">
-<dt>The analysis of a use case needs to provide as outputs:</dt>
-<dd><ul class="first last simple">
-<li>The functional requirements that the use case has to satisfy.</li>
-<li>The file level operations and access patterns that will give the best
-performance.</li>
-<li>A low friction API which will allow the use case to be implemented.</li>
-<li>The release of bzr (and thus the supported features) for which the analysis
+<dl class="simple">
+<dt>The analysis of a use case needs to provide as outputs:</dt><dd><ul class="simple">
+<li><p>The functional requirements that the use case has to satisfy.</p></li>
+<li><p>The file level operations and access patterns that will give the best
+performance.</p></li>
+<li><p>A low friction API which will allow the use case to be implemented.</p></li>
+<li><p>The release of bzr (and thus the supported features) for which the analysis
 was performed. The feature set of bzr defines the access patterns and data
 required to implement any use case. So when we add features, their design
 changes the requirements for the parts of the system they alter, so we need
 to re-analyse use cases when bzr’s feature set changes. If future plans are
 considered in the analysis with the intention of avoiding rework, these
-should also be mentioned.</li>
+should also be mentioned.</p></li>
 </ul>
 </dd>
 </dl>
@@ -83,47 +80,46 @@ fine to post-process the annotated text to obtain dotted-revnos.’</p>
 are many possible factors, but the ones I think are most interesting to
 design with are:</p>
 <ul>
-<li><p class="first">baseline overhead:</p>
+<li><p>baseline overhead:</p>
 <blockquote>
 <div><ul class="simple">
-<li>The time to get bzr ready to begin the use case.</li>
+<li><p>The time to get bzr ready to begin the use case.</p></li>
 </ul>
 </div></blockquote>
 </li>
-<li><p class="first">scaling: how does performance change when any of the follow aspects
+<li><p>scaling: how does performance change when any of the follow aspects
 of the system are ratcheted massively up or down:</p>
 <blockquote>
 <div><ul class="simple">
-<li>number of files/dirs/symlinks/subtrees in a tree (both working and
-revision trees)</li>
-<li>size of any particular file</li>
-<li>number of elements within a single directory</li>
-<li>length of symlinks</li>
-<li>number of changes to any file over time
-(subordinately also the number of merges of the file)</li>
-<li>number of commits in the ancestry of a branch
-(subordinately also the number of merges)</li>
-<li>number of revisions in a repository</li>
-<li>number of fileids in a repository</li>
-<li>number of ghosts in a given graph (revision or per-file)</li>
-<li>number of branches in a repository</li>
-<li>number of concurrent readers for a tree/branch/repository</li>
-<li>number of concurrent writers for objects that support that.</li>
-<li>latency to perform file operations (e.g. slow disks, network file systems,
-our VFS layer and FTP/SFTP/etc)</li>
-<li>bandwidth to the disk storage</li>
-<li>latency to perform semantic operations (hpss specific)</li>
-<li>bandwidth when performing semantic operations.</li>
+<li><p>number of files/dirs/symlinks/subtrees in a tree (both working and
+revision trees)</p></li>
+<li><p>size of any particular file</p></li>
+<li><p>number of elements within a single directory</p></li>
+<li><p>length of symlinks</p></li>
+<li><p>number of changes to any file over time
+(subordinately also the number of merges of the file)</p></li>
+<li><p>number of commits in the ancestry of a branch
+(subordinately also the number of merges)</p></li>
+<li><p>number of revisions in a repository</p></li>
+<li><p>number of fileids in a repository</p></li>
+<li><p>number of ghosts in a given graph (revision or per-file)</p></li>
+<li><p>number of branches in a repository</p></li>
+<li><p>number of concurrent readers for a tree/branch/repository</p></li>
+<li><p>number of concurrent writers for objects that support that.</p></li>
+<li><p>latency to perform file operations (e.g. slow disks, network file systems,
+our VFS layer and FTP/SFTP/etc)</p></li>
+<li><p>bandwidth to the disk storage</p></li>
+<li><p>latency to perform semantic operations (hpss specific)</p></li>
+<li><p>bandwidth when performing semantic operations.</p></li>
 </ul>
 </div></blockquote>
 </li>
-<li><p class="first">locality of reference: If an operation requires data that is located
+<li><p>locality of reference: If an operation requires data that is located
 within a small region at any point, we often get better performance
 than with an implementation of the same operation that requires the
 same amount of data but with a lower locality of reference. It’s
 fairly tricky to add locality of reference after the fact, so I think
-its worth considering up front.</p>
-</li>
+its worth considering up front.</p></li>
 </ul>
 <p>Using these factors, to the annotate example we can add that its
 reasonable to do two ‘semantic’ round trips to the local tree, one to
@@ -201,8 +197,6 @@ if we do not group the reads of files within the same directory.</p>
             <form class="search" action="../../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -226,7 +220,7 @@ if we do not group the reads of files within the same directory.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

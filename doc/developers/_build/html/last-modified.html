@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Computing last_modified values &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Computing last_modified values &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="btree_index_prefetch.html" title="BTree Index Prefetch"
              accesskey="P">previous</a> |
@@ -126,12 +124,12 @@ within another related repository, such as the target of a conversion.</p>
 store it in inventories in future.  Therefore we should use it only when
 necessary:</p>
 <ul class="simple">
-<li>When writing out an inventory format that includes it.</li>
-<li>In Bazaar formats that use it as a key for the file text or file
+<li><p>When writing out an inventory format that includes it.</p></li>
+<li><p>In Bazaar formats that use it as a key for the file text or file
 ancestry.  This should be hidden behind the Repository/RevisionTree
-interface.</li>
-<li>When a user operation specifically requires the last_modified (e.g.
-hypothetical annotate directory).</li>
+interface.</p></li>
+<li><p>When a user operation specifically requires the last_modified (e.g.
+hypothetical annotate directory).</p></li>
 </ul>
 <p>We already do this in most cases.</p>
 </div>
@@ -144,23 +142,23 @@ hypothetical annotate directory).</li>
 <div class="section" id="cases-to-test">
 <h2>Cases to test<a class="headerlink" href="#cases-to-test" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li>Single parent, unmodified file</li>
-<li>Single parent, modified file</li>
-<li>Two parents, one descended from the other, modified in one parent only</li>
-<li>Two parents, one descended from the other, modified in one parent only,
-but also modified locally.</li>
-<li>Two parents, not descended from each other, modified in one parent only.</li>
-<li>Two parents, not descended from each other, modified in one parent only,
-but also modified locally.</li>
-<li>Two parents, modified in both to different values.</li>
-<li>Two parents, modified in both to the same value.</li>
-<li>Two parents, modified in both, and reverted in both back to the
-original text.</li>
-<li>Three parents, modified in only one</li>
-<li>Three parents, modified in only one, also modified locally.</li>
-<li>Three parents, modified in 2</li>
-<li>Three parents, modified in 2, and locally.</li>
-<li>Three parents, modified in 2, but one is a descendant of the other.</li>
+<li><p>Single parent, unmodified file</p></li>
+<li><p>Single parent, modified file</p></li>
+<li><p>Two parents, one descended from the other, modified in one parent only</p></li>
+<li><p>Two parents, one descended from the other, modified in one parent only,
+but also modified locally.</p></li>
+<li><p>Two parents, not descended from each other, modified in one parent only.</p></li>
+<li><p>Two parents, not descended from each other, modified in one parent only,
+but also modified locally.</p></li>
+<li><p>Two parents, modified in both to different values.</p></li>
+<li><p>Two parents, modified in both to the same value.</p></li>
+<li><p>Two parents, modified in both, and reverted in both back to the
+original text.</p></li>
+<li><p>Three parents, modified in only one</p></li>
+<li><p>Three parents, modified in only one, also modified locally.</p></li>
+<li><p>Three parents, modified in 2</p></li>
+<li><p>Three parents, modified in 2, and locally.</p></li>
+<li><p>Three parents, modified in 2, but one is a descendant of the other.</p></li>
 </ol>
 </div>
 <div class="section" id="performance-considerations">
@@ -174,7 +172,7 @@ repeated work in calculating their heads.</p>
 <div class="section" id="open-questions">
 <h2>Open questions<a class="headerlink" href="#open-questions" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>How does caching <code class="docutils literal notranslate"><span class="pre">find_heads</span></code> interact with cherry-picks?</li>
+<li><p>How does caching <code class="docutils literal notranslate"><span class="pre">find_heads</span></code> interact with cherry-picks?</p></li>
 </ul>
 <div class="section" id="possible-structure">
 <h3>Possible structure<a class="headerlink" href="#possible-structure" title="Permalink to this headline">¶</a></h3>
@@ -233,8 +231,6 @@ to evaluate last modified).</p>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -262,7 +258,7 @@ to evaluate last modified).</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

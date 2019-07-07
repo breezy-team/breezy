@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Repository Streams &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Repository Streams &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="repository.html" title="Repositories"
              accesskey="P">previous</a> |
@@ -46,14 +44,11 @@
 <h1><a class="toc-backref" href="#id2">Repository Streams</a><a class="headerlink" href="#repository-streams" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="status">
 <h2><a class="toc-backref" href="#id3">Status</a><a class="headerlink" href="#status" title="Permalink to this headline">¶</a></h2>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Date:</th><td class="field-body">2008-04-11</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Date</dt>
+<dd class="field-odd"><p>2008-04-11</p>
+</dd>
+</dl>
 <p>This document describes the proposed programming interface for streaming
 data from and into repositories. This programming interface should allow
 a single interface for pulling data from and inserting data into a Breezy
@@ -61,33 +56,40 @@ repository.</p>
 <div class="contents topic" id="contents">
 <p class="topic-title first">Contents</p>
 <ul class="simple">
-<li><a class="reference internal" href="#repository-streams" id="id2">Repository Streams</a><ul>
-<li><a class="reference internal" href="#status" id="id3">Status</a></li>
-<li><a class="reference internal" href="#motivation" id="id4">Motivation</a></li>
-<li><a class="reference internal" href="#use-cases" id="id5">Use Cases</a><ul>
-<li><a class="reference internal" href="#fetch-operations" id="id6">Fetch operations</a><ul>
-<li><a class="reference internal" href="#smart-server-operations" id="id7">Smart server operations</a></li>
+<li><p><a class="reference internal" href="#repository-streams" id="id2">Repository Streams</a></p>
+<ul>
+<li><p><a class="reference internal" href="#status" id="id3">Status</a></p></li>
+<li><p><a class="reference internal" href="#motivation" id="id4">Motivation</a></p></li>
+<li><p><a class="reference internal" href="#use-cases" id="id5">Use Cases</a></p>
+<ul>
+<li><p><a class="reference internal" href="#fetch-operations" id="id6">Fetch operations</a></p>
+<ul>
+<li><p><a class="reference internal" href="#smart-server-operations" id="id7">Smart server operations</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#bundles" id="id8">Bundles</a></li>
-<li><a class="reference internal" href="#data-conversion" id="id9">Data conversion</a></li>
+<li><p><a class="reference internal" href="#bundles" id="id8">Bundles</a></p></li>
+<li><p><a class="reference internal" href="#data-conversion" id="id9">Data conversion</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#characteristics" id="id10">Characteristics</a><ul>
-<li><a class="reference internal" href="#single-round-trip" id="id11">Single round trip</a></li>
-<li><a class="reference internal" href="#forward-only-reads" id="id12">Forward-only reads</a></li>
+<li><p><a class="reference internal" href="#characteristics" id="id10">Characteristics</a></p>
+<ul>
+<li><p><a class="reference internal" href="#single-round-trip" id="id11">Single round trip</a></p></li>
+<li><p><a class="reference internal" href="#forward-only-reads" id="id12">Forward-only reads</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#serialisation" id="id13">Serialisation</a><ul>
-<li><a class="reference internal" href="#weaves" id="id14">Weaves</a></li>
-<li><a class="reference internal" href="#id1" id="id15">Bundles</a></li>
+<li><p><a class="reference internal" href="#serialisation" id="id13">Serialisation</a></p>
+<ul>
+<li><p><a class="reference internal" href="#weaves" id="id14">Weaves</a></p></li>
+<li><p><a class="reference internal" href="#id1" id="id15">Bundles</a></p></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#specification" id="id16">Specification</a><ul>
-<li><a class="reference internal" href="#requesting-a-stream" id="id17">Requesting a stream</a></li>
-<li><a class="reference internal" href="#structure-of-a-stream" id="id18">Structure of a stream</a></li>
-<li><a class="reference internal" href="#consuming-a-stream" id="id19">Consuming a stream</a><ul>
-<li><a class="reference internal" href="#factory-metadata" id="id20">factory metadata</a></li>
+<li><p><a class="reference internal" href="#specification" id="id16">Specification</a></p>
+<ul>
+<li><p><a class="reference internal" href="#requesting-a-stream" id="id17">Requesting a stream</a></p></li>
+<li><p><a class="reference internal" href="#structure-of-a-stream" id="id18">Structure of a stream</a></p></li>
+<li><p><a class="reference internal" href="#consuming-a-stream" id="id19">Consuming a stream</a></p>
+<ul>
+<li><p><a class="reference internal" href="#factory-metadata" id="id20">factory metadata</a></p></li>
 </ul>
 </li>
 </ul>
@@ -185,19 +187,19 @@ expose the same interface.</p>
 <p>To request a stream, three parameters are needed:</p>
 <blockquote>
 <div><ul class="simple">
-<li>A revision search to select the revisions to include.</li>
-<li>A data ordering flag. There are two values for this - ‘unordered’ and
+<li><p>A revision search to select the revisions to include.</p></li>
+<li><p>A data ordering flag. There are two values for this - ‘unordered’ and
 ‘topological’. ‘unordered’ streams are useful when inserting into
 repositories that have the ability to perform atomic insertions.
 ‘topological’ streams are useful when converting data, or when
 inserting into repositories that cannot perform atomic insertions (such
-as knit or weave based repositories).</li>
-<li>A complete_inventory flag. When provided this flag signals the stream
+as knit or weave based repositories).</p></li>
+<li><p>A complete_inventory flag. When provided this flag signals the stream
 generator to include all the data needed to construct the inventory of
 each revision included in the stream, rather than just deltas. This is
 useful when converting data from a repository with a different
 inventory serialisation, as pure deltas would not be able to be
-reconstructed.</li>
+reconstructed.</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -241,20 +243,19 @@ stream could internally delta compress many fulltexts and be able to
 answer both fulltext and compressed record requests without extra IO.</p>
 <div class="section" id="factory-metadata">
 <h4><a class="toc-backref" href="#id20">factory metadata</a><a class="headerlink" href="#factory-metadata" title="Permalink to this headline">¶</a></h4>
-<dl class="docutils">
-<dt>Valid attributes on the factory are:</dt>
-<dd><ul class="first last simple">
-<li>sha1: Optional ascii representation of the sha1 of the bytestring (after
-delta reconstruction).</li>
-<li>storage_kind: Required kind of storage compression that has been used
+<dl class="simple">
+<dt>Valid attributes on the factory are:</dt><dd><ul class="simple">
+<li><p>sha1: Optional ascii representation of the sha1 of the bytestring (after
+delta reconstruction).</p></li>
+<li><p>storage_kind: Required kind of storage compression that has been used
 on the bytestring. One of <code class="docutils literal notranslate"><span class="pre">mpdiff</span></code>, <code class="docutils literal notranslate"><span class="pre">knit-annotated-ft</span></code>,
-<code class="docutils literal notranslate"><span class="pre">knit-annotated-delta</span></code>, <code class="docutils literal notranslate"><span class="pre">knit-ft</span></code>, <code class="docutils literal notranslate"><span class="pre">knit-delta</span></code>, <code class="docutils literal notranslate"><span class="pre">fulltext</span></code>.</li>
-<li>parents: Required graph parents to associate with this bytestring.</li>
-<li>compressor_data: Required opaque data relevant to the storage_kind.
-(This is set to None when the compressor has no special state needed)</li>
-<li>key: The key for this bytestring. Like each parent this is a tuple that
+<code class="docutils literal notranslate"><span class="pre">knit-annotated-delta</span></code>, <code class="docutils literal notranslate"><span class="pre">knit-ft</span></code>, <code class="docutils literal notranslate"><span class="pre">knit-delta</span></code>, <code class="docutils literal notranslate"><span class="pre">fulltext</span></code>.</p></li>
+<li><p>parents: Required graph parents to associate with this bytestring.</p></li>
+<li><p>compressor_data: Required opaque data relevant to the storage_kind.
+(This is set to None when the compressor has no special state needed)</p></li>
+<li><p>key: The key for this bytestring. Like each parent this is a tuple that
 should have the key_prefix prepended to it to give the unified
-repository key name.</li>
+repository key name.</p></li>
 </ul>
 </dd>
 </dl>
@@ -312,8 +313,6 @@ repository key name.</li>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -341,7 +340,7 @@ repository key name.</li>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

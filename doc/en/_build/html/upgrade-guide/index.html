@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Breezy Upgrade Guide &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Breezy Upgrade Guide &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="../release-notes/brz-3.0.html" title="Breezy Release Notes"
              accesskey="P">previous</a> |
@@ -47,9 +45,9 @@
 <h3>High level upgrade process<a class="headerlink" href="#high-level-upgrade-process" title="Permalink to this headline">¶</a></h3>
 <p>In broad terms, there are 3 steps involved in upgrading a new format:</p>
 <ol class="arabic simple">
-<li>Upgrade the core software</li>
-<li>Upgrade required plugins</li>
-<li>Migrate data to the new default format.</li>
+<li><p>Upgrade the core software</p></li>
+<li><p>Upgrade required plugins</p></li>
+<li><p>Migrate data to the new default format.</p></li>
 </ol>
 <p>Breezy supports branches in earlier formats so the third step is strictly not
 required. However, when new default formats are introduced, they are more
@@ -68,24 +66,24 @@ channel with any questions or concerns you have.</p>
 operating system.  A brief outline of the steps is given below.</p>
 <p>To upgrade Breezy on Ubuntu:</p>
 <ol class="arabic simple">
-<li>Ensure your package manager is configured with the required software
+<li><p>Ensure your package manager is configured with the required software
 sources, e.g. the official stable release PPA for Ubuntu:
-<a class="reference external" href="https://launchpad.net/~brz/+archive">https://launchpad.net/~brz/+archive</a></li>
-<li>Use your package manager to upgrade to the latest version.</li>
+<a class="reference external" href="https://launchpad.net/~brz/+archive">https://launchpad.net/~brz/+archive</a></p></li>
+<li><p>Use your package manager to upgrade to the latest version.</p></li>
 </ol>
 <p>To upgrade Breezy on Windows:</p>
 <ol class="arabic simple">
-<li>Uninstall the existing version using Add/Remove Programs.</li>
-<li>Install the new version using the relevant installer.</li>
+<li><p>Uninstall the existing version using Add/Remove Programs.</p></li>
+<li><p>Install the new version using the relevant installer.</p></li>
 </ol>
 <p>To upgrade Breezy on OS X (via the installer):</p>
 <ol class="arabic simple">
-<li>Install the new version using the relevant installer.</li>
+<li><p>Install the new version using the relevant installer.</p></li>
 </ol>
 <p>To upgrade Breezy on OS X (via MacPorts):</p>
 <ol class="arabic simple">
-<li>Refresh the package metadata using <strong>sudo port selfupdate</strong></li>
-<li>Upgrade to the latest version using <strong>sudo port upgrade brz</strong></li>
+<li><p>Refresh the package metadata using <strong>sudo port selfupdate</strong></p></li>
+<li><p>Upgrade to the latest version using <strong>sudo port upgrade brz</strong></p></li>
 </ol>
 <p>For further information on installing and upgrading, see
 <a class="reference external" href="https://www.breezy-vcs.org/pages/download.html">https://www.breezy-vcs.org/pages/download.html</a></p>
@@ -114,8 +112,8 @@ covered in the next chapter.</p>
 <p>Before starting a migration, there are a few important things to do
 first:</p>
 <ol class="arabic simple">
-<li>Take a complete backup.</li>
-<li>Take some time to purge obsolete branches.</li>
+<li><p>Take a complete backup.</p></li>
+<li><p>Take some time to purge obsolete branches.</p></li>
 </ol>
 <p>A complete backup gives you a safety net in case anything goes wrong.</p>
 <p>Purging obsolete branches reduces the amount of data that needs to
@@ -126,9 +124,9 @@ on doing this.</p>
 <h3>Introducing the upgrade-related commands<a class="headerlink" href="#introducing-the-upgrade-related-commands" title="Permalink to this headline">¶</a></h3>
 <p>There are 3 important commands to be aware of when migrating data.</p>
 <ul class="simple">
-<li><strong>check</strong> - check a repository, branch or tree for data integrity errors</li>
-<li><strong>reconcile</strong> - fix data integrity errors</li>
-<li><strong>upgrade</strong> - migrate data to a different format.</li>
+<li><p><strong>check</strong> - check a repository, branch or tree for data integrity errors</p></li>
+<li><p><strong>reconcile</strong> - fix data integrity errors</p></li>
+<li><p><strong>upgrade</strong> - migrate data to a different format.</p></li>
 </ul>
 <p><strong>reconcile</strong> is rarely needed but it’s good practice to run <strong>check</strong>
 before and after running <strong>upgrade</strong>.</p>
@@ -138,10 +136,10 @@ before and after running <strong>upgrade</strong>.</p>
 <h3>Communicating with your community<a class="headerlink" href="#communicating-with-your-community" title="Permalink to this headline">¶</a></h3>
 <p>To enable a smooth transition to the new format, you should:</p>
 <ol class="arabic simple">
-<li>Make one person responsible for migrating the trunk.</li>
-<li>Test the migration of trunk works successfully.</li>
-<li>Schedule a time for the trunk migration and notify your community
-in advance.</li>
+<li><p>Make one person responsible for migrating the trunk.</p></li>
+<li><p>Test the migration of trunk works successfully.</p></li>
+<li><p>Schedule a time for the trunk migration and notify your community
+in advance.</p></li>
 </ol>
 <p>This advance warning should be long enough for users to have time
 to upgrade Breezy and any required plugins before the migration date.</p>
@@ -159,24 +157,24 @@ document.</p>
 <h3>Migrating a standalone branch<a class="headerlink" href="#migrating-a-standalone-branch" title="Permalink to this headline">¶</a></h3>
 <p>The steps are:</p>
 <ol class="arabic simple">
-<li>Run <strong>brz check</strong>.</li>
-<li>If there are errors, try using <strong>brz reconcile</strong> to fix them.
+<li><p>Run <strong>brz check</strong>.</p></li>
+<li><p>If there are errors, try using <strong>brz reconcile</strong> to fix them.
 If that fails, file a bug so we can help you resolve the issue
 and get your trunk clean. If it works, take a backup copy of
-your now clean trunk.</li>
+your now clean trunk.</p></li>
 </ol>
 <ol class="arabic simple" start="2">
-<li>Run <strong>brz upgrade –format</strong> where <em>format</em> is 2a or later.</li>
-<li>Run <strong>brz check</strong> to confirm the final result is good.</li>
+<li><p>Run <strong>brz upgrade –format</strong> where <em>format</em> is 2a or later.</p></li>
+<li><p>Run <strong>brz check</strong> to confirm the final result is good.</p></li>
 </ol>
 </div>
 <div class="section" id="migrating-branches-in-a-shared-repository">
 <h3>Migrating branches in a shared repository<a class="headerlink" href="#migrating-branches-in-a-shared-repository" title="Permalink to this headline">¶</a></h3>
 <p>Upgrade things in the following order:</p>
 <ol class="arabic simple">
-<li>Upgrade the shared repository.</li>
-<li>Upgrade the branches.</li>
-<li>Upgrade any lightweight checkouts.</li>
+<li><p>Upgrade the shared repository.</p></li>
+<li><p>Upgrade the branches.</p></li>
+<li><p>Upgrade any lightweight checkouts.</p></li>
 </ol>
 <p>As in the standalone branch case, be sure to run <strong>check</strong> before
 and after the upgrade to check for any existing or introduced issues.</p>
@@ -205,23 +203,24 @@ and merge proposals.  All of these things mean that upgrading your focus of
 development branch is trickier.</p>
 <p>Here are the steps to follow:</p>
 <ol class="arabic simple">
-<li>The nominated person grabs a copy of trunk and does the migration locally.</li>
-<li>On Launchpad, unset the current trunk from being the development focus.
-(This <em>must</em> be done or the following step won’t work as expected.)<ol class="arabic">
-<li>Go to your project’s home page on Launchpad</li>
-<li>Look for “XXX is the current focus of development”</li>
-<li>Click on the edit (pencil) icon</li>
-<li>Click on “Change details” in the portlet on the right</li>
-<li>Scroll down to where it says “Branch: (Optional)”</li>
-<li>Blank out this input field and click “Change”</li>
+<li><p>The nominated person grabs a copy of trunk and does the migration locally.</p></li>
+<li><p>On Launchpad, unset the current trunk from being the development focus.
+(This <em>must</em> be done or the following step won’t work as expected.)</p>
+<ol class="arabic simple">
+<li><p>Go to your project’s home page on Launchpad</p></li>
+<li><p>Look for “XXX is the current focus of development”</p></li>
+<li><p>Click on the edit (pencil) icon</p></li>
+<li><p>Click on “Change details” in the portlet on the right</p></li>
+<li><p>Scroll down to where it says “Branch: (Optional)”</p></li>
+<li><p>Blank out this input field and click “Change”</p></li>
 </ol>
 </li>
-<li>Push the migrated trunk to Launchpad.  See below if you want your
+<li><p>Push the migrated trunk to Launchpad.  See below if you want your
 new migrated development focus branch to have the same name as your old
-pre-migration development focus branch.</li>
-<li>Set it as the development focus.  Follow the instructions above but at step
-5, enter the name of the newly migrated branch you just pushed.</li>
-<li>Ask users subscribed to the old trunk to subscribe to the new one.</li>
+pre-migration development focus branch.</p></li>
+<li><p>Set it as the development focus.  Follow the instructions above but at step
+5, enter the name of the newly migrated branch you just pushed.</p></li>
+<li><p>Ask users subscribed to the old trunk to subscribe to the new one.</p></li>
 </ol>
 <p>In summary, these steps mean that the old trunk is still available and
 existing branches stacked on it will continue to be so. However, the
@@ -233,41 +232,41 @@ and to give them instructions on migrating any local branches they have.</p>
 as your old pre-migration branch, you need to do a few extra things before you
 establish the new development focus.</p>
 <ol class="arabic simple">
-<li>Rename your old pre-migration branch; use something like
+<li><p>Rename your old pre-migration branch; use something like
 <strong>foo-obsolete-do-not-use</strong>.  You will really not want to delete this
 because there will be artifacts (bugs, merge proposals, etc.) associated
-with it.</li>
-<li>Rename the new migrated branch to the pre-migration branch’s old name.</li>
-<li>Re-establish the development focus branch using the new migrated branch’s
-new name (i.e. the old pre-migration branch’s original name).</li>
+with it.</p></li>
+<li><p>Rename the new migrated branch to the pre-migration branch’s old name.</p></li>
+<li><p>Re-establish the development focus branch using the new migrated branch’s
+new name (i.e. the old pre-migration branch’s original name).</p></li>
 </ol>
 </div>
 <div class="section" id="migrating-local-branches-after-a-central-trunk-has-migrated">
 <h3>Migrating local branches after a central trunk has migrated<a class="headerlink" href="#migrating-local-branches-after-a-central-trunk-has-migrated" title="Permalink to this headline">¶</a></h3>
 <p>To migrate a standalone branch:</p>
 <ol class="arabic simple">
-<li>Grab the latest branch from the central location into a
-new directory.</li>
-<li>Pull or merge any changes you’ve made in your existing branch
-into the new branch.</li>
+<li><p>Grab the latest branch from the central location into a
+new directory.</p></li>
+<li><p>Pull or merge any changes you’ve made in your existing branch
+into the new branch.</p></li>
 </ol>
 <p>To migrate branches in a shared repository:</p>
 <ol class="arabic simple">
-<li>Create a fresh shared repository in the new format (2a or later).</li>
-<li>Grab the latest branch from the central location into a
-new directory inside the shared repository.</li>
-<li>Decide which of your local branches you want to migrate. (If you
+<li><p>Create a fresh shared repository in the new format (2a or later).</p></li>
+<li><p>Grab the latest branch from the central location into a
+new directory inside the shared repository.</p></li>
+<li><p>Decide which of your local branches you want to migrate. (If you
 haven’t already, now’s a good time for <a class="reference internal" href="#finding-obsolete-branches">Finding obsolete branches</a>
-and purging them, after backing up first of course.)</li>
-<li>To migrate each local branch of interest, there are 2 options:</li>
+and purging them, after backing up first of course.)</p></li>
+<li><p>To migrate each local branch of interest, there are 2 options:</p></li>
 </ol>
 <blockquote>
 <div><ul class="simple">
-<li><strong>init</strong> an empty branch in the new repository and <strong>pull</strong> the
-revisions from the branch in the old repository across.</li>
-<li>In the new repository, <strong>branch</strong> from trunk to the new branch
+<li><p><strong>init</strong> an empty branch in the new repository and <strong>pull</strong> the
+revisions from the branch in the old repository across.</p></li>
+<li><p>In the new repository, <strong>branch</strong> from trunk to the new branch
 name then <strong>merge</strong> your changes from the matching branch in the
-old repository.</li>
+old repository.</p></li>
 </ul>
 </div></blockquote>
 <p>The first method will give you a branch which is identical (in terms of
@@ -297,10 +296,10 @@ another change made by yourself or others.</p>
 <p>When checking for an obsolete branch, there are three
 things in particular to confirm:</p>
 <ol class="arabic simple">
-<li>The working tree has no in-progress changes.</li>
-<li>The working tree has no shelved changes.</li>
-<li>Any locally committed revisions have been merged
-into the parent branch.</li>
+<li><p>The working tree has no in-progress changes.</p></li>
+<li><p>The working tree has no shelved changes.</p></li>
+<li><p>Any locally committed revisions have been merged
+into the parent branch.</p></li>
 </ol>
 <p>After changing into the root of a branch, the commands
 to check these things respectively are:</p>
@@ -350,8 +349,6 @@ the terms of the GNU General Public License version 2 or later.  See
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -379,7 +376,7 @@ the terms of the GNU General Public License version 2 or later.  See
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

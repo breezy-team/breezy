@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Workflows &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Workflows &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="core_concepts.html" title="Core concepts"
              accesskey="P">previous</a> |
@@ -62,9 +60,9 @@ effectively for managing projects where they are the only contributor.</p>
 <p>Advantages of this workflow over not using version control at all include:</p>
 <blockquote>
 <div><ul class="simple">
-<li>backup of old versions</li>
-<li>rollback to an earlier state</li>
-<li>tracking of history.</li>
+<li><p>backup of old versions</p></li>
+<li><p>rollback to an earlier state</p></li>
+<li><p>tracking of history.</p></li>
 </ul>
 </div></blockquote>
 <p>The key features of Breezy appropriate for this workflow are low administration
@@ -81,16 +79,16 @@ parallel exchanging changes by merging when appropriate.</p>
 <p>Advantages over <em>Solo</em> are:</p>
 <blockquote>
 <div><ul class="simple">
-<li>easier sharing of changes</li>
-<li>each line of each text file can be attributed to a particular change
-including who changed it, when and why.</li>
+<li><p>easier sharing of changes</p></li>
+<li><p>each line of each text file can be attributed to a particular change
+including who changed it, when and why.</p></li>
 </ul>
 </div></blockquote>
 <p>When implementing this workflow, Breezy’s advantages over CVS and Subversion include:</p>
 <blockquote>
 <div><ul class="simple">
-<li>no server to setup</li>
-<li>intelligent merging means merging multiple times isn’t painful.</li>
+<li><p>no server to setup</p></li>
+<li><p>intelligent merging means merging multiple times isn’t painful.</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -106,8 +104,8 @@ make it easy. Breezy directly supports it as well while providing some
 important advantages over CVS and Subversion:</p>
 <blockquote>
 <div><ul class="simple">
-<li>better branching and merging</li>
-<li>better renaming support.</li>
+<li><p>better branching and merging</p></li>
+<li><p>better renaming support.</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -121,8 +119,8 @@ mainline.</p>
 <p>Advantages over <em>Centralized</em>:</p>
 <blockquote>
 <div><ul class="simple">
-<li>Can work offline, e.g. when disconnected during travel</li>
-<li>Less chance for a bad commit to interfere with everyone else’s work</li>
+<li><p>Can work offline, e.g. when disconnected during travel</p></li>
+<li><p>Less chance for a bad commit to interfere with everyone else’s work</p></li>
 </ul>
 </div></blockquote>
 <p>Subversion and CVS do not support this model. Other distributed VCS tools can
@@ -137,8 +135,8 @@ merge it into the mainline when it is ready.</p>
 <p>Advantage over <em>Centralized with local commits</em>:</p>
 <blockquote>
 <div><ul class="simple">
-<li>Easier organization of work - separate changes can be developed in their own branches</li>
-<li>Developers can merge one another’s personal branches when working on something together.</li>
+<li><p>Easier organization of work - separate changes can be developed in their own branches</p></li>
+<li><p>Developers can merge one another’s personal branches when working on something together.</p></li>
 </ul>
 </div></blockquote>
 <p>Subversion and CVS do not support this model. Other distributed VCS
@@ -157,8 +155,8 @@ work into the main branch if it meets the necessary standards.</p>
 <p>Advantage over <em>Decentralized with shared mainline</em>:</p>
 <blockquote>
 <div><ul class="simple">
-<li>Code is always reviewed before it enters the mainline</li>
-<li>Tighter control over when changes get incorporated into the mainline.</li>
+<li><p>Code is always reviewed before it enters the mainline</p></li>
+<li><p>Tighter control over when changes get incorporated into the mainline.</p></li>
 </ul>
 </div></blockquote>
 <p>A companion tool of Breezy’s called Bundle Buggy can be very useful for
@@ -181,9 +179,9 @@ promote just-in-time reviews instead of reviewing code as a separate step.)</p>
 <p>Advantages over <em>Decentralized with human gatekeeper</em>:</p>
 <blockquote>
 <div><ul class="simple">
-<li>Code is always tested before it enters the mainline (so the integrity of the
-mainline is higher)</li>
-<li>Scales better as teams grow.</li>
+<li><p>Code is always tested before it enters the mainline (so the integrity of the
+mainline is higher)</p></li>
+<li><p>Scales better as teams grow.</p></li>
 </ul>
 </div></blockquote>
 <p>A companion tool of Breezy’s called Patch Queue Manager (PQM) can provide the
@@ -221,8 +219,6 @@ usage instructions and configuration tips.</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -250,7 +246,7 @@ usage instructions and configuration tips.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Incremental push/pull &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Incremental push/pull &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -22,7 +20,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="../../index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -46,13 +44,12 @@ bzr-svn or GNU Arch) but within bzrlib’s core they are currently the
 responsibility of the Repository object.</p>
 <div class="section" id="functional-requirements">
 <h2>Functional Requirements<a class="headerlink" href="#functional-requirements" title="Permalink to this headline">¶</a></h2>
-<dl class="docutils">
-<dt>A push or pull operation must:</dt>
-<dd><ul class="first last simple">
-<li>Copy all the data to reconstruct the selected revisions in the target
-branch. This is the goal of push and pull after all.</li>
-<li>Reject corrupt data. As brz has no innate mechanism for discarding corrupted
-data, corrupted data should not be incorporated accidentally.</li>
+<dl class="simple">
+<dt>A push or pull operation must:</dt><dd><ul class="simple">
+<li><p>Copy all the data to reconstruct the selected revisions in the target
+branch. This is the goal of push and pull after all.</p></li>
+<li><p>Reject corrupt data. As brz has no innate mechanism for discarding corrupted
+data, corrupted data should not be incorporated accidentally.</p></li>
 </ul>
 </dd>
 </dl>
@@ -61,21 +58,21 @@ data, corrupted data should not be incorporated accidentally.</li>
 <h2>Factors which should add work for push/pull<a class="headerlink" href="#factors-which-should-add-work-for-push-pull" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><ul class="simple">
-<li>Baseline overhead: The time to connect to both branches.</li>
-<li>Actual new data in the revisions being pulled (drives the amount of data to
-move around, includes the commit messages etc)</li>
-<li>Number of revisions in the two repositories (scaling affects the
-determination of what revisions to move around).</li>
+<li><p>Baseline overhead: The time to connect to both branches.</p></li>
+<li><p>Actual new data in the revisions being pulled (drives the amount of data to
+move around, includes the commit messages etc)</p></li>
+<li><p>Number of revisions in the two repositories (scaling affects the
+determination of what revisions to move around).</p></li>
 </ul>
 </div></blockquote>
 </div>
 <div class="section" id="push-pull-overview">
 <h2>Push/pull overview<a class="headerlink" href="#push-pull-overview" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li>New data is identified in the source repository.</li>
-<li>That data is read from the source repository.</li>
-<li>The same data is verified and written to the target repository in such a
-manner that it’s not visible to readers until it’s ready for use.</li>
+<li><p>New data is identified in the source repository.</p></li>
+<li><p>That data is read from the source repository.</p></li>
+<li><p>The same data is verified and written to the target repository in such a
+manner that it’s not visible to readers until it’s ready for use.</p></li>
 </ol>
 <div class="section" id="new-data-identification">
 <h3>New data identification<a class="headerlink" href="#new-data-identification" title="Permalink to this headline">¶</a></h3>
@@ -119,23 +116,23 @@ access in both cases.</p>
 <p>Expected file IO and access pattern:</p>
 <blockquote>
 <div><ul>
-<li><p class="first">Common case: repo with many branches of one project, to the same.</p>
+<li><p>Common case: repo with many branches of one project, to the same.</p>
 <ol class="arabic simple">
-<li>Source and Target branch tips read.</li>
-<li>Find the tip of each branch in their repo (will require reading some of
-the revision graph but is typically near the end of the graph).</li>
-<li>Read and parse increasing amounts of the revision graph until one is
+<li><p>Source and Target branch tips read.</p></li>
+<li><p>Find the tip of each branch in their repo (will require reading some of
+the revision graph but is typically near the end of the graph).</p></li>
+<li><p>Read and parse increasing amounts of the revision graph until one is
 found to be a subset of the other, or a complete list of revisions to be
-transmitted is created.</li>
+transmitted is created.</p></li>
 </ol>
 </li>
-<li><p class="first">Uncommon cases:</p>
+<li><p>Uncommon cases:</p>
 <ol class="arabic simple">
-<li>Repositories with many projects or branches which are very old may
-require reading a lot of unrelated graph data.</li>
+<li><p>Repositories with many projects or branches which are very old may
+require reading a lot of unrelated graph data.</p></li>
 </ol>
 <ol class="arabic simple">
-<li>Initial push/pull scenarios should not require reading an entire graph.</li>
+<li><p>Initial push/pull scenarios should not require reading an entire graph.</p></li>
 </ol>
 </li>
 </ul>
@@ -145,23 +142,23 @@ require reading a lot of unrelated graph data.</li>
 <h4>API scaling<a class="headerlink" href="#api-scaling" title="Permalink to this headline">¶</a></h4>
 <blockquote>
 <div><ol class="arabic simple">
-<li>Get branch tips.</li>
-<li>Determine one sided graph difference. To avoid obtaining a full graph over
+<li><p>Get branch tips.</p></li>
+<li><p>Determine one sided graph difference. To avoid obtaining a full graph over
 the wire this needs to be done without reference to the full graph, and
 with some logarthmic scaling algorithm. There are several already available
-for this.</li>
+for this.</p></li>
 </ol>
 </div></blockquote>
 <p>With ghost and new-signature detection:</p>
 <blockquote>
 <div><ul class="simple">
-<li>File IO access pattern will read the entire graph on the ‘target’ side - if
+<li><p>File IO access pattern will read the entire graph on the ‘target’ side - if
 no ghosts are present then stop, otherwise seek the new revisions on the
 source side with the regular algorithm and also explicitly search for the
 ghost points from the target; plus a set difference search is needed on
-signatures.</li>
-<li>Semantic level can probably be tuned, but as it’s also complex I suggest
-deferring analysis for optimal behaviour of this use case.</li>
+signatures.</p></li>
+<li><p>Semantic level can probably be tuned, but as it’s also complex I suggest
+deferring analysis for optimal behaviour of this use case.</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -177,12 +174,12 @@ inventory -&gt; file ids:revision pairs.</p>
 disk reading should be race free. We will:</p>
 <blockquote>
 <div><ul class="simple">
-<li>read each revision object</li>
-<li>read the matching inventory delta</li>
-<li>attempt to read a signature object</li>
-<li>parse the inventory delta</li>
-<li>read the fileid:revisionid compressed chunk for each line in the inventory
-delta</li>
+<li><p>read each revision object</p></li>
+<li><p>read the matching inventory delta</p></li>
+<li><p>attempt to read a signature object</p></li>
+<li><p>parse the inventory delta</p></li>
+<li><p>read the fileid:revisionid compressed chunk for each line in the inventory
+delta</p></li>
 </ul>
 </div></blockquote>
 <p>Theres no point validating that the data read is valid, as transmission through to the client writing the data might invalidate it; we need to validate before we write.</p>
@@ -242,8 +239,8 @@ form of objects.</p>
 <div class="section" id="id3">
 <h4>File level scaling<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li>Every new file text requires transmission and local serialisation.</li>
-<li>Every commit requires transmission and storage of a revision, signature and inventory.</li>
+<li><p>Every new file text requires transmission and local serialisation.</p></li>
+<li><p>Every commit requires transmission and storage of a revision, signature and inventory.</p></li>
 </ul>
 <p>Thus 4000 commits to a 50000 path tree of 10 files on averages requires (with
 knits) between 26 writes (2*(3+10)) and 80006 (2*(4000*10 + 3)) writes. In all
@@ -251,21 +248,20 @@ cases there are 4000 * 13 distinct objects to record.</p>
 <p>Grouping data by fileid, content and metadata, gives the figures above.
 Data grouping:</p>
 <ul class="simple">
-<li>File per full identifier (fileid:revisionid:meta|content): 104000</li>
-<li>Delta-chain per object: object id count * constant overhead per object id
-(26 -&gt; 80006)</li>
-<li>Collation/pack file: 1</li>
+<li><p>File per full identifier (fileid:revisionid:meta|content): 104000</p></li>
+<li><p>Delta-chain per object: object id count * constant overhead per object id
+(26 -&gt; 80006)</p></li>
+<li><p>Collation/pack file: 1</p></li>
 </ul>
-<dl class="docutils">
-<dt>Performance for these depends heavily on implementation:</dt>
-<dd><ul class="first last simple">
-<li>Using full ids we could name by validator or by id, giving best performance
-that depends on either receiving data in validator order or in id order.</li>
-<li>using delta-chain per object we get least seek overhead and syscall overhead
+<dl class="simple">
+<dt>Performance for these depends heavily on implementation:</dt><dd><ul class="simple">
+<li><p>Using full ids we could name by validator or by id, giving best performance
+that depends on either receiving data in validator order or in id order.</p></li>
+<li><p>using delta-chain per object we get least seek overhead and syscall overhead
 if we recieve in topological order within the object id, and object ids in
-lexical order.</li>
-<li>Using a collation/pack file we can stream it into place and validate as we go,
-giving near ideal performance.</li>
+lexical order.</p></li>
+<li><p>Using a collation/pack file we can stream it into place and validate as we go,
+giving near ideal performance.</p></li>
 </ul>
 </dd>
 </dl>
@@ -287,45 +283,44 @@ avoid ending up wth corrupt/bad data</p>
 <h2>Notes from London<a class="headerlink" href="#notes-from-london" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><ol class="arabic simple">
-<li>setup</li>
+<li><p>setup</p></li>
 </ol>
 <blockquote>
 <div><p>look at graph of revisions for ~N comits to deretmine eligibility for
 if preserve mainline is on, check LH only</p>
 <blockquote>
-<div><dl class="docutils">
-<dt>identify objects to send that are not on the client repo</dt>
-<dd><ul class="first last simple">
-<li>revision - may be proportional to the graph</li>
-<li>inventory - proportional to work</li>
-<li>texts     - proportional to work</li>
-<li>signatures - ???</li>
+<div><dl class="simple">
+<dt>identify objects to send that are not on the client repo</dt><dd><ul class="simple">
+<li><p>revision - may be proportional to the graph</p></li>
+<li><p>inventory - proportional to work</p></li>
+<li><p>texts     - proportional to work</p></li>
+<li><p>signatures - ???</p></li>
 </ul>
 </dd>
 </dl>
 </div></blockquote>
 </div></blockquote>
 <ol class="arabic simple">
-<li>data transmission</li>
+<li><p>data transmission</p></li>
 </ol>
 <blockquote>
 <div><ul class="simple">
-<li>send data proportional to the new information</li>
-<li>validate the data:</li>
+<li><p>send data proportional to the new information</p></li>
+<li><p>validate the data:</p></li>
 </ul>
 <blockquote>
 <div><ol class="arabic simple">
-<li>validate the sha1 of the full text of each transmitted text.</li>
-<li>validate the sha1:name mapping in each newly referenced inventory item.</li>
-<li>validate the sha1 of the XML of each inventory against the revision.
-<strong>this is proportional to tree size and must be fixed</strong></li>
+<li><p>validate the sha1 of the full text of each transmitted text.</p></li>
+<li><p>validate the sha1:name mapping in each newly referenced inventory item.</p></li>
+<li><p>validate the sha1 of the XML of each inventory against the revision.
+<strong>this is proportional to tree size and must be fixed</strong></p></li>
 </ol>
 </div></blockquote>
 </div></blockquote>
 <ol class="arabic simple">
-<li>write the data to the local repo.
-The API should output the file texts needed by the merge as by product of the transmission</li>
-<li>tree application</li>
+<li><p>write the data to the local repo.
+The API should output the file texts needed by the merge as by product of the transmission</p></li>
+<li><p>tree application</p></li>
 </ol>
 </div></blockquote>
 <p>Combine the output from the transmission step with additional ‘new work data’ for anything already in the local repository that is new in this tree.
@@ -382,8 +377,6 @@ should write new files and stat existing files proportional to the count of the 
             <form class="search" action="../../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -407,7 +400,7 @@ should write new files and stat existing files proportional to the count of the 
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Core concepts &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Core concepts &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="introducing_breezy.html" title="Introducing Breezy"
              accesskey="P">previous</a> |
@@ -45,12 +43,12 @@
 <h2>A simple user model<a class="headerlink" href="#a-simple-user-model" title="Permalink to this headline">¶</a></h2>
 <p>To use Breezy you need to understand four core concepts:</p>
 <ul class="simple">
-<li><strong>Revision</strong> - a snapshot of the files you’re working with.</li>
-<li><strong>Working tree</strong> - the directory containing your version-controlled
-files and sub-directories.</li>
-<li><strong>Branch</strong> - an ordered set of revisions that describe the history of a
-set of files.</li>
-<li><strong>Repository</strong> - a store of revisions.</li>
+<li><p><strong>Revision</strong> - a snapshot of the files you’re working with.</p></li>
+<li><p><strong>Working tree</strong> - the directory containing your version-controlled
+files and sub-directories.</p></li>
+<li><p><strong>Branch</strong> - an ordered set of revisions that describe the history of a
+set of files.</p></li>
+<li><p><strong>Repository</strong> - a store of revisions.</p></li>
 </ul>
 <p>Let’s look at each in more detail.</p>
 </div>
@@ -60,10 +58,10 @@ set of files.</li>
 including their content and shape. A revision also has some metadata
 associated with it, including:</p>
 <ul class="simple">
-<li>Who committed it</li>
-<li>When it was committed</li>
-<li>A commit message</li>
-<li>Parent revisions from which it was derived</li>
+<li><p>Who committed it</p></li>
+<li><p>When it was committed</p></li>
+<li><p>A commit message</p></li>
+<li><p>Parent revisions from which it was derived</p></li>
 </ul>
 <p>Revisions are immutable and can be globally, uniquely identified
 by a <em>revision-id</em>. An example revision-id is:</p>
@@ -106,11 +104,11 @@ you may hear some people refer to it as a <em>directed acyclic graph</em> or DAG
 <p>If this name sounds scary, don’t worry. The important things
 to remember are:</p>
 <ul class="simple">
-<li>The primary line of development within the DAG is called
-the <em>mainline</em>, <em>trunk</em>, or simply the <em>left hand side</em> (LHS).</li>
-<li>A branch might have other lines of development and if it does,
+<li><p>The primary line of development within the DAG is called
+the <em>mainline</em>, <em>trunk</em>, or simply the <em>left hand side</em> (LHS).</p></li>
+<li><p>A branch might have other lines of development and if it does,
 these other lines of development begin at some point and end at
-another point.</li>
+another point.</p></li>
 </ul>
 </div>
 <div class="section" id="repository">
@@ -126,13 +124,13 @@ should become easier to understand. The simplest way of using Breezy is
 to use a <em>standalone tree</em>, which has a working tree, branch, and repository
 all in a single location. Other common scenarios include:</p>
 <ul class="simple">
-<li><a class="reference external" href="branching_a_project.html#a-reminder-about-shared-repositories">Shared repositories</a>
+<li><p><a class="reference external" href="branching_a_project.html#a-reminder-about-shared-repositories">Shared repositories</a>
 - working tree and branch are colocated, but the repository is in a higher level
-directory.</li>
-<li><a class="reference external" href="stacked.html">Stacked branches</a> - branch stores just its
-unique revisions, using its parent’s repository for common revisions.</li>
-<li><a class="reference external" href="using_checkouts.html#getting-a-lightweight-checkout">Lightweight checkouts</a>
-- branch is stored in a different location to the working tree.</li>
+directory.</p></li>
+<li><p><a class="reference external" href="stacked.html">Stacked branches</a> - branch stores just its
+unique revisions, using its parent’s repository for common revisions.</p></li>
+<li><p><a class="reference external" href="using_checkouts.html#getting-a-lightweight-checkout">Lightweight checkouts</a>
+- branch is stored in a different location to the working tree.</p></li>
 </ul>
 <p>The best way to use Breezy, however, depends on your needs. Let’s take a
 look at some common workflows next.</p>
@@ -162,8 +160,6 @@ look at some common workflows next.</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -191,7 +187,7 @@ look at some common workflows next.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

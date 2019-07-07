@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>checkout &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>checkout &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="check-help.html" title="check"
              accesskey="P">previous</a> |
@@ -41,63 +39,47 @@
             
   <div class="section" id="checkout">
 <h1>checkout<a class="headerlink" href="#checkout" title="Permalink to this headline">¶</a></h1>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Create a new checkout of an existing branch.</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz checkout [BRANCH_LOCATION] [TO_LOCATION]</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
-<col class="option" />
-<col class="description" />
-<tbody valign="top">
-<tr><td class="option-group" colspan="2">
-<kbd><span class="option">--files-from=<var>ARG</var></span></kbd></td>
-</tr>
-<tr><td>&#160;</td><td><p class="first last">Get file contents from this tree.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--hardlink</span></kbd></td>
-<td><p class="first last">Hard-link working tree files where possible.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
-<td><p class="first last">Show help message.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--lightweight</span></kbd></td>
-<td><p class="first last">Perform a lightweight checkout.  Lightweight checkouts
+<dl class="field-list">
+<dt class="field-odd">Purpose</dt>
+<dd class="field-odd"><p>Create a new checkout of an existing branch.</p>
+</dd>
+<dt class="field-even">Usage</dt>
+<dd class="field-even"><p>brz checkout [BRANCH_LOCATION] [TO_LOCATION]</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><dl class="option-list">
+<dt><kbd><span class="option">--files-from=<var>ARG</var></span></kbd></dt>
+<dd><p>Get file contents from this tree.</p>
+</dd>
+<dt><kbd><span class="option">--hardlink</span></kbd></dt>
+<dd><p>Hard-link working tree files where possible.</p>
+</dd>
+<dt><kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></dt>
+<dd><p>Show help message.</p>
+</dd>
+<dt><kbd><span class="option">--lightweight</span></kbd></dt>
+<dd><p>Perform a lightweight checkout.  Lightweight checkouts
 depend on access to the branch for every operation.
 Normal checkouts can perform common operations like
 diff and status without such access, and also support
 local commits.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
-<td><p class="first last">Only display errors and warnings.</p>
-</td></tr>
-<tr><td class="option-group" colspan="2">
-<kbd><span class="option">-r <var>ARG</var></span>, <span class="option">--revision=<var>ARG</var></span></kbd></td>
-</tr>
-<tr><td>&#160;</td><td><p class="first last">See “help revisionspec” for details.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--usage</span></kbd></td>
-<td><p class="first last">Show usage message and options.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
-<td><p class="first last">Display more information.</p>
-</td></tr>
-</tbody>
-</table>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">If BRANCH_LOCATION is omitted, checkout will reconstitute a working tree
+</dd>
+<dt><kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></dt>
+<dd><p>Only display errors and warnings.</p>
+</dd>
+<dt><kbd><span class="option">-r <var>ARG</var></span>, <span class="option">--revision=<var>ARG</var></span></kbd></dt>
+<dd><p>See “help revisionspec” for details.</p>
+</dd>
+<dt><kbd><span class="option">--usage</span></kbd></dt>
+<dd><p>Show usage message and options.</p>
+</dd>
+<dt><kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></dt>
+<dd><p>Display more information.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Description</dt>
+<dd class="field-even"><p>If BRANCH_LOCATION is omitted, checkout will reconstitute a working tree
 for the branch found in ‘.’. This is useful if you have removed the working
 tree or if it was never created - i.e. if you pushed the branch to its
 current location using SFTP.</p>
@@ -111,16 +93,14 @@ attempt to create ./foo-bar.</p>
 parameter, as in “checkout foo/bar -r 5”. Note that this will be
 immediately out of date [so you cannot commit] but it may be useful (i.e.
 to examine old code.)</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Aliases:</th><td class="field-body"><p class="first">co</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">See also:</th><td class="field-body"><p class="first last"><a class="reference internal" href="branch-help.html"><span class="doc">branch</span></a>, <a class="reference internal" href="checkouts-help.html"><span class="doc">checkouts</span></a>, <a class="reference internal" href="remove-tree-help.html"><span class="doc">remove-tree</span></a>, <a class="reference internal" href="working-trees-help.html"><span class="doc">working-trees</span></a></p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Aliases</dt>
+<dd class="field-odd"><p>co</p>
+</dd>
+<dt class="field-even">See also</dt>
+<dd class="field-even"><p><a class="reference internal" href="branch-help.html"><span class="doc">branch</span></a>, <a class="reference internal" href="checkouts-help.html"><span class="doc">checkouts</span></a>, <a class="reference internal" href="remove-tree-help.html"><span class="doc">remove-tree</span></a>, <a class="reference internal" href="working-trees-help.html"><span class="doc">working-trees</span></a></p>
+</dd>
+</dl>
 </div>
 
 
@@ -146,8 +126,6 @@ to examine old code.)</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -175,7 +153,7 @@ to examine old code.)</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

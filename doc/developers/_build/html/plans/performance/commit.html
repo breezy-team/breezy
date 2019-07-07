@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Commit Performance Notes &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Commit Performance Notes &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
@@ -22,7 +20,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../../index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="../../index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -40,22 +38,22 @@
 <h1>Commit Performance Notes<a class="headerlink" href="#commit-performance-notes" title="Permalink to this headline">¶</a></h1>
 <div class="contents local topic" id="contents">
 <ul class="simple">
-<li><a class="reference internal" href="#changes-to-commit" id="id1">Changes to commit</a></li>
-<li><a class="reference internal" href="#commit-the-minimum-work-required" id="id2">Commit: The Minimum Work Required</a></li>
-<li><a class="reference internal" href="#commit-vs-status" id="id3">Commit vs Status</a></li>
-<li><a class="reference internal" href="#avoiding-work-smarter-change-detection" id="id4">Avoiding Work: Smarter Change Detection</a></li>
-<li><a class="reference internal" href="#avoiding-work-better-layering" id="id5">Avoiding Work: Better Layering</a></li>
-<li><a class="reference internal" href="#avoiding-work-avoiding-reading-parent-data" id="id6">Avoiding work: avoiding reading parent data</a></li>
-<li><a class="reference internal" href="#code-structure" id="id7">Code structure</a></li>
-<li><a class="reference internal" href="#complications-of-commit" id="id8">Complications of commit</a></li>
-<li><a class="reference internal" href="#interface-stack" id="id9">Interface stack</a></li>
-<li><a class="reference internal" href="#branch-tree-interface" id="id10">Branch-&gt;Tree interface</a></li>
-<li><a class="reference internal" href="#information-from-the-tree-to-repository" id="id11">Information from the tree to repository</a></li>
-<li><a class="reference internal" href="#information-from-the-repository-to-the-tree" id="id12">Information from the repository to the tree</a></li>
-<li><a class="reference internal" href="#selective-commit" id="id13">Selective commit</a></li>
-<li><a class="reference internal" href="#common-commit-code" id="id14">Common commit code</a></li>
-<li><a class="reference internal" href="#order-of-traversal" id="id15">Order of traversal</a></li>
-<li><a class="reference internal" href="#open-question-per-file-graphs" id="id16">Open question: per-file graphs</a></li>
+<li><p><a class="reference internal" href="#changes-to-commit" id="id1">Changes to commit</a></p></li>
+<li><p><a class="reference internal" href="#commit-the-minimum-work-required" id="id2">Commit: The Minimum Work Required</a></p></li>
+<li><p><a class="reference internal" href="#commit-vs-status" id="id3">Commit vs Status</a></p></li>
+<li><p><a class="reference internal" href="#avoiding-work-smarter-change-detection" id="id4">Avoiding Work: Smarter Change Detection</a></p></li>
+<li><p><a class="reference internal" href="#avoiding-work-better-layering" id="id5">Avoiding Work: Better Layering</a></p></li>
+<li><p><a class="reference internal" href="#avoiding-work-avoiding-reading-parent-data" id="id6">Avoiding work: avoiding reading parent data</a></p></li>
+<li><p><a class="reference internal" href="#code-structure" id="id7">Code structure</a></p></li>
+<li><p><a class="reference internal" href="#complications-of-commit" id="id8">Complications of commit</a></p></li>
+<li><p><a class="reference internal" href="#interface-stack" id="id9">Interface stack</a></p></li>
+<li><p><a class="reference internal" href="#branch-tree-interface" id="id10">Branch-&gt;Tree interface</a></p></li>
+<li><p><a class="reference internal" href="#information-from-the-tree-to-repository" id="id11">Information from the tree to repository</a></p></li>
+<li><p><a class="reference internal" href="#information-from-the-repository-to-the-tree" id="id12">Information from the repository to the tree</a></p></li>
+<li><p><a class="reference internal" href="#selective-commit" id="id13">Selective commit</a></p></li>
+<li><p><a class="reference internal" href="#common-commit-code" id="id14">Common commit code</a></p></li>
+<li><p><a class="reference internal" href="#order-of-traversal" id="id15">Order of traversal</a></p></li>
+<li><p><a class="reference internal" href="#open-question-per-file-graphs" id="id16">Open question: per-file graphs</a></p></li>
 </ul>
 </div>
 <div class="section" id="changes-to-commit">
@@ -76,8 +74,8 @@ about the underlying storage, but am assuming that the ui and basic
 architecture (wt, branch, repo) stays about the same.</p>
 <p>The basic purpose of commit is to:</p>
 <ol class="arabic simple">
-<li>create and store a new revision based on the contents of the working tree</li>
-<li>make this the new basis revision for the working tree</li>
+<li><p>create and store a new revision based on the contents of the working tree</p></li>
+<li><p>make this the new basis revision for the working tree</p></li>
 </ol>
 <p>We can do a selected commit of only some files or subtrees.</p>
 <p>The best performance we could hope for is:
@@ -186,23 +184,23 @@ and Aaron Bentley in May 2007 to explain the finer details of commit to
 Ian Clatworthy. They are recorded here as they are likely to be useful to
 others new to Bazaar …</p>
 <ol class="arabic simple">
-<li><strong>Unknown files have a different effect.</strong> With –no-strict (the default)
+<li><p><strong>Unknown files have a different effect.</strong> With –no-strict (the default)
 they have no effect and can be completely ignored. With –strict they
 should cause the commit to abort (so you don’t forget to add the two new
-test files that you just created).</li>
-<li><strong>Multiple parents.</strong> ‘status’ always compares 2 trees, typically the
+test files that you just created).</p></li>
+<li><p><strong>Multiple parents.</strong> ‘status’ always compares 2 trees, typically the
 last-committed tree and the current working tree. ‘commit’ will compare
-more trees if there has been a merge.</li>
+more trees if there has been a merge.</p></li>
 </ol>
 <blockquote>
 <div><ol class="loweralpha simple">
-<li>The “last modified” property for files.
+<li><p>The “last modified” property for files.
 A file may be marked as changed since the last commit, but that
 change may have come in from the merge, and the change could have
 happened several commits back. There are several edge cases to be
 handled here, like if both branches modified the same file, or if
-just one branch modified it.</li>
-<li>The trickier case is when a file appears unmodified since last
+just one branch modified it.</p></li>
+<li><p>The trickier case is when a file appears unmodified since last
 commit, but it was modified versus one of the merged branches. I
 believe there are a few ways this can happen, like if a merged
 branch changes a file and then reverts it back (you still update
@@ -210,22 +208,20 @@ the ‘last modified’ field).
 In general, if both sides disagree on the ‘last-modified’ flag,
 then you need to generate a new entry pointing ‘last-modified’ at
 this revision (because you are resolving the differences between
-the 2 parents).</li>
+the 2 parents).</p></li>
 </ol>
 </div></blockquote>
 <ol class="arabic" start="3">
-<li><p class="first"><strong>Automatic deletion of ‘missing’ files.</strong> This is a point that we go
+<li><p><strong>Automatic deletion of ‘missing’ files.</strong> This is a point that we go
 back and forth on. I think the basic idea is that ‘brz commit’ by
 default should abort if it finds a ‘missing’ file (in case that file was
 renamed rather than deleted), but ‘brz commit –auto’ can add unknown
-files and remove missing files automatically.</p>
-</li>
-<li><p class="first"><strong>sha1 for newly added files.</strong> status doesn’t really need this: it should
+files and remove missing files automatically.</p></li>
+<li><p><strong>sha1 for newly added files.</strong> status doesn’t really need this: it should
 only care that the file is not present in base, but is present now. In
 some ways commit doesn’t care either, since it needs to read and sha the
-file itself anyway.</p>
-</li>
-<li><p class="first"><strong>Nested trees.</strong> status doesn’t recurse into nested trees, but commit does.
+file itself anyway.</p></li>
+<li><p><strong>Nested trees.</strong> status doesn’t recurse into nested trees, but commit does.
 This is just because not all of the nested-trees work has been merged yet.</p>
 <p>A tree-reference is considered modified if the subtree has been
 committed since the last containing-tree commit.  But commit needs to
@@ -321,19 +317,20 @@ is efficient with the Repository and Tree.  Model differences might
 include whether no-text-change merges need to be reported, and whether the</p>
 <p>The basic CommitBuilder.commit structure can be</p>
 <ol class="arabic simple">
-<li>Ask the branch if it is ready to commit (up to date with master if
-any.)</li>
-<li>Ask the tree if it is ready to commit to the branch (up to date with
-branch?), no conflicts, etc</li>
-<li>Commit changed files; prototype implementation:<ol class="loweralpha">
-<li>Ask the working tree for all committable files; for each it should
-return the per-file parents, stat information, kind, etc.</li>
-<li>Ask the repository to store the new file text; the repository should
-return the stored sha1 and new revision id.</li>
+<li><p>Ask the branch if it is ready to commit (up to date with master if
+any.)</p></li>
+<li><p>Ask the tree if it is ready to commit to the branch (up to date with
+branch?), no conflicts, etc</p></li>
+<li><p>Commit changed files; prototype implementation:</p>
+<ol class="loweralpha simple">
+<li><p>Ask the working tree for all committable files; for each it should
+return the per-file parents, stat information, kind, etc.</p></li>
+<li><p>Ask the repository to store the new file text; the repository should
+return the stored sha1 and new revision id.</p></li>
 </ol>
 </li>
-<li>Commit changed inventory</li>
-<li>Commit revision object</li>
+<li><p>Commit changed inventory</p></li>
+<li><p>Commit revision object</p></li>
 </ol>
 </div>
 <div class="section" id="complications-of-commit">
@@ -345,14 +342,14 @@ or will the per-file graph diverge from the revision graph.</p>
 <p>There are several checks that may cause the commit to be refused, which
 may be activated or deactivated by options.</p>
 <ul class="simple">
-<li>presence of conflicts in the tree</li>
-<li>presence of unknown files</li>
-<li>the working tree basis is up to date with the branch tip</li>
-<li>the local branch is up to date with the master branch, if there
-is one and –local is not specified</li>
-<li>an empty commit message is given,</li>
-<li>a hook flags an error</li>
-<li>a “pointless” commit, with no inventory changes</li>
+<li><p>presence of conflicts in the tree</p></li>
+<li><p>presence of unknown files</p></li>
+<li><p>the working tree basis is up to date with the branch tip</p></li>
+<li><p>the local branch is up to date with the master branch, if there
+is one and –local is not specified</p></li>
+<li><p>an empty commit message is given,</p></li>
+<li><p>a hook flags an error</p></li>
+<li><p>a “pointless” commit, with no inventory changes</p></li>
 </ul>
 <p>Most of these require walking the tree and can be easily done while
 recording the tree shape.  This does require that it be possible to abort
@@ -361,35 +358,35 @@ either leave the unreachable partly-committed records in the repository,
 or to roll back.</p>
 <p>Other complications:</p>
 <ul class="simple">
-<li>when automatically adding new files or deleting missing files during
+<li><p>when automatically adding new files or deleting missing files during
 commit, they must be noted during commit and written into the working
-tree at some point</li>
-<li>refuse “pointless” commits with no file changes - should be easy by
+tree at some point</p></li>
+<li><p>refuse “pointless” commits with no file changes - should be easy by
 just refusing to do the final step of storing a new overall inventory
-and revision object</li>
-<li>heuristic detection of renames between add and delete (out of scope for
-this change)</li>
-<li>pushing changes to a master branch if any</li>
-<li>running hooks, pre and post commit</li>
-<li>prompting for a commit message if necessary, including a list of the
-changes that have already been observed</li>
-<li>if there are tree references and recursing into them is enabled, then
-do so</li>
+and revision object</p></li>
+<li><p>heuristic detection of renames between add and delete (out of scope for
+this change)</p></li>
+<li><p>pushing changes to a master branch if any</p></li>
+<li><p>running hooks, pre and post commit</p></li>
+<li><p>prompting for a commit message if necessary, including a list of the
+changes that have already been observed</p></li>
+<li><p>if there are tree references and recursing into them is enabled, then
+do so</p></li>
 </ul>
 <p>Commit needs to protect against duplicated file ids</p>
 <p>Updates that need to be made in the working tree, either on conclusion
 of commit or during the scan, include</p>
 <ul class="simple">
-<li>Changes made to the tree shape, including automatic adds, renames or
-deletes</li>
-<li>For trees (eg dirstate) that cache parent inventories, the old parent
-information must be removed and the new one inserted</li>
-<li>The tree hashcache information should be updated to reflect the stat
+<li><p>Changes made to the tree shape, including automatic adds, renames or
+deletes</p></li>
+<li><p>For trees (eg dirstate) that cache parent inventories, the old parent
+information must be removed and the new one inserted</p></li>
+<li><p>The tree hashcache information should be updated to reflect the stat
 value at which the file was the same as the committed version, and the
 content hash it was observed to have.  This needs to be done carefully to
 prevent inconsistencies if the file is modified during or shortly after
 the commit.  Perhaps it would work to read the mtime of the file before we
-read its text to commit.</li>
+read its text to commit.</p></li>
 </ul>
 </div>
 <div class="section" id="interface-stack">
@@ -399,16 +396,16 @@ from the tree into the branch and its repository, possibly updating the
 WorkingTree afterwards.</p>
 <p>The command interface passes:</p>
 <ul class="simple">
-<li>a commit message (from an option, if any),</li>
-<li>or an indication that it should be read interactively from the ui object;</li>
-<li>a list of files to commit</li>
-<li>an option for a dry-run commit</li>
-<li>verbose option, or callback to indicate</li>
-<li>timestamp, timezone, committer, chosen revision id</li>
-<li>config (for what?)</li>
-<li>option for local-only commit on a bound branch</li>
-<li>option for strict commits (fail if there are unknown or missing files)</li>
-<li>option to allow “pointless” commits (with no tree changes)</li>
+<li><p>a commit message (from an option, if any),</p></li>
+<li><p>or an indication that it should be read interactively from the ui object;</p></li>
+<li><p>a list of files to commit</p></li>
+<li><p>an option for a dry-run commit</p></li>
+<li><p>verbose option, or callback to indicate</p></li>
+<li><p>timestamp, timezone, committer, chosen revision id</p></li>
+<li><p>config (for what?)</p></li>
+<li><p>option for local-only commit on a bound branch</p></li>
+<li><p>option for strict commits (fail if there are unknown or missing files)</p></li>
+<li><p>option to allow “pointless” commits (with no tree changes)</p></li>
 </ul>
 <p>(This is rather a lot of options to pass individually and just for code tidyness maybe some of them should be combine into objects.)</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Branch</span><span class="o">.</span><span class="n">commit</span><span class="p">(</span><span class="n">from_tree</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">files_to_commit</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
@@ -485,14 +482,14 @@ interested in updating hashcache information or does not have a
 <h2><a class="toc-backref" href="#id11">Information from the tree to repository</a><a class="headerlink" href="#information-from-the-tree-to-repository" title="Permalink to this headline">¶</a></h2>
 <p>The main things the tree needs to tell the Branch about are:</p>
 <ul>
-<li><p class="first">A file is modified from its parent revision (in text, permissions,
+<li><p>A file is modified from its parent revision (in text, permissions,
 other), and so its text may need to be stored.</p>
 <p>Files should also be reported if they have more than one unique parent
 revision, for repositories that store per-file graphs or last-change
 revisions.  Perhaps this behaviour should be optional.</p>
 <p><strong>XXX:</strong> are renames/deletions reported here too?</p>
 </li>
-<li><p class="first">The complete contents of a modified directory, so that its inventory
+<li><p>The complete contents of a modified directory, so that its inventory
 text may be stored.  This should be done after all the contained files
 and directories have been reported.  If there are unmodified files,
 or unselected files carried through from</p>
@@ -501,12 +498,10 @@ appropriately for the shape of inventory storage in the repository.</p>
 <p>In a zoomed-in checkout the workingtree may not have all the shape data
 for the entire tree.</p>
 </li>
-<li><p class="first">A file is missing – could cause either automatic removal or an aborted
-commit.</p>
-</li>
-<li><p class="first">Any unknown files – can cause automatic addition, abortion of a strict
-commit, or just reporting.</p>
-</li>
+<li><p>A file is missing – could cause either automatic removal or an aborted
+commit.</p></li>
+<li><p>Any unknown files – can cause automatic addition, abortion of a strict
+commit, or just reporting.</p></li>
 </ul>
 </div>
 <div class="section" id="information-from-the-repository-to-the-tree">
@@ -516,11 +511,11 @@ information which was accumulated during the commit must be made available
 to the workingtree.  It’s probably reasonable to hold it all in memory and
 allow the workingtree to get it in whatever order it wants.</p>
 <ul>
-<li><p class="first">A list of modified entries, and for each one:</p>
+<li><p>A list of modified entries, and for each one:</p>
 <ul class="simple">
-<li>The stat values observed when the file was first read.</li>
-<li>The hash of the committed file text.</li>
-<li>The file’s last-change revision, if appropriate.</li>
+<li><p>The stat values observed when the file was first read.</p></li>
+<li><p>The hash of the committed file text.</p></li>
+<li><p>The file’s last-change revision, if appropriate.</p></li>
 </ul>
 <p>This should include any entries automatically added or removed.</p>
 </li>
@@ -544,9 +539,9 @@ paths to avoid examining unselected files or directories.</p>
 <p>What is common to all commit implementations, regardless of workingtree or
 repository format?</p>
 <ul class="simple">
-<li>Prompting for a commit message?</li>
-<li>Strictness/conflict checks?</li>
-<li>Auto add/remove?</li>
+<li><p>Prompting for a commit message?</p></li>
+<li><p>Strictness/conflict checks?</p></li>
+<li><p>Auto add/remove?</p></li>
 </ul>
 <p>How should this be separated?</p>
 </div>
@@ -621,8 +616,6 @@ change.</p>
             <form class="search" action="../../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -646,7 +639,7 @@ change.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

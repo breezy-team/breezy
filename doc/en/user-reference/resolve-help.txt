@@ -15,6 +15,7 @@ resolve
 
   action:
     --action=ARG        How to resolve the conflict.
+    --auto              Detect whether conflict has been resolved by user.
     --done              Marks the conflict as resolved.
     --take-other        Resolve the conflict taking the merged version into
                         account.

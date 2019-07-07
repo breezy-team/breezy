@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>What’s New in Bazaar 2.1? &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>What’s New in Bazaar 2.1? &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -19,7 +17,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
         </div>
        </div>
@@ -51,51 +49,51 @@ upgrading from pre-2a to 2a format.</p>
 <div class="section" id="new-command-options">
 <h2>New command options<a class="headerlink" href="#new-command-options" title="Permalink to this headline">¶</a></h2>
 <p>Several commands have new options. These include:</p>
-<table border="1" class="docutils">
+<table class="docutils align-default">
 <colgroup>
-<col width="17%" />
-<col width="22%" />
-<col width="60%" />
+<col style="width: 17%" />
+<col style="width: 22%" />
+<col style="width: 60%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Command</th>
-<th class="head">Option</th>
-<th class="head">Description</th>
+<thead>
+<tr class="row-odd"><th class="head"><p>Command</p></th>
+<th class="head"><p>Option</p></th>
+<th class="head"><p>Description</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>branch</td>
-<td>bind</td>
-<td>Bind to the source location</td>
+<tbody>
+<tr class="row-even"><td><p>branch</p></td>
+<td><p>bind</p></td>
+<td><p>Bind to the source location</p></td>
 </tr>
-<tr class="row-odd"><td>commit</td>
-<td>commit-time</td>
-<td>Give an explicit commit timestamp</td>
+<tr class="row-odd"><td><p>commit</p></td>
+<td><p>commit-time</p></td>
+<td><p>Give an explicit commit timestamp</p></td>
 </tr>
-<tr class="row-even"><td>switch</td>
-<td>revision</td>
-<td>Switch to a particular revision</td>
+<tr class="row-even"><td><p>switch</p></td>
+<td><p>revision</p></td>
+<td><p>Switch to a particular revision</p></td>
 </tr>
-<tr class="row-odd"><td>unshelve</td>
-<td>keep</td>
-<td>Apply changes but don’t delete them</td>
+<tr class="row-odd"><td><p>unshelve</p></td>
+<td><p>keep</p></td>
+<td><p>Apply changes but don’t delete them</p></td>
 </tr>
-<tr class="row-even"><td>unshelve</td>
-<td>preview</td>
-<td>Show the diff that would result from
-unshelving</td>
+<tr class="row-even"><td><p>unshelve</p></td>
+<td><p>preview</p></td>
+<td><p>Show the diff that would result from
+unshelving</p></td>
 </tr>
-<tr class="row-odd"><td>update</td>
-<td>revision</td>
-<td>Update to a particular revision</td>
+<tr class="row-odd"><td><p>update</p></td>
+<td><p>revision</p></td>
+<td><p>Update to a particular revision</p></td>
 </tr>
 </tbody>
 </table>
 <p>Other command improvements include:</p>
 <ul class="simple">
-<li>A <a class="reference internal" href="../user-reference/shelve-help.html"><span class="doc">shelve</span></a> editor can be defined to provide shelf functionality at
-a granularity finer than per-patch hunk.</li>
-<li><a class="reference internal" href="../user-reference/send-help.html"><span class="doc">send</span></a> send now supports the OS X Mail application.</li>
+<li><p>A <a class="reference internal" href="../user-reference/shelve-help.html"><span class="doc">shelve</span></a> editor can be defined to provide shelf functionality at
+a granularity finer than per-patch hunk.</p></li>
+<li><p><a class="reference internal" href="../user-reference/send-help.html"><span class="doc">send</span></a> send now supports the OS X Mail application.</p></li>
 </ul>
 <p>See the help for the commands above for further details.</p>
 </div>
@@ -137,9 +135,9 @@ starting with <code class="docutils literal notranslate"><span class="pre">~user
 user.  For example, for a user “bob” with a home directory of
 <code class="docutils literal notranslate"><span class="pre">/home/bob</span></code>, these URLs are all equivalent:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">bzr+ssh://bob&#64;host/~/repo</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">bzr+ssh://bob&#64;host/~bob/repo</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">bzr+ssh://bob&#64;host/home/bob/repo</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bzr+ssh://bob&#64;host/~/repo</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bzr+ssh://bob&#64;host/~bob/repo</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bzr+ssh://bob&#64;host/home/bob/repo</span></code></p></li>
 </ul>
 <p>If <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">serve</span></code> was invoked with a <code class="docutils literal notranslate"><span class="pre">--directory</span></code> argument, then no
 home directories outside that directory will be accessible via this
@@ -168,12 +166,12 @@ be written back via the dpush command.</p>
 <p>New plugins are available for constructing larger projects
 from smaller ones. These include:</p>
 <ul class="simple">
-<li><a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/builder-plugin.html">builder</a> - construction of a branch using recipes</li>
-<li><a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/externals-plugin.html">externals</a> - Subversion-style external branches</li>
+<li><p><a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/builder-plugin.html">builder</a> - construction of a branch using recipes</p></li>
+<li><p><a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/externals-plugin.html">externals</a> - Subversion-style external branches</p></li>
 </ul>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The builder plugin has been designed to complement the <a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/builddeb-plugin.html">builddeb</a>
+<p class="admonition-title">Note</p>
+<p>The builder plugin has been designed to complement the <a class="reference external" href="http://doc.bazaar.canonical.com/plugins/en/builddeb-plugin.html">builddeb</a>
 plugin to streamline Debian source package management. It may also
 be useful for building test images for a QA team or disk images
 for installers, say.</p>
@@ -220,8 +218,8 @@ for more information.</p>
 <p>For more detailed information on the changes made, be sure to check
 the <a class="reference internal" href="../release-notes/index.html"><span class="doc">Breezy Release Notes</span></a> for:</p>
 <ul class="simple">
-<li>the interim bzr <a class="reference external" href="https://launchpad.net/bzr/2.1">milestones</a></li>
-<li>the plugins you use.</li>
+<li><p>the interim bzr <a class="reference external" href="https://launchpad.net/bzr/2.1">milestones</a></p></li>
+<li><p>the plugins you use.</p></li>
 </ul>
 <p>Enjoy,
 The Bazaar Development Team</p>
@@ -251,8 +249,6 @@ The Bazaar Development Team</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -276,7 +272,7 @@ The Bazaar Development Team</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

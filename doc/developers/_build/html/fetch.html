@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Fetching data &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Fetching data &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -24,7 +22,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="index.html">Developer Document Catalog (3.0.0.1)</a></div>
+          href="index.html">Developer Document Catalog (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="configuration.html" title="Configuring Breezy"
              accesskey="P">previous</a> |
@@ -48,18 +46,18 @@
 <h2>Overview of a fetch<a class="headerlink" href="#overview-of-a-fetch" title="Permalink to this headline">¶</a></h2>
 <p>Inside bzr, a typical fetch happens like this:</p>
 <ul class="simple">
-<li>a user runs a command like <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span></code> or <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pull</span></code></li>
-<li><code class="docutils literal notranslate"><span class="pre">Repository.fetch</span></code> is called (by a higher-level method such as
-<code class="docutils literal notranslate"><span class="pre">ControlDir.sprout</span></code>, <code class="docutils literal notranslate"><span class="pre">Branch.fetch</span></code>, etc).</li>
-<li>An <code class="docutils literal notranslate"><span class="pre">InterRepository</span></code> object is created.  The exact implementation of
+<li><p>a user runs a command like <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">branch</span></code> or <code class="docutils literal notranslate"><span class="pre">bzr</span> <span class="pre">pull</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Repository.fetch</span></code> is called (by a higher-level method such as
+<code class="docutils literal notranslate"><span class="pre">ControlDir.sprout</span></code>, <code class="docutils literal notranslate"><span class="pre">Branch.fetch</span></code>, etc).</p></li>
+<li><p>An <code class="docutils literal notranslate"><span class="pre">InterRepository</span></code> object is created.  The exact implementation of
 <code class="docutils literal notranslate"><span class="pre">InterRepository</span></code> chosen depends on the format/capabilities of the
-source and target repos.</li>
-<li>The source and target repositories are compared to determine which data
-needs to be transferred.</li>
-<li>The repository data is copied.  Often this is done by creating a
+source and target repos.</p></li>
+<li><p>The source and target repositories are compared to determine which data
+needs to be transferred.</p></li>
+<li><p>The repository data is copied.  Often this is done by creating a
 <code class="docutils literal notranslate"><span class="pre">StreamSource</span></code> and <code class="docutils literal notranslate"><span class="pre">StreamSink</span></code> from the source and target
 repositories and feeding the stream from the source into the sink, but
-some <code class="docutils literal notranslate"><span class="pre">InterRepository</span></code> implementations do differently.</li>
+some <code class="docutils literal notranslate"><span class="pre">InterRepository</span></code> implementations do differently.</p></li>
 </ul>
 </div>
 <div class="section" id="how-objects-to-be-transferred-are-determined">
@@ -117,7 +115,7 @@ inventories and their new texts (or else all texts for those revisions).”</p>
 <h3>Why that rule?<a class="headerlink" href="#why-that-rule" title="Permalink to this headline">¶</a></h3>
 <p>A stacked repository needs to be capable of generating a complete stream
 for the revisions it does hold without access to its fallback
-repositories <a class="footnote-reference" href="#id3" id="id1">[1]</a>.  “Complete” here means that the stream for a revision (or
+repositories <a class="footnote-reference brackets" href="#id3" id="id1">1</a>.  “Complete” here means that the stream for a revision (or
 set of revisions) can be inserted into a repository that already contains
 the parent(s) of that revision, and that repository will have a fully
 usable copy of that revision: a working tree can be built for that
@@ -141,7 +139,7 @@ revisions can be calculated, and of course the CHK pages associated with
 that delta.  In fact the entire inventory does not need to be present,
 just enough of it to find the delta (assuming a repository format, like
 2a, that allows only part of an inventory to be stored).  Thus the stacked
-repository can contain only <em>O(changes)</em> data <a class="footnote-reference" href="#id4" id="id2">[2]</a> and still deliver
+repository can contain only <em>O(changes)</em> data <a class="footnote-reference brackets" href="#id4" id="id2">2</a> and still deliver
 complete streams of that data.</p>
 <p>What about revisions at the stacking boundary with more than one parent?
 All of the parent inventories must be present, as a client may ask for a
@@ -163,32 +161,28 @@ buggy foreign-format import) may trigger <code class="docutils literal notransla
 <code class="docutils literal notranslate"><span class="pre">commit_write_group</span></code>.</p>
 <p>To fetch from a stacked repository via a smart server, the smart client:</p>
 <ul class="simple">
-<li>first fetches a stream of as many of the requested revisions as possible
-from the initial repository,</li>
-<li>then while there are still missing revisions and untried fallback
+<li><p>first fetches a stream of as many of the requested revisions as possible
+from the initial repository,</p></li>
+<li><p>then while there are still missing revisions and untried fallback
 repositories fetches the outstanding revisions from the next fallback
 until either all revisions have been found (success) or the list of
-fallbacks has been exhausted (failure).</li>
+fallbacks has been exhausted (failure).</p></li>
 </ul>
-<table class="docutils footnote" frame="void" id="id3" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>This is not just a theoretical concern.  The smart server always
+<dl class="footnote brackets">
+<dt class="label" id="id3"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>This is not just a theoretical concern.  The smart server always
 opens repositories without opening fallbacks, as it cannot assume it
-can access the fallbacks that the client can.</td></tr>
-</tbody>
-</table>
-<table class="docutils footnote" frame="void" id="id4" rules="none">
-<colgroup><col class="label" /><col /></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Actually <em>O(changes)</em> isn’t quite right in practice.  In the
+can access the fallbacks that the client can.</p>
+</dd>
+<dt class="label" id="id4"><span class="brackets"><a class="fn-backref" href="#id2">2</a></span></dt>
+<dd><p>Actually <em>O(changes)</em> isn’t quite right in practice.  In the
 current implementation the fulltext of a changed file must be
 transferred, not just a delta, so a 1-line change to a 10MB file will
 still transfer 10MB of text data.  This is because current formats
 require records’ compression parents to be present in the same
-repository.</td></tr>
-</tbody>
-</table>
+repository.</p>
+</dd>
+</dl>
 </div>
 </div>
 </div>
@@ -242,8 +236,6 @@ repository.</td></tr>
             <form class="search" action="search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -271,7 +263,7 @@ repository.</td></tr>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

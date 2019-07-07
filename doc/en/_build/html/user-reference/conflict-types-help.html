@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Conflict Types &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Conflict Types &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="configuration-help.html" title="Configuration Settings"
              accesskey="P">previous</a> |
@@ -63,10 +61,10 @@ present the conflicting versions, and it’s up to you to find the correct
 resolution.</p>
 <p>Whatever the conflict is, resolving it is roughly done in two steps:</p>
 <ol class="arabic simple">
-<li>Modify the working tree content so that the conflicted item is now in the
-state you want to keep, then</li>
-<li>Inform Bazaar that the conflict is now solved and ask to cleanup any
-remaining generated information (<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span> <span class="pre">&lt;item&gt;</span></code>).</li>
+<li><p>Modify the working tree content so that the conflicted item is now in the
+state you want to keep, then</p></li>
+<li><p>Inform Bazaar that the conflict is now solved and ask to cleanup any
+remaining generated information (<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span> <span class="pre">&lt;item&gt;</span></code>).</p></li>
 </ol>
 <p>For most conflict types, there are some obvious ways to modify the working
 tree and put it into the desired state. For some types of conflicts, Bazaar
@@ -129,8 +127,8 @@ working tree.</p>
 <p>When you want to pick one set of changes over the other, you can use <code class="docutils literal notranslate"><span class="pre">brz</span>
 <span class="pre">resolve</span></code> with one of the following actions:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">mv</span> <span class="pre">FILE.THIS</span> <span class="pre">FILE</span></code>,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">mv</span> <span class="pre">FILE.OTHER</span> <span class="pre">FILE</span></code>.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">mv</span> <span class="pre">FILE.THIS</span> <span class="pre">FILE</span></code>,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">mv</span> <span class="pre">FILE.OTHER</span> <span class="pre">FILE</span></code>.</p></li>
 </ul>
 <p>Note that if you have modified <code class="docutils literal notranslate"><span class="pre">FILE.THIS</span></code> or <code class="docutils literal notranslate"><span class="pre">FILE.OTHER</span></code>, these
 modifications will be taken into account.</p>
@@ -153,9 +151,9 @@ copy” has been renamed to THIS or OTHER.</p>
 or a combination of both.</p>
 <p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">FILE.THIS</span> <span class="pre">FILE</span></code>,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">FILE.OTHER</span> <span class="pre">FILE</span></code>,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">FILE.THIS</span> <span class="pre">FILE</span></code>,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">FILE.OTHER</span> <span class="pre">FILE</span></code>,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</p></li>
 </ul>
 <p>Any action will also delete the previously generated <code class="docutils literal notranslate"><span class="pre">.BASE</span></code>, <code class="docutils literal notranslate"><span class="pre">.THIS</span></code> and
 <code class="docutils literal notranslate"><span class="pre">.OTHER</span></code> files if they are still present in the working tree.</p>
@@ -195,9 +193,9 @@ already been used.  The existing file will be renamed to “FILE.moved”.</p>
 or a combination of both.</p>
 <p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">FILE</span> <span class="pre">;</span> <span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">FILE.moved</span> <span class="pre">FILE</span></code>,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">FILE.moved</span></code>,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">FILE</span> <span class="pre">;</span> <span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">FILE.moved</span> <span class="pre">FILE</span></code>,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">FILE.moved</span></code>,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</p></li>
 </ul>
 <p>Note that you must get rid of FILE.moved before using <code class="docutils literal notranslate"><span class="pre">--action=done</span></code>.</p>
 <p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
@@ -231,11 +229,11 @@ Resolving this issue depends very much on the particular scenario.</p>
 children or the directory or a combination of both.</p>
 <p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">directory</span></code> including the
-children,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will acknowledge Bazaar choice to keep the children
-and restoring the directory,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">directory</span></code> including the
+children,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will acknowledge Bazaar choice to keep the children
+and restoring the directory,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</p></li>
 </ul>
 <p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
 </div>
@@ -254,10 +252,10 @@ particular scenario.</p>
 children or the directory or a combination of both.</p>
 <p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will acknowledge Bazaar choice to keep the directory,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">directory</span></code> including the
-children,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will acknowledge Bazaar choice to keep the directory,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">directory</span></code> including the
+children,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</p></li>
 </ul>
 <p>Note that when merging a directory deletion, if unversioned files are
 present, they become potential orphans has they don’t have a directory
@@ -266,10 +264,10 @@ parent anymore.</p>
 setting the <code class="docutils literal notranslate"><span class="pre">brz.transform.orphan_policy</span></code> configuration option.</p>
 <p>There are two possible values for this option:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">conflict</span></code> (the default): will leave the orphans in place and
-generate a conflicts,</li>
-<li><code class="docutils literal notranslate"><span class="pre">move</span></code>: will move the orphans to a <code class="docutils literal notranslate"><span class="pre">brz-orphans</span></code> directory at the root
-of the working tree with names like <code class="docutils literal notranslate"><span class="pre">&lt;file&gt;.~#~</span></code>.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">conflict</span></code> (the default): will leave the orphans in place and
+generate a conflicts,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">move</span></code>: will move the orphans to a <code class="docutils literal notranslate"><span class="pre">brz-orphans</span></code> directory at the root
+of the working tree with names like <code class="docutils literal notranslate"><span class="pre">&lt;file&gt;.~#~</span></code>.</p></li>
 </ul>
 <p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
 </div>
@@ -285,10 +283,10 @@ directory of a file.  Bazaar will use the path elements from the source.</p>
 retained for the file involved.</p>
 <p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will revert Bazaar choice and keep <code class="docutils literal notranslate"><span class="pre">PATH1</span></code> by
-issuing <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">PATH2</span> <span class="pre">PATH1</span></code>,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will acknowledge Bazaar choice of keeping <code class="docutils literal notranslate"><span class="pre">PATH2</span></code>,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will revert Bazaar choice and keep <code class="docutils literal notranslate"><span class="pre">PATH1</span></code> by
+issuing <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">PATH2</span> <span class="pre">PATH1</span></code>,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will acknowledge Bazaar choice of keeping <code class="docutils literal notranslate"><span class="pre">PATH2</span></code>,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</p></li>
 </ul>
 <p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
 </div>
@@ -318,14 +316,14 @@ $ brz merge ../other
 name should be retained for the directories involved.</p>
 <p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will acknowledge Bazaar choice of leaving <code class="docutils literal notranslate"><span class="pre">white</span></code>
-in <code class="docutils literal notranslate"><span class="pre">black</span></code>,</li>
-<li><dl class="first docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will revert Bazaar choice and move <code class="docutils literal notranslate"><span class="pre">black</span></code> in</dt>
-<dd><code class="docutils literal notranslate"><span class="pre">white</span></code> by issuing <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">black/white</span> <span class="pre">white</span> <span class="pre">;</span> <span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">black</span> <span class="pre">white</span></code>,</dd>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will acknowledge Bazaar choice of leaving <code class="docutils literal notranslate"><span class="pre">white</span></code>
+in <code class="docutils literal notranslate"><span class="pre">black</span></code>,</p></li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will revert Bazaar choice and move <code class="docutils literal notranslate"><span class="pre">black</span></code> in</dt><dd><p><code class="docutils literal notranslate"><span class="pre">white</span></code> by issuing <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">black/white</span> <span class="pre">white</span> <span class="pre">;</span> <span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">black</span> <span class="pre">white</span></code>,</p>
+</dd>
 </dl>
 </li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</p></li>
 </ul>
 <p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
 </div>
@@ -354,11 +352,11 @@ $ brz merge ../other
 retained for the file, directory or symlink involved.</p>
 <p><code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">resolve</span></code> recognizes the following actions:</p>
 <ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">--force</span> <span class="pre">foo.new</span></code> and
-<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">add</span> <span class="pre">foo</span></code>,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">--force</span> <span class="pre">foo</span></code> and
-<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">foo.new</span> <span class="pre">foo</span></code>,</li>
-<li><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-this</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">--force</span> <span class="pre">foo.new</span></code> and
+<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">add</span> <span class="pre">foo</span></code>,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=take-other</span></code> will issue <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">rm</span> <span class="pre">--force</span> <span class="pre">foo</span></code> and
+<code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">mv</span> <span class="pre">foo.new</span> <span class="pre">foo</span></code>,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--action=done</span></code> will just mark the conflict as resolved.</p></li>
 </ul>
 <p>Bazaar cannot auto-detect when conflicts of this kind have been resolved.</p>
 </div>
@@ -394,8 +392,6 @@ encounter this.  Our bug tracker is at <a class="reference external" href="https
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -423,7 +419,7 @@ encounter this.  Our bug tracker is at <a class="reference external" href="https
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

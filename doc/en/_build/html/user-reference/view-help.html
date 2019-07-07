@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>view &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>view &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="version-info-help.html" title="version-info"
              accesskey="P">previous</a> |
@@ -41,57 +39,43 @@
             
   <div class="section" id="view">
 <h1>view<a class="headerlink" href="#view" title="Permalink to this headline">¶</a></h1>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Purpose:</th><td class="field-body"><p class="first">Manage filtered views.</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Usage:</th><td class="field-body"><p class="first">brz view [FILE…]</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Options:</th><td class="field-body"><table class="first docutils option-list" frame="void" rules="none">
-<col class="option" />
-<col class="description" />
-<tbody valign="top">
-<tr><td class="option-group">
-<kbd><span class="option">--all</span></kbd></td>
-<td><p class="first last">Apply list or delete action to all views.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--delete</span></kbd></td>
-<td><p class="first last">Delete the view.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></td>
-<td><p class="first last">Show help message.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--name=<var>ARG</var></span></kbd></td>
-<td><p class="first last">Name of the view to define, list or delete.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></td>
-<td><p class="first last">Only display errors and warnings.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--switch=<var>ARG</var></span></kbd></td>
-<td><p class="first last">Name of the view to switch to.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">--usage</span></kbd></td>
-<td><p class="first last">Show usage message and options.</p>
-</td></tr>
-<tr><td class="option-group">
-<kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></td>
-<td><p class="first last">Display more information.</p>
-</td></tr>
-</tbody>
-</table>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body"><p class="first">Views provide a mask over the tree so that users can focus on
+<dl class="field-list">
+<dt class="field-odd">Purpose</dt>
+<dd class="field-odd"><p>Manage filtered views.</p>
+</dd>
+<dt class="field-even">Usage</dt>
+<dd class="field-even"><p>brz view [FILE…]</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><dl class="option-list">
+<dt><kbd><span class="option">--all</span></kbd></dt>
+<dd><p>Apply list or delete action to all views.</p>
+</dd>
+<dt><kbd><span class="option">--delete</span></kbd></dt>
+<dd><p>Delete the view.</p>
+</dd>
+<dt><kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></dt>
+<dd><p>Show help message.</p>
+</dd>
+<dt><kbd><span class="option">--name=<var>ARG</var></span></kbd></dt>
+<dd><p>Name of the view to define, list or delete.</p>
+</dd>
+<dt><kbd><span class="option">-q</span>, <span class="option">--quiet</span></kbd></dt>
+<dd><p>Only display errors and warnings.</p>
+</dd>
+<dt><kbd><span class="option">--switch=<var>ARG</var></span></kbd></dt>
+<dd><p>Name of the view to switch to.</p>
+</dd>
+<dt><kbd><span class="option">--usage</span></kbd></dt>
+<dd><p>Show usage message and options.</p>
+</dd>
+<dt><kbd><span class="option">-v</span>, <span class="option">--verbose</span></kbd></dt>
+<dd><p>Display more information.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Description</dt>
+<dd class="field-even"><p>Views provide a mask over the tree so that users can focus on
 a subset of a tree when doing their work. After creating a view,
 commands that support a list of files - status, diff, commit, etc -
 effectively have that list of files implicitly given each time.
@@ -105,9 +89,9 @@ and switch between them.</p>
 the pseudo view called <code class="docutils literal notranslate"><span class="pre">off</span></code>. This can be useful when you need
 to see the whole tree for an operation or two (e.g. merge) but
 want to switch back to your view after that.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Examples:</th><td class="field-body"><p class="first">To define the current view:</p>
+</dd>
+<dt class="field-odd">Examples</dt>
+<dd class="field-odd"><p>To define the current view:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">view</span> <span class="n">file1</span> <span class="n">dir1</span> <span class="o">...</span>
 </pre></div>
 </div>
@@ -144,13 +128,11 @@ want to switch back to your view after that.</p>
 </pre></div>
 </div>
 <p>To delete all views:</p>
-<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">view</span> <span class="o">--</span><span class="n">delete</span> <span class="o">--</span><span class="nb">all</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">brz</span> <span class="n">view</span> <span class="o">--</span><span class="n">delete</span> <span class="o">--</span><span class="nb">all</span>
 </pre></div>
 </div>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </div>
 
 
@@ -176,8 +158,6 @@ want to switch back to your view after that.</p>
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -205,7 +185,7 @@ want to switch back to your view after that.</p>
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>

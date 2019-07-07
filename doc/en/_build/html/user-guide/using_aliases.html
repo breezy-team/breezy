@@ -1,12 +1,10 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Using aliases &#8212; Breezy 3.0.0.1 documentation</title>
+    <meta charset="utf-8" />
+    <title>Using aliases &#8212; Breezy 3.0.1 documentation</title>
     <link rel="stylesheet" href="../_static/agogo.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
@@ -21,7 +19,7 @@
     <div class="header-wrapper" role="banner">
       <div class="header">
         <div class="headertitle"><a
-          href="../index.html">Table of Contents (3.0.0.1)</a></div>
+          href="../index.html">Table of Contents (3.0.1)</a></div>
         <div class="rel" role="navigation" aria-label="related navigation">
           <a href="configuring_breezy.html" title="Configuring Breezy"
              accesskey="P">previous</a> |
@@ -61,12 +59,12 @@ equal sign, then a command fragment.  Here’s an example ALIASES section:</p>
 <p>Here are the explanations of the examples above:</p>
 <blockquote>
 <div><ul class="simple">
-<li>The first alias makes a new <code class="docutils literal notranslate"><span class="pre">recentlog</span></code> command that shows the logs for the
-last three revisions</li>
-<li>The <code class="docutils literal notranslate"><span class="pre">ll</span></code> alias shows the last 10 log entries in line format.</li>
-<li>the <code class="docutils literal notranslate"><span class="pre">commit</span></code> alias sets the default for commit to refuse to commit if new
-files in the tree are not recognized.</li>
-<li>the <code class="docutils literal notranslate"><span class="pre">diff</span></code> alias adds the coveted -p option to diff</li>
+<li><p>The first alias makes a new <code class="docutils literal notranslate"><span class="pre">recentlog</span></code> command that shows the logs for the
+last three revisions</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">ll</span></code> alias shows the last 10 log entries in line format.</p></li>
+<li><p>the <code class="docutils literal notranslate"><span class="pre">commit</span></code> alias sets the default for commit to refuse to commit if new
+files in the tree are not recognized.</p></li>
+<li><p>the <code class="docutils literal notranslate"><span class="pre">diff</span></code> alias adds the coveted -p option to diff</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -84,21 +82,21 @@ files in the tree are not recognized.</li>
 <h2>Rules for aliases<a class="headerlink" href="#rules-for-aliases" title="Permalink to this headline">¶</a></h2>
 <blockquote>
 <div><ul class="simple">
-<li>You can override a portion of the options given in an alias by
+<li><p>You can override a portion of the options given in an alias by
 specifying the new part on the command-line.  For example, if
 you run <code class="docutils literal notranslate"><span class="pre">lastlog</span> <span class="pre">-r-5..</span></code>, you will only get five line-based log
 entries instead of 10.  Note that all boolean options have an
 implicit inverse, so you can override the commit alias with
-<code class="docutils literal notranslate"><span class="pre">commit</span> <span class="pre">--no-strict</span></code>.</li>
-<li>Aliases can override the standard behaviour of existing commands by giving
+<code class="docutils literal notranslate"><span class="pre">commit</span> <span class="pre">--no-strict</span></code>.</p></li>
+<li><p>Aliases can override the standard behaviour of existing commands by giving
 an alias name that is the same as the original command. For example, default
-commit is changed with <code class="docutils literal notranslate"><span class="pre">commit=commit</span> <span class="pre">--strict</span></code>.</li>
-<li>Aliases cannot refer to other aliases. In other words making a
+commit is changed with <code class="docutils literal notranslate"><span class="pre">commit=commit</span> <span class="pre">--strict</span></code>.</p></li>
+<li><p>Aliases cannot refer to other aliases. In other words making a
 <code class="docutils literal notranslate"><span class="pre">lastlog</span></code> alias and referring to it with a <code class="docutils literal notranslate"><span class="pre">ll</span></code> alias will not work.
-This includes aliases that override standard commands.</li>
-<li>Giving the <code class="docutils literal notranslate"><span class="pre">--no-aliases</span></code> option to the brz command will tell it to ignore aliases
+This includes aliases that override standard commands.</p></li>
+<li><p>Giving the <code class="docutils literal notranslate"><span class="pre">--no-aliases</span></code> option to the brz command will tell it to ignore aliases
 for that run. For example, running <code class="docutils literal notranslate"><span class="pre">brz</span> <span class="pre">--no-aliases</span> <span class="pre">commit</span></code> will perform a
-standard commit instead, not do a <code class="docutils literal notranslate"><span class="pre">commit</span> <span class="pre">--strict</span></code>.</li>
+standard commit instead, not do a <code class="docutils literal notranslate"><span class="pre">commit</span> <span class="pre">--strict</span></code>.</p></li>
 </ul>
 </div></blockquote>
 </div>
@@ -127,8 +125,6 @@ standard commit instead, not do a <code class="docutils literal notranslate"><sp
             <form class="search" action="../search.html" method="get">
                 <input type="text" name="q" />
                 <input type="submit" value="Go" />
-                <input type="hidden" name="check_keywords" value="yes" />
-                <input type="hidden" name="area" value="default" />
             </form>
           </div>
         </div>
@@ -156,7 +152,7 @@ standard commit instead, not do a <code class="docutils literal notranslate"><sp
           
     <div class="footer" role="contentinfo">
         &#169; Copyright 2009-2011 Canonical Ltd, 2017-2018 Breezy Developers.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.4.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.1.1.
     </div>
         </div>
         <div class="clearer"></div>
