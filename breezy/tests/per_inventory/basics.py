@@ -171,6 +171,8 @@ class TestInventoryReads(TestInventory):
             if args[1] == 'file':
                 ie.text_sha1 = osutils.sha_string(b'content\n')
                 ie.text_size = len(b'content\n')
+            if args[1] == 'tree-reference':
+                ie.reference_revision = b'reference'
         inv = self.inv_to_test_inv(inv)
 
         # Standard lookups
