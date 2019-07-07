@@ -57,6 +57,9 @@ Improvements
 * The ``ssh`` configuration variable can be used to set the default
   SSH implementation. (Jelmer Vernooĳ, #650757)
 
+* ``locks.steal_dead`` is now enabled by default.
+  (Jelmer Vernooĳ, #220464)
+
 * The substitution variables for the ``change_editor`` configuration
   option are now "{old_path}" and "{new_path}" rather than "@old_path" and
   "@new_path". The former is more consistent with the way substitutions
