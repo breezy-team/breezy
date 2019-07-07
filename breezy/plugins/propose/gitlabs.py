@@ -361,7 +361,7 @@ class GitLab(Hoster):
         source_project = self._get_project(source_project_name)
         target_project = self._get_project(target_project_name)
         state = mp_status_to_status(status)
-        for mr in self.gl._list_merge_requests(
+        for mr in self._list_merge_requests(
                 project=target_project['id'], state=state):
             if (mr['source_project_id'] != source_project['id'] or
                     mr['source_branch'] != source_branch_name or
@@ -423,13 +423,13 @@ class GitLab(Hoster):
         except NotGitLabUrl:
             raise UnsupportedHoster(url)
         except NotMergeRequestUrl as e:
-            if self.gl.url == ('https://%s' % e.host):
+            if self.base_url == ('https://%s' % e.host):
                 raise
             else:
                 raise UnsupportedHoster(url)
-        if self.gl.url != ('https://%s' % host):
+        if self.base_url != ('https://%s' % host):
             raise UnsupportedHoster(url)
-        project = self.gl.projects.get(project)
+        project = self._get_project(project)
         mr = project.mergerequests.get(merge_id)
         return GitLabMergeProposal(mr)
 
