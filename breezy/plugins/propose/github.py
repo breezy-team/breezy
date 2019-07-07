@@ -362,8 +362,11 @@ class GitHub(Hoster):
             query.append('is:merged')
         query.append('author:%s' % self._current_user['login'])
         for issue in self._search_issues(query=' '.join(query))['items']:
-            yield GitHubMergeProposal(
-                json.loads(self.transport.request('GET', issue['pull_request']['url']).text))
+            url = issue['pull_request']['url']
+            response = self._api_request('GET', url)
+            if response.status != 200:
+                raise InvalidHttpResponse(url, response.text)
+            yield GitHubMergeProposal(json.loads(response.text))
 
     def get_proposal_by_url(self, url):
         raise UnsupportedHoster(url)
