@@ -134,7 +134,7 @@ class GitHubMergeProposal(MergeProposal):
         self._pr.edit(body=description, title=determine_title(description))
 
     def is_merged(self):
-        return self._pr['merged']
+        return self._pr['state'] == 'merged'
 
     def close(self):
         self._pr.edit(state='closed')
@@ -192,6 +192,22 @@ class GitHub(Hoster):
 
     def _get_repo(self, path):
         path = 'repos/' + path
+        response = self._api_request('GET', path)
+        if response.status == 404:
+            raise NoSuchProject(path)
+        if response.status == 200:
+            return json.loads(response.text)
+        raise InvalidHttpResponse(path, response.text)
+
+    def _get_repo_pulls(self, path, head=None, state=None):
+        path = 'repos/' + path + '/pulls?'
+        params = {}
+        if head is not None:
+            params['head'] = head
+        if state is not None:
+            params['state'] = state
+        path += ';'.join(['%s=%s' % (k, urlutils.quote(v))
+                         for k, v in params.items()])
         response = self._api_request('GET', path)
         if response.status == 404:
             raise NoSuchProject(path)
@@ -304,26 +320,28 @@ class GitHub(Hoster):
             parse_github_branch_url(source_branch))
         (target_owner, target_repo_name, target_branch_name) = (
             parse_github_branch_url(target_branch))
-        target_repo = self._get_repo(
-            "%s/%s" % (target_owner, target_repo_name))
+        target_repo_path = "%s/%s" % (target_owner, target_repo_name)
+        target_repo = self._get_repo(target_repo_path)
         state = {
             'open': 'open',
             'merged': 'closed',
             'closed': 'closed',
             'all': 'all'}
-        for pull in target_repo.get_pulls(
-                head=target_branch_name,
-                state=state[status]):
-            if (status == 'closed' and pull.merged or
-                    status == 'merged' and not pull.merged):
+        pulls = self._get_repo_pulls(
+            target_repo_path,
+            head=target_branch_name,
+            state=state[status])
+        for pull in pulls:
+            if (status == 'closed' and pull['merged'] or
+                    status == 'merged' and not pull['merged']):
                 continue
-            if pull.head.ref != source_branch_name:
+            if pull['head']['ref'] != source_branch_name:
                 continue
-            if pull.head.repo is None:
+            if pull['head']['repo'] is None:
                 # Repo has gone the way of the dodo
                 continue
-            if (pull.head.repo.owner.login != source_owner or
-                    pull.head.repo.name != source_repo_name):
+            if (pull['head']['repo']['owner']['login'] != source_owner or
+                    pull['head']['repo']['name'] != source_repo_name):
                 continue
             yield GitHubMergeProposal(pull)
 
