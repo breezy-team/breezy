@@ -785,7 +785,7 @@ class LocalGitBranch(GitBranch):
         :param refs: Refs dictionary (name -> git sha1)
         :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
         """
-        refs = self.repository._git.refs
+        refs = self.repository.controldir.get_refs_container()
         for ref_name, unpeeled in viewitems(refs.as_dict()):
             try:
                 tag_name = ref_to_tag_name(ref_name)
