@@ -23,11 +23,43 @@ from __future__ import absolute_import
 from ... import urlutils
 from ...directory_service import directories
 from ...sixish import PY3
-from ...trace import note
+from ...trace import note, warning
 
 import apt_pkg
 from debian.deb822 import Deb822
 from debian.changelog import Version
+
+
+def fixup_broken_git_url(url):
+    """Attempt to fix up broken Git URLs.
+
+    A common misspelling is to add an extra ":" after the hostname
+    """
+    (scheme, netloc, path, params,
+     query, fragment) = urlutils.urlparse.urlparse(url, allow_fragments=False)
+    if '@' in netloc:
+        credentials, host = netloc.rsplit('@', 1)
+    else:
+        credentials = None
+        host = netloc
+
+    if ':' in host and not (host[0] == '[' and host[-1] == ']'):
+        # there *is* port
+        host, port = host.rsplit(':', 1)
+        if not port or port.isnumeric():
+            return url
+    if host in ('salsa.debian.org', 'github.com') and '/' not in path[1:]:
+        path = '%s/%s' % (port, path.lstrip('/'))
+        netloc = host
+        if ":" in netloc:
+            netloc = "[%s]" % netloc
+        if credentials is not None:
+            netloc = '%s@%s' % (credentials, netloc)
+        new_url = urlutils.urlparse.urlunparse(
+            (scheme, netloc, path, params, query, fragment))
+        warning('Fixing up URL: %s -> %s', url, new_url)
+        return new_url
+    return url
 
 
 def vcs_git_url_to_bzr_url(url):
@@ -42,6 +74,8 @@ def vcs_git_url_to_bzr_url(url):
         (url, branch) = url.split(' -b ', 1)
     else:
         branch = None
+
+    url = fixup_broken_git_url(url)
     url = git_url_to_bzr_url(url)
     if branch:
         branch = urlutils.quote(branch, '')
