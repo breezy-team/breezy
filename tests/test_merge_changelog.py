@@ -32,6 +32,7 @@ from .... import (
     merge,
     tests,
     )
+from ....sixish import PY3
 from ... import debian
 from .. import merge_changelog
 from ....tests.features import ExecutableFeature
@@ -342,10 +343,25 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
 
         merger = FakeMerger(tree)
         params_cls = merge.MergeFileHookParams
-        params = params_cls(
-            merger, b'c-id',
-            ('debian/changelog', 'debian/changelog', 'debian/changelog'),
-            None, 'file', 'file', 'this')
+        if PY3:
+            from inspect import signature
+            params_cls_arg_count = len(signature(params_cls).parameters) + 1
+        else:
+            from inspect import getargspec
+            params_cls_arg_count = len(getargspec(params_cls.__init__)[0])
+        # Older versions of Breezy required a file_id to be specified.
+        if params_cls_arg_count == 7:
+            params = params_cls(
+                merger, ('debian/changelog', 'debian/changelog', 'debian/changelog'),
+                None, 'file', 'file', 'this')
+        elif params_cls_arg_count == 8:
+            params = params_cls(
+                merger, b'c-id',
+                ('debian/changelog', 'debian/changelog', 'debian/changelog'),
+                None, 'file', 'file', 'this')
+        else:
+            raise AssertionError(params_cls_arg_count)
+
         return params, merger
 
     def test_changelog_merge_hook_successful(self):
