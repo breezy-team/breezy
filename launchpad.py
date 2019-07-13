@@ -22,7 +22,10 @@ from __future__ import absolute_import
 
 import os
 
-from ...config import config_dir
+try:
+    from ...bedding import config_dir
+except ImportError:
+    from ...config import config_dir
 from ...trace import (
     mutter,
     note,
