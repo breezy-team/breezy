@@ -122,6 +122,7 @@ def load_tests(loader, basic_tests, pattern):
             'test_commit_message',
             'test_config',
             'test_dep3',
+            'test_directory',
             'test_dh_make',
             'test_extract',
             'test_hooks',
