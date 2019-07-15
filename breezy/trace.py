@@ -204,6 +204,11 @@ def _rollover_trace_maybe(trace_fname):
 
 
 def _get_brz_log_filename():
+    """Return the brz log filename.
+
+    :return: A path to the log file
+    :raise EnvironmentError: If the cache directory could not be created
+    """
     brz_log = osutils.path_from_environ('BRZ_LOG')
     if brz_log:
         return brz_log
@@ -246,9 +251,10 @@ def _open_brz_log():
                 break
         return os.fdopen(fd, 'ab', 0)  # unbuffered
 
-    _brz_log_filename = _get_brz_log_filename()
-    _rollover_trace_maybe(_brz_log_filename)
     try:
+        _brz_log_filename = _get_brz_log_filename()
+        _rollover_trace_maybe(_brz_log_filename)
+
         brz_log_file = _open_or_create_log_file(_brz_log_filename)
         brz_log_file.write(b'\n')
         if brz_log_file.tell() <= 2:
