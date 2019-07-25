@@ -79,7 +79,6 @@ from .tree import (
     MutableGitIndexTree,
     )
 from .mapping import (
-    GitFileIdMap,
     mode_kind,
     )
 
@@ -603,7 +602,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return False
 
     def had_id(self, file_id):
-        path = self._basis_fileid_map.lookup_path(file_id)
+        try:
+            path = self.mapping.parse_file_id(file_id)
+        except ValueError:
+            return False
         try:
             head = self.repository._git.head()
         except KeyError:
@@ -682,14 +684,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             raise errors.GhostRevisionUnusableHere(revid)
 
     def _reset_data(self):
-        try:
-            head = self.repository._git.head()
-        except KeyError:
-            self._basis_fileid_map = GitFileIdMap({}, self.mapping)
-        else:
-            self._basis_fileid_map = self.mapping.get_fileid_map(
-                self.store.__getitem__, self.store[head].tree)
-        self._fileid_map = self._basis_fileid_map.copy()
+        pass
 
     def get_file_verifier(self, path, stat_value=None):
         with self.lock_read():

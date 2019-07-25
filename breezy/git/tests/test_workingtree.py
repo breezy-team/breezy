@@ -37,7 +37,6 @@ from ... import (
 from ...delta import TreeDelta
 from ..mapping import (
     default_mapping,
-    GitFileIdMap,
     )
 from ..tree import (
     changes_between_git_tree_and_working_copy,
@@ -137,20 +136,16 @@ class TreeDeltaFromGitChangesTests(TestCase):
         changes = []
         self.assertEqual(
             delta,
-            tree_delta_from_git_changes(changes, default_mapping,
-                                        (GitFileIdMap({}, default_mapping),
-                                         GitFileIdMap({}, default_mapping))))
+            tree_delta_from_git_changes(changes, (default_mapping, default_mapping)))
 
     def test_missing(self):
         delta = TreeDelta()
-        delta.removed.append(('a', b'a-id', 'file'))
+        delta.removed.append(('a', b'git:a', 'file'))
         changes = [((b'a', b'a'), (stat.S_IFREG | 0o755, 0),
                     (b'a' * 40, b'a' * 40))]
         self.assertEqual(
             delta,
-            tree_delta_from_git_changes(changes, default_mapping,
-                                        (GitFileIdMap({u'a': b'a-id'}, default_mapping),
-                                         GitFileIdMap({u'a': b'a-id'}, default_mapping))))
+            tree_delta_from_git_changes(changes, (default_mapping, default_mapping)))
 
 
 class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
