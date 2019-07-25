@@ -85,6 +85,9 @@ Bug Fixes
 * Ignore UnknownFormatErrors when scanning for control directories.
   (Jelmer Vernooĳ, #468332)
 
+* Fix fetching from remote git repositories in ``brz git-import``.
+  (Jelmer Vernooĳ, #1836238)
+
 Documentation
 *************
 
