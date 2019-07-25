@@ -52,7 +52,7 @@ class cmd_bundle_info(Command):
     encoding_type = 'exact'
 
     def run(self, location, verbose=False):
-        from breezy.bundle.serializer import read_bundle
+        from breezy.bzr.bundle.serializer import read_bundle
         from breezy.mergeable import read_mergeable_from_url
         from breezy import osutils
         term_encoding = osutils.get_terminal_encoding()

@@ -22,7 +22,7 @@ from ... import (
     tests,
     )
 from ...controldir import ControlDir
-from ...bundle import serializer
+from ...bzr.bundle import serializer
 from ...sixish import (
     BytesIO,
     )
