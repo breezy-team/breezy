@@ -857,6 +857,8 @@ class cmd_inventory(Command):
     takes_options = [
         'revision',
         'show-ids',
+        Option('include-root',
+               help='Include the entry for the root of the tree, if any.'),
         Option('kind',
                help='List entries of a particular kind: file, directory, '
                     'symlink.',
@@ -865,7 +867,8 @@ class cmd_inventory(Command):
     takes_args = ['file*']
 
     @display_command
-    def run(self, revision=None, show_ids=False, kind=None, file_list=None):
+    def run(self, revision=None, show_ids=False, kind=None, include_root=False,
+            file_list=None):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise errors.BzrCommandError(
                 gettext('invalid kind %r specified') % (kind,))
@@ -895,7 +898,7 @@ class cmd_inventory(Command):
         for path, entry in sorted(entries):
             if kind and kind != entry.kind:
                 continue
-            if path == "":
+            if path == "" and not include_root:
                 continue
             if show_ids:
                 self.outf.write('%-50s %s\n' % (
@@ -6568,10 +6571,10 @@ class cmd_shelve(Command):
     editor program to decide what the file remaining in the working copy
     should look like.  To do this, add the configuration option
 
-        change_editor = PROGRAM @new_path @old_path
+        change_editor = PROGRAM {new_path} {old_path}
 
-    where @new_path is replaced with the path of the new version of the
-    file and @old_path is replaced with the path of the old version of
+    where {new_path} is replaced with the path of the new version of the
+    file and {old_path} is replaced with the path of the old version of
     the file.  The PROGRAM should save the new file with the desired
     contents of the file in the working tree.
 
@@ -7052,7 +7055,7 @@ def _register_lazy_builtins():
     # be only called once.
     for (name, aliases, module_name) in [
             ('cmd_bisect', [], 'breezy.bisect'),
-            ('cmd_bundle_info', [], 'breezy.bundle.commands'),
+            ('cmd_bundle_info', [], 'breezy.bzr.bundle.commands'),
             ('cmd_config', [], 'breezy.config'),
             ('cmd_dump_btree', [], 'breezy.bzr.debug_commands'),
             ('cmd_file_id', [], 'breezy.bzr.debug_commands'),

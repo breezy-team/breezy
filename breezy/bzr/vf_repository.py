@@ -45,6 +45,7 @@ from breezy.bzr import (
     versionedfile,
     vf_search,
     )
+from breezy.bzr.bundle import serializer
 
 from breezy.recordcounter import RecordCounter
 from breezy.i18n import gettext
@@ -654,6 +655,9 @@ class VersionedFileRepository(Repository):
         self.signatures.add_fallback_versioned_files(repository.signatures)
         if self.chk_bytes is not None:
             self.chk_bytes.add_fallback_versioned_files(repository.chk_bytes)
+
+    def create_bundle(self, target, base, fileobj, format=None):
+        return serializer.write_bundle(self, target, base, fileobj, format)
 
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):

@@ -78,6 +78,7 @@ from ..transport.local import LocalTransport
 from ..tree import (
     FileTimestampUnavailable,
     InterTree,
+    MissingNestedTree,
     )
 from ..workingtree import (
     WorkingTree,
@@ -1749,6 +1750,13 @@ class DirStateRevisionTree(InventoryTree):
             raise errors.NoSuchId(tree=self, file_id=file_id)
         path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
         return path_utf8.decode('utf8')
+
+    def get_nested_tree(self, path):
+        with self.lock_read():
+            nested_revid = self.get_reference_revision(path)
+            # TODO(jelmer): Attempt to open 'path' as a working tree, and see if we can find
+            # the referenced revision id in our memory?
+            raise MissingNestedTree(path)
 
     def iter_references(self):
         if not self._repo_supports_tree_reference:

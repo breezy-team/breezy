@@ -325,6 +325,17 @@ class TestDiff(DiffBase):
         output = self.run_bzr('diff -Fboo', retcode=1)
         self.assertTrue("BOO!" in output[0])
 
+    def test_binary_diff_remove(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', b'\x00' * 20)])
+        tree.add(['a'])
+        tree.commit('add binary file')
+        os.unlink('a')
+        output = self.run_bzr('diff', retcode=1)
+        self.assertEqual(
+            "=== removed file 'a'\nBinary files old/a and new/a differ\n",
+            output[0])
+
 
 class TestCheckoutDiff(TestDiff):
 

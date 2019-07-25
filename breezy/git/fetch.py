@@ -402,12 +402,11 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_tree = lookup_object(o.parents[0]).tree
         base_mode = stat.S_IFDIR
     store_updater = target_git_object_retriever._get_updater(rev)
-    tree_supplement = mapping.get_fileid_map(lookup_object, o.tree)
     inv_delta, unusual_modes = import_git_tree(
         repo.texts, mapping, b"", b"", (base_tree, o.tree), base_bzr_tree,
         None, rev.revision_id, parent_trees, lookup_object,
         (base_mode, stat.S_IFDIR), store_updater,
-        tree_supplement.lookup_file_id,
+        mapping.generate_file_id,
         allow_submodules=repo._format.supports_tree_reference)
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():

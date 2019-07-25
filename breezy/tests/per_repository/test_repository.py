@@ -799,7 +799,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_find_branches(self):
         repo = self.make_repository_and_foo_bar()
-        branches = repo.find_branches()
+        branches = list(repo.find_branches())
         self.assertContainsRe(branches[-1].base, 'repository/foo/$')
         self.assertContainsRe(branches[-3].base, 'repository/baz/qux/$')
         self.assertContainsRe(branches[-2].base, 'repository/baz/qux/quxx/$')
@@ -817,7 +817,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo = self.make_repository_and_foo_bar(shared=True)
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable
-        branches = repo.find_branches(using=True)
+        branches = list(repo.find_branches(using=True))
         self.assertContainsRe(branches[-1].base, 'repository/foo/$')
         # in some formats, creating a repo creates a branch
         if len(branches) == 2:
@@ -846,7 +846,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         try:
             repo.controldir.open_branch()
         except errors.NotBranchError:
-            self.assertEqual([], repo.find_branches(using=True))
+            self.assertEqual([], list(repo.find_branches(using=True)))
         else:
             self.assertEqual([repo.controldir.root_transport.base],
                              [b.base for b in repo.find_branches(using=True)])

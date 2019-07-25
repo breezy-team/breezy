@@ -527,8 +527,8 @@ to send mail.
 locks.steal_dead
 ~~~~~~~~~~~~~~~~
 
-If set to true, bzr will automatically break locks held by processes from
-the same machine and user that are no longer alive.  Otherwise, it will
+By default, bzr will automatically break locks held by processes from
+the same machine and user that are no longer alive.  If disabled, it will
 print a message and you can break the lock manually, if you are satisfied
 the object is no longer in use.
 

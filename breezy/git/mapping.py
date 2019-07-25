@@ -57,8 +57,6 @@ from .roundtrip import (
     extract_bzr_metadata,
     inject_bzr_metadata,
     CommitSupplement,
-    deserialize_fileid_map,
-    serialize_fileid_map,
     )
 
 
@@ -131,12 +129,10 @@ class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
 
-    BZR_FILE_IDS_FILE = None
-
     BZR_DUMMY_FILE = None
 
     def is_special_file(self, filename):
-        return (filename in (self.BZR_FILE_IDS_FILE, self.BZR_DUMMY_FILE))
+        return (filename in (self.BZR_DUMMY_FILE, ))
 
     def __init__(self):
         super(BzrGitMapping, self).__init__(foreign_vcs_git)
@@ -257,17 +253,6 @@ class BzrGitMapping(foreign.VcsMapping):
     def _encode_commit_message(self, rev, message, encoding):
         return message.encode(encoding)
 
-    def export_fileid_map(self, fileid_map):
-        """Export a file id map to a fileid map.
-
-        :param fileid_map: File id map, mapping paths to file ids
-        :return: A Git blob object (or None if there are no entries)
-        """
-        from dulwich.objects import Blob
-        b = Blob()
-        b.set_raw_chunks(serialize_fileid_map(fileid_map))
-        return b
-
     def export_commit(self, rev, tree_sha, parent_lookup, lossy,
                       verifiers):
         """Turn a Bazaar revision in to a Git commit
@@ -369,14 +354,6 @@ class BzrGitMapping(foreign.VcsMapping):
                 [l.split(b' ', 1)
                  for l in rev.properties[u'git-extra'].splitlines()])
         return commit
-
-    def import_fileid_map(self, blob):
-        """Convert a git file id map blob.
-
-        :param blob: Git blob object with fileid map
-        :return: Dictionary mapping paths to file ids
-        """
-        return deserialize_fileid_map(blob.data)
 
     def get_revision_id(self, commit):
         if commit.encoding:
@@ -480,22 +457,6 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties[u'git-extra'] = b''.join(extra_lines)
         return rev, roundtrip_revid, verifiers
 
-    def get_fileid_map(self, lookup_object, tree_sha):
-        """Obtain a fileid map for a particular tree.
-
-        :param lookup_object: Function for looking up an object
-        :param tree_sha: SHA of the root tree
-        :return: GitFileIdMap instance
-        """
-        try:
-            file_id_map_sha = lookup_object(
-                tree_sha)[self.BZR_FILE_IDS_FILE][1]
-        except KeyError:
-            file_ids = {}
-        else:
-            file_ids = self.import_fileid_map(lookup_object(file_id_map_sha))
-        return GitFileIdMap(file_ids, self)
-
 
 class BzrGitMappingv1(BzrGitMapping):
     revid_prefix = b'git-v1'
@@ -508,9 +469,7 @@ class BzrGitMappingv1(BzrGitMapping):
 class BzrGitMappingExperimental(BzrGitMappingv1):
     revid_prefix = b'git-experimental'
     experimental = True
-    roundtripping = True
-
-    BZR_FILE_IDS_FILE = '.bzrfileids'
+    roundtripping = False
 
     BZR_DUMMY_FILE = '.bzrdummy'
 
@@ -672,49 +631,6 @@ def parse_git_svn_id(text):
     (head, uuid) = text.rsplit(" ", 1)
     (full_url, rev) = head.rsplit("@", 1)
     return (full_url, int(rev), uuid)
-
-
-class GitFileIdMap(object):
-
-    def __init__(self, file_ids, mapping):
-        self.file_ids = file_ids
-        self.paths = None
-        self.mapping = mapping
-
-    def set_file_id(self, path, file_id):
-        if type(path) is not str:
-            raise TypeError(path)
-        if not isinstance(file_id, bytes):
-            raise TypeError(file_id)
-        self.file_ids[path] = file_id
-
-    def lookup_file_id(self, path):
-        if not isinstance(path, text_type):
-            raise TypeError(path)
-        try:
-            file_id = self.file_ids[path]
-        except KeyError:
-            file_id = self.mapping.generate_file_id(path)
-        if not isinstance(file_id, bytes):
-            raise TypeError(file_id)
-        return file_id
-
-    def lookup_path(self, file_id):
-        if self.paths is None:
-            self.paths = {}
-            for k, v in viewitems(self.file_ids):
-                self.paths[v] = k
-        try:
-            path = self.paths[file_id]
-        except KeyError:
-            return self.mapping.parse_file_id(file_id)
-        else:
-            if not isinstance(path, text_type):
-                raise TypeError(path)
-            return path
-
-    def copy(self):
-        return self.__class__(dict(self.file_ids), self.mapping)
 
 
 def needs_roundtripping(repo, revid):

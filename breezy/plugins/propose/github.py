@@ -18,6 +18,7 @@
 
 from __future__ import absolute_import
 
+import json
 import os
 
 from .propose import (
@@ -195,7 +196,7 @@ class GitHub(Hoster):
         if response.status == 404:
             raise NoSuchProject(path)
         if response.status == 200:
-            return response.json
+            return json.loads(response.text)
         raise InvalidHttpResponse(path, response.text)
 
     def _get_user(self, username=None):
@@ -206,14 +207,14 @@ class GitHub(Hoster):
         response = self._api_request('GET', path)
         if response.status != 200:
             raise InvalidHttpResponse(path, response.text)
-        return response.json
+        return json.loads(response.text)
 
     def _get_organization(self, name):
         path = 'orgs/:%s' % name
         response = self._api_request('GET', path)
         if response.status != 200:
             raise InvalidHttpResponse(path, response.text)
-        return response.json
+        return json.loads(response.text)
 
     def _search_issues(self, query):
         path = 'search/issues'
@@ -221,7 +222,7 @@ class GitHub(Hoster):
             'GET', path + '?q=' + urlutils.quote(query))
         if response.status != 200:
             raise InvalidHttpResponse(path, response.text)
-        return response.json
+        return json.loads(response.text)
 
     def _create_fork(self, repo, owner=None):
         (orig_owner, orig_repo) = repo.split('/')
@@ -231,7 +232,7 @@ class GitHub(Hoster):
         response = self._api_request('POST', path)
         if response != 202:
             raise InvalidHttpResponse(path, response.text)
-        return response.json
+        return json.loads(response.text)
 
     @property
     def base_url(self):
@@ -361,8 +362,11 @@ class GitHub(Hoster):
             query.append('is:merged')
         query.append('author:%s' % self._current_user['login'])
         for issue in self._search_issues(query=' '.join(query))['items']:
-            yield GitHubMergeProposal(
-                self.transport.request('GET', issue['pull_request']['url']).json)
+            url = issue['pull_request']['url']
+            response = self._api_request('GET', url)
+            if response.status != 200:
+                raise InvalidHttpResponse(url, response.text)
+            yield GitHubMergeProposal(json.loads(response.text))
 
     def get_proposal_by_url(self, url):
         raise UnsupportedHoster(url)

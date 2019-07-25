@@ -23,31 +23,31 @@ from io import BytesIO
 import os
 import pprint
 
-from .. import (
+from ... import (
     cache_utf8,
     osutils,
     timestamp,
     )
 from . import apply_bundle
-from ..errors import (
+from ...errors import (
     TestamentMismatch,
     BzrError,
     )
-from ..bzr.inventory import (
+from ..inventory import (
     Inventory,
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
     )
-from ..osutils import sha_string, pathjoin
-from ..revision import Revision, NULL_REVISION
-from ..sixish import (
+from ...osutils import sha_string, pathjoin
+from ...revision import Revision, NULL_REVISION
+from ...sixish import (
     viewitems,
     )
-from ..bzr.testament import StrictTestament
-from ..trace import mutter, warning
-from ..tree import Tree
-from ..bzr.xml5 import serializer_v5
+from ..testament import StrictTestament
+from ...trace import mutter, warning
+from ...tree import Tree
+from ..xml5 import serializer_v5
 
 
 class RevisionInfo(object):
