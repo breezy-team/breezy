@@ -29,7 +29,6 @@ from breezy import (
     revision as _mod_revision,
     gpg,
     )
-from breezy.bundle import serializer
 from breezy.i18n import gettext
 """)
 
@@ -719,9 +718,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             return 0, []
         inter = InterRepository.get(source, self)
         return inter.fetch(revision_id=revision_id, find_ghosts=find_ghosts)
-
-    def create_bundle(self, target, base, fileobj, format=None):
-        return serializer.write_bundle(self, target, base, fileobj, format)
 
     def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
                            timezone=None, committer=None, revprops=None,
