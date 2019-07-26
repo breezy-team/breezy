@@ -92,7 +92,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
 
         self.build_tree(['new/a', 'new/b', 'new/c',
                          'new/subdir/', 'new/subdir/b', 'new/subdir/d'])
-        new_tree.set_root_id(self.base_tree.get_root_id())
+        new_tree.set_root_id(self.base_tree.path2id(''))
         self.add_helper(self.base_tree, 'dir', new_tree, ['new'])
 
         # We know 'a' and 'b' exist in the root, and they are being added

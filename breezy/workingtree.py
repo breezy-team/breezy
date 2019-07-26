@@ -398,10 +398,6 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                 parents.append(revision_id)
         return parents
 
-    def get_root_id(self):
-        """Return the id of this trees root"""
-        raise NotImplementedError(self.get_root_id)
-
     def clone(self, to_controldir, revision_id=None):
         """Duplicate this working tree into to_bzr, including all state.
 
@@ -424,7 +420,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def copy_content_into(self, tree, revision_id=None):
         """Copy the current content and user files of this tree into tree."""
         with self.lock_read():
-            tree.set_root_id(self.get_root_id())
+            tree.set_root_id(self.path2id(''))
             if revision_id is None:
                 merge.transform_tree(tree, self)
             else:
@@ -841,8 +837,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                         this_tree=self,
                         change_reporter=change_reporter,
                         show_base=show_base)
-                    basis_root_id = basis_tree.get_root_id()
-                    new_root_id = new_basis_tree.get_root_id()
+                    basis_root_id = basis_tree.path2id('')
+                    new_root_id = new_basis_tree.path2id('')
                     if new_root_id is not None and basis_root_id != new_root_id:
                         self.set_root_id(new_root_id)
                 # TODO - dedup parents list with things merged by pull ?
@@ -1170,11 +1166,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                 # the working tree is up to date with the branch
                 # we can merge the specified revision from master
                 to_tree = self.branch.repository.revision_tree(revision)
-                to_root_id = to_tree.get_root_id()
+                to_root_id = to_tree.path2id('')
 
                 basis = self.basis_tree()
                 with basis.lock_read():
-                    if (basis.get_root_id() is None or basis.get_root_id() != to_root_id):
+                    if (basis.path2id('') is None or basis.path2id('') != to_root_id):
                         self.set_root_id(to_root_id)
                         self.flush()
 

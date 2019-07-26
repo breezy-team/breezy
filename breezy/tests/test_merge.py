@@ -137,7 +137,7 @@ class TestMerge(TestCaseWithTransport):
         with merger.make_preview_transform() as tt:
             self.assertEqual([], tt.find_conflicts())
             preview = tt.get_preview_tree()
-            self.assertEqual(wt.get_root_id(), preview.get_root_id())
+            self.assertEqual(wt.path2id(''), preview.path2id(''))
 
     def test_merge_unrelated_retains_root(self):
         wt = self.make_branch_and_tree('tree')
@@ -149,7 +149,7 @@ class TestMerge(TestCaseWithTransport):
         with transform.TransformPreview(wt) as merger.tt:
             merger._compute_transform()
             new_root_id = merger.tt.final_file_id(merger.tt.root)
-            self.assertEqual(wt.get_root_id(), new_root_id)
+            self.assertEqual(wt.path2id(''), new_root_id)
 
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
@@ -511,7 +511,7 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree(['a'])
         tree.add('a')
         first_rev = tree.commit("added a")
-        old_root_id = tree.get_root_id()
+        old_root_id = tree.path2id('')
         merger = _mod_merge.Merger.from_revision_ids(tree,
                                                      _mod_revision.NULL_REVISION,
                                                      first_rev)

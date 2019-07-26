@@ -122,7 +122,7 @@ class TestHasLayout(TestCaseWithTransport):
         t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
         self.assertThat(t, HasLayout(['', 'a', 'b/', 'b/c']))
         self.assertThat(t, HasLayout(
-            [('', t.get_root_id()),
+            [('', t.path2id('')),
              ('a', b'a-id'),
              ('b/', b'b-id'),
              ('b/c', b'c-id')]))

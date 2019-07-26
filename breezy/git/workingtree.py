@@ -1039,7 +1039,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         prefix = prefix.encode('utf-8')
         per_dir = defaultdict(set)
         if prefix == b"":
-            per_dir[(u'', self.get_root_id())] = set()
+            per_dir[(u'', self.path2id(''))] = set()
 
         def add_entry(path, kind):
             if path == b'' or not path.startswith(prefix):

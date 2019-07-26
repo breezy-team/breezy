@@ -518,7 +518,7 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[self[base_sha1].tree]
-            root_key_data = (tree.get_root_id(), tree.get_revision_id())
+            root_key_data = (tree.path2id(''), tree.get_revision_id())
         if add_cache_entry is not None:
             add_cache_entry(root_tree, root_key_data, "")
         yield "", root_tree
@@ -614,7 +614,7 @@ class BazaarObjectStore(BaseObjectStore):
             path,
             bzr_tree.iter_child_entries(path),
             get_ie_sha1, unusual_modes, self.mapping.BZR_DUMMY_FILE,
-            bzr_tree.get_root_id() == fileid)
+            bzr_tree.path2id('') == fileid)
         if tree is not None:
             _check_expected_sha(expected_sha, tree)
         return tree

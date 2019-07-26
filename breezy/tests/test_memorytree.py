@@ -56,7 +56,7 @@ class TestMemoryTree(TestCaseWithTransport):
         tree = MemoryTree.create_on_branch(branch)
         with tree.lock_write():
             tree.add([''])
-            self.assertIsNot(None, tree.get_root_id())
+            self.assertIsNot(None, tree.path2id(''))
 
     def test_lock_tree_write(self):
         """Check we can lock_tree_write and unlock MemoryTrees."""

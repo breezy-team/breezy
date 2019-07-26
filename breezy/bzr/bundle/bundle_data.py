@@ -579,9 +579,6 @@ class BundleTree(Tree):
             return None
         return new_path
 
-    def get_root_id(self):
-        return self.path2id('')
-
     def path2id(self, path):
         """Return the id of the file present at path in the target tree."""
         file_id = self._new_id.get(path)
@@ -629,7 +626,7 @@ class BundleTree(Tree):
         file_id = self.path2id(path)
         base_id = self.old_contents_id(file_id)
         if (base_id is not None and
-                base_id != self.base_tree.get_root_id()):
+                base_id != self.base_tree.path2id('')):
             old_path = self.base_tree.id2path(base_id)
             patch_original = self.base_tree.get_file(old_path)
         else:
