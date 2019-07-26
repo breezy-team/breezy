@@ -2026,6 +2026,9 @@ class HttpTransport(ConnectedTransport):
             def read(self, amt=None):
                 return self._actual.read(amt)
 
+            def readlines(self):
+                return self._actual.readlines()
+
             def readline(self, size=-1):
                 return self._actual.readline(size)
 
