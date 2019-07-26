@@ -739,11 +739,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
 
 def _git_url_and_path_from_transport(external_url):
-    # we dont grok readonly - git isn't integrated with transport.
-    url = external_url
-    if url.startswith('readonly+'):
-        url = url[len('readonly+'):]
-    url, _ = urlutils.split_segment_parameters(url)
+    url, _ = urlutils.split_segment_parameters(external_url)
     return urlparse.urlsplit(url)
 
 
@@ -778,7 +774,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
             client = transport._get_client()
         elif split_url.scheme in ("http", "https"):
             client = BzrGitHttpClient(transport)
-        elif split_url.scheme == 'file':
+        elif split_url.scheme in 'file':
             client = dulwich.client.LocalGitClient()
         else:
             raise NotBranchError(transport.base)
