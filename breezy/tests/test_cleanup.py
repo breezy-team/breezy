@@ -367,8 +367,6 @@ class TestExitStack(tests.TestCase):
                 self.assertIsNone(
                     exc.__context__.__context__.__context__.__context__.__context__)
 
-
-
     def test_body_exception_suppress(self):
         def suppress_exc(*exc_details):
             return True
@@ -400,44 +398,3 @@ class TestExitStack(tests.TestCase):
         self.assertRaises(AttributeError, stack.enter_context, cm)
         stack.push(cm)
         # self.assertIs(stack._exit_callbacks[-1], cm)
-
-    def test_dont_reraise_RuntimeError(self):
-        # https://bugs.python.org/issue27122
-        class UniqueException(Exception):
-            pass
-        class UniqueRuntimeError(RuntimeError):
-            pass
-
-        @contextmanager
-        def second():
-            try:
-                yield 1
-            except Exception as exc:
-                # Py2 compatible explicit exception chaining
-                new_exc = UniqueException("new exception")
-                new_exc.__cause__ = exc
-                raise new_exc
-
-        @contextmanager
-        def first():
-            try:
-                yield 1
-            except Exception as exc:
-                raise exc
-
-        def _raise():
-            with ExitStack() as es_ctx:
-                es_ctx.enter_context(second())
-                es_ctx.enter_context(first())
-                raise UniqueRuntimeError("please no infinite loop.")
-
-        # The UniqueRuntimeError should be caught by second()'s exception
-        # handler which chain raised a new UniqueException.
-        exc = self.assertRaises(UniqueException, _raise)
-
-        self.assertIsInstance(exc, UniqueException)
-        self.assertIsInstance(exc.__cause__, UniqueRuntimeError)
-        if check_exception_chaining:
-            self.assertIs(exc.__context__, exc.__cause__)
-            self.assertIsNone(exc.__cause__.__context__)
-            self.assertIsNone(exc.__cause__.__cause__)
