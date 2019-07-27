@@ -29,7 +29,7 @@ class TestExtract(TestCaseWithTransport):
         wt.add(['b', 'b/c', 'd'], [b'b-id', b'c-id', b'd-id'])
         wt.commit('added files')
         b_wt = wt.extract('b')
-        self.assertEqual(b'b-id', b_wt.get_root_id())
+        self.assertEqual(b'b-id', b_wt.path2id(''))
         self.assertEqual(b'c-id', b_wt.path2id('c'))
         self.assertEqual('c', b_wt.id2path(b'c-id'))
         self.assertRaises(errors.BzrError, wt.id2path, b'b-id')

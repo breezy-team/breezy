@@ -43,7 +43,7 @@ class Path2IdTests(TestCaseWithTree):
         self.assertEqual(b'bla-id', self.tree_a.path2id(['bla']))
         self.assertEqual(b'dir-id', self.tree_a.path2id(['dir']))
         self.assertEqual(b'file-id', self.tree_a.path2id(['dir', 'file']))
-        self.assertEqual(self.tree_a.get_root_id(),
+        self.assertEqual(self.tree_a.path2id(''),
                          self.tree_a.path2id([]))
         self.assertIs(None, self.tree_a.path2id(['idontexist']))
         self.assertIs(None, self.tree_a.path2id(['dir', 'idontexist']))

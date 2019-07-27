@@ -211,7 +211,7 @@ class Inter1and2Helper(object):
     def _find_root_ids(self, revs, parent_map, graph):
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
-            root_id = tree.get_root_id()
+            root_id = tree.path2id('')
             revision_id = tree.get_file_revision(u'')
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
@@ -221,7 +221,7 @@ class Inter1and2Helper(object):
         # Limit to revisions present in the versionedfile
         parents = graph.get_parent_map(parents)
         for tree in self.iter_rev_trees(parents):
-            root_id = tree.get_root_id()
+            root_id = tree.path2id('')
             revision_root[tree.get_revision_id()] = root_id
         return revision_root
 
@@ -296,7 +296,7 @@ def _parent_keys_for_root_version(
                 # But set parent_root_id to None since we don't really know
                 parent_root_id = None
             else:
-                parent_root_id = tree.get_root_id()
+                parent_root_id = tree.path2id('')
             rev_id_to_root_id_map[parent_id] = None
             # XXX: why not:
             #   rev_id_to_root_id_map[parent_id] = parent_root_id

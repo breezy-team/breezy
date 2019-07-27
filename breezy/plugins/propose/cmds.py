@@ -348,9 +348,11 @@ class cmd_my_merge_proposals(Command):
                             '(Merging %s into %s)\n' %
                             (mp.get_source_branch_url(),
                              mp.get_target_branch_url()))
-                        self.outf.writelines(
-                            ['\t%s\n' % l
-                             for l in mp.get_description().splitlines()])
+                        description = mp.get_description()
+                        if description:
+                            self.outf.writelines(
+                                ['\t%s\n' % l
+                                 for l in description.splitlines()])
                         self.outf.write('\n')
 
 

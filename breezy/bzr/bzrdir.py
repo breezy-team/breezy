@@ -447,7 +447,7 @@ class BzrDir(controldir.ControlDir):
                 with wt.lock_write():
                     if not wt.is_versioned(''):
                         try:
-                            wt.set_root_id(self.open_workingtree.get_root_id())
+                            wt.set_root_id(self.open_workingtree.path2id(''))
                         except errors.NoWorkingTree:
                             pass
             else:

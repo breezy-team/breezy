@@ -24,12 +24,14 @@
 from __future__ import absolute_import
 
 import breezy.bzr  # noqa: F401
+from breezy import controldir
 from ..commands import (
     Command,
     display_command,
     )
 from ..option import (
     Option,
+    RegistryOption,
     )
 from ..sixish import (
     text_type,
@@ -46,6 +48,15 @@ class cmd_git_import(Command):
 
     takes_options = [
         Option('colocated', help='Create colocated branches.'),
+        RegistryOption('dest-format',
+                       help='Specify a format for this branch. '
+                       'See "help formats" for a full list.',
+                       lazy_registry=('breezy.controldir', 'format_registry'),
+                       converter=lambda name: controldir.format_registry.make_controldir(
+                            name),
+                       value_switches=True,
+                       title="Branch format",
+                       ),
         ]
 
     def _get_colocated_branch(self, target_controldir, name):
@@ -69,7 +80,7 @@ class cmd_git_import(Command):
         except NotBranchError:
             return head_controldir.create_branch()
 
-    def run(self, src_location, dest_location=None, colocated=False):
+    def run(self, src_location, dest_location=None, colocated=False, dest_format=None):
         import os
         from .. import (
             controldir,
@@ -100,9 +111,8 @@ class cmd_git_import(Command):
             )
         from .repository import GitRepository
 
-        dest_format = controldir.ControlDirFormat.get_default_format()
         if dest_format is None:
-            raise BzrError('no default format')
+            dest_format = controldir.format_registry.make_controldir('default')
 
         if dest_location is None:
             dest_location = os.path.basename(src_location.rstrip("/\\"))

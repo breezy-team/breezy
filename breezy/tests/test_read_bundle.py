@@ -17,7 +17,7 @@
 """Test read_bundle works properly across various transports."""
 
 import breezy.mergeable
-from ..bundle.serializer import write_bundle
+from ..bzr.bundle.serializer import write_bundle
 import breezy.bzr.bzrdir
 from .. import errors
 from ..sixish import (

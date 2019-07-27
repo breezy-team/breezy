@@ -24,6 +24,7 @@ from __future__ import absolute_import
 DEBUG = 0
 
 import base64
+import cgi
 import errno
 import os
 import re
@@ -2018,10 +2019,15 @@ class HttpTransport(ConnectedTransport):
 
             @property
             def text(self):
-                return self.data.decode()
+                charset = cgi.parse_header(
+                    self._actual.headers['Content-Type'])[1].get('charset')
+                return self.data.decode(charset)
 
             def read(self, amt=None):
                 return self._actual.read(amt)
+
+            def readlines(self):
+                return self._actual.readlines()
 
             def readline(self, size=-1):
                 return self._actual.readline(size)

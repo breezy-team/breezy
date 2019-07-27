@@ -67,7 +67,7 @@ class TestJoin(tests.TestCaseWithTransport):
     def test_join_reference(self):
         """Join can add a reference if --reference is supplied"""
         base_tree, sub_tree = self.make_trees()
-        subtree_root_id = sub_tree.get_root_id()
+        subtree_root_id = sub_tree.path2id('')
         self.run_bzr('join . --reference', working_dir='tree/subtree')
         sub_tree.lock_read()
         self.addCleanup(sub_tree.unlock)

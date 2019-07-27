@@ -108,8 +108,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                           _controldir=a_controldir,
                           _control_files=branch.control_files)
         basis_tree = branch.repository.revision_tree(revision_id)
-        if basis_tree.get_root_id() is not None:
-            wt.set_root_id(basis_tree.get_root_id())
+        if basis_tree.path2id('') is not None:
+            wt.set_root_id(basis_tree.path2id(''))
         # set the parent list and cache the basis tree.
         if _mod_revision.is_null(revision_id):
             parent_trees = []

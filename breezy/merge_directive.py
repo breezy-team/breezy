@@ -38,7 +38,7 @@ from breezy import (
 from breezy.bzr import (
     testament,
     )
-from breezy.bundle import (
+from breezy.bzr.bundle import (
     serializer as bundle_serializer,
     )
 """)

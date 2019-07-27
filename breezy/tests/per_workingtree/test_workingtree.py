@@ -575,8 +575,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # and update checkout
         self.assertEqual(0, checkout.update())
         self.assertPathExists('checkout/file')
-        self.assertEqual(wt.get_root_id(), checkout.get_root_id())
-        self.assertNotEqual(None, wt.get_root_id())
+        self.assertEqual(wt.path2id(''), checkout.path2id(''))
+        self.assertNotEqual(None, wt.path2id(''))
 
     def test_update_sets_updated_root_id(self):
         wt = self.make_branch_and_tree('tree')
@@ -585,16 +585,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                               'first_root_id')
             return
         wt.set_root_id(b'first_root_id')
-        self.assertEqual(b'first_root_id', wt.get_root_id())
+        self.assertEqual(b'first_root_id', wt.path2id(''))
         self.build_tree(['tree/file'])
         wt.add(['file'])
         wt.commit('first')
         co = wt.branch.create_checkout('checkout')
         wt.set_root_id(b'second_root_id')
         wt.commit('second')
-        self.assertEqual(b'second_root_id', wt.get_root_id())
+        self.assertEqual(b'second_root_id', wt.path2id(''))
         self.assertEqual(0, co.update())
-        self.assertEqual(b'second_root_id', co.get_root_id())
+        self.assertEqual(b'second_root_id', co.path2id(''))
 
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support
@@ -920,7 +920,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # if we write write an inventory then do a walkdirs we should get back
         # missing entries, and actual, and unknowns as appropriate.
         self.build_tree(['present', 'unknown'])
-        inventory = Inventory(tree.get_root_id())
+        inventory = Inventory(tree.path2id(''))
         inventory.add_path('missing', 'file', b'missing-id')
         inventory.add_path('present', 'file', b'present-id')
         # there is no point in being able to write an inventory to an unlocked
@@ -932,7 +932,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             present_stat = os.lstat('present')
             unknown_stat = os.lstat('unknown')
             expected_results = [
-                (('', tree.get_root_id()),
+                (('', tree.path2id('')),
                  [('missing', 'missing', 'unknown', None, b'missing-id', 'file'),
                   ('present', 'present', 'file',
                    present_stat, b'present-id', 'file'),
