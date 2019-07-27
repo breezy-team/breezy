@@ -29,6 +29,7 @@ import subprocess
 import tempfile
 
 from breezy import (
+    cleanup,
     controldir,
     errors,
     osutils,
@@ -362,7 +363,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
 
 
 def get_trees_and_branches_to_diff_locked(
-        path_list, revision_specs, old_url, new_url, add_cleanup, apply_view=True):
+        path_list, revision_specs, old_url, new_url, exit_stack, apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
 
     This method works out the trees to be diff'ed and the files of
@@ -379,8 +380,8 @@ def get_trees_and_branches_to_diff_locked(
     :param new_url:
         The url of the new branch or tree. If None, the tree to use is
         taken from the first path, if any, or the current working tree.
-    :param add_cleanup:
-        a callable like Command.add_cleanup.  get_trees_and_branches_to_diff
+    :param exit_stack:
+        an ExitStack object. get_trees_and_branches_to_diff
         will register cleanups that must be run to unlock the trees, etc.
     :param apply_view:
         if True and a view is set, apply the view or check that the paths
@@ -389,7 +390,7 @@ def get_trees_and_branches_to_diff_locked(
         a tuple of (old_tree, new_tree, old_branch, new_branch,
         specific_files, extra_trees) where extra_trees is a sequence of
         additional trees to search in for file-ids.  The trees and branches
-        will be read-locked until the cleanups registered via the add_cleanup
+        will be read-locked until the cleanups registered via the exit_stack
         param are run.
     """
     # Get the old and new revision specs
@@ -421,11 +422,9 @@ def get_trees_and_branches_to_diff_locked(
 
     def lock_tree_or_branch(wt, br):
         if wt is not None:
-            wt.lock_read()
-            add_cleanup(wt.unlock)
+            exit_stack.enter_context(wt.lock_read())
         elif br is not None:
-            br.lock_read()
-            add_cleanup(br.unlock)
+            exit_stack.enter_context(br.lock_read())
 
     # Get the old location
     specific_files = []
@@ -518,23 +517,18 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         context = DEFAULT_CONTEXT_AMOUNT
     if format_cls is None:
         format_cls = DiffTree
-    with old_tree.lock_read():
+    with cleanup.ExitStack() as exit_stack:
+        exit_stack.enter_context(old_tree.lock_read())
         if extra_trees is not None:
             for tree in extra_trees:
-                tree.lock_read()
-        new_tree.lock_read()
-        try:
-            differ = format_cls.from_trees_options(old_tree, new_tree, to_file,
-                                                   path_encoding,
-                                                   external_diff_options,
-                                                   old_label, new_label, using,
-                                                   context_lines=context)
-            return differ.show_diff(specific_files, extra_trees)
-        finally:
-            new_tree.unlock()
-            if extra_trees is not None:
-                for tree in extra_trees:
-                    tree.unlock()
+                exit_stack.enter_context(tree.lock_read())
+        exit_stack.enter_context(new_tree.lock_read())
+        differ = format_cls.from_trees_options(old_tree, new_tree, to_file,
+                                               path_encoding,
+                                               external_diff_options,
+                                               old_label, new_label, using,
+                                               context_lines=context)
+        return differ.show_diff(specific_files, extra_trees)
 
 
 def _patch_header_date(tree, path):
@@ -881,12 +875,9 @@ class DiffFromTool(DiffPath):
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
-        source = tree.get_file(relpath)
-        try:
-            with open(full_path, 'wb') as target:
-                osutils.pumpfile(source, target)
-        finally:
-            source.close()
+        with tree.get_file(relpath) as source, \
+                open(full_path, 'wb') as target:
+            osutils.pumpfile(source, target)
         try:
             mtime = tree.get_file_mtime(relpath)
         except FileTimestampUnavailable:

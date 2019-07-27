@@ -97,11 +97,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             branch = a_controldir.open_branch()
         if revision_id is None:
             revision_id = _mod_revision.ensure_null(branch.last_revision())
-        branch.lock_write()
-        try:
+        with branch.lock_write():
             branch.generate_revision_history(revision_id)
-        finally:
-            branch.unlock()
         inv = inventory.Inventory()
         wt = WorkingTree2(a_controldir.root_transport.local_abspath('.'),
                           branch,

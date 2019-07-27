@@ -33,6 +33,7 @@ lazy_import.lazy_import(globals(), """
 from breezy import (
     annotate,
     bencode,
+    cleanup,
     controldir,
     commit,
     conflicts,
@@ -2598,15 +2599,13 @@ def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
     :param delta_from_tree: If true, build_tree may use the input Tree to
         generate the inventory delta.
     """
-    with wt.lock_tree_write(), tree.lock_read():
+    with cleanup.ExitStack() as exit_stack:
+        exit_stack.enter_context(wt.lock_tree_write())
+        exit_stack.enter_context(tree.lock_read())
         if accelerator_tree is not None:
-            accelerator_tree.lock_read()
-        try:
-            return _build_tree(tree, wt, accelerator_tree, hardlink,
-                               delta_from_tree)
-        finally:
-            if accelerator_tree is not None:
-                accelerator_tree.unlock()
+            exit_stack.enter_context(accelerator_tree.lock_read())
+        return _build_tree(tree, wt, accelerator_tree, hardlink,
+                           delta_from_tree)
 
 
 def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):

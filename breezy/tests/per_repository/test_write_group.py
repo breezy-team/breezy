@@ -34,11 +34,8 @@ class TestWriteGroup(per_repository.TestCaseWithRepository):
 
     def test_start_write_group_read_locked_needs_write_lock(self):
         repo = self.make_repository('.')
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             self.assertRaises(errors.NotWriteLocked, repo.start_write_group)
-        finally:
-            repo.unlock()
 
     def test_start_write_group_write_locked_gets_None(self):
         repo = self.make_repository('.')

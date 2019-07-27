@@ -235,6 +235,7 @@ from . import (
     )
 from .. import (
     cache_utf8,
+    cleanup,
     config,
     debug,
     errors,
@@ -1311,21 +1312,18 @@ class DirState(object):
         result = DirState.initialize(dir_state_filename,
                                      sha1_provider=sha1_provider)
         try:
-            with tree.lock_read():
-                try:
-                    parent_ids = tree.get_parent_ids()
-                    num_parents = len(parent_ids)
-                    parent_trees = []
-                    for parent_id in parent_ids:
-                        parent_tree = tree.branch.repository.revision_tree(
-                            parent_id)
-                        parent_trees.append((parent_id, parent_tree))
-                        parent_tree.lock_read()
-                    result.set_parent_trees(parent_trees, [])
-                    result.set_state_from_inventory(tree.root_inventory)
-                finally:
-                    for revid, parent_tree in parent_trees:
-                        parent_tree.unlock()
+            with cleanup.ExitStack() as exit_stack:
+                exit_stack.enter_context(tree.lock_read())
+                parent_ids = tree.get_parent_ids()
+                num_parents = len(parent_ids)
+                parent_trees = []
+                for parent_id in parent_ids:
+                    parent_tree = tree.branch.repository.revision_tree(
+                        parent_id)
+                    parent_trees.append((parent_id, parent_tree))
+                    exit_stack.enter_context(parent_tree.lock_read())
+                result.set_parent_trees(parent_trees, [])
+                result.set_state_from_inventory(tree.root_inventory)
         except:
             # The caller won't have a chance to unlock this, so make sure we
             # cleanup ourselves

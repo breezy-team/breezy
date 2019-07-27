@@ -25,6 +25,7 @@ from io import BytesIO
 
 from . import (
     builtins,
+    cleanup,
     delta,
     diff,
     errors,
@@ -178,15 +179,12 @@ class Shelver(object):
         tree, path = workingtree.WorkingTree.open_containing(directory)
         # Ensure that tree is locked for the lifetime of target_tree, as
         # target tree may be reading from the same dirstate.
-        tree.lock_tree_write()
-        try:
+        with tree.lock_tree_write():
             target_tree = builtins._get_one_revision_tree('shelf2', revision,
                                                           tree.branch, tree)
             files = tree.safe_relpath_files(file_list)
             return klass(tree, target_tree, diff_writer, all, all, files,
                          message, destroy)
-        finally:
-            tree.unlock()
 
     def run(self):
         """Interactively shelve the changes."""
@@ -460,14 +458,13 @@ class Unshelver(object):
 
     def run(self):
         """Perform the unshelving operation."""
-        self.tree.lock_tree_write()
-        cleanups = [self.tree.unlock]
-        try:
+        with cleanup.ExitStack() as exit_stack:
+            exit_stack.enter_context(self.tree.lock_tree_write())
             if self.read_shelf:
                 trace.note(gettext('Using changes with id "%d".') %
                            self.shelf_id)
                 unshelver = self.manager.get_unshelver(self.shelf_id)
-                cleanups.append(unshelver.finalize)
+                exit_stack.callback(unshelver.finalize)
                 if unshelver.message is not None:
                     trace.note(gettext('Message: %s') % unshelver.message)
                 change_reporter = delta._ChangeReporter()
@@ -483,9 +480,6 @@ class Unshelver(object):
                 self.manager.delete_shelf(self.shelf_id)
                 trace.note(gettext('Deleted changes with id "%d".') %
                            self.shelf_id)
-        finally:
-            for cleanup in reversed(cleanups):
-                cleanup()
 
     def write_diff(self, merger):
         """Write this operation's diff to self.write_diff_to."""

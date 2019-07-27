@@ -41,6 +41,7 @@ import shutil
 import stat
 
 from breezy import (
+    cleanup,
     conflicts as _mod_conflicts,
     errors,
     filters as _mod_filters,
@@ -994,31 +995,28 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def revert(self, filenames=None, old_tree=None, backups=True,
                pb=None, report_changes=False):
         from .conflicts import resolve
-        with self.lock_tree_write():
+        with cleanup.ExitStack() as exit_stack:
+            exit_stack.enter_context(self.lock_tree_write())
             if old_tree is None:
                 basis_tree = self.basis_tree()
-                basis_tree.lock_read()
+                exit_stack.enter_context(basis_tree.lock_read())
                 old_tree = basis_tree
             else:
                 basis_tree = None
-            try:
-                conflicts = transform.revert(self, old_tree, filenames, backups, pb,
-                                             report_changes)
-                if filenames is None and len(self.get_parent_ids()) > 1:
-                    parent_trees = []
-                    last_revision = self.last_revision()
-                    if last_revision != _mod_revision.NULL_REVISION:
-                        if basis_tree is None:
-                            basis_tree = self.basis_tree()
-                            basis_tree.lock_read()
-                        parent_trees.append((last_revision, basis_tree))
-                    self.set_parent_trees(parent_trees)
-                    resolve(self)
-                else:
-                    resolve(self, filenames, ignore_misses=True, recursive=True)
-            finally:
-                if basis_tree is not None:
-                    basis_tree.unlock()
+            conflicts = transform.revert(self, old_tree, filenames, backups, pb,
+                                         report_changes)
+            if filenames is None and len(self.get_parent_ids()) > 1:
+                parent_trees = []
+                last_revision = self.last_revision()
+                if last_revision != _mod_revision.NULL_REVISION:
+                    if basis_tree is None:
+                        basis_tree = self.basis_tree()
+                        exit_stack.enter_context(basis_tree.lock_read())
+                    parent_trees.append((last_revision, basis_tree))
+                self.set_parent_trees(parent_trees)
+                resolve(self)
+            else:
+                resolve(self, filenames, ignore_misses=True, recursive=True)
             return conflicts
 
     def store_uncommitted(self):

@@ -283,49 +283,45 @@ class BasicTags(_Tags):
             (tagname, source_target, dest_target), or None if no copying was
             done.
         """
-        operation = cleanup.OperationWithCleanups(self._merge_to_operation)
-        return operation.run(to_tags, overwrite, ignore_master)
-
-    def _merge_to_operation(self, operation, to_tags, overwrite, ignore_master):
-        add_cleanup = operation.add_cleanup
-        if self.branch == to_tags.branch:
-            return {}, []
-        if not self.branch.supports_tags():
-            # obviously nothing to copy
-            return {}, []
-        source_dict = self.get_tag_dict()
-        if not source_dict:
-            # no tags in the source, and we don't want to clobber anything
-            # that's in the destination
-            return {}, []
-        # We merge_to both master and child individually.
-        #
-        # It's possible for master and child to have differing sets of
-        # tags, in which case it's possible to have different sets of
-        # conflicts.  We report the union of both conflict sets.  In
-        # that case it's likely the child and master have accepted
-        # different tags from the source, which may be a surprising result, but
-        # the best we can do in the circumstances.
-        #
-        # Ideally we'd improve this API to report the different conflicts
-        # more clearly to the caller, but we don't want to break plugins
-        # such as bzr-builddeb that use this API.
-        add_cleanup(to_tags.branch.lock_write().unlock)
-        if ignore_master:
-            master = None
-        else:
-            master = to_tags.branch.get_master_branch()
-        if master is not None:
-            add_cleanup(master.lock_write().unlock)
-        updates, conflicts = self._merge_to(to_tags, source_dict, overwrite)
-        if master is not None:
-            extra_updates, extra_conflicts = self._merge_to(master.tags,
-                                                            source_dict, overwrite)
-            updates.update(extra_updates)
-            conflicts += extra_conflicts
-        # We use set() to remove any duplicate conflicts from the master
-        # branch.
-        return updates, set(conflicts)
+        with cleanup.ExitStack() as stack:
+            if self.branch == to_tags.branch:
+                return {}, []
+            if not self.branch.supports_tags():
+                # obviously nothing to copy
+                return {}, []
+            source_dict = self.get_tag_dict()
+            if not source_dict:
+                # no tags in the source, and we don't want to clobber anything
+                # that's in the destination
+                return {}, []
+            # We merge_to both master and child individually.
+            #
+            # It's possible for master and child to have differing sets of
+            # tags, in which case it's possible to have different sets of
+            # conflicts.  We report the union of both conflict sets.  In
+            # that case it's likely the child and master have accepted
+            # different tags from the source, which may be a surprising result, but
+            # the best we can do in the circumstances.
+            #
+            # Ideally we'd improve this API to report the different conflicts
+            # more clearly to the caller, but we don't want to break plugins
+            # such as bzr-builddeb that use this API.
+            stack.enter_context(to_tags.branch.lock_write())
+            if ignore_master:
+                master = None
+            else:
+                master = to_tags.branch.get_master_branch()
+            if master is not None:
+                stack.enter_context(master.lock_write())
+            updates, conflicts = self._merge_to(to_tags, source_dict, overwrite)
+            if master is not None:
+                extra_updates, extra_conflicts = self._merge_to(master.tags,
+                                                                source_dict, overwrite)
+                updates.update(extra_updates)
+                conflicts += extra_conflicts
+            # We use set() to remove any duplicate conflicts from the master
+            # branch.
+            return updates, set(conflicts)
 
     def _merge_to(self, to_tags, source_dict, overwrite):
         dest_dict = to_tags.get_tag_dict()
