@@ -21,6 +21,7 @@ import sys
 import tempfile
 
 from .. import (
+    cleanup,
     diff,
     errors,
     osutils,
@@ -1021,8 +1022,10 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
 
     def call_gtabtd(self, path_list, revision_specs, old_url, new_url):
         """Call get_trees_and_branches_to_diff_locked."""
+        exit_stack = cleanup.ExitStack()
+        self.addCleanup(exit_stack.close)
         return diff.get_trees_and_branches_to_diff_locked(
-            path_list, revision_specs, old_url, new_url, self.addCleanup)
+            path_list, revision_specs, old_url, new_url, exit_stack)
 
     def test_basic(self):
         tree = self.make_branch_and_tree('tree')

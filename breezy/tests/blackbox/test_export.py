@@ -304,12 +304,9 @@ class TestExport(TestCaseWithTransport):
 
         self.run_bzr('export ../first.tar -r 1')
         self.assertTrue(os.path.isfile('../first.tar'))
-        tf = tarfile.open('../first.tar')
-        try:
+        with tarfile.open('../first.tar') as tf:
             self.assertEqual(['first/hello'], sorted(tf.getnames()))
             self.assertEqual(b'foo', tf.extractfile('first/hello').read())
-        finally:
-            tf.close()
 
         self.run_bzr('export ../first.tar.gz -r 1')
         self.assertTrue(os.path.isfile('../first.tar.gz'))
@@ -320,19 +317,13 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr('export ../first.tar.tbz2 -r 1')
         self.assertTrue(os.path.isfile('../first.tar.tbz2'))
 
-        tf = tarfile.open('../first.tar.tbz2', 'r:bz2')
-        try:
+        with tarfile.open('../first.tar.tbz2', 'r:bz2') as tf:
             self.assertEqual(['first.tar/hello'], sorted(tf.getnames()))
             self.assertEqual(b'foo', tf.extractfile('first.tar/hello').read())
-        finally:
-            tf.close()
         self.run_bzr('export ../first2.tar -r 1 --root pizza')
-        tf = tarfile.open('../first2.tar')
-        try:
+        with tarfile.open('../first2.tar') as tf:
             self.assertEqual(['pizza/hello'], sorted(tf.getnames()))
             self.assertEqual(b'foo', tf.extractfile('pizza/hello').read())
-        finally:
-            tf.close()
 
     def test_basic_zipfile_export(self):
         self.example_branch()
@@ -340,28 +331,19 @@ class TestExport(TestCaseWithTransport):
 
         self.run_bzr('export ../first.zip -r 1')
         self.assertPathExists('../first.zip')
-        zf = zipfile.ZipFile('../first.zip')
-        try:
+        with zipfile.ZipFile('../first.zip') as zf:
             self.assertEqual(['first/hello'], sorted(zf.namelist()))
             self.assertEqual(b'foo', zf.read('first/hello'))
-        finally:
-            zf.close()
 
         self.run_bzr('export ../first2.zip -r 1 --root pizza')
-        zf = zipfile.ZipFile('../first2.zip')
-        try:
+        with zipfile.ZipFile('../first2.zip') as zf:
             self.assertEqual(['pizza/hello'], sorted(zf.namelist()))
             self.assertEqual(b'foo', zf.read('pizza/hello'))
-        finally:
-            zf.close()
 
         self.run_bzr('export ../first-zip --format=zip -r 1')
-        zf = zipfile.ZipFile('../first-zip')
-        try:
+        with zipfile.ZipFile('../first-zip') as zf:
             self.assertEqual(['first-zip/hello'], sorted(zf.namelist()))
             self.assertEqual(b'foo', zf.read('first-zip/hello'))
-        finally:
-            zf.close()
 
     def test_export_from_outside_branch(self):
         self.example_branch()

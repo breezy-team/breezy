@@ -447,18 +447,16 @@ class Merger(object):
     def _add_parent(self):
         new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
         new_parent_trees = []
-        operation = cleanup.OperationWithCleanups(
-            self.this_tree.set_parent_trees)
-        for revision_id in new_parents:
-            try:
-                tree = self.revision_tree(revision_id)
-            except errors.NoSuchRevision:
-                tree = None
-            else:
-                tree.lock_read()
-                operation.add_cleanup(tree.unlock)
-            new_parent_trees.append((revision_id, tree))
-        operation.run_simple(new_parent_trees, allow_leftmost_as_ghost=True)
+        with cleanup.ExitStack() as stack:
+            for revision_id in new_parents:
+                try:
+                    tree = self.revision_tree(revision_id)
+                except errors.NoSuchRevision:
+                    tree = None
+                else:
+                    stack.enter_context(tree.lock_read())
+                new_parent_trees.append((revision_id, tree))
+            self.this_tree.set_parent_trees(new_parent_trees, allow_leftmost_as_ghost=True)
 
     def set_other(self, other_revision, possible_transports=None):
         """Set the revision and tree to merge from.
@@ -656,16 +654,13 @@ class Merger(object):
         return merge
 
     def do_merge(self):
-        operation = cleanup.OperationWithCleanups(self._do_merge_to)
-        self.this_tree.lock_tree_write()
-        operation.add_cleanup(self.this_tree.unlock)
-        if self.base_tree is not None:
-            self.base_tree.lock_read()
-            operation.add_cleanup(self.base_tree.unlock)
-        if self.other_tree is not None:
-            self.other_tree.lock_read()
-            operation.add_cleanup(self.other_tree.unlock)
-        merge = operation.run_simple()
+        with cleanup.ExitStack() as stack:
+            stack.enter_context(self.this_tree.lock_tree_write())
+            if self.base_tree is not None:
+                stack.enter_context(self.base_tree.lock_read())
+            if self.other_tree is not None:
+                stack.enter_context(self.other_tree.lock_read())
+            merge = self._do_merge_to()
         if len(merge.cooked_conflicts) == 0:
             if not self.ignore_zero and not trace.is_quiet():
                 trace.note(gettext("All changes applied successfully."))
@@ -759,27 +754,20 @@ class Merge3Merger(object):
             self.do_merge()
 
     def do_merge(self):
-        operation = cleanup.OperationWithCleanups(self._do_merge)
-        self.working_tree.lock_tree_write()
-        operation.add_cleanup(self.working_tree.unlock)
-        self.this_tree.lock_read()
-        operation.add_cleanup(self.this_tree.unlock)
-        self.base_tree.lock_read()
-        operation.add_cleanup(self.base_tree.unlock)
-        self.other_tree.lock_read()
-        operation.add_cleanup(self.other_tree.unlock)
-        operation.run()
-
-    def _do_merge(self, operation):
-        self.tt = self.working_tree.get_transform()
-        operation.add_cleanup(self.tt.finalize)
-        self._compute_transform()
-        results = self.tt.apply(no_conflicts=True)
-        self.write_modified(results)
-        try:
-            self.working_tree.add_conflicts(self.cooked_conflicts)
-        except errors.UnsupportedOperation:
-            pass
+        with cleanup.ExitStack() as stack:
+            stack.enter_context(self.working_tree.lock_tree_write())
+            stack.enter_context(self.this_tree.lock_read())
+            stack.enter_context(self.base_tree.lock_read())
+            stack.enter_context(self.other_tree.lock_read())
+            self.tt = self.working_tree.get_transform()
+            stack.enter_context(self.tt)
+            self._compute_transform()
+            results = self.tt.apply(no_conflicts=True)
+            self.write_modified(results)
+            try:
+                self.working_tree.add_conflicts(self.cooked_conflicts)
+            except errors.UnsupportedOperation:
+                pass
 
     def make_preview_transform(self):
         with self.base_tree.lock_read(), self.other_tree.lock_read():
@@ -1563,7 +1551,7 @@ class Merge3Merger(object):
                 if other_parent is None or other_name is None:
                     other_path = '<deleted>'
                 else:
-                    if other_parent == self.other_tree.get_root_id():
+                    if other_parent == self.other_tree.path2id(''):
                         # The tree transform doesn't know about the other root,
                         # so we special case here to avoid a NoFinalPath
                         # exception

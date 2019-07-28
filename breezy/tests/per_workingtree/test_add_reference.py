@@ -49,7 +49,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
     def test_add_reference(self):
         tree, sub_tree = self.make_nested_trees()
-        sub_tree_root_id = sub_tree.get_root_id()
+        sub_tree_root_id = sub_tree.path2id('')
         with tree.lock_write():
             if tree.supports_setting_file_ids():
                 self.assertEqual(tree.path2id('sub-tree'), sub_tree_root_id)
@@ -101,7 +101,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
     def test_get_nested_tree(self):
         tree, sub_tree = self.make_nested_trees()
-        sub_tree_root_id = sub_tree.get_root_id()
+        sub_tree_root_id = sub_tree.path2id('')
         with tree.lock_read():
             sub_tree2 = tree.get_nested_tree('sub-tree')
             self.assertEqual(sub_tree.basedir, sub_tree2.basedir)

@@ -280,7 +280,7 @@ class TestRepository(TestCaseWithRepository):
                     'file_id %r cannot be stored on this'
                     ' platform for this repo format' % (file_id,))
             if repo._format.rich_root_data:
-                root_commit = (tree.get_root_id(),) + rev_key
+                root_commit = (tree.path2id(''),) + rev_key
                 keys = {root_commit}
                 parents = {root_commit: ()}
             else:

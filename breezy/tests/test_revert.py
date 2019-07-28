@@ -159,6 +159,6 @@ class TestRevert(tests.TestCaseWithTransport):
         tree.add(['file1'])
         tree.commit('first')
         tree.set_root_id(b'temp-root-id')
-        self.assertEqual(b'temp-root-id', tree.get_root_id())
+        self.assertEqual(b'temp-root-id', tree.path2id(''))
         tree.revert()
-        self.assertEqual(b'initial-root-id', tree.get_root_id())
+        self.assertEqual(b'initial-root-id', tree.path2id(''))

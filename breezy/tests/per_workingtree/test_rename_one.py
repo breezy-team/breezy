@@ -342,7 +342,6 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.build_tree(['a/', 'a/b', 'c/'])
         tree.add(['a', 'a/b', 'c'])
         tree.commit('initial')
-        root_id = tree.get_root_id()
 
         tree.rename_one('a/b', 'c/foo')
         self.assertPathRelations(

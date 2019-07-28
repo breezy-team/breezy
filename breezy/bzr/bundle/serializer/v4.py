@@ -19,7 +19,7 @@ from __future__ import absolute_import
 import bz2
 import re
 
-from ... import (
+from .... import (
     bencode,
     errors,
     iterablefile,
@@ -31,14 +31,14 @@ from ... import (
     trace,
     ui,
     )
-from ...bzr import (
+from ... import (
     pack,
     serializer,
     versionedfile as _mod_versionedfile,
     )
-from ...bundle import bundle_data, serializer as bundle_serializer
-from ...i18n import ngettext
-from ...sixish import (
+from .. import bundle_data, serializer as bundle_serializer
+from ....i18n import ngettext
+from ....sixish import (
     BytesIO,
     viewitems,
     )

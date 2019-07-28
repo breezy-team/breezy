@@ -503,12 +503,10 @@ class cmd_upload(commands.Command):
              directory)
 
         if wt:
-            wt.lock_read()
             locked = wt
         else:
-            branch.lock_read()
             locked = branch
-        try:
+        with locked.lock_read():
             if wt:
                 changes = wt.changes_from(wt.basis_tree())
 
@@ -566,8 +564,6 @@ class cmd_upload(commands.Command):
                 uploader.upload_full_tree()
             else:
                 uploader.upload_tree()
-        finally:
-            locked.unlock()
 
         # We uploaded successfully, remember it
         with branch.lock_write():

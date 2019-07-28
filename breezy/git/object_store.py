@@ -490,15 +490,6 @@ class BazaarObjectStore(BaseObjectStore):
         return self.mapping.export_commit(rev, tree_sha, parent_lookup,
                                           lossy, verifiers)
 
-    def _create_fileid_map_blob(self, tree):
-        # FIXME: This can probably be a lot more efficient,
-        # not all files necessarily have to be processed.
-        file_ids = {}
-        for (path, ie) in tree.iter_entries_by_dir():
-            if self.mapping.generate_file_id(path) != ie.file_id:
-                file_ids[path] = ie.file_id
-        return self.mapping.export_fileid_map(file_ids)
-
     def _revision_to_objects(self, rev, tree, lossy, add_cache_entry=None):
         """Convert a revision to a set of git objects.
 
@@ -527,13 +518,7 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[self[base_sha1].tree]
-            root_key_data = (tree.get_root_id(), tree.get_revision_id())
-        if not lossy and self.mapping.BZR_FILE_IDS_FILE is not None:
-            b = self._create_fileid_map_blob(tree)
-            if b is not None:
-                root_tree[self.mapping.BZR_FILE_IDS_FILE] = (
-                    (stat.S_IFREG | 0o644), b.id)
-                yield self.mapping.BZR_FILE_IDS_FILE, b
+            root_key_data = (tree.path2id(''), tree.get_revision_id())
         if add_cache_entry is not None:
             add_cache_entry(root_tree, root_key_data, "")
         yield "", root_tree
@@ -629,15 +614,7 @@ class BazaarObjectStore(BaseObjectStore):
             path,
             bzr_tree.iter_child_entries(path),
             get_ie_sha1, unusual_modes, self.mapping.BZR_DUMMY_FILE,
-            bzr_tree.get_root_id() == fileid)
-        if (bzr_tree.get_root_id() == fileid and
-                self.mapping.BZR_FILE_IDS_FILE is not None):
-            if tree is None:
-                tree = Tree()
-            b = self._create_fileid_map_blob(bzr_tree)
-            # If this is the root tree, add the file ids
-            tree[self.mapping.BZR_FILE_IDS_FILE] = (
-                (stat.S_IFREG | 0o644), b.id)
+            bzr_tree.path2id('') == fileid)
         if tree is not None:
             _check_expected_sha(expected_sha, tree)
         return tree

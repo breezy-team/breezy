@@ -85,6 +85,9 @@ Bug Fixes
 * Ignore UnknownFormatErrors when scanning for control directories.
   (Jelmer Vernooĳ, #468332)
 
+* Fix fetching from remote git repositories in ``brz git-import``.
+  (Jelmer Vernooĳ, #1836238)
+
 Documentation
 *************
 
@@ -98,6 +101,9 @@ API Changes
 
 * New ``Tree.get_transform`` method for getting a ``TreeTransform``
   object. (Jelmer Vernooij)
+
+* The ``Tree.get_root_id`` method has been removed. Use
+  ``Tree.path2id('')`` instead. (Jelmer Vernooĳ)
 
 * ``Repository.find_branches`` now returns an iterator rather than a
   list. (Jelmer Vernooĳ, #413970)

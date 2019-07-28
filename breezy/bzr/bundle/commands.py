@@ -23,7 +23,7 @@ and for applying a changeset.
 
 from __future__ import absolute_import
 
-from ..lazy_import import lazy_import
+from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     branch,
@@ -36,8 +36,8 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from ..commands import Command
-from ..sixish import (
+from ...commands import Command
+from ...sixish import (
     BytesIO,
     viewitems,
     )
@@ -52,7 +52,7 @@ class cmd_bundle_info(Command):
     encoding_type = 'exact'
 
     def run(self, location, verbose=False):
-        from breezy.bundle.serializer import read_bundle
+        from breezy.bzr.bundle.serializer import read_bundle
         from breezy.mergeable import read_mergeable_from_url
         from breezy import osutils
         term_encoding = osutils.get_terminal_encoding()

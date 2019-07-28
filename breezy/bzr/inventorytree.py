@@ -778,10 +778,6 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         nested_revid = self.get_reference_revision(path)
         raise MissingNestedTree(path)
 
-    def get_root_id(self):
-        if self.root_inventory.root:
-            return self.root_inventory.root.file_id
-
     def kind(self, path):
         return self._path2ie(path).kind
 

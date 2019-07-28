@@ -273,7 +273,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
                     b'ba\xe2\x82\xacz-id',
                     ]
         self.build_tree(paths[1:])
-        if tree.get_root_id() is None:
+        if tree.path2id('') is None:
             # Some trees do not have a root yet.
             tree.add(paths, file_ids)
         else:

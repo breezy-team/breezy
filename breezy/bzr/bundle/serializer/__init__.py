@@ -22,17 +22,17 @@ from __future__ import absolute_import
 import base64
 import re
 
-from ... import (
+from .... import (
     errors,
     registry,
     )
-from ...diff import internal_diff
-from ...revision import NULL_REVISION
-from ...sixish import (
+from ....diff import internal_diff
+from ....revision import NULL_REVISION
+from ....sixish import (
     BytesIO,
     )
 # For backwards-compatibility
-from ...timestamp import unpack_highres_date, format_highres_date
+from ....timestamp import unpack_highres_date, format_highres_date
 
 
 # New bundles should try to use this header format
@@ -162,9 +162,9 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
 
 
 serializer_registry.register_lazy(
-    '0.8', 'breezy.bundle.serializer.v08', 'BundleSerializerV08')
+    '0.8', __name__ + '.v08', 'BundleSerializerV08')
 serializer_registry.register_lazy(
-    '0.9', 'breezy.bundle.serializer.v09', 'BundleSerializerV09')
-serializer_registry.register_lazy('4', 'breezy.bundle.serializer.v4',
+    '0.9', __name__ + '.v09', 'BundleSerializerV09')
+serializer_registry.register_lazy('4', __name__ + '.v4',
                                   'BundleSerializerV4')
 serializer_registry.default_key = '4'
