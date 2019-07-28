@@ -1822,6 +1822,7 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
     """
 
     accepted_errors = [200,  # Ok
+                       201,
                        206,  # Partial content
                        400,
                        403,
@@ -2025,6 +2026,9 @@ class HttpTransport(ConnectedTransport):
 
             def read(self, amt=None):
                 return self._actual.read(amt)
+
+            def readlines(self):
+                return self._actual.readlines()
 
             def readlines(self):
                 return self._actual.readlines()

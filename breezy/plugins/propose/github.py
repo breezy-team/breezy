@@ -108,7 +108,8 @@ def connect_github():
 
 class GitHubMergeProposal(MergeProposal):
 
-    def __init__(self, pr):
+    def __init__(self, gh, pr):
+        self._gh = gh
         self._pr = pr
 
     @property
@@ -130,14 +131,27 @@ class GitHubMergeProposal(MergeProposal):
     def get_commit_message(self):
         return None
 
+    def set_commit_message(self, message):
+        self._patch({'title': message})
+
+    def _patch(self, data):
+        response = self._gh._api_request(
+            'PATCH', self._pr['url'], body=json.dumps(data).encode('utf-8'))
+        if response != 200:
+            raise InvalidHttpResponse(self._pr['url'], response.text)
+        self._pr = json.loads(response.text)
+
     def set_description(self, description):
-        self._pr.edit(body=description, title=determine_title(description))
+        self._patch({
+            'body': description,
+            'title': determine_title(description),
+            })
 
     def is_merged(self):
-        return self._pr['merged']
+        return self._pr['state'] == 'merged'
 
     def close(self):
-        self._pr.edit(state='closed')
+        self._patch({'state': 'closed'})
 
     def merge(self, commit_message=None):
         # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
@@ -178,20 +192,36 @@ class GitHub(Hoster):
     def __repr__(self):
         return "GitHub()"
 
-    def _api_request(self, method, path):
+    def _api_request(self, method, path, body=None):
         headers = {
             'Accept': 'application/vnd.github.v3+json'}
         if self._token:
             headers['Authorization'] = 'token %s' % self._token
         response = self.transport.request(
             method, urlutils.join(self.transport.base, path),
-            headers=headers)
+            headers=headers, body=body)
         if response.status == 401:
             raise GitHubLoginRequired(self)
         return response
 
     def _get_repo(self, path):
         path = 'repos/' + path
+        response = self._api_request('GET', path)
+        if response.status == 404:
+            raise NoSuchProject(path)
+        if response.status == 200:
+            return json.loads(response.text)
+        raise InvalidHttpResponse(path, response.text)
+
+    def _get_repo_pulls(self, path, head=None, state=None):
+        path = 'repos/' + path + '/pulls?'
+        params = {}
+        if head is not None:
+            params['head'] = head
+        if state is not None:
+            params['state'] = state
+        path += ';'.join(['%s=%s' % (k, urlutils.quote(v))
+                         for k, v in params.items()])
         response = self._api_request('GET', path)
         if response.status == 404:
             raise NoSuchProject(path)
@@ -304,28 +334,30 @@ class GitHub(Hoster):
             parse_github_branch_url(source_branch))
         (target_owner, target_repo_name, target_branch_name) = (
             parse_github_branch_url(target_branch))
-        target_repo = self._get_repo(
-            "%s/%s" % (target_owner, target_repo_name))
+        target_repo_path = "%s/%s" % (target_owner, target_repo_name)
+        target_repo = self._get_repo(target_repo_path)
         state = {
             'open': 'open',
             'merged': 'closed',
             'closed': 'closed',
             'all': 'all'}
-        for pull in target_repo.get_pulls(
-                head=target_branch_name,
-                state=state[status]):
-            if (status == 'closed' and pull.merged or
-                    status == 'merged' and not pull.merged):
+        pulls = self._get_repo_pulls(
+            target_repo_path,
+            head=target_branch_name,
+            state=state[status])
+        for pull in pulls:
+            if (status == 'closed' and pull['merged'] or
+                    status == 'merged' and not pull['merged']):
                 continue
-            if pull.head.ref != source_branch_name:
+            if pull['head']['ref'] != source_branch_name:
                 continue
-            if pull.head.repo is None:
+            if pull['head']['repo'] is None:
                 # Repo has gone the way of the dodo
                 continue
-            if (pull.head.repo.owner.login != source_owner or
-                    pull.head.repo.name != source_repo_name):
+            if (pull['head']['repo']['owner']['login'] != source_owner or
+                    pull['head']['repo']['name'] != source_repo_name):
                 continue
-            yield GitHubMergeProposal(pull)
+            yield GitHubMergeProposal(self, pull)
 
     def hosts(self, branch):
         try:
@@ -366,7 +398,7 @@ class GitHub(Hoster):
             response = self._api_request('GET', url)
             if response.status != 200:
                 raise InvalidHttpResponse(url, response.text)
-            yield GitHubMergeProposal(json.loads(response.text))
+            yield GitHubMergeProposal(self, json.loads(response.text))
 
     def get_proposal_by_url(self, url):
         raise UnsupportedHoster(url)
@@ -430,4 +462,4 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         if labels:
             for label in labels:
                 pull_request.issue.labels.append(label)
-        return GitHubMergeProposal(pull_request)
+        return GitHubMergeProposal(self.gh, pull_request)
