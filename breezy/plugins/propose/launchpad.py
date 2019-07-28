@@ -188,7 +188,7 @@ class Launchpad(Hoster):
             lp_base_url = uris.STAGING_SERVICE_ROOT
         else:
             lp_base_url = uris.LPNET_SERVICE_ROOT
-        self.launchpad = lp_api.connect_launchpad(lp_base_url)
+        self.launchpad = lp_api.connect_launchpad(lp_base_url, version='devel')
 
     @property
     def base_url(self):
