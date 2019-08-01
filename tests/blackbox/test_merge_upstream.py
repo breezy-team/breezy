@@ -37,13 +37,6 @@ from ...util import (
     )
 
 
-def iter_child_entries(tree, file_id):
-    try:
-        return tree.root_inventory.root.children.values()
-    except AttributeError:
-        return tree.inventory.root.children.values()
-
-
 class Fixture(object):
     """A test fixture."""
 
@@ -129,7 +122,7 @@ class FileMovedReplacedUpstream(Fixture):
         self.tree = tree
         with tree.lock_write():
             newpath = test_case.getUniqueString()
-            for child in iter_child_entries(tree, tree.get_root_id()):
+            for child in tree.iter_child_entries(''):
                 if child.kind == 'file':
                     oldpath = child.name
             tree.rename_one(oldpath, newpath)

@@ -439,11 +439,17 @@ class GuessUpstreamRevspecTests(TestCase):
                  u'tag:v1.2~bzr1200', u'tag:v.1.2~bzr1200'],
                 list(guess_upstream_revspec('foo', '1.2~bzr1200')))
         self.assertEqual(
-                [u'git:abc1def', u'tag:1.2~git20180101.abc1def',
+                [u'git:abc1def', u'date:2018-01-01', u'tag:1.2~git20180101.abc1def',
                  u'tag:foo-1.2~git20180101.abc1def',
                  u'tag:v1.2~git20180101.abc1def',
                  u'tag:v.1.2~git20180101.abc1def'],
                 list(guess_upstream_revspec('foo', '1.2~git20180101.abc1def')))
+        self.assertEqual(
+                [u'git:abc1def', u'date:2018-01-01', u'tag:1.2~git20180101.0.abc1def',
+                 u'tag:foo-1.2~git20180101.0.abc1def',
+                 u'tag:v1.2~git20180101.0.abc1def',
+                 u'tag:v.1.2~git20180101.0.abc1def'],
+                list(guess_upstream_revspec('foo', '1.2~git20180101.0.abc1def')))
         self.assertEqual(
                 [u'date:2018-01-01', u'tag:1.2~git20180101',
                  u'tag:foo-1.2~git20180101',

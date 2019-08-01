@@ -1,5 +1,5 @@
 #    test_directory.py -- Testsuite for builddeb directory.py
-#    Copyright (C) 2019 Jelmer Vernooĳ <jelmer@jelmer.uk>
+#    Copyright (C) 2019 Jelmer Vernooij <jelmer@jelmer.uk>
 #    
 #    This file is part of bzr-builddeb.
 #

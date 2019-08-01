@@ -2,7 +2,7 @@ BRZ ?= $(shell which brz)
 BRZ_OPTIONS ?= -Derror
 PYTHON ?= $(shell which python)
 SETUP ?= $(PYTHON) ./setup.py
-TESTS ?= "^breezy.plugins.debian."
+TESTS ?= "^breezy.plugins.debian." "^unittest"
 
 all: update-pot
 
