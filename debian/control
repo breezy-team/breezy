@@ -36,7 +36,7 @@ Build-Depends: bash-completion,
                python3-sphinx (>= 1.0.7+dfsg),
                python3-subunit <!nocheck>,
                python3-testtools (>= 0.9.5~) <!nocheck>
-Standards-Version: 4.3.0
+Standards-Version: 4.4.0
 Vcs-Bzr: https://code.breezy-vcs.org/breezy/unstable
 Vcs-Browser: https://code.breezy-vcs.org/breezy/unstable
 Homepage: https://www.breezy-vcs.org/
