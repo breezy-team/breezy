@@ -23,6 +23,7 @@ from __future__ import absolute_import
 from ....tests import TestCase
 
 from ..directory import (
+    fixup_broken_git_url,
     vcs_git_url_to_bzr_url,
     )
 
@@ -46,3 +47,18 @@ class VcsGitUrlToBzrUrlTests(TestCase):
         self.assertEqual(
             'git://github.com/jelmer/dulwich',
             vcs_git_url_to_bzr_url('git://github.com:jelmer/dulwich'))
+
+
+class FixUpGitUrlTests(TestCase):
+
+    def test_salsa_not_https(self):
+        self.assertEqual(
+            'https://salsa.debian.org/jelmer/dulwich',
+            fixup_broken_git_url(
+                'git://salsa.debian.org/jelmer/dulwich'))
+
+    def test_salsa_uses_cgit(self):
+        self.assertEqual(
+            'https://salsa.debian.org/jelmer/dulwich',
+            fixup_broken_git_url(
+                'https://salsa.debian.org/cgit/jelmer/dulwich'))
