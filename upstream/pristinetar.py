@@ -25,8 +25,8 @@ from base64 import (
     )
 import configparser
 import errno
-from io import TextIOWrapper
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -46,7 +46,6 @@ from .... import (
     revision as _mod_revision,
     )
 from ....commit import NullCommitReporter
-from ....config import ConfigObj
 from ....errors import (
     BzrError,
     NoSuchRevision,
@@ -77,6 +76,14 @@ class PristineTarDeltaTooLarge(PristineTarError):
 
 class PristineTarDeltaAbsent(PristineTarError):
     _fmt = 'There is not delta present for %(version)s.'
+
+
+class GbpTagFormatError(BzrError):
+    _fmt = 'Unknown variable %(variable)s in tag %(tag_name)s.'
+
+    def __init__(self, tag_name, variable):
+        self.variable = variable
+        self.tag_name = tag_name
 
 
 def git_store_pristine_tar(branch, filename, tree_id, delta, force=False):
@@ -218,16 +225,41 @@ def revision_pristine_tar_format(rev):
     elif u'deb-pristine-delta-xz' in rev.properties:
         return 'xz'
     assert revision_has_pristine_tar_delta(rev)
-    raise AssertionError("Not handled new delta type in "
-            "pristine_tar_format")
+    raise AssertionError(
+        "Not handled new delta type in pristine_tar_format")
+
+
+def gbp_expand_tag_name(tag_format, version):
+    # See gbp/pkg/pkgpolicy.py in gbp-buildpackage
+    version_mangle_re = (
+        r'%\(version'
+        r'%(?P<M>[^%])'
+        r'%(?P<R>([^%]|\\%))+'
+        r'\)s')
+
+    ret = tag_format
+    m = re.search(version_mangle_re, tag_format)
+    if m:
+        ret = re.sub(version_mangle_re, "%(version)s", tag_format)
+        version = version.replace(
+            m.group('M'), m.group('R').replace(r'\%', '%'))
+
+    vars = {
+        'version': version,
+        'hversion': version.replace('.', '-'),
+        }
+    try:
+        return ret % vars
+    except KeyError as e:
+        raise GbpTagFormatError(tag_format, e.args[0])
 
 
 class PristineTarSource(UpstreamSource):
     """Source that uses the pristine-tar revisions in the packaging branch."""
 
-    def __init__(self, branch, tag_format=None, pristine_tar=None):
+    def __init__(self, branch, gbp_tag_format=None, pristine_tar=None):
         self.branch = branch
-        self.tag_format = tag_format
+        self.gbp_tag_format = gbp_tag_format
         self.pristine_tar = pristine_tar
 
     def __repr__(self):
@@ -245,14 +277,14 @@ class PristineTarSource(UpstreamSource):
                     'utf-8', errors='replace'),
                 'debian/gbp.conf')
             try:
-                tag_format = parser.get(
+                gbp_tag_format = parser.get(
                     'import-orig', 'upstream-tag', raw=True)
             except configparser.Error:
                 try:
-                    tag_format = parser.get(
+                    gbp_tag_format = parser.get(
                         'DEFAULT', 'upstream-tag', raw=True)
                 except configparser.Error:
-                    tag_format = None
+                    gbp_tag_format = None
             try:
                 pristine_tar = parser.getboolean(
                     'import-orig', 'pristine-tar')
@@ -263,9 +295,9 @@ class PristineTarSource(UpstreamSource):
                 except configparser.Error:
                     pristine_tar = None
         else:
-            tag_format = None
+            gbp_tag_format = None
             pristine_tar = None
-        return cls(branch, tag_format, pristine_tar)
+        return cls(branch, gbp_tag_format, pristine_tar)
 
     def tag_name(self, version, component=None, distro=None):
         """Gets the tag name for the upstream part of version.
@@ -276,8 +308,8 @@ class PristineTarSource(UpstreamSource):
         :param distro: Optional distribution name
         :return: a String with the name of the tag.
         """
-        if self.tag_format is not None:
-            return self.tag_format % {'version': version}
+        if self.gbp_tag_format is not None:
+            return gbp_expand_tag_name(self.gbp_tag_format, version)
         if getattr(self.branch.repository, '_git', None):
             # In git, the convention is to use a slash
             if distro is None:

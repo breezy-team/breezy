@@ -900,7 +900,6 @@ class PristineTarSourceTests(TestCaseWithTransport):
     def setUp(self):
         super(PristineTarSourceTests, self).setUp()
         self.tree = self.make_branch_and_tree('unstable')
-        root_id = self.tree.path2id("")
         self.source = PristineTarSource(self.tree.branch)
 
     def test_gbp_tag_format(self):
@@ -913,17 +912,33 @@ upstream-tag = blah-%(version)s
         self.source = PristineTarSource.from_tree(
             self.tree.branch, self.tree)
         upstream_v_no = "0.1"
-        self.assertEqual(self.source.tag_name(upstream_v_no),
-                "blah-" + upstream_v_no)
+        self.assertEqual(
+            self.source.tag_name(upstream_v_no),
+            "blah-" + upstream_v_no)
+
+    def test_gbp_tag_format_unusual(self):
+        self.build_tree_contents([
+            ('unstable/debian/', ),
+            ('unstable/debian/gbp.conf', """\
+[DEFAULT]
+upstream-tag = blah-%(version%~%-)s
+""")])
+        self.source = PristineTarSource.from_tree(
+            self.tree.branch, self.tree)
+        self.assertEqual(
+            self.source.tag_name("0.1~1"),
+            "blah-0.1-1")
 
     def test_upstream_tag_name(self):
         upstream_v_no = "0.1"
-        self.assertEqual(self.source.tag_name(upstream_v_no),
-                "upstream-" + upstream_v_no)
+        self.assertEqual(
+            self.source.tag_name(upstream_v_no),
+            "upstream-" + upstream_v_no)
 
     def test_tag_name_distro(self):
-        self.assertEquals(self.source.tag_name("0.3", distro="ubuntu"),
-                "upstream-ubuntu-0.3")
+        self.assertEquals(
+            self.source.tag_name("0.3", distro="ubuntu"),
+            "upstream-ubuntu-0.3")
 
     def test_version(self):
         self.assertEquals([

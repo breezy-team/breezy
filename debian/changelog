@@ -1,3 +1,9 @@
+breezy-debian (2.8.29) UNRELEASED; urgency=medium
+
+  * Support substitutions in gbp tag format.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 07 Aug 2019 23:58:37 +0000
+
 breezy-debian (2.8.28) unstable; urgency=medium
 
   * Upload to unstable.
