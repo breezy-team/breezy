@@ -76,18 +76,14 @@ class TestCaching(TestCaseWithBranch):
         """
         branch, revmap, calls = self.get_instrumented_branch()
         # Lock the branch, then repeatedly call revision_history.
-        branch.lock_read()
-        try:
+        with branch.lock_read():
             branch.get_revision_id_to_revno_map()
             self.assertEqual(['_gen_revno_map'], calls)
-        finally:
-            branch.unlock()
 
     def test_set_last_revision_info_when_locked(self):
         """Calling set_last_revision_info should reset the cache."""
         branch, revmap, calls = self.get_instrumented_branch()
-        branch.lock_write()
-        try:
+        with branch.lock_write():
             self.assertEqual({revmap['1']: (1,),
                               revmap['2']: (2, ),
                               revmap['3']: (3, ),
@@ -100,5 +96,3 @@ class TestCaching(TestCaseWithBranch):
             self.assertEqual({revmap['1']: (1, ), revmap['2']: (2, )},
                              branch.get_revision_id_to_revno_map())
             self.assertEqual(['_gen_revno_map'] * 2, calls)
-        finally:
-            branch.unlock()

@@ -442,13 +442,13 @@ class GitLab(Hoster):
         except NotGitLabUrl:
             raise UnsupportedHoster(url)
         except NotMergeRequestUrl as e:
-            if self.gl.url == ('https://%s' % e.host):
+            if self.base_url == ('https://%s' % e.host):
                 raise
             else:
                 raise UnsupportedHoster(url)
-        if self.gl.url != ('https://%s' % host):
+        if self.base_url != ('https://%s' % host):
             raise UnsupportedHoster(url)
-        project = self.gl.projects.get(project)
+        project = self._get_project(project)
         mr = project.mergerequests.get(merge_id)
         return GitLabMergeProposal(mr)
 

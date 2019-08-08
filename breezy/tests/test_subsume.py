@@ -36,7 +36,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         sub_tree = self.make_branch_and_tree('tree/subtree',
                                              format='development-subtree')
         if same_root is True:
-            sub_tree.set_root_id(base_tree.get_root_id())
+            sub_tree.set_root_id(base_tree.path2id(''))
         sub_tree.add('file2', b'file2-id')
         sub_tree.commit('first commit', rev_id=b'subtree-1')
         return base_tree, sub_tree
@@ -59,8 +59,8 @@ class TestWorkingTree(tests.TestCaseWithTransport):
 
     def test_subsume_tree(self):
         base_tree, sub_tree = self.make_trees()
-        self.assertNotEqual(base_tree.get_root_id(), sub_tree.get_root_id())
-        sub_root_id = sub_tree.get_root_id()
+        self.assertNotEqual(base_tree.path2id(''), sub_tree.path2id(''))
+        sub_root_id = sub_tree.path2id('')
         # this test checks the subdir is removed, so it needs to know the
         # control directory; that changes rarely so just hardcode (and check)
         # it is correct.
@@ -94,7 +94,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
 
     def test_subsume_failure(self):
         base_tree, sub_tree = self.make_trees()
-        if base_tree.get_root_id() == sub_tree.get_root_id():
+        if base_tree.path2id('') == sub_tree.path2id(''):
             raise tests.TestSkipped('This test requires unique roots')
         self.assertRaises(errors.BadSubsumeSource, base_tree.subsume,
                           base_tree)

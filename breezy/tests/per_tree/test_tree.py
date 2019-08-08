@@ -21,6 +21,7 @@ from breezy import (
     revisiontree,
     tests,
     )
+from breezy.tree import MissingNestedTree
 from breezy.bzr import (
     workingtree_4,
     )
@@ -82,14 +83,11 @@ class TestReference(TestCaseWithTree):
 
     def create_nested(self):
         work_tree = self.make_branch_and_tree('wt')
-        work_tree.lock_write()
-        try:
+        with work_tree.lock_write():
             self.skip_if_no_reference(work_tree)
             subtree = self.make_branch_and_tree('wt/subtree')
             subtree.commit('foo')
             work_tree.add_reference(subtree)
-        finally:
-            work_tree.unlock()
         tree = self._convert_tree(work_tree)
         self.skip_if_no_reference(tree)
         return tree, subtree
@@ -110,10 +108,19 @@ class TestReference(TestCaseWithTree):
             [u'subtree'],
             list(tree.iter_references()))
 
+    def test_get_nested_tree(self):
+        tree, subtree = self.create_nested()
+        try:
+            changes = subtree.changes_from(tree.get_nested_tree('subtree'))
+            self.assertFalse(changes.has_changed())
+        except MissingNestedTree:
+            # Also okay.
+            pass
+
     def test_get_root_id(self):
         # trees should return some kind of root id; it can be none
         tree = self.make_branch_and_tree('tree')
-        root_id = tree.get_root_id()
+        root_id = tree.path2id('')
         if root_id is not None:
             self.assertIsInstance(root_id, bytes)
 

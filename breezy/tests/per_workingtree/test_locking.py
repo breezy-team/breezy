@@ -148,23 +148,23 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # e.g. mkdir('foo') but all the mutating methods at the
         # moment trigger inventory writes and thus will not
         # let us trigger a read-when-dirty situation.
-        old_root = tree.get_root_id()
+        old_root = tree.path2id('')
         tree.add('')
         # to detect that the inventory is written by unlock, we
         # first check that it was not written yet.
         # TODO: This requires taking a read lock while we are holding the above
         #       write lock, which shouldn't actually be possible
         reference_tree = tree.controldir.open_workingtree()
-        self.assertEqual(old_root, reference_tree.get_root_id())
+        self.assertEqual(old_root, reference_tree.path2id(''))
         # now unlock the second held lock, which should do nothing.
         tree.unlock()
         reference_tree = tree.controldir.open_workingtree()
-        self.assertEqual(old_root, reference_tree.get_root_id())
+        self.assertEqual(old_root, reference_tree.path2id(''))
         # unlocking the first lock we took will now flush.
         tree.unlock()
         # and check it was written using another reference tree
         reference_tree = tree.controldir.open_workingtree()
-        self.assertIsNot(None, reference_tree.get_root_id())
+        self.assertIsNot(None, reference_tree.path2id(''))
 
     def test_unlock_from_tree_write_lock_flushes(self):
         self._test_unlock_with_lock_method("lock_tree_write")

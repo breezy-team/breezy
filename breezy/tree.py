@@ -61,6 +61,14 @@ class FileTimestampUnavailable(errors.BzrError):
         self.path = path
 
 
+class MissingNestedTree(errors.BzrError):
+
+    _fmt = "The nested tree for %(path)s can not be resolved."""
+
+    def __init__(self, path):
+        self.path = path
+
+
 class TreeEntry(object):
     """An entry that implements the minimum interface used by commands.
     """
@@ -349,6 +357,15 @@ class Tree(object):
                 if entry.kind == 'tree-reference':
                     yield path
 
+    def get_nested_tree(self, path):
+        """Open the nested tree at the specified path.
+
+        :param path: Path from which to resolve tree reference.
+        :return: A Tree object for the nested tree
+        :raise MissingNestedTree: If the nested tree can not be resolved
+        """
+        raise NotImplementedError(self.get_nested_tree)
+
     def kind(self, path):
         raise NotImplementedError("Tree subclass %s must implement kind"
                                   % self.__class__.__name__)
@@ -511,10 +528,6 @@ class Tree(object):
         :return: The path the symlink points to.
         """
         raise NotImplementedError(self.get_symlink_target)
-
-    def get_root_id(self):
-        """Return the file_id for the root of this tree."""
-        raise NotImplementedError(self.get_root_id)
 
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):

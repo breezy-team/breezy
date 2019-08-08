@@ -118,7 +118,7 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.source_git_path.encode('utf-8'))
             return urlutils.join_segment_parameters(
                 self._mp.source_git_repository.git_identity,
-                {"branch": branch_name})
+                {"branch": str(branch_name)})
 
     def get_target_branch_url(self):
         if self._mp.target_branch:
@@ -128,7 +128,7 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.target_git_path.encode('utf-8'))
             return urlutils.join_segment_parameters(
                 self._mp.target_git_repository.git_identity,
-                {"branch": branch_name})
+                {"branch": str(branch_name)})
 
     @property
     def url(self):

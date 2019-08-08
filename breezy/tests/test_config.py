@@ -191,7 +191,7 @@ sample_config_text = u"""
 [DEFAULT]
 email=Erik B\u00e5gfors <erik@bagfors.nu>
 editor=vim
-change_editor=vimdiff -of @new_path @old_path
+change_editor=vimdiff -of {new_path} {old_path}
 gpg_signing_key=DD4D5088
 log_format=short
 validate_signatures_in_log=true
@@ -395,6 +395,7 @@ class InstrumentedConfig(config.Config):
         super(InstrumentedConfig, self).__init__()
         self._calls = []
         self._signatures = config.CHECK_NEVER
+        self._change_editor = 'vimdiff -fo {new_path} {old_path}'
 
     def _get_user_id(self):
         self._calls.append('_get_user_id')
@@ -406,7 +407,7 @@ class InstrumentedConfig(config.Config):
 
     def _get_change_editor(self):
         self._calls.append('_get_change_editor')
-        return 'vimdiff -fo @new_path @old_path'
+        return self._change_editor
 
 
 bool_config = b"""[DEFAULT]
@@ -514,7 +515,28 @@ class TestConfig(tests.TestCase):
         change_editor = my_config.get_change_editor('old_tree', 'new_tree')
         self.assertEqual(['_get_change_editor'], my_config._calls)
         self.assertIs(diff.DiffFromTool, change_editor.__class__)
-        self.assertEqual(['vimdiff', '-fo', '@new_path', '@old_path'],
+        self.assertEqual(['vimdiff', '-fo', '{new_path}', '{old_path}'],
+                         change_editor.command_template)
+
+    def test_get_change_editor_implicit_args(self):
+        # If there are no substitution variables, then assume the
+        # old and new path are the last arguments.
+        my_config = InstrumentedConfig()
+        my_config._change_editor = 'vimdiff -o'
+        change_editor = my_config.get_change_editor('old_tree', 'new_tree')
+        self.assertEqual(['_get_change_editor'], my_config._calls)
+        self.assertIs(diff.DiffFromTool, change_editor.__class__)
+        self.assertEqual(['vimdiff', '-o', '{old_path}', '{new_path}'],
+                         change_editor.command_template)
+
+    def test_get_change_editor_old_style(self):
+        # Test the old style format for the change_editor setting.
+        my_config = InstrumentedConfig()
+        my_config._change_editor = 'vimdiff -o @old_path @new_path'
+        change_editor = my_config.get_change_editor('old_tree', 'new_tree')
+        self.assertEqual(['_get_change_editor'], my_config._calls)
+        self.assertIs(diff.DiffFromTool, change_editor.__class__)
+        self.assertEqual(['vimdiff', '-o', '{old_path}', '{new_path}'],
                          change_editor.command_template)
 
 
@@ -1101,7 +1123,7 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         my_config = self._get_sample_config()
         change_editor = my_config.get_change_editor('old', 'new')
         self.assertIs(diff.DiffFromTool, change_editor.__class__)
-        self.assertEqual('vimdiff -of @new_path @old_path',
+        self.assertEqual('vimdiff -of {new_path} {old_path}',
                          ' '.join(change_editor.command_template))
 
     def test_get_no_change_editor(self):

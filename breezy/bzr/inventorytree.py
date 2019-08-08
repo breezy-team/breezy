@@ -51,6 +51,7 @@ from ..sixish import (
 from ..tree import (
     FileTimestampUnavailable,
     InterTree,
+    MissingNestedTree,
     Tree,
     TreeChange,
     )
@@ -773,9 +774,9 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def get_reference_revision(self, path):
         return self._path2ie(path).reference_revision
 
-    def get_root_id(self):
-        if self.root_inventory.root:
-            return self.root_inventory.root.file_id
+    def get_nested_tree(self, path):
+        nested_revid = self.get_reference_revision(path)
+        raise MissingNestedTree(path)
 
     def kind(self, path):
         return self._path2ie(path).kind
