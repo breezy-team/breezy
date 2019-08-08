@@ -181,7 +181,7 @@ class GitLabMergeProposal(MergeProposal):
 
     def set_description(self, description):
         self._mr['description'] = description
-        self.gl._update_merge_requests(self._mr)
+        self.gl._update_merge_request(self._mr)
 
     def get_commit_message(self):
         return None
@@ -203,7 +203,7 @@ class GitLabMergeProposal(MergeProposal):
 
     def close(self):
         self._mr['state_event'] = 'close'
-        self.gl._update_merge_requests(self._mr)
+        self.gl._update_merge_request(self._mr)
 
     def merge(self, commit_message=None):
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
@@ -296,6 +296,14 @@ class GitLab(Hoster):
         if response.status == 200:
             return json.loads(response.data)
         raise errors.InvalidHttpResponse(path, response.text)
+
+    def _update_merge_request(self, mr):
+        path = 'projects/%s/merge_requests/%s' % (
+            urlutils.quote(str(mr['id']), ''), mr['merge_request_iid'])
+        response = self._api_request('PUT', path, data=json.dumps(mr))
+        if response.status == 200:
+            return json.loads(response.data)
+        raise InvalidHttpResponse(path, response.text)
 
     def _create_mergerequest(
             self, title, source_project_id, target_project_id,
