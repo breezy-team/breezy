@@ -209,6 +209,14 @@ class GitLabMergeProposal(MergeProposal):
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
         self._mr.merge(merge_commit_message=commit_message)
 
+    def can_be_merged(self):
+        if self._mr['merge_status'] == 'cannot_be_merged':
+            return False
+        elif self._mr['merge_status'] == 'can_be_merged':
+            return True
+        else:
+            raise ValueError(self._mr['merge_status'])
+
 
 def gitlab_url_to_bzr_url(url, name):
     if not PY3:
@@ -230,10 +238,10 @@ class GitLab(Hoster):
     def base_url(self):
         return self.transport.base
 
-    def _api_request(self, method, path):
+    def _api_request(self, method, path, fields=None):
         return self.transport.request(
             method, urlutils.join(self.base_url, 'api', 'v4', path),
-            headers=self.headers)
+            headers=self.headers, fields=fields)
 
     def __init__(self, transport, private_token):
         self.transport = transport
@@ -247,21 +255,32 @@ class GitLab(Hoster):
             raise NoSuchProject(project_name)
         if response.status == 200:
             return json.loads(response.data)
-        raise InvalidHttpResponse(path, response.text)
+        raise errors.InvalidHttpResponse(path, response.text)
 
-    def _fork_project(self, project_name):
+    def _fork_project(self, project_name, poll_interval=5):
         path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
         response = self._api_request('POST', path)
-        if response != 200:
-            raise InvalidHttpResponse(path, response.text)
-        return json.loads(response.data)
+        if response.status not in (200, 201):
+            raise errors.InvalidHttpResponse(path, response.text)
+        # The response should be valid JSON, but let's ignore it
+        json.loads(response.data)
+        # Spin and wait until import_status for new project
+        # is complete.
+        for i in range(10):
+            project = self._get_project(project_name)
+            if project['import_status'] == 'none':
+                return project
+            print('import status is %s' % project['import_status'])
+            # TODO(jelmer): make this configurable?
+            time.sleep(poll_interval)
+        raise Exception('timeout waiting for project to become available')
 
     def _get_logged_in_username(self):
         return self._current_user['username']
 
     def _list_merge_requests(self, owner=None, project=None, state=None):
         if project is not None:
-            path = 'projects/%s/merge_requests' % urlutils.quote(str(project_name), '')
+            path = 'projects/%s/merge_requests' % urlutils.quote(str(project), '')
         else:
             path = 'merge_requests'
         parameters = {}
@@ -276,27 +295,29 @@ class GitLab(Hoster):
             raise errors.PermissionDenied(response.text)
         if response.status == 200:
             return json.loads(response.data)
-        raise InvalidHttpResponse(path, response.text)
+        raise errors.InvalidHttpResponse(path, response.text)
 
     def _create_mergerequest(
             self, title, source_project_id, target_project_id,
             source_branch_name, target_branch_name, description,
             labels=None):
         path = 'projects/%s/merge_requests' % source_project_id
-        response = self._api_request(
-            'POST', path, fields={
-                'title': title,
-                'source_branch': source_branch_name,
-                'target_branch': target_branch_name,
-                'target_project_id': target_project_id,
-                'description': description,
-                'labels': labels})
+        fields = {
+            'title': title,
+            'source_branch': source_branch_name,
+            'target_branch': target_branch_name,
+            'target_project_id': target_project_id,
+            'description': description,
+            }
+        if labels:
+            fields['labels'] = labels
+        response = self._api_request('POST', path, fields=fields)
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
             raise MergeProposalExists(self.source_branch.user_url)
-        if response.status == 200:
-            raise InvalidHttpResponse(path, response.text)
+        if response.status != 201:
+            raise errors.InvalidHttpResponse(path, response.text)
         return json.loads(response.data)
 
     def get_push_url(self, branch):
@@ -317,8 +338,6 @@ class GitLab(Hoster):
             target_project = self._get_project('%s/%s' % (owner, project))
         except NoSuchProject:
             target_project = self._fork_project(base_project)
-            # TODO(jelmer): Spin and wait until import_status for new project
-            # is complete.
         remote_repo_url = git_url_to_bzr_url(target_project['ssh_url_to_repo'])
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         try:
@@ -361,7 +380,7 @@ class GitLab(Hoster):
         source_project = self._get_project(source_project_name)
         target_project = self._get_project(target_project_name)
         state = mp_status_to_status(status)
-        for mr in self.gl._list_merge_requests(
+        for mr in self._list_merge_requests(
                 project=target_project['id'], state=state):
             if (mr['source_project_id'] != source_project['id'] or
                     mr['source_branch'] != source_branch_name or
@@ -436,7 +455,7 @@ class GitLab(Hoster):
 
 class GitlabMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, l, source_branch, target_branch):
+    def __init__(self, gl, source_branch, target_branch):
         self.gl = gl
         self.source_branch = source_branch
         (self.source_host, self.source_project_name, self.source_branch_name) = (
@@ -481,8 +500,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             'title': title,
             'source_project_id': source_project['id'],
             'target_project_id': target_project['id'],
-            'source_branch': self.source_branch_name,
-            'target_branch': self.target_branch_name,
+            'source_branch_name': self.source_branch_name,
+            'target_branch_name': self.target_branch_name,
             'description': description}
         if labels:
             kwargs['labels'] = ','.join(labels)

@@ -430,11 +430,11 @@ class TransportRepo(BaseRepo):
             refs_container = InfoRefsContainer(BytesIO(refs_text))
             try:
                 head = TransportRefsContainer(
-                    self._commontransport).read_loose_ref("HEAD")
+                    self._commontransport).read_loose_ref(b"HEAD")
             except KeyError:
                 pass
             else:
-                refs_container._refs["HEAD"] = head
+                refs_container._refs[b"HEAD"] = head
         else:
             refs_container = TransportRefsContainer(
                 self._commontransport, self._controltransport)

@@ -351,8 +351,13 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         from .transportgit import TransportRepo
 
         def _open(transport):
-            return TransportRepo(transport, self.bare,
-                                 refs_text=getattr(self, "_refs_text", None))
+            try:
+                return TransportRepo(transport, self.bare,
+                                     refs_text=getattr(self, "_refs_text", None))
+            except ValueError as e:
+                if e.args == ('Expected file to start with \'gitdir: \'', ):
+                    raise brz_errors.NotBranchError(path=transport.base)
+                raise
 
         def redirected(transport, e, redirection_notice):
             trace.note(redirection_notice)

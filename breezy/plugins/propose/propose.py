@@ -139,6 +139,13 @@ class MergeProposal(object):
         """Merge this merge proposal."""
         raise NotImplementedError(self.merge)
 
+    def can_be_merged(self):
+        """Can this merge proposal be merged?
+
+        The answer to this can be no if e.g. it has conflics.
+        """
+        raise NotImplementedError(self.can_be_merged)
+
 
 class MergeProposalBuilder(object):
     """Merge proposal creator.
