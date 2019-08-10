@@ -67,6 +67,7 @@ from ..upstream import (
     UpstreamProvider,
     UpstreamSource,
     UScanSource,
+    UScanError,
     extract_tarball_version,
     gather_orig_files,
     new_tarball_name,
@@ -420,6 +421,19 @@ ftp://ftp.samba.org/pub/tdb/tdb-(.+).tar.gz</warnings>
 """
         self.assertEquals("1.2.9",
             UScanSource._xml_report_extract_upstream_version(text))
+
+    def test__xml_report_extract_upstream_version_errors(self):
+        text = b"""
+<dehs>
+blahf =>
+<package>tdb</package>
+<debian-uversion>1.2.8</debian-uversion>
+<errors>something something signature</errors>
+</dehs>
+"""
+        self.assertRaises(
+            UScanError,
+            UScanSource._xml_report_extract_upstream_version, text)
 
 
 class GuessUpstreamRevspecTests(TestCase):

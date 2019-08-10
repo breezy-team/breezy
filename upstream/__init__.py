@@ -22,11 +22,10 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
 
-from ....errors import NoSuchFile
+from ....errors import BzrError, NoSuchFile
 from .... import osutils
 from ....export import export
 from ....trace import (
@@ -166,6 +165,14 @@ class AptSource(UpstreamSource):
         return True
 
 
+class UScanError(BzrError):
+
+    _fmt = "UScan failed to run: %(errors)s."
+
+    def __init__(self, errors):
+        self.errors = errors
+
+
 class UScanSource(UpstreamSource):
     """Upstream source that uses uscan."""
 
@@ -203,8 +210,15 @@ class UScanSource(UpstreamSource):
             warning(unescape(m.group(1).decode()))
 
     @staticmethod
+    def _xml_report_extract_errors(text):
+        from xml.sax.saxutils import unescape
+        for m in re.finditer(b"<errors>(.*)</errors>", text):
+            raise UScanError(unescape(m.group(1).decode()))
+
+    @staticmethod
     def _xml_report_extract_upstream_version(text):
         UScanSource._xml_report_extract_warnings(text)
+        UScanSource._xml_report_extract_errors(text)
         from xml.sax.saxutils import unescape
         # uscan --dehs's output isn't well-formed XML, so let's fall back to
         # regexes instead..
@@ -216,6 +230,7 @@ class UScanSource(UpstreamSource):
     @staticmethod
     def _xml_report_extract_target_paths(text):
         UScanSource._xml_report_extract_warnings(text)
+        UScanSource._xml_report_extract_errors(text)
         from xml.sax.saxutils import unescape
         return [
             unescape(m.group(1).decode())
