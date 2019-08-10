@@ -62,7 +62,8 @@ def fixup_broken_git_url(url):
             path = path[5:]
         new_url = urlutils.urlparse.urlunparse(
             (scheme, netloc, path, params, query, fragment))
-        warning('Fixing up URL: %s -> %s', url, new_url)
+        if url != new_url:
+            warning('Fixing up URL: %s -> %s', url, new_url)
         return new_url
     return url
 
