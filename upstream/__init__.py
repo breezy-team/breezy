@@ -22,6 +22,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 
@@ -199,8 +200,14 @@ class UScanSource(UpstreamSource):
     def _run_dehs_uscan(args, cwd):
         p = subprocess.Popen(
             ["uscan", "--dehs"] + args,
-            stdout=subprocess.PIPE, cwd=cwd)
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
         (stdout, stderr) = p.communicate()
+        if b'</dehs>' not in stdout:
+            error = stderr.decode()
+            if error.startswith('uscan error '):
+                error = error[len('uscan error '):]
+            raise UScanError(error)
+        sys.stderr.write(stderr.decode())
         return stdout, p.returncode
 
     @staticmethod
