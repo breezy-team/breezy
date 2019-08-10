@@ -831,6 +831,14 @@ class GetRevisionSnapshotTests(TestCase):
     def test_with_svn_snapshot_plus(self):
         self.assertEquals("svn:2424", get_snapshot_revision("0.4.4+svn2424"))
 
+    def test_git(self):
+        self.assertEquals(
+            "date:20190101",
+            get_snapshot_revision("0.4.4+git20190101"))
+        self.assertEquals(
+            "git:abc1def",
+            get_snapshot_revision("0.4.4+git20190101.abc1def"))
+
 
 class TestIsUpstreamTag(TestCase):
 

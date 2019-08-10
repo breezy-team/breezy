@@ -29,6 +29,7 @@ import tempfile
 from ....errors import BzrError, NoSuchFile
 from .... import osutils
 from ....export import export
+from ....sixish import PY3
 from ....trace import (
     note,
     warning,
@@ -207,7 +208,10 @@ class UScanSource(UpstreamSource):
             if error.startswith('uscan error '):
                 error = error[len('uscan error '):]
             raise UScanError(error)
-        sys.stderr.write(stderr.decode())
+        if PY3:
+            sys.stderr.write(stderr.decode())
+        else:
+            sys.stderr.write(stderr)
         return stdout, p.returncode
 
     @staticmethod
