@@ -145,8 +145,6 @@ class GitCommitBuilder(CommitBuilder):
                 yield change.path[1], (entry.text_sha1, st)
             if self._mapping.generate_file_id(encoded_new_path) != change.file_id:
                 self._override_fileids[encoded_new_path] = change.file_id
-            else:
-                self._override_fileids[encoded_new_path] = None
         if not seen_root and len(self.parents) == 0:
             raise RootMissing()
         if getattr(workingtree, "basis_tree", False):
@@ -163,32 +161,8 @@ class GitCommitBuilder(CommitBuilder):
                 continue
             self._blobs[entry.path] = (entry.mode, entry.sha)
         if not self._lossy:
-            try:
-                fileid_map = dict(basis_tree._fileid_map.file_ids)
-            except AttributeError:
-                fileid_map = {}
-            for path, file_id in viewitems(self._override_fileids):
-                if not isinstance(path, bytes):
-                    raise TypeError(path)
-                if file_id is None:
-                    if path in fileid_map:
-                        del fileid_map[path]
-                else:
-                    if not isinstance(file_id, bytes):
-                        raise TypeError(file_id)
-                    fileid_map[path] = file_id
-            if fileid_map:
-                fileid_blob = self._mapping.export_fileid_map(fileid_map)
-            else:
-                fileid_blob = None
-            if fileid_blob is not None:
-                if self._mapping.BZR_FILE_IDS_FILE is None:
-                    raise SettingCustomFileIdsUnsupported(fileid_map)
-                self.store.add_object(fileid_blob)
-                self._blobs[self._mapping.BZR_FILE_IDS_FILE] = (
-                    stat.S_IFREG | 0o644, fileid_blob.id)
-            else:
-                self._blobs[self._mapping.BZR_FILE_IDS_FILE] = None
+            if self._override_fileids:
+                raise SettingCustomFileIdsUnsupported(self._override_fileids)
         self.new_inventory = None
 
     def update_basis(self, tree):

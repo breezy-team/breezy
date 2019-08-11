@@ -316,9 +316,8 @@ brz: ERROR: No changes to commit.\
         this_tree.commit('create_files')
         other_dir = this_tree.controldir.sprout('other')
         other_tree = other_dir.open_workingtree()
-        other_tree.lock_write()
-        # perform the needed actions on the files and dirs.
-        try:
+        with other_tree.lock_write():
+            # perform the needed actions on the files and dirs.
             other_tree.rename_one('dirtorename', 'renameddir')
             other_tree.rename_one('dirtoreparent', 'renameddir/reparenteddir')
             other_tree.rename_one('filetorename', 'renamedfile')
@@ -332,8 +331,6 @@ brz: ERROR: No changes to commit.\
             other_tree.add('newfile')
             other_tree.add('newdir/')
             other_tree.commit('modify all sample files and dirs.')
-        finally:
-            other_tree.unlock()
         this_tree.merge_from_branch(other_tree.branch)
         out, err = self.run_bzr('commit -m added', working_dir='this')
         self.assertEqual('', out)

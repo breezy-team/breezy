@@ -1761,7 +1761,7 @@ class SmartServerCommandTests(tests.TestCaseWithTransport):
         self.assertEqual(None, response.body)
 
     def test_get_bundle(self):
-        from breezy.bundle import serializer
+        from breezy.bzr.bundle import serializer
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([('hello', b'hello world')])
         wt.add('hello')

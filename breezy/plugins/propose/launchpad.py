@@ -118,7 +118,7 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.source_git_path.encode('utf-8'))
             return urlutils.join_segment_parameters(
                 self._mp.source_git_repository.git_identity,
-                {"branch": branch_name})
+                {"branch": str(branch_name)})
 
     def get_target_branch_url(self):
         if self._mp.target_branch:
@@ -128,7 +128,7 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.target_git_path.encode('utf-8'))
             return urlutils.join_segment_parameters(
                 self._mp.target_git_repository.git_identity,
-                {"branch": branch_name})
+                {"branch": str(branch_name)})
 
     @property
     def url(self):
@@ -188,7 +188,7 @@ class Launchpad(Hoster):
             lp_base_url = uris.STAGING_SERVICE_ROOT
         else:
             lp_base_url = uris.LPNET_SERVICE_ROOT
-        self.launchpad = lp_api.connect_launchpad(lp_base_url)
+        self.launchpad = lp_api.connect_launchpad(lp_base_url, version='devel')
 
     @property
     def base_url(self):
@@ -541,7 +541,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                 commit_message=commit_message,
                 reviewers=[self.launchpad.people[reviewer].self_link
                            for reviewer in reviewers],
-                review_types=[None for reviewer in reviewers])
+                review_types=['' for reviewer in reviewers])
         except WebserviceFailure as e:
             # Urgh.
             if (b'There is already a branch merge proposal '

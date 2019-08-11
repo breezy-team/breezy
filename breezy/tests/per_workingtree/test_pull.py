@@ -33,9 +33,9 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
 
     def test_pull_null(self):
         tree_a, tree_b, rev_a = self.get_pullable_trees()
-        root_id = tree_a.get_root_id()
+        root_id = tree_a.path2id('')
         tree_a.pull(tree_b.branch, stop_revision=NULL_REVISION, overwrite=True)
-        self.assertEqual(root_id, tree_a.get_root_id())
+        self.assertEqual(root_id, tree_a.path2id(''))
 
     def test_pull(self):
         tree_a, tree_b, rev_a = self.get_pullable_trees()
@@ -66,11 +66,11 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
         tree.add(['file'])
         tree.commit('first')
         to_tree = tree.controldir.sprout('to').open_workingtree()
-        self.assertEqual(b'first_root_id', to_tree.get_root_id())
+        self.assertEqual(b'first_root_id', to_tree.path2id(''))
         tree.set_root_id(b'second_root_id')
         tree.commit('second')
         to_tree.pull(tree.branch)
-        self.assertEqual(b'second_root_id', to_tree.get_root_id())
+        self.assertEqual(b'second_root_id', to_tree.path2id(''))
 
 
 class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):

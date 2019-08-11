@@ -41,14 +41,11 @@ class TestLogFormats(tests.TestCaseWithTransport):
             self.fail("%s exists" % conf_path)
 
         bedding.ensure_config_dir_exists()
-        f = open(conf_path, 'wb')
-        try:
+        with open(conf_path, 'wb') as f:
             f.write(b"""[DEFAULT]
 email=Joe Foo <joe@foo.com>
 log_format=line
 """)
-        finally:
-            f.close()
 
     def _make_simple_branch(self, relpath='.'):
         wt = self.make_branch_and_tree(relpath)

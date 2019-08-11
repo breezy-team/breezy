@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for Tree.get_root_id()"""
+"""Tests for Tree.path2id('')"""
 
 from breezy.tests.per_tree import TestCaseWithTree
 
@@ -40,9 +40,9 @@ class TestGetRootID(TestCaseWithTree):
     def test_get_root_id_default(self):
         tree = self.make_tree_with_default_root_id()
         with tree.lock_read():
-            self.assertIsNot(None, tree.get_root_id())
+            self.assertIsNot(None, tree.path2id(''))
 
     def test_get_root_id_fixed(self):
         tree = self.make_tree_with_fixed_root_id()
         with tree.lock_read():
-            self.assertEqual(b'custom-tree-root-id', tree.get_root_id())
+            self.assertEqual(b'custom-tree-root-id', tree.path2id(''))

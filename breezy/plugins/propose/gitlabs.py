@@ -123,6 +123,16 @@ def iter_tokens():
         yield name, section
 
 
+def get_credentials_by_url(url):
+    for name, credentials in iter_tokens():
+        if 'url' not in credentials:
+            continue
+        if credentials['url'].rstrip('/') == url.rstrip('/'):
+            return credentials
+    else:
+        return None
+
+
 def parse_gitlab_url(url):
     (scheme, user, password, host, port, path) = urlutils.parse_url(
         url)
@@ -220,10 +230,10 @@ class GitLab(Hoster):
     def base_url(self):
         return self.transport.base
 
-    def _api_request(self, method, path):
+    def _api_request(self, method, path, data=None):
         return self.transport.request(
             method, urlutils.join(self.base_url, 'api', 'v4', path),
-            headers=self.headers)
+            headers=self.headers, body=data)
 
     def __init__(self, transport, private_token):
         self.transport = transport
@@ -231,19 +241,19 @@ class GitLab(Hoster):
         self.check()
 
     def _get_project(self, project_name):
-        path = 'projects/:%s' % urlutils.quote(str(project_name), '')
+        path = 'projects/%s' % urlutils.quote(str(project_name), '')
         response = self._api_request('GET', path)
         if response.status == 404:
             raise NoSuchProject(project_name)
         if response.status == 200:
             return json.loads(response.data)
-        raise InvalidHttpResponse(path, response.text)
+        raise errors.InvalidHttpResponse(path, response.text)
 
     def _fork_project(self, project_name):
-        path = 'projects/:%s/fork' % urlutils.quote(str(project_name), '')
+        path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
         response = self._api_request('POST', path)
-        if response != 200:
-            raise InvalidHttpResponse(path, response.text)
+        if response != 201:
+            raise errors.InvalidHttpResponse(path, response.text)
         return json.loads(response.data)
 
     def _get_logged_in_username(self):
@@ -251,7 +261,7 @@ class GitLab(Hoster):
 
     def _list_merge_requests(self, owner=None, project=None, state=None):
         if project is not None:
-            path = 'projects/:%s/merge_requests' % urlutils.quote(str(project_name), '')
+            path = 'projects/%s/merge_requests' % urlutils.quote(str(project), '')
         else:
             path = 'merge_requests'
         parameters = {}
@@ -266,27 +276,30 @@ class GitLab(Hoster):
             raise errors.PermissionDenied(response.text)
         if response.status == 200:
             return json.loads(response.data)
-        raise InvalidHttpResponse(path, response.text)
+        raise errors.InvalidHttpResponse(path, response.text)
 
     def _create_mergerequest(
             self, title, source_project_id, target_project_id,
             source_branch_name, target_branch_name, description,
             labels=None):
-        path = 'projects/:%s/merge_requests' % source_project_id
+        path = 'projects/%s/merge_requests' % source_project_id
+        fields = {
+            'title': title,
+            'source_branch': source_branch_name,
+            'target_branch': target_branch_name,
+            'target_project_id': target_project_id,
+            'description': description,
+            }
+        if labels:
+            fields['labels'] = labels
         response = self._api_request(
-            'POST', path, fields={
-                'title': title,
-                'source_branch': source_branch_name,
-                'target_branch': target_branch_name,
-                'target_project_id': target_project_id,
-                'description': description,
-                'labels': labels})
+            'POST', path, data=json.dumps(fields).encode('utf-8'))
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
             raise MergeProposalExists(self.source_branch.user_url)
-        if response.status == 200:
-            raise InvalidHttpResponse(path, response.text)
+        if response.status != 201:
+            raise errors.InvalidHttpResponse(path, response.text)
         return json.loads(response.data)
 
     def get_push_url(self, branch):
@@ -351,7 +364,7 @@ class GitLab(Hoster):
         source_project = self._get_project(source_project_name)
         target_project = self._get_project(target_project_name)
         state = mp_status_to_status(status)
-        for mr in self.gl._list_merge_requests(
+        for mr in self._list_merge_requests(
                 project=target_project['id'], state=state):
             if (mr['source_project_id'] != source_project['id'] or
                     mr['source_branch'] != source_branch_name or
@@ -387,7 +400,10 @@ class GitLab(Hoster):
             raise UnsupportedHoster(url)
         transport = get_transport(
             'https://%s' % host, possible_transports=possible_transports)
-        return cls(transport)
+        credentials = get_credentials_by_url(transport.base)
+        if credentials is not None:
+            return cls(transport, credentials.get('private_token'))
+        raise UnsupportedHoster(url)
 
     @classmethod
     def iter_instances(cls):
@@ -410,20 +426,20 @@ class GitLab(Hoster):
         except NotGitLabUrl:
             raise UnsupportedHoster(url)
         except NotMergeRequestUrl as e:
-            if self.gl.url == ('https://%s' % e.host):
+            if self.base_url == ('https://%s' % e.host):
                 raise
             else:
                 raise UnsupportedHoster(url)
-        if self.gl.url != ('https://%s' % host):
+        if self.base_url != ('https://%s' % host):
             raise UnsupportedHoster(url)
-        project = self.gl.projects.get(project)
+        project = self._get_project(project)
         mr = project.mergerequests.get(merge_id)
         return GitLabMergeProposal(mr)
 
 
 class GitlabMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, l, source_branch, target_branch):
+    def __init__(self, gl, source_branch, target_branch):
         self.gl = gl
         self.source_branch = source_branch
         (self.source_host, self.source_project_name, self.source_branch_name) = (
@@ -468,8 +484,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             'title': title,
             'source_project_id': source_project['id'],
             'target_project_id': target_project['id'],
-            'source_branch': self.source_branch_name,
-            'target_branch': self.target_branch_name,
+            'source_branch_name': self.source_branch_name,
+            'target_branch_name': self.target_branch_name,
             'description': description}
         if labels:
             kwargs['labels'] = ','.join(labels)
