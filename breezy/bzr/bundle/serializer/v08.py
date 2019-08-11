@@ -19,28 +19,28 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from .... import (
     errors,
     ui,
     )
-from breezy.bundle.serializer import (
+from . import (
     BundleSerializer,
     _get_bundle_header,
+    binary_diff,
     )
-from breezy.bundle.serializer import binary_diff
-from breezy.bundle.bundle_data import (
+from ..bundle_data import (
     RevisionInfo,
     BundleInfo,
     )
-from breezy.diff import internal_diff
-from breezy.revision import NULL_REVISION
-from breezy.sixish import text_type
-from breezy.bzr.testament import StrictTestament
-from breezy.timestamp import (
+from ....diff import internal_diff
+from ....revision import NULL_REVISION
+from ....sixish import text_type
+from ...testament import StrictTestament
+from ....timestamp import (
     format_highres_date,
     )
-from breezy.textfile import text_file
-from breezy.trace import mutter
+from ....textfile import text_file
+from ....trace import mutter
 
 bool_text = {True: 'yes', False: 'no'}
 

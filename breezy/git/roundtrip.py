@@ -147,30 +147,3 @@ def inject_bzr_metadata(message, commit_supplement, encoding):
     if not isinstance(rt_data, bytes):
         raise TypeError(rt_data)
     return message + b"\n--BZR--\n" + rt_data
-
-
-def serialize_fileid_map(file_ids):
-    """Serialize a fileid map.
-
-    :param file_ids: Path -> fileid map
-    :return: Serialized fileid map, as sequence of chunks
-    """
-    lines = []
-    for path in sorted(file_ids.keys()):
-        lines.append(b"%s\0%s\n" % (path.encode('utf-8'), file_ids[path]))
-    return lines
-
-
-def deserialize_fileid_map(filetext):
-    """Deserialize a file id map.
-
-    :param file: File
-    :return: Fileid map (path -> fileid)
-    """
-    ret = {}
-    f = BytesIO(filetext)
-    lines = f.readlines()
-    for l in lines:
-        (path, file_id) = l.rstrip(b"\n").split(b"\0")
-        ret[path.decode('utf-8')] = file_id
-    return ret

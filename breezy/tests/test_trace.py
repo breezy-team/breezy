@@ -332,6 +332,22 @@ class TestTrace(TestCase):
             sys.stderr.getvalue(),
             "failed to open trace file: .* '/no-such-dir/brz.log'$")
 
+    def test__open_brz_log_ignores_cache_dir_error(self):
+        # If the cache directory can not be created and _open_brz_log can thus
+        # not open the file, then we should write the warning to stderr. Since
+        # this is normally happening before logging is set up.
+        self.overrideAttr(sys, 'stderr', StringIO())
+        # Set the cache directory to something that cannot exist
+        self.overrideEnv('BRZ_LOG', None)
+        self.overrideEnv('BRZ_HOME', '/no-such-dir')
+        self.overrideEnv('XDG_CACHE_HOME', '/no-such-dir')
+        self.overrideAttr(trace, '_brz_log_filename')
+        logf = trace._open_brz_log()
+        self.assertIs(None, logf)
+        self.assertContainsRe(
+            sys.stderr.getvalue(),
+            "failed to open trace file: .* '/no-such-dir'$")
+
 
 class TestVerbosityLevel(TestCase):
 

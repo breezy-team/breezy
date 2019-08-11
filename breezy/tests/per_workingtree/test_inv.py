@@ -53,7 +53,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('.')
         wt.lock_write()
         self.addCleanup(wt.unlock)
-        root_id = wt.get_root_id()
+        root_id = wt.path2id('')
         wt.apply_inventory_delta([(None, 'bar/foo', b'foo-id',
                                    inventory.InventoryFile(b'foo-id', 'foo', parent_id=b'bar-id')),
                                   (None, 'bar', b'bar-id', inventory.InventoryDirectory(b'bar-id',
@@ -74,7 +74,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
     def test_rename_dir_with_children(self):
         wt = self.make_branch_and_tree('.')
         wt.lock_write()
-        root_id = wt.get_root_id()
+        root_id = wt.path2id('')
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar'])
         wt.add(['foo', 'foo/bar'],
@@ -88,7 +88,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
     def test_rename_dir_with_children_with_children(self):
         wt = self.make_branch_and_tree('.')
         wt.lock_write()
-        root_id = wt.get_root_id()
+        root_id = wt.path2id('')
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar/', 'foo/bar/baz'])
         wt.add(['foo', 'foo/bar', 'foo/bar/baz'],
@@ -118,7 +118,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         """
         wt = self.make_branch_and_tree('.')
         wt.lock_write()
-        root_id = wt.get_root_id()
+        root_id = wt.path2id('')
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar', 'baz/', 'baz/qux'])
         wt.add(['foo', 'foo/bar', 'baz', 'baz/qux'],
@@ -137,7 +137,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
          unable to find the child.)
         """
         wt = self.make_branch_and_tree('.')
-        root_id = wt.get_root_id()
+        root_id = wt.path2id('')
         self.build_tree(['dir/', 'dir/child', 'other/'])
         wt.add(['dir', 'dir/child', 'other'],
                [b'dir-id', b'child-id', b'other-id'])
@@ -155,7 +155,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         wt.lock_write()
         self.addCleanup(wt.unlock)
 
-        root_id = wt.get_root_id()
+        root_id = wt.path2id('')
         wt.apply_inventory_delta([('', None, root_id, None),
                                   (None, '', b'root-id',
                                    inventory.InventoryDirectory(b'root-id', '', None))])

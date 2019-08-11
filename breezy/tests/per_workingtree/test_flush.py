@@ -26,11 +26,8 @@ class TestFlush(TestCaseWithWorkingTree):
 
     def test_flush_fresh_tree(self):
         tree = self.make_branch_and_tree('t1')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree.flush()
-        finally:
-            tree.unlock()
 
     def test_flush_when_inventory_is_modified(self):
         if sys.platform == "win32":
@@ -49,30 +46,24 @@ class TestFlush(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         # prepare for a series of changes that will modify the
         # inventory
-        tree.lock_write()
-        try:
-            old_root = tree.get_root_id()
+        with tree.lock_write():
+            old_root = tree.path2id('')
             tree.add('')
             # to detect that the inventory is written by flush, we
             # first check that it was not written yet.
             reference_tree = tree.controldir.open_workingtree()
-            self.assertEqual(old_root, reference_tree.get_root_id())
+            self.assertEqual(old_root, reference_tree.path2id(''))
             # now flush the tree which should write the inventory.
             tree.flush()
             # and check it was written using another reference tree
             reference_tree = tree.controldir.open_workingtree()
-            self.assertIsNot(None, reference_tree.get_root_id())
-        finally:
-            tree.unlock()
+            self.assertIsNot(None, reference_tree.path2id(''))
 
     def test_flush_with_read_lock_fails(self):
         """Flush cannot be used during a read lock."""
         tree = self.make_branch_and_tree('t1')
-        tree.lock_read()
-        try:
+        with tree.lock_read():
             self.assertRaises(errors.NotWriteLocked, tree.flush)
-        finally:
-            tree.unlock()
 
     def test_flush_with_no_lock_fails(self):
         tree = self.make_branch_and_tree('t1')
