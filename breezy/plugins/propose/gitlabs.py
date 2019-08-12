@@ -31,6 +31,7 @@ from ... import (
     )
 from ...git.urls import git_url_to_bzr_url
 from ...sixish import PY3
+from ...trace import mutter
 from ...transport import get_transport
 
 from .propose import (
@@ -264,7 +265,7 @@ class GitLab(Hoster):
             return json.loads(response.data)
         raise errors.InvalidHttpResponse(path, response.text)
 
-    def _fork_project(self, project_name, poll_interval=5):
+    def _fork_project(self, project_name, timeout=50, interval=5):
         path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
         response = self._api_request('POST', path)
         if response.status not in (200, 201):
@@ -273,14 +274,15 @@ class GitLab(Hoster):
         json.loads(response.data)
         # Spin and wait until import_status for new project
         # is complete.
-        for i in range(10):
+        deadline = time.time() + timeout
+        while True:
             project = self._get_project(project_name)
             if project['import_status'] in ('finished', 'none'):
                 return project
-            print('import status is %s' % project['import_status'])
-            # TODO(jelmer): make this configurable?
-            time.sleep(poll_interval)
-        raise Exception('timeout waiting for project to become available')
+            mutter('import status is %s', project['import_status'])
+            if time.time() > deadline:
+                raise Exception('timeout waiting for project to become available')
+            time.sleep(interval)
 
     def _get_logged_in_username(self):
         return self._current_user['username']
