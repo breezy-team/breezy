@@ -117,6 +117,8 @@ class GitHubMergeProposal(MergeProposal):
         return self._pr['html_url']
 
     def _branch_from_part(self, part):
+        if part['repo'] is None:
+            return None
         return github_url_to_bzr_url(part['repo']['html_url'], part['ref'])
 
     def get_source_branch_url(self):
@@ -137,7 +139,7 @@ class GitHubMergeProposal(MergeProposal):
     def _patch(self, data):
         response = self._gh._api_request(
             'PATCH', self._pr['url'], body=json.dumps(data).encode('utf-8'))
-        if response != 200:
+        if response.status != 200:
             raise InvalidHttpResponse(self._pr['url'], response.text)
         self._pr = json.loads(response.text)
 
@@ -152,6 +154,9 @@ class GitHubMergeProposal(MergeProposal):
 
     def close(self):
         self._patch({'state': 'closed'})
+
+    def can_be_merged(self):
+        return self._pr['mergeable']
 
     def merge(self, commit_message=None):
         # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
@@ -199,7 +204,7 @@ class GitHub(Hoster):
             headers['Authorization'] = 'token %s' % self._token
         response = self.transport.request(
             method, urlutils.join(self.transport.base, path),
-            headers=headers, body=body)
+            headers=headers, body=body, retries=3)
         if response.status == 401:
             raise GitHubLoginRequired(self)
         return response

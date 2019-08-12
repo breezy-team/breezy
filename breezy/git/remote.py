@@ -777,7 +777,7 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
             client = transport._get_client()
         elif split_url.scheme in ("http", "https"):
             client = BzrGitHttpClient(transport)
-        elif split_url.scheme in 'file':
+        elif split_url.scheme in ('file', ):
             client = dulwich.client.LocalGitClient()
         else:
             raise NotBranchError(transport.base)

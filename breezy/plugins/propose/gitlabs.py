@@ -20,6 +20,7 @@ from __future__ import absolute_import
 
 import json
 import os
+import time
 
 from ... import (
     bedding,
@@ -30,6 +31,7 @@ from ... import (
     )
 from ...git.urls import git_url_to_bzr_url
 from ...sixish import PY3
+from ...trace import mutter
 from ...transport import get_transport
 
 from .propose import (
@@ -172,6 +174,9 @@ class GitLabMergeProposal(MergeProposal):
         self.gl = gl
         self._mr = mr
 
+    def _update(self, **kwargs):
+        self.gl._update_merge_request(self._mr['project_id'], self._mr['iid'], kwargs)
+
     @property
     def url(self):
         return self._mr['web_url']
@@ -180,13 +185,17 @@ class GitLabMergeProposal(MergeProposal):
         return self._mr['description']
 
     def set_description(self, description):
-        self._mr['description'] = description
-        self.gl._update_merge_requests(self._mr)
+        self._update(description=description, title=description.splitlines()[0])
 
     def get_commit_message(self):
-        return None
+        return self._mr.get('merge_commit_message')
+
+    def set_commit_message(self, message):
+        raise errors.UnsupportedOperation(self.set_commit_message, self)
 
     def _branch_url_from_project(self, project_id, branch_name):
+        if project_id is None:
+            return None
         project = self.gl._get_project(project_id)
         return gitlab_url_to_bzr_url(project['http_url_to_repo'], branch_name)
 
@@ -202,12 +211,19 @@ class GitLabMergeProposal(MergeProposal):
         return (self._mr['state'] == 'merged')
 
     def close(self):
-        self._mr['state_event'] = 'close'
-        self.gl._update_merge_requests(self._mr)
+        self._update(state_event='close')
 
     def merge(self, commit_message=None):
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
         self._mr.merge(merge_commit_message=commit_message)
+
+    def can_be_merged(self):
+        if self._mr['merge_status'] == 'cannot_be_merged':
+            return False
+        elif self._mr['merge_status'] == 'can_be_merged':
+            return True
+        else:
+            raise ValueError(self._mr['merge_status'])
 
 
 def gitlab_url_to_bzr_url(url, name):
@@ -230,10 +246,10 @@ class GitLab(Hoster):
     def base_url(self):
         return self.transport.base
 
-    def _api_request(self, method, path, data=None):
+    def _api_request(self, method, path, fields=None):
         return self.transport.request(
             method, urlutils.join(self.base_url, 'api', 'v4', path),
-            headers=self.headers, body=data)
+            headers=self.headers, fields=fields)
 
     def __init__(self, transport, private_token):
         self.transport = transport
@@ -249,12 +265,24 @@ class GitLab(Hoster):
             return json.loads(response.data)
         raise errors.InvalidHttpResponse(path, response.text)
 
-    def _fork_project(self, project_name):
+    def _fork_project(self, project_name, timeout=50, interval=5):
         path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
         response = self._api_request('POST', path)
-        if response != 201:
+        if response.status not in (200, 201):
             raise errors.InvalidHttpResponse(path, response.text)
-        return json.loads(response.data)
+        # The response should be valid JSON, but let's ignore it
+        json.loads(response.data)
+        # Spin and wait until import_status for new project
+        # is complete.
+        deadline = time.time() + timeout
+        while True:
+            project = self._get_project(project_name)
+            if project['import_status'] in ('finished', 'none'):
+                return project
+            mutter('import status is %s', project['import_status'])
+            if time.time() > deadline:
+                raise Exception('timeout waiting for project to become available')
+            time.sleep(interval)
 
     def _get_logged_in_username(self):
         return self._current_user['username']
@@ -278,6 +306,14 @@ class GitLab(Hoster):
             return json.loads(response.data)
         raise errors.InvalidHttpResponse(path, response.text)
 
+    def _update_merge_request(self, project_id, iid, mr):
+        path = 'projects/%s/merge_requests/%s' % (
+            urlutils.quote(str(project_id), ''), iid)
+        response = self._api_request('PUT', path, fields=mr)
+        if response.status == 200:
+            return json.loads(response.data)
+        raise errors.InvalidHttpResponse(path, response.text)
+
     def _create_mergerequest(
             self, title, source_project_id, target_project_id,
             source_branch_name, target_branch_name, description,
@@ -292,8 +328,7 @@ class GitLab(Hoster):
             }
         if labels:
             fields['labels'] = labels
-        response = self._api_request(
-            'POST', path, data=json.dumps(fields).encode('utf-8'))
+        response = self._api_request('POST', path, fields=fields)
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
@@ -320,8 +355,6 @@ class GitLab(Hoster):
             target_project = self._get_project('%s/%s' % (owner, project))
         except NoSuchProject:
             target_project = self._fork_project(base_project)
-            # TODO(jelmer): Spin and wait until import_status for new project
-            # is complete.
         remote_repo_url = git_url_to_bzr_url(target_project['ssh_url_to_repo'])
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         try:
