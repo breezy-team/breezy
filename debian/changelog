@@ -1,10 +1,10 @@
-breezy-debian (2.8.29) UNRELEASED; urgency=medium
+breezy-debian (2.8.29) unstable; urgency=medium
 
   * Support substitutions in gbp tag format.
   * Properly propagate errors from uscan rather than just reporting
     'package could not be found'.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 07 Aug 2019 23:58:37 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 19 Aug 2019 08:12:02 +0000
 
 breezy-debian (2.8.28) unstable; urgency=medium
 
