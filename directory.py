@@ -48,8 +48,11 @@ def fixup_broken_git_url(url):
         host, port = host.rsplit(':', 1)
         if not port or port.isdigit():
             return url
+    else:
+        port = None
+
     if host in ('salsa.debian.org', 'github.com'):
-        if '/' not in path[1:]:
+        if '/' not in path[1:] and port:
             path = '%s/%s' % (port, path.lstrip('/'))
         netloc = host
         if ":" in netloc:
