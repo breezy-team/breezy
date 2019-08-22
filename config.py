@@ -27,7 +27,7 @@ from ...config import (
   ConfigObj,
   TreeConfig,
   )
-from ...errors import NoSuchFile
+from ...errors import BzrError, NoSuchFile
 from ...trace import mutter, warning
 
 
@@ -58,6 +58,14 @@ class SvnBuildPackageMappedConfig(object):
     return None
 
 
+class UpstreamMetadataSyntaxError(BzrError):
+  """There is a syntax error in the debian/upstream/metadata file."""
+
+  def __init__(self, path, error):
+    self.path = path
+    self.error = error
+
+
 class UpstreamMetadataConfig(object):
   """Config object that represents debian/upstream/metadata.
   """
@@ -65,7 +73,10 @@ class UpstreamMetadataConfig(object):
   filename = 'debian/upstream/metadata'
 
   def __init__(self, text):
-    self.metadata = yaml.safe_load(text)
+    try:
+      self.metadata = yaml.safe_load(text)
+    except yaml.scanner.ScannerError as e:
+      raise UpstreamMetadataSyntaxError('debian/upstream/metadata', e)
 
   def get_value(self, section, option):
     if section == "BUILDDEB":
