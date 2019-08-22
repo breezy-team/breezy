@@ -20,6 +20,8 @@
 from __future__ import absolute_import
 
 import re
+import shutil
+import tempfile
 
 from .propose import (
     Hoster,
@@ -73,7 +75,7 @@ def plausible_launchpad_url(url):
     if url.startswith('lp:'):
         return True
     regex = re.compile(r'([a-z]*\+)*(bzr\+ssh|http|ssh|git|https)'
-                       r'://(bazaar|git).*.launchpad.net')
+                       r'://(bazaar|git).*\.launchpad\.net')
     return bool(regex.match(url))
 
 
@@ -116,7 +118,7 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.source_git_path.encode('utf-8'))
             return urlutils.join_segment_parameters(
                 self._mp.source_git_repository.git_identity,
-                {"branch": branch_name})
+                {"branch": str(branch_name)})
 
     def get_target_branch_url(self):
         if self._mp.target_branch:
@@ -126,7 +128,7 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.target_git_path.encode('utf-8'))
             return urlutils.join_segment_parameters(
                 self._mp.target_git_repository.git_identity,
-                {"branch": branch_name})
+                {"branch": str(branch_name)})
 
     @property
     def url(self):
@@ -142,8 +144,32 @@ class LaunchpadMergeProposal(MergeProposal):
         self._mp.description = description
         self._mp.lp_save()
 
+    def get_commit_message(self):
+        return self._mp.commit_message
+
+    def set_commit_message(self, commit_message):
+        self._mp.commit_message = commit_message
+        self._mp.lp_save()
+
     def close(self):
         self._mp.setStatus(status='Rejected')
+
+    def merge(self, commit_message=None):
+        target_branch = _mod_branch.Branch.open(
+            self.get_target_branch_url())
+        source_branch = _mod_branch.Branch.open(
+            self.get_source_branch_url())
+        # TODO(jelmer): Ideally this would use a memorytree, but merge doesn't
+        # support that yet.
+        # tree = target_branch.create_memorytree()
+        tmpdir = tempfile.mkdtemp()
+        try:
+            tree = target_branch.create_checkout(
+                to_location=tmpdir, lightweight=True)
+            tree.merge_from_branch(source_branch)
+            tree.commit(commit_message or self._mp.commit_message)
+        finally:
+            shutil.rmtree(tmpdir)
 
 
 class Launchpad(Hoster):
@@ -154,13 +180,15 @@ class Launchpad(Hoster):
     # https://bugs.launchpad.net/launchpad/+bug/397676
     supports_merge_proposal_labels = False
 
+    supports_merge_proposal_commit_message = True
+
     def __init__(self, staging=False):
         self._staging = staging
         if staging:
             lp_base_url = uris.STAGING_SERVICE_ROOT
         else:
             lp_base_url = uris.LPNET_SERVICE_ROOT
-        self.launchpad = lp_api.connect_launchpad(lp_base_url)
+        self.launchpad = lp_api.connect_launchpad(lp_base_url, version='devel')
 
     @property
     def base_url(self):
@@ -175,10 +203,10 @@ class Launchpad(Hoster):
         return plausible_launchpad_url(branch.user_url)
 
     @classmethod
-    def probe(cls, branch):
-        if plausible_launchpad_url(branch.user_url):
+    def probe_from_url(cls, url, possible_transports=None):
+        if plausible_launchpad_url(url):
             return Launchpad()
-        raise UnsupportedHoster(branch)
+        raise UnsupportedHoster(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
         url, params = urlutils.split_segment_parameters(branch.user_url)
@@ -391,16 +419,32 @@ class Launchpad(Hoster):
         for mp in self.launchpad.me.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
 
+    def get_proposal_by_url(self, url):
+        # Launchpad doesn't have a way to find a merge proposal by URL.
+        (scheme, user, password, host, port, path) = urlutils.parse_url(
+            url)
+        LAUNCHPAD_CODE_DOMAINS = [
+            ('code.%s' % domain) for domain in lp_api.LAUNCHPAD_DOMAINS.values()]
+        if host not in LAUNCHPAD_CODE_DOMAINS:
+            raise UnsupportedHoster(url)
+        # TODO(jelmer): Check if this is a launchpad URL. Otherwise, raise
+        # UnsupportedHoster
+        # See https://api.launchpad.net/devel/#branch_merge_proposal
+        # the syntax is:
+        # https://api.launchpad.net/devel/~<author.name>/<project.name>/<branch.name>/+merge/<id>
+        api_url = str(self.launchpad._root_uri) + path
+        mp = self.launchpad.load(api_url)
+        return LaunchpadMergeProposal(mp)
+
 
 class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, lp_host, source_branch, target_branch, message=None,
+    def __init__(self, lp_host, source_branch, target_branch,
                  staging=None, approve=None, fixes=None):
         """Constructor.
 
         :param source_branch: The branch to propose for merging.
         :param target_branch: The branch to merge into.
-        :param message: The commit message to use.  (May be None.)
         :param staging: If True, propose the merge against staging instead of
             production.
         :param approve: If True, mark the new proposal as approved immediately.
@@ -421,14 +465,11 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
             self.target_branch = target_branch
             self.target_branch_lp = self.launchpad.branches.getByUrl(
                 url=target_branch.user_url)
-        self.commit_message = message
         self.approve = approve
         self.fixes = fixes
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
-        if self.commit_message is not None:
-            return self.commit_message.strip().encode('utf-8')
         info = ["Source: %s\n" % self.source_branch_lp.bzr_identity]
         info.append("Target: %s\n" % self.target_branch_lp.bzr_identity)
         return ''.join(info)
@@ -480,10 +521,10 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                              revid=self.source_branch.last_revision())
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None):
+                        prerequisite_branch=None, commit_message=None):
         """Perform the submission."""
         if labels:
-            raise LabelsUnsupported()
+            raise LabelsUnsupported(self)
         if prerequisite_branch is not None:
             prereq = self.launchpad.branches.getByUrl(
                 url=prerequisite_branch.user_url)
@@ -497,10 +538,10 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                 target_branch=self.target_branch_lp,
                 prerequisite_branch=prereq,
                 initial_comment=description.strip(),
-                commit_message=self.commit_message,
+                commit_message=commit_message,
                 reviewers=[self.launchpad.people[reviewer].self_link
                            for reviewer in reviewers],
-                review_types=[None for reviewer in reviewers])
+                review_types=['' for reviewer in reviewers])
         except WebserviceFailure as e:
             # Urgh.
             if (b'There is already a branch merge proposal '
@@ -521,13 +562,12 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
 class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
 
-    def __init__(self, lp_host, source_branch, target_branch, message=None,
+    def __init__(self, lp_host, source_branch, target_branch,
                  staging=None, approve=None, fixes=None):
         """Constructor.
 
         :param source_branch: The branch to propose for merging.
         :param target_branch: The branch to merge into.
-        :param message: The commit message to use.  (May be None.)
         :param staging: If True, propose the merge against staging instead of
             production.
         :param approve: If True, mark the new proposal as approved immediately.
@@ -549,14 +589,11 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
             self.target_branch = target_branch
             (self.target_repo_lp, self.target_branch_lp) = (
                 self.lp_host._get_lp_git_ref_from_branch(target_branch))
-        self.commit_message = message
         self.approve = approve
         self.fixes = fixes
 
     def get_infotext(self):
         """Determine the initial comment for the merge proposal."""
-        if self.commit_message is not None:
-            return self.commit_message.strip().encode('utf-8')
         info = ["Source: %s\n" % self.source_branch.user_url]
         info.append("Target: %s\n" % self.target_branch.user_url)
         return ''.join(info)
@@ -609,10 +646,10 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 revid=self.source_branch.last_revision())
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None):
+                        prerequisite_branch=None, commit_message=None):
         """Perform the submission."""
         if labels:
-            raise LabelsUnsupported()
+            raise LabelsUnsupported(self)
         if prerequisite_branch is not None:
             (prereq_repo_lp, prereq_branch_lp) = (
                 self.lp_host._get_lp_git_ref_from_branch(prerequisite_branch))
@@ -626,7 +663,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
                 merge_target=self.target_branch_lp,
                 merge_prerequisite=prereq_branch_lp,
                 initial_comment=description.strip(),
-                commit_message=self.commit_message,
+                commit_message=commit_message,
                 needs_review=True,
                 reviewers=[self.launchpad.people[reviewer].self_link
                            for reviewer in reviewers],
@@ -650,7 +687,6 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
 
 def modified_files(old_tree, new_tree):
     """Return a list of paths in the new tree with modified contents."""
-    for f, (op, path), c, v, p, n, (ok, k), e in new_tree.iter_changes(
-            old_tree):
-        if c and k == 'file':
+    for change in new_tree.iter_changes(old_tree):
+        if change.changed_content and change.kind[1] == 'file':
             yield str(path)

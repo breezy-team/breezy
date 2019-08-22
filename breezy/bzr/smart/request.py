@@ -53,7 +53,7 @@ from ...sixish import text_type
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.bzr import bzrdir
-from breezy.bundle import serializer
+from breezy.bzr.bundle import serializer
 
 import tempfile
 """)

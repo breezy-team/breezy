@@ -224,7 +224,6 @@ class Proposer(object):
 
 def modified_files(old_tree, new_tree):
     """Return a list of paths in the new tree with modified contents."""
-    for f, (op, path), c, v, p, n, (ok, k), e in new_tree.iter_changes(
-            old_tree):
-        if c and k == 'file':
+    for change in new_tree.iter_changes(old_tree):
+        if change.changed_content and change.kind[1] == 'file':
             yield str(path)

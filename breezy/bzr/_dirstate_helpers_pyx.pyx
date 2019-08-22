@@ -31,6 +31,7 @@ import sys
 from .. import cache_utf8, errors, osutils
 from .dirstate import DirState, DirstateCorrupt
 from ..osutils import parent_directories, pathjoin, splitpath, is_inside_any, is_inside
+from ..tree import TreeChange
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -1293,7 +1294,7 @@ cdef class ProcessEntryC:
                     else:
                         path_u = self.utf8_decode(path)[0]
                 source_kind = _minikind_to_kind(source_minikind)
-                return (entry[0][2],
+                return TreeChange(entry[0][2],
                        (old_path_u, path_u),
                        content_change,
                        (True, True),
@@ -1326,7 +1327,7 @@ cdef class ProcessEntryC:
                         and S_IXUSR & path_info[3].st_mode)
                 else:
                     target_exec = target_details[3]
-                return (entry[0][2],
+                return TreeChange(entry[0][2],
                        (None, self.utf8_decode(path)[0]),
                        True,
                        (False, True),
@@ -1336,7 +1337,7 @@ cdef class ProcessEntryC:
                        (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
-                return (entry[0][2],
+                return TreeChange(entry[0][2],
                        (None, self.utf8_decode(path)[0]),
                        False,
                        (False, True),
@@ -1354,7 +1355,8 @@ cdef class ProcessEntryC:
             parent_id = self.state._get_entry(self.source_index, path_utf8=entry[0][0])[0][2]
             if parent_id == entry[0][2]:
                 parent_id = None
-            return (entry[0][2],
+            return TreeChange(
+                   entry[0][2],
                    (self.utf8_decode(old_path)[0], None),
                    True,
                    (True, False),
@@ -1551,7 +1553,8 @@ cdef class ProcessEntryC:
                 new_executable = bool(
                     stat.S_ISREG(self.root_dir_info[3].st_mode)
                     and stat.S_IEXEC & self.root_dir_info[3].st_mode)
-                return (None,
+                return TreeChange(
+                       None,
                        (None, self.current_root_unicode),
                        True,
                        (False, False),
@@ -1662,7 +1665,8 @@ cdef class ProcessEntryC:
                             new_executable = bool(
                                 stat.S_ISREG(current_path_info[3].st_mode)
                                 and stat.S_IEXEC & current_path_info[3].st_mode)
-                            return (None,
+                            return TreeChange(
+                                None,
                                 (None, self.utf8_decode(current_path_info[0])[0]),
                                 True,
                                 (False, False),
@@ -1831,7 +1835,8 @@ cdef class ProcessEntryC:
                             if changed is not None:
                                 raise AssertionError(
                                     "result is not None: %r" % result)
-                            result = (None,
+                            result = TreeChange(
+                                None,
                                 (None, relpath_unicode),
                                 True,
                                 (False, False),

@@ -38,7 +38,7 @@ from .sixish import (
     text_type,
     )
 from .trace import warning
-from .transform import TreeTransform, resolve_conflicts, cook_conflicts
+from .transform import resolve_conflicts, cook_conflicts
 from .transport import get_transport
 from .workingtree import WorkingTree
 
@@ -232,12 +232,9 @@ def import_dir(tree, dir_input):
 
 
 def import_archive(tree, archive_file):
-    tt = TreeTransform(tree)
-    try:
+    with tree.get_transform() as tt:
         import_archive_to_transform(tree, archive_file, tt)
         tt.apply()
-    finally:
-        tt.finalize()
 
 
 def import_archive_to_transform(tree, archive_file, tt):

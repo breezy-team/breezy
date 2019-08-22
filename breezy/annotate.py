@@ -32,18 +32,17 @@ import time
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+
+import patiencediff
+
 from breezy import (
-    patiencediff,
+    errors,
     tsort,
     )
 """)
 from . import (
+    config,
     osutils,
-    )
-from .config import (
-    NoEmailInUsername,
-    NoWhoami,
-    extract_email_address,
     )
 from .repository import _strip_NULL_ghosts
 from .revision import (
@@ -86,7 +85,7 @@ def annotate_file_tree(tree, path, to_file, verbose=False, full=False,
         current_rev.parent_ids = tree.get_parent_ids()
         try:
             current_rev.committer = branch.get_config_stack().get('email')
-        except NoWhoami:
+        except errors.NoWhoami:
             current_rev.committer = 'local user'
         current_rev.message = "?"
         current_rev.timestamp = round(time.time(), 3)
@@ -219,10 +218,9 @@ def _expand_annotations(annotations, branch, current_rev=None):
             # a lazy way to get something like the email address
             # TODO: Get real email address
             author = rev.get_apparent_authors()[0]
-            try:
-                author = extract_email_address(author)
-            except NoEmailInUsername:
-                pass        # use the whole name
+            _, email = config.parse_username(author)
+            if email:
+                author = email
         yield (revno_str, author, date_str, origin, text)
 
 

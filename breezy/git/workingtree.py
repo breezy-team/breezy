@@ -79,7 +79,6 @@ from .tree import (
     MutableGitIndexTree,
     )
 from .mapping import (
-    GitFileIdMap,
     mode_kind,
     )
 
@@ -208,6 +207,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.case_sensitive = True
         else:
             self.case_sensitive = False
+
+    def get_transform(self, pb=None):
+        from ..transform import TreeTransform
+        return TreeTransform(self, pb=pb)
 
     def merge_modified(self):
         return {}
@@ -350,23 +353,22 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
             # Bail out if we are going to delete files we shouldn't
             if not keep_files and not force:
-                for (file_id, path, content_change, versioned, parent_id, name,
-                     kind, executable) in self.iter_changes(
-                         self.basis_tree(), include_unchanged=True,
-                         require_versioned=False, want_unversioned=True,
-                         specific_files=files):
-                    if versioned[0] is False:
+                for change in self.iter_changes(
+                        self.basis_tree(), include_unchanged=True,
+                        require_versioned=False, want_unversioned=True,
+                        specific_files=files):
+                    if change.versioned[0] is False:
                         # The record is unknown or newly added
-                        files_to_backup.append(path[1])
+                        files_to_backup.append(change.path[1])
                         files_to_backup.extend(
-                            osutils.parent_directories(path[1]))
-                    elif (content_change and (kind[1] is not None)
-                            and osutils.is_inside_any(files, path[1])):
+                            osutils.parent_directories(change.path[1]))
+                    elif (change.changed_content and (change.kind[1] is not None)
+                            and osutils.is_inside_any(files, change.path[1])):
                         # Versioned and changed, but not deleted, and still
                         # in one of the dirs to be deleted.
-                        files_to_backup.append(path[1])
+                        files_to_backup.append(change.path[1])
                         files_to_backup.extend(
-                            osutils.parent_directories(path[1]))
+                            osutils.parent_directories(change.path[1]))
 
             for f in files:
                 if f == '':
@@ -414,7 +416,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         # expand any symlinks in the directory part, while leaving the
         # filename alone
         # only expanding if symlinks are supported avoids windows path bugs
-        if osutils.has_symlinks():
+        if self.supports_symlinks():
             file_list = list(map(osutils.normalizepath, file_list))
 
         conflicts_related = set()
@@ -568,8 +570,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     except OSError as e:
                         if e.errno == errno.ENOENT:
                             raise errors.NoSuchFile(fullpath)
-                    if (kind == 'directory' and f != '' and
-                            os.path.exists(os.path.join(fullpath, '.git'))):
+                    if f != '' and self._directory_is_tree_reference(f):
                         kind = 'tree-reference'
                     kinds[pos] = kind
 
@@ -601,7 +602,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return False
 
     def had_id(self, file_id):
-        path = self._basis_fileid_map.lookup_path(file_id)
+        try:
+            path = self.mapping.parse_file_id(file_id)
+        except ValueError:
+            return False
         try:
             head = self.repository._git.head()
         except KeyError:
@@ -680,14 +684,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             raise errors.GhostRevisionUnusableHere(revid)
 
     def _reset_data(self):
-        try:
-            head = self.repository._git.head()
-        except KeyError:
-            self._basis_fileid_map = GitFileIdMap({}, self.mapping)
-        else:
-            self._basis_fileid_map = self.mapping.get_fileid_map(
-                self.store.__getitem__, self.store[head].tree)
-        self._fileid_map = self._basis_fileid_map.copy()
+        pass
 
     def get_file_verifier(self, path, stat_value=None):
         with self.lock_read():
@@ -743,8 +740,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def is_executable(self, path):
         with self.lock_read():
-            if getattr(self, "_supports_executable",
-                       osutils.supports_executable)():
+            if self._supports_executable():
                 mode = self._lstat(path).st_mode
             else:
                 (index, subpath) = self._lookup_index(path.encode('utf-8'))
@@ -755,10 +751,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def _is_executable_from_path_and_stat(self, path, stat_result):
-        if getattr(self, "_supports_executable",
-                   osutils.supports_executable)():
-            return self._is_executable_from_path_and_stat_from_stat(
-                path, stat_result)
+        if self._supports_executable():
+            return self._is_executable_from_path_and_stat_from_stat(path, stat_result)
         else:
             return self._is_executable_from_path_and_stat_from_basis(
                 path, stat_result)
@@ -1045,7 +1039,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         prefix = prefix.encode('utf-8')
         per_dir = defaultdict(set)
         if prefix == b"":
-            per_dir[(u'', self.get_root_id())] = set()
+            per_dir[(u'', self.path2id(''))] = set()
 
         def add_entry(path, kind):
             if path == b'' or not path.startswith(prefix):
@@ -1166,7 +1160,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.store,
             None
             if self.branch.head is None
-            else self.store[self.branch.head].tree)
+            else self.store[self.branch.head].tree,
+            honor_filemode=self._supports_executable())
 
     def reset_state(self, revision_ids=None):
         """Reset the state of the working tree.

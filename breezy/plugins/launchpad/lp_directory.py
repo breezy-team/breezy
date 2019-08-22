@@ -63,7 +63,7 @@ def _requires_launchpad_login(scheme, netloc, path, query,
     """
     return (scheme in ('bzr+ssh', 'sftp')
             and (netloc.endswith('launchpad.net') or
-                 netloc.endswith('launchpad.dev')))
+                 netloc.endswith('launchpad.test')))
 
 
 def _expand_user(path, url, lp_login):

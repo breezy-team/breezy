@@ -17,10 +17,6 @@
 import bz2
 from io import BytesIO
 import os
-try:
-    import socketserver
-except ImportError:
-    import SocketServer as socketserver
 import sys
 
 from .. import (
@@ -36,22 +32,18 @@ from ..bzr import (
     bzrdir,
     inventory,
     )
-from ..bundle import read_mergeable_from_url
-from ..bundle.apply_bundle import install_bundle, merge_bundle
-from ..bundle.bundle_data import BundleTree
-from ..directory_service import directories
-from ..bundle.serializer import write_bundle, read_bundle, v09, v4
-from ..bundle.serializer.v08 import BundleSerializerV08
-from ..bundle.serializer.v09 import BundleSerializerV09
-from ..bundle.serializer.v4 import BundleSerializerV4
+from ..bzr.bundle.apply_bundle import install_bundle, merge_bundle
+from ..bzr.bundle.bundle_data import BundleTree
+from ..bzr.bundle.serializer import write_bundle, read_bundle, v09, v4
+from ..bzr.bundle.serializer.v08 import BundleSerializerV08
+from ..bzr.bundle.serializer.v09 import BundleSerializerV09
+from ..bzr.bundle.serializer.v4 import BundleSerializerV4
 from ..bzr import knitrepo
 from . import (
     features,
     test_commit,
-    test_read_bundle,
-    test_server,
     )
-from ..transform import TreeTransform
+from ..tree import find_previous_path
 
 
 def get_text(vf, key):
@@ -595,12 +587,13 @@ class BundleTester(object):
 
         for path, status, kind, entry in base_files:
             # Check that the meta information is the same
+            to_path = find_previous_path(base_tree, to_tree, path)
             self.assertEqual(
                 base_tree.get_file_size(path),
-                to_tree.get_file_size(to_tree.id2path(entry.file_id)))
+                to_tree.get_file_size(to_path))
             self.assertEqual(
-                base_tree.get_file_sha1(path, entry.file_id),
-                to_tree.get_file_sha1(to_tree.id2path(entry.file_id)))
+                base_tree.get_file_sha1(path),
+                to_tree.get_file_sha1(to_path))
             # Check that the contents are the same
             # This is pretty expensive
             # self.assertEqual(base_tree.get_file(fileid).read(),
@@ -624,7 +617,7 @@ class BundleTester(object):
             ])
         self.build_tree_contents([('b1/sub/sub/emptyfile.txt', b''),
                                   ('b1/dir/nolastnewline.txt', b'bloop')])
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         tt.new_file('executable', tt.root, [b'#!/bin/sh\n'], b'exe-1', True)
         tt.apply()
         # have to fix length of file-id so that we can predictably rewrite
@@ -644,7 +637,7 @@ class BundleTester(object):
         self.tree1.remove(
             ['sub/sub/nonempty.txt', 'sub/sub/emptyfile.txt', 'sub/sub'
              ])
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('executable')
         tt.set_executability(False, trans_id)
         tt.apply()
@@ -705,7 +698,7 @@ class BundleTester(object):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         tt.new_symlink(link_name, tt.root, link_target, link_id)
         tt.apply()
         self.tree1.commit('add symlink', rev_id=b'l@cset-0-1')
@@ -716,7 +709,7 @@ class BundleTester(object):
             self.assertEqual(
                 link_target, bund_tree.get_symlink_target(link_name))
 
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path(link_name)
         tt.adjust_path('link2', tt.root, trans_id)
         tt.delete_contents(trans_id)
@@ -730,7 +723,7 @@ class BundleTester(object):
             self.assertEqual(new_link_target,
                              bund_tree.get_symlink_target('link2'))
 
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('link2')
         tt.delete_contents(trans_id)
         tt.create_symlink('jupiter', trans_id)
@@ -738,7 +731,7 @@ class BundleTester(object):
         self.tree1.commit('just change symlink target', rev_id=b'l@cset-0-3')
         bundle = self.get_valid_bundle(b'l@cset-0-2', b'l@cset-0-3')
 
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('link2')
         tt.delete_contents(trans_id)
         tt.apply()
@@ -757,7 +750,7 @@ class BundleTester(object):
     def test_binary_bundle(self):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
 
         # Add
         tt.new_file('file', tt.root, [
@@ -769,7 +762,7 @@ class BundleTester(object):
         self.get_valid_bundle(b'null:', b'b@cset-0-1')
 
         # Delete
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('file')
         tt.delete_contents(trans_id)
         tt.apply()
@@ -777,7 +770,7 @@ class BundleTester(object):
         self.get_valid_bundle(b'b@cset-0-1', b'b@cset-0-2')
 
         # Rename & modify
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('file2')
         tt.adjust_path('file3', tt.root, trans_id)
         tt.delete_contents(trans_id)
@@ -787,7 +780,7 @@ class BundleTester(object):
         self.get_valid_bundle(b'b@cset-0-2', b'b@cset-0-3')
 
         # Modify
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('file3')
         tt.delete_contents(trans_id)
         tt.create_file([b'\x00file\rcontents'], trans_id)
@@ -801,12 +794,12 @@ class BundleTester(object):
     def test_last_modified(self):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         tt.new_file('file', tt.root, [b'file'], b'file')
         tt.apply()
         self.tree1.commit('create file', rev_id=b'a@lmod-0-1')
 
-        tt = TreeTransform(self.tree1)
+        tt = self.tree1.get_transform()
         trans_id = tt.trans_id_tree_path('file')
         tt.delete_contents(trans_id)
         tt.create_file([b'file2'], trans_id)
@@ -814,7 +807,7 @@ class BundleTester(object):
         self.tree1.commit('modify text', rev_id=b'a@lmod-0-2a')
 
         other = self.get_checkout(b'a@lmod-0-1')
-        tt = TreeTransform(other)
+        tt = other.get_transform()
         trans_id = tt.trans_id_tree_path('file2')
         tt.delete_contents(trans_id)
         tt.create_file([b'file2'], trans_id)
@@ -1362,7 +1355,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
 
         :return: The in-memory bundle
         """
-        from ..bundle import serializer
+        from ..bzr.bundle import serializer
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = self.get_raw(BytesIO(b''.join(bundle_txt)))
         new_text = new_text.replace(b'<file file_id="exe-1"',
@@ -1489,7 +1482,7 @@ class V4_2aBundleTester(V4BundleTester):
 
         :return: The in-memory bundle
         """
-        from ..bundle import serializer
+        from ..bzr.bundle import serializer
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = self.get_raw(BytesIO(b''.join(bundle_txt)))
         # We are going to be replacing some text to set the executable bit on a
@@ -1836,63 +1829,3 @@ class TestBundleWriterReader(tests.TestCase):
         self.assertEqual((None, {b'foo': b'bar', b'storage_kind': b'header'},
                           'info', None, None), record)
         self.assertRaises(errors.BadBundle, next, record_iter)
-
-
-class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
-
-    def test_read_mergeable_skips_local(self):
-        """A local bundle named like the URL should not be read.
-        """
-        out, wt = test_read_bundle.create_bundle_file(self)
-
-        class FooService(object):
-            """A directory service that always returns source"""
-
-            def look_up(self, name, url, purpose=None):
-                return 'source'
-        directories.register('foo:', FooService, 'Testing directory service')
-        self.addCleanup(directories.remove, 'foo:')
-        self.build_tree_contents([('./foo:bar', out.getvalue())])
-        self.assertRaises(errors.NotABundle, read_mergeable_from_url,
-                          'foo:bar')
-
-    def test_infinite_redirects_are_not_a_bundle(self):
-        """If a URL causes TooManyRedirections then NotABundle is raised.
-        """
-        from .blackbox.test_push import RedirectingMemoryServer
-        server = RedirectingMemoryServer()
-        self.start_server(server)
-        url = server.get_url() + 'infinite-loop'
-        self.assertRaises(errors.NotABundle, read_mergeable_from_url, url)
-
-    def test_smart_server_connection_reset(self):
-        """If a smart server connection fails during the attempt to read a
-        bundle, then the ConnectionReset error should be propagated.
-        """
-        # Instantiate a server that will provoke a ConnectionReset
-        sock_server = DisconnectingServer()
-        self.start_server(sock_server)
-        # We don't really care what the url is since the server will close the
-        # connection without interpreting it
-        url = sock_server.get_url()
-        self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
-
-
-class DisconnectingHandler(socketserver.BaseRequestHandler):
-    """A request handler that immediately closes any connection made to it."""
-
-    def handle(self):
-        self.request.close()
-
-
-class DisconnectingServer(test_server.TestingTCPServerInAThread):
-
-    def __init__(self):
-        super(DisconnectingServer, self).__init__(
-            ('127.0.0.1', 0),
-            test_server.TestingTCPServer,
-            DisconnectingHandler)
-
-    def get_url(self):
-        """Return the url of the server"""
-        return "bzr://%s:%d/" % self.server.server_address

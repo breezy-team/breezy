@@ -115,7 +115,7 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
         this.commit('content -> baz')
 
         class QuxMerge(merge.Merge3Merger):
-            def text_merge(self, trans_id, paths, file_id):
+            def text_merge(self, trans_id, paths):
                 self.tt.create_file([b'qux'], trans_id)
         this.merge_from_branch(other.branch, merge_type=QuxMerge)
         self.assertEqual(b'qux', this.get_file_text('foo'))
@@ -166,7 +166,7 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
             inner, to_revision=revs[0], from_revision=b'null:')
         # retain original root id.
         if outer.supports_setting_file_ids():
-            outer.set_root_id(outer.basis_tree().get_root_id())
+            outer.set_root_id(outer.basis_tree().path2id(''))
         outer.commit('merge inner branch')
         outer.mkdir('dir-outer')
         outer.move(['dir', 'file3'], to_dir='dir-outer')

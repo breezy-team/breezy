@@ -20,6 +20,7 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 from breezy import (
+    cleanup,
     config as _mod_config,
     debug,
     memorytree,
@@ -1409,8 +1410,8 @@ class Branch(controldir.ControlComponent):
                                            hardlink=hardlink)
         basis_tree = tree.basis_tree()
         with basis_tree.lock_read():
-            for path, file_id in basis_tree.iter_references():
-                reference_parent = self.reference_parent(path, file_id)
+            for path in basis_tree.iter_references():
+                reference_parent = self.reference_parent(path)
                 reference_parent.create_checkout(
                     tree.abspath(path),
                     basis_tree.get_reference_revision(path), lightweight)
@@ -1423,12 +1424,11 @@ class Branch(controldir.ControlComponent):
         """
         raise NotImplementedError(self.reconcile)
 
-    def reference_parent(self, path, file_id=None, possible_transports=None):
+    def reference_parent(self, path, possible_transports=None):
         """Return the parent branch for a tree-reference file_id
 
-        :param path: The path of the file_id in the tree
-        :param file_id: Optional file_id of the tree reference
-        :return: A branch associated with the file_id
+        :param path: The path of the nested tree in the tree
+        :return: A branch associated with the nested tree
         """
         # FIXME should provide multiple branches, based on config
         return Branch.open(self.controldir.root_transport.clone(path).base,
@@ -1660,6 +1660,10 @@ class BranchFormat(controldir.ControlComponentFormat):
 
     def supports_store_uncommitted(self):
         """True if uncommitted changes can be stored in this branch."""
+        return True
+
+    def stores_revno(self):
+        """True if this branch format store revision numbers."""
         return True
 
 
@@ -2020,7 +2024,12 @@ class BranchPushResult(_Result):
         tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
             if self.old_revid != self.new_revid:
-                note(gettext('Pushed up to revision %d.') % self.new_revno)
+                if self.new_revno is not None:
+                    note(gettext('Pushed up to revision %d.'),
+                         self.new_revno)
+                else:
+                    note(gettext('Pushed up to revision id %s.'),
+                         self.new_revid.decode('utf-8'))
             if tag_updates:
                 note(ngettext('%d tag updated.', '%d tags updated.',
                               len(tag_updates)) % len(tag_updates))
@@ -2222,7 +2231,8 @@ class GenericInterBranch(InterBranch):
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
         """
-        with self.target.lock_write():
+        with cleanup.ExitStack() as exit_stack:
+            exit_stack.enter_context(self.target.lock_write())
             bound_location = self.target.get_bound_location()
             if local and not bound_location:
                 raise errors.LocalRequiresBoundBranch()
@@ -2241,20 +2251,16 @@ class GenericInterBranch(InterBranch):
                 # not pulling from master, so we need to update master.
                 master_branch = self.target.get_master_branch(
                     possible_transports)
-                master_branch.lock_write()
-            try:
-                if master_branch:
-                    # pull from source into master.
-                    master_branch.pull(
-                        self.source, overwrite, stop_revision, run_hooks=False)
-                return self._pull(
-                    overwrite, stop_revision, _hook_master=master_branch,
-                    run_hooks=run_hooks,
-                    _override_hook_target=_override_hook_target,
-                    merge_tags_to_master=not source_is_master)
-            finally:
-                if master_branch:
-                    master_branch.unlock()
+                exit_stack.enter_context(master_branch.lock_write())
+            if master_branch:
+                # pull from source into master.
+                master_branch.pull(
+                    self.source, overwrite, stop_revision, run_hooks=False)
+            return self._pull(
+                overwrite, stop_revision, _hook_master=master_branch,
+                run_hooks=run_hooks,
+                _override_hook_target=_override_hook_target,
+                merge_tags_to_master=not source_is_master)
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
              _override_hook_source_branch=None):

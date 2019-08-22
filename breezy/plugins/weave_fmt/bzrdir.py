@@ -381,11 +381,8 @@ class ConvertBzrDir4To5(Converter):
             self.revisions[rev_id] = rev
 
     def _load_old_inventory(self, rev_id):
-        f = self.branch.repository.inventory_store.get(rev_id)
-        try:
+        with self.branch.repository.inventory_store.get(rev_id) as f:
             old_inv_xml = f.read()
-        finally:
-            f.close()
         inv = xml4.serializer_v4.read_inventory_from_string(old_inv_xml)
         inv.revision_id = rev_id
         rev = self.revisions[rev_id]
@@ -467,11 +464,8 @@ class ConvertBzrDir4To5(Converter):
                 ie.revision = previous_ie.revision
                 return
         if ie.has_text():
-            f = self.branch.repository._text_store.get(ie.text_id)
-            try:
+            with self.branch.repository._text_store.get(ie.text_id) as f:
                 file_lines = f.readlines()
-            finally:
-                f.close()
             w.add_lines(rev_id, previous_revisions, file_lines)
             self.text_count += 1
         else:

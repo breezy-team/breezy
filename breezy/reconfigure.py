@@ -119,30 +119,24 @@ class ReconfigureStackedOn(object):
         # a path relative to itself...
         on_url = urlutils.relative_url(branch.base,
                                        urlutils.normalize_url(stacked_on_url))
-        branch.lock_write()
-        try:
+        with branch.lock_write():
             branch.set_stacked_on_url(on_url)
             if not trace.is_quiet():
                 ui.ui_factory.note(gettext(
                     "{0} is now stacked on {1}\n").format(
                     branch.base, branch.get_stacked_on_url()))
-        finally:
-            branch.unlock()
 
 
 class ReconfigureUnstacked(object):
 
     def apply(self, controldir):
         branch = controldir.open_branch()
-        branch.lock_write()
-        try:
+        with branch.lock_write():
             branch.set_stacked_on_url(None)
             if not trace.is_quiet():
                 ui.ui_factory.note(gettext(
                     "%s is now not stacked\n")
                     % (branch.base,))
-        finally:
-            branch.unlock()
 
 
 class Reconfigure(object):

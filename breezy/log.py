@@ -136,7 +136,6 @@ def find_touching_revisions(repository, last_revision, last_tree, last_path):
 
 def show_log(branch,
              lf,
-             specific_fileid=None,
              verbose=False,
              direction='reverse',
              start_revision=None,
@@ -153,9 +152,6 @@ def show_log(branch,
     make_log_request_dict function.
 
     :param lf: The LogFormatter object showing the output.
-
-    :param specific_fileid: If not None, list only the commits affecting the
-        specified file, rather than all commits.
 
     :param verbose: If True show added/changed/deleted/renamed files.
 
@@ -177,23 +173,12 @@ def show_log(branch,
     :param match: Dictionary of search lists to use when matching revision
       properties.
     """
-    # Convert old-style parameters to new-style parameters
-    if specific_fileid is not None:
-        file_ids = [specific_fileid]
-    else:
-        file_ids = None
     if verbose:
-        if file_ids:
-            delta_type = 'partial'
-        else:
-            delta_type = 'full'
+        delta_type = 'full'
     else:
         delta_type = None
     if show_diff:
-        if file_ids:
-            diff_type = 'partial'
-        else:
-            diff_type = 'full'
+        diff_type = 'full'
     else:
         diff_type = None
 
@@ -213,10 +198,11 @@ def show_log(branch,
         raise errors.InvalidRevisionNumber(end_revision.revno)
 
     # Build the request and execute it
-    rqst = make_log_request_dict(direction=direction, specific_fileids=file_ids,
-                                 start_revision=start_revision, end_revision=end_revision,
-                                 limit=limit, message_search=search,
-                                 delta_type=delta_type, diff_type=diff_type)
+    rqst = make_log_request_dict(
+        direction=direction,
+        start_revision=start_revision, end_revision=end_revision,
+        limit=limit, message_search=search,
+        delta_type=delta_type, diff_type=diff_type)
     Logger(branch, rqst).show(lf)
 
 
@@ -747,13 +733,19 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
     repo = branch.repository
     graph = repo.get_graph()
     if start_rev_id is None and end_rev_id is None:
-        try:
-            br_revno, br_rev_id = branch.last_revision_info()
-        except errors.GhostRevisionsHaveNoRevno:
+        if branch._format.stores_revno() or \
+                config.GlobalStack().get('calculate_revnos'):
+            try:
+                br_revno, br_rev_id = branch.last_revision_info()
+            except errors.GhostRevisionsHaveNoRevno:
+                br_rev_id = branch.last_revision()
+                cur_revno = None
+            else:
+                cur_revno = br_revno
+        else:
             br_rev_id = branch.last_revision()
             cur_revno = None
-        else:
-            cur_revno = br_revno
+
         graph_iter = graph.iter_lefthand_ancestry(br_rev_id,
                                                   (_mod_revision.NULL_REVISION,))
         while True:
@@ -1105,11 +1097,6 @@ def _get_revision_limits(branch, start_revision, end_revision):
             raise TypeError(start_revision)
         end_rev_id = end_revision.rev_id
         end_revno = end_revision.revno
-    if end_revno is None:
-        try:
-            end_revno = branch.revno()
-        except errors.GhostRevisionsHaveNoRevno:
-            end_revno = None
 
     if branch.last_revision() != _mod_revision.NULL_REVISION:
         if (start_rev_id == _mod_revision.NULL_REVISION
@@ -1949,7 +1936,6 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
         to_file.write('Added Revisions:\n')
         show_log(branch,
                  lf,
-                 None,
                  verbose=False,
                  direction='forward',
                  start_revision=base_idx + 1,
@@ -2034,7 +2020,7 @@ def show_branch_change(branch, output, old_revno, old_revision_id):
     if new_history != []:
         output.write('Added Revisions:\n')
         start_revno = new_revno - len(new_history) + 1
-        show_log(branch, lf, None, verbose=False, direction='forward',
+        show_log(branch, lf, verbose=False, direction='forward',
                  start_revision=start_revno)
 
 
@@ -2052,7 +2038,7 @@ def show_flat_log(repository, history, last_revno, lf):
         lf.log_revision(lr)
 
 
-def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
+def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
     """Find file-ids and kinds given a list of files and a revision range.
 
     We search for files at the end of the range. If not found there,
@@ -2062,8 +2048,8 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
     :param file_list: the list of paths given on the command line;
       the first of these can be a branch location or a file path,
       the remainder must be file paths
-    :param add_cleanup: When the branch returned is read locked,
-      an unlock call will be queued to the cleanup.
+    :param exit_stack: When the branch returned is read locked,
+      an unlock call will be queued to the exit stack.
     :return: (branch, info_list, start_rev_info, end_rev_info) where
       info_list is a list of (relative_path, file_id, kind) tuples where
       kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
@@ -2072,7 +2058,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
     from breezy.builtins import _get_revision_range
     tree, b, path = controldir.ControlDir.open_containing_tree_or_branch(
         file_list[0])
-    add_cleanup(b.lock_read().unlock)
+    exit_stack.enter_context(b.lock_read())
     # XXX: It's damn messy converting a list of paths to relative paths when
     # those paths might be deleted ones, they might be on a case-insensitive
     # filesystem and/or they might be in silly locations (like another branch).

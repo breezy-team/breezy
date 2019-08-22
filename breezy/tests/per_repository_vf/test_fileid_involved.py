@@ -277,7 +277,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
     def fileids_altered_by_revision_ids(self, revision_ids):
         """This is a wrapper to strip TREE_ROOT if it occurs"""
         repo = self.branch.repository
-        root_id = self.branch.basis_tree().get_root_id()
+        root_id = self.branch.basis_tree().path2id('')
         result = repo.fileids_altered_by_revision_ids(revision_ids)
         if root_id in result:
             del result[root_id]
@@ -352,7 +352,7 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
         repo.lock_read()
         self.addCleanup(repo.unlock)
         file_ids = repo.fileids_altered_by_revision_ids([revision_id])
-        root_id = main_wt.basis_tree().get_root_id()
+        root_id = main_wt.basis_tree().path2id('')
         if root_id in file_ids:
             self.assertEqual({file_id: {revision_id},
                               root_id: {revision_id}
@@ -431,9 +431,6 @@ def set_executability(wt, path, executable=True):
     os.chmod() doesn't work on windows. But TreeTransform can mark or
     unmark a file as executable.
     """
-    tt = transform.TreeTransform(wt)
-    try:
+    with wt.get_transform() as tt:
         tt.set_executability(executable, tt.trans_id_tree_path(path))
         tt.apply()
-    finally:
-        tt.finalize()

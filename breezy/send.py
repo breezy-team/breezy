@@ -46,8 +46,7 @@ def send(target_branch, revision, public_branch, remember,
         from_, possible_transports=possible_transports)[:2]
     # we may need to write data into branch's repository to calculate
     # the data to send.
-    branch.lock_write()
-    try:
+    with branch.lock_write():
         if output is None:
             config_stack = branch.get_config_stack()
             if mail_to is None:
@@ -143,11 +142,8 @@ def send(target_branch, revision, public_branch, remember,
                     os.mkdir(output, 0o755)
                 for (filename, lines) in directive.to_files():
                     path = os.path.join(output, filename)
-                    outfile = open(path, 'wb')
-                    try:
+                    with open(path, 'wb') as outfile:
                         outfile.writelines(lines)
-                    finally:
-                        outfile.close()
             else:
                 if output == '-':
                     outfile = to_file
@@ -158,8 +154,6 @@ def send(target_branch, revision, public_branch, remember,
                 finally:
                     if outfile is not to_file:
                         outfile.close()
-    finally:
-        branch.unlock()
 
 
 def _send_4(branch, revision_id, target_branch, public_branch,

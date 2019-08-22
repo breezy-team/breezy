@@ -41,8 +41,8 @@ import shutil
 import stat
 
 from breezy import (
+    cleanup,
     conflicts as _mod_conflicts,
-    controldir,
     errors,
     filters as _mod_filters,
     merge,
@@ -56,6 +56,13 @@ from breezy.bzr import (
     )
 """)
 
+from .controldir import (
+    ControlComponent,
+    ControlComponentFormatRegistry,
+    ControlComponentFormat,
+    ControlDir,
+    ControlDirFormat,
+    )
 from . import (
     osutils,
     )
@@ -63,9 +70,6 @@ from .i18n import gettext
 from . import mutabletree
 from .symbol_versioning import deprecated_method, deprecated_in
 from .trace import mutter, note
-
-
-ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
 
 
 class SettingFileIdUnsupported(errors.BzrError):
@@ -78,7 +82,7 @@ class ShelvingUnsupported(errors.BzrError):
     _fmt = "This format does not support shelving changes."
 
 
-class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
+class WorkingTree(mutabletree.MutableTree, ControlComponent):
     """Working copy tree.
 
     :ivar basedir: The root of the tree on disk. This is a unicode path object
@@ -123,6 +127,9 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
     def control_transport(self):
         return self._transport
 
+    def supports_symlinks(self):
+        return osutils.supports_symlinks(self.basedir)
+
     def is_control_filename(self, filename):
         """True if filename is the name of a control file in this tree.
 
@@ -153,10 +160,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         return self._format.supports_merge_modified
 
     def _supports_executable(self):
-        if sys.platform == 'win32':
-            return False
-        # FIXME: Ideally this should check the file system
-        return True
+        return osutils.supports_executable(self.basedir)
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -198,7 +202,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         """
         if path is None:
             path = osutils.getcwd()
-        control = controldir.ControlDir.open(path, _unsupported=_unsupported)
+        control = ControlDir.open(path, _unsupported=_unsupported)
         return control.open_workingtree(unsupported=_unsupported)
 
     @staticmethod
@@ -216,7 +220,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         """
         if path is None:
             path = osutils.getcwd()
-        control, relpath = controldir.ControlDir.open_containing(path)
+        control, relpath = ControlDir.open_containing(path)
         return control.open_workingtree(), relpath
 
     @staticmethod
@@ -293,24 +297,6 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
         Only intended for advanced situations like upgrading part of a controldir.
         """
         return WorkingTree.open(path, _unsupported=True)
-
-    @staticmethod
-    def find_trees(location):
-        def list_current(transport):
-            return [d for d in transport.list_dir('')
-                    if not controldir.is_control_filename(d)]
-
-        def evaluate(controldir):
-            try:
-                tree = controldir.open_workingtree()
-            except errors.NoWorkingTree:
-                return True, None
-            else:
-                return True, tree
-        t = transport.get_transport(location)
-        iterator = controldir.ControlDir.find_controldirs(t, evaluate=evaluate,
-                                                          list_current=list_current)
-        return [tr for tr in iterator if tr is not None]
 
     def __repr__(self):
         return "<%s of %s>" % (self.__class__.__name__,
@@ -413,10 +399,6 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
                 parents.append(revision_id)
         return parents
 
-    def get_root_id(self):
-        """Return the id of this trees root"""
-        raise NotImplementedError(self.get_root_id)
-
     def clone(self, to_controldir, revision_id=None):
         """Duplicate this working tree into to_bzr, including all state.
 
@@ -439,7 +421,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
     def copy_content_into(self, tree, revision_id=None):
         """Copy the current content and user files of this tree into tree."""
         with self.lock_read():
-            tree.set_root_id(self.get_root_id())
+            tree.set_root_id(self.path2id(''))
             if revision_id is None:
                 merge.transform_tree(tree, self)
             else:
@@ -729,31 +711,8 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
     def subsume(self, other_tree):
         raise NotImplementedError(self.subsume)
 
-    def _setup_directory_is_tree_reference(self):
-        if self._branch.repository._format.supports_tree_reference:
-            self._directory_is_tree_reference = \
-                self._directory_may_be_tree_reference
-        else:
-            self._directory_is_tree_reference = \
-                self._directory_is_never_tree_reference
-
-    def _directory_is_never_tree_reference(self, relpath):
-        return False
-
-    def _directory_may_be_tree_reference(self, relpath):
-        # as a special case, if a directory contains control files then
-        # it's a tree reference, except that the root of the tree is not
-        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
-        # TODO: We could ask all the control formats whether they
-        # recognize this directory, but at the moment there's no cheap api
-        # to do that.  Since we probably can only nest bzr checkouts and
-        # they always use this name it's ok for now.  -- mbp 20060306
-        #
-        # FIXME: There is an unhandled case here of a subdirectory
-        # containing .bzr but not a branch; that will probably blow up
-        # when you try to commit it.  It might happen if there is a
-        # checkout in a subdirectory.  This can be avoided by not adding
-        # it.  mbp 20070306
+    def _directory_is_tree_reference(self, relpath):
+        raise NotImplementedError(self._directory_is_tree_reference)
 
     def extract(self, path, format=None):
         """Extract a subtree from this tree.
@@ -879,8 +838,8 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
                         this_tree=self,
                         change_reporter=change_reporter,
                         show_base=show_base)
-                    basis_root_id = basis_tree.get_root_id()
-                    new_root_id = new_basis_tree.get_root_id()
+                    basis_root_id = basis_tree.path2id('')
+                    new_root_id = new_basis_tree.path2id('')
                     if new_root_id is not None and basis_root_id != new_root_id:
                         self.set_root_id(new_root_id)
                 # TODO - dedup parents list with things merged by pull ?
@@ -1036,31 +995,28 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
     def revert(self, filenames=None, old_tree=None, backups=True,
                pb=None, report_changes=False):
         from .conflicts import resolve
-        with self.lock_tree_write():
+        with cleanup.ExitStack() as exit_stack:
+            exit_stack.enter_context(self.lock_tree_write())
             if old_tree is None:
                 basis_tree = self.basis_tree()
-                basis_tree.lock_read()
+                exit_stack.enter_context(basis_tree.lock_read())
                 old_tree = basis_tree
             else:
                 basis_tree = None
-            try:
-                conflicts = transform.revert(self, old_tree, filenames, backups, pb,
-                                             report_changes)
-                if filenames is None and len(self.get_parent_ids()) > 1:
-                    parent_trees = []
-                    last_revision = self.last_revision()
-                    if last_revision != _mod_revision.NULL_REVISION:
-                        if basis_tree is None:
-                            basis_tree = self.basis_tree()
-                            basis_tree.lock_read()
-                        parent_trees.append((last_revision, basis_tree))
-                    self.set_parent_trees(parent_trees)
-                    resolve(self)
-                else:
-                    resolve(self, filenames, ignore_misses=True, recursive=True)
-            finally:
-                if basis_tree is not None:
-                    basis_tree.unlock()
+            conflicts = transform.revert(self, old_tree, filenames, backups, pb,
+                                         report_changes)
+            if filenames is None and len(self.get_parent_ids()) > 1:
+                parent_trees = []
+                last_revision = self.last_revision()
+                if last_revision != _mod_revision.NULL_REVISION:
+                    if basis_tree is None:
+                        basis_tree = self.basis_tree()
+                        exit_stack.enter_context(basis_tree.lock_read())
+                    parent_trees.append((last_revision, basis_tree))
+                self.set_parent_trees(parent_trees)
+                resolve(self)
+            else:
+                resolve(self, filenames, ignore_misses=True, recursive=True)
             return conflicts
 
     def store_uncommitted(self):
@@ -1208,11 +1164,11 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
                 # the working tree is up to date with the branch
                 # we can merge the specified revision from master
                 to_tree = self.branch.repository.revision_tree(revision)
-                to_root_id = to_tree.get_root_id()
+                to_root_id = to_tree.path2id('')
 
                 basis = self.basis_tree()
                 with basis.lock_read():
-                    if (basis.get_root_id() is None or basis.get_root_id() != to_root_id):
+                    if (basis.path2id('') is None or basis.path2id('') != to_root_id):
                         self.set_root_id(to_root_id)
                         self.flush()
 
@@ -1367,7 +1323,7 @@ class WorkingTree(mutabletree.MutableTree, controldir.ControlComponent):
             return next(self.get_canonical_paths([path]))
 
 
-class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
+class WorkingTreeFormatRegistry(ControlComponentFormatRegistry):
     """Registry for working tree formats."""
 
     def __init__(self, other_registry=None):
@@ -1396,7 +1352,7 @@ class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
 format_registry = WorkingTreeFormatRegistry()
 
 
-class WorkingTreeFormat(controldir.ControlComponentFormat):
+class WorkingTreeFormat(ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:

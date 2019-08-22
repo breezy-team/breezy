@@ -51,7 +51,9 @@ from ..sixish import (
 from ..tree import (
     FileTimestampUnavailable,
     InterTree,
+    MissingNestedTree,
     Tree,
+    TreeChange,
     )
 
 
@@ -214,11 +216,12 @@ class InventoryTree(Tree):
                 raise errors.NotADirectory(path)
             return iter(viewvalues(ie.children))
 
-    def _get_plan_merge_data(self, file_id, other, base):
+    def _get_plan_merge_data(self, path, other, base):
         from . import versionedfile
+        file_id = self.path2id(path)
         vf = versionedfile._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(
-            self.id2path(file_id), file_id, vf, b'this:')
+            path, file_id, vf, b'this:')
         last_revision_b = other._get_file_revision(
             other.id2path(file_id), file_id, vf, b'other:')
         if base is None:
@@ -228,7 +231,7 @@ class InventoryTree(Tree):
                 base.id2path(file_id), file_id, vf, b'base:')
         return vf, last_revision_a, last_revision_b, last_revision_base
 
-    def plan_file_merge(self, file_id, other, base=None):
+    def plan_file_merge(self, path, other, base=None):
         """Generate a merge plan based on annotations.
 
         If the file contains uncommitted changes in this tree, they will be
@@ -236,12 +239,12 @@ class InventoryTree(Tree):
         uncommitted changes in the other tree, they will be assigned to the
         'other:' pseudo-revision.
         """
-        data = self._get_plan_merge_data(file_id, other, base)
+        data = self._get_plan_merge_data(path, other, base)
         vf, last_revision_a, last_revision_b, last_revision_base = data
         return vf.plan_merge(last_revision_a, last_revision_b,
                              last_revision_base)
 
-    def plan_file_lca_merge(self, file_id, other, base=None):
+    def plan_file_lca_merge(self, path, other, base=None):
         """Generate a merge plan based lca-newness.
 
         If the file contains uncommitted changes in this tree, they will be
@@ -249,7 +252,7 @@ class InventoryTree(Tree):
         uncommitted changes in the other tree, they will be assigned to the
         'other:' pseudo-revision.
         """
-        data = self._get_plan_merge_data(file_id, other, base)
+        data = self._get_plan_merge_data(path, other, base)
         vf, last_revision_a, last_revision_b, last_revision_base = data
         return vf.plan_lca_merge(last_revision_a, last_revision_b,
                                  last_revision_base)
@@ -453,6 +456,10 @@ class MutableInventoryTree(MutableTree, InventoryTree):
                                          inventory, new_revid)
         self.set_parent_trees([(new_revid, rev_tree)])
 
+    def get_transform(self, pb=None):
+        from ..transform import TreeTransform
+        return TreeTransform(self, pb=pb)
+
 
 class _SmartAddHelper(object):
     """Helper for MutableTree.smart_add."""
@@ -573,7 +580,7 @@ class _SmartAddHelper(object):
         # expand any symlinks in the directory part, while leaving the
         # filename alone
         # only expanding if symlinks are supported avoids windows path bugs
-        if osutils.has_symlinks():
+        if self.tree.supports_symlinks():
             file_list = list(map(osutils.normalizepath, file_list))
 
         user_dirs = {}
@@ -767,9 +774,9 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def get_reference_revision(self, path):
         return self._path2ie(path).reference_revision
 
-    def get_root_id(self):
-        if self.root_inventory.root:
-            return self.root_inventory.root.file_id
+    def get_nested_tree(self, path):
+        nested_revid = self.get_reference_revision(path)
+        raise MissingNestedTree(path)
 
     def kind(self, path):
         return self._path2ie(path).kind
@@ -892,16 +899,15 @@ class InterCHKRevisionTree(InterTree):
         # FIXME: nested tree support
         for result in self.target.root_inventory.iter_changes(
                 self.source.root_inventory):
+            result = TreeChange(*result)
             if specific_file_ids is not None:
-                file_id = result[0]
-                if file_id not in specific_file_ids:
+                if result.file_id not in specific_file_ids:
                     # A change from the whole tree that we don't want to show yet.
                     # We may find that we need to show it for delta consistency, so
                     # stash it.
-                    discarded_changes[result[0]] = result
+                    discarded_changes[result.file_id] = result
                     continue
-                new_parent_id = result[4][1]
-                precise_file_ids.add(new_parent_id)
+                precise_file_ids.add(result.parent_id[1])
             yield result
             changed_file_ids.add(result[0])
         if specific_file_ids is not None:
@@ -920,14 +926,15 @@ class InterCHKRevisionTree(InterTree):
                         entry.file_id not in specific_file_ids):
                     continue
                 if entry.file_id not in changed_file_ids:
-                    yield (entry.file_id,
-                           (relpath, relpath),  # Not renamed
-                           False,  # Not modified
-                           (True, True),  # Still  versioned
-                           (entry.parent_id, entry.parent_id),
-                           (entry.name, entry.name),
-                           (entry.kind, entry.kind),
-                           (entry.executable, entry.executable))
+                    yield TreeChange(
+                        entry.file_id,
+                        (relpath, relpath),  # Not renamed
+                        False,  # Not modified
+                        (True, True),  # Still  versioned
+                        (entry.parent_id, entry.parent_id),
+                        (entry.name, entry.name),
+                        (entry.kind, entry.kind),
+                        (entry.executable, entry.executable))
 
 
 InterTree.register_optimiser(InterCHKRevisionTree)

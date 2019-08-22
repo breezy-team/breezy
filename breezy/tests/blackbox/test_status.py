@@ -497,15 +497,11 @@ class BranchStatus(TestCaseWithTransport):
         """Simulate status of out-of-date tree after remote push"""
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', b'foo\n')])
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             tree.add(['a'])
             tree.commit('add test file')
             # simulate what happens after a remote push
             tree.set_last_revision(b"0")
-        finally:
-            # before run another commands we should unlock tree
-            tree.unlock()
         out, err = self.run_bzr('status')
         self.assertEqual("working tree is out of date, run 'brz update'\n",
                          err)

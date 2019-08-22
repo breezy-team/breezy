@@ -59,6 +59,7 @@ from ..transport import (
 
 from . import (
     lazy_check_versions,
+    is_github_url,
     user_agent_for_github,
     )
 lazy_check_versions()
@@ -209,6 +210,9 @@ def parse_git_error(url, message):
     if message.endswith('You are not allowed to push code to this project.'):
         return PermissionDenied(url, message)
     if message.endswith(' does not appear to be a git repository'):
+        return NotBranchError(url, message)
+    if re.match('(.+) is not a valid repository name',
+                message.splitlines()[0]):
         return NotBranchError(url, message)
     m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
     if m:
@@ -652,14 +656,10 @@ class TemporaryPackIterator(Pack):
 
     def _idx_load_or_generate(self, path):
         if not os.path.exists(path):
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
+            with ui.ui_factory.nested_progress_bar() as pb:
                 def report_progress(cur, total):
                     pb.update("generating index", cur, total)
-                self.data.create_index(path,
-                                       progress=report_progress)
-            finally:
-                pb.finished()
+                self.data.create_index(path, progress=report_progress)
         return load_pack_index(path)
 
     def __del__(self):
@@ -678,7 +678,8 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         url = urlutils.URL.from_string(transport.external_url())
         url.user = url.quoted_user = None
         url.password = url.quoted_password = None
-        super(BzrGitHttpClient, self).__init__(str(url), *args, **kwargs)
+        url = urlutils.split_segment_parameters(str(url))[0]
+        super(BzrGitHttpClient, self).__init__(url, *args, **kwargs)
 
     def _http_request(self, url, headers=None, data=None,
                       allow_compression=False):
@@ -693,25 +694,23 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             `redirect_location` properties, and `read` is a consumable read
             method for the response data.
         """
-        from breezy.transport.http._urllib2_wrappers import Request
-        headers['User-agent'] = user_agent_for_github()
+        if is_github_url(url):
+            headers['User-agent'] = user_agent_for_github()
         headers["Pragma"] = "no-cache"
         if allow_compression:
             headers["Accept-Encoding"] = "gzip"
         else:
             headers["Accept-Encoding"] = "identity"
 
-        request = Request(
+        response = self.transport.request(
             ('GET' if data is None else 'POST'),
-            url, data, headers,
-            accepted_errors=[200, 404])
-        request.follow_redirections = True
+            url,
+            body=data,
+            headers=headers, retries=8)
 
-        response = self.transport._perform(request)
-
-        if response.code == 404:
+        if response.status == 404:
             raise NotGitRepository()
-        elif response.code != 200:
+        elif response.status != 200:
             raise GitProtocolError("unexpected http resp %d for %s" %
                                    (response.code, url))
 
@@ -729,17 +728,22 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
             def __init__(self, response):
                 self._response = response
-                self.status = response.code
+                self.status = response.status
                 self.content_type = response.getheader("Content-Type")
-                self.redirect_location = response.geturl()
+                self.redirect_location = response._actual.geturl()
 
             def readlines(self):
                 return self._response.readlines()
 
             def close(self):
-                self._response.close()
+                pass
 
         return WrapResponse(response), read
+
+
+def _git_url_and_path_from_transport(external_url):
+    url, _ = urlutils.split_segment_parameters(external_url)
+    return urlparse.urlsplit(url)
 
 
 class RemoteGitControlDirFormat(GitControlDirFormat):
@@ -768,25 +772,18 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         """Open this directory.
 
         """
-        # we dont grok readonly - git isn't integrated with transport.
-        url = transport.base
-        if url.startswith('readonly+'):
-            url = url[len('readonly+'):]
-        scheme = urlparse.urlsplit(transport.external_url())[0]
+        split_url = _git_url_and_path_from_transport(transport.external_url())
         if isinstance(transport, GitSmartTransport):
             client = transport._get_client()
-            client_path = transport._get_path()
-        elif scheme in ("http", "https"):
+        elif split_url.scheme in ("http", "https"):
             client = BzrGitHttpClient(transport)
-            client_path, _ = urlutils.split_segment_parameters(transport._path)
-        elif scheme == 'file':
+        elif split_url.scheme in ('file', ):
             client = dulwich.client.LocalGitClient()
-            client_path = transport.local_abspath('.')
         else:
             raise NotBranchError(transport.base)
         if not _found:
             pass  # TODO(jelmer): Actually probe for something
-        return RemoteGitDir(transport, self, client, client_path)
+        return RemoteGitDir(transport, self, client, split_url.path)
 
     def get_format_description(self):
         return "Remote Git Repository"

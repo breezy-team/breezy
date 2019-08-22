@@ -52,7 +52,7 @@ import time
 
 import breezy
 from . import (
-    config,
+    bedding,
     debug,
     osutils,
     plugin,
@@ -239,7 +239,7 @@ def _attach_log_tail(pr):
 
 
 def _open_crash_file():
-    crash_dir = config.crash_dir()
+    crash_dir = bedding.crash_dir()
     if not osutils.isdir(crash_dir):
         # on unix this should be /var/crash and should already exist; on
         # Windows or if it's manually configured it might need to be created,

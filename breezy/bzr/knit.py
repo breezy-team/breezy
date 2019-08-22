@@ -58,12 +58,12 @@ import os
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import patiencediff
 import gzip
 
 from breezy import (
     debug,
     diff,
-    patiencediff,
     static_tuple,
     trace,
     tsort,
@@ -680,9 +680,6 @@ class KnitAnnotateFactory(_KnitFactory):
         lines = (tuple(line.split(b' ', 1)) for line in content)
         return AnnotatedKnitContent(lines)
 
-    def parse_line_delta_iter(self, lines):
-        return iter(self.parse_line_delta(lines))
-
     def parse_line_delta(self, lines, version_id, plain=False):
         """Convert a line based delta into internal representation.
 
@@ -996,6 +993,21 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             parents = ()
         line_bytes = b''.join(lines)
         return self._add(key, lines, parents,
+                         parent_texts, left_matching_blocks, nostore_sha, random_id,
+                         line_bytes=line_bytes)
+
+    def add_chunks(self, key, parents, chunk_iter, parent_texts=None,
+                   left_matching_blocks=None, nostore_sha=None, random_id=False):
+        """See VersionedFiles.add_chunks()."""
+        self._index._check_write_ok()
+        self._check_add(key, None, random_id, check_content=False)
+        if parents is None:
+            # The caller might pass None if there is no graph data, but kndx
+            # indexes can't directly store that, so we give them
+            # an empty tuple instead.
+            parents = ()
+        line_bytes = b''.join(chunk_iter)
+        return self._add(key, None, parents,
                          parent_texts, left_matching_blocks, nostore_sha, random_id,
                          line_bytes=line_bytes)
 

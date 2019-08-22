@@ -24,12 +24,10 @@ from ...tests import TestCase
 
 from ..roundtrip import (
     CommitSupplement,
-    deserialize_fileid_map,
     extract_bzr_metadata,
     generate_roundtripping_metadata,
     inject_bzr_metadata,
     parse_roundtripping_metadata,
-    serialize_fileid_map,
     )
 
 
@@ -100,14 +98,3 @@ revision-id: myrevid
         metadata = CommitSupplement()
         msg = inject_bzr_metadata(b"Foo", metadata, "utf-8")
         self.assertEqual(b"Foo", msg)
-
-
-class FileIdRoundTripTests(TestCase):
-
-    def test_deserialize(self):
-        self.assertEqual({"bar/bla": b"fid"},
-                         deserialize_fileid_map(b"bar/bla\0fid\n"))
-
-    def test_serialize(self):
-        self.assertEqual([b"bar/bla\0fid\n"],
-                         serialize_fileid_map({"bar/bla": b"fid"}))

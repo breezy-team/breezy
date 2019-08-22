@@ -424,12 +424,10 @@ class TestPackRepository(TestCaseWithTransport):
         self.make_repository('.', shared=True, format=format)
         r1 = repository.Repository.open('.')
         r2 = repository.Repository.open('.')
-        r1.lock_write()
-        try:
+        with r1.lock_write():
             # access enough data to load the names list
             list(r1.all_revision_ids())
-            r2.lock_write()
-            try:
+            with r2.lock_write():
                 # access enough data to load the names list
                 list(r2.all_revision_ids())
                 r1.start_write_group()
@@ -462,10 +460,6 @@ class TestPackRepository(TestCaseWithTransport):
                 self.assertEqual(r1._pack_collection.names(),
                                  r2._pack_collection.names())
                 self.assertEqual(2, len(r1._pack_collection.names()))
-            finally:
-                r2.unlock()
-        finally:
-            r1.unlock()
 
     def test_concurrent_writer_second_preserves_dropping_a_pack(self):
         format = self.get_format()
@@ -473,26 +467,15 @@ class TestPackRepository(TestCaseWithTransport):
         r1 = repository.Repository.open('.')
         r2 = repository.Repository.open('.')
         # add a pack to drop
-        r1.lock_write()
-        try:
-            r1.start_write_group()
-            try:
+        with r1.lock_write():
+            with repository.WriteGroup(r1):
                 self._add_text(r1, b'fileidr1')
-            except:
-                r1.abort_write_group()
-                raise
-            else:
-                r1.commit_write_group()
             r1._pack_collection.ensure_loaded()
             name_to_drop = r1._pack_collection.all_packs()[0].name
-        finally:
-            r1.unlock()
-        r1.lock_write()
-        try:
+        with r1.lock_write():
             # access enough data to load the names list
             list(r1.all_revision_ids())
-            r2.lock_write()
-            try:
+            with r2.lock_write():
                 # access enough data to load the names list
                 list(r2.all_revision_ids())
                 r1._pack_collection.ensure_loaded()
@@ -533,40 +516,28 @@ class TestPackRepository(TestCaseWithTransport):
                                  r2._pack_collection.names())
                 self.assertEqual(1, len(r1._pack_collection.names()))
                 self.assertFalse(name_to_drop in r1._pack_collection.names())
-            finally:
-                r2.unlock()
-        finally:
-            r1.unlock()
 
     def test_concurrent_pack_triggers_reload(self):
         # create 2 packs, which we will then collapse
         tree = self.make_branch_and_tree('tree')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             rev1 = tree.commit('one')
             rev2 = tree.commit('two')
             r2 = repository.Repository.open('tree')
-            r2.lock_read()
-            try:
+            with r2.lock_read():
                 # Now r2 has read the pack-names file, but will need to reload
                 # it after r1 has repacked
                 tree.branch.repository.pack()
                 self.assertEqual({rev2: (rev1,)}, r2.get_parent_map([rev2]))
-            finally:
-                r2.unlock()
-        finally:
-            tree.unlock()
 
     def test_concurrent_pack_during_get_record_reloads(self):
         tree = self.make_branch_and_tree('tree')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             rev1 = tree.commit('one')
             rev2 = tree.commit('two')
             keys = [(rev1,), (rev2,)]
             r2 = repository.Repository.open('tree')
-            r2.lock_read()
-            try:
+            with r2.lock_read():
                 # At this point, we will start grabbing a record stream, and
                 # trigger a repack mid-way
                 packed = False
@@ -581,20 +552,14 @@ class TestPackRepository(TestCaseWithTransport):
                 # The first record will be found in the original location, but
                 # after the pack, we have to reload to find the next record
                 self.assertEqual(sorted(keys), sorted(result.keys()))
-            finally:
-                r2.unlock()
-        finally:
-            tree.unlock()
 
     def test_concurrent_pack_during_autopack(self):
         tree = self.make_branch_and_tree('tree')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             for i in range(9):
                 tree.commit('rev %d' % (i,))
             r2 = repository.Repository.open('tree')
-            r2.lock_write()
-            try:
+            with r2.lock_write():
                 # Monkey patch so that pack occurs while the other repo is
                 # autopacking. This is slightly bad, but all current pack
                 # repository implementations have a _pack_collection, and we
@@ -618,10 +583,6 @@ class TestPackRepository(TestCaseWithTransport):
                 # should be only 1 for 10 commits. So it goes ahead and
                 # finishes autopacking.
                 self.assertEqual([2], autopack_count)
-            finally:
-                r2.unlock()
-        finally:
-            tree.unlock()
 
     def test_lock_write_does_not_physically_lock(self):
         repo = self.make_repository('.', format=self.get_format())

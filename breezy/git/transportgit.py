@@ -233,11 +233,8 @@ class TransportRefsContainer(RefsContainer):
         del self._packed_refs[name]
         if name in self._peeled_refs:
             del self._peeled_refs[name]
-        f = self.transport.open_write_stream("packed-refs")
-        try:
+        with self.transport.open_write_stream("packed-refs") as f:
             write_packed_refs(f, self._packed_refs, self._peeled_refs)
-        finally:
-            f.close()
 
     def set_symbolic_ref(self, name, other):
         """Make a ref point at another ref.
@@ -430,11 +427,11 @@ class TransportRepo(BaseRepo):
             refs_container = InfoRefsContainer(BytesIO(refs_text))
             try:
                 head = TransportRefsContainer(
-                    self._commontransport).read_loose_ref("HEAD")
+                    self._commontransport).read_loose_ref(b"HEAD")
             except KeyError:
                 pass
             else:
-                refs_container._refs["HEAD"] = head
+                refs_container._refs[b"HEAD"] = head
         else:
             refs_container = TransportRefsContainer(
                 self._commontransport, self._controltransport)
@@ -700,11 +697,8 @@ class TransportObjectStore(PackBasedObjectStore):
         p._filename = basename + ".pack"
         f.seek(0)
         self.pack_transport.put_file(basename + ".pack", f)
-        idxfile = self.pack_transport.open_write_stream(basename + ".idx")
-        try:
+        with self.pack_transport.open_write_stream(basename + ".idx") as idxfile:
             write_pack_index_v2(idxfile, entries, p.get_stored_checksum())
-        finally:
-            idxfile.close()
         idxfile = self.pack_transport.get(basename + ".idx")
         idx = load_pack_index_file(basename + ".idx", idxfile)
         final_pack = Pack.from_objects(p, idx)
@@ -729,19 +723,13 @@ class TransportObjectStore(PackBasedObjectStore):
 
         pack_sha = p.index.objects_sha1()
 
-        datafile = self.pack_transport.open_write_stream(
-            "pack-%s.pack" % pack_sha.decode('ascii'))
-        try:
+        with self.pack_transport.open_write_stream(
+                "pack-%s.pack" % pack_sha.decode('ascii')) as datafile:
             entries, data_sum = write_pack_objects(datafile, p.pack_tuples())
-        finally:
-            datafile.close()
         entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
-        idxfile = self.pack_transport.open_write_stream(
-            "pack-%s.idx" % pack_sha.decode('ascii'))
-        try:
+        with self.pack_transport.open_write_stream(
+                "pack-%s.idx" % pack_sha.decode('ascii')) as idxfile:
             write_pack_index_v2(idxfile, entries, data_sum)
-        finally:
-            idxfile.close()
 
     def add_pack(self):
         """Add a new pack to this object store.

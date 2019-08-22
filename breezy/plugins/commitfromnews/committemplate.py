@@ -18,7 +18,9 @@
 
 from __future__ import absolute_import
 
-from ... import bugtracker, osutils, patiencediff
+import patiencediff
+
+from ... import bugtracker, osutils
 import re
 
 _BUG_MATCH = re.compile(r'lp:(\d+)')

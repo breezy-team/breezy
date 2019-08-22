@@ -492,10 +492,10 @@ class InventoryFile(InventoryEntry):
 
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
-        self.text_sha1 = work_tree.get_file_sha1(path, self.file_id)
+        self.text_sha1 = work_tree.get_file_sha1(path)
         # FIXME: 20050930 probe for the text size when getting sha1
         # in _read_tree_state
-        self.executable = work_tree.is_executable(path, self.file_id)
+        self.executable = work_tree.is_executable(path)
 
     def __repr__(self):
         return ("%s(%r, %r, parent_id=%r, sha1=%r, len=%s, revision=%s)"
@@ -852,6 +852,39 @@ class CommonInventory(object):
         if self.root is not None:
             descend(self.root, u'')
         return accum
+
+    def get_entry_by_path_partial(self, relpath):
+        """Like get_entry_by_path, but return TreeReference objects.
+
+        :param relpath: Path to resolve, either as string with / as separators,
+            or as list of elements.
+        :return: tuple with ie, resolved elements and elements left to resolve
+        """
+        if isinstance(relpath, (str, text_type)):
+            names = osutils.splitpath(relpath)
+        else:
+            names = relpath
+
+        try:
+            parent = self.root
+        except errors.NoSuchId:
+            # root doesn't exist yet so nothing else can
+            return None, None, None
+        if parent is None:
+            return None, None, None
+        for i, f in enumerate(names):
+            try:
+                children = getattr(parent, 'children', None)
+                if children is None:
+                    return None, None, None
+                cie = children[f]
+                if cie.kind == 'tree-reference':
+                    return cie, names[:i + 1], names[i + 1:]
+                parent = cie
+            except KeyError:
+                # or raise an error?
+                return None, None, None
+        return parent, names, []
 
     def get_entry_by_path(self, relpath):
         """Return an inventory entry by path.
@@ -2104,8 +2137,9 @@ class CHKInventory(CommonInventory):
                 # Could happen when only the revision changed for a directory
                 # for instance.
                 continue
-            yield (file_id, (path_in_source, path_in_target), changed_content,
-                   versioned, parent, name, kind, executable)
+            yield (
+                file_id, (path_in_source, path_in_target), changed_content,
+                versioned, parent, name, kind, executable)
 
     def __len__(self):
         """Return the number of entries in the inventory."""
