@@ -20,6 +20,7 @@ from __future__ import absolute_import
 
 import json
 import os
+import time
 
 from ... import (
     bedding,
@@ -30,6 +31,7 @@ from ... import (
     )
 from ...git.urls import git_url_to_bzr_url
 from ...sixish import PY3
+from ...trace import mutter
 from ...transport import get_transport
 
 from .propose import (
@@ -172,6 +174,9 @@ class GitLabMergeProposal(MergeProposal):
         self.gl = gl
         self._mr = mr
 
+    def _update(self, **kwargs):
+        self.gl._update_merge_request(self._mr['project_id'], self._mr['iid'], kwargs)
+
     @property
     def url(self):
         return self._mr['web_url']
@@ -180,13 +185,17 @@ class GitLabMergeProposal(MergeProposal):
         return self._mr['description']
 
     def set_description(self, description):
-        self._mr['description'] = description
-        self.gl._update_merge_request(self._mr)
+        self._update(description=description, title=description.splitlines()[0])
 
     def get_commit_message(self):
-        return None
+        return self._mr.get('merge_commit_message')
+
+    def set_commit_message(self, message):
+        raise errors.UnsupportedOperation(self.set_commit_message, self)
 
     def _branch_url_from_project(self, project_id, branch_name):
+        if project_id is None:
+            return None
         project = self.gl._get_project(project_id)
         return gitlab_url_to_bzr_url(project['http_url_to_repo'], branch_name)
 
@@ -202,8 +211,7 @@ class GitLabMergeProposal(MergeProposal):
         return (self._mr['state'] == 'merged')
 
     def close(self):
-        self._mr['state_event'] = 'close'
-        self.gl._update_merge_request(self._mr)
+        self._update(state_event='close')
 
     def merge(self, commit_message=None):
         # https://docs.gitlab.com/ee/api/merge_requests.html#accept-mr
@@ -257,7 +265,7 @@ class GitLab(Hoster):
             return json.loads(response.data)
         raise errors.InvalidHttpResponse(path, response.text)
 
-    def _fork_project(self, project_name, poll_interval=5):
+    def _fork_project(self, project_name, timeout=50, interval=5):
         path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
         response = self._api_request('POST', path)
         if response.status not in (200, 201):
@@ -266,14 +274,15 @@ class GitLab(Hoster):
         json.loads(response.data)
         # Spin and wait until import_status for new project
         # is complete.
-        for i in range(10):
+        deadline = time.time() + timeout
+        while True:
             project = self._get_project(project_name)
-            if project['import_status'] == 'none':
+            if project['import_status'] in ('finished', 'none'):
                 return project
-            print('import status is %s' % project['import_status'])
-            # TODO(jelmer): make this configurable?
-            time.sleep(poll_interval)
-        raise Exception('timeout waiting for project to become available')
+            mutter('import status is %s', project['import_status'])
+            if time.time() > deadline:
+                raise Exception('timeout waiting for project to become available')
+            time.sleep(interval)
 
     def _get_logged_in_username(self):
         return self._current_user['username']
@@ -297,13 +306,13 @@ class GitLab(Hoster):
             return json.loads(response.data)
         raise errors.InvalidHttpResponse(path, response.text)
 
-    def _update_merge_request(self, mr):
+    def _update_merge_request(self, project_id, iid, mr):
         path = 'projects/%s/merge_requests/%s' % (
-            urlutils.quote(str(mr['id']), ''), mr['merge_request_iid'])
-        response = self._api_request('PUT', path, data=json.dumps(mr))
+            urlutils.quote(str(project_id), ''), iid)
+        response = self._api_request('PUT', path, fields=mr)
         if response.status == 200:
             return json.loads(response.data)
-        raise InvalidHttpResponse(path, response.text)
+        raise errors.InvalidHttpResponse(path, response.text)
 
     def _create_mergerequest(
             self, title, source_project_id, target_project_id,

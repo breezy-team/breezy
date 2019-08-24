@@ -46,8 +46,8 @@ except ImportError:  # python < 3
 try:
     from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
 except ImportError:
-    from urlparse import urljoin, urlencode
-    from urllib import splitport, splittype, splithost
+    from urlparse import urljoin
+    from urllib import splitport, splittype, splithost, urlencode
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response

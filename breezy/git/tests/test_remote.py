@@ -125,6 +125,14 @@ class ParseGitErrorTests(TestCase):
         self.assertEqual(e.path, 'porridge/gaduhistory.git')
         self.assertEqual(e.extra, ': denied to jelmer')
 
+    def test_invalid_repo_name(self):
+        e = parse_git_error(
+            "url",
+            """Gregwar/fatcat/tree/debian is not a valid repository name
+Email support@github.com for help
+""")
+        self.assertIsInstance(e, NotBranchError)
+
 
 class TestRemoteGitBranchFormat(TestCase):
 
