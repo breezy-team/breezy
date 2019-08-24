@@ -265,7 +265,7 @@ class GitHub(Hoster):
         if owner:
             path += '?organization=%s' % owner
         response = self._api_request('POST', path)
-        if response != 202:
+        if response.status != 202:
             raise InvalidHttpResponse(path, response.text)
         return json.loads(response.text)
 
