@@ -75,3 +75,4 @@ breezy/_*.pyd
 selftest.log
 .coverage
 doc/developers/api/*.txt
+__pycache__
