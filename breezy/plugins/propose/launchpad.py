@@ -137,6 +137,12 @@ class LaunchpadMergeProposal(MergeProposal):
     def is_merged(self):
         return (self._mp.queue_status == 'Merged')
 
+    def is_closed(self):
+        return (self._mp.queue_status in ('Rejected', 'Superseded'))
+
+    def reopen(self):
+        self._mp.setStatus(status='Needs review')
+
     def get_description(self):
         return self._mp.description
 
@@ -531,7 +537,15 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         else:
             prereq = None
         if reviewers is None:
-            reviewers = []
+            reviewer_objs = []
+        else:
+            reviewer_objs = []
+            for reviewer in reviewers:
+                if '@' in reviewer:
+                    reviewer_obj = self.launchpad.people.getByEmail(email=reviewer)
+                else:
+                    reviewer_obj = self.launchpad.people[reviewer]
+                reviewer_objs.append(reviewer_obj)
         try:
             mp = _call_webservice(
                 self.source_branch_lp.createMergeProposal,
@@ -539,8 +553,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                 prerequisite_branch=prereq,
                 initial_comment=description.strip(),
                 commit_message=commit_message,
-                reviewers=[self.launchpad.people[reviewer].self_link
-                           for reviewer in reviewers],
+                reviewers=[reviewer_objs.self_link for reviewer in reviewers],
                 review_types=['' for reviewer in reviewers])
         except WebserviceFailure as e:
             # Urgh.
