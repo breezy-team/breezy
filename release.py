@@ -39,5 +39,9 @@ def release(local_tree):
             changelog_path = 'debian/changelog'
         changelog_arg = "--changelog=%s" % changelog_path
         # TODO(jelmer): don't send output to stderr
-        subprocess.check_call(["dch", changelog_arg, "--release", ""], cwd=local_tree.basedir)
-        subprocess.check_call(["debcommit", changelog_arg, "-ar"], cwd=local_tree.basedir)
+        subprocess.check_call(
+            ["dch", changelog_arg, "--release", ""],
+            cwd=local_tree.basedir)
+        subprocess.check_call(
+            ["debcommit", changelog_arg, "-ar"],
+            cwd=local_tree.basedir)

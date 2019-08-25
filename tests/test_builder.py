@@ -1,6 +1,6 @@
 #    test_builder.py -- Testsuite for builddeb builder.py
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -22,8 +22,7 @@ from __future__ import absolute_import
 
 import os
 
-from ....tests import (TestCaseInTempDir,
-                          )
+from ....tests import TestCaseInTempDir
 
 from ..builder import (
     DebBuild,

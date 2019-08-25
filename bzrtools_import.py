@@ -33,7 +33,6 @@ from ...osutils import (
     normpath,
     is_inside_any,
     )
-from ...sixish import StringIO
 from ...trace import warning
 from ...transform import TreeTransform, resolve_conflicts, cook_conflicts
 from ...transport import get_transport
@@ -70,14 +69,16 @@ def import_tar(tree, tar_input, file_ids_from=None, target_tree=None):
     The tarfile may be a gzipped stream.  File ids will be updated.
     """
     tar_file = tarfile.open('lala', 'r', tar_input)
-    import_archive(tree, tar_file, file_ids_from=file_ids_from,
-            target_tree=target_tree)
+    import_archive(
+        tree, tar_file, file_ids_from=file_ids_from,
+        target_tree=target_tree)
 
 
 def import_zip(tree, zip_input, file_ids_from=None, target_tree=None):
     zip_file = ZipFileWrapper(zip_input, 'r')
-    import_archive(tree, zip_file, file_ids_from=file_ids_from,
-            target_tree=target_tree)
+    import_archive(
+        tree, zip_file, file_ids_from=file_ids_from,
+        target_tree=target_tree)
 
 
 def import_dir(tree, dir, file_ids_from=None, target_tree=None, exclude=None):
@@ -143,8 +144,8 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
         added = set()
         implied_parents = set()
         seen = set()
-        to_process = _get_paths_to_process(archive_file, prefix,
-                implied_parents, exclude=exclude)
+        to_process = _get_paths_to_process(
+            archive_file, prefix, implied_parents, exclude=exclude)
         renames = {}
 
         # First we find the renames
@@ -157,20 +158,20 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
                 existing_file_id = tt.tree_file_id(trans_id)
                 target_id = other_tree.path2id(relative_path)
                 if (target_id is not None
-                    and target_id != existing_file_id
-                    and target_id not in renames):
+                        and target_id != existing_file_id
+                        and target_id not in renames):
                     renames[target_id] = relative_path
 
         # The we do the work
         for relative_path, member in to_process:
             trans_id = tt.trans_id_tree_path(relative_path)
             added.add(relative_path.rstrip('/'))
-            # To handle renames, we need to not use the preserved file id, rather
-            # we need to lookup the file id in target_tree, if there is one. If
-            # there isn't, we should use the one in the current tree, and failing
-            # that we will allocate one. In this importer we want the
-            # target_tree to be authoritative about id2path, which is why we
-            # consult it first.
+            # To handle renames, we need to not use the preserved file id,
+            # rather we need to lookup the file id in target_tree, if there is
+            # one. If there isn't, we should use the one in the current tree,
+            # and failing that we will allocate one. In this importer we want
+            # the target_tree to be authoritative about id2path, which is why
+            # we consult it first.
             existing_file_id = tt.tree_file_id(trans_id)
             # If we find an id that we know we are going to assign to
             # different path as it has been renamed in one of the
@@ -193,8 +194,7 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
                                 found_file_id = None
                                 continue
                         break
-            if (found_file_id is not None
-                and found_file_id != existing_file_id):
+            if found_file_id is not None and found_file_id != existing_file_id:
                 # Found a specific file id in one of the source trees
                 tt.version_file(found_file_id, trans_id)
                 if existing_file_id is not None:
@@ -205,8 +205,8 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
                 trans_id = tt.trans_id_file_id(found_file_id)
 
             if not found_file_id and not existing_file_id:
-                # No file_id in any of the source trees and no file id in the base
-                # tree.
+                # No file_id in any of the source trees and no file id in the
+                # base tree.
                 name = basename(member.name.rstrip('/'))
                 file_id = generate_ids.gen_file_id(name)
                 tt.version_file(file_id, trans_id)
@@ -277,7 +277,7 @@ def do_import(source, tree_directory=None):
             raise BzrCommandError("Working tree has uncommitted changes.")
 
         if (source.endswith('.tar') or source.endswith('.tar.gz') or
-            source.endswith('.tar.bz2')) or source.endswith('.tgz'):
+                source.endswith('.tar.bz2')) or source.endswith('.tgz'):
             try:
                 tar_input = open_from_url(source)
                 if source.endswith('.bz2'):

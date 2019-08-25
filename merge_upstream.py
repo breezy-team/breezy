@@ -72,8 +72,8 @@ def package_version(upstream_version, distribution_name, epoch=None):
 def upstream_merge_changelog_line(upstream_version):
     """Describe that a new upstream revision was merged.
 
-    This will either describe that a new upstream release or a new upstream snapshot
-    was merged.
+    This will either describe that a new upstream release or a new upstream
+    snapshot was merged.
 
     :param upstream_version: Upstream version string
     :return: Line string for use in changelog
@@ -88,8 +88,8 @@ def upstream_merge_changelog_line(upstream_version):
     return entry_description
 
 
-def changelog_add_new_version(tree, upstream_version, distribution_name,
-        changelog, package):
+def changelog_add_new_version(
+        tree, upstream_version, distribution_name, changelog, package):
     """Add an entry to the changelog for a new version.
 
     :param tree: WorkingTree in which the package lives
@@ -110,8 +110,8 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
     create = (not tree.has_filename("debian/changelog"))
     if create:
         argv.append("--create")
-    proc = subprocess.Popen(argv, cwd=tree.basedir, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
+    proc = subprocess.Popen(
+        argv, cwd=tree.basedir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (stdout, stderr) = proc.communicate()
     if proc.returncode != 0:
         raise DchError("Adding changelog entry failed: %s" % stderr)
@@ -142,12 +142,13 @@ def do_merge(
     dbs.add_branch(db)
     tarballs = [(p, component_from_orig_tarball(p, package, version))
                 for p in tarball_filenames]
-    return db.merge_upstream(tarballs, package, version,
-            current_version, upstream_branch=upstream_branch,
-            upstream_revisions=upstream_revisions,
-            merge_type=merge_type, force=force,
-            force_pristine_tar=force_pristine_tar,
-            committer=committer)
+    return db.merge_upstream(
+        tarballs, package, version, current_version,
+        upstream_branch=upstream_branch,
+        upstream_revisions=upstream_revisions,
+        merge_type=merge_type, force=force,
+        force_pristine_tar=force_pristine_tar,
+        committer=committer)
 
 
 def fetch_tarball(package, version, orig_dir, locations, v3):

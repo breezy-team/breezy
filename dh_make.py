@@ -15,7 +15,6 @@ from ... import (
 
 from . import (
     default_orig_dir,
-    errors,
     import_dsc,
     upstream,
     util,
@@ -27,14 +26,16 @@ def _get_tree(package_name):
         tree = workingtree.WorkingTree.open(".")
     except bzr_errors.NotBranchError:
         if os.path.exists(package_name):
-            raise bzr_errors.BzrCommandError("Either run the command from an "
-                    "existing branch of upstream, or move %s aside "
-                    "and a new branch will be created there."
-                    % package_name)
+            raise bzr_errors.BzrCommandError(
+                "Either run the command from an "
+                "existing branch of upstream, or move %s aside "
+                "and a new branch will be created there."
+                % package_name)
         to_transport = transport.get_transport(package_name)
         tree = to_transport.ensure_base()
         try:
-            a_controldir = controldir.ControlDir.open_from_transport(to_transport)
+            a_controldir = controldir.ControlDir.open_from_transport(
+                to_transport)
         except bzr_errors.NotBranchError:
             # really a NotBranchError...
             create_branch = controldir.ControlDir.create_branch_convenience
@@ -68,8 +69,8 @@ def _get_tarballs(tree, tarball, package_name, version):
     dest_name = util.tarball_name(package_name, version, None, format=format)
     trace.note("Fetching tarball")
     repack_tarball(tarball, dest_name, target_dir=orig_dir)
-    provider = upstream.UpstreamProvider(package_name, version,
-            orig_dir, [])
+    provider = upstream.UpstreamProvider(
+        package_name, version, orig_dir, [])
     orig_files = provider.provide(os.path.join(tree.basedir, ".."))
     ret = []
     for filename, component in orig_files:
@@ -80,17 +81,17 @@ def _get_tarballs(tree, tarball, package_name, version):
 def import_upstream(tarball, package_name, version, use_pristine_tar=True):
     tree = _get_tree(package_name)
     if tree.branch.last_revision() != mod_revision.NULL_REVISION:
-        parents = { None: [tree.branch.last_revision()] }
+        parents = {None: [tree.branch.last_revision()]}
     else:
         parents = {}
-    tarball_filenames  = _get_tarballs(tree, tarball,
-            package_name, version)
-    db = import_dsc.DistributionBranch(tree.branch, tree.branch, tree=tree,
-            pristine_upstream_tree=tree)
+    tarball_filenames = _get_tarballs(tree, tarball, package_name, version)
+    db = import_dsc.DistributionBranch(
+        tree.branch, tree.branch, tree=tree, pristine_upstream_tree=tree)
     dbs = import_dsc.DistributionBranchSet()
     dbs.add_branch(db)
-    db.import_upstream_tarballs(tarball_filenames, package_name, version,
-        parents, force_pristine_tar=use_pristine_tar)
+    db.import_upstream_tarballs(
+        tarball_filenames, package_name, version, parents,
+        force_pristine_tar=use_pristine_tar)
     return tree
 
 
@@ -101,7 +102,7 @@ def run_dh_make(tree, package_name, version):
     if not tree.is_versioned("debian"):
         tree.add("debian")
     command = ["dh_make", "--addmissing", "--packagename",
-                "%s_%s" % (package_name, version)]
+               "%s_%s" % (package_name, version)]
     if getattr(sys.stdin, 'fileno', None) is None:
         # running in a test or something
         stdin = subprocess.PIPE
@@ -110,8 +111,9 @@ def run_dh_make(tree, package_name, version):
         stdin = sys.stdin
         input = None
     try:
-        proc = subprocess.Popen(command, cwd=tree.basedir,
-                preexec_fn=util.subprocess_setup, stdin=stdin)
+        proc = subprocess.Popen(
+            command, cwd=tree.basedir,
+            preexec_fn=util.subprocess_setup, stdin=stdin)
     except OSError:
         raise bzr_errors.BzrCommandError("The dh_make command was not found. "
                                          "Please install the dh-make package "

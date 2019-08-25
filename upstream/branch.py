@@ -498,3 +498,21 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
     def __repr__(self):
         return "<%s for %r>" % (
             self.__class__.__name__, self.upstream_branch_url)
+
+
+class LocalUpstreamBranchSource(UpstreamBranchSource):
+    """Upstream branch source in a local branch."""
+
+    def __init__(self, local_branch):
+        self.local_branch = local_branch
+
+    @classmethod
+    def from_controldir(cls, controldir):
+        return cls(controldir.open_branch('upstream'))
+
+    @property
+    def upstream_branch(self):
+        return self.local_branch
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.local_branch)

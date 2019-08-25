@@ -60,7 +60,7 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         wt.add(['a'])
-        revid = wt.commit("one")
+        wt.commit("one")
         rev_tree = wt.basis_tree()
         sd = NativeSourceDistiller(rev_tree)
         sd.distill('target')
@@ -69,13 +69,13 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
 
     def test_distill_removes_builddeb_dir(self):
         wt = self.make_branch_and_tree(".")
-        self.build_tree(['a', '.bzr-builddeb/',
-                '.bzr-builddeb/default.conf'])
+        self.build_tree(
+            ['a', '.bzr-builddeb/', '.bzr-builddeb/default.conf'])
         wt.lock_write()
         self.addCleanup(wt.unlock)
         wt.add(['a', '.bzr-builddeb/',
                 '.bzr-builddeb/default.conf'])
-        revid = wt.commit("one")
+        wt.commit("one")
         rev_tree = wt.basis_tree()
         sd = NativeSourceDistiller(rev_tree)
         sd.distill('target')
@@ -169,8 +169,8 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider("package",
-                    "0.1-1", "tarballs"))
+        sd = MergeModeDistiller(
+            wt, _SimpleUpstreamProvider("package", "0.1-1", "tarballs"))
         self.assertRaises(MissingUpstreamTarball, sd.distill, 'target')
 
     def test_distill_tarball_exists(self):
@@ -180,11 +180,11 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         name = "package"
         version = Version("0.1-1")
         self.make_tarball(name, version)
-        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
-                    version.upstream_version, "."))
+        sd = MergeModeDistiller(
+            wt, _SimpleUpstreamProvider(name, version.upstream_version, "."))
         sd.distill('target/foo')
-        self.assertPathExists('target/%s_%s.orig.tar.gz'
-                % (name, version.upstream_version))
+        self.assertPathExists(
+            'target/%s_%s.orig.tar.gz' % (name, version.upstream_version))
         self.assertPathExists('target/foo/a')
 
     def test_distill_exports_branch(self):
@@ -196,8 +196,8 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         name = "package"
         version = Version("0.1-1")
         self.make_tarball(name, version)
-        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
-                    version.upstream_version, "."))
+        sd = MergeModeDistiller(
+            wt, _SimpleUpstreamProvider(name, version.upstream_version, "."))
         sd.distill('target/')
         self.assertPathExists('target/debian/a')
         self.assertPathDoesNotExist('target/.bzr-builddeb')
@@ -215,8 +215,8 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         builder.add_upstream_file("debian/foo")
         builder.add_default_control()
         builder.build()
-        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
-                    version.upstream_version, "."))
+        sd = MergeModeDistiller(
+            wt, _SimpleUpstreamProvider(name, version.upstream_version, "."))
         sd.distill('target/')
         self.assertPathExists('target/a')
         self.assertPathDoesNotExist('target/debian/foo')
@@ -230,8 +230,9 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         name = "package"
         version = Version("0.1-1")
         self.make_tarball(name, version)
-        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
-                    version.upstream_version, "."), top_level=True)
+        sd = MergeModeDistiller(
+            wt, _SimpleUpstreamProvider(name, version.upstream_version, "."),
+            top_level=True)
         sd.distill('target/')
         self.assertPathExists('target/a')
         self.assertPathExists('target/debian/b')
@@ -248,10 +249,11 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         name = "package"
         version = Version("0.1-1")
         self.make_tarball(name, version)
-        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
-                    version.upstream_version, "."), use_existing=True)
-        self.build_tree(['target/', 'target/b', 'target/debian/',
-                'target/debian/b'])
+        sd = MergeModeDistiller(
+            wt, _SimpleUpstreamProvider(name, version.upstream_version, "."),
+            use_existing=True)
+        self.build_tree(
+            ['target/', 'target/b', 'target/debian/', 'target/debian/b'])
         sd.distill('target/')
         self.assertPathExists('target/b')
         self.assertPathExists('target/debian/a')
@@ -268,8 +270,8 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         name = "package"
         version = Version("0.1-1")
         self.make_tarball(name, version)
-        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
-                    version.upstream_version, "."))
+        sd = MergeModeDistiller(
+            wt, _SimpleUpstreamProvider(name, version.upstream_version, "."))
         sd.distill('target')
         self.assertPathExists('target')
         self.assertPathExists('target/debian/a')

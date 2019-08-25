@@ -1,6 +1,6 @@
 #    directory.py -- Directory service that uses Debian Vcs-* fields
 #    Copyright (C) 2008 Jelmer Vernooij <jelmer@samba.org>
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -159,19 +159,21 @@ class AptDirectory(object):
             # Try the latest version
             version = sorted(by_version, key=Version)[-1]
 
-        if not version in by_version:
-            raise urlutils.InvalidURL(path=url,
-                    extra='version %s not found' % version)
+        if version not in by_version:
+            raise urlutils.InvalidURL(
+                path=url, extra='version %s not found' % version)
 
         control = Deb822(by_version[version])
 
         try:
             vcs, url = source_package_vcs_url(control)
         except KeyError:
-            note("Retrieving Vcs locating from %s Debian version %s", name, version)
+            note("Retrieving Vcs locating from %s Debian version %s", name,
+                 version)
             raise urlutils.InvalidURL(path=url, extra='no VCS URL found')
 
-        note("Resolved package URL from Debian package %s/%s: %s", name, version, url)
+        note("Resolved package URL from Debian package %s/%s: %s",
+             name, version, url)
         return url
 
 
@@ -239,4 +241,3 @@ def upstream_branch_alias(b):
         tree = b.basis_tree()
         config = debuild_config(tree)
         return directories.dereference(config.upstream_branch)
-

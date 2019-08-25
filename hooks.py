@@ -1,6 +1,6 @@
 #    hooks.py -- Hook support for builddeb.
 #    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -34,14 +34,11 @@ class HookFailedError(BzrError):
 
 
 def run_hook(tree, hook_name, config, wd="."):
-  hook = config.get_hook(hook_name)
-  if hook is None:
-    return
-  note("Running %s as %s hook" % (hook, hook_name))
-  proc = subprocess.Popen(hook, shell=True, 
-                          cwd=tree.abspath(wd))
-  proc.wait()
-  if proc.returncode != 0:
-    raise HookFailedError(hook_name)
-
-# vim: ts=2 sts=2 sw=2
+    hook = config.get_hook(hook_name)
+    if hook is None:
+        return
+    note("Running %s as %s hook" % (hook, hook_name))
+    proc = subprocess.Popen(hook, shell=True, cwd=tree.abspath(wd))
+    proc.wait()
+    if proc.returncode != 0:
+        raise HookFailedError(hook_name)

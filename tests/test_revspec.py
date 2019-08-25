@@ -50,20 +50,20 @@ class TestRevisionSpec_package(TestRevisionSpec):
         self.assertInHistoryIs(1, b'r1', 'package:0.1-1')
 
     def test_unkown_version(self):
-        self.assertRaises(UnknownVersion,
-                self.get_in_history, 'package:0.1-1')
+        self.assertRaises(
+            UnknownVersion, self.get_in_history, 'package:0.1-1')
 
     def test_missing_version(self):
-        self.assertRaises(VersionNotSpecified,
-                self.get_in_history, 'package:')
+        self.assertRaises(
+            VersionNotSpecified, self.get_in_history, 'package:')
 
 
 class TestRevisionSpec_upstream(TestRevisionSpec):
 
     package_name = 'test'
     package_version = Version('0.1-1')
-    upstream_version = property(lambda self: \
-                                self.package_version.upstream_version)
+    upstream_version = property(
+        lambda self: self.package_version.upstream_version)
 
     def make_changelog(self, version=None):
         if version is None:
@@ -89,7 +89,8 @@ class TestRevisionSpec_upstream(TestRevisionSpec):
     def add_changelog(self, tree, version):
         cl = self.make_changelog("1.2-1")
         tree.mkdir('debian')
-        self.write_changelog(cl, os.path.join(tree.basedir, 'debian/changelog'))
+        self.write_changelog(
+            cl, os.path.join(tree.basedir, 'debian/changelog'))
         tree.add(['debian', 'debian/changelog'])
 
     def test_from_string_package(self):

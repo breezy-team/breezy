@@ -36,7 +36,7 @@ from ...sixish import (
 from ... import trace
 
 from .info import (
-    bzr_plugin_version as version_info,
+    brz_plugin_version as version_info,
     )
 
 
@@ -125,7 +125,8 @@ else:
     register_lazy(
         "breezy.directory", "directories", "apt:",
         __name__ + '.directory', 'VcsDirectory',
-        help="Directory that uses Debian Vcs-* control fields to look up branches")
+        help="Directory that uses Debian Vcs-* control "
+             "fields to look up branches")
     register_lazy(
         "breezy.directory", "AliasDirectory.branch_aliases", "upstream",
         __name__ + ".directory", "upstream_branch_alias",

@@ -66,19 +66,23 @@ def tree_unapply_patches(orig_tree, orig_branch=None, force=False):
     target_dir = tempfile.mkdtemp()
     try:
         if isinstance(orig_tree, MutableTree):
-            tree = orig_branch.create_checkout(target_dir, lightweight=True,
-                revision_id=orig_tree.last_revision(), accelerator_tree=orig_tree)
+            tree = orig_branch.create_checkout(
+                target_dir, lightweight=True,
+                revision_id=orig_tree.last_revision(),
+                accelerator_tree=orig_tree)
             merger = _mod_merge.Merger.from_uncommitted(tree, orig_tree)
             merger.merge_type = NoUnapplyingMerger
             merger.do_merge()
         elif isinstance(orig_tree, RevisionTree):
-            tree = orig_branch.create_checkout(target_dir, lightweight=True,
-                accelerator_tree=orig_tree, revision_id=orig_tree.get_revision_id())
+            tree = orig_branch.create_checkout(
+                target_dir, lightweight=True, accelerator_tree=orig_tree,
+                revision_id=orig_tree.get_revision_id())
         else:
             trace.mutter("Not sure how to create copy of %r", orig_tree)
             shutil.rmtree(target_dir)
             return orig_tree, None
-        trace.mutter("Applying quilt patches for %r in %s", orig_tree, target_dir)
+        trace.mutter("Applying quilt patches for %r in %s",
+                     orig_tree, target_dir)
         quilt = QuiltPatches.find(tree)
         if quilt is not None:
             quilt.pop_all(force=force)
@@ -92,7 +96,8 @@ def post_process_quilt_patches(tree, old_patches, policy):
     """(Un)apply patches after a merge.
 
     :param tree: Working tree to work in
-    :param old_patches: List of patches applied before the operation (usually a merge)
+    :param old_patches: List of patches applied before the operation (usually a
+        merge)
     """
     quilt = QuiltPatches.find(tree)
     if quilt is None:
@@ -136,7 +141,8 @@ def start_commit_quilt_patches(tree, policy):
         # patches.
         if applied_patches and unapplied_patches:
             trace.warning(
-                gettext("Committing with %d patches applied and %d patches unapplied."),
+                gettext("Committing with %d patches applied and "
+                        "%d patches unapplied."),
                 len(applied_patches), len(unapplied_patches))
     elif policy == "applied":
         quilt.push_all()

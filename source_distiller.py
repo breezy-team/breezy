@@ -56,7 +56,7 @@ class SourceDistiller(object):
         The passed location cannot already exist. If it does then
         FileExists will be raised.
 
-        :param target: a string containing the location at which to 
+        :param target: a string containing the location at which to
             place the tree containing the buildable source.
         """
         raise NotImplementedError(self.distill)
@@ -78,7 +78,7 @@ class NativeSourceDistiller(SourceDistiller):
         The passed location cannot already exist. If it does then
         FileExists will be raised.
 
-        :param target: a string containing the location at which to 
+        :param target: a string containing the location at which to
             place the tree containing the buildable source.
         """
         if os.path.exists(target):
@@ -105,7 +105,7 @@ class FullSourceDistiller(SourceDistiller):
         The passed location cannot already exist. If it does then
         FileExists will be raised.
 
-        :param target: a string containing the location at which to 
+        :param target: a string containing the location at which to
             place the tree containing the buildable source.
         """
         if os.path.exists(target):
@@ -124,7 +124,8 @@ class MergeModeDistiller(SourceDistiller):
         :param tree: The tree to use as the source.
         :param upstream_provider: an UpstreamProvider to provide the upstream
             tarball if needed.
-        :param top_level: if the tree is in the top level directory instead of inside debian/.
+        :param top_level: if the tree is in the top level directory instead of
+            inside debian/.
         :param use_existing: whether the distiller should re-use an existing
             target if the distiller supports it.
         """
@@ -139,7 +140,7 @@ class MergeModeDistiller(SourceDistiller):
         The passed location cannot already exist. If it does then
         FileExists will be raised.
 
-        :param target: a string containing the location at which to 
+        :param target: a string containing the location at which to
             place the tree containing the buildable source.
         """
         if not self.use_existing:
@@ -174,7 +175,7 @@ class MergeModeDistiller(SourceDistiller):
         # Now export the tree to provide the debian dir
         basetempdir = tempfile.mkdtemp(prefix='builddeb-merge-debian-')
         try:
-            tempdir = os.path.join(basetempdir,"export")
+            tempdir = os.path.join(basetempdir, "export")
             if self.top_level:
                 os.makedirs(tempdir)
                 export_dir = os.path.join(tempdir, 'debian')

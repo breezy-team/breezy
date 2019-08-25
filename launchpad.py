@@ -20,8 +20,6 @@
 
 from __future__ import absolute_import
 
-import os
-
 try:
     from ...bedding import config_dir
 except ImportError:
@@ -33,7 +31,6 @@ from ...trace import (
 
 try:
     from launchpadlib.launchpad import Launchpad
-    from launchpadlib.credentials import Credentials
     from launchpadlib.uris import LPNET_SERVICE_ROOT
     HAVE_LPLIB = True
 except ImportError:
@@ -43,17 +40,8 @@ except ImportError:
 def get_launchpad():
     if not HAVE_LPLIB:
         return None
-    try:
-        return Launchpad.login_anonymously("bzr-builddeb",
-            service_root=LPNET_SERVICE_ROOT)
-    except AttributeError: # older version of launchpadlib
-        creds_path = os.path.join(config_dir(), "builddeb.lp_creds.txt")
-        if not os.path.exists(creds_path):
-            return None
-        creds = Credentials("bzr-builddeb")
-        with open(creds_path) as f:
-            creds.load(f)
-        return Launchpad(creds, service_root=LPNET_SERVICE_ROOT)
+    return Launchpad.login_anonymously(
+        "breezy-debian", service_root=LPNET_SERVICE_ROOT)
 
 
 def ubuntu_bugs_for_debian_bug(bug_id):
@@ -101,7 +89,8 @@ def debian_bugs_for_ubuntu_bug(bug_id):
     return []
 
 
-def get_upstream_projectseries_for_package(package, distribution_name, distroseries_name):
+def get_upstream_projectseries_for_package(
+        package, distribution_name, distroseries_name):
     """Return the upstream project series for a package.
 
     :param package: Package name
@@ -118,12 +107,13 @@ def get_upstream_projectseries_for_package(package, distribution_name, distroser
         return None
     distroseries = distribution.getSeries(name_or_version=distroseries_name)
     if distroseries is None:
-        note("%s: No such distroseries %s" % (distribution_name, distroseries_name))
+        note("%s: No such distroseries %s", distribution_name,
+             distroseries_name)
         return None
     sourcepackage = distroseries.getSourcePackage(name=package)
     if sourcepackage is None:
-        note("%s: Source package %s not found in %s" % (distribution_name, package,
-            sourcepackage))
+        note("%s: Source package %s not found in %s", distribution_name,
+             package, sourcepackage)
         return None
     productseries = sourcepackage.productseries
     if productseries is None:
@@ -146,8 +136,8 @@ def get_upstream_branch_url(package, distribution_name, distroseries_name):
         return
     branch = projectseries.branch
     if branch is None:
-        note(("%s: upstream project series %s for source package %s does "
-              "not have a branch") % (distribution_name, distroseries_name,
-                  package))
+        note("%s: upstream project series %s for source package %s does "
+             "not have a branch", distribution_name, distroseries_name,
+             package)
         return None
     return branch.bzr_identity

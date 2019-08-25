@@ -44,8 +44,8 @@ class ChangeLogFileMerge(merge.ConfigurableFileMerger):
     default_files = ['debian/changelog']
 
     def merge_text(self, params):
-        return merge_changelog(params.this_lines, params.other_lines,
-            params.base_lines)
+        return merge_changelog(
+            params.this_lines, params.other_lines, params.base_lines)
 
 
 def merge_changelog(this_lines, other_lines, base_lines=[]):
@@ -65,8 +65,9 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
         writelines(this_filename, this_lines)
         writelines(other_filename, other_lines)
         try:
-            proc = subprocess.Popen(['dpkg-mergechangelogs', base_filename,
-                this_filename, other_filename], stdout=subprocess.PIPE,
+            proc = subprocess.Popen(
+                ['dpkg-mergechangelogs', base_filename, this_filename,
+                 other_filename], stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE)
         except OSError as e:
             if e.errno == errno.ENOENT:
@@ -105,7 +106,8 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             # dpkg-mergechangelogs exited with an error. There is probably no
             # output at all, but regardless the merge should fall back to
             # another method.
-            _logger.warning("dpkg-mergechangelogs failed with status %d", retcode)
+            _logger.warning(
+                "dpkg-mergechangelogs failed with status %d", retcode)
             return 'not_applicable', stdout.splitlines(True)
         else:
             return 'success', stdout.splitlines(True)

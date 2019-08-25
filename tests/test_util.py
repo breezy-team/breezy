@@ -58,7 +58,6 @@ from ..util import (
     find_changelog,
     find_extra_authors,
     find_last_distribution,
-    find_previous_upload,
     find_thanks,
     get_build_architecture,
     get_commit_info_from_changelog,
@@ -256,32 +255,40 @@ class StripChangelogMessageTests(TestCase):
         self.assertEqual(strip_changelog_message(['  + foo']), ['foo'])
         self.assertEqual(strip_changelog_message(['  - foo']), ['foo'])
         self.assertEqual(strip_changelog_message(['  *  foo']), ['foo'])
-        self.assertEqual(strip_changelog_message(['  *  foo', '     bar']),
-                ['foo', 'bar'])
+        self.assertEqual(
+            strip_changelog_message(['  *  foo', '     bar']), ['foo', 'bar'])
 
     def test_leaves_start_if_multiple(self):
-        self.assertEqual(strip_changelog_message(['  * foo', '  * bar']),
-                    ['* foo', '* bar'])
-        self.assertEqual(strip_changelog_message(['  * foo', '  + bar']),
-                    ['* foo', '+ bar'])
-        self.assertEqual(strip_changelog_message(
-                    ['  * foo', '  bar', '  * baz']),
-                    ['* foo', 'bar', '* baz'])
+        self.assertEqual(
+            strip_changelog_message(['  * foo', '  * bar']),
+            ['* foo', '* bar'])
+        self.assertEqual(
+            strip_changelog_message(['  * foo', '  + bar']),
+            ['* foo', '+ bar'])
+        self.assertEqual(
+            strip_changelog_message(
+                ['  * foo', '  bar', '  * baz']),
+            ['* foo', 'bar', '* baz'])
 
 
 class TarballNameTests(TestCase):
 
     def test_tarball_name(self):
-        self.assertEqual(tarball_name("package", "0.1", None),
-                "package_0.1.orig.tar.gz")
-        self.assertEqual(tarball_name("package", Version("0.1"), None),
-                "package_0.1.orig.tar.gz")
-        self.assertEqual(tarball_name("package", Version("0.1"), None,
-                    format='bz2'), "package_0.1.orig.tar.bz2")
-        self.assertEqual(tarball_name("package", Version("0.1"), None,
-                    format='xz'), "package_0.1.orig.tar.xz")
-        self.assertEqual(tarball_name("package", Version("0.1"), "la",
-                    format='xz'), "package_0.1.orig-la.tar.xz")
+        self.assertEqual(
+            tarball_name("package", "0.1", None),
+            "package_0.1.orig.tar.gz")
+        self.assertEqual(
+            tarball_name("package", Version("0.1"), None),
+            "package_0.1.orig.tar.gz")
+        self.assertEqual(
+            tarball_name("package", Version("0.1"), None, format='bz2'),
+            "package_0.1.orig.tar.bz2")
+        self.assertEqual(
+            tarball_name("package", Version("0.1"), None, format='xz'),
+            "package_0.1.orig.tar.xz")
+        self.assertEqual(
+            tarball_name("package", Version("0.1"), "la", format='xz'),
+            "package_0.1.orig-la.tar.xz")
 
 
 DistroInfoFeature = ModuleAvailableFeature('distro_info')
@@ -433,8 +440,9 @@ class DgetTests(TestCaseWithTransport):
         builder.add_default_control()
         # No builder.build()
         self.build_tree(["target/"])
-        self.assertRaises(bzr_errors.NoSuchFile, dget,
-                self.get_url(builder.dsc_name()), 'target')
+        self.assertRaises(
+            bzr_errors.NoSuchFile, dget,
+            self.get_url(builder.dsc_name()), 'target')
 
     def test_dget_missing_file(self):
         builder = SourcePackageBuilder("package", Version("0.1-1"))
@@ -443,16 +451,18 @@ class DgetTests(TestCaseWithTransport):
         builder.build()
         os.unlink(builder.tar_name())
         self.build_tree(["target/"])
-        self.assertRaises(bzr_errors.NoSuchFile, dget,
-                self.get_url(builder.dsc_name()), 'target')
+        self.assertRaises(
+            bzr_errors.NoSuchFile, dget,
+            self.get_url(builder.dsc_name()), 'target')
 
     def test_dget_missing_target(self):
         builder = SourcePackageBuilder("package", Version("0.1-1"))
         builder.add_upstream_file("foo")
         builder.add_default_control()
         builder.build()
-        self.assertRaises(bzr_errors.NotADirectory, dget,
-                self.get_url(builder.dsc_name()), 'target')
+        self.assertRaises(
+            bzr_errors.NotADirectory, dget,
+            self.get_url(builder.dsc_name()), 'target')
 
     def test_dget_changes(self):
         builder = SourcePackageBuilder("package", Version("0.1-1"))
@@ -559,42 +569,48 @@ class ChangelogInfoTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         changes = ["  * Closes: #12345, 56789", "  * closes:bug45678"]
         bugs = find_bugs_fixed(changes, wt.branch, _lplib=MockLaunchpad())
-        self.assertEqual(["http://bugs.debian.org/12345 fixed",
-                "http://bugs.debian.org/56789 fixed",
-                "http://bugs.debian.org/45678 fixed"], bugs)
+        self.assertEqual(
+            ["http://bugs.debian.org/12345 fixed",
+             "http://bugs.debian.org/56789 fixed",
+             "http://bugs.debian.org/45678 fixed"], bugs)
 
     def test_find_bugs_fixed_debian_with_ubuntu_links(self):
         wt = self.make_branch_and_tree(".")
         changes = ["  * Closes: #12345", "  * closes:bug45678"]
-        lplib = MockLaunchpad(debian_bug_to_ubuntu_bugs=
-                {"12345": ("998877", "987654"),
+        lplib = MockLaunchpad(
+            debian_bug_to_ubuntu_bugs={
+                "12345": ("998877", "987654"),
                 "45678": ("87654",)})
         bugs = find_bugs_fixed(changes, wt.branch, _lplib=lplib)
         self.assertEqual([], lplib.ubuntu_bug_lookups)
         self.assertEqual(["12345", "45678"], lplib.debian_bug_lookups)
-        self.assertEqual(["http://bugs.debian.org/12345 fixed",
-                "http://bugs.debian.org/45678 fixed",
-                "https://launchpad.net/bugs/87654 fixed"], bugs)
+        self.assertEqual(
+            ["http://bugs.debian.org/12345 fixed",
+             "http://bugs.debian.org/45678 fixed",
+             "https://launchpad.net/bugs/87654 fixed"], bugs)
 
     def test_find_bugs_fixed_lp(self):
         wt = self.make_branch_and_tree(".")
         changes = ["  * LP: #12345,#56789", "  * lp:  #45678"]
         bugs = find_bugs_fixed(changes, wt.branch, _lplib=MockLaunchpad())
-        self.assertEqual(["https://launchpad.net/bugs/12345 fixed",
-                "https://launchpad.net/bugs/56789 fixed",
-                "https://launchpad.net/bugs/45678 fixed"], bugs)
+        self.assertEqual(
+            ["https://launchpad.net/bugs/12345 fixed",
+             "https://launchpad.net/bugs/56789 fixed",
+             "https://launchpad.net/bugs/45678 fixed"], bugs)
 
     def test_find_bugs_fixed_lp_with_debian_links(self):
         wt = self.make_branch_and_tree(".")
         changes = ["  * LP: #12345", "  * lp:  #45678"]
-        lplib = MockLaunchpad(ubuntu_bug_to_debian_bugs=
-                {"12345": ("998877", "987654"), "45678": ("87654",)})
+        lplib = MockLaunchpad(
+            ubuntu_bug_to_debian_bugs={
+                "12345": ("998877", "987654"), "45678": ("87654",)})
         bugs = find_bugs_fixed(changes, wt.branch, _lplib=lplib)
         self.assertEqual([], lplib.debian_bug_lookups)
         self.assertEqual(["12345", "45678"], lplib.ubuntu_bug_lookups)
-        self.assertEqual(["https://launchpad.net/bugs/12345 fixed",
-                "https://launchpad.net/bugs/45678 fixed",
-                "http://bugs.debian.org/87654 fixed"], bugs)
+        self.assertEqual(
+            ["https://launchpad.net/bugs/12345 fixed",
+             "https://launchpad.net/bugs/45678 fixed",
+             "http://bugs.debian.org/87654 fixed"], bugs)
 
     def test_get_commit_info_none(self):
         wt = self.make_branch_and_tree(".")

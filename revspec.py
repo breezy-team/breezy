@@ -46,7 +46,7 @@ class RevisionSpec_package(RevisionSpec):
 
     def _match_on(self, branch, revs=None):
         version_spec = self.spec
-        dist_spec = None
+        dist_spec = None  # noqa: F841
 
         if version_spec == '':
             raise VersionNotSpecified
@@ -83,12 +83,14 @@ class RevisionSpec_upstream(RevisionSpec):
         try:
             (cl, top_level) = find_changelog(tree, False)
         except MissingChangelogError as e:
-            raise InvalidRevisionSpec(self.user_spec, branch,
+            raise InvalidRevisionSpec(
+                self.user_spec, branch,
                 "no debian/changelog file found: %s" % e)
         if self.spec == '':
             version_spec = cl.version.upstream_version
             if not cl.version.debian_version:
-                raise InvalidRevisionSpec(self.user_spec, branch,
+                raise InvalidRevisionSpec(
+                    self.user_spec, branch,
                     "This is a native package.")
         else:
             version = Version(self.spec)
@@ -99,8 +101,8 @@ class RevisionSpec_upstream(RevisionSpec):
 
         pristine_tar_source = PristineTarSource(branch)
         try:
-            revision_id = pristine_tar_source.version_as_revisions(cl.package,
-                version_spec)[None]
+            revision_id = pristine_tar_source.version_as_revisions(
+                cl.package, version_spec)[None]
             return RevisionInfo.from_revision_id(
                 branch, revision_id)
         except NoSuchTag:

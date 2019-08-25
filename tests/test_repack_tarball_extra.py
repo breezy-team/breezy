@@ -33,11 +33,8 @@ from ..errors import UnsupportedRepackFormat
 
 
 def touch(filename):
-    f = open(filename, 'w')
-    try:
+    with open(filename, 'w') as f:
         f.write(' ')
-    finally:
-        f.close()
 
 
 def create_basedir(basedir, files):
@@ -86,7 +83,8 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         os.mkdir(target_dir)
         create_basedir('package-0.2/', files=['README', 'NEWS'])
         make_new_upstream_tarball_gz(os.path.join(target_dir, tarball_name))
-        self.assertRaises(FileExists, repack_tarball, tarball_name,
+        self.assertRaises(
+            FileExists, repack_tarball, tarball_name,
             tarball_name, target_dir=target_dir)
         self.assertPathExists(tarball_name)
         self.assertPathExists(os.path.join(target_dir, tarball_name))
@@ -111,7 +109,8 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         os.mkdir(target_dir)
         create_basedir('package-0.2/', files=['README'])
         make_new_upstream_tarball_gz(os.path.join(target_dir, tarball_name))
-        self.assertRaises(FileExists, repack_tarball, bz2_tarball_name,
+        self.assertRaises(
+            FileExists, repack_tarball, bz2_tarball_name,
             tarball_name, target_dir=target_dir)
         self.assertPathExists(bz2_tarball_name)
         self.assertPathExists(os.path.join(target_dir, tarball_name))
@@ -130,8 +129,10 @@ class TestRepackTarballExtra(TestCaseInTempDir):
         target_dir = 'target'
         os.mkdir(target_dir)
         create_basedir('package-0.2/', files=['COPYING'])
-        make_new_upstream_tarball_gz(os.path.join(target_dir, bz2_tarball_name))
-        self.assertRaises(FileExists, repack_tarball, bz2_tarball_name,
+        make_new_upstream_tarball_gz(
+            os.path.join(target_dir, bz2_tarball_name))
+        self.assertRaises(
+            FileExists, repack_tarball, bz2_tarball_name,
             bz2_tarball_name, target_dir=target_dir)
         self.assertPathExists(bz2_tarball_name)
         self.assertPathExists(os.path.join(target_dir, bz2_tarball_name))

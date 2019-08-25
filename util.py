@@ -39,7 +39,6 @@ from ... import (
     bugtracker,
     errors,
     urlutils,
-    version_info as bzr_version_info,
     )
 from ...sixish import text_type
 from ...trace import (
@@ -84,12 +83,14 @@ class MissingChangelogError(BzrError):
 _DEBIAN_RELEASES = None
 _UBUNTU_RELEASES = None
 
+
 def _get_release_names():
     global _DEBIAN_RELEASES, _UBUNTU_RELEASES
     try:
         from distro_info import DebianDistroInfo, UbuntuDistroInfo
     except ImportError:
-        warning("distro_info not available. Unable to retrieve current "
+        warning(
+            "distro_info not available. Unable to retrieve current "
             "list of releases.")
         _DEBIAN_RELEASES = []
         _UBUNTU_RELEASES = []
@@ -106,10 +107,12 @@ def debian_releases():
         _get_release_names()
     return _DEBIAN_RELEASES
 
+
 def ubuntu_releases():
     if _UBUNTU_RELEASES is None:
         _get_release_names()
     return _UBUNTU_RELEASES
+
 
 DEBIAN_POCKETS = ('', '-security', '-proposed-updates', '-backports')
 UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
@@ -117,13 +120,13 @@ UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
 
 def safe_decode(s):
     """Decode a string into a Unicode value."""
-    if isinstance(s, text_type): # Already unicode
+    if isinstance(s, text_type):  # Already unicode
         mutter('safe_decode() called on an already-decoded string: %r' % (s,))
         return s
     try:
         return s.decode('utf-8')
     except UnicodeDecodeError as e:
-        mutter('safe_decode(%r) falling back to iso-8859-1' % (s,))
+        mutter('safe_decode(%r) falling back to iso-8859-1: %s' % (s, e))
         # TODO: Looking at BeautifulSoup it seems to use 'chardet' to try to
         #       guess the encoding of a given text stream. We might want to
         #       take a closer look at that.
@@ -160,7 +163,7 @@ def find_changelog(t, merge=False, max_blocks=1):
     The returned changelog is created with 'allow_empty_author=True'
     as some people do this but still want to build.
     'max_blocks' defaults to 1 to try and prevent old broken
-    changelog entries from causing the command to fail, 
+    changelog entries from causing the command to fail.
 
     "top_level" is a subset of "merge" mode. It indicates that the
     '.bzr' dir is at the same level as 'changelog' etc., rather
@@ -198,8 +201,8 @@ def find_changelog(t, merge=False, max_blocks=1):
             # "." then it will have found debian/changelog. Try and detect
             # this.
             if (t.is_versioned('debian') and
-                t.kind('debian') == 'symlink' and
-                t.get_symlink_target('debian') == '.'):
+                    t.kind('debian') == 'symlink' and
+                    t.get_symlink_target('debian') == '.'):
                 changelog_file = 'changelog'
                 top_level = True
         mutter("Using '%s' to get package information", changelog_file)
@@ -208,7 +211,8 @@ def find_changelog(t, merge=False, max_blocks=1):
         contents = t.get_file_text(changelog_file)
     changelog = Changelog()
     try:
-        changelog.parse_changelog(contents, max_blocks=max_blocks, allow_empty_author=True)
+        changelog.parse_changelog(
+            contents, max_blocks=max_blocks, allow_empty_author=True)
     except ChangelogParseError as e:
         raise UnparseableChangelog(str(e))
     return changelog, top_level
@@ -222,8 +226,8 @@ def strip_changelog_message(changes):
 
     :param changes: a list of lines from the changelog entry
     :return: another list of lines with blank lines stripped from the start
-        and the spaces the start of the lines split if there is only one logical
-        entry.
+        and the spaces the start of the lines split if there is only one
+        logical entry.
     """
     if not changes:
         return changes
@@ -310,7 +314,8 @@ def md5sum_filename(filename):
 
 
 def move_file_if_different(source, target, md5sum):
-    """Overwrite a file if its new contents would be different from the current contents.
+    """Overwrite a file if its new contents would be different from the current
+    contents.
 
     :param source: Path of the source file
     :param target: Path of the target file
@@ -326,7 +331,8 @@ def move_file_if_different(source, target, md5sum):
 
 
 def write_if_different(contents, target):
-    """(Over)write a file with `contents` if they are different from its current content.
+    """(Over)write a file with `contents` if they are different from its
+    current content.
 
     :param contents: The contents to write, as a string
     :param target: Path of the target file
@@ -390,6 +396,7 @@ def open_file_via_transport(filename, transport):
     """Open a file using the transport, follow redirects as necessary."""
     def open_file(transport):
         return transport.get(filename)
+
     def follow_redirection(transport, e, redirection_notice):
         mutter(redirection_notice)
         _filename, redirected_transport = open_transport(e.target)
@@ -442,14 +449,15 @@ def find_bugs_fixed(changes, branch, _lplib=None):
 
     :param changes: A list of the contents of the changelog entry.
     :param branch: Bazaar branch associated with the package
-    :return: String with bugs closed, as appropriate for a Bazaar "bugs" revision 
-        property.
+    :return: String with bugs closed, as appropriate for a Bazaar "bugs"
+        revision property.
     """
     if _lplib is None:
         from . import launchpad as _lplib
     bugs = []
     for change in changes:
-        for match in re.finditer("closes:\\s*(?:bug)?\\#?\\s?\\d+"
+        for match in re.finditer(
+                "closes:\\s*(?:bug)?\\#?\\s?\\d+"
                 "(?:,\\s*(?:bug)?\\#?\\s?\\d+)*", change,
                 re.IGNORECASE):
             closes_list = match.group(0)
@@ -460,15 +468,16 @@ def find_bugs_fixed(changes, branch, _lplib=None):
                 if len(lp_bugs) == 1:
                     bug_url = bugtracker.get_bug_url("lp", branch, lp_bugs[0])
                     bugs.append(bug_url + " fixed")
-        for match in re.finditer("lp:\\s+\\#\\d+(?:,\\s*\\#\\d+)*",
-                change, re.IGNORECASE):
+        for match in re.finditer(
+                "lp:\\s+\\#\\d+(?:,\\s*\\#\\d+)*", change, re.IGNORECASE):
             closes_list = match.group(0)
             for match in re.finditer("\\d+", closes_list):
                 bug_url = bugtracker.get_bug_url("lp", branch, match.group(0))
                 bugs.append(bug_url + " fixed")
                 deb_bugs = _lplib.debian_bugs_for_ubuntu_bug(match.group(0))
                 if len(deb_bugs) == 1:
-                    bug_url = bugtracker.get_bug_url("deb", branch, deb_bugs[0])
+                    bug_url = bugtracker.get_bug_url(
+                        "deb", branch, deb_bugs[0])
                     bugs.append(bug_url + " fixed")
     return bugs
 
@@ -501,10 +510,11 @@ def find_thanks(changes):
     :param changes: String with the contents of the changelog entry
     :return: List of people thanked, optionally including email address.
     """
-    thanks_re = re.compile(r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
-            "((?:\\s+(?:(?:\\w\\.)|(?:\\w+(?:-\\w+)*)))+"
-            "(?:\\s+<[^@>]+@[^@>]+>)?)",
-            re.UNICODE)
+    thanks_re = re.compile(
+        r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
+        "((?:\\s+(?:(?:\\w\\.)|(?:\\w+(?:-\\w+)*)))+"
+        "(?:\\s+<[^@>]+@[^@>]+>)?)",
+        re.UNICODE)
     thanks = []
     changes_str = safe_decode(" ".join(changes))
     for match in thanks_re.finditer(changes_str):
@@ -576,26 +586,26 @@ def debuild_config(tree):
     user_config = None
     if tree.has_filename(new_local_conf):
         if not tree.is_versioned(new_local_conf):
-            config_files.append((tree.get_file(new_local_conf), True,
-                        "local.conf"))
+            config_files.append(
+                (tree.get_file(new_local_conf), True, "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.',
                     new_local_conf)
     if tree.has_filename(local_conf):
         if not tree.is_versioned(local_conf):
-            config_files.append((tree.get_file(local_conf), True,
-                        "local.conf"))
+            config_files.append(
+                (tree.get_file(local_conf), True, "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.',
                     local_conf)
     config_files.append((global_conf(), True))
     user_config = global_conf()
     if tree.is_versioned(new_conf):
-        config_files.append((tree.get_file(new_conf), False,
-                    "bzr-builddeb.conf"))
+        config_files.append(
+            (tree.get_file(new_conf), False, "bzr-builddeb.conf"))
     if tree.is_versioned(default_conf):
-        config_files.append((tree.get_file(default_conf), False,
-                    "default.conf"))
+        config_files.append(
+            (tree.get_file(default_conf), False, "default.conf"))
     config = DebBuildConfig(config_files, tree=tree)
     config.set_user_config(user_config)
     return config
@@ -640,14 +650,13 @@ def changelog_find_previous_upload(cl):
     elif current_target in all_ubuntu:
         match_targets = ubuntu_releases()
         if "-" in current_target:
-            match_targets += tuple([current_target.split("-", 1)[0]
-                + t for t in UBUNTU_POCKETS])
+            match_targets += tuple(
+                [current_target.split("-", 1)[0] + t for t in UBUNTU_POCKETS])
     else:
         # If we do not recognize the current target in order to apply special
         # rules to it, then just assume that only previous uploads to exactly
         # the same target count.
         match_targets = (current_target,)
-    previous_version = None
     for block in cl._blocks[1:]:
         if block.distributions.split(" ")[0] in match_targets:
             return block.version
@@ -702,7 +711,8 @@ def guess_build_type(tree, version, contains_upstream_source):
 
     :param tree: A `Tree` object.
     :param version: `Version` of the upload.
-    :param contains_upstream_source: Whether this branch contains the upstream source.
+    :param contains_upstream_source: Whether this branch contains the upstream
+        source.
     :return: A build_type value.
     """
     source_format = tree_get_source_format(tree)
@@ -725,7 +735,7 @@ def guess_build_type(tree, version, contains_upstream_source):
 
     if version_native or format_native:
         return BUILD_TYPE_NATIVE
-    if contains_upstream_source == False:
+    if contains_upstream_source is False:
         # Default to merge mode if there's only a debian/ directory
         return BUILD_TYPE_MERGE
     else:
@@ -753,11 +763,13 @@ def component_from_orig_tarball(tarball_filename, package, version):
         # Extra component
         return base[1:]
     else:
-        raise ValueError("Invalid extra characters in tarball filename %s" %
-            tarball_filename)
+        raise ValueError(
+                "Invalid extra characters in tarball filename %s" %
+                tarball_filename)
 
 
-def extract_orig_tarball(tarball_filename, component, target, strip_components=None):
+def extract_orig_tarball(tarball_filename, component, target,
+                         strip_components=None):
     """Extract an orig tarball.
 
     :param tarball: Path to the tarball
@@ -794,7 +806,8 @@ def extract_orig_tarballs(tarballs, target, strip_components=None):
     :param target: Target directory (must already exist)
     """
     for tarball_filename, component in tarballs:
-        extract_orig_tarball(tarball_filename, component, target,
+        extract_orig_tarball(
+            tarball_filename, component, target,
             strip_components=strip_components)
 
 
@@ -817,8 +830,7 @@ def changes_filename(package, version, arch):
     non_epoch_version = version.upstream_version
     if version.debian_version is not None:
         non_epoch_version += "-%s" % version.debian_version
-    return "%s_%s_%s.changes" % (package,
-            non_epoch_version, arch)
+    return "%s_%s_%s.changes" % (package, non_epoch_version, arch)
 
 
 def get_build_architecture():

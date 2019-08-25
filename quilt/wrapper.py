@@ -48,7 +48,7 @@ class QuiltError(errors.BzrError):
 
 
 def run_quilt(args, working_dir, series_file=None, patches_dir=None,
-        quiet=None):
+              quiet=None):
     """Run quilt.
 
     :param args: Arguments to quilt
@@ -81,9 +81,10 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None,
     if not os.path.isdir(working_dir):
         raise AssertionError("%s is not a valid directory" % working_dir)
     try:
-        proc = subprocess.Popen(command, cwd=working_dir, env=env,
-                stdin=subprocess.PIPE, preexec_fn=subprocess_setup,
-                stdout=subprocess.PIPE, stderr=stderr)
+        proc = subprocess.Popen(
+            command, cwd=working_dir, env=env,
+            stdin=subprocess.PIPE, preexec_fn=subprocess_setup,
+            stdout=subprocess.PIPE, stderr=stderr)
     except OSError as e:
         if e.errno != errno.ENOENT:
             raise
@@ -101,7 +102,7 @@ def run_quilt(args, working_dir, series_file=None, patches_dir=None,
 
 
 def quilt_pop_all(working_dir, patches_dir=None, series_file=None, quiet=None,
-        force=False, refresh=False):
+                  force=False, refresh=False):
     """Pop all patches.
 
     :param working_dir: Directory to work in
@@ -113,11 +114,13 @@ def quilt_pop_all(working_dir, patches_dir=None, series_file=None, quiet=None,
         args.append("-f")
     if refresh:
         args.append("--refresh")
-    return run_quilt(args, working_dir=working_dir,
-        patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+    return run_quilt(
+        args, working_dir=working_dir, patches_dir=patches_dir,
+        series_file=series_file, quiet=quiet)
 
 
-def quilt_pop(working_dir, patch, patches_dir=None, series_file=None, quiet=None):
+def quilt_pop(working_dir, patch, patches_dir=None, series_file=None,
+              quiet=None):
     """Pop a patch.
 
     :param working_dir: Directory to work in
@@ -125,12 +128,13 @@ def quilt_pop(working_dir, patch, patches_dir=None, series_file=None, quiet=None
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["pop", patch], working_dir=working_dir,
-        patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+    return run_quilt(
+        ["pop", patch], working_dir=working_dir, patches_dir=patches_dir,
+        series_file=series_file, quiet=quiet)
 
 
 def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None,
-        force=False, refresh=False):
+                   force=False, refresh=False):
     """Push all patches.
 
     :param working_dir: Directory to work in
@@ -142,11 +146,13 @@ def quilt_push_all(working_dir, patches_dir=None, series_file=None, quiet=None,
         args.append("-f")
     if refresh:
         args.append("--refresh")
-    return run_quilt(args, working_dir=working_dir,
-            patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+    return run_quilt(
+        args, working_dir=working_dir, patches_dir=patches_dir,
+        series_file=series_file, quiet=quiet)
 
 
-def quilt_push(working_dir, patch, patches_dir=None, series_file=None, quiet=None):
+def quilt_push(working_dir, patch, patches_dir=None, series_file=None,
+               quiet=None):
     """Push a patch.
 
     :param working_dir: Directory to work in
@@ -154,8 +160,9 @@ def quilt_push(working_dir, patch, patches_dir=None, series_file=None, quiet=Non
     :param patches_dir: Optional patches directory
     :param series_file: Optional series file
     """
-    return run_quilt(["push", patch], working_dir=working_dir,
-            patches_dir=patches_dir, series_file=series_file, quiet=quiet)
+    return run_quilt(
+        ["push", patch], working_dir=working_dir,
+        patches_dir=patches_dir, series_file=series_file, quiet=quiet)
 
 
 def quilt_upgrade(working_dir):
@@ -167,7 +174,8 @@ def quilt_applied(tree):
 
     """
     try:
-        return [patch.rstrip(b"\n").decode(osutils._fs_enc) for patch in
+        return [
+            patch.rstrip(b"\n").decode(osutils._fs_enc) for patch in
             tree.get_file_lines(".pc/applied-patches")
             if patch.strip() != b""]
     except errors.NoSuchFile:
@@ -187,9 +195,9 @@ def quilt_unapplied(working_dir, patches_dir=None, series_file=None):
     :param series_file: Optional series file
     """
     try:
-        unapplied_patches = run_quilt(["unapplied"],
-                            working_dir=working_dir, patches_dir=patches_dir,
-                            series_file=series_file).splitlines()
+        unapplied_patches = run_quilt(
+            ["unapplied"], working_dir=working_dir, patches_dir=patches_dir,
+            series_file=series_file).splitlines()
         patch_basenames = []
         for patch in unapplied_patches:
             patch = os.path.basename(patch)

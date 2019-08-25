@@ -23,8 +23,6 @@ from __future__ import absolute_import
 
 import logging
 
-from debian import changelog
-
 from testtools.content_type import ContentType
 from testtools.content import Content
 
@@ -158,11 +156,13 @@ class TestMergeChangelog(tests.TestCase):
                 Content(UTF8_TEXT, lambda: [warnings_log]))
 
     def assertMergeChangelog(self, expected_lines, this_lines, other_lines,
-            base_lines=[], conflicted=False, possible_error=False):
+                             base_lines=[], conflicted=False,
+                             possible_error=False):
         status, merged_lines = merge_changelog.merge_changelog(
                                     this_lines, other_lines, base_lines)
         if possible_error and status == "not_applicable":
-            self.assertContainsRe(self.logged_warnings.getvalue(),
+            self.assertContainsRe(
+                self.logged_warnings.getvalue(),
                 "(?m)dpkg-mergechangelogs failed with status \\d+$")
             return False
         if conflicted:
@@ -180,21 +180,25 @@ class TestMergeChangelog(tests.TestCase):
         self.assertMergeChangelog(expected_lines, other_lines, this_lines)
 
     def test_this_shorter(self):
-        self.assertMergeChangelog(v_112_1 + v_111_2 + v_001_1,
+        self.assertMergeChangelog(
+            v_112_1 + v_111_2 + v_001_1,
             this_lines=v_111_2,
             other_lines=v_112_1 + v_001_1,
             base_lines=[])
-        self.assertMergeChangelog(v_112_1 + v_111_2 + v_001_1,
+        self.assertMergeChangelog(
+            v_112_1 + v_111_2 + v_001_1,
             this_lines=v_001_1,
             other_lines=v_112_1 + v_111_2,
             base_lines=[])
 
     def test_other_shorter(self):
-        self.assertMergeChangelog(v_112_1 + v_111_2 + v_001_1,
+        self.assertMergeChangelog(
+            v_112_1 + v_111_2 + v_001_1,
             this_lines=v_112_1 + v_001_1,
             other_lines=v_111_2,
             base_lines=[])
-        self.assertMergeChangelog(v_112_1 + v_111_2 + v_001_1,
+        self.assertMergeChangelog(
+            v_112_1 + v_111_2 + v_001_1,
             this_lines=v_112_1 + v_111_2,
             other_lines=v_001_1,
             base_lines=[])
@@ -203,9 +207,9 @@ class TestMergeChangelog(tests.TestCase):
         # The order of entries being merged is unchanged, even if they are not
         # properly sorted.  (This is a merge tool, not a reformatting tool.)
         self.assertMergeChangelog(v_111_2 + v_001_1,
-                                  this_lines = v_111_2 + v_001_1,
-                                  other_lines = [],
-                                  base_lines = [])
+                                  this_lines=v_111_2 + v_001_1,
+                                  other_lines=[],
+                                  base_lines=[])
 
     def test_3way_merge(self):
         # Check that if one of THIS or OTHER matches BASE, then we select the
@@ -248,8 +252,8 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
         # the final line in these examples.
         # <https://bugs.launchpad.net/ubuntu/+source/dpkg/+bug/815704>
         #  - Andrew Bennetts, 25 July 2011.
-        #self.assertEqual(''.join(invalid_changelog), ''.join(lines))
-        self.assertMergeChangelog(v_112_1 + 
+        # self.assertEqual(''.join(invalid_changelog), ''.join(lines))
+        self.assertMergeChangelog(v_112_1 +
                                   [b'<<<<<<<\n'] +
                                   v_111_2 +
                                   [b'=======\n>>>>>>>\n'],
@@ -261,7 +265,7 @@ pseudo-prog (1.1.1-2) unstable; urgency=low
 
     def test_invalid_version_starting_non_digit(self):
         """Invalid version without digit first is rejected or correctly merged
-        
+
         Versions of dpkg prior to 1.16.0.1 merge such changelogs correctly,
         however then a stricter check was introduced that aborts the script.
         In that case, the result should not be a success with a zero byte
@@ -309,7 +313,8 @@ pseudo-prog (\xc2\xa7) unstable; urgency=low
             possible_error=True)
         if not handled:
             # Can't assert on the exact message as it depends on the locale
-            self.assertContainsRe(self.logged_warnings.getvalue(),
+            self.assertContainsRe(
+                self.logged_warnings.getvalue(),
                 "dpkg-mergechangelogs: .*( is not a valid version)?")
 
 
@@ -352,7 +357,8 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
         # Older versions of Breezy required a file_id to be specified.
         if params_cls_arg_count == 7:
             params = params_cls(
-                merger, ('debian/changelog', 'debian/changelog', 'debian/changelog'),
+                merger,
+                ('debian/changelog', 'debian/changelog', 'debian/changelog'),
                 None, 'file', 'file', 'this')
         elif params_cls_arg_count == 8:
             params = params_cls(

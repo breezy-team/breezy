@@ -48,11 +48,13 @@ from . import (
 
 class Dep3HeaderTests(TestCase):
 
-    def dep3_header(self, description=None, origin=None, forwarded=None,
+    def dep3_header(
+            self, description=None, origin=None, forwarded=None,
             bugs=None, authors=None, revision_id=None, last_update=None,
             applied_upstream=None):
         f = StringIO()
-        write_dep3_patch_header(f, description=description, origin=origin,
+        write_dep3_patch_header(
+            f, description=description, origin=origin,
             forwarded=forwarded, bugs=bugs, authors=authors,
             revision_id=revision_id, last_update=last_update,
             applied_upstream=applied_upstream)
@@ -83,13 +85,11 @@ class Dep3HeaderTests(TestCase):
 
     def test_origin(self):
         ret = self.dep3_header(origin="Cherrypick from upstream")
-        self.assertEquals("Cherrypick from upstream",
-            ret["Origin"])
+        self.assertEquals("Cherrypick from upstream", ret["Origin"])
 
     def test_forwarded(self):
         ret = self.dep3_header(forwarded="not needed")
-        self.assertEquals("not needed",
-            ret["Forwarded"])
+        self.assertEquals("not needed", ret["Forwarded"])
 
     def test_applied_upstream(self):
         ret = self.dep3_header(applied_upstream="commit 45")
@@ -105,7 +105,8 @@ class Dep3HeaderTests(TestCase):
             "https://bugs.launchpad.net/bugs/20110508",
             "http://bugzilla.samba.org/bug.cgi?id=52"],
             ret.get_all("Bug"))
-        self.assertEquals(["http://bugs.debian.org/424242"],
+        self.assertEquals(
+            ["http://bugs.debian.org/424242"],
             ret.get_all("Bug-Debian"))
 
     def test_write_bug_fix_only(self):
@@ -116,15 +117,17 @@ class Dep3HeaderTests(TestCase):
 
     def test_write_normal_bug(self):
         f = StringIO()
-        write_dep3_bug_line(f, "http://bugzilla.samba.org/bug.cgi?id=42",
-            "fixed")
-        self.assertEquals("Bug: http://bugzilla.samba.org/bug.cgi?id=42\n",
+        write_dep3_bug_line(
+            f, "http://bugzilla.samba.org/bug.cgi?id=42", "fixed")
+        self.assertEquals(
+            "Bug: http://bugzilla.samba.org/bug.cgi?id=42\n",
             f.getvalue())
 
     def test_write_debian_bug(self):
         f = StringIO()
         write_dep3_bug_line(f, "http://bugs.debian.org/234354", "fixed")
-        self.assertEquals("Bug-Debian: http://bugs.debian.org/234354\n",
+        self.assertEquals(
+            "Bug-Debian: http://bugs.debian.org/234354\n",
             f.getvalue())
 
 
@@ -132,15 +135,18 @@ class GatherBugsAndAuthors(TestCaseWithTransport):
 
     def test_none(self):
         branch = self.make_branch(".")
-        self.assertEquals((set(), set(), None),
+        self.assertEquals(
+            (set(), set(), None),
             gather_bugs_and_authors(branch.repository, []))
 
     def test_multiple_authors(self):
         tree = self.make_branch_and_tree(".")
-        revid1 = tree.commit(authors=["Jelmer Vernooij <jelmer@canonical.com>"],
-                timestamp=1304844311, message="msg")
-        revid2 = tree.commit(authors=["Max Bowsher <maxb@f2s.com>"],
-                timestamp=1304844278, message="msg")
+        revid1 = tree.commit(
+            authors=["Jelmer Vernooij <jelmer@canonical.com>"],
+            timestamp=1304844311, message="msg")
+        revid2 = tree.commit(
+            authors=["Max Bowsher <maxb@f2s.com>"],
+            timestamp=1304844278, message="msg")
         self.assertEquals((set(), set([
             "Jelmer Vernooij <jelmer@canonical.com>",
             "Max Bowsher <maxb@f2s.com>"]), 1304844311),
@@ -148,9 +154,10 @@ class GatherBugsAndAuthors(TestCaseWithTransport):
 
     def test_bugs(self):
         tree = self.make_branch_and_tree(".")
-        revid1 = tree.commit(authors=["Jelmer Vernooij <jelmer@canonical.com>"],
-                timestamp=1304844311, message="msg", revprops={"bugs":
-                    "http://bugs.samba.org/bug.cgi?id=2011 fixed\n"})
+        revid1 = tree.commit(
+            authors=["Jelmer Vernooij <jelmer@canonical.com>"],
+            timestamp=1304844311, message="msg",
+            revprops={"bugs": "http://bugs.samba.org/bug.cgi?id=2011 fixed\n"})
         self.assertEquals((
             set([("http://bugs.samba.org/bug.cgi?id=2011", "fixed")]),
             set(["Jelmer Vernooij <jelmer@canonical.com>"]), 1304844311),
@@ -164,8 +171,8 @@ class DetermineAppliedUpstreamTests(TestCaseWithTransport):
         feature = self.make_branch_and_tree("feature")
         feature.commit(message="every bloody emperor")
         self.addCleanup(feature.lock_read().unlock)
-        self.assertEquals("no",
-            determine_applied_upstream(upstream.branch, feature.branch))
+        self.assertEquals(
+            "no", determine_applied_upstream(upstream.branch, feature.branch))
 
     def test_merged(self):
         upstream = self.make_branch_and_tree("upstream")
@@ -176,7 +183,8 @@ class DetermineAppliedUpstreamTests(TestCaseWithTransport):
         upstream.commit(message="merge feature")
         self.addCleanup(upstream.lock_read().unlock)
         self.addCleanup(feature.lock_read().unlock)
-        self.assertEquals("merged in revision 2",
+        self.assertEquals(
+            "merged in revision 2",
             determine_applied_upstream(upstream.branch, feature.branch))
 
 
@@ -185,14 +193,16 @@ class DescribeOriginTests(TestCaseWithTransport):
     def test_no_public_branch(self):
         tree = self.make_branch_and_tree(".")
         revid1 = tree.commit(message="msg1")
-        self.assertEquals("commit, revision id: %s" % revid1.decode('utf-8'),
+        self.assertEquals(
+            "commit, revision id: %s" % revid1.decode('utf-8'),
             describe_origin(tree.branch, revid1))
 
     def test_public_branch(self):
         tree = self.make_branch_and_tree(".")
         tree.branch.set_public_branch("http://example.com/public")
         revid1 = tree.commit(message="msg1")
-        self.assertEquals("commit, http://example.com/public, revision: 1",
+        self.assertEquals(
+            "commit, http://example.com/public, revision: 1",
             describe_origin(tree.branch, revid1))
 
 
@@ -203,9 +213,10 @@ class FullDep3PatchTests(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         self.build_tree_contents([("foo", "data")])
         tree.add("foo")
-        revid = tree.commit("msg", rev_id=b"arevid", timestamp=1304849661,
-            timezone=0)
-        write_dep3_patch(f, tree.branch, NULL_REVISION, revid,
+        revid = tree.commit(
+            "msg", rev_id=b"arevid", timestamp=1304849661, timezone=0)
+        write_dep3_patch(
+            f, tree.branch, NULL_REVISION, revid,
             description="Nutter alert",
             forwarded="not needed",
             authors=set(["Jelmer <jelmer@samba.org>"]))

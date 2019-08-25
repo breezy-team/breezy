@@ -1,6 +1,6 @@
 #    __init__.py -- Testsuite for builddeb
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -33,13 +33,12 @@ from .... import tests
 
 from debian.changelog import Version, Changelog
 
-from ....tests import (
-    TestUtil,
+from ....tests import (  # noqa: F401
     multiply_tests,
     TestCaseWithTransport,
     TestCaseInTempDir,
     )
-from ....tests.features import (
+from ....tests.features import (  # noqa: F401
     ExecutableFeature,
     ModuleAvailableFeature,
     UnicodeFilenameFeature,
@@ -151,19 +150,20 @@ def load_tests(loader, basic_tests, pattern):
     scenarios = [('dir', dict(build_tarball=make_new_upstream_dir,
                               old_tarball='../package-0.2')),
                  ('.tar.gz', dict(build_tarball=make_new_upstream_tarball,
-                              old_tarball='../package-0.2.tar.gz')),
+                                  old_tarball='../package-0.2.tar.gz')),
                  ('.tar.bz2', dict(build_tarball=make_new_upstream_tarball_bz2,
-                              old_tarball='../package-0.2.tar.bz2')),
+                                   old_tarball='../package-0.2.tar.bz2')),
                  ('.tar.xz', dict(build_tarball=make_new_upstream_tarball_xz,
-                              old_tarball='../package-0.2.tar.xz',
-                              _test_needs_features=[XzFeature])),
-                 ('.tar.lzma', dict(build_tarball=make_new_upstream_tarball_lzma,
-                              old_tarball='../package-0.2.tar.lzma',
-                              _test_needs_features=[LzmaFeature])),
+                                  old_tarball='../package-0.2.tar.xz',
+                                  _test_needs_features=[XzFeature])),
+                 ('.tar.lzma', dict(
+                     build_tarball=make_new_upstream_tarball_lzma,
+                     old_tarball='../package-0.2.tar.lzma',
+                     _test_needs_features=[LzmaFeature])),
                  ('.zip', dict(build_tarball=make_new_upstream_tarball_zip,
-                              old_tarball='../package-0.2.zip')),
+                               old_tarball='../package-0.2.zip')),
                  ('.tar', dict(build_tarball=make_new_upstream_tarball_bare,
-                              old_tarball='../package-0.2.tar')),
+                               old_tarball='../package-0.2.tar')),
                  ]
     basic_tests = multiply_tests(repack_tarball_tests, scenarios, basic_tests)
     return basic_tests
@@ -173,8 +173,8 @@ class BuilddebTestCase(tests.TestCaseWithTransport):
 
     package_name = 'test'
     package_version = Version('0.1-1')
-    upstream_version = property(lambda self: \
-                                self.package_version.upstream_version)
+    upstream_version = property(
+        lambda self: self.package_version.upstream_version)
 
     def make_changelog(self, version=None):
         if version is None:
@@ -197,7 +197,7 @@ class BuilddebTestCase(tests.TestCaseWithTransport):
             changelog.write_to_open_file(f)
 
     def check_tarball_contents(self, tarball, expected, basedir=None,
-                             skip_basedir=False, mode=None):
+                               skip_basedir=False, mode=None):
         """Test that the tarball has certain contents.
 
         Test that the tarball has exactly expected contents. The basedir
@@ -226,10 +226,10 @@ class BuilddebTestCase(tests.TestCaseWithTransport):
 
             if len(real_expected) > 0:
                 self.fail("Files not found in %s: %s"
-                        % (tarball, ", ".join(real_expected)))
+                          % (tarball, ", ".join(real_expected)))
             if len(extras) > 0:
                 self.fail("Files not expected to be found in %s: %s"
-                        % (tarball, ", ".join(extras)))
+                          % (tarball, ", ".join(extras)))
         finally:
             tar.close()
 
@@ -250,7 +250,7 @@ class SourcePackageBuilder(object):
     """
 
     def __init__(self, name, version, native=False, version3=False,
-            multiple_upstream_tarballs=None):
+                 multiple_upstream_tarballs=None):
         """
         :param name: Package name
         :param version: Package version
@@ -268,8 +268,9 @@ class SourcePackageBuilder(object):
         self.version3 = version3
         self.multiple_upstream_tarballs = multiple_upstream_tarballs
         if multiple_upstream_tarballs and not (version3 and not native):
-            raise AssertionError("Multiple upstream tarballs are only "
-                    "possible with 3.0 (quilt) format")
+            raise AssertionError(
+                "Multiple upstream tarballs are only "
+                "possible with 3.0 (quilt) format")
         self._cl = Changelog()
         self.new_version(version)
 
@@ -306,7 +307,8 @@ class SourcePackageBuilder(object):
         self.add_debian_file("debian/control", text)
 
     def new_version(self, version, change_text=None):
-        self._cl.new_block(package=self.name, version=version,
+        self._cl.new_block(
+                package=self.name, version=version,
                 distributions="unstable", urgency="low",
                 author="Maint <maint@maint.org>",
                 date="Wed, 19 Mar 2008 21:27:37 +0000")
@@ -321,8 +323,8 @@ class SourcePackageBuilder(object):
     def tar_name(self):
         if self.native:
             return "%s_%s.tar.gz" % (self.name, str(self._cl.version))
-        return "%s_%s.orig.tar.gz" % (self.name,
-                str(self._cl.version.upstream_version))
+        return "%s_%s.orig.tar.gz" % (
+            self.name, str(self._cl.version.upstream_version))
 
     def diff_name(self):
         assert not self.native, "Can't have a diff with a native package"
@@ -373,8 +375,9 @@ class SourcePackageBuilder(object):
                 orig_basedir = basedir + ".orig"
                 shutil.copytree(basedir, orig_basedir, symlinks=True)
                 cmd = ["dpkg-source", "-sa", "-b", basedir]
-                if os.path.exists("%s_%s.orig.tar.gz"
-                        % (self.name, self._cl.version.upstream_version)):
+                if os.path.exists(
+                    "%s_%s.orig.tar.gz" % (
+                        self.name, self._cl.version.upstream_version)):
                     cmd = ["dpkg-source", "-ss", "-b", basedir]
             else:
                 cmd = ["dpkg-source", "-sn", "-b", basedir]
@@ -382,9 +385,9 @@ class SourcePackageBuilder(object):
             if not self.native:
                 if self.multiple_upstream_tarballs:
                     for part in self.multiple_upstream_tarballs:
-                        tar_path = "%s_%s.orig-%s.tar.%s" % (self.name,
-                                self._cl.version.upstream_version,
-                                part, tar_format)
+                        tar_path = "%s_%s.orig-%s.tar.%s" % (
+                            self.name, self._cl.version.upstream_version,
+                            part, tar_format)
                         if os.path.exists(tar_path):
                             os.unlink(tar_path)
                         tar = tarfile.open(tar_path, 'w:%s' % tar_format)
@@ -394,8 +397,8 @@ class SourcePackageBuilder(object):
                         finally:
                             tar.close()
                         shutil.rmtree(part_basedir)
-                tar_path = "%s_%s.orig.tar.%s" % (self.name,
-                        self._cl.version.upstream_version, tar_format)
+                tar_path = "%s_%s.orig.tar.%s" % (
+                    self.name, self._cl.version.upstream_version, tar_format)
                 if os.path.exists(tar_path):
                     os.unlink(tar_path)
                 tar = tarfile.open(tar_path, 'w:%s' % tar_format)
@@ -404,22 +407,23 @@ class SourcePackageBuilder(object):
                 finally:
                     tar.close()
                 cmd = ["dpkg-source", "--format=3.0 (quilt)", "-b",
-                        basedir]
+                       basedir]
             else:
                 cmd = ["dpkg-source", "--format=3.0 (native)", "-b",
-                        basedir]
+                       basedir]
         self.write_debian_files(basedir)
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
+        proc = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         ret = proc.wait()
         assert ret == 0, "dpkg-source failed, output:\n%s" % \
-                (proc.stdout.read(),)
+            (proc.stdout.read(),)
         cmd = "dpkg-genchanges -S > ../%s" % self.changes_name()
-        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, cwd=basedir)
+        proc = subprocess.Popen(
+            cmd, shell=True, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, cwd=basedir)
         ret = proc.wait()
         assert ret == 0, "dpkg-genchanges failed, output:\n%s" % \
-                (proc.stdout.read(),)
+            (proc.stdout.read(),)
         shutil.rmtree(basedir)
 
 

@@ -18,11 +18,11 @@
 
 from __future__ import absolute_import
 
-bzr_plugin_name = 'builddeb'
+brz_plugin_name = 'debian'
 
-bzr_plugin_version = (2, 8, 6, 'final', 0)
+brz_plugin_version = (3, 0, 0, 'final', 0)
 
-bzr_commands = [
+brz_commands = [
     "test_builddeb",
     "builddeb",
     "merge_upstream",

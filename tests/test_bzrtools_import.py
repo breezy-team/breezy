@@ -32,7 +32,8 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(["source/", "source/a/", "source/a/a", "source/a/b"])
         import_dir(tree, "source")
-        self.assertEqual(["", "a", "a/a", "a/b"],
+        self.assertEqual(
+            ["", "a", "a/a", "a/b"],
             sorted([tree.id2path(i) for i in tree.all_file_ids()]))
 
     def test_removes_files(self):
@@ -43,7 +44,8 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(["source/", "source/a"])
         import_dir(tree, "source")
-        self.assertEqual(["", "a"],
+        self.assertEqual(
+            ["", "a"],
             sorted([tree.id2path(i) for i in tree.all_file_ids()]))
 
     def test_takes_file_id_from_another_tree(self):
@@ -67,8 +69,8 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         file_ids_tree.add(["a"], [b"a-id"])
         file_ids_tree2.add(["a"], [b"other-a-id"])
         self.build_tree(["source/", "source/a"])
-        import_dir(tree, "source",
-                file_ids_from=[file_ids_tree, file_ids_tree2])
+        import_dir(
+            tree, "source", file_ids_from=[file_ids_tree, file_ids_tree2])
         self.assertEqual(b"a-id", tree.path2id("a"))
 
     def test_takes_file_ids_from_last_of_several_trees_if_needed(self):
@@ -81,8 +83,8 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         file_ids_tree.add(["b"], [b"b-id"])
         file_ids_tree2.add(["a"], [b"other-a-id"])
         self.build_tree(["source/", "source/a"])
-        import_dir(tree, "source",
-                file_ids_from=[file_ids_tree, file_ids_tree2])
+        import_dir(
+            tree, "source", file_ids_from=[file_ids_tree, file_ids_tree2])
         self.assertEqual(b"other-a-id", tree.path2id("a"))
 
     def test_takes_file_id_from_target_tree(self):
@@ -95,8 +97,9 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         file_ids_tree.add(["a"], [b"a-id"])
         file_ids_tree2.add(["a"], [b"other-a-id"])
         self.build_tree(["source/", "source/a"])
-        import_dir(tree, "source", file_ids_from=[file_ids_tree2],
-                target_tree=file_ids_tree)
+        import_dir(
+            tree, "source", file_ids_from=[file_ids_tree2],
+            target_tree=file_ids_tree)
         self.assertEqual(b"a-id", tree.path2id("a"))
 
     def test_leaves_file_id_of_existing_file(self):
@@ -182,7 +185,8 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(["source/", u"source/\xa7"])
         import_dir(tree, "source")
-        self.assertEqual(["", u"\xa7"],
+        self.assertEqual(
+            ["", u"\xa7"],
             sorted([tree.id2path(i) for i in tree.all_file_ids()]))
 
     def test_exclude(self):
@@ -191,5 +195,6 @@ class ImportArchiveTests(tests.TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         self.build_tree(["source/", u"source/not-excluded", u"source/test"])
         import_dir(tree, "source", exclude=['test'])
-        self.assertEqual(["", "not-excluded"],
+        self.assertEqual(
+            ["", "not-excluded"],
             sorted([tree.id2path(i) for i in tree.all_file_ids()]))

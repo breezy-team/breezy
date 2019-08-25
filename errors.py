@@ -31,8 +31,8 @@ class DebianError(BzrError):
 
 
 class MissingUpstreamTarball(BzrError):
-    _fmt = ("Unable to find the needed upstream tarball for package %(package)s, "
-            "version %(version)s.")
+    _fmt = ("Unable to find the needed upstream tarball for package "
+            "%(package)s, version %(version)s.")
 
     def __init__(self, package, version):
         BzrError.__init__(self, package=package, version=version)
@@ -130,7 +130,7 @@ class PackageVersionNotPresent(BzrError):
     _fmt = "%(package)s %(version)s was not found in %(upstream)s."
 
     def __init__(self, package, version, upstream):
-        BzrError.__init__(self, package=package, version=version, 
+        BzrError.__init__(self, package=package, version=version,
                           upstream=upstream)
 
 
@@ -183,7 +183,8 @@ class InconsistentSourceFormatError(BzrError):
             format_bool = ""
         else:
             format_bool = "not "
-        BzrError.__init__(self, version_bool=version_bool, format_bool=format_bool)
+        BzrError.__init__(
+            self, version_bool=version_bool, format_bool=format_bool)
 
 
 class StrictBuildFailed(BzrError):
@@ -203,6 +204,3 @@ class MultipleUpstreamTarballsNotSupported(BzrError):
 
     _fmt = ("Importing packages using source format 3.0 multiple tarballs "
             "is not yet supported.")
-
-
-

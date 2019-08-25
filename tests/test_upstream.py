@@ -161,9 +161,10 @@ class MockAptCaller(object):
 class AptSourceTests(TestCase):
 
     def test_get_apt_command_for_source(self):
-        self.assertEqual("apt-get source -y --only-source --tar-only "
-                "apackage=someversion",
-                AptSource()._get_command("apackage", "someversion"))
+        self.assertEqual(
+            "apt-get source -y --only-source --tar-only "
+            "apackage=someversion",
+            AptSource()._get_command("apackage", "someversion"))
 
     def test_apt_provider_no_package(self):
         caller = MockAptCaller()
@@ -171,7 +172,8 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.fetch_tarballs,
+        self.assertRaises(
+            PackageVersionNotPresent, src.fetch_tarballs,
             "apackage", "0.2", "target", _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -182,12 +184,14 @@ class AptSourceTests(TestCase):
 
     def test_apt_provider_wrong_version(self):
         caller = MockAptCaller()
-        sources = MockSources(["0.1-1"],
+        sources = MockSources(
+            ["0.1-1"],
             [[("checksum", 0, "apackage_0.1.orig.tar.gz", "tar")]])
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.fetch_tarballs,
+        self.assertRaises(
+            PackageVersionNotPresent, src.fetch_tarballs,
             "apackage", "0.2", "target", _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)

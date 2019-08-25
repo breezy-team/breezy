@@ -50,7 +50,8 @@ def write_dep3_bug_line(f, bug_url, status):
         f.write("Bug: %s\n" % bug_url)
 
 
-def write_dep3_patch_header(f, description=None, origin=None, forwarded=None,
+def write_dep3_patch_header(
+        f, description=None, origin=None, forwarded=None,
         bugs=None, authors=None, revision_id=None, last_update=None,
         applied_upstream=None):
     """Write a DEP3 patch header.
@@ -118,8 +119,8 @@ def gather_bugs_and_authors(repository, interesting_revision_ids):
     return (bugs, authors, last_update)
 
 
-def determine_applied_upstream(upstream_branch, feature_branch,
-        feature_revid=None):
+def determine_applied_upstream(
+        upstream_branch, feature_branch, feature_revid=None):
     """Check if a particular revision has been merged upstream.
 
     :param upstream_branch: Upstream branch object
@@ -132,8 +133,8 @@ def determine_applied_upstream(upstream_branch, feature_branch,
         feature_revid = feature_branch.last_revision()
     upstream_graph = feature_branch.repository.get_graph(
         upstream_branch.repository)
-    merger = upstream_graph.find_lefthand_merger(feature_revid,
-        upstream_branch.last_revision())
+    merger = upstream_graph.find_lefthand_merger(
+        feature_revid, upstream_branch.last_revision())
     if merger is not None:
         try:
             (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
@@ -144,8 +145,9 @@ def determine_applied_upstream(upstream_branch, feature_branch,
             if mapping.vcs.abbreviation == 'git':
                 return "merged in commit %s" % (
                     foreign_revid.decode('ascii')[:7], )
-        return "merged in revision %s" % (
-            ".".join(str(x) for x in upstream_branch.revision_id_to_dotted_revno(merger)), )
+        return "merged in revision %s" % (".".join(
+            str(x)
+            for x in upstream_branch.revision_id_to_dotted_revno(merger)), )
     else:
         return "no"
 
@@ -183,8 +185,8 @@ def describe_origin(branch, revid):
                 return "commit, %s, commit: %s" % (
                     public_branch_url, foreign_revid.decode('ascii')[:7], )
         return "commit, %s, revision: %s" % (
-            public_branch_url,
-            ".".join(str(x) for x in branch.revision_id_to_dotted_revno(revid)), )
+            public_branch_url, ".".join(
+                str(x) for x in branch.revision_id_to_dotted_revno(revid)), )
     else:
         try:
             (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
@@ -198,8 +200,8 @@ def describe_origin(branch, revid):
 
 
 def write_dep3_patch(f, branch, base_revid, target_revid, description=None,
-        origin=None, forwarded=None, applied_upstream=None, bugs=None,
-        authors=None, last_update=None):
+                     origin=None, forwarded=None, applied_upstream=None,
+                     bugs=None, authors=None, last_update=None):
     """Write a DEP-3 compliant patch.
 
     :param f: File-like object to write to
@@ -214,7 +216,8 @@ def write_dep3_patch(f, branch, base_revid, target_revid, description=None,
     :param authors: Sequence of authors of this patch
     :param last_update: Timestamp for last time this patch was updated
     """
-    write_dep3_patch_header(f, bugs=bugs, authors=authors,
+    write_dep3_patch_header(
+        f, bugs=bugs, authors=authors,
         last_update=last_update, description=description,
         revision_id=target_revid, origin=origin,
         applied_upstream=applied_upstream, forwarded=forwarded)

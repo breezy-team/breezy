@@ -15,7 +15,7 @@ class dh_makeTests(BuilddebTestCase):
         self.assertEqual(tree.branch.base, new_tree.branch.base)
 
     def test__get_tree_no_existing_branch(self):
-        new_tree = dh_make._get_tree("foo")
+        dh_make._get_tree("foo")
         self.assertPathExists("foo")
 
     def test_import_upstream(self):
@@ -48,13 +48,12 @@ class dh_makeTests(BuilddebTestCase):
             tf.add('package-0.1')
         finally:
             tf.close()
-        tree = dh_make.import_upstream('package-0.1', 'package', '0.1')
+        dh_make.import_upstream('package-0.1', 'package', '0.1')
         self.assertPathExists("package")
-        rev_tree = tree.branch.repository.revision_tree(
-                tree.branch.last_revision())
         # Has the original revision as a parent
         self.assertPathExists('package/a')
         self.assertPathExists('package/b')
-        self.assertEqual(open('package-0.1/a').read(),
-               open('package/a').read())
+        self.assertEqual(
+            open('package-0.1/a').read(),
+            open('package/a').read())
         self.assertPathExists('package_0.1.orig.tar.gz')

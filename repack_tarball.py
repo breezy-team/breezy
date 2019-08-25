@@ -27,10 +27,12 @@ import tarfile
 import bz2
 try:
     import hashlib
+
     def new_sha(*args):
         return hashlib.sha1(*args)
 except ImportError:
     import sha
+
     def new_sha(*args):
         return sha.new(*args)
 import shutil
@@ -42,7 +44,6 @@ from ...errors import (
     FileExists,
     )
 from ...sixish import (
-    text_type,
     viewitems,
     )
 from ...transport import get_transport
@@ -193,7 +194,7 @@ def _repack_other(target_transport, new_name, source_name):
 def repack_tarball(source_name, new_name, target_dir=None):
     """Repack the file/dir named to a .tar.gz with the chosen name.
 
-    This function takes a named file of either .tar.gz, .tar .tgz .tar.bz2 
+    This function takes a named file of either .tar.gz, .tar .tgz .tar.bz2
     or .zip type, or a directory, and creates the file named in the second
     argument in .tar.gz format.
 

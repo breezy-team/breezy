@@ -1,6 +1,6 @@
 #    builder.py -- Classes for building packages
 #    Copyright (C) 2006, 2007 James Westby <jw+debian@jameswestby.net>
-#    
+#
 #    This file is part of breezy-debian.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -86,7 +86,7 @@ class DebBuild(object):
                 shutil.rmtree(self.target_dir)
             else:
                 note("Not purging build dir as requested: %s",
-                        self.target_dir)
+                     self.target_dir)
         else:
             if self.use_existing:
                 raise NoSourceDirError
@@ -97,7 +97,8 @@ class DebBuild(object):
             self._apply_quilt_patches()
 
     def _apply_quilt_patches(self):
-        if not os.path.isfile(os.path.join(self.target_dir, "debian/patches/series")):
+        if not os.path.isfile(
+                os.path.join(self.target_dir, "debian/patches/series")):
             return
         format_path = os.path.join(self.target_dir, "debian/source/format")
         if not os.path.isfile(format_path):
@@ -112,9 +113,10 @@ class DebBuild(object):
     def build(self):
         """This builds the package using the supplied command."""
         note("Building the package in %s, using %s", self.target_dir,
-                self.builder)
-        proc = subprocess.Popen(self.builder, shell=True, cwd=self.target_dir,
-                preexec_fn=subprocess_setup)
+             self.builder)
+        proc = subprocess.Popen(
+            self.builder, shell=True, cwd=self.target_dir,
+            preexec_fn=subprocess_setup)
         proc.wait()
         if proc.returncode != 0:
             raise BuildFailedError

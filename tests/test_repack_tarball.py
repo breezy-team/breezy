@@ -24,15 +24,16 @@ import os
 import shutil
 import tarfile
 
-from ....errors import (NoSuchFile,
-                           FileExists,
-                           )
+from ....errors import (
+    NoSuchFile,
+    FileExists,
+    )
 from ..errors import UnsupportedRepackFormat
 from ..repack_tarball import (
-        repack_tarball,
-        get_filetype,
-        get_repacker_class,
-        )
+    repack_tarball,
+    get_filetype,
+    get_repacker_class,
+    )
 from . import TestCaseInTempDir
 
 
@@ -57,7 +58,8 @@ class TestRepackTarball(TestCaseInTempDir):
     def create_basedir(self):
         """Create the basedir that the source can be built from"""
         os.mkdir(self.basedir)
-        for filename in [os.path.join(self.basedir, file) for file in self.files]:
+        for filename in [
+                os.path.join(self.basedir, file) for file in self.files]:
             if filename.endswith('/'):
                 os.mkdir(filename)
             else:
@@ -80,8 +82,8 @@ class TestRepackTarball(TestCaseInTempDir):
             # directory, can't really be detected remotely, so we have a
             # error that could mean two things
             error = UnsupportedRepackFormat
-        self.assertRaises(error, repack_tarball, self.old_tarball,
-              self.new_tarball)
+        self.assertRaises(
+            error, repack_tarball, self.old_tarball, self.new_tarball)
 
     def test_repack_tarball_result_extant(self):
         self.create_old_tarball()
@@ -105,14 +107,17 @@ class TestRepackTarball(TestCaseInTempDir):
             members = [x.rstrip("/") for x in tar.getnames()]
         finally:
             tar.close()
-        self.assertEqual(members,
-                         [self.basedir.rstrip("/")] +
-                         [os.path.join(self.basedir, file).rstrip("/") for file in self.files])
+        self.assertEqual(
+            members,
+            [self.basedir.rstrip("/")] +
+            [os.path.join(self.basedir, file).rstrip("/")
+             for file in self.files])
 
     def test_repack_tarball_with_target_dir(self):
         self.create_old_tarball()
         target_dir = 'tarballs'
-        repack_tarball(self.old_tarball, self.new_tarball, target_dir=target_dir)
+        repack_tarball(
+            self.old_tarball, self.new_tarball, target_dir=target_dir)
         self.assertPathExists(target_dir)
         self.assertPathExists(os.path.join(target_dir, self.new_tarball))
         self.assertPathExists(self.old_tarball)
@@ -122,7 +127,8 @@ class TestRepackTarball(TestCaseInTempDir):
         self.create_old_tarball()
         target_dir = 'tarballs'
         os.mkdir(target_dir)
-        repack_tarball(self.old_tarball, self.new_tarball, target_dir=target_dir)
+        repack_tarball(
+            self.old_tarball, self.new_tarball, target_dir=target_dir)
         self.assertPathExists(target_dir)
         self.assertPathExists(os.path.join(target_dir, self.new_tarball))
         self.assertPathExists(self.old_tarball)
@@ -133,8 +139,9 @@ class TestRepackTarball(TestCaseInTempDir):
         target_dir = 'tarballs'
         touch(target_dir)
         # transport gives NoSuchFile rather than NotADirectory for this
-        self.assertRaises((IOError, NoSuchFile), repack_tarball,
-                self.old_tarball, self.new_tarball, target_dir=target_dir)
+        self.assertRaises(
+            (IOError, NoSuchFile), repack_tarball,
+            self.old_tarball, self.new_tarball, target_dir=target_dir)
         self.assertPathExists(self.old_tarball)
         self.assertPathDoesNotExist(self.new_tarball)
         self.assertPathDoesNotExist(os.path.join(target_dir, self.new_tarball))

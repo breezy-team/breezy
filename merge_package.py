@@ -50,7 +50,8 @@ def _upstream_version_data(branch, revid):
     tree = branch.repository.revision_tree(revid)
     changelog, _ignore = find_changelog(tree, False)
     uver = changelog.version.upstream_version
-    upstream_revids = db.pristine_upstream_source.version_as_revisions(None, uver)
+    upstream_revids = db.pristine_upstream_source.version_as_revisions(
+        None, uver)
     if list(upstream_revids.keys()) != [None]:
         raise MultipleUpstreamTarballsNotSupported()
     upstream_revid = upstream_revids[None]
@@ -111,8 +112,8 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
             # "Unpack" the upstream versions and revision ids for the merge
             # source and target branch respectively.
             (us_ver, us_revid) = _upstream_version_data(source, source_revid)
-            (ut_ver, ut_revid) = _upstream_version_data(target,
-                target.last_revision())
+            (ut_ver, ut_revid) = _upstream_version_data(
+                    target, target.last_revision())
 
             # Did the upstream branches of the merge source/target diverge?
             graph = source.repository.get_graph(target.repository)
@@ -133,38 +134,40 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
                 db.extract_upstream_tree({None: ut_revid}, tempdir)
                 tmp_target_utree = db.pristine_upstream_tree
 
-                # Merge upstream branch tips to obtain a shared upstream parent.
-                # This will add revision K (see graph above) to a temporary merge
-                # target upstream tree.
+                # Merge upstream branch tips to obtain a shared upstream
+                # parent.  This will add revision K (see graph above) to a
+                # temporary merge target upstream tree.
                 with tmp_target_utree.lock_write():
                     if us_ver > ut_ver:
                         # The source upstream tree is more recent and the
-                        # temporary target tree needs to be reshaped to match it.
+                        # temporary target tree needs to be reshaped to match
+                        # it.
                         tmp_target_utree.revert(
                             None, source.repository.revision_tree(us_revid))
                         t_upstream_reverted = True
 
                     tmp_target_utree.set_parent_ids((ut_revid, us_revid))
                     new_revid = tmp_target_utree.commit(
-                        'Prepared upstream tree for merging into target branch.')
+                        'Prepared upstream tree for merging into target '
+                        'branch.')
 
                     # Repository updates during a held lock are not visible,
                     # hence the call to refresh the data in the /target/ repo.
                     tree.branch.repository.refresh_data()
 
                     tree.branch.fetch(source, last_revision=us_revid)
-                    tree.branch.fetch(tmp_target_utree.branch,
-                            last_revision=new_revid)
+                    tree.branch.fetch(
+                        tmp_target_utree.branch, last_revision=new_revid)
 
-                    # Merge shared upstream parent into the target merge branch. This
-                    # creates revison L in the digram above.
+                    # Merge shared upstream parent into the target merge
+                    # branch. This creates revison L in the digram above.
                     conflicts = tree.merge_from_branch(tmp_target_utree.branch)
                     if conflicts > 0:
                         cmd = "bzr merge"
                         raise SharedUpstreamConflictsWithTargetPackaging(cmd)
                     else:
-                        tree.commit('Merging shared upstream rev into target branch.')
-
+                        tree.commit(
+                            'Merging shared upstream rev into target branch.')
             finally:
                 shutil.rmtree(tempdir)
 

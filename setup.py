@@ -20,21 +20,22 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from info import *
+from info import brz_plugin_version
 
 if __name__ == '__main__':
 
     from distutils.core import setup
 
-    version_string = ".".join([str(v) for v in bzr_plugin_version[:3]])
+    version_string = ".".join(
+            [str(v) for v in brz_plugin_version[:3]])
 
     setup(name="brz-debian",
           version=version_string,
-          description="Build a .deb from a bzr branch",
-          author="James Westby",
-          author_email="jw+debian@jameswestby.net",
-          license = "GNU GPL v2",
-          url="http://jameswestby.net/bzr/brz-debian/",
+          description="Build a .deb from a Breezy-versioned branch",
+          author="Breezy Developers",
+          author_email="breezy-core@googlegroups.com",
+          license="GNU GPL v2",
+          url="https://code.breezy-vcs.org/breezy-debian",
           packages=['breezy.plugins.debian',
                     'breezy.plugins.debian.tests',
                     'breezy.plugins.debian.tests.blackbox',

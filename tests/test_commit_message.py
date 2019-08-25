@@ -49,6 +49,7 @@ class CommitMessageTests(TestCaseWithTransport):
     class _Commit(object):
         class _Builder(object):
             _revprops = {}
+
         def __init__(self, work_tree, exclude=[], specific_files=[]):
             self.work_tree = work_tree
             self.exclude = exclude
@@ -110,8 +111,9 @@ class CommitMessageTests(TestCaseWithTransport):
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt)
-        self.assertEqual(debian_changelog_commit_message(commit, None),
-                "new line\n")
+        self.assertEqual(
+            debian_changelog_commit_message(commit, None),
+            "new line\n")
 
     def test_provides_unstripped_message(self):
         wt = self.make_branch_and_tree(".")
@@ -123,8 +125,9 @@ class CommitMessageTests(TestCaseWithTransport):
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt)
-        self.assertEqual(debian_changelog_commit_message(commit, None),
-                "* two\n* changes\n")
+        self.assertEqual(
+            debian_changelog_commit_message(commit, None),
+            "* two\n* changes\n")
 
     def test_set_message_with_bugs(self):
         self.requireFeature(LaunchpadConnectionFeature)
@@ -137,11 +140,13 @@ class CommitMessageTests(TestCaseWithTransport):
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt)
-        self.assertEqual(debian_changelog_commit(commit, None),
-                "* fix LP: #1234\n* close LP: #4321\n")
-        self.assertEqual(commit.builder._revprops, 
-                        {'bugs': 'https://launchpad.net/bugs/1234 fixed\n'
-                                 'https://launchpad.net/bugs/4321 fixed'})
+        self.assertEqual(
+            debian_changelog_commit(commit, None),
+            "* fix LP: #1234\n* close LP: #4321\n")
+        self.assertEqual(
+            commit.builder._revprops,
+            {'bugs': 'https://launchpad.net/bugs/1234 fixed\n'
+                     'https://launchpad.net/bugs/4321 fixed'})
 
     def test_set_message_returns_unicode(self):
         wt = self.make_branch_and_tree(".")
@@ -153,5 +158,6 @@ class CommitMessageTests(TestCaseWithTransport):
         wt.lock_read()
         self.addCleanup(wt.unlock)
         commit = self._Commit(wt)
-        self.assertEqual(debian_changelog_commit(commit, None),
-                u"\u2026real fix this time\n")
+        self.assertEqual(
+            debian_changelog_commit(commit, None),
+            u"\u2026real fix this time\n")
