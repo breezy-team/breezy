@@ -154,6 +154,12 @@ class LaunchpadMergeProposal(MergeProposal):
     def close(self):
         self._mp.setStatus(status='Rejected')
 
+    def can_be_merged(self):
+        if not self._mp.preview_diff:
+            # Maybe?
+            return True
+        return not bool(self._mp.preview_diff.conflicts)
+
     def merge(self, commit_message=None):
         target_branch = _mod_branch.Branch.open(
             self.get_target_branch_url())
