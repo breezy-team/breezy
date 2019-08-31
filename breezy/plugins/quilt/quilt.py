@@ -98,4 +98,3 @@ class QuiltPatches(object):
         return wrapper.quilt_delete(
             self.tree.basedir, patch, patches_dir=self.patches_dir,
             series_file=self.series_file, remove=remove)
-
