@@ -257,7 +257,7 @@ class TestFormat7(TestCaseWithTransport):
 class TestInterWeaveRepo(TestCaseWithTransport):
 
     def test_make_repository(self):
-        out, err = self.run_bzr("init-repository --format=weave a")
+        out, err = self.run_bzr("init-shared-repository --format=weave a")
         self.assertEqual(out,
                          """Standalone tree (format: weave)
 Location:

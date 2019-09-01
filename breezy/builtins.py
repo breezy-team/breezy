@@ -2033,7 +2033,7 @@ class cmd_init(Command):
         brz commit -m "imported project"
     """
 
-    _see_also = ['init-repository', 'branch', 'checkout']
+    _see_also = ['init-shared-repository', 'branch', 'checkout']
     takes_args = ['location?']
     takes_options = [
         Option('create-prefix',
@@ -2131,7 +2131,7 @@ class cmd_init(Command):
                 self.outf.write(gettext("Using shared repository: %s\n") % url)
 
 
-class cmd_init_repository(Command):
+class cmd_init_shared_repository(Command):
     __doc__ = """Create a shared repository for branches to share storage space.
 
     New branches created under the repository directory will store their
@@ -2149,7 +2149,7 @@ class cmd_init_repository(Command):
     :Examples:
         Create a shared repository holding just branches::
 
-            brz init-repo --no-trees repo
+            brz init-shared-repo --no-trees repo
             brz init repo/trunk
 
         Make a lightweight checkout elsewhere::
@@ -2173,7 +2173,7 @@ class cmd_init_repository(Command):
                             help='Branches in the repository will default to'
                             ' not having a working tree.'),
                      ]
-    aliases = ["init-repo"]
+    aliases = ["init-shared-repo", "init-repo"]
 
     def run(self, location, format=None, no_trees=False):
         if format is None:

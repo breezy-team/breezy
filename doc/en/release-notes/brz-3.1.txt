@@ -16,6 +16,11 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Breezy.
 
+ * The ``brz init-repo`` command has been renamed to
+   ``brz init-shared-repo`` to emphasize that it creates
+   shared repositories rather than just any kind of repository.
+   (Jelmer Vernooĳ)
+
 New Features
 ************
 

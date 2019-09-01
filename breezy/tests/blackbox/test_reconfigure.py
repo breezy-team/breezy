@@ -190,7 +190,7 @@ $ brz init -q branch
 $ echo foo > branch/foo
 $ brz add -q branch/foo
 $ brz commit -q -m msg branch
-$ brz init-repo -q .
+$ brz init-shared-repo -q .
 $ brz reconfigure --branch --use-shared branch
 $ brz info branch
 Repository branch (format: ...)
@@ -205,7 +205,7 @@ $ brz init -q branch
 $ echo foo > branch/foo
 $ brz add -q branch/foo
 $ brz commit -q -m msg branch
-$ brz init-repo -q .
+$ brz init-shared-repo -q .
 $ brz reconfigure --use-shared --branch branch
 $ brz info branch
 Repository branch (format: ...)
