@@ -1872,6 +1872,13 @@ class NonAsciiRevisionId(UnsupportedOperation):
     """
 
 
+class SharedRepositoriesUnsupported(UnsupportedOperation):
+    _fmt = "Shared repositories are not supported by %(format)r."
+
+    def __init__(self, format):
+        BzrError.__init__(self, format=format)
+
+
 class GhostTagsNotSupported(BzrError):
 
     _fmt = "Ghost tags not supported by format %(format)r."

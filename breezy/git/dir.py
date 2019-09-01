@@ -381,6 +381,9 @@ class LocalGitControlDirFormat(GitControlDirFormat):
                                    stack_on_pwd=None, repo_format_name=None,
                                    make_working_trees=None,
                                    shared_repo=False, vfs_only=False):
+        if shared_repo:
+            raise brz_errors.SharedRepositoriesUnsupported(self)
+
         def make_directory(transport):
             transport.mkdir('.')
             return transport
