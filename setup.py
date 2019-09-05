@@ -37,6 +37,7 @@ if __name__ == '__main__':
           license="GNU GPL v2",
           url="https://code.breezy-vcs.org/breezy-debian",
           packages=['breezy.plugins.debian',
+                    'breezy.plugins.debian.quilt',
                     'breezy.plugins.debian.tests',
                     'breezy.plugins.debian.tests.blackbox',
                     'breezy.plugins.debian.upstream'],
