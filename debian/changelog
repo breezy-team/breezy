@@ -5,6 +5,7 @@ breezy-debian (2.8.30) UNRELEASED; urgency=medium
   * Actually install the quilt subpackage.
   * Update standards version, no changes needed.
   * Bump debhelper from old 10 to 12.
+  * Add missing colon in closes line.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 22 Aug 2019 20:16:17 +0000
 
@@ -589,7 +590,7 @@ bzr-builddeb (2.5.1) unstable; urgency=low
     if we can't find the tarball.
   * Determine Bazaar home directory using bzrlib to prevent test
     isolation issues. LP: #614125
-  * Support 'bzr tags --sort=debversion'. Closes #701244.
+  * Support 'bzr tags --sort=debversion'. Closes: #701244.
   * When adding a changelog entry, support git and svn snapshots.
   * Automatically use debian/source/format if package is native. Closes:
     #586617
