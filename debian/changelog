@@ -4,6 +4,7 @@ breezy-debian (2.8.30) UNRELEASED; urgency=medium
     debian/upstream/metadata.
   * Actually install the quilt subpackage.
   * Update standards version, no changes needed.
+  * Bump debhelper from old 10 to 12.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 22 Aug 2019 20:16:17 +0000
 
