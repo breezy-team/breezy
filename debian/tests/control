@@ -1,5 +1,5 @@
 Tests: testsuite2
-Depends: brz, python-breezy.tests, python-subunit, ca-certificates, python-meliae, python-lzma, python-dulwich (>= 0.19.11), python-coverage, python-launchpadlib
+Depends: brz, python-breezy.tests, python-subunit, ca-certificates, python-lzma, python-dulwich (>= 0.19.11), python-coverage, python-launchpadlib
 Restrictions: allow-stderr
 
 Tests: testsuite3
