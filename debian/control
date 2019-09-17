@@ -9,18 +9,6 @@ Build-Depends: bash-completion,
                dh-python,
                debhelper (>= 12),
                fdupes,
-               python (>= 2.6.6-3),
-               python-all-dbg (>= 2.6.6-3),
-               python-all-dev (>= 2.6.6-3),
-               python-configobj (>= 4.7.2+ds-2),
-               python-coverage,
-               python-dulwich (>= 0.19.11),
-               python-docutils,
-               python-fastimport (>= 0.9.8),
-               python-launchpadlib,
-               python-paramiko,
-               python-sphinx (>= 1.0.7+dfsg),
-               python-subunit,
                cython3-dbg (>= 0.17),
                python3 (>= 2.6.6-3),
                python3-all-dbg (>= 2.6.6-3),
@@ -33,7 +21,6 @@ Build-Depends: bash-completion,
                python3-launchpadlib,
                python3-paramiko,
                python3-sphinx (>= 1.0.7+dfsg),
-               python3-subunit <!nocheck>,
                python3-testtools (>= 0.9.5~) <!nocheck>,
                debhelper-compat (= 12)
 Standards-Version: 4.4.0
@@ -60,34 +47,6 @@ Description: easy to use distributed version control system
  .
  Out of the box, Breezy supports both the Git and Bazaar repository
  formats.
-
-Package: python-breezy
-Architecture: any
-Section: python
-Depends: python-configobj,
-         ${misc:Depends},
-         ${python:Depends},
-         ${shlibs:Depends}
-Recommends: ca-certificates,
-            python-launchpadlib,
-            python-github,
-            ssh-client | python-paramiko,
-            python-dulwich (>= 0.19.11),
-            python-gpg,
-Conflicts: python-paramiko (<< 1.14.1), python-dulwich (<< 0.19.11)
-Suggests: python-breezy-dbg,
-          python-breezy.tests,
-          python-fastimport,
-          python-kerberos (>= 1.0+svn2455-1),
-          python-paramiko,
-          xdg-utils
-Provides: ${python:Provides}
-Description: distributed version control system - Python 2 library
- Breezy is a distributed version control system designed to be easy to
- use and intuitive, able to adapt to many file formats and workflows, reliable,
- and easily extendable.
- .
- This package contains the Breezy Python 2 library.
 
 Package: python3-breezy
 Architecture: any
@@ -117,28 +76,6 @@ Description: distributed version control system - Python 3 library
  and easily extendable.
  .
  This package contains the Breezy Python 3 library.
-
-Package: python-breezy.tests
-Architecture: all
-Section: python
-Depends: python-breezy (<= ${source:Version}.1~),
-         python-breezy (>= ${source:Version}),
-         python-testtools (>= 0.9.5~),
-         ${misc:Depends},
-         ${python:Depends}
-Suggests: python-subunit
-Provides: ${python:Provides}
-Replaces: python-breezy (<< 2.4.0~beta1-2)
-Description: distributed version control system - Python 2 testsuite
- Breezy is a distributed version control system designed to be easy to
- use and intuitive, able to adapt to many file formats and workflows, reliable,
- and easily extendable.
- .
- This package contains the breezy test infrastructure and testsuite,
- which is required to run the 'brz selftest' command and to run
- plugin tests.
- .
- This package contains the Python 2 version.
 
 Package: python3-breezy.tests
 Architecture: all
