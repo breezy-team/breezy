@@ -1,3 +1,12 @@
+breezy (3.0.1-5) UNRELEASED; urgency=medium
+
+  * Add Provides for bzr and the bzr plugins bundled by Breezy ahead of
+    transition from Bazaar to Breezy.
+  * Bump Breezy's default alterantives priority for the bzr command to 50,
+    higher than that of Bazaar.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 16 Sep 2019 10:55:40 +0000
+
 breezy (3.0.1-4) unstable; urgency=medium
 
   * debian/tests/control: Drop use of removed python-meliae package. Closes: #939887

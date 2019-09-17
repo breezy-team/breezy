@@ -52,6 +52,7 @@ Conflicts: bzr (<< 2.7.0+bzr6622-1)
 Suggests: brz-doc,
           python3-breezy.tests,
           python3-fastimport (>= 0.9.8)
+Provides: bzr, bzr-stats, bzr-email, bzr-upload, bzr-git, bzr-fastimport
 Description: easy to use distributed version control system
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many file formats and workflows, reliable,
