@@ -1,0 +1,13 @@
+=== modified file 'Makefile'
+--- old/Makefile	2018-11-19 20:21:28 +0000
++++ new/Makefile	2019-09-18 09:59:03 +0000
+@@ -21,7 +21,7 @@
+ ### Core Stuff ###
+ 
+ SHELL=bash
+-PYTHON?=python
++PYTHON?=python3
+ PYTHON3?=python3
+ PYTHON24=python24
+ PYTHON25=python25
+
