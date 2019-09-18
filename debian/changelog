@@ -6,6 +6,7 @@ breezy (3.0.1-5) UNRELEASED; urgency=medium
     higher than that of Bazaar.
   * Drop Python 2 packages; they no longer build since the removal
     of python-testtools and python-subunit. Also Closes: #936237
+  * Add dependency on python3-six, previously pulled in indirectly.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 17 Sep 2019 17:40:21 +0000
 
