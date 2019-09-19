@@ -45,12 +45,6 @@ override_dh_auto_clean:
 override_dh_install:
 	dh_install
 	find debian/
-	mkdir -p debian/python-breezy.tests/usr/lib
-	for py in $(shell pyversions -r); do \
-		mkdir -p debian/python-breezy.tests/usr/lib/$$py/dist-packages/breezy; \
-		mv debian/python-breezy/usr/lib/$$py/dist-packages/breezy/tests \
-			debian/python-breezy.tests/usr/lib/$$py/dist-packages/breezy/tests; \
-	done
 	for py in $(shell py3versions -r); do \
 		mkdir -p debian/python3-breezy.tests/usr/lib/$$py/dist-packages/breezy; \
 		mv debian/python3-breezy/usr/lib/$$py/dist-packages/breezy/tests \
@@ -61,22 +55,6 @@ override_dh_install:
 	( cd doc && find -name "*.txt" -not -wholename "*/_build/*" -print0 ) | \
 		xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
 		"debian/brz-doc/usr/share/doc/brz/txt/{}"
-	rm debian/python-breezy-dbg/usr/man/man1/brz.1 \
-		debian/python-breezy-dbg/usr/man/man1/git-remote-bzr.1 \
-		debian/python-breezy-dbg/usr/bin/bzr-receive-pack \
-		debian/python-breezy-dbg/usr/bin/brz \
-		debian/python-breezy-dbg/usr/bin/bzr-upload-pack \
-		debian/python-breezy-dbg/usr/bin/git-remote-bzr
-	rmdir debian/python-breezy-dbg/usr/man/man1 \
-		  debian/python-breezy-dbg/usr/man
-	rm debian/python-breezy/usr/man/man1/brz.1 \
-		debian/python-breezy/usr/man/man1/git-remote-bzr.1 \
-		debian/python-breezy/usr/bin/bzr-receive-pack \
-		debian/python-breezy/usr/bin/brz \
-		debian/python-breezy/usr/bin/bzr-upload-pack \
-		debian/python-breezy/usr/bin/git-remote-bzr
-	rmdir debian/python-breezy/usr/man/man1 \
-		  debian/python-breezy/usr/man
 	rm debian/python3-breezy/usr/man/man1/brz.1 \
 		debian/python3-breezy/usr/man/man1/git-remote-bzr.1 \
 		debian/python3-breezy/usr/bin/bzr-receive-pack \
@@ -106,7 +84,6 @@ override_dh_compress:
 
 override_dh_strip:
 ifeq (,$(filter nostrip,$(DEB_BUILD_OPTIONS)))
-	dh_strip -ppython-breezy --dbgsym-migration='python-breezy-dbg (<< 3.0.0~bzr7141-2)'
 	dh_strip -ppython3-breezy --dbgsym-migration='python3-breezy-dbg (<< 3.0.0~bzr7141-2)'
 endif
 
