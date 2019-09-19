@@ -27,7 +27,7 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	LC_ALL=C.UTF-8 \
 	PYTHONPATH=$(CURDIR)/.pybuild/cpython3_$(PY3VERSION)_breezy/build \
 	$(shell py3versions -d) ./brz -Derror selftest -v --parallel=fork \
-	-Oselftest.timeout=6000
+	-Oselftest.timeout=6000 -x bash_completion
 endif
 
 override_dh_auto_clean:
