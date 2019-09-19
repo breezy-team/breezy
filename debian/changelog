@@ -1,3 +1,9 @@
+breezy (3.0.1-6) UNRELEASED; urgency=medium
+
+  * Drop unnecessary build dependency on cython-dbg.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 19 Sep 2019 22:55:03 +0000
+
 breezy (3.0.1-5) unstable; urgency=medium
 
   * Add Provides for bzr and the bzr plugins bundled by Breezy ahead of
