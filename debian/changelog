@@ -1,4 +1,4 @@
-breezy (3.0.1-5) UNRELEASED; urgency=medium
+breezy (3.0.1-5) unstable; urgency=medium
 
   * Add Provides for bzr and the bzr plugins bundled by Breezy ahead of
     transition from Bazaar to Breezy.
@@ -8,7 +8,7 @@ breezy (3.0.1-5) UNRELEASED; urgency=medium
     of python-testtools and python-subunit. Closes: #940684, #936237
   * Add dependency on python3-six, previously pulled in indirectly.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 18 Sep 2019 10:03:56 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 19 Sep 2019 09:36:44 +0000
 
 breezy (3.0.1-4) unstable; urgency=medium
 
