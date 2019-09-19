@@ -1,9 +1,9 @@
-breezy (3.0.1-6) UNRELEASED; urgency=medium
+breezy (3.0.1-6) unstable; urgency=medium
 
   * Drop unnecessary build dependency on cython-dbg.
   * Use python3:Depends for brz package.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 19 Sep 2019 22:55:03 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 19 Sep 2019 23:03:02 +0000
 
 breezy (3.0.1-5) unstable; urgency=medium
 
