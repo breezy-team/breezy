@@ -5,10 +5,10 @@ breezy (3.0.1-5) UNRELEASED; urgency=medium
   * Bump Breezy's default alterantives priority for the bzr command to 50,
     higher than that of Bazaar.
   * Drop Python 2 packages; they no longer build since the removal
-    of python-testtools and python-subunit. Also Closes: #936237
+    of python-testtools and python-subunit. Closes: #940684, #936237
   * Add dependency on python3-six, previously pulled in indirectly.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 17 Sep 2019 17:40:21 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Wed, 18 Sep 2019 10:03:56 +0000
 
 breezy (3.0.1-4) unstable; urgency=medium
 
