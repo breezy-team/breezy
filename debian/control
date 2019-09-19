@@ -35,7 +35,7 @@ Architecture: all
 Depends: python3-breezy (<= ${source:Version}.1~),
          python3-breezy (>= ${source:Version}),
          ${misc:Depends},
-         ${python:Depends}
+         ${python3:Depends}
 Conflicts: bzr (<< 2.7.0+bzr6622-1)
 Suggests: brz-doc,
           python3-breezy.tests,
