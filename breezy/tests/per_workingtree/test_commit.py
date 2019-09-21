@@ -53,13 +53,10 @@ class TestCommit(TestCaseWithWorkingTree):
         osutils.rmtree('a/dir')
         tree_a.commit('autoremoved')
 
-        tree_a.lock_read()
-        try:
-            root_id = tree_a.get_root_id()
+        with tree_a.lock_read():
+            root_id = tree_a.path2id('')
             paths = [(path, ie.file_id)
                      for path, ie in tree_a.iter_entries_by_dir()]
-        finally:
-            tree_a.unlock()
         # The only paths left should be the root
         self.assertEqual([('', root_id)], paths)
 

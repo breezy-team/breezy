@@ -24,6 +24,7 @@ from __future__ import absolute_import
 DEBUG = 0
 
 import base64
+import cgi
 import errno
 import os
 import re
@@ -43,10 +44,10 @@ try:
 except ImportError:  # python < 3
     import urllib2 as urllib_request
 try:
-    from urllib.parse import urljoin, splitport, splittype, splithost
+    from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
 except ImportError:
     from urlparse import urljoin
-    from urllib import splitport, splittype, splithost
+    from urllib import splitport, splittype, splithost, urlencode
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
@@ -1821,11 +1822,13 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
     """
 
     accepted_errors = [200,  # Ok
+                       201,
                        206,  # Partial content
                        400,
                        403,
                        404,  # Not found
                        416,
+                       422,
                        ]
     """The error codes the caller will handle.
 
@@ -1935,12 +1938,12 @@ class HttpTransport(ConnectedTransport):
 
     def request(self, method, url, fields=None, headers=None, **urlopen_kw):
         if fields is not None:
-            raise NotImplementedError(
-                'the fields argument is not yet supported')
-        body = urlopen_kw.pop('body', None)
+            data = urlencode(fields).encode()
+        else:
+            data = urlopen_kw.pop('body', None)
         if headers is None:
             headers = {}
-        request = Request(method, url, body, headers)
+        request = Request(method, url, data, headers)
         request.follow_redirections = (urlopen_kw.pop('retries', 0) > 0)
         if urlopen_kw:
             raise NotImplementedError(
@@ -2018,10 +2021,15 @@ class HttpTransport(ConnectedTransport):
 
             @property
             def text(self):
-                return self.data.decode()
+                charset = cgi.parse_header(
+                    self._actual.headers['Content-Type'])[1].get('charset')
+                return self.data.decode(charset)
 
             def read(self, amt=None):
                 return self._actual.read(amt)
+
+            def readlines(self):
+                return self._actual.readlines()
 
             def readline(self, size=-1):
                 return self._actual.readline(size)

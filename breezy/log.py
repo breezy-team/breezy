@@ -2040,7 +2040,7 @@ def show_flat_log(repository, history, last_revno, lf):
         lf.log_revision(lr)
 
 
-def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
+def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
     """Find file-ids and kinds given a list of files and a revision range.
 
     We search for files at the end of the range. If not found there,
@@ -2050,8 +2050,8 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
     :param file_list: the list of paths given on the command line;
       the first of these can be a branch location or a file path,
       the remainder must be file paths
-    :param add_cleanup: When the branch returned is read locked,
-      an unlock call will be queued to the cleanup.
+    :param exit_stack: When the branch returned is read locked,
+      an unlock call will be queued to the exit stack.
     :return: (branch, info_list, start_rev_info, end_rev_info) where
       info_list is a list of (relative_path, file_id, kind) tuples where
       kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
@@ -2060,7 +2060,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
     from breezy.builtins import _get_revision_range
     tree, b, path = controldir.ControlDir.open_containing_tree_or_branch(
         file_list[0])
-    add_cleanup(b.lock_read().unlock)
+    exit_stack.enter_context(b.lock_read())
     # XXX: It's damn messy converting a list of paths to relative paths when
     # those paths might be deleted ones, they might be on a case-insensitive
     # filesystem and/or they might be in silly locations (like another branch).

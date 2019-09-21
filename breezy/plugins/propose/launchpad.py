@@ -118,7 +118,7 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.source_git_path.encode('utf-8'))
             return urlutils.join_segment_parameters(
                 self._mp.source_git_repository.git_identity,
-                {"branch": branch_name})
+                {"branch": str(branch_name)})
 
     def get_target_branch_url(self):
         if self._mp.target_branch:
@@ -128,7 +128,7 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.target_git_path.encode('utf-8'))
             return urlutils.join_segment_parameters(
                 self._mp.target_git_repository.git_identity,
-                {"branch": branch_name})
+                {"branch": str(branch_name)})
 
     @property
     def url(self):
@@ -136,6 +136,12 @@ class LaunchpadMergeProposal(MergeProposal):
 
     def is_merged(self):
         return (self._mp.queue_status == 'Merged')
+
+    def is_closed(self):
+        return (self._mp.queue_status in ('Rejected', 'Superseded'))
+
+    def reopen(self):
+        self._mp.setStatus(status='Needs review')
 
     def get_description(self):
         return self._mp.description
@@ -153,6 +159,12 @@ class LaunchpadMergeProposal(MergeProposal):
 
     def close(self):
         self._mp.setStatus(status='Rejected')
+
+    def can_be_merged(self):
+        if not self._mp.preview_diff:
+            # Maybe?
+            return True
+        return not bool(self._mp.preview_diff.conflicts)
 
     def merge(self, commit_message=None):
         target_branch = _mod_branch.Branch.open(
@@ -188,7 +200,7 @@ class Launchpad(Hoster):
             lp_base_url = uris.STAGING_SERVICE_ROOT
         else:
             lp_base_url = uris.LPNET_SERVICE_ROOT
-        self.launchpad = lp_api.connect_launchpad(lp_base_url)
+        self.launchpad = lp_api.connect_launchpad(lp_base_url, version='devel')
 
     @property
     def base_url(self):
@@ -531,7 +543,15 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
         else:
             prereq = None
         if reviewers is None:
-            reviewers = []
+            reviewer_objs = []
+        else:
+            reviewer_objs = []
+            for reviewer in reviewers:
+                if '@' in reviewer:
+                    reviewer_obj = self.launchpad.people.getByEmail(email=reviewer)
+                else:
+                    reviewer_obj = self.launchpad.people[reviewer]
+                reviewer_objs.append(reviewer_obj)
         try:
             mp = _call_webservice(
                 self.source_branch_lp.createMergeProposal,
@@ -539,9 +559,8 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                 prerequisite_branch=prereq,
                 initial_comment=description.strip(),
                 commit_message=commit_message,
-                reviewers=[self.launchpad.people[reviewer].self_link
-                           for reviewer in reviewers],
-                review_types=[None for reviewer in reviewers])
+                reviewers=[reviewer.self_link for reviewer in reviewer_objs],
+                review_types=['' for reviewer in reviewer_objs])
         except WebserviceFailure as e:
             # Urgh.
             if (b'There is already a branch merge proposal '

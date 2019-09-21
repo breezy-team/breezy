@@ -83,12 +83,18 @@ class QuiltPatches(object):
             series_file=self.series_file, quiet=quiet, force=force,
             refresh=refresh)
 
-    def push(self, patch, quiet=None):
+    def push(self, patch, quiet=None, force=None, refresh=None):
         return wrapper.quilt_push(
             self.tree.basedir, patch, patches_dir=self.patches_dir,
-            series_file=self.series_file, quiet=quiet)
+            series_file=self.series_file, quiet=quiet, force=force,
+            refresh=refresh)
 
     def pop(self, patch, quiet=None):
         return wrapper.quilt_pop(
             self.tree.basedir, patch, patches_dir=self.patches_dir,
             series_file=self.series_file, quiet=quiet)
+
+    def delete(self, patch, remove=False):
+        return wrapper.quilt_delete(
+            self.tree.basedir, patch, patches_dir=self.patches_dir,
+            series_file=self.series_file, remove=remove)

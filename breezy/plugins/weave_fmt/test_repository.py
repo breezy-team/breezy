@@ -199,12 +199,8 @@ class TestFormat7(TestCaseWithTransport):
         # TODO: Should check there is a 'lock' toplevel directory,
         # regardless of contents
         self.assertFalse(t.has('lock/held/info'))
-        repo.lock_write()
-        try:
+        with repo.lock_write():
             self.assertTrue(t.has('lock/held/info'))
-        finally:
-            # unlock so we don't get a warning about failing to do so
-            repo.unlock()
 
     def test_uses_lockdir(self):
         """repo format 7 actually locks on lockdir"""

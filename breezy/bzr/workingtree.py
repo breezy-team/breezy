@@ -284,7 +284,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             InventoryFile,
             InventoryLink)
         with self.lock_tree_write():
-            inv = Inventory(self.get_root_id())
+            inv = Inventory(self.path2id(''))
             for path, file_id, parent, kind in new_inventory_list:
                 name = os.path.basename(path)
                 if name == "":
@@ -658,11 +658,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self._set_inventory(result, dirty=False)
             return result
 
-    def get_root_id(self):
-        """Return the id of this trees root"""
-        with self.lock_read():
-            return self._inventory.root.file_id
-
     def has_id(self, file_id):
         # files that have been deleted are excluded
         inv, inv_file_id = self._unpack_file_id(file_id)
@@ -672,7 +667,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
-        if file_id == self.get_root_id():
+        if file_id == self.path2id(''):
             return True
         inv, inv_file_id = self._unpack_file_id(file_id)
         return inv.has_id(inv_file_id)
@@ -951,7 +946,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 if child_entry.kind == 'directory':
                     add_children(inventory, child_entry)
         with self.lock_write():
-            if other_tree.get_root_id() == self.get_root_id():
+            if other_tree.path2id('') == self.path2id(''):
                 raise errors.BadSubsumeSource(self, other_tree,
                                               'Trees have the same root')
             try:

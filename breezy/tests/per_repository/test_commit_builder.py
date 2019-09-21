@@ -176,7 +176,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             builder.finish_inventory()
             builder.commit('rev')
             builder_tree = builder.revision_tree()
-            new_root_id = builder_tree.get_root_id()
+            new_root_id = builder_tree.path2id('')
             new_root_revision = builder_tree.get_file_revision(u'')
             if tree.branch.repository.supports_rich_root():
                 # We should not have seen a new root revision
@@ -332,7 +332,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         try:
             tree.add_reference(subtree)
             self._commit_check_unchanged(tree, 'reference',
-                                         subtree.get_root_id())
+                                         subtree.path2id(''))
         except errors.UnsupportedOperation:
             return
 

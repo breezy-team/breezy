@@ -32,12 +32,12 @@ from ..bzr import (
     bzrdir,
     inventory,
     )
-from ..bundle.apply_bundle import install_bundle, merge_bundle
-from ..bundle.bundle_data import BundleTree
-from ..bundle.serializer import write_bundle, read_bundle, v09, v4
-from ..bundle.serializer.v08 import BundleSerializerV08
-from ..bundle.serializer.v09 import BundleSerializerV09
-from ..bundle.serializer.v4 import BundleSerializerV4
+from ..bzr.bundle.apply_bundle import install_bundle, merge_bundle
+from ..bzr.bundle.bundle_data import BundleTree
+from ..bzr.bundle.serializer import write_bundle, read_bundle, v09, v4
+from ..bzr.bundle.serializer.v08 import BundleSerializerV08
+from ..bzr.bundle.serializer.v09 import BundleSerializerV09
+from ..bzr.bundle.serializer.v4 import BundleSerializerV4
 from ..bzr import knitrepo
 from . import (
     features,
@@ -1350,7 +1350,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
 
         :return: The in-memory bundle
         """
-        from ..bundle import serializer
+        from ..bzr.bundle import serializer
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = self.get_raw(BytesIO(b''.join(bundle_txt)))
         new_text = new_text.replace(b'<file file_id="exe-1"',
@@ -1477,7 +1477,7 @@ class V4_2aBundleTester(V4BundleTester):
 
         :return: The in-memory bundle
         """
-        from ..bundle import serializer
+        from ..bzr.bundle import serializer
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = self.get_raw(BytesIO(b''.join(bundle_txt)))
         # We are going to be replacing some text to set the executable bit on a

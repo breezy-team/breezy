@@ -23,7 +23,7 @@ from breezy import (
     transport as _mod_transport,
     urlutils,
     )
-from breezy.bundle import serializer as _serializer
+from breezy.bzr.bundle import serializer as _serializer
 from breezy.merge_directive import MergeDirective
 from breezy.i18n import gettext
 """)

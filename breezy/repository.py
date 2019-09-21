@@ -29,7 +29,6 @@ from breezy import (
     revision as _mod_revision,
     gpg,
     )
-from breezy.bundle import serializer
 from breezy.i18n import gettext
 """)
 
@@ -564,7 +563,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         :param using: If True, list only branches using this repository.
         """
         if using and not self.is_shared():
-            return self.controldir.list_branches()
+            for branch in self.controldir.list_branches():
+                yield branch
+            return
 
         class Evaluator(object):
 
@@ -585,14 +586,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 value = (controldir.list_branches(), None)
                 return True, value
 
-        ret = []
         for branches, repository in controldir.ControlDir.find_controldirs(
                 self.user_transport, evaluate=Evaluator()):
             if branches is not None:
-                ret.extend(branches)
+                for branch in branches:
+                    yield branch
             if not using and repository is not None:
-                ret.extend(repository.find_branches())
-        return ret
+                for branch in repository.find_branches():
+                    yield branch
 
     def search_missing_revision_ids(self, other,
                                     find_ghosts=True, revision_ids=None, if_present_ids=None,
@@ -717,9 +718,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             return 0, []
         inter = InterRepository.get(source, self)
         return inter.fetch(revision_id=revision_id, find_ghosts=find_ghosts)
-
-    def create_bundle(self, target, base, fileobj, format=None):
-        return serializer.write_bundle(self, target, base, fileobj, format)
 
     def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
                            timezone=None, committer=None, revprops=None,
@@ -891,20 +889,15 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         raise NotImplementedError(self.get_deltas_for_revisions)
 
-    def get_revision_delta(self, revision_id, specific_fileids=None):
+    def get_revision_delta(self, revision_id):
         """Return the delta for one revision.
 
         The delta is relative to the left-hand predecessor of the
         revision.
-
-        :param specific_fileids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
         """
         with self.lock_read():
             r = self.get_revision(revision_id)
-            return list(self.get_deltas_for_revisions(
-                [r], specific_fileids=specific_fileids))[0]
+            return list(self.get_deltas_for_revisions([r]))[0]
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError(self.store_revision_signature)
@@ -1600,12 +1593,9 @@ class CopyConverter(object):
             pb.update(gettext('Creating new repository'))
             converted = self.target_format.initialize(self.repo_dir,
                                                       self.source_repo.is_shared())
-            converted.lock_write()
-            try:
+            with converted.lock_write():
                 pb.update(gettext('Copying content'))
                 self.source_repo.copy_content_into(converted)
-            finally:
-                converted.unlock()
             pb.update(gettext('Deleting old repository content'))
             self.repo_dir.transport.delete_tree('repository.backup')
             ui.ui_factory.note(gettext('repository converted'))
