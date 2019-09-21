@@ -316,7 +316,9 @@ class BundleSerializerV08(BundleSerializer):
             action = Action(
                 'added', [change.kind[1], change.path[1]],
                 [('file-id', change.file_id.decode('utf-8'))])
-            finish_action(action, change.file_id, change.kind[1], change.meta_modified(), change.changed_content,
+            meta_modified = (change.kind[1] == 'file' and
+                             change.executable[1])
+            finish_action(action, change.file_id, change.kind[1], meta_modified, change.changed_content,
                           DEVNULL, change.path[1])
 
         for change in delta.renamed:

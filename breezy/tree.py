@@ -173,7 +173,7 @@ class TreeChange(object):
         return getattr(self, self.__slots__[i])
 
     def meta_modified(self):
-        if True in self.versioned:
+        if self.versioned == (True, True):
             return (self.executable[0] != self.executable[1])
         return False
 
