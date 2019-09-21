@@ -1402,10 +1402,10 @@ cdef class ProcessEntryC:
 
         :param result: A result tuple.
         """
-        if not self.partial or not result[0]:
+        if not self.partial or not result.file_id:
             return 0
         self.seen_ids.add(result[0])
-        new_path = result[1][1]
+        new_path = result.path[1]
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
             self.search_specific_file_parents.update(
