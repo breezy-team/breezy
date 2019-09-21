@@ -29,6 +29,7 @@ from .propose import (
     MergeProposalExists,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
+    ReopenFailed,
     UnsupportedHoster,
     )
 
@@ -73,6 +74,15 @@ def determine_title(description):
     return description.splitlines()[0]
 
 
+class ValidationFailed(errors.BzrError):
+
+    _fmt = "GitHub validation failed: %(error)s"
+
+    def __init__(self, error):
+        errors.BzrError.__init__(self)
+        self.error = error
+
+
 class NotGitHubUrl(errors.BzrError):
 
     _fmt = "Not a GitHub URL: %(url)s"
@@ -112,6 +122,9 @@ class GitHubMergeProposal(MergeProposal):
         self._gh = gh
         self._pr = pr
 
+    def __repr__(self):
+        return "<%s at %r>" % (type(self).__name__, self.url)
+
     @property
     def url(self):
         return self._pr['html_url']
@@ -139,6 +152,8 @@ class GitHubMergeProposal(MergeProposal):
     def _patch(self, data):
         response = self._gh._api_request(
             'PATCH', self._pr['url'], body=json.dumps(data).encode('utf-8'))
+        if response.status == 422:
+            raise ValidationFailed(json.loads(response.text))
         if response.status != 200:
             raise InvalidHttpResponse(self._pr['url'], response.text)
         self._pr = json.loads(response.text)
@@ -150,7 +165,16 @@ class GitHubMergeProposal(MergeProposal):
             })
 
     def is_merged(self):
-        return self._pr['state'] == 'merged'
+        return bool(self._pr.get('merged_at'))
+
+    def is_closed(self):
+        return self._pr['state'] == 'closed' and not bool(self._pr.get('merged_at'))
+
+    def reopen(self):
+        try:
+            self._patch({'state': 'open'})
+        except ValidationFailed as e:
+            raise ReopenFailed(e.error['errors'][0]['message'])
 
     def close(self):
         self._patch({'state': 'closed'})
@@ -233,6 +257,34 @@ class GitHub(Hoster):
         if response.status == 200:
             return json.loads(response.text)
         raise InvalidHttpResponse(path, response.text)
+
+    def _create_pull(self, path, title, head, base, body=None):
+        path = 'repos/' + path + '/pulls'
+        data = {
+            'title': title,
+            'head': head,
+            'base': base,
+        }
+        if body:
+            data['body'] = body
+
+        response = self._api_request(
+            'POST', path, body=json.dumps(data).encode('utf-8'))
+        if response.status != 201:
+            raise InvalidHttpResponse(path, response.text)
+        return json.loads(response.text)
+
+    def _get_user_by_email(self, email):
+        path = 'search/users?q=%s+in:email' % email
+        response = self._api_request('GET', path)
+        if response.status != 200:
+            raise InvalidHttpResponse(path, response.text)
+        ret = json.loads(response.text)
+        if ret['total_count'] == 0:
+            raise KeyError('no user with email %s' % email)
+        elif ret['total_count'] > 1:
+            raise ValueError('more than one result for email %s' % email)
+        return ret['items'][0]
 
     def _get_user(self, username=None):
         if username:
@@ -447,23 +499,24 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         # TODO(jelmer): Probe for right repo name
         if self.target_repo_name.endswith('.git'):
             self.target_repo_name = self.target_repo_name[:-4]
-        target_repo = self.gh._get_repo("%s/%s" % (self.target_owner, self.target_repo_name))
         # TODO(jelmer): Allow setting title explicitly?
         title = determine_title(description)
-        # TOOD(jelmer): Set maintainers_can_modify?
+        # TODO(jelmer): Set maintainers_can_modify?
         try:
-            pull_request = target_repo.create_pull(
+            pull_request = self.gh._create_pull(
+                "%s/%s" % (self.target_owner, self.target_repo_name),
                 title=title, body=description,
                 head="%s:%s" % (self.source_owner, self.source_branch_name),
                 base=self.target_branch_name)
-        except github.GithubException as e:
-            if e.status == 422:
-                raise MergeProposalExists(self.source_branch.user_url)
-            raise
+        except ValidationFailed:
+            raise MergeProposalExists(self.source_branch.user_url)
         if reviewers:
             for reviewer in reviewers:
-                pull_request.assignees.append(
-                    self.gh._get_user(reviewer)['login'])
+                if '@' in reviewer:
+                    user = self.gh._get_user_by_email(reviewer)
+                else:
+                    user = self.gh._get_user(reviewer)
+                pull_request.assignees.append(user['login'])
         if labels:
             for label in labels:
                 pull_request.issue.labels.append(label)

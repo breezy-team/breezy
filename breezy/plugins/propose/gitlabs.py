@@ -177,6 +177,9 @@ class GitLabMergeProposal(MergeProposal):
     def _update(self, **kwargs):
         self.gl._update_merge_request(self._mr['project_id'], self._mr['iid'], kwargs)
 
+    def __repr__(self):
+        return "<%s at %r>" % (type(self).__name__, self._mr['web_url'])
+
     @property
     def url(self):
         return self._mr['web_url']
@@ -209,6 +212,12 @@ class GitLabMergeProposal(MergeProposal):
 
     def is_merged(self):
         return (self._mr['state'] == 'merged')
+
+    def is_closed(self):
+        return (self._mr['state'] == 'closed')
+
+    def reopen(self):
+        return self._update(state_event='open')
 
     def close(self):
         self._update(state_event='close')
@@ -255,6 +264,27 @@ class GitLab(Hoster):
         self.transport = transport
         self.headers = {"Private-Token": private_token}
         self.check()
+
+    def _get_user(self, username):
+        path = 'users/%s' % urlutils.quote(str(project_name), '')
+        response = self._api_request('GET', path)
+        if response.status == 404:
+            raise KeyError('no such user %s' % username)
+        if response.status == 200:
+            return json.loads(response.data)
+        raise errors.InvalidHttpResponse(path, response.text)
+
+    def _get_user_by_email(self, username):
+        path = 'users?search=%s' % urlutils.quote(str(project_name), '')
+        response = self._api_request('GET', path)
+        if response.status == 404:
+            raise KeyError('no such user %s' % username)
+        if response.status == 200:
+            ret = json.loads(response.data)
+            if len(ret) != 1:
+                raise ValueError('unexpected number of results; %r' % ret)
+            return ret[0]
+        raise errors.InvalidHttpResponse(path, response.text)
 
     def _get_project(self, project_name):
         path = 'projects/%s' % urlutils.quote(str(project_name), '')
@@ -505,7 +535,6 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
         # Note that commit_message is ignored, since Gitlab doesn't support it.
-        # TODO(jelmer): Support reviewers
         source_project = self.gl._get_project(self.source_project_name)
         target_project = self.gl._get_project(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly
@@ -522,6 +551,14 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             'description': description}
         if labels:
             kwargs['labels'] = ','.join(labels)
+        if reviewers:
+            kwargs['assignee_ids'] = []
+            for reviewer in reviewers:
+                if '@' in reviewer:
+                    user = self.gl._get_user_by_email(reviewer)
+                else:
+                    user = self.gl._get_user(reviewer)
+                kwargs['assignee_ids'].append(user['id'])
         merge_request = self.gl._create_mergerequest(**kwargs)
         return GitLabMergeProposal(self.gl, merge_request)
 
