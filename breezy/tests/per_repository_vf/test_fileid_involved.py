@@ -136,11 +136,9 @@ class FileIdInvolvedBase(TestCaseWithRepository):
         new_tree = self.branch.repository.revision_tree(new_rev)
         delta = new_tree.changes_from(old_tree)
 
-        l2 = [id for path, id, kind in delta.added] + \
-             [id for oldpath, newpath, id, kind, text_modified,
-              meta_modified in delta.renamed] + \
-             [id for path, id, kind, text_modified, meta_modified in
-              delta.modified]
+        l2 = [change.file_id for change in delta.added] + \
+             [change.file_id for change in delta.renamed] + \
+             [change.file_id for change in delta.modified]
         return set(l2)
 
 

@@ -313,19 +313,17 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
         tree_a.add('foo')
-        file1_id = tree_a.path2id('foo')
         rev1 = tree_a.commit('rev1')
         self.build_tree(['a/vla'])
         tree_a.add('vla')
-        file2_id = tree_a.path2id('vla')
         rev2 = tree_a.commit('rev2')
 
         delta = tree_a.branch.repository.get_revision_delta(rev1)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
-        self.assertEqual([('foo', file1_id, 'file')], delta.added)
+        self.assertEqual([('foo', 'file')], [(c.path[1], c.kind[1]) for c in delta.added])
         delta = tree_a.branch.repository.get_revision_delta(rev2)
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
-        self.assertEqual([('vla', file2_id, 'file')], delta.added)
+        self.assertEqual([('vla', 'file')], [(c.path[1], c.kind[1]) for c in delta.added])
 
     def test_clone_bzrdir_repository_revision(self):
         # make a repository with some revisions,
@@ -1022,9 +1020,9 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
                 self.tree_a.path2id('baz')]))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
-            ('baz', self.tree_a.path2id('baz'), 'file'),
-            ('foo', self.tree_a.path2id('foo'), 'file'),
-            ], delta.added)
+            ('baz', 'file'),
+            ('foo', 'file'),
+            ], [(c.path[1], c.kind[1]) for c in delta.added])
 
     def test_directory(self):
         # Test a directory
@@ -1033,10 +1031,10 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
             specific_fileids=[self.bar_id]))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
-            ('bar', self.tree_a.path2id('bar'), 'directory'),
-            ('bar/b1', self.tree_a.path2id('bar/b1'), 'file'),
-            ('bar/b2', self.tree_a.path2id('bar/b2'), 'file'),
-            ], delta.added)
+            ('bar', 'directory'),
+            ('bar/b1', 'file'),
+            ('bar/b2', 'file'),
+            ], [(c.path[1], c.kind[1]) for c in delta.added])
 
     def test_unrelated(self):
         # Try another revision
@@ -1053,20 +1051,19 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
             specific_fileids=[self.tree_a.path2id('bar/b2')]))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
-            ('bar', self.tree_a.path2id('bar'), 'directory'),
-            ('bar/b2', self.tree_a.path2id('bar/b2'), 'file'),
-            ], delta.added)
+            ('bar', 'directory'),
+            ('bar/b2', 'file'),
+            ], [(c.path[1], c.kind[1]) for c in delta.added])
 
     def test_file_in_unchanged_directory(self):
         delta = list(self.repository.get_deltas_for_revisions(
             [self.repository.get_revision(self.rev2)],
             specific_fileids=[self.tree_a.path2id('bar/b3')]))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
-        if delta.added == [
-            ('bar', self.tree_a.path2id('bar'), 'directory'),
-                ('bar/b3', self.tree_a.path2id('bar/b3'), 'file')]:
+        if [(c.path[1], c.kind[1]) for c in delta.added] == [
+                ('bar', 'directory'), ('bar/b3', 'file')]:
             self.knownFailure("bzr incorrectly reports 'bar' as added - "
                               "bug 878217")
         self.assertEqual([
-            ('bar/b3', self.tree_a.path2id('bar/b3'), 'file'),
-            ], delta.added)
+            ('bar/b3', 'file'),
+            ], [(c.path[1], c.kind[1]) for c in delta.added])

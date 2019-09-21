@@ -76,8 +76,8 @@ def report_changes(to_file, old, new, specific_files,
                                  want_unversioned=want_unversioned)
         # filter out unknown files. We may want a tree method for
         # this
-        delta.unversioned = [unversioned for unversioned in
-                             delta.unversioned if not new.is_ignored(unversioned[0])]
+        delta.unversioned = [change for change in delta.unversioned
+                             if not new.is_ignored(change.path[1])]
         show_long_callback(to_file, delta,
                            show_ids=show_ids,
                            show_unchanged=want_unchanged,

@@ -147,6 +147,9 @@ class TreeChange(object):
         self.kind = kind
         self.executable = executable
 
+    def __repr__(self):
+        return "%s%r" % (self.__class__.__name__, tuple(self))
+
     def __len__(self):
         return len(self.__slots__)
 
@@ -168,6 +171,11 @@ class TreeChange(object):
         if isinstance(i, slice):
             return tuple(self).__getitem__(i)
         return getattr(self, self.__slots__[i])
+
+    def meta_modified(self):
+        if self.versioned == (True, True):
+            return (self.executable[0] != self.executable[1])
+        return False
 
     def is_reparented(self):
         return self.parent_id[0] != self.parent_id[1]

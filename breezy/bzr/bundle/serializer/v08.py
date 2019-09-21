@@ -309,36 +309,35 @@ class BundleSerializerV08(BundleSerializer):
 
         delta = new_tree.changes_from(old_tree, want_unchanged=True,
                                       include_root=True)
-        for path, file_id, kind in delta.removed:
-            action = Action('removed', [kind, path]).write(self.to_file)
+        for change in delta.removed:
+            action = Action('removed', [change.kind[0], change.path[0]]).write(self.to_file)
 
-        for path, file_id, kind in delta.added:
+        for change in delta.added:
             action = Action(
-                'added', [kind, path], [('file-id', file_id.decode('utf-8'))])
-            meta_modified = (kind == 'file' and
-                             new_tree.is_executable(path))
-            finish_action(action, file_id, kind, meta_modified, True,
-                          DEVNULL, path)
+                'added', [change.kind[1], change.path[1]],
+                [('file-id', change.file_id.decode('utf-8'))])
+            meta_modified = (change.kind[1] == 'file' and
+                             change.executable[1])
+            finish_action(action, change.file_id, change.kind[1], meta_modified, change.changed_content,
+                          DEVNULL, change.path[1])
 
-        for (old_path, new_path, file_id, kind,
-             text_modified, meta_modified) in delta.renamed:
-            action = Action('renamed', [kind, old_path], [(new_path,)])
-            finish_action(action, file_id, kind, meta_modified, text_modified,
-                          old_path, new_path)
+        for change in delta.renamed:
+            action = Action('renamed', [change.kind[1], change.path[0]], [(change.path[1],)])
+            finish_action(action, change.file_id, change.kind[1], change.meta_modified(), change.changed_content,
+                          change.path[0], change.path[1])
 
-        for (path, file_id, kind,
-             text_modified, meta_modified) in delta.modified:
-            action = Action('modified', [kind, path])
-            finish_action(action, file_id, kind, meta_modified, text_modified,
-                          path, path)
+        for change in delta.modified:
+            action = Action('modified', [change.kind[1], change.path[1]])
+            finish_action(action, change.file_id, change.kind[1], change.meta_modified(), change.changed_content,
+                          change.path[0], change.path[1])
 
-        for path, file_id, kind in delta.unchanged:
-            new_rev = new_tree.get_file_revision(path)
+        for change in delta.unchanged:
+            new_rev = new_tree.get_file_revision(change.path[1])
             if new_rev is None:
                 continue
-            old_rev = old_tree.get_file_revision(old_tree.id2path(file_id))
+            old_rev = old_tree.get_file_revision(change.path[0])
             if new_rev != old_rev:
-                action = Action('modified', [new_tree.kind(path), path])
+                action = Action('modified', [change.kind[1], change.path[1]])
                 action.add_utf8_property('last-changed', new_rev)
                 action.write(self.to_file)
 
@@ -562,5 +561,5 @@ class BundleInfo08(BundleInfo):
         testament = StrictTestament.from_revision(repository, revision_id)
         return testament.as_sha1()
 
-    def _testament_sha1(self, revision, tree):
-        return StrictTestament(revision, tree).as_sha1()
+    def _testament(self, revision, tree):
+        return StrictTestament(revision, tree)

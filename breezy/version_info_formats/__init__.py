@@ -113,35 +113,33 @@ class VersionInfoBuilder(object):
                 return
 
             delta = self._working_tree.changes_from(basis_tree,
-                                                    include_root=True)
+                                                    include_root=True,
+                                                    want_unversioned=True)
 
             # Using a 2-pass algorithm for renames. This is because you might have
             # renamed something out of the way, and then created a new file
             # in which case we would rather see the new marker
             # Or you might have removed the target, and then renamed
             # in which case we would rather see the renamed marker
-            for (old_path, new_path, file_id,
-                 kind, text_mod, meta_mod) in delta.renamed:
+            for change in delta.renamed:
                 self._clean = False
-                self._file_revisions[old_path] = u'renamed to %s' % (new_path,)
-            for path, file_id, kind in delta.removed:
+                self._file_revisions[change.path[0]] = u'renamed to %s' % (change.path[1],)
+            for change in delta.removed:
                 self._clean = False
-                self._file_revisions[path] = 'removed'
-            for path, file_id, kind in delta.added:
+                self._file_revisions[change.path[0]] = 'removed'
+            for change in delta.added:
                 self._clean = False
-                self._file_revisions[path] = 'new'
-            for (old_path, new_path, file_id,
-                 kind, text_mod, meta_mod) in delta.renamed:
+                self._file_revisions[change.path[1]] = 'new'
+            for change in delta.renamed:
                 self._clean = False
-                self._file_revisions[new_path] = u'renamed from %s' % (
-                    old_path,)
-            for path, file_id, kind, text_mod, meta_mod in delta.modified:
+                self._file_revisions[change.path[1]] = u'renamed from %s' % (
+                    change.path[0],)
+            for change in delta.modified:
                 self._clean = False
-                self._file_revisions[path] = 'modified'
-
-            for path in self._working_tree.unknowns():
+                self._file_revisions[change.path[1]] = 'modified'
+            for change in delta.unversioned:
                 self._clean = False
-                self._file_revisions[path] = 'unversioned'
+                self._file_revisions[change.path[1]] = 'unversioned'
         finally:
             basis_tree.unlock()
             if self._working_tree is not None:
