@@ -32,10 +32,10 @@ class InstrumentedReporter(object):
     def __init__(self):
         self.calls = []
 
-    def report(self, path, versioned, renamed, modified, exe_change,
+    def report(self, path, versioned, renamed, copied, modified, exe_change,
                kind):
         self.calls.append(
-            (path, versioned, renamed, modified, exe_change, kind))
+            (path, versioned, renamed, copied, modified, exe_change, kind))
 
 
 class TestReportChanges(tests.TestCase):
@@ -43,7 +43,7 @@ class TestReportChanges(tests.TestCase):
 
     def assertReport(self, expected, file_id=b'fid', path='path',
                      versioned_change='unchanged', renamed=False,
-                     modified='unchanged', exe_change=False,
+                     copied=False, modified='unchanged', exe_change=False,
                      kind=('file', 'file'), old_path=None,
                      unversioned_filter=None, view_info=None):
         if expected is None:
@@ -52,12 +52,12 @@ class TestReportChanges(tests.TestCase):
             expected_lines = [expected]
         self.assertReportLines(expected_lines, file_id, path,
                                versioned_change, renamed,
-                               modified, exe_change,
+                               copied, modified, exe_change,
                                kind, old_path,
                                unversioned_filter, view_info)
 
     def assertReportLines(self, expected_lines, file_id=b'fid', path='path',
-                          versioned_change='unchanged', renamed=False,
+                          versioned_change='unchanged', renamed=False, copied=False,
                           modified='unchanged', exe_change=False,
                           kind=('file', 'file'), old_path=None,
                           unversioned_filter=None, view_info=None):
@@ -65,9 +65,10 @@ class TestReportChanges(tests.TestCase):
 
         def result_line(format, *args):
             result.append(format % args)
-        reporter = _mod_delta._ChangeReporter(result_line,
-                                              unversioned_filter=unversioned_filter, view_info=view_info)
-        reporter.report((old_path, path), versioned_change, renamed,
+        reporter = _mod_delta._ChangeReporter(
+            result_line, unversioned_filter=unversioned_filter,
+            view_info=view_info)
+        reporter.report((old_path, path), versioned_change, renamed, copied,
                         modified, exe_change, kind)
         if expected_lines is not None:
             self.assertEqualDiff('\n'.join(expected_lines), '\n'.join(result))
@@ -158,20 +159,22 @@ class TestReportChanges(tests.TestCase):
                            executable=(False, False),
                            versioned_change='unchanged',
                            renamed=False,
+                           copied=False,
                            modified='unchanged',
                            exe_change=False):
         reporter = InstrumentedReporter()
         _mod_delta.report_changes([
             TreeChange(
                 file_id, paths, content_change, versioned, parent_id,
-                name, kind, executable)], reporter)
+                name, kind, executable, copied)], reporter)
         output = reporter.calls[0]
         self.assertEqual(paths, output[0])
         self.assertEqual(versioned_change, output[1])
         self.assertEqual(renamed, output[2])
-        self.assertEqual(modified, output[3])
-        self.assertEqual(exe_change, output[4])
-        self.assertEqual(kind, output[5])
+        self.assertEqual(copied, output[3])
+        self.assertEqual(modified, output[4])
+        self.assertEqual(exe_change, output[5])
+        self.assertEqual(kind, output[6])
 
     def test_report_changes(self):
         """Test change detection of report_changes"""

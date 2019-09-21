@@ -782,7 +782,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         root_id = tree1.path2id('')
         self.assertEqual([(b'a-id', ('a', 'a'), True, (True, True),
                            (root_id, root_id), ('a', 'a'),
-                           ('file', 'file'), (False, False))],
+                           ('file', 'file'), (False, False), False)],
                          self.do_iter_changes(tree1, tree2))
         self.check_has_changes(True, tree1, tree2)
 
@@ -794,7 +794,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         self.assertEqual([(b'c-id', ('b/c', 'b/c'), False, (True, True),
                            (b'b-id', b'b-id'), ('c', 'c'), ('file', 'file'),
-                           (False, True))],
+                           (False, True), False)],
                          self.do_iter_changes(tree1, tree2))
 
     def test_empty_dir(self):
@@ -820,7 +820,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         root_id = tree1.path2id('')
         self.assertEqual([(tree1.path2id('a'), ('a', 'd'), False, (True, True),
                            (root_id, root_id), ('a', 'd'), ('file', 'file'),
-                           (False, False))],
+                           (False, False), False)],
                          self.do_iter_changes(tree1, tree2))
 
     def test_file_rename_and_modification(self):
@@ -832,7 +832,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         root_id = tree1.path2id('')
         self.assertEqual([(b'a-id', ('a', 'd'), True, (True, True),
                            (root_id, root_id), ('a', 'd'), ('file', 'file'),
-                           (False, False))],
+                           (False, False), False)],
                          self.do_iter_changes(tree1, tree2))
 
     def test_specific_content_modification_grabs_parents(self):
@@ -1047,7 +1047,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         root_id = tree1.path2id('')
         self.assertEqual([(b'c-id', ('b/c', 'e'), False, (True, True),
                            (b'b-id', root_id), ('c', 'e'), ('file', 'file'),
-                           (False, True))],
+                           (False, True), False)],
                          self.do_iter_changes(tree1, tree2))
 
     def test_file_becomes_unversionable_bug_438569(self):
