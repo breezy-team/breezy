@@ -432,8 +432,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 return
             if action is not None:
                 parent_path = posixpath.dirname(filepath)
-                parent_id = self.path2id(parent_path)
-                parent_ie = self._get_dir_ie(parent_path, parent_id)
+                parent_ie = self._get_dir_ie(parent_path)
                 file_id = action(self, parent_ie, filepath, kind)
                 if file_id is not None:
                     raise workingtree.SettingFileIdUnsupported()
@@ -760,16 +759,16 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         if from_dir is None or from_dir == '.':
             from_dir = u""
-        dir_ids = {}
+        dir_ids = set()
         fk_entries = {'directory': tree.TreeDirectory,
                       'file': tree.TreeFile,
                       'symlink': tree.TreeLink,
                       'tree-reference': tree.TreeReference}
         with self.lock_read():
-            root_ie = self._get_dir_ie(u"", None)
+            root_ie = self._get_dir_ie(u"")
             if include_root and not from_dir:
                 yield "", "V", root_ie.kind, root_ie
-            dir_ids[u""] = root_ie.file_id
+            dir_ids.add(u"")
             if recursive:
                 path_iterator = sorted(
                     self._iter_files_recursive(from_dir, include_dirs=True))
@@ -802,7 +801,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 if kind in ('directory', 'tree-reference'):
                     if path != from_dir:
                         if self._has_dir(encoded_path):
-                            ie = self._get_dir_ie(path, self.path2id(path))
+                            ie = self._get_dir_ie(path)
                             status = "V"
                         elif self.is_ignored(path):
                             status = "I"
@@ -814,7 +813,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                ie)
                     continue
                 if value is not None:
-                    ie = self._get_file_ie(name, path, value, dir_ids[parent])
+                    ie = self._get_file_ie(name, path, value)
                     yield (posixpath.relpath(path, from_dir), "V", ie.kind, ie)
                 else:
                     ie = fk_entries[kind]()
@@ -842,7 +841,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def iter_child_entries(self, path):
         encoded_path = path.encode('utf-8')
         with self.lock_read():
-            parent_id = self.path2id(path)
             found_any = False
             for item_path, value in self.index.iteritems():
                 decoded_item_path = item_path.decode('utf-8')
@@ -855,11 +853,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 if '/' in subpath:
                     dirname = subpath.split('/', 1)[0]
                     file_ie = self._get_dir_ie(
-                        posixpath.join(path, dirname), parent_id)
+                        posixpath.join(path, dirname))
                 else:
                     (unused_parent, name) = posixpath.split(decoded_item_path)
-                    file_ie = self._get_file_ie(
-                        name, decoded_item_path, value, parent_id)
+                    file_ie = self._get_file_ie(name, decoded_item_path, value)
                 yield file_ie
             if not found_any and path != u'':
                 raise errors.NoSuchFile(path)

@@ -92,8 +92,7 @@ class GitCommitBuilder(CommitBuilder):
             if change.kind[1] in ("directory",):
                 self._inv_delta.append(
                     (change.path[0], change.path[1], change.file_id,
-                     entry_factory[change.kind[1]](
-                         change.file_id, change.name[1], change.parent_id[1])))
+                     entry_factory[change.kind[1]](change.name[1])))
                 if change.kind[0] in ("file", "symlink"):
                     self._blobs[change.path[0].encode("utf-8")] = None
                     self._any_changes = True
@@ -109,7 +108,7 @@ class GitCommitBuilder(CommitBuilder):
                 entry_kls = entry_factory[change.kind[1]]
             except KeyError:
                 raise KeyError("unknown kind %s" % change.kind[1])
-            entry = entry_kls(change.file_id, change.name[1], change.parent_id[1])
+            entry = entry_kls(change.name[1])
             if change.kind[1] == "file":
                 entry.executable = change.executable[1]
                 blob = Blob()

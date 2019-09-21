@@ -73,12 +73,10 @@ from .mapping import (
 
 class GitTreeDirectory(_mod_tree.TreeDirectory):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'children']
+    __slots__ = ['name', 'children']
 
-    def __init__(self, file_id, name, parent_id):
-        self.file_id = file_id
+    def __init__(self, name):
         self.name = name
-        self.parent_id = parent_id
         # TODO(jelmer)
         self.children = {}
 
@@ -91,31 +89,24 @@ class GitTreeDirectory(_mod_tree.TreeDirectory):
         return False
 
     def copy(self):
-        return self.__class__(
-            self.file_id, self.name, self.parent_id)
+        return self.__class__(self.name)
 
     def __repr__(self):
-        return "%s(file_id=%r, name=%r, parent_id=%r)" % (
-            self.__class__.__name__, self.file_id, self.name,
-            self.parent_id)
+        return "%s(name=%r)" % (self.__class__.__name__, self.name)
 
     def __eq__(self, other):
         return (self.kind == other.kind and
-                self.file_id == other.file_id and
-                self.name == other.name and
-                self.parent_id == other.parent_id)
+                self.name == other.name)
 
 
 class GitTreeFile(_mod_tree.TreeFile):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'text_size', 'text_sha1',
+    __slots__ = ['name', 'text_size', 'text_sha1',
                  'executable']
 
-    def __init__(self, file_id, name, parent_id, text_size=None,
+    def __init__(self, name, text_size=None,
                  text_sha1=None, executable=None):
-        self.file_id = file_id
         self.name = name
-        self.parent_id = parent_id
         self.text_size = text_size
         self.text_sha1 = text_sha1
         self.executable = executable
@@ -126,22 +117,19 @@ class GitTreeFile(_mod_tree.TreeFile):
 
     def __eq__(self, other):
         return (self.kind == other.kind and
-                self.file_id == other.file_id and
                 self.name == other.name and
-                self.parent_id == other.parent_id and
                 self.text_sha1 == other.text_sha1 and
                 self.text_size == other.text_size and
                 self.executable == other.executable)
 
     def __repr__(self):
-        return ("%s(file_id=%r, name=%r, parent_id=%r, text_size=%r, "
+        return ("%s(name=%r, text_size=%r, "
                 "text_sha1=%r, executable=%r)") % (
-            type(self).__name__, self.file_id, self.name, self.parent_id,
+            type(self).__name__, self.name,
             self.text_size, self.text_sha1, self.executable)
 
     def copy(self):
-        ret = self.__class__(
-            self.file_id, self.name, self.parent_id)
+        ret = self.__class__(self.name)
         ret.text_sha1 = self.text_sha1
         ret.text_size = self.text_size
         ret.executable = self.executable
@@ -150,13 +138,10 @@ class GitTreeFile(_mod_tree.TreeFile):
 
 class GitTreeSymlink(_mod_tree.TreeLink):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'symlink_target']
+    __slots__ = ['name', 'symlink_target']
 
-    def __init__(self, file_id, name, parent_id,
-                 symlink_target=None):
-        self.file_id = file_id
+    def __init__(self, name, symlink_target=None):
         self.name = name
-        self.parent_id = parent_id
         self.symlink_target = symlink_target
 
     @property
@@ -172,31 +157,25 @@ class GitTreeSymlink(_mod_tree.TreeLink):
         return None
 
     def __repr__(self):
-        return "%s(file_id=%r, name=%r, parent_id=%r, symlink_target=%r)" % (
-            type(self).__name__, self.file_id, self.name, self.parent_id,
-            self.symlink_target)
+        return "%s(name=%r, symlink_target=%r)" % (
+            type(self).__name__, self.name, self.symlink_target)
 
     def __eq__(self, other):
         return (self.kind == other.kind and
-                self.file_id == other.file_id and
                 self.name == other.name and
-                self.parent_id == other.parent_id and
                 self.symlink_target == other.symlink_target)
 
     def copy(self):
         return self.__class__(
-            self.file_id, self.name, self.parent_id,
-            self.symlink_target)
+            self.name, self.symlink_target)
 
 
 class GitTreeSubmodule(_mod_tree.TreeLink):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'reference_revision']
+    __slots__ = ['name', 'reference_revision']
 
-    def __init__(self, file_id, name, parent_id, reference_revision=None):
-        self.file_id = file_id
+    def __init__(self, name, reference_revision=None):
         self.name = name
-        self.parent_id = parent_id
         self.reference_revision = reference_revision
 
     @property
@@ -204,22 +183,16 @@ class GitTreeSubmodule(_mod_tree.TreeLink):
         return 'tree-reference'
 
     def __repr__(self):
-        return ("%s(file_id=%r, name=%r, parent_id=%r, "
-                "reference_revision=%r)") % (
-            type(self).__name__, self.file_id, self.name, self.parent_id,
-            self.reference_revision)
+        return ("%s(name=%r, reference_revision=%r)") % (
+            type(self).__name__, self.name, self.reference_revision)
 
     def __eq__(self, other):
         return (self.kind == other.kind and
-                self.file_id == other.file_id and
                 self.name == other.name and
-                self.parent_id == other.parent_id and
                 self.reference_revision == other.reference_revision)
 
     def copy(self):
-        return self.__class__(
-            self.file_id, self.name, self.parent_id,
-            self.reference_revision)
+        return self.__class__(self.name, self.reference_revision)
 
 
 entry_factory = {
@@ -414,12 +387,11 @@ class GitRevisionTree(revisiontree.RevisionTree):
             from_dir = u""
         (store, mode, hexsha) = self._lookup_path(from_dir)
         if mode is None:  # Root
-            root_ie = self._get_dir_ie(b"", None)
+            root_ie = self._get_dir_ie(b"")
         else:
             parent_path = posixpath.dirname(from_dir)
-            parent_id = self.mapping.generate_file_id(parent_path)
             if mode_kind(mode) == 'directory':
-                root_ie = self._get_dir_ie(from_dir.encode("utf-8"), parent_id)
+                root_ie = self._get_dir_ie(from_dir.encode("utf-8"))
             else:
                 root_ie = self._get_file_ie(
                     store, from_dir.encode("utf-8"),
@@ -429,9 +401,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
         todo = []
         if root_ie.kind == 'directory':
             todo.append((store, from_dir.encode("utf-8"),
-                         b"", hexsha, root_ie.file_id))
+                         b"", hexsha))
         while todo:
-            (store, path, relpath, hexsha, parent_id) = todo.pop()
+            (store, path, relpath, hexsha) = todo.pop()
             tree = store[hexsha]
             for name, mode, hexsha in tree.iteritems():
                 if self.mapping.is_special_file(name):
@@ -439,17 +411,17 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 child_path = posixpath.join(path, name)
                 child_relpath = posixpath.join(relpath, name)
                 if stat.S_ISDIR(mode):
-                    ie = self._get_dir_ie(child_path, parent_id)
+                    ie = self._get_dir_ie(child_path)
                     if recursive:
                         todo.append(
                             (store, child_path, child_relpath, hexsha,
                              ie.file_id))
                 else:
                     ie = self._get_file_ie(
-                        store, child_path, name, mode, hexsha, parent_id)
+                        store, child_path, name, mode, hexsha)
                 yield (child_relpath.decode('utf-8'), "V", ie.kind, ie)
 
-    def _get_file_ie(self, store, path, name, mode, hexsha, parent_id):
+    def _get_file_ie(self, store, path, name, mode, hexsha):
         if not isinstance(path, bytes):
             raise TypeError(path)
         if not isinstance(name, bytes):
@@ -457,8 +429,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         kind = mode_kind(mode)
         path = path.decode('utf-8')
         name = name.decode("utf-8")
-        file_id = self.mapping.generate_file_id(path)
-        ie = entry_factory[kind](file_id, name, parent_id)
+        ie = entry_factory[kind](name)
         if kind == 'symlink':
             ie.symlink_target = store[hexsha].data.decode('utf-8')
         elif kind == 'tree-reference':
@@ -471,10 +442,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
             ie.executable = mode_is_executable(mode)
         return ie
 
-    def _get_dir_ie(self, path, parent_id):
+    def _get_dir_ie(self, path):
         path = path.decode('utf-8')
-        file_id = self.mapping.generate_file_id(path)
-        return GitTreeDirectory(file_id, posixpath.basename(path), parent_id)
+        return GitTreeDirectory(posixpath.basename(path))
 
     def iter_child_entries(self, path):
         (store, mode, tree_sha) = self._lookup_path(path)
@@ -483,17 +453,15 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return
 
         encoded_path = path.encode('utf-8')
-        file_id = self.path2id(path)
         tree = store[tree_sha]
         for name, mode, hexsha in tree.iteritems():
             if self.mapping.is_special_file(name):
                 continue
             child_path = posixpath.join(encoded_path, name)
             if stat.S_ISDIR(mode):
-                yield self._get_dir_ie(child_path, file_id)
+                yield self._get_dir_ie(child_path)
             else:
-                yield self._get_file_ie(store, child_path, name, mode, hexsha,
-                                        file_id)
+                yield self._get_file_ie(store, child_path, name, mode, hexsha)
 
     def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
         if self.tree is None:
@@ -507,11 +475,11 @@ class GitRevisionTree(revisiontree.RevisionTree):
             else:
                 specific_files = set([p.encode('utf-8')
                                       for p in specific_files])
-        todo = deque([(self.store, b"", self.tree, self.path2id(''))])
+        todo = deque([(self.store, b"", self.tree)])
         if specific_files is None or u"" in specific_files:
-            yield u"", self._get_dir_ie(b"", None)
+            yield u"", self._get_dir_ie(b"")
         while todo:
-            store, path, tree_sha, parent_id = todo.popleft()
+            store, path, tree_sha = todo.popleft()
             tree = store[tree_sha]
             extradirs = []
             for name, mode, hexsha in tree.iteritems():
@@ -523,17 +491,15 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     if (specific_files is None or
                             any([p for p in specific_files if p.startswith(
                                 child_path)])):
-                        extradirs.append(
-                            (store, child_path, hexsha,
-                             self.path2id(child_path_decoded)))
+                        extradirs.append((store, child_path, hexsha))
                 if specific_files is None or child_path in specific_files:
                     if stat.S_ISDIR(mode):
                         yield (child_path_decoded,
-                               self._get_dir_ie(child_path, parent_id))
+                               self._get_dir_ie(child_path))
                     else:
                         yield (child_path_decoded,
                                self._get_file_ie(store, child_path, name, mode,
-                                                 hexsha, parent_id))
+                                                 hexsha))
             todo.extendleft(reversed(extradirs))
 
     def iter_references(self):
@@ -1163,11 +1129,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 specific_files = set(specific_files)
             else:
                 specific_files = None
-            root_ie = self._get_dir_ie(u"", None)
+            root_ie = self._get_dir_ie(u"")
             ret = {}
             if specific_files is None or u"" in specific_files:
                 ret[(u"", u"")] = root_ie
-            dir_ids = {u"": root_ie.file_id}
+            dir_ids = set([u""])
             for path, value in self._recurse_index_entries():
                 if self.mapping.is_special_file(path):
                     continue
@@ -1176,14 +1142,13 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     continue
                 (parent, name) = posixpath.split(path)
                 try:
-                    file_ie = self._get_file_ie(name, path, value, None)
+                    file_ie = self._get_file_ie(name, path, value)
                 except errors.NoSuchFile:
                     continue
                 if yield_parents or specific_files is None:
                     for (dir_path, dir_ie) in self._add_missing_parent_ids(
                             parent, dir_ids):
                         ret[(posixpath.dirname(dir_path), dir_path)] = dir_ie
-                file_ie.parent_id = self.path2id(parent)
                 ret[(posixpath.dirname(path), path)] = file_ie
             return ((path, ie) for ((_, path), ie) in sorted(viewitems(ret)))
 
@@ -1193,12 +1158,10 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             if entry.kind == 'tree-reference':
                 yield path
 
-    def _get_dir_ie(self, path, parent_id):
-        file_id = self.path2id(path)
-        return GitTreeDirectory(file_id,
-                                posixpath.basename(path).strip("/"), parent_id)
+    def _get_dir_ie(self, path):
+        return GitTreeDirectory(posixpath.basename(path).strip("/"))
 
-    def _get_file_ie(self, name, path, value, parent_id):
+    def _get_file_ie(self, name, path, value):
         if not isinstance(name, text_type):
             raise TypeError(name)
         if not isinstance(path, text_type):
@@ -1206,11 +1169,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         if not isinstance(value, tuple) or len(value) != 10:
             raise TypeError(value)
         (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
-        file_id = self.path2id(path)
-        if not isinstance(file_id, bytes):
-            raise TypeError(file_id)
         kind = mode_kind(mode)
-        ie = entry_factory[kind](file_id, name, parent_id)
+        ie = entry_factory[kind](name)
         if kind == 'symlink':
             ie.symlink_target = self.get_symlink_target(path)
         elif kind == 'tree-reference':
@@ -1236,9 +1196,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             return []
         parent = posixpath.dirname(path).strip("/")
         ret = self._add_missing_parent_ids(parent, dir_ids)
-        parent_id = dir_ids[parent]
-        ie = self._get_dir_ie(path, parent_id)
-        dir_ids[path] = ie.file_id
+        ie = self._get_dir_ie(path)
+        dir_ids.add(path)
         ret.append((path, ie))
         return ret
 
