@@ -889,20 +889,15 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         raise NotImplementedError(self.get_deltas_for_revisions)
 
-    def get_revision_delta(self, revision_id, specific_fileids=None):
+    def get_revision_delta(self, revision_id):
         """Return the delta for one revision.
 
         The delta is relative to the left-hand predecessor of the
         revision.
-
-        :param specific_fileids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
         """
         with self.lock_read():
             r = self.get_revision(revision_id)
-            return list(self.get_deltas_for_revisions(
-                [r], specific_fileids=specific_fileids))[0]
+            return list(self.get_deltas_for_revisions([r]))[0]
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError(self.store_revision_signature)
