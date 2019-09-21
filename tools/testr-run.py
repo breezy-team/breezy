@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import argparse
 import subprocess
@@ -38,7 +38,7 @@ def main():
         if args.load_list:
             py2_tests = []
             py3_tests = []
-            with open(args.load_list, 'r') as f:
+            with open(args.load_list, 'rb') as f:
                 all_tests = parse_list(f.read())
             for testname in all_tests:
                 if testname.startswith("python2."):
