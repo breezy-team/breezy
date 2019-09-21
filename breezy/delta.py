@@ -84,8 +84,9 @@ class TreeDelta(object):
         return "TreeDelta(added=%r, removed=%r, renamed=%r," \
             " copied=%r, kind_changed=%r, modified=%r, unchanged=%r," \
             " unversioned=%r)" % (
-            self.added, self.removed, self.renamed, self.copied,
-            self.kind_changed, self.modified, self.unchanged, self.unversioned)
+                self.added, self.removed, self.renamed, self.copied,
+                self.kind_changed, self.modified, self.unchanged,
+                self.unversioned)
 
     def has_changed(self):
         return bool(self.modified
