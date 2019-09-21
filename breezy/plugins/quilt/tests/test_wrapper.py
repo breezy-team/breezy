@@ -23,6 +23,7 @@ from __future__ import absolute_import
 import os
 
 from ..wrapper import (
+    quilt_delete,
     quilt_pop_all,
     quilt_applied,
     quilt_unapplied,
@@ -71,7 +72,7 @@ class QuiltTests(TestCaseWithTransport):
         self.make_empty_quilt_dir("source")
         quilt_push_all("source", quiet=True)
 
-    def test_poph_all_empty(self):
+    def test_pop_all_empty(self):
         self.make_empty_quilt_dir("source")
         quilt_pop_all("source", quiet=True)
 
@@ -97,3 +98,18 @@ class QuiltTests(TestCaseWithTransport):
             ("source/patches/patch2.diff", "bazb ar")])
         self.assertEquals(["patch1.diff", "patch2.diff"],
                           quilt_unapplied("source", "patches"))
+
+    def test_delete(self):
+        source = self.make_empty_quilt_dir("source")
+        self.build_tree_contents([
+            ("source/patches/series", "patch1.diff\npatch2.diff"),
+            ("source/patches/patch1.diff", "foob ar"),
+            ("source/patches/patch2.diff", "bazb ar")])
+        quilt_delete("source", "patch1.diff", "patches", remove=False)
+        self.assertEqual(
+            ['patch2.diff'],
+            quilt_series(source, 'patches/series'))
+        quilt_delete("source", "patch2.diff", "patches", remove=True)
+        self.assertTrue(os.path.exists('source/patches/patch1.diff'))
+        self.assertFalse(os.path.exists('source/patches/patch2.diff'))
+        self.assertEqual([], quilt_series(source, 'patches/series'))

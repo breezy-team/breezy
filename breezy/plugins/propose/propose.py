@@ -53,6 +53,11 @@ class UnsupportedHoster(errors.BzrError):
         self.branch = branch
 
 
+class ReopenFailed(errors.BzrError):
+
+    _fmt = "Reopening the merge proposal failed: %(error)s."
+
+
 class ProposeMergeHooks(hooks.Hooks):
     """Hooks for proposing a merge on Launchpad."""
 
@@ -135,9 +140,23 @@ class MergeProposal(object):
         """Check whether this merge proposal has been merged."""
         raise NotImplementedError(self.is_merged)
 
+    def is_closed(self):
+        """Check whether this merge proposal is closed
+
+        This can either mean that it is merged or rejected.
+        """
+        raise NotImplementedError(self.is_closed)
+
     def merge(self, commit_message=None):
         """Merge this merge proposal."""
         raise NotImplementedError(self.merge)
+
+    def can_be_merged(self):
+        """Can this merge proposal be merged?
+
+        The answer to this can be no if e.g. it has conflics.
+        """
+        raise NotImplementedError(self.can_be_merged)
 
 
 class MergeProposalBuilder(object):

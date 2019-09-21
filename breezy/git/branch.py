@@ -785,7 +785,7 @@ class LocalGitBranch(GitBranch):
         :param refs: Refs dictionary (name -> git sha1)
         :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
         """
-        refs = self.repository._git.refs
+        refs = self.repository.controldir.get_refs_container()
         for ref_name, unpeeled in viewitems(refs.as_dict()):
             try:
                 tag_name = ref_to_tag_name(ref_name)
@@ -1155,6 +1155,9 @@ class InterGitLocalGitBranch(InterGitBranch):
                                                         self.target.repository)
         if stop_revision is None:
             stop_revision = self.source.last_revision()
+        if fetch_tags is None:
+            c = self.source.get_config_stack()
+            fetch_tags = c.get('branch.fetch_tags')
         determine_wants = interrepo.get_determine_wants_revids(
             [stop_revision], include_tags=fetch_tags)
         interrepo.fetch_objects(determine_wants, limit=limit)

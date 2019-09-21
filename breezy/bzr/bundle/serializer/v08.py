@@ -19,28 +19,28 @@
 
 from __future__ import absolute_import
 
-from breezy import (
+from .... import (
     errors,
     ui,
     )
-from breezy.bundle.serializer import (
+from . import (
     BundleSerializer,
     _get_bundle_header,
+    binary_diff,
     )
-from breezy.bundle.serializer import binary_diff
-from breezy.bundle.bundle_data import (
+from ..bundle_data import (
     RevisionInfo,
     BundleInfo,
     )
-from breezy.diff import internal_diff
-from breezy.revision import NULL_REVISION
-from breezy.sixish import text_type
-from breezy.bzr.testament import StrictTestament
-from breezy.timestamp import (
+from ....diff import internal_diff
+from ....revision import NULL_REVISION
+from ....sixish import text_type
+from ...testament import StrictTestament
+from ....timestamp import (
     format_highres_date,
     )
-from breezy.textfile import text_file
-from breezy.trace import mutter
+from ....textfile import text_file
+from ....trace import mutter
 
 bool_text = {True: 'yes', False: 'no'}
 
@@ -316,7 +316,9 @@ class BundleSerializerV08(BundleSerializer):
             action = Action(
                 'added', [change.kind[1], change.path[1]],
                 [('file-id', change.file_id.decode('utf-8'))])
-            finish_action(action, change.file_id, change.kind[1], change.meta_modified(), change.changed_content,
+            meta_modified = (change.kind[1] == 'file' and
+                             change.executable[1])
+            finish_action(action, change.file_id, change.kind[1], meta_modified, change.changed_content,
                           DEVNULL, change.path[1])
 
         for change in delta.renamed:
@@ -559,5 +561,5 @@ class BundleInfo08(BundleInfo):
         testament = StrictTestament.from_revision(repository, revision_id)
         return testament.as_sha1()
 
-    def _testament_sha1(self, revision, tree):
-        return StrictTestament(revision, tree).as_sha1()
+    def _testament(self, revision, tree):
+        return StrictTestament(revision, tree)

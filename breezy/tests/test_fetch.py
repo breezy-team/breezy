@@ -498,7 +498,7 @@ class Test1To2Fetch(TestCaseWithTransport):
         self.tree.add_parent_tree_id(b'not-ghost-parent')
         self.tree.commit('second commit', rev_id=b'second-id')
         self.repo.fetch(self.tree.branch.repository, b'second-id')
-        root_id = self.tree.get_root_id()
+        root_id = self.tree.path2id('')
         self.assertEqual(
             ((root_id, b'left-parent'), (root_id, b'not-ghost-parent')),
             self.get_parents(root_id, b'second-id'))

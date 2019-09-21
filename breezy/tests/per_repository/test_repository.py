@@ -483,7 +483,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        root_id = rev_tree.get_root_id()
         self.assertEqual(revid, rev_tree.get_file_revision(u''))
 
     def test_pointless_commit(self):
@@ -798,7 +797,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_find_branches(self):
         repo = self.make_repository_and_foo_bar()
-        branches = repo.find_branches()
+        branches = list(repo.find_branches())
         self.assertContainsRe(branches[-1].base, 'repository/foo/$')
         self.assertContainsRe(branches[-3].base, 'repository/baz/qux/$')
         self.assertContainsRe(branches[-2].base, 'repository/baz/qux/quxx/$')
@@ -816,7 +815,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo = self.make_repository_and_foo_bar(shared=True)
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable
-        branches = repo.find_branches(using=True)
+        branches = list(repo.find_branches(using=True))
         self.assertContainsRe(branches[-1].base, 'repository/foo/$')
         # in some formats, creating a repo creates a branch
         if len(branches) == 2:
@@ -845,7 +844,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         try:
             repo.controldir.open_branch()
         except errors.NotBranchError:
-            self.assertEqual([], repo.find_branches(using=True))
+            self.assertEqual([], list(repo.find_branches(using=True)))
         else:
             self.assertEqual([repo.controldir.root_transport.base],
                              [b.base for b in repo.find_branches(using=True)])
@@ -1011,13 +1010,14 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
         self.tree_a.add('bar/b3')
         self.rev2 = self.tree_a.commit('rev2')
         self.repository = self.tree_a.branch.repository
+        self.addCleanup(self.repository.lock_read().unlock)
 
     def test_multiple_files(self):
         # Test multiple files
-        delta = self.repository.get_revision_delta(
-            self.rev1, specific_fileids=[
+        delta = list(self.repository.get_deltas_for_revisions(
+            [self.repository.get_revision(self.rev1)], specific_fileids=[
                 self.tree_a.path2id('foo'),
-                self.tree_a.path2id('baz')])
+                self.tree_a.path2id('baz')]))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
             ('baz', 'file'),
@@ -1026,8 +1026,9 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
 
     def test_directory(self):
         # Test a directory
-        delta = self.repository.get_revision_delta(
-            self.rev1, specific_fileids=[self.bar_id])
+        delta = list(self.repository.get_deltas_for_revisions(
+            [self.repository.get_revision(self.rev1)],
+            specific_fileids=[self.bar_id]))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
             ('bar', 'directory'),
@@ -1037,15 +1038,17 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
 
     def test_unrelated(self):
         # Try another revision
-        delta = self.repository.get_revision_delta(
-            self.rev2, specific_fileids=[self.tree_a.path2id('foo')])
+        delta = list(self.repository.get_deltas_for_revisions(
+            [self.repository.get_revision(self.rev2)],
+            specific_fileids=[self.tree_a.path2id('foo')]))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([], delta.added)
 
     def test_file_in_directory(self):
         # Test a file in a directory, both of which were added
-        delta = self.repository.get_revision_delta(
-            self.rev1, specific_fileids=[self.tree_a.path2id('bar/b2')])
+        delta = list(self.repository.get_deltas_for_revisions(
+            [self.repository.get_revision(self.rev1)],
+            specific_fileids=[self.tree_a.path2id('bar/b2')]))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         self.assertEqual([
             ('bar', 'directory'),
@@ -1053,8 +1056,9 @@ class TestDeltaRevisionFiltered(per_repository.TestCaseWithRepository):
             ], [(c.path[1], c.kind[1]) for c in delta.added])
 
     def test_file_in_unchanged_directory(self):
-        delta = self.repository.get_revision_delta(
-            self.rev2, specific_fileids=[self.tree_a.path2id('bar/b3')])
+        delta = list(self.repository.get_deltas_for_revisions(
+            [self.repository.get_revision(self.rev2)],
+            specific_fileids=[self.tree_a.path2id('bar/b3')]))[0]
         self.assertIsInstance(delta, _mod_delta.TreeDelta)
         if [(c.path[1], c.kind[1]) for c in delta.added] == [
                 ('bar', 'directory'), ('bar/b3', 'file')]:

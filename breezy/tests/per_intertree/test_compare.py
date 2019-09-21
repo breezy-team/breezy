@@ -73,7 +73,7 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_compare_empty_trees(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_no_content(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
@@ -87,7 +87,7 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_empty_to_abc_content(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
@@ -108,7 +108,7 @@ class TestCompare(TestCaseWithTwoTrees):
         # the test.
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['2/a'])
         tree2.add('a')
         os.unlink('2/a')
@@ -130,7 +130,7 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_abc_content_to_empty(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_no_content(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
@@ -147,7 +147,7 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_content_modification(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_2(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
@@ -164,7 +164,7 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_meta_modification(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_3(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
@@ -181,7 +181,7 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_file_rename(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_4(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
@@ -198,7 +198,7 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_file_rename_and_modification(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_5(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
@@ -215,7 +215,7 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_file_rename_and_meta_modification(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content_6(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
@@ -232,7 +232,7 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_empty_to_abc_content_a_only(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
@@ -365,7 +365,7 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_default_ignores_unversioned_files(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree1/a', 'tree1/c',
                          'tree2/a', 'tree2/b', 'tree2/c'])
         tree1.add(['a', 'c'], [b'a-id', b'c-id'])
@@ -386,7 +386,7 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_unversioned_paths_in_tree(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree2/file', 'tree2/dir/'])
         if has_symlinks():
             os.symlink('target', 'tree2/link')
@@ -515,7 +515,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         """Create a tree with filenames chosen to exercise the walk order."""
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         paths, path_ids = self._create_special_names(tree2, 'tree2')
         tree2.commit('initial', rev_id=b'rev-1')
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
@@ -528,7 +528,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         """
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         paths, path_ids = self._create_special_names(tree1, 'tree1')
         paths, path_ids = self._create_special_names(tree2, 'tree2')
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
@@ -828,7 +828,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.put_file_bytes_non_atomic(
             'changing/unchanging/file', b'a file')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree2.mkdir('changed', b'parent-id')
         tree2.mkdir('changed/unchanging', b'mid-id')
         tree2.add(['changed/unchanging/file'], [b'file-id'], ['file'])
@@ -907,7 +907,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.add(['a'], [b'a-id'], ['file'])
         tree1.put_file_bytes_non_atomic('a', b'a file')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree2.mkdir('a', b'b-id')
         tree2.add(['a/c'], [b'c-id'], ['file'])
         tree2.put_file_bytes_non_atomic('a/c', b'another file')
@@ -927,7 +927,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.mkdir('a/reparented', b'reparented-id')
         tree1.mkdir('a/deleted', b'deleted-id')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree2.mkdir('a', b'a-new-id')
         tree2.mkdir('a/reparented', b'reparented-id')
         tree2.add(['b'], [b'a-old-id'], ['file'])
@@ -951,7 +951,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.mkdir('a/reparented', b'reparented-id')
         tree1.mkdir('a/deleted', b'deleted-id')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree2.mkdir('a', b'a-new-id')
         tree2.mkdir('a/reparented', b'reparented-id')
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
@@ -975,7 +975,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.mkdir('a/reparented', b'reparented-id')
         tree1.mkdir('collides', b'collides-id')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree2.mkdir('a', b'a-new-id')
         tree2.mkdir('a/selected', b'selected-id')
         tree2.mkdir('collides', b'reparented-id')
@@ -1004,7 +1004,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.mkdir('a/deleted/reparented', b'reparented-id-2')
         tree1.mkdir('a/deleted/deleted', b'deleted-id-2')
         tree2 = self.make_to_branch_and_tree('2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         tree2.mkdir('a', b'a-new-id')
         tree2.mkdir('a/reparented', b'reparented-id-1')
         tree2.mkdir('reparented', b'reparented-id-2')
@@ -1088,7 +1088,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_missing_and_renamed(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree1/file'])
         tree1.add(['file'], [b'file-id'])
         self.build_tree(['tree2/directory/'])
@@ -1106,7 +1106,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_only_in_source_and_missing(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree1/file'])
         tree1.add(['file'], [b'file-id'])
         os.unlink('tree1/file')
@@ -1121,7 +1121,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_only_in_target_and_missing(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree2/file'])
         tree2.add(['file'], [b'file-id'])
         os.unlink('tree2/file')
@@ -1136,7 +1136,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_only_in_target_missing_subtree_specific_bug_367632(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree2/a-dir/', 'tree2/a-dir/a-file'])
         tree2.add(['a-dir', 'a-dir/a-file'], [b'dir-id', b'file-id'])
         os.unlink('tree2/a-dir/a-file')
@@ -1246,7 +1246,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_default_ignores_unversioned_files(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree1/a', 'tree1/c',
                          'tree2/a', 'tree2/b', 'tree2/c'])
         tree1.add(['a', 'c'], [b'a-id', b'c-id'])
@@ -1266,7 +1266,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_unversioned_paths_in_tree(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree2/file', 'tree2/dir/'])
         if has_symlinks():
             os.symlink('target', 'tree2/link')
@@ -1319,7 +1319,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         # both foo and bar.
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree2/file', 'tree2/dir/',
                          'tree1/file', 'tree2/movedfile',
                          'tree1/dir/', 'tree2/moveddir/'])
@@ -1363,7 +1363,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         """Test when we have a few files with similar names."""
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
 
         # The trees are actually identical, but they happen to contain
         # similarly named files.
@@ -1391,7 +1391,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([], self.do_iter_changes(tree1, tree2,
                                                   want_unversioned=True))
         expected = self.sorted([
-            self.unchanged(tree2, tree2.get_root_id()),
+            self.unchanged(tree2, tree2.path2id('')),
             self.unchanged(tree2, b'a-id'),
             self.unchanged(tree2, b'b-id'),
             self.unchanged(tree2, b'c-id'),
@@ -1407,7 +1407,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_unversioned_subtree_only_emits_root(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree2/dir/', 'tree2/dir/file'])
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         self.not_applicable_if_cannot_represent_unversioned(tree2)
@@ -1420,7 +1420,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def make_trees_with_symlinks(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree1/fromfile', 'tree1/fromdir/'])
         self.build_tree(['tree2/tofile', 'tree2/todir/', 'tree2/unknown'])
         os.symlink('original', 'tree1/changed')
@@ -1520,7 +1520,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_trees_with_deleted_dir(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        tree2.set_root_id(tree1.get_root_id())
+        tree2.set_root_id(tree1.path2id(''))
         self.build_tree(['tree1/a', 'tree1/b/', 'tree1/b/c',
                          'tree1/b/d/', 'tree1/b/d/e', 'tree1/f/', 'tree1/f/g',
                          'tree2/a', 'tree2/f/', 'tree2/f/g'])
@@ -1545,7 +1545,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_added_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        root_id = tree1.get_root_id()
+        root_id = tree1.path2id('')
         tree2.set_root_id(root_id)
 
         # u'\u03b1' == GREEK SMALL LETTER ALPHA
@@ -1574,7 +1574,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_deleted_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        root_id = tree1.get_root_id()
+        root_id = tree1.path2id('')
         tree2.set_root_id(root_id)
 
         # u'\u03b1' == GREEK SMALL LETTER ALPHA
@@ -1603,7 +1603,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_modified_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        root_id = tree1.get_root_id()
+        root_id = tree1.path2id('')
         tree2.set_root_id(root_id)
 
         # u'\u03b1' == GREEK SMALL LETTER ALPHA
@@ -1633,7 +1633,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_renamed_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        root_id = tree1.get_root_id()
+        root_id = tree1.path2id('')
         tree2.set_root_id(root_id)
 
         # u'\u03b1' == GREEK SMALL LETTER ALPHA
@@ -1664,7 +1664,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_unchanged_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        root_id = tree1.get_root_id()
+        root_id = tree1.path2id('')
         tree2.set_root_id(root_id)
         # u'\u03b1' == GREEK SMALL LETTER ALPHA
         # u'\u03c9' == GREEK SMALL LETTER OMEGA
@@ -1712,7 +1712,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_unknown_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        root_id = tree1.get_root_id()
+        root_id = tree1.path2id('')
         tree2.set_root_id(root_id)
         # u'\u03b1' == GREEK SMALL LETTER ALPHA
         # u'\u03c9' == GREEK SMALL LETTER OMEGA
@@ -1766,7 +1766,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_unknown_empty_dir(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        root_id = tree1.get_root_id()
+        root_id = tree1.path2id('')
         tree2.set_root_id(root_id)
 
         # Start with 2 identical trees
@@ -1808,7 +1808,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_rename_over_deleted(self):
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        root_id = tree1.get_root_id()
+        root_id = tree1.path2id('')
         tree2.set_root_id(root_id)
 
         # The final changes should be:
@@ -1845,7 +1845,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         """Test a file marked removed, but still present on disk."""
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        root_id = tree1.get_root_id()
+        root_id = tree1.path2id('')
         tree2.set_root_id(root_id)
 
         # The final changes should be:
@@ -1883,7 +1883,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         """Test when we have renamed a file, and put another in its place."""
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        root_id = tree1.get_root_id()
+        root_id = tree1.path2id('')
         tree2.set_root_id(root_id)
 
         # The final changes are:
@@ -1920,7 +1920,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         """A file was moved on the filesystem, but not in bzr."""
         tree1 = self.make_branch_and_tree('tree1')
         tree2 = self.make_to_branch_and_tree('tree2')
-        root_id = tree1.get_root_id()
+        root_id = tree1.path2id('')
         tree2.set_root_id(root_id)
 
         # The final changes are:
@@ -1941,7 +1941,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.not_applicable_if_missing_in('a', tree2)
 
         expected = self.sorted([
-            self.missing(b'a-id', 'a', 'a', tree2.get_root_id(), 'file'),
+            self.missing(b'a-id', 'a', 'a', tree2.path2id(''), 'file'),
             self.unversioned(tree2, 'a2'),
             ])
         self.assertEqual(expected,

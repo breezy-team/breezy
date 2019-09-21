@@ -62,13 +62,10 @@ class UnpeelMap(object):
                 f.write(b"%s: %s\n" % (k, v))
 
     def save_in_repository(self, repository):
-        f = BytesIO()
-        try:
+        with BytesIO() as f:
             self.save(f)
             f.seek(0)
             repository.control_transport.put_file("git-unpeel-map", f)
-        finally:
-            f.close()
 
     def peel_tag(self, git_sha, default=None):
         """Peel a tag."""

@@ -1326,7 +1326,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
         tree.add(['file'], [b'file-id'])
-        self.assertChangedFileIds([tree.get_root_id(), b'file-id'], tree)
+        self.assertChangedFileIds([tree.path2id(''), b'file-id'], tree)
         tree.commit('one')
         self.assertChangedFileIds([], tree)
 

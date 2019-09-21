@@ -199,9 +199,9 @@ class cmd_propose_merge(Command):
                 prerequisite_branch=prerequisite_branch, labels=labels,
                 commit_message=commit_message)
         except _mod_propose.MergeProposalExists as e:
-            raise errors.BzrCommandError(gettext(
-                'There is already a branch merge proposal: %s') % e.url)
-        note(gettext('Merge proposal created: %s') % proposal.url)
+            note(gettext('There is already a branch merge proposal: %s'), e.url)
+        else:
+            note(gettext('Merge proposal created: %s') % proposal.url)
 
 
 class cmd_find_merge_proposal(Command):
@@ -348,9 +348,11 @@ class cmd_my_merge_proposals(Command):
                             '(Merging %s into %s)\n' %
                             (mp.get_source_branch_url(),
                              mp.get_target_branch_url()))
-                        self.outf.writelines(
-                            ['\t%s\n' % l
-                             for l in mp.get_description().splitlines()])
+                        description = mp.get_description()
+                        if description:
+                            self.outf.writelines(
+                                ['\t%s\n' % l
+                                 for l in description.splitlines()])
                         self.outf.write('\n')
 
 

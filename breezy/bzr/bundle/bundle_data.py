@@ -23,31 +23,31 @@ from io import BytesIO
 import os
 import pprint
 
-from .. import (
+from ... import (
     cache_utf8,
     osutils,
     timestamp,
     )
 from . import apply_bundle
-from ..errors import (
+from ...errors import (
     TestamentMismatch,
     BzrError,
     )
-from ..bzr.inventory import (
+from ..inventory import (
     Inventory,
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
     )
-from ..osutils import sha_string, pathjoin
-from ..revision import Revision, NULL_REVISION
-from ..sixish import (
+from ...osutils import sha_string, pathjoin
+from ...revision import Revision, NULL_REVISION
+from ...sixish import (
     viewitems,
     )
-from ..bzr.testament import StrictTestament
-from ..trace import mutter, warning
-from ..tree import Tree
-from ..bzr.xml5 import serializer_v5
+from ..testament import StrictTestament
+from ...trace import mutter, warning
+from ...tree import Tree
+from ..xml5 import serializer_v5
 
 
 class RevisionInfo(object):
@@ -294,6 +294,9 @@ class BundleInfo(object):
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
+    def _testament(self, revision, tree):
+        raise NotImplementedError(self._testament)
+
     def _validate_revision(self, tree, revision_id):
         """Make sure all revision entries match their checksum."""
 
@@ -306,7 +309,8 @@ class BundleInfo(object):
             raise AssertionError()
         if not (rev.revision_id == revision_id):
             raise AssertionError()
-        sha1 = self._testament_sha1(rev, tree)
+        testament = self._testament(rev, tree)
+        sha1 = testament.as_sha1()
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:
@@ -579,9 +583,6 @@ class BundleTree(Tree):
             return None
         return new_path
 
-    def get_root_id(self):
-        return self.path2id('')
-
     def path2id(self, path):
         """Return the id of the file present at path in the target tree."""
         file_id = self._new_id.get(path)
@@ -629,7 +630,7 @@ class BundleTree(Tree):
         file_id = self.path2id(path)
         base_id = self.old_contents_id(file_id)
         if (base_id is not None and
-                base_id != self.base_tree.get_root_id()):
+                base_id != self.base_tree.path2id('')):
             old_path = self.base_tree.id2path(base_id)
             patch_original = self.base_tree.get_file(old_path)
         else:

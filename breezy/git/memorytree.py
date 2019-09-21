@@ -41,7 +41,6 @@ from breezy import (
     )
 from breezy.transport.memory import MemoryTransport
 
-from .mapping import GitFileIdMap
 from .tree import MutableGitIndexTree
 
 
@@ -89,13 +88,9 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
         self._file_transport = MemoryTransport()
         if self.branch.head is None:
             tree = Tree()
-            self._basis_fileid_map = GitFileIdMap({}, self.mapping)
         else:
             tree_id = self.store[self.branch.head].tree
-            self._basis_fileid_map = self.mapping.get_fileid_map(
-                self.store.__getitem__, tree_id)
             tree = self.store[tree_id]
-        self._fileid_map = self._basis_fileid_map.copy()
 
         trees = [("", tree)]
         while trees:

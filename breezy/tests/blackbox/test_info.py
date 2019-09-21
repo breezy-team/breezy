@@ -1399,83 +1399,53 @@ Repository:
                                         repo_branch=repo_branch,
                                         verbose=True, light_checkout=True)
         # U U L
-        lco_tree.branch.repository.lock_write()
-        try:
+        with lco_tree.branch.repository.lock_write():
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
                                             lco_tree, repo_branch=repo_branch,
                                             repo_locked=True, verbose=True, light_checkout=True)
-        finally:
-            lco_tree.branch.repository.unlock()
         # U L L
-        lco_tree.branch.lock_write()
-        try:
+        with lco_tree.branch.lock_write():
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
                                             lco_tree,
                                             branch_locked=True,
                                             repo_locked=True,
                                             repo_branch=repo_branch,
                                             verbose=True)
-        finally:
-            lco_tree.branch.unlock()
         # L L L
-        lco_tree.lock_write()
-        try:
+        with lco_tree.lock_write():
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
                                             lco_tree, repo_branch=repo_branch,
                                             tree_locked=True,
                                             branch_locked=True,
                                             repo_locked=True,
                                             verbose=True)
-        finally:
-            lco_tree.unlock()
         # L L U
-        lco_tree.lock_write()
-        lco_tree.branch.repository.unlock()
-        try:
+        with lco_tree.lock_write(), lco_tree.branch.repository.unlock():
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
                                             lco_tree, repo_branch=repo_branch,
                                             tree_locked=True,
                                             branch_locked=True,
                                             verbose=True)
-        finally:
-            lco_tree.branch.repository.lock_write()
-            lco_tree.unlock()
         # L U U
-        lco_tree.lock_write()
-        lco_tree.branch.unlock()
-        try:
+        with lco_tree.lock_write(), lco_tree.branch.unlock():
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
                                             lco_tree, repo_branch=repo_branch,
                                             tree_locked=True,
                                             verbose=True)
-        finally:
-            lco_tree.branch.lock_write()
-            lco_tree.unlock()
         # L U L
-        lco_tree.lock_write()
-        lco_tree.branch.unlock()
-        lco_tree.branch.repository.lock_write()
-        try:
+        with lco_tree.lock_write(), lco_tree.branch.unlock(), \
+                lco_tree.branch.repository.lock_write():
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
                                             lco_tree, repo_branch=repo_branch,
                                             tree_locked=True,
                                             repo_locked=True,
                                             verbose=True)
-        finally:
-            lco_tree.branch.repository.unlock()
-            lco_tree.branch.lock_write()
-            lco_tree.unlock()
         # U L U
-        lco_tree.branch.lock_write()
-        lco_tree.branch.repository.unlock()
-        try:
+        with lco_tree.branch.lock_write(), lco_tree.branch.repository.unlock():
             self.assertCheckoutStatusOutput('-v tree/lightcheckout',
                                             lco_tree, repo_branch=repo_branch,
                                             branch_locked=True,
                                             verbose=True)
-        finally:
-            lco_tree.branch.repository.lock_write()
-            lco_tree.branch.unlock()
 
         if sys.platform == 'win32':
             self.knownFailure('Win32 cannot run "brz info"'
