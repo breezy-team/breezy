@@ -2585,11 +2585,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                     old_tree = trees[revision.parent_ids[0]]
                 yield trees[revision.revision_id].changes_from(old_tree)
 
-    def get_revision_delta(self, revision_id, specific_fileids=None):
+    def get_revision_delta(self, revision_id):
         with self.lock_read():
             r = self.get_revision(revision_id)
-            return list(self.get_deltas_for_revisions([r],
-                                                      specific_fileids=specific_fileids))[0]
+            return list(self.get_deltas_for_revisions([r]))[0]
 
     def revision_trees(self, revision_ids):
         with self.lock_read():

@@ -113,7 +113,7 @@ def gather_location_info(repository=None, branch=None, working=None,
             if working_path == master_path_base:
                 locs['checkout of co-located branch'] = params['branch']
             elif 'branch' in params:
-                locs['checkout of branch'] = "%s, branch %s" (
+                locs['checkout of branch'] = "%s, branch %s" % (
                     master_path_base, params['branch'])
             else:
                 locs['checkout of branch'] = master_path
