@@ -2039,9 +2039,7 @@ class _PreviewTree(inventorytree.InventoryTree):
     def _content_change(self, file_id):
         """Return True if the content of this file changed"""
         changes = self._iter_changes_cache.get(file_id)
-        # changes[2] is true if the file content changed.  See
-        # InterTree.iter_changes.
-        return (changes is not None and changes[2])
+        return (changes is not None and changes.changed_content)
 
     def _get_repository(self):
         repo = getattr(self._transform._tree, '_repository', None)

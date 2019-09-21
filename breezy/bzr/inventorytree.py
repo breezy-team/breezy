@@ -909,7 +909,7 @@ class InterCHKRevisionTree(InterTree):
                     continue
                 precise_file_ids.add(result.parent_id[1])
             yield result
-            changed_file_ids.add(result[0])
+            changed_file_ids.add(result.file_id)
         if specific_file_ids is not None:
             for result in self._handle_precise_ids(precise_file_ids,
                                                    changed_file_ids, discarded_changes=discarded_changes):

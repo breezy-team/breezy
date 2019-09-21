@@ -698,14 +698,14 @@ class Commit(object):
                     trace.warning('Ignoring "%s" as symlinks are not '
                                   'supported on this filesystem.' % (change.path[0],))
                     continue
-                deleted_paths.append(change[1][1])
+                deleted_paths.append(change.path[1])
                 # Reset the new path (None) and new versioned flag (False)
                 change = change.discard_new()
                 new_path = change.path[1]
                 versioned = False
             elif kind == 'tree-reference':
                 if self.recursive == 'down':
-                    self._commit_nested_tree(change[1][1])
+                    self._commit_nested_tree(change.path[1])
             if change.versioned[0] or change.versioned[1]:
                 yield change
                 if report_changes:

@@ -80,29 +80,28 @@ class GitDiffTree(_mod_diff.DiffTree):
             else:
                 return None
         trees = (self.old_tree, self.new_tree)
-        for (file_id, paths, changed_content, versioned, parent, name, kind,
-             executable) in iterator:
+        for change in iterator:
             # The root does not get diffed, and items with no known kind (that
             # is, missing) in both trees are skipped as well.
-            if parent == (None, None) or kind == (None, None):
+            if change.parent_id == (None, None) or change.kind == (None, None):
                 continue
-            path_encoded = (get_encoded_path(paths[0]),
-                            get_encoded_path(paths[1]))
-            present = ((kind[0] not in (None, 'directory')),
-                       (kind[1] not in (None, 'directory')))
+            path_encoded = (get_encoded_path(change.path[0]),
+                            get_encoded_path(change.path[1]))
+            present = ((change.kind[0] not in (None, 'directory')),
+                       (change.kind[1] not in (None, 'directory')))
             if not present[0] and not present[1]:
                 continue
-            contents = (get_blob(present[0], trees[0], paths[0]),
-                        get_blob(present[1], trees[1], paths[1]))
-            renamed = (parent[0], name[0]) != (parent[1], name[1])
+            contents = (get_blob(present[0], trees[0], change.path[0]),
+                        get_blob(present[1], trees[1], change.path[1]))
+            renamed = (change.parent_id[0], change.name[0]) != (change.parent_id[1], change.name[1])
             mode = (get_file_mode(trees[0], path_encoded[0],
-                                  kind[0], executable[0]),
+                                  change.kind[0], change.executable[0]),
                     get_file_mode(trees[1], path_encoded[1],
-                                  kind[1], executable[1]))
+                                  change.kind[1], change.executable[1]))
             write_blob_diff(self.to_file,
                             (path_encoded[0], mode[0], contents[0]),
                             (path_encoded[1], mode[1], contents[1]))
-            has_changes |= (changed_content or renamed)
+            has_changes |= (change.changed_content or renamed)
         return has_changes
 
 

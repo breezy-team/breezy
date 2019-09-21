@@ -104,4 +104,4 @@ class TestTreeWithoutSymlinks(per_tree.TestCaseWithTree):
         with result_tree.lock_read():
             self.assertEqual(
                 [('symlink', 'symlink')],
-                [c[1] for c in result_tree.iter_changes(basis_tree)])
+                [c.path for c in result_tree.iter_changes(basis_tree)])

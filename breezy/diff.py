@@ -1031,7 +1031,7 @@ class DiffTree(object):
         has_changes = 0
 
         def changes_key(change):
-            old_path, new_path = change[1]
+            old_path, new_path = change.path
             path = new_path
             if path is None:
                 path = old_path
