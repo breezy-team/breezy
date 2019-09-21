@@ -312,7 +312,8 @@ class BundleSerializerV08(BundleSerializer):
         for change in delta.removed:
             action = Action('removed', [change.kind[0], change.path[0]]).write(self.to_file)
 
-        for change in delta.added:
+        # TODO(jelmer): Treat copied specially here?
+        for change in delta.added + delta.copied:
             action = Action(
                 'added', [change.kind[1], change.path[1]],
                 [('file-id', change.file_id.decode('utf-8'))])
