@@ -1404,7 +1404,7 @@ cdef class ProcessEntryC:
         """
         if not self.partial or not result.file_id:
             return 0
-        self.seen_ids.add(result[0])
+        self.seen_ids.add(result.file_id)
         new_path = result.path[1]
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
@@ -1940,8 +1940,8 @@ cdef class ProcessEntryC:
                 # expansion.
                 if changed:
                     self._gather_result_for_consistency(result)
-                    if (result[6][0] == 'directory' and
-                        result[6][1] != 'directory'):
+                    if (result.kind[0] == 'directory' and
+                        result.kind[1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
                         if entry[1][self.source_index][0] == b'r':
