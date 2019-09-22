@@ -77,7 +77,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         base_tree = workingtree.WorkingTree.open('tree')
         base_tree.commit('combined', rev_id=b'combined-1')
         self.assertEqual(b'file2-id', base_tree.path2id('subtree/file2'))
-        if base_tree.supports_custom_file_ids():
+        if base_tree.supports_setting_file_ids():
             self.assertEqual('subtree/file2', base_tree.id2path(b'file2-id'))
         self.assertEqualDiff(file2_contents,
                              base_tree.get_file_text('subtree/file2'))
