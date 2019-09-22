@@ -81,6 +81,7 @@ from ...sixish import (
 from ...trace import mutter
 from ...transport import (
     ConnectedTransport,
+    UnusableRedirect,
     )
 
 
@@ -2501,7 +2502,8 @@ class HttpTransport(ConnectedTransport):
         The redirection can be handled only if the relpath involved is not
         renamed by the redirection.
 
-        :returns: A transport or None.
+        :returns: A transport
+        :raise UnusableRedirect: when the URL can not be reinterpreted
         """
         parsed_source = self._split_url(source)
         parsed_target = self._split_url(target)
@@ -2512,7 +2514,8 @@ class HttpTransport(ConnectedTransport):
         if not parsed_target.path.endswith(excess_tail):
             # The final part of the url has been renamed, we can't handle the
             # redirection.
-            return None
+            raise UnusableRedirect(
+                source, target, "final part of the url was renamed")
 
         target_path = parsed_target.path
         if excess_tail:
