@@ -583,7 +583,7 @@ cdef class GCCHKSHA1LeafNode:
             hi = self.num_records
         local_n_cmp = 0
         while lo < hi:
-            mid = (lo + hi) / 2
+            mid = (lo + hi) // 2
             the_cmp = memcmp(self.records[mid].sha1, sha1, 20)
             if the_cmp == 0:
                 return &self.records[mid]

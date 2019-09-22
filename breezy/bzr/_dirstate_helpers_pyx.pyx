@@ -397,7 +397,7 @@ def _bisect_path_left(paths, path):
     path_size = PyBytes_Size(path)
 
     while _lo < _hi:
-        _mid = (_lo + _hi) / 2
+        _mid = (_lo + _hi) // 2
         cur = PyList_GetItem_object_void(paths, _mid)
         cur_cstr = PyBytes_AS_STRING_void(cur)
         cur_size = PyBytes_GET_SIZE_void(cur)
@@ -450,7 +450,7 @@ def _bisect_path_right(paths, path):
     path_size = PyBytes_Size(path)
 
     while _lo < _hi:
-        _mid = (_lo + _hi) / 2
+        _mid = (_lo + _hi) // 2
         cur = PyList_GetItem_object_void(paths, _mid)
         cur_cstr = PyBytes_AS_STRING_void(cur)
         cur_size = PyBytes_GET_SIZE_void(cur)
@@ -497,7 +497,7 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
     dirname_size = PyBytes_Size(dirname)
 
     while _lo < _hi:
-        _mid = (_lo + _hi) / 2
+        _mid = (_lo + _hi) // 2
         # Grab the dirname for the current dirblock
         # cur = dirblocks[_mid][0]
         cur = PyTuple_GetItem_void_void(
