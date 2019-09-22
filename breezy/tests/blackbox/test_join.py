@@ -71,16 +71,21 @@ class TestJoin(tests.TestCaseWithTransport):
         self.run_bzr('join . --reference', working_dir='tree/subtree')
         sub_tree.lock_read()
         self.addCleanup(sub_tree.unlock)
-        self.assertEqual(b'file1-id', sub_tree.path2id('file1'))
-        self.assertTrue(sub_tree.has_id(b'file1-id'))
-        self.assertEqual(subtree_root_id, sub_tree.path2id(''))
-        self.assertEqual('', sub_tree.id2path(subtree_root_id))
-        self.assertIs(None, base_tree.path2id('subtree/file1'))
+        if sub_tree.supports_setting_file_ids():
+            self.assertEqual(b'file1-id', sub_tree.path2id('file1'))
+            self.assertTrue(sub_tree.has_id(b'file1-id'))
+            self.assertEqual(subtree_root_id, sub_tree.path2id(''))
+            self.assertEqual('', sub_tree.id2path(subtree_root_id))
+            self.assertIs(None, base_tree.path2id('subtree/file1'))
+
         base_tree.lock_read()
         self.addCleanup(base_tree.unlock)
-        self.assertFalse(base_tree.has_id(b'file1-id'))
-        self.assertEqual(subtree_root_id, base_tree.path2id('subtree'))
-        self.assertEqual('subtree', base_tree.id2path(subtree_root_id))
+        self.assertEqual(['subtree'], list(base_tree.iter_references()))
+        if base_tree.supports_setting_file_ids():
+            self.assertEqual(b'file1-id', sub_tree.path2id('file1'))
+            self.assertFalse(base_tree.has_id(b'file1-id'))
+            self.assertEqual(subtree_root_id, base_tree.path2id('subtree'))
+            self.assertEqual('subtree', base_tree.id2path(subtree_root_id))
 
     def test_references_check_repository_support(self):
         """Users are stopped from adding a reference that can't be committed."""

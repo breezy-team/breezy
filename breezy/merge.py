@@ -643,8 +643,8 @@ class Merger(object):
                 sub_merge.merge_type = self.merge_type
                 other_branch = self.other_branch.reference_parent(relpath)
                 sub_merge.set_other_revision(other_revision, other_branch)
-                base_tree_path = _mod_tree.find_previous_path(
-                    self.this_tree, self.base_tree, relpath)
+                base_tree_path = _mod_tree.InterTree(
+                    self.this_tree, self.base_tree).find_target_path(relpath)
                 base_revision = self.base_tree.get_reference_revision(
                     base_tree_path)
                 sub_merge.base_tree = \
@@ -842,11 +842,11 @@ class Merge3Merger(object):
                             specific_files=this_interesting_files))
         for change in iterator:
             if change.path[0] is not None:
-                this_path = _mod_tree.find_previous_path(
-                    self.base_tree, self.this_tree, change.path[0])
+                this_path = _mod_tree.InterTree(
+                    self.base_tree, self.this_tree).find_target_path(change.path[0])
             else:
-                this_path = _mod_tree.find_previous_path(
-                    self.other_tree, self.this_tree, change.path[1])
+                this_path = _mod_tree.InterTree(
+                    self.other_tree, self.this_tree).find_target_path(change.path[1])
             this_entry = this_entries.get(this_path)
             if this_entry is not None:
                 this_name = this_entry.name
@@ -1441,8 +1441,8 @@ class Merge3Merger(object):
             # That fails though when OTHER is adding a file, so
             # we fall back to the other tree to find the path if
             # it doesn't exist locally.
-            filter_path = _mod_tree.find_previous_path(
-                self.other_tree, self.working_tree, path)
+            filter_path = _mod_tree.InterTree(
+                self.other_tree, self.working_tree).find_target_path(path)
             if filter_path is None:
                 filter_path = path
             return filter_path
