@@ -666,12 +666,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         path = inv.id2path(inv_file_id)
         return osutils.lexists(self.abspath(path))
 
-    def has_or_had_id(self, file_id):
-        if file_id == self.path2id(''):
-            return True
-        inv, inv_file_id = self._unpack_file_id(file_id)
-        return inv.has_id(inv_file_id)
-
     def all_file_ids(self):
         """Iterate through file_ids for this tree.
 
