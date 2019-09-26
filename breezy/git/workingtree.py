@@ -594,35 +594,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             raise
         self._index_dirty = False
 
-    def has_or_had_id(self, file_id):
-        if self.has_id(file_id):
-            return True
-        if self.had_id(file_id):
-            return True
-        return False
-
-    def had_id(self, file_id):
-        try:
-            path = self.mapping.parse_file_id(file_id)
-        except ValueError:
-            return False
-        try:
-            head = self.repository._git.head()
-        except KeyError:
-            # Assume no if basis is not accessible
-            return False
-        try:
-            root_tree = self.store[head].tree
-        except KeyError:
-            return False
-        try:
-            tree_lookup_path(self.store.__getitem__,
-                             root_tree, path.encode('utf-8'))
-        except KeyError:
-            return False
-        else:
-            return True
-
     def get_file_mtime(self, path):
         """See Tree.get_file_mtime."""
         try:

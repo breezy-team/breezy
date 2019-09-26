@@ -2133,9 +2133,6 @@ class _PreviewTree(inventorytree.InventoryTree):
     def has_id(self, file_id):
         return self._has_id(file_id, self._transform._tree.has_id)
 
-    def has_or_had_id(self, file_id):
-        return self._has_id(file_id, self._transform._tree.has_or_had_id)
-
     def _path2trans_id(self, path):
         # We must not use None here, because that is a valid value to store.
         trans_id = self._path2trans_id_cache.get(path, object)

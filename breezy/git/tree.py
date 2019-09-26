@@ -360,13 +360,6 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     todo.append((store, subpath, hexsha))
         return ret
 
-    def has_or_had_id(self, file_id):
-        try:
-            self.id2path(file_id)
-        except errors.NoSuchId:
-            return False
-        return True
-
     def has_id(self, file_id):
         try:
             path = self.id2path(file_id)
