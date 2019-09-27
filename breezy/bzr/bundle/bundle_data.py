@@ -32,6 +32,7 @@ from . import apply_bundle
 from ...errors import (
     TestamentMismatch,
     BzrError,
+    NoSuchId,
     )
 from ..inventory import (
     Inventory,
@@ -601,19 +602,13 @@ class BundleTree(Tree):
             return path
         old_path = self.base_tree.id2path(file_id)
         if old_path is None:
-            return None
+            raise NoSuchId(file_id, self)
         if old_path in self.deleted:
-            return None
-        return self.new_path(old_path)
-
-    def old_contents_id(self, file_id):
-        """Return the id in the base_tree for the given file_id.
-        Return None if the file did not exist in base.
-        """
-        if self.base_tree.has_id(file_id):
-            return file_id
-        else:
-            return None
+            raise NoSuchId(file_id, self)
+        new_path = self.new_path(old_path)
+        if new_path is None:
+            raise NoSuchId(file_id, self)
+        return new_path
 
     def get_file(self, path):
         """Return a file-like object containing the new contents of the
@@ -624,13 +619,14 @@ class BundleTree(Tree):
                 then be cached.
         """
         file_id = self.path2id(path)
-        base_id = self.old_contents_id(file_id)
-        if (base_id is not None and
-                base_id != self.base_tree.path2id('')):
-            old_path = self.base_tree.id2path(base_id)
-            patch_original = self.base_tree.get_file(old_path)
-        else:
+        try:
+            old_path = self.base_tree.id2path(file_id)
+        except NoSuchId:
             patch_original = None
+        else:
+            if old_path is None:
+                import pdb; pdb.set_trace()
+            patch_original = self.base_tree.get_file(old_path)
         file_patch = self.patches.get(path)
         if file_patch is None:
             if (patch_original is None and
@@ -776,8 +772,9 @@ class BundleTree(Tree):
         for result in viewitems(self._new_id):
             paths.append(result)
         for id in self.base_tree.all_file_ids():
-            path = self.id2path(id)
-            if path is None:
+            try:
+                path = self.id2path(id)
+            except NoSuchId:
                 continue
             paths.append((path, id))
         paths.sort()

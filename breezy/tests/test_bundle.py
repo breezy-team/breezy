@@ -148,7 +148,10 @@ class MockTree(object):
         return self.ids.get(path)
 
     def id2path(self, file_id):
-        return self.paths.get(file_id)
+        try:
+            return self.paths[file_id]
+        except KeyError:
+            raise errors.NoSuchId(file_id, self)
 
     def has_id(self, file_id):
         return self.id2path(file_id) is not None
@@ -270,7 +273,7 @@ class BTreeTester(tests.TestCase):
         btree = self.make_tree_1()[0]
         btree.note_rename("grandparent/parent/file",
                           "grandparent/alt_parent/file")
-        self.assertTrue(btree.id2path(b"e") is None)
+        self.assertRaises(errors.NoSuchId, btree.id2path, b"e")
         self.assertFalse(btree.is_versioned("grandparent/parent/file"))
         btree.note_id(b"e", "grandparent/parent/file")
         return btree
@@ -320,7 +323,7 @@ class BTreeTester(tests.TestCase):
         with btree.get_file(btree.id2path(b"c")) as f:
             self.assertEqual(f.read(), b"Hello\n")
         btree.note_deletion("grandparent/parent/file")
-        self.assertTrue(btree.id2path(b"c") is None)
+        self.assertRaises(errors.NoSuchId, btree.id2path, b"c")
         self.assertFalse(btree.is_versioned("grandparent/parent/file"))
 
     def sorted_ids(self, tree):
