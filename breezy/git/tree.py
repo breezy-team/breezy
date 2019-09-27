@@ -361,11 +361,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return ret
 
     def has_id(self, file_id):
-        try:
-            path = self.id2path(file_id)
-        except errors.NoSuchId:
-            return False
-        return self.has_filename(path)
+        raise errors.UnsupportedOperation(self.has_id, self)
 
     def _lookup_path(self, path):
         if self.tree is None:
@@ -1025,12 +1021,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             return None
 
     def has_id(self, file_id):
-        try:
-            self.id2path(file_id)
-        except errors.NoSuchId:
-            return False
-        else:
-            return True
+        raise errors.UnsupportedOperation(self.has_id, self)
 
     def id2path(self, file_id):
         if file_id is None:

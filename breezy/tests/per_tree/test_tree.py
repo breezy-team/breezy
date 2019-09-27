@@ -305,8 +305,13 @@ class TestHasId(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertTrue(tree.has_id(file_id))
-        self.assertFalse(tree.has_id(b'dir-id'))
+        if work_tree.supports_setting_file_ids():
+            self.assertTrue(tree.has_id(file_id))
+            self.assertFalse(tree.has_id(b'dir-id'))
+        else:
+            self.assertRaises(
+                errors.UnsupportedOperation,
+                tree.has_id, file_id)
 
 
 class TestExtras(TestCaseWithTree):
