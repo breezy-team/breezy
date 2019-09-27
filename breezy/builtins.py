@@ -2386,13 +2386,13 @@ class cmd_deleted(Command):
         self.enter_context(tree.lock_read())
         old = tree.basis_tree()
         self.enter_context(old.lock_read())
-        for path, ie in old.iter_entries_by_dir():
-            if not tree.has_id(ie.file_id):
-                self.outf.write(path)
-                if show_ids:
-                    self.outf.write(' ')
-                    self.outf.write(ie.file_id)
-                self.outf.write('\n')
+        delta = tree.changes_from(old)
+        for change in delta.removed:
+            self.outf.write(change.path[0])
+            if show_ids:
+                self.outf.write(' ')
+                self.outf.write(change.file_id)
+            self.outf.write('\n')
 
 
 class cmd_modified(Command):
