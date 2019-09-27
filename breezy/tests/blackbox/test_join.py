@@ -83,7 +83,7 @@ class TestJoin(tests.TestCaseWithTransport):
         self.assertEqual(['subtree'], list(base_tree.iter_references()))
         if base_tree.supports_setting_file_ids():
             self.assertEqual(b'file1-id', sub_tree.path2id('file1'))
-            self.assertEqual('subtree', base_tree.id2path(b'file1-id'))
+            self.assertEqual('file1', sub_tree.id2path(b'file1-id'))
             self.assertEqual(subtree_root_id, base_tree.path2id('subtree'))
             self.assertEqual('subtree', base_tree.id2path(subtree_root_id))
 
