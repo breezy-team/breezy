@@ -175,9 +175,13 @@ class DirStateWorkingTree(InventoryWorkingTree):
             if sub_tree_id == self.path2id(''):
                 raise BadReferenceTarget(self, sub_tree,
                                          'Trees have the same root id.')
-            if self.has_id(sub_tree_id):
-                raise BadReferenceTarget(self, sub_tree,
-                                         'Root id already present in tree')
+            try:
+                self.id2path(sub_tree_id)
+            except errors.NoSuchId:
+                pass
+            else:
+                raise BadReferenceTarget(
+                    self, sub_tree, 'Root id already present in tree')
             self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
 
     def break_lock(self):
@@ -466,14 +470,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))
-
-    def has_id(self, file_id):
-        state = self.current_dirstate()
-        row, parents = self._get_entry(file_id=file_id)
-        if row is None:
-            return False
-        return osutils.lexists(pathjoin(
-            self.basedir, row[0].decode('utf8'), row[1].decode('utf8')))
 
     def id2path(self, file_id):
         "Convert a file-id to a path."

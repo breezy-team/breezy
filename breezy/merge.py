@@ -1854,7 +1854,11 @@ class MergeIntoMergeType(Merge3Merger):
         name_in_target = osutils.basename(self._target_subdir)
         merge_into_root = subdir.copy()
         merge_into_root.name = name_in_target
-        if self.this_tree.has_id(merge_into_root.file_id):
+        try:
+            self.this_tree.id2path(merge_into_root.file_id)
+        except errors.NoSuchId:
+            pass
+        else:
             # Give the root a new file-id.
             # This can happen fairly easily if the directory we are
             # incorporating is the root, and both trees have 'TREE_ROOT' as

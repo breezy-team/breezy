@@ -2121,18 +2121,6 @@ class _PreviewTree(inventorytree.InventoryTree):
 
         return tree_paths
 
-    def _has_id(self, file_id, fallback_check):
-        if file_id in self._transform._r_new_id:
-            return True
-        elif file_id in {self._transform.tree_file_id(trans_id) for
-                         trans_id in self._transform._removed_id}:
-            return False
-        else:
-            return fallback_check(file_id)
-
-    def has_id(self, file_id):
-        return self._has_id(file_id, self._transform._tree.has_id)
-
     def _path2trans_id(self, path):
         # We must not use None here, because that is a valid value to store.
         trans_id = self._path2trans_id_cache.get(path, object)

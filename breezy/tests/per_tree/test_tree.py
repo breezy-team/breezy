@@ -295,25 +295,6 @@ class TestIterChildEntries(TestCaseWithTree):
                           list(tree.iter_child_entries('unknown')))
 
 
-class TestHasId(TestCaseWithTree):
-
-    def test_has_id(self):
-        work_tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/file'])
-        work_tree.add('file')
-        file_id = work_tree.path2id('file')
-        tree = self._convert_tree(work_tree)
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        if work_tree.supports_setting_file_ids():
-            self.assertTrue(tree.has_id(file_id))
-            self.assertFalse(tree.has_id(b'dir-id'))
-        else:
-            self.assertRaises(
-                errors.UnsupportedOperation,
-                tree.has_id, file_id)
-
-
 class TestExtras(TestCaseWithTree):
 
     def test_extras(self):

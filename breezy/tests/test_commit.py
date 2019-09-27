@@ -173,7 +173,7 @@ class TestCommit(TestCaseWithTransport):
             reporter.calls)
 
         tree = b.repository.revision_tree(b'rev2')
-        self.assertFalse(tree.has_id(b'hello-id'))
+        self.assertFalse(tree.has_filename('hello'))
 
     def test_partial_commit_move(self):
         """Test a partial commit where a file was renamed but not committed.
@@ -361,7 +361,7 @@ class TestCommit(TestCaseWithTransport):
         wt.commit('removed hello', rev_id=b'rev2')
 
         tree = b.repository.revision_tree(b'rev2')
-        self.assertFalse(tree.has_id(b'hello-id'))
+        self.assertFalse(tree.has_filename('hello'))
 
     def test_committed_ancestry(self):
         """Test commit appends revisions to ancestry."""

@@ -312,11 +312,6 @@ class TestCommit(TestCaseWithWorkingTree):
         # a present on disk. After commit b-id, c-id and d-id should be
         # missing from the inventory, within the same tree transaction.
         wt.commit('commit stuff')
-        if wt.supports_setting_file_ids():
-            self.assertTrue(wt.has_id(a_id))
-            self.assertFalse(wt.has_id(b_id))
-            self.assertFalse(wt.has_id(c_id))
-            self.assertFalse(wt.has_id(d_id))
         self.assertTrue(wt.has_filename('a'))
         self.assertFalse(wt.has_filename('b'))
         self.assertFalse(wt.has_filename('b/c'))
@@ -326,11 +321,6 @@ class TestCommit(TestCaseWithWorkingTree):
         # to be sure.
         wt = wt.controldir.open_workingtree()
         with wt.lock_read():
-            if wt.supports_setting_file_ids():
-                self.assertTrue(wt.has_id(a_id))
-                self.assertFalse(wt.has_id(b_id))
-                self.assertFalse(wt.has_id(c_id))
-                self.assertFalse(wt.has_id(d_id))
             self.assertTrue(wt.has_filename('a'))
             self.assertFalse(wt.has_filename('b'))
             self.assertFalse(wt.has_filename('b/c'))
@@ -350,9 +340,6 @@ class TestCommit(TestCaseWithWorkingTree):
         with wt.lock_write():
             wt.commit('commit deleted rename')
             self.assertTrue(wt.is_versioned('a'))
-            if wt.supports_setting_file_ids():
-                self.assertFalse(wt.has_id(b_id))
-                self.assertFalse(wt.has_id(c_id))
             self.assertTrue(wt.has_filename('a'))
             self.assertFalse(wt.has_filename('b'))
             self.assertFalse(wt.has_filename('b/c'))

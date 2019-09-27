@@ -2916,9 +2916,10 @@ def _install_revision(repository, rev, revision_tree, signature,
         # the parents inserted are not those commit would do - in particular
         # they are not filtered by heads(). RBC, AB
         for revision, tree in viewitems(parent_trees):
-            if not tree.has_id(ie.file_id):
+            try:
+                path = tree.id2path(ie.file_id)
+            except errors.NoSuchId:
                 continue
-            path = tree.id2path(ie.file_id)
             parent_id = tree.get_file_revision(path)
             if parent_id in text_parents:
                 continue

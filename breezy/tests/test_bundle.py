@@ -153,9 +153,6 @@ class MockTree(object):
         except KeyError:
             raise errors.NoSuchId(file_id, self)
 
-    def has_id(self, file_id):
-        return self.id2path(file_id) is not None
-
     def get_file(self, path):
         result = BytesIO()
         try:

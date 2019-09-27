@@ -59,9 +59,6 @@ class TestExecutable(TestCaseWithWorkingTree):
                     list(tree.root_inventory.iter_entries()))
             self.assertFalse(tree.has_filename('a'))
             self.assertFalse(tree.has_filename('b'))
-            if tree.supports_setting_file_ids():
-                self.assertFalse(tree.has_id(self.a_id))
-                self.assertFalse(tree.has_id(self.b_id))
 
     def commit_and_branch(self):
         """Commit the current tree, and create a second tree"""
