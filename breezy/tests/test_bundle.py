@@ -292,16 +292,6 @@ class BTreeTester(tests.TestCase):
         self.assertEqual(
             btree.get_symlink_target('grandparent/parent/symlink'), 'venus')
 
-    def test_adds2(self):
-        """File/inventory adds, with patch-compatibile renames"""
-        btree = self.make_tree_2()
-        btree.contents_by_id = False
-        add_patch = self.unified_diff([b"Hello\n"], [b"Extra cheese\n"])
-        btree.note_patch("grandparent/parent/file", add_patch)
-        btree.note_id(b'f', 'grandparent/parent/symlink', kind='symlink')
-        btree.note_target('grandparent/parent/symlink', 'venus')
-        self.adds_test(btree)
-
     def make_tree_3(self):
         btree, mtree = self.make_tree_1()
         mtree.add_file(b"e", "grandparent/parent/topping", b"Anchovies\n")
@@ -322,16 +312,6 @@ class BTreeTester(tests.TestCase):
         btree = self.make_tree_3()
         mod_patch = self.unified_diff([b"Anchovies\n"], [b"Lemon\n"])
         btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
-        self.get_file_test(btree)
-
-    def test_get_file2(self):
-        """Get file contents, with patch-compatible renames"""
-        btree = self.make_tree_3()
-        btree.contents_by_id = False
-        mod_patch = self.unified_diff([], [b"Lemon\n"])
-        btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
-        mod_patch = self.unified_diff([], [b"Hello\n"])
-        btree.note_patch("grandparent/alt_parent/file", mod_patch)
         self.get_file_test(btree)
 
     def test_delete(self):

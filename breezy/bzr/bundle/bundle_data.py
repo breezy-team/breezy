@@ -486,7 +486,6 @@ class BundleTree(Tree):
         self.patches = {}
         self._targets = {}  # new path => new symlink target
         self.deleted = []
-        self.contents_by_id = True
         self.revision_id = revision_id
         self._inventory = None
 
@@ -611,13 +610,10 @@ class BundleTree(Tree):
         """Return the id in the base_tree for the given file_id.
         Return None if the file did not exist in base.
         """
-        if self.contents_by_id:
-            if self.base_tree.has_id(file_id):
-                return file_id
-            else:
-                return None
-        new_path = self.id2path(file_id)
-        return self.base_tree.path2id(new_path)
+        if self.base_tree.has_id(file_id):
+            return file_id
+        else:
+            return None
 
     def get_file(self, path):
         """Return a file-like object containing the new contents of the
