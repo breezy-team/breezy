@@ -2561,13 +2561,6 @@ class FinalPaths(object):
         return [(self.get_path(t), t) for t in trans_ids]
 
 
-def topology_sorted_ids(tree):
-    """Determine the topological order of the ids in a tree"""
-    file_ids = list(tree)
-    file_ids.sort(key=tree.id2path)
-    return file_ids
-
-
 def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
                delta_from_tree=False):
     """Create working tree for a branch, using a TreeTransform.
