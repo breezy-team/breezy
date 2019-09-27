@@ -269,13 +269,14 @@ class BundleSerializerV08(BundleSerializer):
 
         def do_diff(file_id, old_path, new_path, action, force_binary):
             def tree_lines(tree, path, require_text=False):
-                if tree.has_id(file_id):
+                try:
                     tree_file = tree.get_file(path)
+                except errors.NoSuchFile:
+                    return []
+                else:
                     if require_text is True:
                         tree_file = text_file(tree_file)
                     return tree_file.readlines()
-                else:
-                    return []
 
             try:
                 if force_binary:
