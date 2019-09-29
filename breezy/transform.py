@@ -2168,11 +2168,6 @@ class _PreviewTree(inventorytree.InventoryTree):
         self._all_children_cache[trans_id] = children
         return children
 
-    def _iter_children(self, file_id):
-        trans_id = self._transform.trans_id_file_id(file_id)
-        for child_trans_id in self._all_children(trans_id):
-            yield self._transform.final_file_id(child_trans_id)
-
     def extras(self):
         possible_extras = set(self._transform.trans_id_tree_path(p) for p
                               in self._transform._tree.extras())
