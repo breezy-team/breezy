@@ -35,6 +35,7 @@ from ... import (
     workingtree as _mod_workingtree,
     )
 from ...delta import TreeDelta
+from ...tree import TreeChange
 from ..mapping import (
     default_mapping,
     )
@@ -140,7 +141,7 @@ class TreeDeltaFromGitChangesTests(TestCase):
 
     def test_missing(self):
         delta = TreeDelta()
-        delta.removed.append(('a', b'git:a', 'file'))
+        delta.removed.append(TreeChange(b'git:a', ('a', 'a'), False, (True, True), (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'a'), ('file', None), (True, False)))
         changes = [((b'a', b'a'), (stat.S_IFREG | 0o755, 0),
                     (b'a' * 40, b'a' * 40))]
         self.assertEqual(

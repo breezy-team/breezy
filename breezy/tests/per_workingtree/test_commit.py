@@ -155,7 +155,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         changes = list(tree.iter_changes(tree.basis_tree()))
-        self.assertEqual([(None, 'b'), (None, 'c')], [c[1] for c in changes])
+        self.assertEqual([(None, 'b'), (None, 'c')], [c.path for c in changes])
 
     def test_commit_exclude_subtree_of_selected(self):
         tree = self.make_branch_and_tree('.')
@@ -167,7 +167,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         changes = list(tree.iter_changes(tree.basis_tree()))
         self.assertEqual(1, len(changes))
-        self.assertEqual((None, 'a/b'), changes[0][1])
+        self.assertEqual((None, 'a/b'), changes[0].path)
 
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
@@ -214,14 +214,18 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_commit_aborted_does_not_apply_automatic_changes_bug_282402(self):
         wt = self.make_branch_and_tree('.')
         wt.add(['a'], None, ['file'])
-        a_id = wt.path2id('a')
-        self.assertEqual('a', wt.id2path(a_id))
+        self.assertTrue(wt.is_versioned('a'))
+        if wt.supports_setting_file_ids():
+            a_id = wt.path2id('a')
+            self.assertEqual('a', wt.id2path(a_id))
 
         def fail_message(obj):
             raise errors.BzrCommandError("empty commit message")
         self.assertRaises(errors.BzrCommandError, wt.commit,
                           message_callback=fail_message)
-        self.assertEqual('a', wt.id2path(a_id))
+        self.assertTrue(wt.is_versioned('a'))
+        if wt.supports_setting_file_ids():
+            self.assertEqual('a', wt.id2path(a_id))
 
     def test_local_commit_ignores_master(self):
         # a --local commit does not require access to the master branch
@@ -309,9 +313,9 @@ class TestCommit(TestCaseWithWorkingTree):
         # missing from the inventory, within the same tree transaction.
         wt.commit('commit stuff')
         self.assertTrue(wt.has_id(a_id))
-        self.assertFalse(wt.has_or_had_id(b_id))
-        self.assertFalse(wt.has_or_had_id(c_id))
-        self.assertFalse(wt.has_or_had_id(d_id))
+        self.assertFalse(wt.has_id(b_id))
+        self.assertFalse(wt.has_id(c_id))
+        self.assertFalse(wt.has_id(d_id))
         self.assertTrue(wt.has_filename('a'))
         self.assertFalse(wt.has_filename('b'))
         self.assertFalse(wt.has_filename('b/c'))
@@ -322,9 +326,9 @@ class TestCommit(TestCaseWithWorkingTree):
         wt = wt.controldir.open_workingtree()
         wt.lock_read()
         self.assertTrue(wt.has_id(a_id))
-        self.assertFalse(wt.has_or_had_id(b_id))
-        self.assertFalse(wt.has_or_had_id(c_id))
-        self.assertFalse(wt.has_or_had_id(d_id))
+        self.assertFalse(wt.has_id(b_id))
+        self.assertFalse(wt.has_id(c_id))
+        self.assertFalse(wt.has_id(d_id))
         self.assertTrue(wt.has_filename('a'))
         self.assertFalse(wt.has_filename('b'))
         self.assertFalse(wt.has_filename('b/c'))
@@ -345,8 +349,8 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.lock_write()
         wt.commit('commit deleted rename')
         self.assertTrue(wt.is_versioned('a'))
-        self.assertFalse(wt.has_or_had_id(b_id))
-        self.assertFalse(wt.has_or_had_id(c_id))
+        self.assertFalse(wt.has_id(b_id))
+        self.assertFalse(wt.has_id(c_id))
         self.assertTrue(wt.has_filename('a'))
         self.assertFalse(wt.has_filename('b'))
         self.assertFalse(wt.has_filename('b/c'))

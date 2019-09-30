@@ -511,9 +511,7 @@ class BundleTester(object):
         for ancestor in ancestors:
             old = self.b1.repository.revision_tree(ancestor)
             new = tree.branch.repository.revision_tree(ancestor)
-            old.lock_read()
-            new.lock_read()
-            try:
+            with old.lock_read(), new.lock_read():
                 # Check that there aren't any inventory level changes
                 delta = new.changes_from(old)
                 self.assertFalse(delta.has_changed(),
@@ -528,9 +526,6 @@ class BundleTester(object):
                         continue
                     self.assertEqual(
                         old_file.read(), new.get_file(path).read())
-            finally:
-                new.unlock()
-                old.unlock()
         if not _mod_revision.is_null(rev_id):
             tree.branch.generate_revision_history(rev_id)
             tree.update()

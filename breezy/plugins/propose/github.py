@@ -165,10 +165,10 @@ class GitHubMergeProposal(MergeProposal):
             })
 
     def is_merged(self):
-        return self._pr['merged']
+        return bool(self._pr.get('merged_at'))
 
     def is_closed(self):
-        return self._pr['state'] == 'closed' and not self._pr['merged']
+        return self._pr['state'] == 'closed' and not bool(self._pr.get('merged_at'))
 
     def reopen(self):
         try:

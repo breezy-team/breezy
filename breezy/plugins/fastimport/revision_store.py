@@ -227,17 +227,10 @@ class RevisionStore(object):
         """Get a stored inventory."""
         return self.repo.get_inventory(revision_id)
 
-    def get_file_text(self, revision_id, file_id):
-        """Get the text stored for a file in a given revision."""
-        revtree = self.repo.revision_tree(revision_id)
-        path = revtree.id2path(file_id)
-        return revtree.get_file_text(path)
-
-    def get_file_lines(self, revision_id, file_id):
+    def get_file_lines(self, revision_id, path):
         """Get the lines stored for a file in a given revision."""
         revtree = self.repo.revision_tree(revision_id)
-        path = revtree.id2path(file_id)
-        return osutils.split_lines(revtree.get_file_text(path))
+        return revtree.get_file_lines(path)
 
     def start_new_revision(self, revision, parents, parent_invs):
         """Init the metadata needed for get_parents_and_revision_for_entry().
@@ -398,10 +391,3 @@ class RevisionStore(object):
             raise AssertionError('signatures not guaranteed yet')
             self.repo.add_signature_text(rev.revision_id, signature)
         return builder.revision_tree().root_inventory
-
-    def get_file_lines(self, revision_id, file_id):
-        record = next(self.repo.texts.get_record_stream([(file_id, revision_id)],
-                                                        'unordered', True))
-        if record.storage_kind == 'absent':
-            raise errors.RevisionNotPresent(record.key, self.repo)
-        return osutils.split_lines(record.get_bytes_as('fulltext'))

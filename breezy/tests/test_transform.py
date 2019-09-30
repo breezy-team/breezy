@@ -1147,12 +1147,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.assertEqual([(b'id-1', ('old', None), False, (True, False),
                                (b'eert_toor', b'eert_toor'),
                                ('old', 'old'), ('file', 'file'),
-                               (True, True))], list(transform.iter_changes()))
+                               (True, True), False)],
+                             list(transform.iter_changes()))
             transform.new_directory('new', root, b'id-1')
             self.assertEqual([(b'id-1', ('old', 'new'), True, (True, True),
                                (b'eert_toor', b'eert_toor'), ('old', 'new'),
                                ('file', 'directory'),
-                               (True, False))], list(transform.iter_changes()))
+                               (True, False), False)],
+                             list(transform.iter_changes()))
         finally:
             transform.finalize()
 
@@ -1168,7 +1170,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.assertEqual([(b'id-1', (None, 'old'), False, (False, True),
                                (b'eert_toor', b'eert_toor'),
                                ('old', 'old'), ('file', 'file'),
-                               (False, False))],
+                               (False, False), False)],
                              list(transform.iter_changes()))
         finally:
             transform.finalize()
@@ -1192,7 +1194,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.assertEqual([(b'id-1', ('old', 'old'), True, (True, True),
                                (b'eert_toor', b'eert_toor'),
                                ('old', 'old'), ('file', None),
-                               (False, False))],
+                               (False, False), False)],
                              list(transform.iter_changes()))
 
             # content change
@@ -1200,13 +1202,13 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.assertEqual([(b'id-1', ('old', 'old'), True, (True, True),
                                (b'eert_toor', b'eert_toor'),
                                ('old', 'old'), ('file', 'file'),
-                               (False, False))],
+                               (False, False), False)],
                              list(transform.iter_changes()))
             transform.cancel_deletion(old)
             self.assertEqual([(b'id-1', ('old', 'old'), True, (True, True),
                                (b'eert_toor', b'eert_toor'),
                                ('old', 'old'), ('file', 'file'),
-                               (False, False))],
+                               (False, False), False)],
                              list(transform.iter_changes()))
             transform.cancel_creation(old)
 
@@ -1218,7 +1220,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.assertEqual([(b'id-1', ('old', 'old'), True, (True, True),
                                (b'eert_toor', b'eert_toor'),
                                ('old', 'old'), ('file', 'file'),
-                               (False, False))],
+                               (False, False), False)],
                              list(transform.iter_changes()))
             transform.cancel_versioning(new)
             transform._removed_id = set()
@@ -1229,7 +1231,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.assertEqual([(b'id-1', ('old', 'old'), False, (True, True),
                                (b'eert_toor', b'eert_toor'),
                                ('old', 'old'), ('file', 'file'),
-                               (False, True))],
+                               (False, True), False)],
                              list(transform.iter_changes()))
             transform.set_executability(None, old)
 
@@ -1240,7 +1242,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.assertEqual([(b'id-1', ('old', 'new'), False, (True, True),
                                (b'eert_toor', b'eert_toor'),
                                ('old', 'new'), ('file', 'file'),
-                               (False, False))],
+                               (False, False), False)],
                              list(transform.iter_changes()))
             transform._new_name = {}
 
@@ -1251,7 +1253,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.assertEqual([(b'id-1', ('old', 'subdir/old'), False,
                                (True, True), (b'eert_toor',
                                               b'subdir-id'), ('old', 'old'),
-                               ('file', 'file'), (False, False))],
+                               ('file', 'file'), (False, False), False)],
                              list(transform.iter_changes()))
             transform._new_path = {}
 
@@ -1277,10 +1279,10 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             self.assertEqual(
                 [(b'id-1', (u'file1', u'file1'), True, (True, True),
                  (b'eert_toor', b'eert_toor'), ('file1', u'file1'),
-                 ('file', None), (False, False)),
+                 ('file', None), (False, False), False),
                  (b'id-2', (u'file2', u'file2'), False, (True, True),
                  (b'eert_toor', b'eert_toor'), ('file2', u'file2'),
-                 ('file', 'file'), (False, True))],
+                 ('file', 'file'), (False, True), False)],
                 list(transform.iter_changes()))
         finally:
             transform.finalize()
@@ -1303,7 +1305,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                                (True, True),
                                (b'toor_eert', b'toor_eert'),
                                ('floater', 'flitter'),
-                               (None, None), (False, False))],
+                               (None, None), (False, False), False)],
                              list(transform.iter_changes()))
         finally:
             transform.finalize()
@@ -2767,9 +2769,9 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
 
 A_ENTRY = (b'a-id', ('a', 'a'), True, (True, True),
            (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'a'), ('file', 'file'),
-           (False, False))
+           (False, False), False)
 ROOT_ENTRY = (b'TREE_ROOT', ('', ''), False, (True, True), (None, None),
-              ('', ''), ('directory', 'directory'), (False, False))
+              ('', ''), ('directory', 'directory'), (False, False), False)
 
 
 class TestTransformPreview(tests.TestCaseWithTransport):
@@ -2875,7 +2877,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         root = revision_tree.path2id('')
         self.assertEqual([(b'a-id', ('a', 'a'), True, (True, True),
                            (root, root), ('a', 'a'), ('file', 'file'),
-                           (False, False))],
+                           (False, False), False)],
                          list(preview_tree.iter_changes(revision_tree)))
 
     def test_include_unchanged_succeeds(self):

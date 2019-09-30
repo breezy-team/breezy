@@ -176,10 +176,6 @@ class InventoryTree(Tree):
         inventory, file_id = self._unpack_file_id(file_id)
         return inventory.has_id(file_id)
 
-    def has_or_had_id(self, file_id):
-        inventory, file_id = self._unpack_file_id(file_id)
-        return inventory.has_id(file_id)
-
     def all_file_ids(self):
         return {entry.file_id for path, entry in self.iter_entries_by_dir()}
 
@@ -909,7 +905,7 @@ class InterCHKRevisionTree(InterTree):
                     continue
                 precise_file_ids.add(result.parent_id[1])
             yield result
-            changed_file_ids.add(result[0])
+            changed_file_ids.add(result.file_id)
         if specific_file_ids is not None:
             for result in self._handle_precise_ids(precise_file_ids,
                                                    changed_file_ids, discarded_changes=discarded_changes):

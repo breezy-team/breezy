@@ -360,13 +360,6 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     todo.append((store, subpath, hexsha))
         return ret
 
-    def has_or_had_id(self, file_id):
-        try:
-            self.id2path(file_id)
-        except errors.NoSuchId:
-            return False
-        return True
-
     def has_id(self, file_id):
         try:
             path = self.id2path(file_id)
@@ -699,14 +692,14 @@ def tree_delta_from_git_changes(changes, mappings,
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
         if newpath == b'' and not include_root:
             continue
-        if oldpath is None:
-            oldpath_decoded = None
-        else:
+        if oldpath is not None:
             oldpath_decoded = oldpath.decode('utf-8')
-        if newpath is None:
-            newpath_decoded = None
         else:
+            oldpath_decoded = None
+        if newpath is not None:
             newpath_decoded = newpath.decode('utf-8')
+        else:
+            newpath_decoded = None
         if not (specific_files is None or
                 (oldpath is not None and
                     osutils.is_inside_or_parent_of_any(
@@ -715,39 +708,74 @@ def tree_delta_from_git_changes(changes, mappings,
                     osutils.is_inside_or_parent_of_any(
                         specific_files, newpath_decoded))):
             continue
+
+        if oldpath_decoded is None:
+            fileid = new_mapping.generate_file_id(newpath_decoded)
+            oldexe = None
+            oldkind = None
+            oldname = None
+            oldparent = None
+            oldversioned = False
+        else:
+            oldversioned = True
+            if oldmode:
+                oldexe = mode_is_executable(oldmode)
+                oldkind = mode_kind(oldmode)
+            else:
+                oldexe = False
+                oldkind = None
+            if oldpath_decoded == u'':
+                oldparent = None
+                oldname = u''
+            else:
+                (oldparentpath, oldname) = osutils.split(oldpath_decoded)
+                oldparent = old_mapping.generate_file_id(oldparentpath)
+            fileid = old_mapping.generate_file_id(oldpath_decoded)
+        if newpath_decoded is None:
+            newexe = None
+            newkind = None
+            newname = None
+            newparent = None
+            newversioned = False
+        else:
+            newversioned = (newpath_decoded not in target_extras)
+            if newmode:
+                newexe = mode_is_executable(newmode)
+                newkind = mode_kind(newmode)
+            else:
+                newexe = False
+                newkind = None
+            if newpath_decoded == u'':
+                newparent = None
+                newname = u''
+            else:
+                newparentpath, newname = osutils.split(newpath_decoded)
+                newparent = new_mapping.generate_file_id(newparentpath)
         if old_mapping.is_special_file(oldpath):
             oldpath = None
         if new_mapping.is_special_file(newpath):
             newpath = None
         if oldpath is None and newpath is None:
             continue
+        change = _mod_tree.TreeChange(
+            fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
+            (oldversioned, newversioned),
+            (oldparent, newparent), (oldname, newname),
+            (oldkind, newkind), (oldexe, newexe))
         if oldpath is None:
-            added.append((newpath, mode_kind(newmode)))
+            added.append((newpath, newkind))
         elif newpath is None or newmode == 0:
-            file_id = old_mapping.generate_file_id(oldpath_decoded)
-            ret.removed.append((oldpath_decoded, file_id, mode_kind(oldmode)))
+            ret.removed.append(change)
         elif oldpath != newpath:
-            file_id = old_mapping.generate_file_id(oldpath_decoded)
-            ret.renamed.append(
-                (oldpath_decoded, newpath.decode('utf-8'), file_id,
-                 mode_kind(newmode), (oldsha != newsha),
-                 (oldmode != newmode)))
+            ret.renamed.append(change)
         elif mode_kind(oldmode) != mode_kind(newmode):
-            file_id = new_mapping.generate_file_id(newpath_decoded)
-            ret.kind_changed.append(
-                (newpath_decoded, file_id, mode_kind(oldmode),
-                 mode_kind(newmode)))
+            ret.kind_changed.append(change)
         elif oldsha != newsha or oldmode != newmode:
             if stat.S_ISDIR(oldmode) and stat.S_ISDIR(newmode):
                 continue
-            file_id = new_mapping.generate_file_id(newpath_decoded)
-            ret.modified.append(
-                (newpath_decoded, file_id, mode_kind(newmode),
-                 (oldsha != newsha), (oldmode != newmode)))
+            ret.modified.append(change)
         else:
-            file_id = new_mapping.generate_file_id(newpath_decoded)
-            ret.unchanged.append(
-                (newpath_decoded, file_id, mode_kind(newmode)))
+            ret.unchanged.append(change)
 
     implicit_dirs = {b''}
     for path, kind in added:
@@ -759,11 +787,21 @@ def tree_delta_from_git_changes(changes, mappings,
         if kind == 'directory' and path not in implicit_dirs:
             continue
         path_decoded = osutils.normalized_filename(path)[0]
+        parent_path, basename = osutils.split(path_decoded)
+        parent_id = new_mapping.generate_file_id(parent_path)
         if path in target_extras:
-            ret.unversioned.append((path_decoded, None, kind))
+            ret.unversioned.append(_mod_tree.TreeChange(
+                None, (None, path_decoded),
+                True, (False, False), (None, parent_id),
+                (None, basename), (None, kind), (None, False)))
         else:
             file_id = new_mapping.generate_file_id(path_decoded)
-            ret.added.append((path_decoded, file_id, kind))
+            ret.added.append(
+                _mod_tree.TreeChange(
+                    file_id, (None, path_decoded), True,
+                    (False, True),
+                    (None, parent_id),
+                    (None, basename), (None, kind), (None, False)))
 
     return ret
 

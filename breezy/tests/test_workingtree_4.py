@@ -592,9 +592,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
                      (None, b'root'),
                      (None, u'dir'),
                      (None, 'directory'),
-                     (None, False)),
+                     (None, False), False),
                     (b'root', (None, u''), True, (False, True), (None, None),
-                     (None, u''), (None, 'directory'), (None, 0))]
+                     (None, u''), (None, 'directory'), (None, False), False)]
         self.assertEqual(
             expected,
             list(tree.iter_changes(tree.basis_tree(), specific_files=['dir'])))
@@ -613,7 +613,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
                      (b'root', b'root'),
                      ('dir', 'dir'),
                      ('directory', None),
-                     (False, False))]
+                     (False, False), False)]
         self.assertEqual(expected, list(tree.iter_changes(tree.basis_tree())))
         tree.unlock()
 
@@ -660,7 +660,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        changes = [c[1] for c in
+        changes = [c.path for c in
                    tree.iter_changes(basis, want_unversioned=True)]
         self.assertEqual([(None, 'unversioned'),
                           (None, 'versioned/unversioned'),

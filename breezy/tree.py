@@ -134,10 +134,10 @@ class TreeChange(object):
     """Describes the changes between the same item in two different trees."""
 
     __slots__ = ['file_id', 'path', 'changed_content', 'versioned', 'parent_id',
-                 'name', 'kind', 'executable']
+                 'name', 'kind', 'executable', 'copied']
 
     def __init__(self, file_id, path, changed_content, versioned, parent_id,
-                 name, kind, executable):
+                 name, kind, executable, copied=False):
         self.file_id = file_id
         self.path = path
         self.changed_content = changed_content
@@ -146,28 +146,32 @@ class TreeChange(object):
         self.name = name
         self.kind = kind
         self.executable = executable
+        self.copied = copied
+
+    def __repr__(self):
+        return "%s%r" % (self.__class__.__name__, self._as_tuple())
 
     def __len__(self):
         return len(self.__slots__)
 
-    def __tuple__(self):
+    def _as_tuple(self):
         return (self.file_id, self.path, self.changed_content, self.versioned,
-                self.parent_id, self.name, self.kind, self.executable)
+                self.parent_id, self.name, self.kind, self.executable, self.copied)
 
     def __eq__(self, other):
         if isinstance(other, TreeChange):
-            return tuple(self) == tuple(other)
+            return self._as_tuple() == other._as_tuple()
         if isinstance(other, tuple):
-            return tuple(self) == other
+            return self._as_tuple() == other
         return False
 
     def __lt__(self, other):
-        return tuple(self) < tuple(other)
+        return self._as_tuple() < other._as_tuple()
 
-    def __getitem__(self, i):
-        if isinstance(i, slice):
-            return tuple(self).__getitem__(i)
-        return getattr(self, self.__slots__[i])
+    def meta_modified(self):
+        if self.versioned == (True, True):
+            return (self.executable[0] != self.executable[1])
+        return False
 
     def is_reparented(self):
         return self.parent_id[0] != self.parent_id[1]
@@ -177,7 +181,8 @@ class TreeChange(object):
             self.file_id, (self.path[0], None), self.changed_content,
             (self.versioned[0], None), (self.parent_id[0], None),
             (self.name[0], None), (self.kind[0], None),
-            (self.executable[0], None))
+            (self.executable[0], None),
+            copied=False)
 
 
 class Tree(object):

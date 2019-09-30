@@ -125,14 +125,14 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             that must have been changed in the delta.
         """
         renamed = changes.renamed
-        added = changes.added
+        added = changes.added + changes.copied
         removed = changes.removed
         modified = changes.modified
         kind_changed = changes.kind_changed
         if expected_renamed is not None:
             self.assertEquals(len(renamed), len(expected_renamed),
                               "%s is renamed, expected %s" % (renamed, expected_renamed))
-            renamed_files = [(item[0], item[1]) for item in renamed]
+            renamed_files = [(item.path[0], item.path[1]) for item in renamed]
             for expected_renamed_entry in expected_renamed:
                 expected_renamed_entry = (
                     expected_renamed_entry[0].decode('utf-8'),
@@ -143,7 +143,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
         if expected_added is not None:
             self.assertEquals(len(added), len(expected_added),
                               "%s is added" % str(added))
-            added_files = [(item[0],) for item in added]
+            added_files = [(item.path[1],) for item in added]
             for expected_added_entry in expected_added:
                 expected_added_entry = (
                     expected_added_entry[0].decode('utf-8'), )
@@ -153,7 +153,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
         if expected_removed is not None:
             self.assertEquals(len(removed), len(expected_removed),
                               "%s is removed" % str(removed))
-            removed_files = [(item[0],) for item in removed]
+            removed_files = [(item.path[0],) for item in removed]
             for expected_removed_entry in expected_removed:
                 expected_removed_entry = (
                     expected_removed_entry[0].decode('utf-8'), )
@@ -163,7 +163,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
         if expected_modified is not None:
             self.assertEquals(len(modified), len(expected_modified),
                               "%s is modified" % str(modified))
-            modified_files = [(item[0],) for item in modified]
+            modified_files = [(item.path[1],) for item in modified]
             for expected_modified_entry in expected_modified:
                 expected_modified_entry = (
                     expected_modified_entry[0].decode('utf-8'), )
@@ -174,7 +174,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             self.assertEquals(len(kind_changed), len(expected_kind_changed),
                               "%s is kind-changed, expected %s" % (kind_changed,
                                                                    expected_kind_changed))
-            kind_changed_files = [(item[0], item[2], item[3])
+            kind_changed_files = [(item.path[1], item.kind[0], item.kind[1])
                                   for item in kind_changed]
             for expected_kind_changed_entry in expected_kind_changed:
                 expected_kind_changed_entry = (

@@ -477,6 +477,7 @@ In the working tree:
          0 added
          0 removed
          0 renamed
+         0 copied
          0 unknown
          0 ignored
          0 versioned subdirectories
@@ -509,6 +510,7 @@ In the working tree:
          0 added
          0 removed
          0 renamed
+         0 copied
          0 unknown
          0 ignored
          0 versioned subdirectories
