@@ -25,6 +25,7 @@ Build-Depends: bash-completion,
                python3-testtools (>= 0.9.5~) <!nocheck>,
                debhelper-compat (= 12)
 Standards-Version: 4.4.0
+Rules-Requires-Root: no
 Vcs-Bzr: https://code.breezy-vcs.org/breezy/unstable
 Vcs-Browser: https://code.breezy-vcs.org/breezy/unstable
 Homepage: https://www.breezy-vcs.org/
