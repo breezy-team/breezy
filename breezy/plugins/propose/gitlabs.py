@@ -301,18 +301,17 @@ class GitLab(Hoster):
         if response.status not in (200, 201):
             raise errors.InvalidHttpResponse(path, response.text)
         # The response should be valid JSON, but let's ignore it
-        json.loads(response.data)
+        project = json.loads(response.data)
         # Spin and wait until import_status for new project
         # is complete.
         deadline = time.time() + timeout
-        while True:
-            project = self._get_project(project_name)
-            if project['import_status'] in ('finished', 'none'):
-                return project
+        while project['import_status'] not in ('finished', 'none'):
             mutter('import status is %s', project['import_status'])
             if time.time() > deadline:
                 raise Exception('timeout waiting for project to become available')
             time.sleep(interval)
+            project = self._get_project(project['path_with_namespace'])
+        return project
 
     def _get_logged_in_username(self):
         return self._current_user['username']
