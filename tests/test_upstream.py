@@ -303,13 +303,24 @@ class AptSourceTests(TestCase):
 
 class RecordingSource(UpstreamSource):
 
-    def __init__(self, succeed, latest=None):
+    def __init__(self, succeed, latest=None, recent=None):
         self._succeed = succeed
         self._specific_versions = []
+        if recent:
+            recent.sort()
+        if latest is None and recent:
+            latest = recent[-1]
         self._latest = latest
+        if recent is None and latest:
+            recent = [latest]
+        self._recent = recent
 
     def get_latest_version(self, package, current_version):
         return self._latest
+
+    def get_recent_versions(self, package, since_version=None):
+        return [v for v in self._recent
+                if since_version is None or v > since_version]
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
         self._specific_versions.append((package, version, target_dir))
@@ -339,11 +350,24 @@ class StackedUpstreamSourceTests(TestCase):
         stack = StackedUpstreamSource([a, b])
         self.assertEquals("1.1", stack.get_latest_version("mypkg", "1.0"))
 
+    def test_get_recent_versions(self):
+        a = RecordingSource(False, recent=["1.0", "1.1"])
+        b = RecordingSource(False, recent=["1.1", "1.2"])
+        stack = StackedUpstreamSource([a, b])
+        self.assertEquals(
+            ["1.0", "1.1", "1.2"], stack.get_recent_versions("mypkg", "0.9"))
+        self.assertEquals(
+            ["1.0", "1.1", "1.2"], stack.get_recent_versions("mypkg"))
+        self.assertEquals(
+            ["1.2"], stack.get_recent_versions("mypkg", "1.1"))
+
     def test_repr(self):
-        self.assertEquals("StackedUpstreamSource([])",
-                repr(StackedUpstreamSource([])))
-        self.assertEquals("StackedUpstreamSource([RecordingSource()])",
-                repr(StackedUpstreamSource([RecordingSource(False)])))
+        self.assertEquals(
+            "StackedUpstreamSource([])",
+            repr(StackedUpstreamSource([])))
+        self.assertEquals(
+            "StackedUpstreamSource([RecordingSource()])",
+            repr(StackedUpstreamSource([RecordingSource(False)])))
 
     def test_none(self):
         a = RecordingSource(False)
@@ -507,6 +531,19 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree.commit("msg")
         self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
 
+    def test_get_recent_versions(self):
+        self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
+        source = UpstreamBranchSource(
+            self.tree.branch,
+            {"2.1": self.tree.branch.last_revision().decode('utf-8')})
+        self.assertEquals(["2.1"], source.get_recent_versions("foo", "1.0"))
+        revid2 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag('2.2', revid2)
+        self.assertEquals(
+            ["2.1", "2.2"],
+            source.get_recent_versions("foo", "1.0"))
+
     def test_version_as_revisions(self):
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
@@ -618,6 +655,21 @@ class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
         self.assertEquals("2.1", source.get_latest_version("foo", "1.0"))
         self.tree.commit("msg")
         self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
+        self.assertIsNot(None, source._upstream_branch)
+
+    def test_get_recent_versions(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("2.1", revid1)
+        source = LazyUpstreamBranchSource(
+            self.tree.branch.base,
+            {"2.1": self.tree.branch.last_revision()})
+        self.assertIs(None, source._upstream_branch)
+        self.assertEquals(["2.1"], source.get_recent_versions("foo", "1.0"))
+        revid2 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("2.2", revid2)
+        self.assertEquals(
+            ["2.1", "2.2"],
+            source.get_recent_versions("foo", "1.0"))
         self.assertIsNot(None, source._upstream_branch)
 
     def test_version_as_revision(self):
@@ -1073,6 +1125,10 @@ class TarfileSourceTests(TestCaseWithTransport):
     def test_get_latest_version_parses(self):
         source = TarfileSource("foo-1.0.tar.gz")
         self.assertEquals("1.0", source.get_latest_version("foo", "0.9"))
+
+    def test_get_recent_versions(self):
+        source = TarfileSource("foo-1.0.tar.gz")
+        self.assertEquals(["1.0"], source.get_recent_versions("foo", "0.9"))
 
     def test_fetch_tarballs(self):
         source = TarfileSource("foo-1.0.tar.gz", "1.0")

@@ -71,6 +71,15 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.get_latest_version)
 
+    def get_recent_versions(self, package, since_version=None):
+        """Retrieve recent version strings.
+
+        :param package: Name of the package
+        :param version: Last upstream version since which to retrieve versions
+        :return: Iterator over version strings
+        """
+        raise NotImplementedError(self.get_recent_versions)
+
     def version_as_revisions(self, package, version, tarballs=None):
         """Lookup the revision ids for a particular version.
 
@@ -263,6 +272,9 @@ class UScanSource(UpstreamSource):
             shutil.rmtree(tmpdir)
         return self._xml_report_extract_upstream_version(text)
 
+    def get_recent_versions(self, package, since_version=None):
+        raise NotImplementedError(self.get_recent_versions)
+
     def fetch_tarballs(self, package, version, target_dir, components=None):
         note("Using uscan to look for the upstream tarball.")
         tmpdir = tempfile.mkdtemp()
@@ -296,8 +308,8 @@ class SelfSplitSource(UpstreamSource):
     def _split(self, package, upstream_version, target_filename):
         tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
         try:
-            export_dir = os.path.join(tmpdir,
-                    "%s-%s" % (package, upstream_version))
+            export_dir = os.path.join(
+                tmpdir, "%s-%s" % (package, upstream_version))
             export(self.tree, export_dir, format="dir")
             shutil.rmtree(os.path.join(export_dir, "debian"))
             tar = tarfile.open(target_filename, "w:gz")
@@ -310,7 +322,7 @@ class SelfSplitSource(UpstreamSource):
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
         note("Using the current branch without the 'debian' directory "
-                "to create the tarball")
+             "to create the tarball")
         tarball_path = self._tarball_path(package, version, None, target_dir)
         self._split(package, version, tarball_path)
         return [tarball_path]
@@ -331,8 +343,8 @@ class StackedUpstreamSource(UpstreamSource):
     def fetch_tarballs(self, package, version, target_dir, components=None):
         for source in self._sources:
             try:
-                paths = source.fetch_tarballs(package, version, target_dir,
-                    components)
+                paths = source.fetch_tarballs(
+                    package, version, target_dir, components)
             except PackageVersionNotPresent:
                 pass
             else:
@@ -348,6 +360,13 @@ class StackedUpstreamSource(UpstreamSource):
             except NotImplementedError:
                 pass
         return None
+
+    def get_recent_versions(self, package, since_version=None):
+        versions = set()
+        for source in self._sources:
+            for version in source.get_recent_versions(package, since_version):
+                versions.add(version)
+        return list(sorted(versions))
 
 
 def gather_orig_files(package, version, path):
@@ -499,6 +518,10 @@ class TarfileSource(UpstreamSource):
         repack_tarball(self.path, dest_name, target_dir=target_dir)
         return [os.path.join(target_dir, dest_name)]
 
+    def get_recent_versions(self, package, since_version=None):
+        latest_version = self.get_latest_version(package, since_version)
+        return [latest_version]
+
     def get_latest_version(self, package, version):
         if self.version is not None:
             return self.version
@@ -570,9 +593,18 @@ class LaunchpadReleaseFileSource(UpstreamSource):
         finally:
             shutil.rmtree(tmpdir)
 
-    def get_latest_version(self, package, version):
-        versions = []
+    def _all_versions(self):
         for release in self.project_series.releases:
-            versions.append((release.date_released, release.version))
+            yield (release.date_released, release.version)
+
+    def get_recent_versions(self, package, since_version=None):
+        versions = []
+        for version in self._all_versions():
+            if since_version is None or since_version < version:
+                versions.append(version)
+        return sorted(versions)
+
+    def get_latest_version(self, package, version):
+        versions = list(self._all_versions())
         versions.sort()
         return versions[-1][1]

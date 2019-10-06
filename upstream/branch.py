@@ -444,6 +444,18 @@ class UpstreamBranchSource(UpstreamSource):
         return self.get_version(
             package, current_version, self.upstream_branch.last_revision())
 
+    def get_recent_versions(self, package, since_version=None):
+        versions = []
+        tags = self.upstream_branch.tags.get_tag_dict()
+        for tag, revision in tags.items():
+            version = upstream_tag_to_version(tag, package)
+            if version is None:
+                continue
+            if since_version is not None and version <= since_version:
+                continue
+            versions.append(version)
+        return sorted(versions)
+
     def get_version(self, package, current_version, revision):
         with self.upstream_branch.lock_read():
             return upstream_branch_version(
