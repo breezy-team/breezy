@@ -44,7 +44,7 @@ New Features
 Improvements
 ************
 
-.. Improvements to existing commands, especially improved performance 
+.. Improvements to existing commands, especially improved performance
    or memory usage, or better results.
 
 * A new ``--commit-message`` option has been added to
@@ -87,6 +87,12 @@ Bug Fixes
 
 * Fix fetching from remote git repositories in ``brz git-import``.
   (Jelmer Vernooĳ, #1836238)
+
+* A new ``TreeEntry.is_unmodified`` method has added, which allows
+  merge to check for unmodified files without relying
+  on the .revision attribute that is not available for Git trees.
+  This fixes LCA merges for Git repositories.
+  (Jelmer Vernooĳ, #1826663)
 
 Documentation
 *************

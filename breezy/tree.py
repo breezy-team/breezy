@@ -85,6 +85,14 @@ class TreeEntry(object):
     def kind_character(self):
         return "???"
 
+    def is_unmodified(self, other):
+        """Does this entry reference the same entry?
+
+        This is mostly the same as __eq__, but returns False
+        for entries without enough information (i.e. revision is None)
+        """
+        return False
+
 
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""

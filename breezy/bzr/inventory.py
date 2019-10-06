@@ -322,6 +322,12 @@ class InventoryEntry(object):
                    self.parent_id,
                    self.revision))
 
+    def is_unmodified(self, other):
+        other_revision = getattr(other, 'revision', None)
+        if other_revision is None:
+            return False
+        return self.revision == other.revision
+
     def __eq__(self, other):
         if other is self:
             # For the case when objects are cached
