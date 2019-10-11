@@ -1026,24 +1026,32 @@ def rand_chars(num):
 
 def splitpath(p):
     """Turn string into list of parts."""
+    use_bytes = isinstance(p, bytes)
     if os.path.sep == '\\':
         # split on either delimiter because people might use either on
         # Windows
-        if isinstance(p, bytes):
+        if use_bytes:
             ps = re.split(b'[\\\\/]', p)
         else:
             ps = re.split(r'[\\/]', p)
     else:
-        if isinstance(p, bytes):
+        if use_bytes:
             ps = p.split(b'/')
         else:
             ps = p.split('/')
 
+    if use_bytes:
+        parent_dir = b'..'
+        current_empty_dir = (b'.', b'')
+    else:
+        parent_dir = '..'
+        current_empty_dir = ('.', '')
+
     rps = []
     for f in ps:
-        if f in ('..', b'..'):
+        if f in parent_dir:
             raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-        elif f in ('.', '', b'.', b''):
+        elif f in current_empty_dir:
             pass
         else:
             rps.append(f)
