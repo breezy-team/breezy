@@ -148,10 +148,10 @@ class MockTree(object):
         return self.ids.get(path)
 
     def id2path(self, file_id):
-        return self.paths.get(file_id)
-
-    def has_id(self, file_id):
-        return self.id2path(file_id) is not None
+        try:
+            return self.paths[file_id]
+        except KeyError:
+            raise errors.NoSuchId(file_id, self)
 
     def get_file(self, path):
         result = BytesIO()
@@ -270,7 +270,7 @@ class BTreeTester(tests.TestCase):
         btree = self.make_tree_1()[0]
         btree.note_rename("grandparent/parent/file",
                           "grandparent/alt_parent/file")
-        self.assertTrue(btree.id2path(b"e") is None)
+        self.assertRaises(errors.NoSuchId, btree.id2path, b"e")
         self.assertFalse(btree.is_versioned("grandparent/parent/file"))
         btree.note_id(b"e", "grandparent/parent/file")
         return btree
@@ -291,16 +291,6 @@ class BTreeTester(tests.TestCase):
             self.assertEqual(f.read(), b"Extra cheese\n")
         self.assertEqual(
             btree.get_symlink_target('grandparent/parent/symlink'), 'venus')
-
-    def test_adds2(self):
-        """File/inventory adds, with patch-compatibile renames"""
-        btree = self.make_tree_2()
-        btree.contents_by_id = False
-        add_patch = self.unified_diff([b"Hello\n"], [b"Extra cheese\n"])
-        btree.note_patch("grandparent/parent/file", add_patch)
-        btree.note_id(b'f', 'grandparent/parent/symlink', kind='symlink')
-        btree.note_target('grandparent/parent/symlink', 'venus')
-        self.adds_test(btree)
 
     def make_tree_3(self):
         btree, mtree = self.make_tree_1()
@@ -324,23 +314,13 @@ class BTreeTester(tests.TestCase):
         btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
         self.get_file_test(btree)
 
-    def test_get_file2(self):
-        """Get file contents, with patch-compatible renames"""
-        btree = self.make_tree_3()
-        btree.contents_by_id = False
-        mod_patch = self.unified_diff([], [b"Lemon\n"])
-        btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
-        mod_patch = self.unified_diff([], [b"Hello\n"])
-        btree.note_patch("grandparent/alt_parent/file", mod_patch)
-        self.get_file_test(btree)
-
     def test_delete(self):
         "Deletion by bundle"
         btree = self.make_tree_1()[0]
         with btree.get_file(btree.id2path(b"c")) as f:
             self.assertEqual(f.read(), b"Hello\n")
         btree.note_deletion("grandparent/parent/file")
-        self.assertTrue(btree.id2path(b"c") is None)
+        self.assertRaises(errors.NoSuchId, btree.id2path, b"c")
         self.assertFalse(btree.is_versioned("grandparent/parent/file"))
 
     def sorted_ids(self, tree):

@@ -360,13 +360,6 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     todo.append((store, subpath, hexsha))
         return ret
 
-    def has_id(self, file_id):
-        try:
-            path = self.id2path(file_id)
-        except errors.NoSuchId:
-            return False
-        return self.has_filename(path)
-
     def _lookup_path(self, path):
         if self.tree is None:
             raise errors.NoSuchFile(path)
@@ -1020,14 +1013,6 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 return self.mapping.generate_file_id(
                     osutils.safe_unicode(path))
             return None
-
-    def has_id(self, file_id):
-        try:
-            self.id2path(file_id)
-        except errors.NoSuchId:
-            return False
-        else:
-            return True
 
     def id2path(self, file_id):
         if file_id is None:

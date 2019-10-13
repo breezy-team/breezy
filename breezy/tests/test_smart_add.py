@@ -17,6 +17,7 @@
 from .. import (
     add,
     cache_utf8,
+    errors,
     tests,
     )
 from ..bzr import (
@@ -116,11 +117,11 @@ class TestAddFrom(tests.TestCaseWithTransport):
         self.assertNotEqual(None, c_id)
         self.base_tree.lock_read()
         self.addCleanup(self.base_tree.unlock)
-        self.assertFalse(self.base_tree.has_id(c_id))
+        self.assertRaises(errors.NoSuchId, self.base_tree.id2path, c_id)
 
         d_id = new_tree.path2id('subdir/d')
         self.assertNotEqual(None, d_id)
-        self.assertFalse(self.base_tree.has_id(d_id))
+        self.assertRaises(errors.NoSuchId, self.base_tree.id2path, d_id)
 
     def test_copy_existing_dir(self):
         self.make_base_tree()
@@ -141,7 +142,7 @@ class TestAddFrom(tests.TestCaseWithTransport):
         self.assertNotEqual(None, a_id)
         self.base_tree.lock_read()
         self.addCleanup(self.base_tree.unlock)
-        self.assertFalse(self.base_tree.has_id(a_id))
+        self.assertRaises(errors.NoSuchId, self.base_tree.id2path, a_id)
 
 
 class TestAddActions(tests.TestCase):

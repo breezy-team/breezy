@@ -142,19 +142,18 @@ class TestMemoryTree(TestCaseWithTransport):
         """Some test for unversion of a memory tree."""
         branch = self.make_branch('branch')
         tree = branch.create_memorytree()
-        tree.lock_write()
-        tree.add(['', 'foo'], kinds=['directory', 'file'])
-        tree.unversion(['foo'])
-        self.assertFalse(tree.has_id(b'foo-id'))
-        tree.unlock()
+        with tree.lock_write():
+            tree.add(['', 'foo'], kinds=['directory', 'file'])
+            tree.unversion(['foo'])
+            self.assertFalse(tree.is_versioned('foo'))
+            self.assertFalse(tree.has_filename('foo'))
 
     def test_last_revision(self):
         """There should be a last revision method we can call."""
         tree = self.make_branch_and_memory_tree('branch')
-        tree.lock_write()
-        tree.add('')
-        rev_id = tree.commit('first post')
-        tree.unlock()
+        with tree.lock_write():
+            tree.add('')
+            rev_id = tree.commit('first post')
         self.assertEqual(rev_id, tree.last_revision())
 
     def test_rename_file(self):

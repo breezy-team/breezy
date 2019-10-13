@@ -658,14 +658,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self._set_inventory(result, dirty=False)
             return result
 
-    def has_id(self, file_id):
-        # files that have been deleted are excluded
-        inv, inv_file_id = self._unpack_file_id(file_id)
-        if not inv.has_id(inv_file_id):
-            return False
-        path = inv.id2path(inv_file_id)
-        return osutils.lexists(self.abspath(path))
-
     def all_file_ids(self):
         """Iterate through file_ids for this tree.
 
@@ -1368,7 +1360,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 if after:
                     basis = self.basis_tree()
                     with basis.lock_read():
-                        if not basis.has_id(to_id):
+                        try:
+                            basis.id2path(to_id)
+                        except errors.NoSuchId:
                             rename_entry.change_id = True
                             allowed = True
                 if not allowed:
