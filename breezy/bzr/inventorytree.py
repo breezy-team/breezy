@@ -172,10 +172,6 @@ class InventoryTree(Tree):
         inventory, file_id = self._unpack_file_id(file_id)
         return inventory.id2path(file_id)
 
-    def has_id(self, file_id):
-        inventory, file_id = self._unpack_file_id(file_id)
-        return inventory.has_id(file_id)
-
     def all_file_ids(self):
         return {entry.file_id for path, entry in self.iter_entries_by_dir()}
 

@@ -312,10 +312,6 @@ class TestCommit(TestCaseWithWorkingTree):
         # a present on disk. After commit b-id, c-id and d-id should be
         # missing from the inventory, within the same tree transaction.
         wt.commit('commit stuff')
-        self.assertTrue(wt.has_id(a_id))
-        self.assertFalse(wt.has_id(b_id))
-        self.assertFalse(wt.has_id(c_id))
-        self.assertFalse(wt.has_id(d_id))
         self.assertTrue(wt.has_filename('a'))
         self.assertFalse(wt.has_filename('b'))
         self.assertFalse(wt.has_filename('b/c'))
@@ -324,16 +320,11 @@ class TestCommit(TestCaseWithWorkingTree):
         # the changes should have persisted to disk - reopen the workingtree
         # to be sure.
         wt = wt.controldir.open_workingtree()
-        wt.lock_read()
-        self.assertTrue(wt.has_id(a_id))
-        self.assertFalse(wt.has_id(b_id))
-        self.assertFalse(wt.has_id(c_id))
-        self.assertFalse(wt.has_id(d_id))
-        self.assertTrue(wt.has_filename('a'))
-        self.assertFalse(wt.has_filename('b'))
-        self.assertFalse(wt.has_filename('b/c'))
-        self.assertFalse(wt.has_filename('d'))
-        wt.unlock()
+        with wt.lock_read():
+            self.assertTrue(wt.has_filename('a'))
+            self.assertFalse(wt.has_filename('b'))
+            self.assertFalse(wt.has_filename('b/c'))
+            self.assertFalse(wt.has_filename('d'))
 
     def test_commit_deleted_subtree_with_removed(self):
         wt = self.make_branch_and_tree('.')
@@ -346,15 +337,12 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.remove('b/c')
         this_dir = wt.controldir.root_transport
         this_dir.delete_tree('b')
-        wt.lock_write()
-        wt.commit('commit deleted rename')
-        self.assertTrue(wt.is_versioned('a'))
-        self.assertFalse(wt.has_id(b_id))
-        self.assertFalse(wt.has_id(c_id))
-        self.assertTrue(wt.has_filename('a'))
-        self.assertFalse(wt.has_filename('b'))
-        self.assertFalse(wt.has_filename('b/c'))
-        wt.unlock()
+        with wt.lock_write():
+            wt.commit('commit deleted rename')
+            self.assertTrue(wt.is_versioned('a'))
+            self.assertTrue(wt.has_filename('a'))
+            self.assertFalse(wt.has_filename('b'))
+            self.assertFalse(wt.has_filename('b/c'))
 
     def test_commit_move_new(self):
         wt = self.make_branch_and_tree('first')

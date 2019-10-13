@@ -170,7 +170,7 @@ class TestMemoryTree(TestCaseWithTransport):
                      kinds=['directory', 'file'])
             tree.unversion(['foo'])
             self.assertFalse(tree.is_versioned('foo'))
-            self.assertFalse(tree.has_id(b'foo-id'))
+            self.assertRaises(errors.NoSuchId, tree.id2path, b'foo-id')
 
     def test_last_revision(self):
         """There should be a last revision method we can call."""
