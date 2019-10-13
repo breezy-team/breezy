@@ -488,12 +488,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 yield self._get_file_ie(store, child_path, name, mode, hexsha,
                                         file_id)
 
-    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None):
         if self.tree is None:
             return
-        if yield_parents:
-            # TODO(jelmer): Support yield parents
-            raise NotImplementedError
         if specific_files is not None:
             if specific_files in ([""], []):
                 specific_files = None
@@ -1148,9 +1145,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 if S_ISGITLINK(mode):
                     pass  # TODO(jelmer): dive into submodule
 
-    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
-        if yield_parents:
-            raise NotImplementedError(self.iter_entries_by_dir)
+    def iter_entries_by_dir(self, specific_files=None):
         with self.lock_read():
             if specific_files is not None:
                 specific_files = set(specific_files)
@@ -1172,12 +1167,18 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     file_ie = self._get_file_ie(name, path, value, None)
                 except errors.NoSuchFile:
                     continue
-                if yield_parents or specific_files is None:
+                if specific_files is None:
                     for (dir_path, dir_ie) in self._add_missing_parent_ids(
                             parent, dir_ids):
                         ret[(posixpath.dirname(dir_path), dir_path)] = dir_ie
                 file_ie.parent_id = self.path2id(parent)
                 ret[(posixpath.dirname(path), path)] = file_ie
+            # Special casing for directories
+            if specific_files:
+                for path in specific_files:
+                    key = (posixpath.dirname(path), path)
+                    if key not in ret and self.is_versioned(path):
+                        ret[key] = self._get_dir_ie(path, self.path2id(key[0]))
             return ((path, ie) for ((_, path), ie) in sorted(viewitems(ret)))
 
     def iter_references(self):
