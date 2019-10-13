@@ -1,3 +1,9 @@
+breezy-debian (2.8.31) UNRELEASED; urgency=medium
+
+  * Fix compatibility with Breezy 3.1.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 13 Oct 2019 13:03:23 +0000
+
 breezy-debian (2.8.30) unstable; urgency=medium
 
   * Raise separate exception when encountering syntax error in
