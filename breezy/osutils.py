@@ -520,9 +520,7 @@ if sys.platform == 'win32':
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
 
-    f = win32utils.get_unicode_argv     # special function or None
-    if f is not None:
-        get_unicode_argv = f
+    get_unicode_argv = getattr(win32utils, 'get_unicode_argv', get_unicode_argv)
     path_from_environ = win32utils.get_environ_unicode
     _get_home_dir = win32utils.get_home_location
     getuser_unicode = win32utils.get_user_name
