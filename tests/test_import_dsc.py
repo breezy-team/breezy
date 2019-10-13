@@ -796,10 +796,20 @@ class DistributionBranchTests(BuilddebTestCase):
             def make_set(list):
                 output = set()
                 for item in list:
-                    if item[2] == 'directory':
-                        output.add(item[0] + '/')
+                    if isinstance(item, tuple):
+                        if item[2] == 'directory':
+                            output.add(item[0] + '/')
+                        else:
+                            output.add(item[0])
                     else:
-                        output.add(item[0])
+                        if item.kind[0]:
+                            (path, kind) = item.path[0], item.kind[0]
+                        else:
+                            (path, kind) = item.path[1], item.kind[1]
+                        if kind == 'directory':
+                            output.add(path + '/')
+                        else:
+                            output.add(path)
                 return output
             exp = set(expected)
             real = make_set(actual)

@@ -23,17 +23,28 @@ def changelog_changes(tree, basis_tree, cl_path='debian/changelog'):
     changes = []
     for change in tree.iter_changes(
             basis_tree, specific_files=[cl_path]):
+        try:
+            paths = change.path
+            changed_content = change.changed_content
+            versioned = change.versioned
+            kind = change.kind
+        except AttributeError:  # brz < 3.1
+            paths = change[1]
+            changed_content = change[2]
+            versioned = change[3]
+            kind = change[6]
         # Content not changed
-        if not change[2]:
+        if not changed_content:
             return None
         # Not versioned in new tree
-        if not change[3][1]:
+        if not versioned[1]:
             return None
         # Not a file in one tree
-        if change[6][0] != 'file' or change[6][1] != 'file':
+        if kind[0] != 'file' or kind[1] != 'file':
             return None
-        old_text = basis_tree.get_file_lines(change[1][0])
-        new_text = tree.get_file_lines(change[1][1])
+
+        old_text = basis_tree.get_file_lines(paths[0])
+        new_text = tree.get_file_lines(paths[1])
         import difflib
         sequencematcher = difflib.SequenceMatcher
         for group in sequencematcher(
