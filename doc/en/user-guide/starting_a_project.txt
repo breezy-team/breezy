@@ -39,7 +39,7 @@ reasons that will be explored more in later chapters though, it is a good
 idea to create a repository for the project at the top level and to nest
 a *main* branch within it like this::
 
-  brz init-repo my.repo
+  brz init-shared-repo my.repo
   cd my.repo
   brz init my.main
   cd my.main
@@ -50,6 +50,6 @@ a *main* branch within it like this::
 Some users prefer a name like *trunk* or *dev* to *main*. Choose
 whichever name makes the most sense to you.
 
-Note that the ``init-repo`` and ``init`` commands both take a path as an
+Note that the ``init-shared-repo`` and ``init`` commands both take a path as an
 argument and will create that path if it doesn't already exist.
 

@@ -189,7 +189,7 @@ finished
                                    RepositoryFormatKnitPack1))
 
     def test_upgrade_repo(self):
-        self.run_bzr('init-repository --format=pack-0.92 repo')
+        self.run_bzr('init-shared-repository --format=pack-0.92 repo')
         self.run_bzr('upgrade --format=2a repo')
 
     def assertLegalOption(self, option_str):

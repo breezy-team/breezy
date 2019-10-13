@@ -32,14 +32,14 @@ class TestBranches(TestCaseWithTransport):
 
     def test_no_branch(self):
         # Listing the branches in a control directory without branches.
-        self.run_bzr('init-repo a')
+        self.run_bzr('init-shared-repo a')
         out, err = self.run_bzr('branches a')
         self.assertEqual(out, "")
 
     def test_default_current_dir(self):
         # "brz branches" list the branches in the current directory
         # if no location was specified.
-        self.run_bzr('init-repo a')
+        self.run_bzr('init-shared-repo a')
         out, err = self.run_bzr('branches', working_dir='a')
         self.assertEqual(out, "")
 
