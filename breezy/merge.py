@@ -686,7 +686,7 @@ class _InventoryNoneEntry(object):
     text_sha1 = None
 
     def is_unmodified(self, other):
-        return isinstance(other, type(self))
+        return other is self
 
 
 _none_entry = _InventoryNoneEntry()
