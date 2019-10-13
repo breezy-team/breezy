@@ -94,6 +94,9 @@ Bug Fixes
   This fixes LCA merges for Git repositories.
   (Jelmer Vernooĳ, #1826663)
 
+* Fix passing of directories in specific_files to
+  GitWorkingTree.iter_entries_by_dir(). (Jelmer Vernooĳ, #1844054)
+
 Documentation
 *************
 
