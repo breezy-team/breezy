@@ -77,8 +77,13 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
         self.assertEqual(
             [(p, tree.path2id(p)) for p in ['', 'a', 'b', 'b/c']],
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        self.assertEqual(
+            [(p, tree.path2id(p)) for p in ['b']],
+            [(path, node.file_id) for path, node in tree.iter_entries_by_dir(
+                specific_files=['b'])])
         self.assertEqualDiff(b'foobar\n', tree.get_file_text('a'))
         self.assertFalse(tree.is_executable('b//c'))
+        self.assertFalse(tree.is_executable('b/c'))
 
     def test_abc_tree_content_3_no_parents(self):
         tree = self.make_branch_and_tree('.')
