@@ -35,6 +35,7 @@ including sections from a NEWS or ChangeLog file.
 
 from __future__ import absolute_import
 
+from ... import version_info  # noqa: F401
 from ... import hooks
 from ...config import (
     option_registry,
