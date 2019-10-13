@@ -1049,7 +1049,7 @@ def splitpath(p):
 
     rps = []
     for f in ps:
-        if f in parent_dir:
+        if f == parent_dir:
             raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
         elif f in current_empty_dir:
             pass
