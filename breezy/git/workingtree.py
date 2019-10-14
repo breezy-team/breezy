@@ -70,6 +70,7 @@ from ..mutabletree import (
     BadReferenceTarget,
     MutableTree,
     )
+from ..sixish import text_type
 
 
 from .dir import (
@@ -113,6 +114,18 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def _read_index(self):
         self.index = Index(self.control_transport.local_abspath('index'))
         self._index_dirty = False
+
+    def _get_submodule_index(self, relpath):
+        if not isinstance(relpath, bytes):
+            raise TypeError(relpath)
+        try:
+            info = self._submodule_info()[relpath]
+        except KeyError:
+            index_path = os.path.join(self.basedir, relpath.decode('utf-8'), '.git', 'index')
+        else:
+            index_path = self.control_transport.local_abspath(
+                posixpath.join('modules', info[1], 'index'))
+        return Index(index_path)
 
     def lock_read(self):
         """Lock the repository for read operations.
@@ -514,9 +527,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
 
-    def _iter_files_recursive(self, from_dir=None, include_dirs=False):
+    def _iter_files_recursive(self, from_dir=None, include_dirs=False,
+                              follow_tree_references=False):
         if from_dir is None:
             from_dir = u""
+        if not isinstance(from_dir, text_type):
+            raise TypeError(from_dir)
         encoded_from_dir = self.abspath(from_dir).encode(osutils._fs_enc)
         for (dirpath, dirnames, filenames) in os.walk(encoded_from_dir):
             dir_relpath = dirpath[len(self.basedir):].strip(b"/")
@@ -529,13 +545,15 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     dirnames.remove(name)
                     continue
                 relpath = os.path.join(dir_relpath, name)
+                if not follow_tree_references and self._directory_is_tree_reference(relpath.decode(osutils._fs_enc)):
+                    dirnames.remove(name)
                 if include_dirs:
                     try:
                         yield relpath.decode(osutils._fs_enc)
                     except UnicodeDecodeError:
                         raise errors.BadFilenameEncoding(
                             relpath, osutils._fs_enc)
-                    if not self._has_dir(relpath):
+                    if not self.is_versioned(relpath.decode(osutils._fs_enc)):
                         dirnames.remove(name)
             for name in filenames:
                 if self.mapping.is_special_file(name):
@@ -728,7 +746,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return self._is_executable_from_path_and_stat_from_basis(
                 path, stat_result)
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   follow_tree_references=False):
         if from_dir is None or from_dir == '.':
             from_dir = u""
         dir_ids = {}
@@ -743,7 +762,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             dir_ids[u""] = root_ie.file_id
             if recursive:
                 path_iterator = sorted(
-                    self._iter_files_recursive(from_dir, include_dirs=True))
+                    self._iter_files_recursive(
+                        from_dir, include_dirs=True,
+                        follow_tree_references=follow_tree_references))
             else:
                 encoded_from_dir = self.abspath(from_dir).encode(
                     osutils._fs_enc)
@@ -770,7 +791,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 for dir_path, dir_ie in self._add_missing_parent_ids(
                         parent, dir_ids):
                     pass
-                if kind in ('directory', 'tree-reference'):
+                if kind == 'tree-reference' and follow_tree_references:
+                    kind = 'directory'
+                if kind == 'directory':
                     if path != from_dir:
                         if self._has_dir(encoded_path):
                             ie = self._get_dir_ie(path, self.path2id(path))

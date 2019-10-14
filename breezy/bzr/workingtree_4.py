@@ -33,6 +33,7 @@ import errno
 import stat
 
 from breezy import (
+    branch as _mod_branch,
     cache_utf8,
     cleanup,
     controldir,
@@ -74,6 +75,7 @@ from ..osutils import (
 from ..sixish import (
     viewitems,
     )
+from ..transport import get_transport_from_path
 from ..transport.local import LocalTransport
 from ..tree import (
     FileTimestampUnavailable,
@@ -884,6 +886,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
             path = path.strip('/')
             entry = self._get_entry(path=path)
             if entry == (None, None):
+                nested_tree, subpath = self.get_containing_nested_tree(path)
+                if nested_tree is not None:
+                    return nested_tree.path2id(subpath)
                 return None
             return entry[0][2]
 
@@ -1050,8 +1055,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 raise errors.NoSuchRevisionInTree(self, revision_id)
             if revision_id in dirstate.get_ghosts():
                 raise errors.NoSuchRevisionInTree(self, revision_id)
-            return DirStateRevisionTree(dirstate, revision_id,
-                                        self.branch.repository)
+            return DirStateRevisionTree(
+                dirstate, revision_id, self.branch.repository,
+                get_transport_from_path(self.basedir))
 
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
@@ -1695,13 +1701,14 @@ class DirStateRevisionTree(InventoryTree):
     dirstate for easy access, not the workingtree.
     """
 
-    def __init__(self, dirstate, revision_id, repository):
+    def __init__(self, dirstate, revision_id, repository, nested_tree_transport):
         self._dirstate = dirstate
         self._revision_id = revision_id
         self._repository = repository
         self._inventory = None
         self._locked = 0
         self._dirstate_locked = False
+        self._nested_tree_transport = nested_tree_transport
         self._repo_supports_tree_reference = getattr(
             repository._format, "supports_tree_reference",
             False)
@@ -1745,9 +1752,19 @@ class DirStateRevisionTree(InventoryTree):
     def get_nested_tree(self, path):
         with self.lock_read():
             nested_revid = self.get_reference_revision(path)
-            # TODO(jelmer): Attempt to open 'path' as a working tree, and see if we can find
-            # the referenced revision id in our memory?
+            return self._get_nested_tree(path, None, nested_revid)
+
+    def _get_nested_tree(self, path, file_id, reference_revision):
+        branch = _mod_branch.Branch.open_from_transport(
+            self._nested_tree_transport.clone(path))
+        try:
+            revtree = branch.repository.revision_tree(reference_revision)
+        except errors.NoSuchRevision:
             raise MissingNestedTree(path)
+        if file_id is not None and revtree.path2id('') != file_id:
+            raise AssertionError('mismatching file id: %r != %r' % (
+                revtree.path2id(''), file_id))
+        return revtree
 
     def iter_references(self):
         if not self._repo_supports_tree_reference:
@@ -2003,23 +2020,37 @@ class DirStateRevisionTree(InventoryTree):
     def is_locked(self):
         return self._locked
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
-        # We use a standard implementation, because DirStateRevisionTree is
-        # dealing with one of the parents of the current state
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   follow_tree_references=False):
+        # The only files returned by this are those from the version
         if from_dir is None:
-            inv = self.root_inventory
             from_dir_id = None
+            inv = self.root_inventory
         else:
             inv, from_dir_id = self._path2inv_file_id(from_dir)
             if from_dir_id is None:
                 # Directory not versioned
-                return
-        # FIXME: Support nested trees
-        entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
-        if inv.root is not None and not include_root and from_dir is None:
-            next(entries)
-        for path, entry in entries:
-            yield path, 'V', entry.kind, entry
+                return iter([])
+        def iter_entries(inv):
+            entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
+            if inv.root is not None and not include_root and from_dir is None:
+                # skip the root for compatibility with the current apis.
+                next(entries)
+            for path, entry in entries:
+                if entry.kind == 'tree-reference' and follow_tree_references:
+                    subtree = self._get_nested_tree(
+                        path, entry.file_id, entry.reference_revision)
+                    for subpath, status, kind, entry in subtree.list_files(
+                            include_root=True, recursive=recursive,
+                            follow_tree_references=follow_tree_references):
+                        if subpath:
+                            full_subpath = osutils.pathjoin(path, subpath)
+                        else:
+                            full_subpath = path
+                        yield full_subpath, status, kind, entry
+                else:
+                    yield path, 'V', entry.kind, entry
+        return iter_entries(inv)
 
     def lock_read(self):
         """Lock the tree for a set of operations.

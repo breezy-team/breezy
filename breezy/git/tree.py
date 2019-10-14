@@ -24,11 +24,18 @@ import errno
 from io import BytesIO
 import os
 
+from dulwich.config import (
+    parse_submodules,
+    ConfigFile as GitConfigFile,
+    )
+from dulwich.diff_tree import tree_changes
+from dulwich.errors import NotTreeError
 from dulwich.index import (
     blob_from_path_and_stat,
     cleanup_mode,
     commit_tree,
     index_entry_from_stat,
+    Index,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -68,6 +75,10 @@ from .mapping import (
     mode_is_executable,
     mode_kind,
     default_mapping,
+    )
+from .transportgit import (
+    TransportObjectStore,
+    TransportRepo,
     )
 
 
@@ -189,7 +200,7 @@ class GitTreeSymlink(_mod_tree.TreeLink):
             self.symlink_target)
 
 
-class GitTreeSubmodule(_mod_tree.TreeLink):
+class GitTreeSubmodule(_mod_tree.TreeReference):
 
     __slots__ = ['file_id', 'name', 'parent_id', 'reference_revision']
 
@@ -286,13 +297,17 @@ class GitRevisionTree(revisiontree.RevisionTree):
         try:
             info = self._submodule_info()[relpath]
         except KeyError:
-            nested_repo_transport = self._repository.user_transport.clone(relpath.decode('utf-8'))
+            nested_repo_transport = self._repository.controldir.control_transport.clone(
+                relpath.decode('utf-8'))
         else:
-            nested_repo_transport = self._repository.control_transport.clone(
-                posixpath.join('modules', info[0]))
+            nested_repo_transport = self._repository.controldir.control_transport.clone(
+                posixpath.join('modules', info[1]))
         nested_controldir = _mod_controldir.ControlDir.open_from_transport(
             nested_repo_transport)
         return nested_controldir.find_repository()
+
+    def _get_submodule_store(self, relpath):
+        return self._get_submodule_repository(relpath)._git.object_store
 
     def get_nested_tree(self, path):
         encoded_path = path.encode('utf-8')
@@ -363,13 +378,26 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def _lookup_path(self, path):
         if self.tree is None:
             raise errors.NoSuchFile(path)
-        try:
-            (mode, hexsha) = tree_lookup_path(
-                self.store.__getitem__, self.tree, path.encode('utf-8'))
-        except KeyError:
-            raise errors.NoSuchFile(self, path)
-        else:
-            return (self.store, mode, hexsha)
+
+        encoded_path = path.encode('utf-8')
+        parts = encoded_path.split(b'/')
+        hexsha = self.tree
+        store = self.store
+        mode = None
+        for i, p in enumerate(parts):
+            if not p:
+                continue
+            obj = store[hexsha]
+            if not isinstance(obj, Tree):
+                raise NotTreeError(hexsha)
+            try:
+                mode, hexsha = obj[p]
+            except KeyError:
+                raise errors.NoSuchFile(path)
+            if S_ISGITLINK(mode) and i != len(parts) - 1:
+                store = self._get_submodule_store(b'/'.join(parts[:i + 1]))
+                hexsha = store[hexsha].tree
+        return (store, mode, hexsha)
 
     def is_executable(self, path):
         (store, mode, hexsha) = self._lookup_path(path)
@@ -393,7 +421,20 @@ class GitRevisionTree(revisiontree.RevisionTree):
         else:
             return True
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def _submodule_info(self):
+        if self._submodules is None:
+            try:
+                with self.get_file('.gitmodules') as f:
+                    config = GitConfigFile.from_file(f)
+                    self._submodules = {
+                        path: (url, section)
+                        for path, url, section in parse_submodules(config)}
+            except errors.NoSuchFile:
+                self._submodules = {}
+        return self._submodules
+
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   follow_tree_references=False):
         if self.tree is None:
             return
         if from_dir is None or from_dir == '.':
@@ -424,6 +465,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     continue
                 child_path = posixpath.join(path, name)
                 child_relpath = posixpath.join(relpath, name)
+                if S_ISGITLINK(mode) and follow_tree_references:
+                    mode = stat.S_IFDIR
+                    store = self._get_submodule_store(child_relpath)
+                    hexsha = store[hexsha].tree
                 if stat.S_ISDIR(mode):
                     ie = self._get_dir_ie(child_path, parent_id)
                     if recursive:
@@ -973,6 +1018,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         self._lock_count = 0
         self._versioned_dirs = None
         self._index_dirty = False
+        self._submodules = None
 
     def is_versioned(self, path):
         with self.lock_read():
@@ -993,7 +1039,6 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         if self._lock_mode is None:
             raise errors.ObjectNotLocked(self)
         self._versioned_dirs = set()
-        # TODO(jelmer): Browse over all indexes
         for p, i in self._recurse_index_entries():
             self._ensure_versioned_dir(posixpath.dirname(p))
 
@@ -1043,11 +1088,47 @@ class MutableGitIndexTree(mutabletree.MutableTree):
     def _read_submodule_head(self, path):
         raise NotImplementedError(self._read_submodule_head)
 
+    def _submodule_info(self):
+        if self._submodules is None:
+            try:
+                with self.get_file('.gitmodules') as f:
+                    config = GitConfigFile.from_file(f)
+                    self._submodules = {
+                        path: (url, section)
+                        for path, url, section in parse_submodules(config)}
+            except errors.NoSuchFile:
+                self._submodules = {}
+        return self._submodules
+
     def _lookup_index(self, encoded_path):
         if not isinstance(encoded_path, bytes):
             raise TypeError(encoded_path)
-        # TODO(jelmer): Look in other indexes
-        return self.index, encoded_path
+        # Common case:
+        if encoded_path in self.index:
+            return self.index, encoded_path
+        # TODO(jelmer): Perhaps have a cache with paths under which some
+        # submodules exist?
+        index = self.index
+        remaining_path = encoded_path
+        while True:
+            parts = remaining_path.split(b'/')
+            for i in range(1, len(parts)):
+                basepath = b'/'.join(parts[:i])
+                try:
+                    (ctime, mtime, dev, ino, mode, uid, gid, size, sha,
+                     flags) = index[basepath]
+                except KeyError:
+                    continue
+                else:
+                    if S_ISGITLINK(mode):
+                        index = self._get_submodule_index(basepath)
+                        remaining_path = b'/'.join(parts[i:])
+                        break
+                    else:
+                        return index, remaining_path
+            else:
+                return index, remaining_path
+        return index, remaining_path
 
     def _index_del_entry(self, index, path):
         del index[path]
@@ -1118,17 +1199,23 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         if self._versioned_dirs is not None:
             self._ensure_versioned_dir(index_path)
 
-    def _recurse_index_entries(self, index=None, basepath=b""):
+    def _recurse_index_entries(self, index=None, basepath=b"",
+                               follow_tree_references=False):
         # Iterate over all index entries
         with self.lock_read():
             if index is None:
                 index = self.index
             for path, value in index.items():
-                yield (posixpath.join(basepath, path), value)
                 (ctime, mtime, dev, ino, mode, uid, gid, size, sha,
                  flags) = value
-                if S_ISGITLINK(mode):
-                    pass  # TODO(jelmer): dive into submodule
+                if S_ISGITLINK(mode) and follow_tree_references:
+                    subindex = self._get_submodule_index(path)
+                    for entry in self._recurse_index_entries(
+                            index=subindex, basepath=path,
+                            follow_tree_references=follow_tree_references):
+                        yield entry
+                else:
+                    yield (posixpath.join(basepath, path), value)
 
     def iter_entries_by_dir(self, specific_files=None):
         with self.lock_read():
@@ -1167,10 +1254,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             return ((path, ie) for ((_, path), ie) in sorted(viewitems(ret)))
 
     def iter_references(self):
-        # TODO(jelmer): Implement a more efficient version of this
-        for path, entry in self.iter_entries_by_dir():
-            if entry.kind == 'tree-reference':
-                yield path
+        if self.supports_tree_reference():
+            # TODO(jelmer): Implement a more efficient version of this
+            for path, entry in self.iter_entries_by_dir():
+                if entry.kind == 'tree-reference':
+                    yield path
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self.path2id(path)
@@ -1417,20 +1505,25 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         else:
             return (kind, None, None, None)
 
+    def stored_kind(self, relpath):
+        (index, index_path) = self._lookup_index(relpath.encode('utf-8'))
+        if index is None:
+            return kind
+        try:
+            mode = index[index_path].mode
+        except KeyError:
+            return kind
+        else:
+            if S_ISGITLINK(mode):
+                return 'tree-reference'
+            return 'directory'
+
     def kind(self, relpath):
         kind = osutils.file_kind(self.abspath(relpath))
         if kind == 'directory':
-            (index, index_path) = self._lookup_index(relpath.encode('utf-8'))
-            if index is None:
-                return kind
-            try:
-                mode = index[index_path].mode
-            except KeyError:
-                return kind
-            else:
-                if S_ISGITLINK(mode):
-                    return 'tree-reference'
-                return 'directory'
+            if self._directory_is_tree_reference(relpath):
+                return 'tree-reference'
+            return 'directory'
         else:
             return kind
 

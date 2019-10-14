@@ -17,6 +17,7 @@
 """Test that all trees support Tree.list_files()"""
 
 from breezy.tests.per_tree import TestCaseWithTree
+from breezy.tests import TestNotApplicable
 
 
 class TestListFiles(TestCaseWithTree):
@@ -97,4 +98,47 @@ class TestListFiles(TestCaseWithTree):
             actual = [(path, status, kind, ie.file_id)
                       for path, status, kind, ie in
                       tree.list_files(from_dir='', recursive=False)]
+        self.assertEqual(expected, actual)
+
+    def skip_if_no_reference(self, tree):
+        if not getattr(tree, 'supports_tree_reference', lambda: False)():
+            raise TestNotApplicable('Tree references not supported')
+
+    def create_nested(self):
+        work_tree = self.make_branch_and_tree('wt')
+        with work_tree.lock_write():
+            self.skip_if_no_reference(work_tree)
+            subtree = self.make_branch_and_tree('wt/subtree')
+            self.build_tree(['wt/subtree/a'])
+            subtree.add(['a'])
+            subtree.commit('foo')
+            work_tree.add_reference(subtree)
+        tree = self._convert_tree(work_tree)
+        self.skip_if_no_reference(tree)
+        return tree, subtree
+
+    def test_list_files_with_unfollowed_reference(self):
+        tree, subtree = self.create_nested()
+        expected = [
+            ('', 'V', 'directory', tree.path2id('')),
+            ('subtree', 'V', 'tree-reference', tree.path2id('subtree'))]
+        with tree.lock_read():
+            actual = [(path, status, kind, ie.file_id)
+                      for path, status, kind, ie in
+                      tree.list_files(recursive=True, follow_tree_references=False, include_root=True)]
+        self.assertEqual(expected, actual)
+
+    def test_list_files_with_followed_reference(self):
+        tree, subtree = self.create_nested()
+        expected = [
+            ('', 'V', 'directory'),
+            ('subtree', 'V', 'directory'),
+            ('subtree/a', 'V', 'file'),
+            ]
+        with tree.lock_read():
+            actual = [(path, status, kind)
+                      for path, status, kind, ie in
+                      tree.list_files(
+                          recursive=True, follow_tree_references=True,
+                          include_root=True)]
         self.assertEqual(expected, actual)
