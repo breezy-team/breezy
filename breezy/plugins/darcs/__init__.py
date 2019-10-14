@@ -21,6 +21,7 @@ Currently only tells the user to use fastimport/fastexport.
 
 from __future__ import absolute_import
 
+from ... import version_info  # noqa: F401
 from breezy import (
     controldir,
     errors,

@@ -18,6 +18,7 @@
 
 from __future__ import absolute_import
 
+from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
 
 plugin_cmds.register_lazy("cmd_propose_merge", ["propose"], __name__ + ".cmds")
