@@ -213,7 +213,8 @@ class InventoryTree(Tree):
     def all_versioned_paths(self):
         return {path for path, entry in self.iter_entries_by_dir()}
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None,
+                            follow_tree_references=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -226,15 +227,21 @@ class InventoryTree(Tree):
                 inventory_file_ids = []
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
-                    if inventory is not self.root_inventory:  # for now
+                    if inventory and inventory is not self.root_inventory:
                         raise AssertionError("%r != %r" % (
                             inventory, self.root_inventory))
                     inventory_file_ids.append(inv_file_id)
             else:
                 inventory_file_ids = None
-            # FIXME: Handle nested trees
-            return self.root_inventory.iter_entries_by_dir(
-                specific_file_ids=inventory_file_ids)
+            def iter_entries(inv):
+                for p, e in inv.iter_entries_by_dir(specific_file_ids=inventory_file_ids):
+                    if e.kind == 'tree-reference' and follow_tree_references:
+                        subinv = self._get_nested_tree(p, e.file_id, e.reference_revision).root_inventory
+                        for subp, e in iter_entries(subinv):
+                            yield (osutils.pathjoin(p, subp) if subp else p), e
+                    else:
+                        yield p, e
+            return iter_entries(self.root_inventory)
 
     def iter_child_entries(self, path):
         with self.lock_read():

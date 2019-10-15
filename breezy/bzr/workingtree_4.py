@@ -374,10 +374,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # add this entry to the parent map.
                     parent_ies[(dirname + b'/' + name).strip(b'/')] = inv_entry
                 elif kind == 'tree-reference':
-                    if not self._repo_supports_tree_reference:
-                        raise errors.UnsupportedOperation(
-                            self._generate_inventory,
-                            self.branch.repository)
                     inv_entry.reference_revision = link_or_sha1 or None
                 elif kind != 'symlink':
                     raise AssertionError("unknown kind %r" % kind)

@@ -317,7 +317,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.id2path)
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None, follow_tree_references=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -341,6 +341,10 @@ class Tree(object):
         The yield order (ignoring root) would be::
 
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
+
+        If follow_tree_references is enabled then nested trees are included as if
+        they were a part of the tree. If is disabled then TreeReference
+        objects (without any children) are yielded.
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 

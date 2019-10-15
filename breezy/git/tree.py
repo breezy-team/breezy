@@ -297,7 +297,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         try:
             info = self._submodule_info()[relpath]
         except KeyError:
-            nested_repo_transport = self._repository.controldir.control_transport.clone(
+            nested_repo_transport = self._repository.controldir.user_transport.clone(
                 relpath.decode('utf-8'))
         else:
             nested_repo_transport = self._repository.controldir.control_transport.clone(
@@ -526,7 +526,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 yield self._get_file_ie(store, child_path, name, mode, hexsha,
                                         file_id)
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None,
+                            follow_tree_references=False):
         if self.tree is None:
             return
         if specific_files is not None:
@@ -547,6 +548,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     continue
                 child_path = posixpath.join(path, name)
                 child_path_decoded = child_path.decode('utf-8')
+                if follow_tree_references and S_ISGITLINK(mode):
+                    mode = stat.S_IFDIR
+                    store = self._get_submodule_store(child_path)
+                    hexsha = store[hexsha].tree
                 if stat.S_ISDIR(mode):
                     if (specific_files is None or
                             any([p for p in specific_files if p.startswith(
@@ -1217,7 +1222,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 else:
                     yield (posixpath.join(basepath, path), value)
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None,
+                            follow_tree_references=False):
         with self.lock_read():
             if specific_files is not None:
                 specific_files = set(specific_files)
@@ -1228,7 +1234,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             if specific_files is None or u"" in specific_files:
                 ret[(u"", u"")] = root_ie
             dir_ids = {u"": root_ie.file_id}
-            for path, value in self._recurse_index_entries():
+            for path, value in self._recurse_index_entries(
+                    follow_tree_references=follow_tree_references):
                 if self.mapping.is_special_file(path):
                     continue
                 path = path.decode("utf-8")

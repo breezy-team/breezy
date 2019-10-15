@@ -76,7 +76,8 @@ class TestJoin(tests.TestCaseWithTransport):
             self.assertEqual('file1', sub_tree.id2path(b'file1-id'))
             self.assertEqual(subtree_root_id, sub_tree.path2id(''))
             self.assertEqual('', sub_tree.id2path(subtree_root_id))
-            self.assertIs(None, base_tree.path2id('subtree/file1'))
+            self.assertEqual(
+                sub_tree.path2id('file1'), base_tree.path2id('subtree/file1'))
 
         base_tree.lock_read()
         self.addCleanup(base_tree.unlock)

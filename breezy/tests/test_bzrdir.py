@@ -892,10 +892,9 @@ class ChrootedTests(TestCaseWithTransport):
         # by bzrdir.BzrDirMeta1.destroy_workingtree when it ignores the
         # [DeletingParent('Not deleting', u'subtree', None)] conflict). See bug
         # #634470.  -- vila 20100909
-        self.assertRaises(errors.NotBranchError,
-                          tree.controldir.sprout, 'repo/tree2')
-#        self.assertPathExists('repo/tree2/subtree')
-#        self.assertPathDoesNotExist('repo/tree2/subtree/file')
+        tree.controldir.sprout('repo/tree2')
+        self.assertPathExists('repo/tree2/subtree')
+        self.assertPathDoesNotExist('repo/tree2/subtree/file')
 
     def make_foo_bar_baz(self):
         foo = bzrdir.BzrDir.create_branch_convenience('foo').controldir
