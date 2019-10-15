@@ -475,6 +475,16 @@ class DirStateWorkingTree(InventoryWorkingTree):
             state = self.current_dirstate()
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
+                if 'evil' in debug.debug_flags:
+                    trace.mutter_callsite(
+                        2, "Tree.id2path scans all nested trees.")
+                for nested_path in self.iter_references():
+                    nested_tree = self.get_nested_tree(nested_path)
+                    try:
+                        return osutils.pathjoin(
+                            nested_path, nested_tree.id2path(file_id))
+                    except errors.NoSuchId:
+                        pass
                 raise errors.NoSuchId(tree=self, file_id=file_id)
             path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
             return path_utf8.decode('utf8')
@@ -1739,11 +1749,18 @@ class DirStateRevisionTree(InventoryTree):
 
     def id2path(self, file_id):
         "Convert a file-id to a path."
-        entry = self._get_entry(file_id=file_id)
-        if entry == (None, None):
-            raise errors.NoSuchId(tree=self, file_id=file_id)
-        path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
-        return path_utf8.decode('utf8')
+        with self.lock_read():
+            entry = self._get_entry(file_id=file_id)
+            if entry == (None, None):
+                for nested_path in self.iter_references():
+                    nested_tree = self.get_nested_tree(nested_path)
+                    try:
+                        return osutils.pathjoin(nested_path, nested_tree.id2path(file_id))
+                    except errors.NoSuchId:
+                        pass
+                raise errors.NoSuchId(tree=self, file_id=file_id)
+            path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
+            return path_utf8.decode('utf8')
 
     def get_nested_tree(self, path):
         with self.lock_read():
@@ -2075,6 +2092,9 @@ class DirStateRevisionTree(InventoryTree):
         with self.lock_read():
             entry = self._get_entry(path=path)
             if entry == (None, None):
+                nested_tree, subpath = self.get_containing_nested_tree(path)
+                if nested_tree is not None:
+                    return nested_tree.path2id(subpath)
                 return None
             return entry[0][2]
 
