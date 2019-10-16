@@ -517,6 +517,8 @@ class LocalUpstreamBranchSource(UpstreamBranchSource):
 
     def __init__(self, local_branch):
         self.local_branch = local_branch
+        self.upstream_revision_map = {}
+        self.config = None
 
     @classmethod
     def from_controldir(cls, controldir):
