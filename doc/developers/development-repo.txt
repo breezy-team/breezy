@@ -89,14 +89,14 @@ If you're starting a project from scratch and wish to use a shared repository
 for branches, you can make it a ``development`` repository like this::
 
   cd my-repo
-  bzr init-repo --development .
+  bzr init-shared-repo --development .
   cd my-stuff
   bzr init
   bzr add
   bzr commit -m "initial import"
 
 In other words, use the normal sequence of commands but add the
-``--development`` option to the ``init-repo`` command.
+``--development`` option to the ``init-shared-repo`` command.
 
 Upgrading an existing branch or repository to development
 ---------------------------------------------------------
@@ -141,7 +141,7 @@ Here are the commands for using the ``upgrade`` approach::
 Here are the commands for the shared repository approach::
 
   cd my-repo
-  bzr init-repo --development .
+  bzr init-shared-repo --development .
   bzr branch my-source-branch my-new-branch
   cd my-new-branch
 

@@ -33,7 +33,7 @@ Making a branch
 First, get a local copy of Bazaar::
 
    $ cd $HOME
-   $ brz init-repo brz
+   $ brz init-shared-repo brz
    $ cd brz
    $ brz branch lp:brz brz.dev
 

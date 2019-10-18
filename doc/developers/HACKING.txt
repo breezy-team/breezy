@@ -87,7 +87,7 @@ First, get a local copy of the development mainline (See `Why make a local
 copy of bzr.dev?`_.)
 ::
 
- $ brz init-repo ~/bzr
+ $ brz init-shared-repo ~/bzr
  $ cd ~/bzr
  $ brz branch lp:brz bzr.dev
 

@@ -32,6 +32,10 @@ Bug Fixes
 .. Fixes for situations where brz would previously crash or give incorrect
    or undesirable results.
 
+ * Disable loading from entrypoints by default, since it can
+   significantly slow down startup on some platforms.
+   (Jelmer Vernooĳ, #1832868)
+
 Documentation
 *************
 
