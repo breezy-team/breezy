@@ -185,9 +185,37 @@ class GitDir(ControlDir):
             result.open_branch(name="").name == result_branch.name and
             isinstance(target_transport, LocalTransport) and
                 (result_repo is None or result_repo.make_working_trees())):
-            result.create_workingtree(
+            wt = result.create_workingtree(
                 accelerator_tree=accelerator_tree,
                 hardlink=hardlink, from_branch=result_branch)
+        else:
+            wt = None
+        if recurse == 'down':
+            basis = None
+            if wt is not None:
+                basis = wt.basis_tree()
+            elif result_branch is not None:
+                basis = result_branch.basis_tree()
+            elif source_branch is not None:
+                basis = source_branch.basis_tree()
+            if basis is not None:
+                subtrees = basis.iter_references()
+                submodule_info = basis._submodule_info()
+            else:
+                subtrees = []
+                submodule_info = {}
+            # TODO(jelmer): Open .gitmodules
+            for path in subtrees:
+                info = submodule_info.get(path.encode('utf-8'))
+                if info is None:
+                    trace.warning("Unable to find submodule info for %s", path)
+                    continue
+                target = urlutils.join(urlutils.split_segment_parameters(url)[0], urlutils.escape(path))
+                sublocation = _mod_branch.Branch.open(info[0])
+                sublocation.controldir.sprout(
+                    target, basis.get_reference_revision(path),
+                    force_new_repo=force_new_repo, recurse=recurse,
+                    stacked=stacked)
         return result
 
     def clone_on_transport(self, transport, revision_id=None,

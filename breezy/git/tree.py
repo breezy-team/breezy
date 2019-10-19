@@ -211,6 +211,10 @@ class GitTreeSubmodule(_mod_tree.TreeReference):
         self.reference_revision = reference_revision
 
     @property
+    def executable(self):
+        return False
+
+    @property
     def kind(self):
         return 'tree-reference'
 
@@ -614,8 +618,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
         """See RevisionTree.get_symlink_target."""
         (store, mode, hexsha) = self._lookup_path(path)
         if S_ISGITLINK(mode):
-            nested_repo = self._get_submodule_repository(path.encode('utf-8'))
-            return nested_repo.lookup_foreign_revision_id(hexsha)
+            try:
+                nested_repo = self._get_submodule_repository(path.encode('utf-8'))
+            except errors.NotBranchError:
+                return self.mapping.revision_id_foreign_to_bzr(hexsha)
+            else:
+                return nested_repo.lookup_foreign_revision_id(hexsha)
         else:
             return None
 
