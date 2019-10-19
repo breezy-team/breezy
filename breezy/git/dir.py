@@ -210,8 +210,10 @@ class GitDir(ControlDir):
                 if info is None:
                     trace.warning("Unable to find submodule info for %s", path)
                     continue
+                remote_url = info[0].decode('utf-8')
                 target = urlutils.join(urlutils.split_segment_parameters(url)[0], urlutils.escape(path))
-                sublocation = _mod_branch.Branch.open(info[0])
+                trace.note('Checking out submodule at %s to %s', remote_url, path)
+                sublocation = _mod_branch.Branch.open(remote_url)
                 sublocation.controldir.sprout(
                     target, basis.get_reference_revision(path),
                     force_new_repo=force_new_repo, recurse=recurse,

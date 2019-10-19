@@ -305,7 +305,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 relpath.decode('utf-8'))
         else:
             nested_repo_transport = self._repository.controldir.control_transport.clone(
-                posixpath.join('modules', info[1]))
+                posixpath.join('modules', info[1].decode('utf-8')))
         nested_controldir = _mod_controldir.ControlDir.open_from_transport(
             nested_repo_transport)
         return nested_controldir.find_repository()
