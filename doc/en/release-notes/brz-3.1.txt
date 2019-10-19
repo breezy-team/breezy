@@ -46,6 +46,11 @@ New Features
    have installed and speeds up import time since psutil brings in
    various other modules. (Jelmer Vernooĳ)
 
+ * The ``2a`` format now officially supports storing tree references.
+   It always partially supported storing tree reference data,
+   and would happily pull in tree reference data from other repository
+   formats. (Jelmer Vernooĳ)
+
 Improvements
 ************
 
