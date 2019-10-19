@@ -368,6 +368,14 @@ class StackedUpstreamSource(UpstreamSource):
                 versions.add(version)
         return list(sorted(versions))
 
+    def version_as_revisions(self, package, version, tarballs=None):
+        for source in self._sources:
+            try:
+                return source.version_as_revisions(package, version, tarballs)
+            except PackageVersionNotPresent:
+                pass
+        raise PackageVersionNotPresent(package, version, self)
+
 
 def gather_orig_files(package, version, path):
     """Grab the orig files for a particular package.

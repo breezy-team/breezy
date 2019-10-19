@@ -1,3 +1,9 @@
+breezy-debian (2.8.32) UNRELEASED; urgency=medium
+
+  * Support plain local branch source in revspec.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 Oct 2019 14:08:55 +0000
+
 breezy-debian (2.8.31) unstable; urgency=medium
 
   * Fix compatibility with Breezy 3.1.
