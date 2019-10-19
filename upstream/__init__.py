@@ -376,6 +376,12 @@ class StackedUpstreamSource(UpstreamSource):
                 pass
         raise PackageVersionNotPresent(package, version, self)
 
+    def has_version(self, package, version, tarballs=None):
+        for source in self._sources:
+            if source.has_version(package, version, tarballs):
+                return True
+        return False
+
 
 def gather_orig_files(package, version, path):
     """Grab the orig files for a particular package.
