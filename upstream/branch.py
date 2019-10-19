@@ -440,6 +440,14 @@ class UpstreamBranchSource(UpstreamSource):
             raise MultipleUpstreamTarballsNotSupported()
         return {None: self.version_as_revision(package, version, tarballs)}
 
+    def has_version(self, package, version, tarballs=None):
+        try:
+            self.version_as_revision(package, version, tarballs)
+        except PackageVersionNotPresent:
+            return False
+        else:
+            return True
+
     def get_latest_version(self, package, current_version):
         return self.get_version(
             package, current_version, self.upstream_branch.last_revision())
