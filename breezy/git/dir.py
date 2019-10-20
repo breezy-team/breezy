@@ -213,7 +213,8 @@ class GitDir(ControlDir):
                 remote_url = info[0].decode('utf-8')
                 target = urlutils.join(urlutils.split_segment_parameters(url)[0], urlutils.escape(path))
                 trace.note('Checking out submodule at %s to %s', remote_url, path)
-                sublocation = _mod_branch.Branch.open(remote_url)
+                sublocation = _mod_branch.Branch.open(
+                    remote_url, possible_transports=possible_transports)
                 sublocation.controldir.sprout(
                     target, basis.get_reference_revision(path),
                     force_new_repo=force_new_repo, recurse=recurse,
