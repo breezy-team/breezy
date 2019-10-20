@@ -36,6 +36,9 @@ Bug Fixes
    significantly slow down startup on some platforms.
    (Jelmer Vernooĳ, #1832868)
 
+ * Fix file graph operations on Git repositories.
+   (Jelmer Vernooĳ, #1847913)
+
 Documentation
 *************
 
