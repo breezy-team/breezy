@@ -57,7 +57,9 @@ def fixup_broken_git_url(url):
         netloc = host
         if ":" in netloc:
             netloc = "[%s]" % netloc
-        if credentials is not None:
+        if (credentials is not None and
+            not (credentials == 'git' and
+                 scheme not in ('git', 'http', 'https'))):
             netloc = '%s@%s' % (credentials, netloc)
         if host == 'salsa.debian.org':
             scheme = 'https'
