@@ -46,6 +46,11 @@ New Features
    have installed and speeds up import time since psutil brings in
    various other modules. (Jelmer Vernooĳ)
 
+ * ``brz diff`` now has a --color argument that can write
+   color diff output. This is based on the cdiff code in
+   bzrtools by Aaron Bentley.
+   (Jelmer Vernooĳ, #376594)
+
 Improvements
 ************
 
