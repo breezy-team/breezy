@@ -37,14 +37,14 @@ def has_ansi_colors():
     return bool(curses.tigetstr('setaf'))
 
 colors = {
-"black": "0",
-"red": "1",
-"green": "2",
-"yellow": "3",
-"blue": "4",
-"magenta": "5",
-"cyan": "6",
-"white": "7"
+    "black": b"0",
+    "red": b"1",
+    "green": b"2",
+    "yellow": b"3",
+    "blue": b"4",
+    "magenta": b"5",
+    "cyan": b"6",
+    "white": b"7"
 }
 
 def colorstring(text, fgcolor=None, bgcolor=None):
@@ -62,17 +62,17 @@ def colorstring(text, fgcolor=None, bgcolor=None):
 
     if fgcolor:
         if fgcolor.startswith('dark'):
-            code.append('0')
+            code.append(b'0')
             fgcolor = fgcolor[4:]
         else:
-            code.append('1')
+            code.append(b'1')
 
-        code.append('3' + colors[fgcolor])
+        code.append(b'3' + colors[fgcolor])
 
     if bgcolor:
-        code.append('4' + colors[bgcolor])
+        code.append(b'4' + colors[bgcolor])
 
-    return "".join(("\033[", ';'.join(code), "m", text, "\033[0m"))
+    return b"".join((b"\033[", b';'.join(code), b"m", text, b"\033[0m"))
 
 
 def term_title(title):

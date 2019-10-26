@@ -29,13 +29,13 @@ from .patches import (hunk_from_header, InsertLine, RemoveLine,
 class LineParser(object):
 
     def parse_line(self, line):
-        if line.startswith("@"):
+        if line.startswith(b"@"):
             return hunk_from_header(line)
-        elif line.startswith("+"):
+        elif line.startswith(b"+"):
             return InsertLine(line[1:])
-        elif line.startswith("-"):
+        elif line.startswith(b"-"):
             return RemoveLine(line[1:])
-        elif line.startswith(" "):
+        elif line.startswith(b" "):
             return ContextLine(line[1:])
         else:
             return line
@@ -106,15 +106,17 @@ class DiffWriter(object):
                              self.colors['longline']),
                         (bad_ws_match.group(3), self.colors['trailingspace'])
                     )) + bad_ws_match.group(4)
-            string = terminal.colorstring(str(item), color)
+            if not isinstance(item, bytes):
+                item = item.as_bytes()
+            string = terminal.colorstring(item, color)
         else:
             string = str(item)
         self.target.write(string)
 
     def write(self, text):
-        newstuff = text.split('\n')
+        newstuff = text.split(b'\n')
         for newchunk in newstuff[:-1]:
-            self._writeline(''.join(self.chunks + [newchunk, '\n']))
+            self._writeline(b''.join(self.chunks + [newchunk, b'\n']))
             self.chunks = []
         self.chunks = [newstuff[-1]]
 
@@ -129,7 +131,7 @@ class DiffWriter(object):
             line_class = 'diffstuff'
             self._analyse_old_new()
         elif isinstance(item, HunkLine):
-            bad_ws_match = re.match(r'^([\t]*)(.*?)([\t ]*)(\r?\n)$',
+            bad_ws_match = re.match(br'^([\t]*)(.*?)([\t ]*)(\r?\n)$',
                                     item.contents)
             has_leading_tabs = bool(bad_ws_match.group(1))
             has_trailing_whitespace = bool(bad_ws_match.group(3))
@@ -139,7 +141,7 @@ class DiffWriter(object):
                 if has_trailing_whitespace:
                     self.added_trailing_whitespace += 1
                 if (len(bad_ws_match.group(2)) > self.max_line_len and
-                    not item.contents.startswith('++ ')):
+                    not item.contents.startswith(b'++ ')):
                     self.long_lines += 1
                 line_class = 'newtext'
                 self._new_lines.append(item)
@@ -148,7 +150,7 @@ class DiffWriter(object):
                 self._old_lines.append(item)
             else:
                 line_class = 'plain'
-        elif isinstance(item, basestring) and item.startswith('==='):
+        elif isinstance(item, bytes) and item.startswith(b'==='):
             line_class = 'metaline'
             self._analyse_old_new()
         else:
@@ -162,7 +164,7 @@ class DiffWriter(object):
     @staticmethod
     def _matched_lines(old, new):
         matcher = patiencediff.PatienceSequenceMatcher(None, old, new)
-        matched_lines = sum (n for i, j, n in matcher.get_matching_blocks())
+        matched_lines = sum(n for i, j, n in matcher.get_matching_blocks())
         return matched_lines
 
     def _analyse_old_new(self):
@@ -181,26 +183,3 @@ class DiffWriter(object):
             self.spurious_whitespace += no_ws_matched - ws_matched
             self.target.write('^ Spurious whitespace change above.\n')
         self._old_lines, self._new_lines = ([], [])
-
-
-def colordiff(color, check_style, *args, **kwargs):
-    real_stdout = sys.stdout
-    dw = DiffWriter(real_stdout, check_style, color)
-    sys.stdout = dw
-    try:
-        get_cmd_object('diff').run(*args, **kwargs)
-    finally:
-        sys.stdout = real_stdout
-    if check_style:
-        if dw.added_leading_tabs > 0:
-            trace.warning('%d new line(s) have leading tabs.' %
-                          dw.added_leading_tabs)
-        if dw.added_trailing_whitespace > 0:
-            trace.warning('%d new line(s) have trailing whitespace.' %
-                          dw.added_trailing_whitespace)
-        if dw.long_lines > 0:
-            trace.warning('%d new line(s) exceed(s) %d columns.' %
-                          (dw.long_lines, dw.max_line_len))
-        if dw.spurious_whitespace > 0:
-            trace.warning('%d line(s) have spurious whitespace changes' %
-                          dw.spurious_whitespace)
