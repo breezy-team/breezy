@@ -208,8 +208,7 @@ def parse_github_branch_url(branch):
 def github_url_to_bzr_url(url, branch_name):
     if not PY3:
         branch_name = branch_name.encode('utf-8')
-    return urlutils.join_segment_parameters(
-        git_url_to_bzr_url(url), {"branch": branch_name})
+    return git_url_to_bzr_url(url, branch_name)
 
 
 class GitHub(Hoster):
