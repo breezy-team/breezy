@@ -238,8 +238,7 @@ class GitLabMergeProposal(MergeProposal):
 def gitlab_url_to_bzr_url(url, name):
     if not PY3:
         name = name.encode('utf-8')
-    return urlutils.join_segment_parameters(
-        git_url_to_bzr_url(url), {"branch": name})
+    return git_url_to_bzr_url(url, branch=name)
 
 
 class GitLab(Hoster):
