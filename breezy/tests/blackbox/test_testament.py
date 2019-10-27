@@ -52,6 +52,7 @@ class TestTestament(TestamentSetup):
     def test_testament_non_ascii(self):
         self.wt.commit(u"Non \xe5ssci message")
         long_out, err = self.run_bzr('testament --long')
+        long_out, err = self.run_bzr('testament --long', encoding='ascii')
         self.assertEqualDiff(err, '')
         short_out, err = self.run_bzr('testament')
         self.assertEqualDiff(err, '')
