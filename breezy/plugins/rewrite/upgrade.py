@@ -154,7 +154,8 @@ def create_upgrade_plan(repository, generate_rebase_map, determine_new_revid,
 
     plan = generate_transpose_plan(graph.iter_ancestry(heads), upgrade_map,
       graph, determine_new_revid)
-    def remove_parents((oldrevid, (newrevid, parents))):
+    def remove_parents(entry):
+        (oldrevid, (newrevid, parents)) = entry
         return (oldrevid, newrevid)
     upgrade_map.update(dict(map(remove_parents, plan.iteritems())))
 

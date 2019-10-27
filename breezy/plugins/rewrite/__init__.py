@@ -28,11 +28,11 @@ from ...commands import plugin_cmds
 
 from ...bzr.bzrdir import BzrFormat
 
-BzrFormat.register_feature("rebase-v1")
+BzrFormat.register_feature(b"rebase-v1")
 
 from ...i18n import load_plugin_translations
 translation = load_plugin_translations("bzr-rewrite")
-gettext = translation.ugettext
+gettext = translation.gettext
 
 for cmd in ['rebase', 'rebase_abort', 'rebase_continue', 'rebase_todo',
             'replay', 'pseudonyms', 'rebase_foreign']:
@@ -63,7 +63,8 @@ def show_rebase_summary(params):
 
 from ...hooks import install_lazy_named_hook
 
-install_lazy_named_hook('breezy.status', 'hooks', 'post_status',
+install_lazy_named_hook(
+    'breezy.status', 'hooks', 'post_status',
     show_rebase_summary, 'rewrite status')
 
 

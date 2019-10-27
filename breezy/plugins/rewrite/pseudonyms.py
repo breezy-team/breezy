@@ -19,12 +19,12 @@
 from __future__ import absolute_import
 
 from collections import defaultdict
-import urllib
 
 from breezy import (
     errors,
     foreign,
     ui,
+    urlutils,
     )
 
 
@@ -84,7 +84,7 @@ def _extract_cscvs(rev):
     yield ("svn", "%s:%s:%s" % (
          rev.properties["cscvs-svn-repository-uuid"],
          rev.properties["cscvs-svn-revision-number"],
-         urllib.quote(rev.properties["cscvs-svn-branch-path"].strip("/"))))
+         urlutils.quote(rev.properties["cscvs-svn-branch-path"].strip("/"))))
 
 
 def _extract_git_svn_id(rev):
@@ -93,7 +93,7 @@ def _extract_git_svn_id(rev):
     (full_url, revnum, uuid) = parse_git_svn_id(rev.properties['git-svn-id'])
     branch_path = svn_branch_path_finder.find_branch_path(uuid, full_url)
     if branch_path is not None:
-        yield ("svn", "%s:%d:%s" % (uuid, revnum, urllib.quote(branch_path)))
+        yield ("svn", "%s:%d:%s" % (uuid, revnum, urlutils.quote(branch_path)))
 
 
 def _extract_foreign_revision(rev):

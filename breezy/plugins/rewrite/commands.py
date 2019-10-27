@@ -48,8 +48,8 @@ def finish_rebase(state, wt, replace_map, replayer):
         rebase(wt.branch.repository, replace_map, replayer)
     except ConflictsInTree:
         raise BzrCommandError(gettext("A conflict occurred replaying a commit."
-            " Resolve the conflict and run 'bzr rebase-continue' or "
-            "run 'bzr rebase-abort'."))
+            " Resolve the conflict and run 'brz rebase-continue' or "
+            "run 'brz rebase-abort'."))
     # Remove plan file
     state.remove_plan()
 
@@ -76,12 +76,12 @@ class cmd_rebase(Command):
 
     Each revision that is replayed may cause conflicts in the tree. If this
     happens the command will stop and allow you to fix them up. Resolve the
-    commits as you would for a merge, and then run 'bzr resolve' to marked
+    commits as you would for a merge, and then run 'brz resolve' to marked
     them as resolved. Once you have resolved all the conflicts you should
-    run 'bzr rebase-continue' to continue the rebase operation.
+    run 'brz rebase-continue' to continue the rebase operation.
 
     If conflicts are encountered and you decide that you do not wish to continue
-    you can run 'bzr rebase-abort'.
+    you can run 'brz rebase-abort'.
 
     The '--onto' option allows you to specify a different revision in the
     target branch to start at when replaying the revisions. This means that
@@ -142,7 +142,7 @@ class cmd_rebase(Command):
             # Abort if there already is a plan file
             if state.has_plan():
                 raise BzrCommandError(gettext("A rebase operation was interrupted. "
-                    "Continue using 'bzr rebase-continue' or abort using 'bzr "
+                    "Continue using 'brz rebase-continue' or abort using 'brz "
                     "rebase-abort'"))
 
             start_revid = None
@@ -183,7 +183,7 @@ class cmd_rebase(Command):
                 rev_spec = RevisionSpec.from_string(onto)
                 onto = rev_spec.as_revision_id(upstream)
 
-            wt.branch.repository.fetch(upstream_repository, onto)
+            wt.branch.repository.fetch(upstream_repository, revision_id=onto)
 
             if stop_revid is None:
                 stop_revid = wt.branch.last_revision()
@@ -198,7 +198,7 @@ class cmd_rebase(Command):
                     self.outf.write(gettext("Base branch is descendant of current "
                         "branch. Pulling instead.\n"))
                     if not dry_run:
-                        wt.pull(upstream, onto)
+                        wt.pull(upstream, stop_revision=onto)
                     return
             # else: include extra revisions needed to make start_revid mean
             # something.
@@ -282,7 +282,7 @@ class cmd_rebase_continue(Command):
             if len(wt.conflicts()) != 0:
                 raise BzrCommandError(gettext("There are still conflicts present. "
                                       "Resolve the conflicts and then run "
-                                      "'bzr resolve' and try again."))
+                                      "'brz resolve' and try again."))
             # Read plan file
             try:
                 replace_map = state.read_plan()[1]
@@ -417,7 +417,7 @@ class cmd_rebase_foreign(Command):
     This will change the identity of revisions whose parents
     were mapped from revisions in the other version control system.
 
-    You are recommended to run "bzr check" in the local repository
+    You are recommended to run "brz check" in the local repository
     after running this command.
     """
     takes_args = ['new_base?']

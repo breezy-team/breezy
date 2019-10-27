@@ -71,30 +71,24 @@ class MapTree(object):
         except KeyError:
             return file_id
 
-    def get_file_sha1(self, file_id, path=None):
+    def get_file_sha1(self, path, file_id=None):
         "See Tree.get_file_sha1()."""
-        return self.oldtree.get_file_sha1(file_id=self.old_id(file_id),
-                                          path=path)
+        return self.oldtree.get_file_sha1(path)
 
-    def get_file_with_stat(self, file_id, path=None):
+    def get_file_with_stat(self, path, file_id=None):
         "See Tree.get_file_with_stat()."""
         if getattr(self.oldtree, "get_file_with_stat", None) is not None:
-            return self.oldtree.get_file_with_stat(file_id=self.old_id(file_id),
-                                               path=path)
+            return self.oldtree.get_file_with_stat(path=path)
         else:
-            return self.get_file(file_id, path), None
+            return self.get_file(path), None
 
-    def get_file(self, file_id, path=None):
+    def get_file(self, path, file_id=None):
         "See Tree.get_file()."""
-        if path is None:
-            return self.oldtree.get_file(self.old_id(file_id=file_id))
-        else:
-            return self.oldtree.get_file(self.old_id(file_id=file_id), path)
+        return self.oldtree.get_file(path)
 
-    def is_executable(self, file_id, path=None):
+    def is_executable(self, path, file_id=None):
         "See Tree.is_executable()."""
-        return self.oldtree.is_executable(self.old_id(file_id=file_id),
-                                          path=path)
+        return self.oldtree.is_executable(path)
 
     def has_filename(self, filename):
         "See Tree.has_filename()."""
@@ -128,6 +122,3 @@ class MapTree(object):
 
     def id2path(self, file_id):
         return self.oldtree.id2path(self.old_id(file_id=file_id))
-
-    def has_id(self, file_id):
-        return self.oldtree.has_id(self.old_id(file_id=file_id))

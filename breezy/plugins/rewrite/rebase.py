@@ -37,6 +37,7 @@ from ...merge import Merger
 from ...revision import NULL_REVISION
 from ...trace import mutter
 from ...tsort import topo_sort
+from ...tree import TreeChange
 from ... import ui
 
 from .maptree import (
@@ -101,41 +102,41 @@ class RebaseState1(RebaseState):
     def has_plan(self):
         """See `RebaseState`."""
         try:
-            return self.transport.get_bytes(REBASE_PLAN_FILENAME) != ''
+            return self.transport.get_bytes(REBASE_PLAN_FILENAME) != b''
         except NoSuchFile:
             return False
 
     def read_plan(self):
         """See `RebaseState`."""
         text = self.transport.get_bytes(REBASE_PLAN_FILENAME)
-        if text == '':
+        if text == b'':
             raise NoSuchFile(REBASE_PLAN_FILENAME)
         return unmarshall_rebase_plan(text)
 
     def write_plan(self, replace_map):
         """See `RebaseState`."""
-        self.wt.update_feature_flags({"rebase-v1": "write-required"})
+        self.wt.update_feature_flags({b"rebase-v1": b"write-required"})
         content = marshall_rebase_plan(self.wt.branch.last_revision_info(),
             replace_map)
-        assert type(content) == str
+        assert isinstance(content, bytes)
         self.transport.put_bytes(REBASE_PLAN_FILENAME, content)
 
     def remove_plan(self):
         """See `RebaseState`."""
-        self.wt.update_feature_flags({"rebase-v1": None})
-        self.transport.put_bytes(REBASE_PLAN_FILENAME, '')
+        self.wt.update_feature_flags({b"rebase-v1": None})
+        self.transport.put_bytes(REBASE_PLAN_FILENAME, b'')
 
     def write_active_revid(self, revid):
         """See `RebaseState`."""
         if revid is None:
             revid = NULL_REVISION
-        assert type(revid) == str
+        assert isinstance(revid, bytes)
         self.transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, revid)
 
     def read_active_revid(self):
         """See `RebaseState`."""
         try:
-            text = self.transport.get_bytes(REBASE_CURRENT_REVID_FILENAME).rstrip("\n")
+            text = self.transport.get_bytes(REBASE_CURRENT_REVID_FILENAME).rstrip(b"\n")
             if text == NULL_REVISION:
                 return None
             return text
@@ -150,12 +151,12 @@ def marshall_rebase_plan(last_rev_info, replace_map):
     :param replace_map: Replace map (old revid -> (new revid, new parents))
     :return: string
     """
-    ret = "# Bazaar rebase plan %d\n" % REBASE_PLAN_VERSION
-    ret += "%d %s\n" % last_rev_info
+    ret = b"# Bazaar rebase plan %d\n" % REBASE_PLAN_VERSION
+    ret += b"%d %s\n" % last_rev_info
     for oldrev in replace_map:
         (newrev, newparents) = replace_map[oldrev]
-        ret += "%s %s" % (oldrev, newrev) + \
-            "".join([" %s" % p for p in newparents]) + "\n"
+        ret += b"%s %s" % (oldrev, newrev) + \
+            b"".join([b" %s" % p for p in newparents]) + b"\n"
     return ret
 
 
@@ -165,19 +166,19 @@ def unmarshall_rebase_plan(text):
     :param text: Text to parse
     :return: Tuple with last revision info, replace map.
     """
-    lines = text.split('\n')
+    lines = text.split(b'\n')
     # Make sure header is there
-    if lines[0] != "# Bazaar rebase plan %d" % REBASE_PLAN_VERSION:
+    if lines[0] != b"# Bazaar rebase plan %d" % REBASE_PLAN_VERSION:
         raise UnknownFormatError(lines[0])
 
-    pts = lines[1].split(" ", 1)
+    pts = lines[1].split(b" ", 1)
     last_revision_info = (int(pts[0]), pts[1])
     replace_map = {}
     for l in lines[2:]:
-        if l == "":
+        if l == b"":
             # Skip empty lines
             continue
-        pts = l.split(" ")
+        pts = l.split(b" ")
         replace_map[pts[0]] = (pts[1], tuple(pts[2:]))
     return (last_revision_info, replace_map)
 
@@ -282,15 +283,15 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
     children = {}
     parent_map = {}
     for r, ps in ancestry:
-        if not children.has_key(r):
+        if r not in children:
             children[r] = []
         if ps is None: # Ghost
             continue
         parent_map[r] = ps
-        if not children.has_key(r):
+        if r not in children:
             children[r] = []
         for p in ps:
-            if not children.has_key(p):
+            if p not in children:
                 children[p] = []
             children[p].append(r)
 
@@ -316,7 +317,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
             for c in children[r]:
                 if c in renames:
                     continue
-                if replace_map.has_key(c):
+                if c in replace_map:
                     parents = replace_map[c][1]
                 else:
                     parents = parent_map[c]
@@ -338,7 +339,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
 
     # Remove items from the map that already exist
     for revid in renames:
-        if replace_map.has_key(revid):
+        if revid in replace_map:
             del replace_map[revid]
 
     return replace_map
@@ -381,14 +382,19 @@ def rebase(repository, replace_map, revision_rewriter):
 
 
 def wrap_iter_changes(old_iter_changes, map_tree):
-    for (file_id, path, changed_content, versioned, (old_parent, new_parent), name, kind,
-            executable) in old_iter_changes:
-        if old_parent is not None:
-            old_parent = map_tree.new_id(old_parent)
-        if new_parent is not None:
-            new_parent = map_tree.new_id(new_parent)
-        yield (map_tree.new_id(file_id), path, changed_content, versioned,
-                (old_parent, new_parent), name, kind, executable)
+    for change in old_iter_changes:
+        if change.parent_id[0] is not None:
+            old_parent = map_tree.new_id(change.parent_id[0])
+        else:
+            old_parent = change.parent_id[0]
+        if change.parent_id[1] is not None:
+            new_parent = map_tree.new_id(change.parent_id[1])
+        else:
+            new_parent = change.parent_id[1]
+        yield TreeChange(map_tree.new_id(change.file_id), change.path,
+                change.changed_content, change.versioned,
+                (old_parent, new_parent), change.name, change.kind,
+                change.executable)
 
 
 class CommitBuilderRevisionRewriter(object):
@@ -418,7 +424,7 @@ class CommitBuilderRevisionRewriter(object):
         oldrev = self.repository.get_revision(oldrevid)
 
         revprops = dict(oldrev.properties)
-        revprops[REVPROP_REBASE_OF] = oldrevid
+        revprops[REVPROP_REBASE_OF] = oldrevid.decode('utf-8')
 
         # Check what new_ie.file_id should be
         # use old and new parent trees to generate new_id map
@@ -449,7 +455,7 @@ class CommitBuilderRevisionRewriter(object):
             revprops=revprops, revision_id=newrevid,
             config_stack=_mod_config.GlobalStack())
         try:
-            for (file_id, relpath, fs_hash) in builder.record_iter_changes(
+            for (relpath, fs_hash) in builder.record_iter_changes(
                     mappedtree, new_base, iter_changes):
                 pass
             builder.finish_inventory()
@@ -543,7 +549,7 @@ class WorkingTreeRevisionRewriter(object):
         :param newrevid: New revision id."""
         assert oldrev.revision_id != newrevid, "Invalid revid %r" % newrevid
         revprops = dict(oldrev.properties)
-        revprops[REVPROP_REBASE_OF] = oldrev.revision_id
+        revprops[REVPROP_REBASE_OF] = oldrev.revision_id.decode('utf-8')
         committer = self.wt.branch.get_config().username()
         authors = oldrev.get_apparent_authors()
         if oldrev.committer == committer:
@@ -574,8 +580,8 @@ def complete_revert(wt, newparents):
     delta = wt.changes_from(newtree)
     wt.branch.generate_revision_history(newparents[0])
     wt.set_parent_ids([r for r in newparents[:1] if r != NULL_REVISION])
-    for (f, _, _) in delta.added:
-        abs_path = wt.abspath(f)
+    for change in delta.added:
+        abs_path = wt.abspath(change.path[1])
         if osutils.lexists(abs_path):
             if osutils.isdir(abs_path):
                 osutils.rmtree(abs_path)

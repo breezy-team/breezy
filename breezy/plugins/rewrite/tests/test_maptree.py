@@ -74,20 +74,6 @@ class EmptyMapTreeTests(TestCaseWithTransport):
         self.assertEquals("foo",
                 self.maptree.id2path(self.maptree.path2id("foo")))
 
-    def test_has_id(self):
-        self.oldtree.lock_write()
-        self.addCleanup(self.oldtree.unlock)
-        builder = TreeBuilder()
-        builder.start_tree(self.oldtree)
-        builder.build(['foo'])
-        builder.build(['bar'])
-        builder.build(['bla'])
-        builder.finish_tree()
-        self.maptree = MapTree(self.oldtree, {})
-        self.assertTrue(self.maptree.has_id(
-                              self.maptree.path2id("foo")))
-        self.assertFalse(self.maptree.has_id("bar"))
-
 
 class MapFileIdTests(TestCase):
 

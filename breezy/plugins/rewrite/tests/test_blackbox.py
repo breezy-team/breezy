@@ -23,33 +23,22 @@ from ....tests.blackbox import ExternalBase
 
 class TestRebaseSimple(ExternalBase):
 
-    if not getattr(ExternalBase, "assertPathDoesNotExist", None):
-        # Compatibility with bzr < 2.4
-        def assertPathDoesNotExist(self, path):
-            self.failIfExists(path)
-
-        def assertPathExists(self, path):
-            self.failUnlessExists(path)
-
     def make_file(self, name, contents):
-        f = open(name, 'wb')
-        try:
+        with open(name, 'w' + ('b' if isinstance(contents, bytes) else '')) as f:
             f.write(contents)
-        finally:
-            f.close()
 
     def setUp(self):
         super(TestRebaseSimple, self).setUp()
         os.mkdir('main')
         os.chdir('main')
         self.run_bzr('init')
-        self.make_file('hello', "hi world")
+        self.make_file('hello', b"hi world")
         self.run_bzr('add')
         self.run_bzr('commit -m bla')
         self.run_bzr('branch . ../feature')
 
     def test_no_upstream_branch(self):
-        self.run_bzr_error(['bzr: ERROR: No upstream branch specified.\n'],
+        self.run_bzr_error(['brz: ERROR: No upstream branch specified.\n'],
                            'rebase')
 
     def test_notneeded(self):
@@ -86,7 +75,7 @@ class TestRebaseSimple(ExternalBase):
                           Branch.open("../main").last_revision_info())
 
     def test_no_pending_merges(self):
-        self.run_bzr_error(['bzr: ERROR: No pending merges present.\n'],
+        self.run_bzr_error(['brz: ERROR: No pending merges present.\n'],
                            ['rebase', '--pending-merges'])
 
     def test_pending_merges(self):
@@ -176,7 +165,7 @@ class TestRebaseSimple(ExternalBase):
         self.make_file('hello', "other data")
         self.run_bzr('commit -m this')
         self.run_bzr_error([
-            'Text conflict in hello\n1 conflicts encountered.\nbzr: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'bzr rebase-continue\' or run \'bzr rebase-abort\'.',
+            'Text conflict in hello\n1 conflicts encountered.\nbrz: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'brz rebase-continue\' or run \'brz rebase-abort\'.',
             ], ['rebase', '../main'])
 
     def test_conflicting_abort(self):
@@ -186,7 +175,7 @@ class TestRebaseSimple(ExternalBase):
         self.make_file('hello', "other data")
         self.run_bzr('commit -m this')
         old_log = self.run_bzr('log')[0]
-        self.run_bzr_error(['Text conflict in hello\n1 conflicts encountered.\nbzr: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'bzr rebase-continue\' or run \'bzr rebase-abort\'.\n'], ['rebase', '../main'])
+        self.run_bzr_error(['Text conflict in hello\n1 conflicts encountered.\nbrz: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'brz rebase-continue\' or run \'brz rebase-abort\'.\n'], ['rebase', '../main'])
         self.assertEquals('', self.run_bzr('rebase-abort')[0])
         self.assertEquals(old_log, self.run_bzr('log')[0])
 
@@ -196,21 +185,21 @@ class TestRebaseSimple(ExternalBase):
         os.chdir('../feature')
         self.make_file('hello', "other data")
         self.run_bzr('commit -m this')
-        self.run_bzr_error(['Text conflict in hello\n1 conflicts encountered.\nbzr: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'bzr rebase-continue\' or run \'bzr rebase-abort\'.\n'], ['rebase', '../main'])
+        self.run_bzr_error(['Text conflict in hello\n1 conflicts encountered.\nbrz: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'brz rebase-continue\' or run \'brz rebase-abort\'.\n'], ['rebase', '../main'])
         self.run_bzr('resolved hello')
         self.assertEquals('', self.run_bzr('rebase-continue')[0])
         self.assertEquals('3\n', self.run_bzr('revno')[0])
 
     def test_continue_nothing(self):
-        self.run_bzr_error(['bzr: ERROR: No rebase to continue'],
+        self.run_bzr_error(['brz: ERROR: No rebase to continue'],
                            ['rebase-continue'])
 
     def test_abort_nothing(self):
-        self.run_bzr_error(['bzr: ERROR: No rebase to abort'],
+        self.run_bzr_error(['brz: ERROR: No rebase to abort'],
                            ['rebase-abort'])
 
     def test_todo_nothing(self):
-        self.run_bzr_error(['bzr: ERROR: No rebase in progress'],
+        self.run_bzr_error(['brz: ERROR: No rebase in progress'],
                            ['rebase-todo'])
 
     def test_onto(self):
@@ -237,7 +226,7 @@ class TestRebaseSimple(ExternalBase):
         self.make_file('hello', "hi world")
         self.run_bzr('add')
         self.run_bzr('commit -m x')
-        self.run_bzr_error(['bzr: ERROR: Branches have no common ancestor, and no merge base.*'],
+        self.run_bzr_error(['brz: ERROR: Branches have no common ancestor, and no merge base.*'],
                            ['rebase', '../main'])
 
     def test_verbose(self):
@@ -268,14 +257,14 @@ class TestRebaseSimple(ExternalBase):
         """Assume revid is a revid in the default form, and strip the part
         which would be random.
         """
-        return revid[:revid.rindex('-')]
+        return revid[:revid.rindex(b'-')]
 
     def test_always_rebase_merges(self):
         trunk = self.make_branch_and_tree('trunk')
         trunk.commit('base')
-        feature2 = trunk.bzrdir.sprout('feature2').open_workingtree()
+        feature2 = trunk.controldir.sprout('feature2').open_workingtree()
         revid2 = feature2.commit('change')
-        feature = trunk.bzrdir.sprout('feature').open_workingtree()
+        feature = trunk.controldir.sprout('feature').open_workingtree()
         feature.commit('change')
         feature.merge_from_branch(feature2.branch)
         feature.commit('merge')
@@ -295,9 +284,9 @@ class TestRebaseSimple(ExternalBase):
     def test_rebase_merge(self):
         trunk = self.make_branch_and_tree('trunk')
         trunk.commit('base')
-        feature2 = trunk.bzrdir.sprout('feature2').open_workingtree()
+        feature2 = trunk.controldir.sprout('feature2').open_workingtree()
         revid2 = feature2.commit('change')
-        feature = trunk.bzrdir.sprout('feature').open_workingtree()
+        feature = trunk.controldir.sprout('feature').open_workingtree()
         feature.commit('change')
         feature.merge_from_branch(feature2.branch)
         feature.commit('merge')
