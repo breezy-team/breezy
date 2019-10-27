@@ -46,6 +46,7 @@ from .propose import (
 
 
 _DEFAULT_FILES = ['/etc/python-gitlab.cfg', '~/.python-gitlab.cfg']
+DEFAULT_PAGE_SIZE = 50
 
 
 def mp_status_to_status(status):
@@ -347,7 +348,7 @@ class GitLab(Hoster):
             parameters['state'] = state
         if owner:
             parameters['owner_id'] = urlutils.quote(owner, '')
-        return self._list_paged(path, parameters, per_page=5)
+        return self._list_paged(path, parameters, per_page=DEFAULT_PAGE_SIZE)
 
     def _update_merge_request(self, project_id, iid, mr):
         path = 'projects/%s/merge_requests/%s' % (
