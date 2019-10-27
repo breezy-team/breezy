@@ -21,7 +21,7 @@ from __future__ import absolute_import
 import json
 import os
 
-from .propose import (
+from ...propose import (
     Hoster,
     HosterLoginRequired,
     MergeProposal,

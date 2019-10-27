@@ -38,7 +38,7 @@ from ...option import (
     )
 from ...sixish import text_type
 from ...trace import note
-from . import (
+from ... import (
     propose as _mod_propose,
     )
 
@@ -338,8 +338,7 @@ class cmd_my_merge_proposals(Command):
             closed='Closed merge proposals')]
 
     def run(self, status='open', verbose=False):
-        from .propose import hosters
-        for name, hoster_cls in hosters.items():
+        for name, hoster_cls in _mod_propose.hosters.items():
             for instance in hoster_cls.iter_instances():
                 for mp in instance.iter_my_proposals(status=status):
                     self.outf.write('%s\n' % mp.url)
@@ -364,6 +363,5 @@ class cmd_land_merge_proposal(Command):
         Option('message', help='Commit message to use.', type=str)]
 
     def run(self, url, message=None):
-        from .propose import get_proposal_by_url
-        proposal = get_proposal_by_url(url)
+        proposal = _mod_propose.get_proposal_by_url(url)
         proposal.merge(commit_message=message)

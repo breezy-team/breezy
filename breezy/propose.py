@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Breezy Developers
+# Copyright (C) 2018-2019 Breezy Developers
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from ... import (
+from . import (
     errors,
     hooks,
     registry,
@@ -333,12 +333,4 @@ def get_proposal_by_url(url):
 
 
 hosters = registry.Registry()
-hosters.register_lazy(
-    "launchpad", "breezy.plugins.propose.launchpad",
-    "Launchpad")
-hosters.register_lazy(
-    "github", "breezy.plugins.propose.github",
-    "GitHub")
-hosters.register_lazy(
-    "gitlab", "breezy.plugins.propose.gitlabs",
-    "GitLab")
+
