@@ -2,6 +2,7 @@ breezy (3.0.1-7) UNRELEASED; urgency=medium
 
   * Fix bash completion script. Closes: #941532
   * Set Rules-Requires-Root.
+  * Update standards version to 4.4.1, no changes needed.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 01 Oct 2019 22:51:29 +0000
 
