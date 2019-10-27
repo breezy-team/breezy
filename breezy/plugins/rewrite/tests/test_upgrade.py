@@ -16,11 +16,11 @@
 
 """Mapping upgrade tests."""
 
-from bzrlib.tests import (
+from ....tests import (
     TestCase,
     )
 
-from bzrlib.plugins.rewrite.upgrade import (
+from ..upgrade import (
     UpgradeChangesContent,
     )
 

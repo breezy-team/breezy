@@ -18,8 +18,8 @@
 
 import os
 
-from bzrlib.branch import Branch
-from bzrlib.tests.blackbox import ExternalBase
+from ....branch import Branch
+from ....tests.blackbox import ExternalBase
 
 class TestRebaseSimple(ExternalBase):
 

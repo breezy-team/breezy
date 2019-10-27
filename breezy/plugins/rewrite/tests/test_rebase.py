@@ -16,21 +16,21 @@
 
 """Tests for the rebase code."""
 
-from bzrlib.conflicts import ConflictList
-from bzrlib.errors import (
+from ....conflicts import ConflictList
+from ....errors import (
     UnknownFormatError,
     NoSuchFile,
     ConflictsInTree,
     )
-from bzrlib.graph import (
+from ....graph import (
     Graph,
     DictParentsProvider,
     )
-from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.tests.matchers import RevisionHistoryMatches
+from ....revision import NULL_REVISION
+from ....tests import TestCase, TestCaseWithTransport
+from ....tests.matchers import RevisionHistoryMatches
 
-from bzrlib.plugins.rewrite.rebase import (
+from .rebase import (
     marshall_rebase_plan,
     unmarshall_rebase_plan,
     CommitBuilderRevisionRewriter,

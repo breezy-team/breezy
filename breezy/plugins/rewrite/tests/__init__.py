@@ -17,20 +17,13 @@
 """Tests for bzr-rewrite."""
 
 
-def test_suite():
-    """Determine the testsuite for bzr-rewrite."""
-    from unittest import TestSuite
-    from bzrlib.tests import TestUtil
-
-    loader = TestUtil.TestLoader()
-    suite = TestSuite()
+def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'test_blackbox',
         'test_maptree',
         'test_pseudonyms',
         'test_rebase',
         'test_upgrade']
-    suite.addTest(loader.loadTestsFromModuleNames(
-                              ["%s.%s" % (__name__, i) for i in testmod_names]))
-
-    return suite
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests

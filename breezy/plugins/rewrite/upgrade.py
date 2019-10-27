@@ -19,15 +19,15 @@
 
 from __future__ import absolute_import
 
-from bzrlib import (
+from ... import (
     osutils,
     trace,
     ui,
     )
-from bzrlib.errors import (
+from ...errors import (
     BzrError,
     )
-from bzrlib.plugins.rewrite.rebase import (
+from .rebase import (
     generate_transpose_plan,
     CommitBuilderRevisionRewriter,
     rebase,

@@ -16,10 +16,10 @@
 
 """Tests for pseudonym handling."""
 
-from bzrlib.revision import Revision
-from bzrlib.tests import TestCase
+from ....revision import Revision
+from ....tests import TestCase
 
-from bzrlib.plugins.rewrite.pseudonyms import extract_foreign_revids
+from ..pseudonyms import extract_foreign_revids
 
 
 class ExtractForeignRevidTests(TestCase):

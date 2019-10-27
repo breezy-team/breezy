@@ -17,8 +17,6 @@
 """Tests for commitfromnews."""
 
 from __future__ import absolute_import
-
-
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [
         'test_committemplate',

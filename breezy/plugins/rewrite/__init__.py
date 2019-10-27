@@ -23,40 +23,21 @@ patches, the user can resolve the conflict and continue the rebase using the
 
 from __future__ import absolute_import
 
-from bzrlib import errors
-import bzrlib
-import bzrlib.api
-from bzrlib.commands import plugin_cmds
+from ... import errors
+from ...commands import plugin_cmds
 
-from bzrlib.bzrdir import BzrFormat
+from ...bzr.bzrdir import BzrFormat
 
 BzrFormat.register_feature("rebase-v1")
 
-from bzrlib.plugins.rewrite.info import (
-    bzr_commands,
-    bzr_plugin_version as version_info,
-    bzr_compatible_versions,
-    )
-
-from bzrlib.i18n import load_plugin_translations
+from ...i18n import load_plugin_translations
 translation = load_plugin_translations("bzr-rewrite")
 gettext = translation.ugettext
 
-if version_info[3] == 'final':
-    version_string = '%d.%d.%d' % version_info[:3]
-else:
-    version_string = '%d.%d.%d%s%d' % version_info
-__version__ = version_string
-__author__ = 'Jelmer Vernooij <jelmer@samba.org>'
-
-bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
-
-if __name__ == 'bzrlib.plugins.rebase':
-    raise ImportError(gettext("The rebase plugin has been renamed to rewrite. Please rename the directory in ~/.bazaar/plugins"))
-
-for cmd in bzr_commands:
+for cmd in ['rebase', 'rebase_abort', 'rebase_continue', 'rebase_todo',
+            'replay', 'pseudonyms', 'rebase_foreign']:
     plugin_cmds.register_lazy("cmd_%s" % cmd, [],
-        "bzrlib.plugins.rewrite.commands")
+        __name__ + ".commands")
 
 
 def show_rebase_summary(params):
@@ -67,7 +48,7 @@ def show_rebase_summary(params):
         return
     if not "rebase-v1" in features:
         return
-    from bzrlib.plugins.rewrite.rebase import (
+    from .rebase import (
         RebaseState1,
         rebase_todo,
         )
@@ -80,16 +61,16 @@ def show_rebase_summary(params):
     params.to_file.write('Rebase in progress. (%d revisions left)\n' % len(todo))
 
 
-from bzrlib.hooks import install_lazy_named_hook
+from ...hooks import install_lazy_named_hook
 
-install_lazy_named_hook('bzrlib.status', 'hooks', 'post_status',
+install_lazy_named_hook('breezy.status', 'hooks', 'post_status',
     show_rebase_summary, 'rewrite status')
 
 
-def test_suite():
-    """Returns the testsuite for bzr-rewrite."""
-    from unittest import TestSuite
-    from bzrlib.plugins.rewrite import tests
-    suite = TestSuite()
-    suite.addTest(tests.test_suite())
-    return suite
+def load_tests(loader, basic_tests, pattern):
+    testmod_names = [
+        'tests',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests

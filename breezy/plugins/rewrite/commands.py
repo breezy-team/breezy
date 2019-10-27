@@ -18,29 +18,29 @@
 
 from __future__ import absolute_import
 
-from bzrlib.commands import (
+from ...commands import (
     Command,
     display_command,
     )
-from bzrlib.errors import (
+from ...errors import (
     BzrCommandError,
     ConflictsInTree,
     NoSuchFile,
     NoWorkingTree,
     UncommittedChanges,
     )
-from bzrlib.option import (
+from ...option import (
     Option,
     )
-from bzrlib.trace import (
+from ...trace import (
     note,
     )
 
-from bzrlib.plugins.rewrite import gettext
+from ...i18n import gettext
 
 
 def finish_rebase(state, wt, replace_map, replayer):
-    from bzrlib.plugins.rewrite.rebase import (
+    from .rebase import (
         rebase,
         )
     try:
@@ -109,10 +109,10 @@ class cmd_rebase(Command):
             merge_type=None, verbose=False, dry_run=False,
             always_rebase_merges=False, pending_merges=False,
             directory="."):
-        from bzrlib.branch import Branch
-        from bzrlib.revisionspec import RevisionSpec
-        from bzrlib.workingtree import WorkingTree
-        from bzrlib.plugins.rewrite.rebase import (
+        from ...branch import Branch
+        from ...revisionspec import RevisionSpec
+        from ...workingtree import WorkingTree
+        from .rebase import (
             generate_simple_plan,
             rebase,
             RebaseState1,
@@ -239,11 +239,11 @@ class cmd_rebase_abort(Command):
 
     @display_command
     def run(self, directory="."):
-        from bzrlib.plugins.rewrite.rebase import (
+        from .rebase import (
             RebaseState1,
             complete_revert,
             )
-        from bzrlib.workingtree import WorkingTree
+        from ...workingtree import WorkingTree
         wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
         try:
@@ -268,11 +268,11 @@ class cmd_rebase_continue(Command):
 
     @display_command
     def run(self, merge_type=None, directory="."):
-        from bzrlib.plugins.rewrite.rebase import (
+        from .rebase import (
             RebaseState1,
             WorkingTreeRevisionRewriter,
             )
-        from bzrlib.workingtree import WorkingTree
+        from ...workingtree import WorkingTree
         wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
         try:
@@ -309,11 +309,11 @@ class cmd_rebase_todo(Command):
             type=str)]
 
     def run(self, directory="."):
-        from bzrlib.plugins.rewrite.rebase import (
+        from .rebase import (
             RebaseState1,
             rebase_todo,
             )
-        from bzrlib.workingtree import WorkingTree
+        from ...workingtree import WorkingTree
         wt = WorkingTree.open_containing(directory)[0]
         wt.lock_read()
         try:
@@ -344,10 +344,10 @@ class cmd_replay(Command):
     hidden = True
 
     def run(self, location, revision=None, merge_type=None, directory="."):
-        from bzrlib.branch import Branch
-        from bzrlib.workingtree import WorkingTree
-        from bzrlib import ui
-        from bzrlib.plugins.rewrite.rebase import (
+        from ...branch import Branch
+        from ...workingtree import WorkingTree
+        from ... import ui
+        from .rebase import (
             RebaseState1,
             regenerate_default_revid,
             WorkingTreeRevisionRewriter,
@@ -403,10 +403,10 @@ class cmd_pseudonyms(Command):
     hidden = True
 
     def run(self, repository=None):
-        from bzrlib.bzrdir import BzrDir
-        dir, _ = BzrDir.open_containing(repository)
+        from ...controldir import ControlDir
+        dir, _ = ControlDir.open_containing(repository)
         r = dir.find_repository()
-        from bzrlib.plugins.rewrite.pseudonyms import find_pseudonyms
+        from .pseudonyms import find_pseudonyms
         for pseudonyms in find_pseudonyms(r, r.all_revision_ids()):
             self.outf.write(", ".join(pseudonyms) + "\n")
 
@@ -431,21 +431,21 @@ class cmd_rebase_foreign(Command):
         ]
 
     def run(self, new_base=None, verbose=False, idmap_file=None, directory="."):
-        from bzrlib import (
+        from ... import (
             urlutils,
             )
-        from bzrlib.branch import Branch
-        from bzrlib.workingtree import WorkingTree
-        from bzrlib.plugins.rewrite.pseudonyms import (
+        from ...branch import Branch
+        from ...workingtree import WorkingTree
+        from .pseudonyms import (
             find_pseudonyms,
             generate_rebase_map_from_pseudonyms,
             pseudonyms_as_dict,
             )
-        from bzrlib.plugins.rewrite.upgrade import (
+        from .upgrade import (
             create_deterministic_revid,
             upgrade_branch,
             )
-        from bzrlib.foreign import (
+        from ...foreign import (
             update_workingtree_fileids,
             )
 

@@ -15,15 +15,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Tests for the maptree code."""
 
-from bzrlib.tests import (
+from ....tests import (
     TestCase,
     TestCaseWithTransport,
     )
-from bzrlib.treebuilder import (
+from ....treebuilder import (
     TreeBuilder,
     )
 
-from bzrlib.plugins.rewrite.maptree import (
+from ..maptree import (
     MapTree,
     map_file_ids,
     )

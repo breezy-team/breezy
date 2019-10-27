@@ -20,26 +20,26 @@ from __future__ import absolute_import
 
 import os
 
-from bzrlib import (
+from ... import (
     config as _mod_config,
     osutils,
     )
-from bzrlib.errors import (
+from ...errors import (
     BzrError,
     NoSuchFile,
     UnknownFormatError,
     NoCommonAncestor,
     UnrelatedBranches,
     )
-from bzrlib.generate_ids import gen_revision_id
-from bzrlib.graph import FrozenHeadsCache
-from bzrlib.merge import Merger
-from bzrlib.revision import NULL_REVISION
-from bzrlib.trace import mutter
-from bzrlib.tsort import topo_sort
-import bzrlib.ui as ui
+from ...bzr.generate_ids import gen_revision_id
+from ...graph import FrozenHeadsCache
+from ...merge import Merger
+from ...revision import NULL_REVISION
+from ...trace import mutter
+from ...tsort import topo_sort
+from ... import ui
 
-from bzrlib.plugins.rewrite.maptree import (
+from .maptree import (
     MapTree,
     map_file_ids,
     )
@@ -479,7 +479,7 @@ class WorkingTreeRevisionRewriter(object):
         """
         repository = self.wt.branch.repository
         if self.merge_type is None:
-            from bzrlib.merge import Merge3Merger
+            from ...merge import Merge3Merger
             merge_type = Merge3Merger
         else:
             merge_type = self.merge_type
