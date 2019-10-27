@@ -282,8 +282,6 @@ class Hoster(object):
         """Create a Hoster object if this hoster knows about a URL."""
         raise NotImplementedError(cls.probe_from_url)
 
-    # TODO(jelmer): Some way of cleaning up old branch proposals/branches
-
     def iter_my_proposals(self, status='open'):
         """Iterate over the proposals created by the currently logged in user.
 
@@ -305,7 +303,13 @@ class Hoster(object):
 
 
 def get_hoster(branch, possible_hosters=None):
-    """Find the hoster for a branch."""
+    """Find the hoster for a branch.
+
+    :param branch: Branch to find hoster for
+    :param possible_hosters: Optional list of hosters to reuse
+    :raise UnsupportedHoster: if there is no hoster that supports `branch`
+    :return: A `Hoster` object
+    """
     if possible_hosters:
         for hoster in possible_hosters:
             if hoster.hosts(branch):
@@ -323,6 +327,12 @@ def get_hoster(branch, possible_hosters=None):
 
 
 def get_proposal_by_url(url):
+    """Get the proposal object associated with a URL.
+
+    :param url: URL of the proposal
+    :raise UnsupportedHoster: if there is no hoster that supports the URL
+    :return: A `MergeProposal` object
+    """
     for name, hoster_cls in hosters.items():
         for instance in hoster_cls.iter_instances():
             try:
@@ -333,4 +343,3 @@ def get_proposal_by_url(url):
 
 
 hosters = registry.Registry()
-
