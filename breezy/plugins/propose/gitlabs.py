@@ -323,7 +323,7 @@ class GitLab(Hoster):
         else:
             parameters = dict(parameters.items())
         if per_page:
-            parameters['per_page'] = per_page
+            parameters['per_page'] = str(per_page)
         page = "1"
         while page:
             parameters['page'] = page
