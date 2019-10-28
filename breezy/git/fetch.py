@@ -378,13 +378,13 @@ def ensure_inventories_in_repo(repo, trees):
 
 
 def import_git_commit(repo, mapping, head, lookup_object,
-                      target_git_object_retriever, trees_cache):
+                      target_git_object_retriever, trees_cache, strict):
     o = lookup_object(head)
     # Note that this uses mapping.revision_id_foreign_to_bzr. If the parents
     # were bzr roundtripped revisions they would be specified in the
     # roundtrip data.
     rev, roundtrip_revid, verifiers = mapping.import_commit(
-        o, mapping.revision_id_foreign_to_bzr)
+        o, mapping.revision_id_foreign_to_bzr, strict)
     if roundtrip_revid is not None:
         original_revid = rev.revision_id
         rev.revision_id = roundtrip_revid
@@ -482,7 +482,7 @@ def import_git_objects(repo, mapping, object_iter,
             continue
         if isinstance(o, Commit):
             rev, roundtrip_revid, verifiers = mapping.import_commit(
-                o, mapping.revision_id_foreign_to_bzr)
+                o, mapping.revision_id_foreign_to_bzr, strict=True)
             if (repo.has_revision(rev.revision_id)
                     or (roundtrip_revid and
                         repo.has_revision(roundtrip_revid))):
@@ -515,7 +515,8 @@ def import_git_objects(repo, mapping, object_iter,
                         pb.update("fetching revisions", offset + i,
                                   len(revision_ids))
                     import_git_commit(repo, mapping, head, lookup_object,
-                                      target_git_object_retriever, trees_cache)
+                                      target_git_object_retriever, trees_cache,
+                                      strict=True)
                     last_imported = head
             except BaseException:
                 repo.abort_write_group()

@@ -39,7 +39,7 @@ from ... import (
     hooks,
     urlutils,
     )
-from ...git.refs import ref_to_branch_name
+from ...git.urls import git_url_to_bzr_url
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.plugins.launchpad import (
@@ -114,21 +114,17 @@ class LaunchpadMergeProposal(MergeProposal):
         if self._mp.source_branch:
             return self._mp.source_branch.bzr_identity
         else:
-            branch_name = ref_to_branch_name(
-                self._mp.source_git_path.encode('utf-8'))
-            return urlutils.join_segment_parameters(
+            return git_url_to_bzr_url(
                 self._mp.source_git_repository.git_identity,
-                {"branch": str(branch_name)})
+                ref=self._mp.source_git_path.encode('utf-8'))
 
     def get_target_branch_url(self):
         if self._mp.target_branch:
             return self._mp.target_branch.bzr_identity
         else:
-            branch_name = ref_to_branch_name(
-                self._mp.target_git_path.encode('utf-8'))
-            return urlutils.join_segment_parameters(
+            return git_url_to_bzr_url(
                 self._mp.target_git_repository.git_identity,
-                {"branch": str(branch_name)})
+                ref=self._mp.target_git_path.encode('utf-8'))
 
     @property
     def url(self):
