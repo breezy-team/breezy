@@ -354,7 +354,6 @@ class GitHub(Hoster):
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True):
-        import github
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo('%s/%s' % (base_owner, base_project))
         if owner is None:
@@ -363,7 +362,7 @@ class GitHub(Hoster):
             project = base_repo['name']
         try:
             remote_repo = self._get_repo('%s/%s' % (owner, project))
-        except github.UnknownObjectException:
+        except NoSuchProject:
             base_repo = self._get_repo('%s/%s' % (base_owner, base_project))
             remote_repo = self._create_fork(base_repo, owner)
             note(gettext('Forking new repository %s from %s') %
@@ -390,7 +389,6 @@ class GitHub(Hoster):
         return github_url_to_bzr_url(repo['ssh_url'], branch_name)
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
-        import github
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo('%s/%s' % (base_owner, base_project))
         if owner is None:
@@ -401,7 +399,7 @@ class GitHub(Hoster):
             remote_repo = self._get_repo('%s/%s' % (owner, project))
             full_url = github_url_to_bzr_url(remote_repo['ssh_url'], name)
             return _mod_branch.Branch.open(full_url)
-        except github.UnknownObjectException:
+        except NoSuchProject:
             raise errors.NotBranchError('%s/%s/%s' % (WEB_GITHUB_URL, owner, project))
 
     def get_proposer(self, source_branch, target_branch):
@@ -516,7 +514,6 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
         # Note that commit_message is ignored, since github doesn't support it.
-        import github
         # TODO(jelmer): Probe for right repo name
         if self.target_repo_name.endswith('.git'):
             self.target_repo_name = self.target_repo_name[:-4]
