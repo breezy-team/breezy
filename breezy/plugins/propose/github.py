@@ -333,13 +333,12 @@ class GitHub(Hoster):
         return self._list_paged(path, {'q': query}, per_page=DEFAULT_PER_PAGE)
 
     def _create_fork(self, repo, owner=None):
-        (orig_owner, orig_repo) = repo.split('/')
-        path = '/repos/:%s/:%s/forks' % (orig_owner, orig_repo)
-        if owner:
+        path = '/repos/%s/forks' % (repo, )
+        if owner and owner != self._current_user['login']:
             path += '?organization=%s' % owner
         response = self._api_request('POST', path)
         if response.status != 202:
-            raise InvalidHttpResponse(path, response.text)
+            raise InvalidHttpResponse(path, 'status: %d, %r' % (response.status, response.text))
         return json.loads(response.text)
 
     @property
@@ -363,8 +362,9 @@ class GitHub(Hoster):
         try:
             remote_repo = self._get_repo('%s/%s' % (owner, project))
         except NoSuchProject:
-            base_repo = self._get_repo('%s/%s' % (base_owner, base_project))
-            remote_repo = self._create_fork(base_repo, owner)
+            base_repo_path = '%s/%s' % (base_owner, base_project)
+            base_repo = self._get_repo(base_repo_path)
+            remote_repo = self._create_fork(base_repo_path, owner)
             note(gettext('Forking new repository %s from %s') %
                  (remote_repo['html_url'], base_repo['html_url']))
         else:
@@ -528,14 +528,24 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 base=self.target_branch_name)
         except ValidationFailed:
             raise MergeProposalExists(self.source_branch.user_url)
+        assignees = []
         if reviewers:
             for reviewer in reviewers:
                 if '@' in reviewer:
                     user = self.gh._get_user_by_email(reviewer)
                 else:
                     user = self.gh._get_user(reviewer)
-                pull_request.assignees.append(user['login'])
-        if labels:
-            for label in labels:
-                pull_request.issue.labels.append(label)
+                assignees.append(user['login'])
+        if labels or assignees:
+            data = {}
+            if labels:
+                data['labels'] = labels
+            if assignees:
+                data['assignees'] = assignees
+            response = self.gh._api_request(
+                'PATCH', pull_request['issue_url'], body=json.dumps(data).encode('utf-8'))
+            if response.status == 422:
+                raise ValidationFailed(json.loads(response.text))
+            if response.status != 200:
+                raise InvalidHttpResponse(pull_request['issue_url'], response.text)
         return GitHubMergeProposal(self.gh, pull_request)
