@@ -528,14 +528,24 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 base=self.target_branch_name)
         except ValidationFailed:
             raise MergeProposalExists(self.source_branch.user_url)
+        assignees = []
         if reviewers:
             for reviewer in reviewers:
                 if '@' in reviewer:
                     user = self.gh._get_user_by_email(reviewer)
                 else:
                     user = self.gh._get_user(reviewer)
-                pull_request.assignees.append(user['login'])
-        if labels:
-            for label in labels:
-                pull_request.issue.labels.append(label)
+                assignees.append(user['login'])
+        if labels or assignees:
+            data = {}
+            if labels:
+                data['labels'] = labels
+            if assignees:
+                data['assignees'] = assignees
+            response = self.gh._api_request(
+                'PATCH', pull_request['issue_url'], body=json.dumps(data).encode('utf-8'))
+            if response.status == 422:
+                raise ValidationFailed(json.loads(response.text))
+            if response.status != 200:
+                raise InvalidHttpResponse(pull_request['issue_url'], response.text)
         return GitHubMergeProposal(self.gh, pull_request)
