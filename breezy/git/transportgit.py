@@ -80,6 +80,7 @@ from ..errors import (
     )
 
 from ..lock import LogicalLockResult
+from ..trace import warning
 
 
 class TransportRefsContainer(RefsContainer):
@@ -586,16 +587,7 @@ class TransportObjectStore(PackBasedObjectStore):
             return ret
 
     def _update_pack_cache(self):
-        pack_files = set()
-        pack_dir_contents = self._pack_names()
-        for name in pack_dir_contents:
-            if name.startswith("pack-") and name.endswith(".pack"):
-                # verify that idx exists first (otherwise the pack was not yet
-                # fully written)
-                idx_name = os.path.splitext(name)[0] + ".idx"
-                if idx_name in pack_dir_contents:
-                    pack_files.add(os.path.splitext(name)[0])
-
+        pack_files = set(self._pack_names())
         new_packs = []
         for basename in pack_files:
             pack_name = basename + ".pack"
@@ -604,6 +596,8 @@ class TransportObjectStore(PackBasedObjectStore):
                     size = self.pack_transport.stat(pack_name).st_size
                 except TransportNotPossible:
                     f = self.pack_transport.get(pack_name)
+                    # TODO(jelmer): Don't read entire file into memory?
+                    f = BytesIO(f.read())
                     pd = PackData(pack_name, f)
                 else:
                     pd = PackData(
@@ -622,19 +616,30 @@ class TransportObjectStore(PackBasedObjectStore):
         return new_packs
 
     def _pack_names(self):
+        pack_files = []
         try:
-            return self.pack_transport.list_dir(".")
+            dir_contents = self.pack_transport.list_dir(".")
+            for name in dir_contents:
+                if name.startswith("pack-") and name.endswith(".pack"):
+                    # verify that idx exists first (otherwise the pack was not yet
+                    # fully written)
+                    idx_name = os.path.splitext(name)[0] + ".idx"
+                    if idx_name in dir_contents:
+                        pack_files.append(os.path.splitext(name)[0])
         except TransportNotPossible:
             try:
                 f = self.transport.get('info/packs')
             except NoSuchFile:
-                # Hmm, warn about running 'git update-server-info' ?
-                return iter([])
+                warning('No info/packs on remote host;'
+                        'run \'git update-server-info\' on remote.')
             else:
                 with f:
-                    return read_packs_file(f)
+                    pack_files = [
+                        os.path.splitext(name)[0]
+                        for name in read_packs_file(f)]
         except NoSuchFile:
-            return iter([])
+            pass
+        return pack_files
 
     def _remove_pack(self, pack):
         self.pack_transport.delete(os.path.basename(pack.index.path))
