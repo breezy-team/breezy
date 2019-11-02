@@ -43,6 +43,16 @@ class VcsGitUrlToBzrUrlTests(TestCase):
             'https://github.com/jelmer/dulwich,branch=foo',
             vcs_git_url_to_bzr_url('https://github.com/jelmer/dulwich -b foo'))
 
+    def test_with_subpath(self):
+        self.assertEqual(
+            'https://github.com/jelmer/dulwich/path',
+            vcs_git_url_to_bzr_url(
+                'https://github.com/jelmer/dulwich [path]'))
+        self.assertEqual(
+            'https://github.com/jelmer/dulwich,branch=foo/path',
+            vcs_git_url_to_bzr_url(
+                'https://github.com/jelmer/dulwich -b foo [path]'))
+
     def test_fixup(self):
         self.assertEqual(
             'git://github.com/jelmer/dulwich',

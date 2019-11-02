@@ -20,6 +20,8 @@
 
 from __future__ import absolute_import
 
+import re
+
 from ... import urlutils
 from ...directory_service import directories
 from ...sixish import PY3
@@ -76,9 +78,17 @@ def fixup_broken_git_url(url):
 def vcs_git_url_to_bzr_url(url):
     """Convert a Vcs-Git string to a Breezy URL."""
 
-    # TODO(jelmer): some packages seem to use [PATH] behind the URL to
+    # some packages seem to use [PATH] behind the URL to
     # indicate a subdirectory inside of the versioned tree.
     # (this is not documented in policy)
+
+    m = re.finditer(r' \[([^] ]+)\]', url)
+    try:
+        m = next(m)
+        url = url[:m.start()] + url[m.end():]
+        subpath = m.group(1)
+    except StopIteration:
+        subpath = None
 
     from breezy.git.urls import git_url_to_bzr_url
     if ' -b ' in url:
@@ -94,6 +104,8 @@ def vcs_git_url_to_bzr_url(url):
             branch = branch.encode('utf-8')
         url = urlutils.join_segment_parameters(
             url, {'branch': branch})
+    if subpath:
+        url = urlutils.join(url, subpath)
     return url
 
 
