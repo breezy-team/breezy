@@ -74,6 +74,9 @@ Improvements
 * The ``brz inventory`` command now accepts a ``--include-root``
   argument to show the tree root. (Jelmer Vernooĳ)
 
+* Fix support for reading Git repositories over HTTP without
+  a smart server. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 

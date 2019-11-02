@@ -180,9 +180,7 @@ class RemoteGitProber(Prober):
                 url, 'Unable to handle http code %d' % resp.status)
 
         ct = resp.getheader("Content-Type")
-        if ct is None:
-            raise brz_errors.NotBranchError(transport.base)
-        if ct.startswith("application/x-git"):
+        if ct and ct.startswith("application/x-git"):
             from .remote import RemoteGitControlDirFormat
             return RemoteGitControlDirFormat()
         else:
