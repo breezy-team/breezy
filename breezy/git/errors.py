@@ -61,21 +61,3 @@ class NoPushSupport(brz_errors.BzrError):
 
 class GitSmartRemoteNotSupported(brz_errors.UnsupportedOperation):
     _fmt = "This operation is not supported by the Git smart server protocol."
-
-
-class UnknownCommitExtra(brz_errors.BzrError):
-    _fmt = "Unknown extra fields in %(object)r: %(fields)r."
-
-    def __init__(self, object, fields):
-        brz_errors.BzrError.__init__(self)
-        self.object = object
-        self.fields = ",".join(fields)
-
-
-class UnknownMercurialCommitExtra(brz_errors.BzrError):
-    _fmt = "Unknown mercurial extra fields in %(object)r: %(fields)r."
-
-    def __init__(self, object, fields):
-        brz_errors.BzrError.__init__(self)
-        self.object = object
-        self.fields = b",".join(fields)
