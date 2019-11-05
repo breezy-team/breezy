@@ -46,6 +46,10 @@ New Features
    have installed and speeds up import time since psutil brings in
    various other modules. (Jelmer Vernooĳ)
 
+ * Add a basic Mercurial plugin that mentions that .hg repositories
+   are unsupported when the user attempts to access one.
+   (Jelmer Vernooĳ)
+
 Improvements
 ************
 
