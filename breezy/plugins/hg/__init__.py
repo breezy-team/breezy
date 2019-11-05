@@ -32,7 +32,7 @@ from ... import (
 class MercurialUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Mercurial branches are not yet supported. '
-            'To convert monotone branches to Breezy branches or vice versa, '
+            'To convert Mercurial branches to Bazaar branches or vice versa, '
             'use the fastimport format. ')
 
 
@@ -56,7 +56,7 @@ class HgDirFormat(controldir.ControlDirFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise MercurialUnsupportedError(self)
+        raise MercurialUnsupportedError()
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there
@@ -70,7 +70,7 @@ class LocalHgProber(controldir.Prober):
     def probe_transport(klass, transport):
         """Our format is present if the transport has a '.hg/' subdir."""
         if transport.has('.hg'):
-            return hgDirFormat()
+            return HgDirFormat()
         raise errors.NotBranchError(path=transport.base)
 
     @classmethod
