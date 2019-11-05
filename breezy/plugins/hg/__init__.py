@@ -78,4 +78,64 @@ class LocalHgProber(controldir.Prober):
         return [HgDirFormat()]
 
 
+class RemoteHgProber(controldir.Prober):
+
+    # Perhaps retrieve list from mercurial.hg.schemes ?
+    _supported_schemes = ["http", "https", "file", "ssh"]
+
+    @staticmethod
+    def _has_hg_dumb_repository(transport):
+        try:
+            return transport.has_any([".hg/requires", ".hg/00changelog.i"])
+        except (errors.NoSuchFile, errors.PermissionDenied,
+                errors.InvalidHttpResponse):
+            return False
+
+    @staticmethod
+    def _has_hg_http_smart_server(transport, external_url):
+        """Check if there is a Mercurial smart server at the remote location.
+
+        :param transport: Transport to check
+        :param externa_url: External URL for transport
+        :return: Boolean indicating whether transport is backed onto hg
+        """
+        from breezy.transport.http import Request
+        url = external_url.rstrip("/") + "?cmd=capabilities"
+        resp = transport.request(
+            'GET', url, headers={'Accept': 'application/mercurial-0.1'})
+        if resp.status == 404:
+            return False
+        ct = resp.getheader("Content-Type")
+        if ct is None:
+            return False
+        return ct.startswith("application/mercurial")
+
+    @classmethod
+    def probe_transport(klass, transport):
+        try:
+            external_url = transport.external_url()
+        except errors.InProcessTransport:
+            raise errors.NotBranchError(path=transport.base)
+        scheme = external_url.split(":")[0]
+        if scheme not in klass._supported_schemes:
+            raise errors.NotBranchError(path=transport.base)
+        from breezy import urlutils
+        external_url = urlutils.split_segment_parameters(external_url)[0]
+        # Explicitly check for .hg directories here, so we avoid
+        # loading foreign branches through Mercurial.
+        if (external_url.startswith("http:") or
+                external_url.startswith("https:")):
+            if not klass._has_hg_http_smart_server(transport, external_url):
+                raise errors.NotBranchError(path=transport.base)
+        else:
+            if not klass._has_hg_dumb_repository(transport):
+                raise errors.NotBranchError(path=transport.base)
+        return HgDirFormat()
+
+    @classmethod
+    def known_formats(cls):
+        return [HgDirFormat()]
+
+
 controldir.ControlDirFormat.register_prober(LocalHgProber)
+controldir.ControlDirFormat.register_prober(RemoteHgProber)

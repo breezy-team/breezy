@@ -2016,6 +2016,10 @@ class HttpTransport(ConnectedTransport):
                 return self._actual.code
 
             @property
+            def reason(self):
+                return self._actual.reason
+
+            @property
             def data(self):
                 if self._data is None:
                     self._data = self._actual.read()
@@ -2079,16 +2083,28 @@ class HttpTransport(ConnectedTransport):
             if range_header is not None:
                 bytes = 'bytes=' + range_header
                 headers = {'Range': bytes}
+        else:
+            range_header = None
 
         response = self.request('GET', abspath, headers=headers)
 
         if response.status == 404:  # not found
             raise errors.NoSuchFile(abspath)
-        elif response.status in (400, 416):
+        elif response.status == 416:
             # We don't know which, but one of the ranges we specified was
             # wrong.
             raise errors.InvalidHttpRange(abspath, range_header,
                                           'Server return code %d' % response.status)
+        elif response.status == 400:
+            if range_header:
+                # We don't know which, but one of the ranges we specified was
+                # wrong.
+                raise errors.InvalidHttpRange(
+                    abspath, range_header,
+                    'Server return code %d' % response.status)
+            else:
+                raise errors.InvalidHttpResponse(
+                    abspath, 'Unexpected status %d' % response.status)
         elif response.status not in (200, 206):
             raise errors.InvalidHttpResponse(
                 abspath, 'Unexpected status %d' % response.status)
