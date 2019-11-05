@@ -57,7 +57,7 @@ class SvnWorkingTreeDirFormat(controldir.ControlDirFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise SubversionUnsupportedError(self)
+        raise SubversionUnsupportedError()
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there
@@ -68,28 +68,17 @@ class SvnWorkingTreeDirFormat(controldir.ControlDirFormat):
 class SvnWorkingTreeProber(controldir.Prober):
 
     def probe_transport(self, transport):
-        from breezy.errors import NotBranchError
         from breezy.transport.local import LocalTransport
 
         if (not isinstance(transport, LocalTransport)
                 or not transport.has(".svn")):
-            raise NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=transport.base)
 
         return SvnWorkingTreeDirFormat()
 
-
-class LocalSvnProber(controldir.Prober):
-
-    @classmethod
-    def probe_transport(klass, transport):
-        """Our format is present if the transport has a '_MTN/' subdir."""
-        if transport.has('_MTN'):
-            return MonotoneDirFormat()
-        raise errors.NotBranchError(path=transport.base)
-
     @classmethod
     def known_formats(cls):
-        return [MonotoneDirFormat()]
+        return [SvnWorkingTreeDirFormat()]
 
 
 controldir.ControlDirFormat.register_prober(SvnWorkingTreeProber)
