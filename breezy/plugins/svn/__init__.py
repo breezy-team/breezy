@@ -170,7 +170,7 @@ class SvnRepositoryProber(controldir.Prober):
 
 
 controldir.ControlDirFormat.register_prober(SvnWorkingTreeProber)
-controldir.ControlDirFormat.register_prober(SvnRepositoryProber)
+controldir.ControlDirFormat.register_server_prober(SvnRepositoryProber)
 
 
 _mod_transport.register_transport_proto(
