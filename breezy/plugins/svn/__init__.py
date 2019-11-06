@@ -84,6 +84,10 @@ class SvnWorkingTreeProber(controldir.Prober):
 class SvnRepositoryFormat(controldir.ControlDirFormat):
     """Subversion directory format."""
 
+    @classmethod
+    def priority(klass, transport):
+        return 100
+
     def get_converter(self):
         raise NotImplementedError(self.get_converter)
 
@@ -112,6 +116,10 @@ class SvnRepositoryFormat(controldir.ControlDirFormat):
 class SvnRepositoryProber(controldir.Prober):
 
     _supported_schemes = ["http", "https", "file", "svn"]
+
+    @classmethod
+    def priority(klass, transport):
+        return 100
 
     def probe_transport(self, transport):
         try:
