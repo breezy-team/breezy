@@ -81,7 +81,96 @@ class SvnWorkingTreeProber(controldir.Prober):
         return [SvnWorkingTreeDirFormat()]
 
 
+class SvnRepositoryFormat(controldir.ControlDirFormat):
+    """Subversion directory format."""
+
+    def get_converter(self):
+        raise NotImplementedError(self.get_converter)
+
+    def get_format_description(self):
+        return "Subversion repository"
+
+    def initialize_on_transport(self, transport):
+        raise errors.UninitializableFormat(self)
+
+    def is_supported(self):
+        return False
+
+    def supports_transport(self, transport):
+        return False
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+                             basedir=None):
+        raise SubversionUnsupportedError()
+
+    def open(self, transport):
+        # Raise NotBranchError if there is nothing there
+        SvnRepositoryProber().probe_transport(transport)
+        raise NotImplementedError(self.open)
+
+
+class SvnRepositoryProber(controldir.Prober):
+
+    _supported_schemes = ["http", "https", "file", "svn"]
+
+    def probe_transport(self, transport):
+        try:
+            url = transport.external_url()
+        except errors.InProcessTransport:
+            raise errors.NotBranchError(path=transport.base)
+
+        scheme = url.split(":")[0]
+        if scheme.startswith("svn+") or scheme == "svn":
+            raise SubversionUnsupportedError()
+
+        if scheme not in self._supported_schemes:
+            raise errors.NotBranchError(path=transport.base)
+
+        if scheme == 'file':
+            # Cheaper way to figure out if there is a svn repo
+            maybe = False
+            subtransport = transport
+            while subtransport:
+                try:
+                    if subtransport.has("format"):
+                        maybe = True
+                        break
+                except UnicodeEncodeError:
+                    pass
+                prevsubtransport = subtransport
+                subtransport = prevsubtransport.clone("..")
+                if subtransport.base == prevsubtransport.base:
+                    break
+            if not maybe:
+                raise errors.NotBranchError(path=transport.base)
+
+        # If this is a HTTP transport, use the existing connection to check
+        # that the remote end supports version control.
+        if scheme in ("http", "https"):
+            priv_transport = getattr(transport, "_decorated", transport)
+            try:
+                headers = priv_transport._options('.')
+            except (errors.InProcessTransport, errors.NoSuchFile,
+                    errors.InvalidHttpResponse):
+                raise errors.NotBranchError(path=transport.base)
+            else:
+                dav_entries = set()
+                for key, value in headers:
+                    if key.upper() == 'DAV':
+                        dav_entries.update(
+                            [x.strip() for x in value.split(',')])
+                if "version-control" not in dav_entries:
+                    raise errors.NotBranchError(path=transport.base)
+
+        return SvnRepositoryFormat()
+
+    @classmethod
+    def known_formats(cls):
+        return set([SvnRepositoryFormat()])
+
+
 controldir.ControlDirFormat.register_prober(SvnWorkingTreeProber)
+controldir.ControlDirFormat.register_prober(SvnRepositoryProber)
 
 
 _mod_transport.register_transport_proto(
