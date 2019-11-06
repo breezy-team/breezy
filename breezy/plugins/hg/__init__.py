@@ -66,6 +66,10 @@ class HgDirFormat(controldir.ControlDirFormat):
 
 class LocalHgProber(controldir.Prober):
 
+    @classmethod
+    def priority(klass, transport):
+        return 100
+
     @staticmethod
     def _has_hg_dumb_repository(transport):
         try:
@@ -90,6 +94,10 @@ class RemoteHgProber(controldir.Prober):
 
     # Perhaps retrieve list from mercurial.hg.schemes ?
     _supported_schemes = ["http", "https", "file", "ssh"]
+
+    @classmethod
+    def priority(klass, transport):
+        return 90
 
     @staticmethod
     def _has_hg_http_smart_server(transport, external_url):
