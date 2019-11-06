@@ -67,6 +67,10 @@ class FossilDirFormat(controldir.ControlDirFormat):
 class RemoteFossilProber(controldir.Prober):
 
     @classmethod
+    def priority(klass, transport):
+        return 95
+
+    @classmethod
     def probe_transport(klass, transport):
         from breezy.transport.http import HttpTransport
         if not isinstance(transport, HttpTransport):
