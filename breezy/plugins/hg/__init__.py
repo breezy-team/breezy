@@ -66,10 +66,18 @@ class HgDirFormat(controldir.ControlDirFormat):
 
 class LocalHgProber(controldir.Prober):
 
+    @staticmethod
+    def _has_hg_dumb_repository(transport):
+        try:
+            return transport.has_any([".hg/requires", ".hg/00changelog.i"])
+        except (errors.NoSuchFile, errors.PermissionDenied,
+                errors.InvalidHttpResponse):
+            return False
+
     @classmethod
     def probe_transport(klass, transport):
         """Our format is present if the transport has a '.hg/' subdir."""
-        if transport.has('.hg'):
+        if klass._has_hg_dumb_repository(transport):
             return HgDirFormat()
         raise errors.NotBranchError(path=transport.base)
 
@@ -82,14 +90,6 @@ class RemoteHgProber(controldir.Prober):
 
     # Perhaps retrieve list from mercurial.hg.schemes ?
     _supported_schemes = ["http", "https", "file", "ssh"]
-
-    @staticmethod
-    def _has_hg_dumb_repository(transport):
-        try:
-            return transport.has_any([".hg/requires", ".hg/00changelog.i"])
-        except (errors.NoSuchFile, errors.PermissionDenied,
-                errors.InvalidHttpResponse):
-            return False
 
     @staticmethod
     def _has_hg_http_smart_server(transport, external_url):
