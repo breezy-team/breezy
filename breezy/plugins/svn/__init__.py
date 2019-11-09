@@ -72,13 +72,14 @@ class SvnWorkingTreeProber(controldir.Prober):
         return 100
 
     def probe_transport(self, transport):
-        from breezy.transport.local import LocalTransport
-
-        if (not isinstance(transport, LocalTransport)
-                or not transport.has(".svn")):
+        try:
+            transport.local_abspath('.')
+        except errors.NotLocalUrl:
             raise errors.NotBranchError(path=transport.base)
-
-        return SvnWorkingTreeDirFormat()
+        else:
+            if transport.has(".svn"):
+                return SvnWorkingTreeDirFormat()
+            raise errors.NotBranchError(path=transport.base)
 
     @classmethod
     def known_formats(cls):
