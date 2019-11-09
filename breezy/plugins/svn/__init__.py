@@ -141,7 +141,8 @@ class SvnRepositoryProber(controldir.Prober):
             subtransport = transport
             while subtransport:
                 try:
-                    if subtransport.has("format"):
+                    if all([subtransport.has(name)
+                            for name in ["format", "db", "conf"]]):
                         maybe = True
                         break
                 except UnicodeEncodeError:
