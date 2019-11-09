@@ -35,6 +35,10 @@ class BzrProber(controldir.Prober):
     """The known .bzr formats."""
 
     @classmethod
+    def priority(klass, transport):
+        return 10
+
+    @classmethod
     def probe_transport(klass, transport):
         """Return the .bzrdir style format present in a directory."""
         try:
@@ -72,6 +76,10 @@ class RemoteBzrProber(controldir.Prober):
     """Prober for remote servers that provide a Bazaar smart server."""
 
     @classmethod
+    def priority(klass, transport):
+        return -10
+
+    @classmethod
     def probe_transport(klass, transport):
         """Return a RemoteBzrDirFormat object if it looks possible."""
         if getattr(transport, '_host', None) in BLACKLISTED_HOSTS:
@@ -104,7 +112,7 @@ class RemoteBzrProber(controldir.Prober):
         return [RemoteBzrDirFormat()]
 
 
-controldir.ControlDirFormat.register_server_prober(RemoteBzrProber)
+controldir.ControlDirFormat.register_prober(RemoteBzrProber)
 
 # Register bzr formats
 BzrProber.formats.register_lazy(

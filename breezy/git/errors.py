@@ -61,4 +61,3 @@ class NoPushSupport(brz_errors.BzrError):
 
 class GitSmartRemoteNotSupported(brz_errors.UnsupportedOperation):
     _fmt = "This operation is not supported by the Git smart server protocol."
-
