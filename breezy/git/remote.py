@@ -843,6 +843,9 @@ class GitRemoteRevisionTree(RevisionTree):
     def get_file_text(self, path):
         raise GitSmartRemoteNotSupported(self.get_file_text, self)
 
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        raise GitSmartRemoteNotSupported(self.list_files, self)
+
 
 class RemoteGitRepository(GitRepository):
 
