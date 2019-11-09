@@ -1831,6 +1831,7 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
                        404,  # Not found
                        416,
                        422,
+                       501,  # Not implemented
                        ]
     """The error codes the caller will handle.
 
