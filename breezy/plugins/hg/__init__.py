@@ -90,10 +90,10 @@ class LocalHgProber(controldir.Prober):
         return [HgDirFormat()]
 
 
-class RemoteHgProber(controldir.Prober):
+class SmartHgProber(controldir.Prober):
 
     # Perhaps retrieve list from mercurial.hg.schemes ?
-    _supported_schemes = ["http", "https", "file", "ssh"]
+    _supported_schemes = ["http", "https"]
 
     @classmethod
     def priority(klass, transport):
@@ -133,12 +133,9 @@ class RemoteHgProber(controldir.Prober):
         # loading foreign branches through Mercurial.
         if (external_url.startswith("http:") or
                 external_url.startswith("https:")):
-            if not klass._has_hg_http_smart_server(transport, external_url):
-                raise errors.NotBranchError(path=transport.base)
-        else:
-            if not klass._has_hg_dumb_repository(transport):
-                raise errors.NotBranchError(path=transport.base)
-        return HgDirFormat()
+            if klass._has_hg_http_smart_server(transport, external_url):
+                return HgDirFormat()
+        raise errors.NotBranchError(path=transport.base)
 
     @classmethod
     def known_formats(cls):
@@ -146,4 +143,4 @@ class RemoteHgProber(controldir.Prober):
 
 
 controldir.ControlDirFormat.register_prober(LocalHgProber)
-controldir.ControlDirFormat.register_prober(RemoteHgProber)
+controldir.ControlDirFormat.register_server_prober(SmartHgProber)
