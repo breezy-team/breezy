@@ -67,6 +67,10 @@ class SvnWorkingTreeDirFormat(controldir.ControlDirFormat):
 
 class SvnWorkingTreeProber(controldir.Prober):
 
+    @classmethod
+    def priority(klass, transport):
+        return 100
+
     def probe_transport(self, transport):
         from breezy.transport.local import LocalTransport
 
@@ -83,10 +87,6 @@ class SvnWorkingTreeProber(controldir.Prober):
 
 class SvnRepositoryFormat(controldir.ControlDirFormat):
     """Subversion directory format."""
-
-    @classmethod
-    def priority(klass, transport):
-        return 100
 
     def get_converter(self):
         raise NotImplementedError(self.get_converter)
