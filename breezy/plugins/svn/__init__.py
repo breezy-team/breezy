@@ -176,7 +176,7 @@ class SvnRepositoryProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([SvnRepositoryFormat()])
+        return [SvnRepositoryFormat()]
 
 
 controldir.ControlDirFormat.register_prober(SvnWorkingTreeProber)
