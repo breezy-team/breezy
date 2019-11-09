@@ -77,6 +77,8 @@ class RemoteFossilProber(controldir.Prober):
             raise errors.NotBranchError(path=transport.base)
         response = transport.request(
             'POST', transport.base, headers={'Content-Type': 'application/x-fossil'})
+        if response.status == 501:
+            raise errors.NotBranchError(path=transport.base)
         ct = response.getheader('Content-Type')
         if ct is None:
             raise errors.NotBranchError(path=transport.base)
