@@ -20,15 +20,17 @@
 
 import subprocess
 
+from ... import osutils
+
 from .util import (
     find_changelog,
     )
 
 
-def release(local_tree):
+def release(local_tree, subpath):
     """Release a tree."""
     (changelog, top_level) = find_changelog(
-        local_tree, False, max_blocks=2)
+        local_tree, subpath, merge=False, max_blocks=2)
 
     # TODO(jelmer): If this changelog is automatically updated,
     # insert missing entries now.
@@ -39,9 +41,10 @@ def release(local_tree):
             changelog_path = 'debian/changelog'
         changelog_arg = "--changelog=%s" % changelog_path
         # TODO(jelmer): don't send output to stderr
+        cwd = osutils.pathjoin(local_tree.basedir, subpath)
         subprocess.check_call(
             ["dch", changelog_arg, "--release", ""],
-            cwd=local_tree.basedir)
+            cwd=cwd)
         subprocess.check_call(
             ["debcommit", changelog_arg, "-ar"],
-            cwd=local_tree.basedir)
+            cwd=cwd)

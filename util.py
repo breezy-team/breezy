@@ -38,6 +38,7 @@ from debian.changelog import Changelog, ChangelogParseError
 from ... import (
     bugtracker,
     errors,
+    osutils,
     urlutils,
     )
 from ...sixish import text_type
@@ -154,7 +155,7 @@ def recursive_copy(fromdir, todir):
             shutil.copy(path, todir)
 
 
-def find_changelog(t, merge=False, max_blocks=1):
+def find_changelog(t, subpath='', merge=False, max_blocks=1):
     """Find the changelog in the given tree.
 
     First looks for 'debian/changelog'. If "merge" is true will also
@@ -180,12 +181,12 @@ def find_changelog(t, merge=False, max_blocks=1):
     """
     top_level = False
     with t.lock_read():
-        changelog_file = 'debian/changelog'
+        changelog_file = osutils.pathjoin(subpath, 'debian/changelog')
         if not t.has_filename(changelog_file):
-            checked_files = ['debian/changelog']
+            checked_files = [changelog_file]
             if merge:
                 # Assume LarstiQ's layout (.bzr in debian/)
-                changelog_file = 'changelog'
+                changelog_file = osutils.pathjoin(subpath, 'changelog')
                 top_level = True
                 if not t.has_filename(changelog_file):
                     checked_files.append(changelog_file)
@@ -196,13 +197,14 @@ def find_changelog(t, merge=False, max_blocks=1):
                 if getattr(t, "abspath", None):
                     checked_files = [t.abspath(f) for f in checked_files]
                 raise MissingChangelogError(" or ".join(checked_files))
-        elif merge and t.has_filename('changelog'):
+        elif merge and t.has_filename(osutils.pathjoin(subpath, 'changelog')):
             # If it is a "top_level" package and debian is a symlink to
             # "." then it will have found debian/changelog. Try and detect
             # this.
-            if (t.is_versioned('debian') and
-                    t.kind('debian') == 'symlink' and
-                    t.get_symlink_target('debian') == '.'):
+            debian_file = osutils.pathjoin(subpath, 'debian')
+            if (t.is_versioned(debian_file) and
+                    t.kind(debian_file) == 'symlink' and
+                    t.get_symlink_target(debian_file) == '.'):
                 changelog_file = 'changelog'
                 top_level = True
         mutter("Using '%s' to get package information", changelog_file)
@@ -577,7 +579,7 @@ def subprocess_setup():
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
-def debuild_config(tree):
+def debuild_config(tree, subpath):
     """Obtain the Debuild configuration object.
 
     :param tree: A Tree object, can be a WorkingTree or RevisionTree.
@@ -611,7 +613,7 @@ def debuild_config(tree):
     return config
 
 
-def find_previous_upload(tree, merge=False):
+def find_previous_upload(tree, subpath, merge=False):
     """Given a tree, find the previous upload to the distribution.
 
     When e.g. Ubuntu merges from Debian they want to build with
@@ -629,7 +631,7 @@ def find_previous_upload(tree, merge=False):
     Ubuntu.
     """
     try:
-        cl, top_level = find_changelog(tree, merge, max_blocks=None)
+        cl, top_level = find_changelog(tree, subpath, merge, max_blocks=None)
     except UnparseableChangelog:
         raise UnableToFindPreviousUpload()
     return changelog_find_previous_upload(cl)
@@ -663,7 +665,7 @@ def changelog_find_previous_upload(cl):
     raise NoPreviousUpload(current_target)
 
 
-def tree_contains_upstream_source(tree):
+def tree_contains_upstream_source(tree, subpath=''):
     """Guess if the specified tree contains the upstream source.
 
     :param tree: A RevisionTree.
@@ -671,7 +673,7 @@ def tree_contains_upstream_source(tree):
         source. None if the tree is empty
     """
     present_files = set(
-        [f[0] for f in tree.list_files(recursive=False)
+        [f[0] for f in tree.list_files(recursive=False, from_dir=subpath)
          if f[1] == 'V'])
     if len(present_files) == 0:
         return None
@@ -680,13 +682,13 @@ def tree_contains_upstream_source(tree):
     return (len(present_files - packaging_files) > 0)
 
 
-def tree_get_source_format(tree):
+def tree_get_source_format(tree, subpath=''):
     """Retrieve the source format name from a package.
 
     :param path: Path to the package
     :return: String with package format
     """
-    filename = "debian/source/format"
+    filename = osutils.pathjoin(subpath, "debian/source/format")
     try:
         text = tree.get_file_text(filename)
     except IOError as e:
@@ -706,7 +708,7 @@ NATIVE_SOURCE_FORMATS = [FORMAT_3_0_NATIVE]
 NORMAL_SOURCE_FORMATS = [FORMAT_3_0_QUILT]
 
 
-def guess_build_type(tree, version, contains_upstream_source):
+def guess_build_type(tree, version, subpath='', contains_upstream_source=True):
     """Guess the build type based on the contents of a tree.
 
     :param tree: A `Tree` object.
@@ -715,7 +717,7 @@ def guess_build_type(tree, version, contains_upstream_source):
         source.
     :return: A build_type value.
     """
-    source_format = tree_get_source_format(tree)
+    source_format = tree_get_source_format(tree, subpath)
     if source_format in NATIVE_SOURCE_FORMATS:
         format_native = True
     elif source_format in NORMAL_SOURCE_FORMATS:

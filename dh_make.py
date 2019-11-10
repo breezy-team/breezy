@@ -54,9 +54,9 @@ def _get_tree(package_name):
     return tree
 
 
-def _get_tarballs(tree, tarball, package_name, version):
+def _get_tarballs(tree, subpath, tarball, package_name, version):
     from .repack_tarball import repack_tarball
-    config = util.debuild_config(tree)
+    config = util.debuild_config(tree, subpath)
     orig_dir = config.orig_dir or default_orig_dir
     orig_dir = os.path.join(tree.basedir, orig_dir)
     if not os.path.exists(orig_dir):
@@ -78,13 +78,15 @@ def _get_tarballs(tree, tarball, package_name, version):
     return ret
 
 
-def import_upstream(tarball, package_name, version, use_pristine_tar=True):
+def import_upstream(tarball, package_name, version,
+                    use_pristine_tar=True):
     tree = _get_tree(package_name)
     if tree.branch.last_revision() != mod_revision.NULL_REVISION:
         parents = {None: [tree.branch.last_revision()]}
     else:
         parents = {}
-    tarball_filenames = _get_tarballs(tree, tarball, package_name, version)
+    tarball_filenames = _get_tarballs(
+        tree, '', tarball, package_name, version)
     db = import_dsc.DistributionBranch(
         tree.branch, tree.branch, tree=tree, pristine_upstream_tree=tree)
     dbs = import_dsc.DistributionBranchSet()

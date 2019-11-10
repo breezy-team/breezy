@@ -92,7 +92,7 @@ class ChangelogAddNewVersionTests(TestCaseWithTransport):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.mkdir("debian")
-        changelog_add_new_version(tree, "1.0", "sid", None, "somepkg")
+        changelog_add_new_version(tree, '', "1.0", "sid", None, "somepkg")
         # changelog_add_new_version will version the changelog if it was
         # created
         with open('debian/changelog', 'rb') as f:

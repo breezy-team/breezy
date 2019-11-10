@@ -157,7 +157,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         os.mkdir('debian')
         self.write_changelog('debian/changelog')
         tree.add(['debian', 'debian/changelog'])
-        (cl, lq) = find_changelog(tree, False)
+        (cl, lq) = find_changelog(tree, merge=False)
         self.assertEqual(str(cl), cl_block1)
         self.assertEqual(lq, False)
 
@@ -166,7 +166,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         os.mkdir('debian')
         self.write_changelog('debian/changelog')
         tree.add(['debian', 'debian/changelog'])
-        (cl, lq) = find_changelog(tree, True)
+        (cl, lq) = find_changelog(tree, merge=True)
         self.assertEqual(str(cl), cl_block1)
         self.assertEqual(lq, False)
 
@@ -174,7 +174,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         tree = self.make_branch_and_tree('.')
         self.write_changelog('changelog')
         tree.add(['changelog'])
-        (cl, lq) = find_changelog(tree, True)
+        (cl, lq) = find_changelog(tree, merge=True)
         self.assertEqual(str(cl), cl_block1)
         self.assertEqual(lq, True)
 
@@ -186,22 +186,22 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         self.write_changelog('changelog')
         tree.add(['changelog'])
         os.symlink('.', 'debian')
-        self.assertRaises(AddChangelogError, find_changelog, tree, True)
+        self.assertRaises(AddChangelogError, find_changelog, tree, merge=True)
 
     def test_find_changelog_nomerge_lq(self):
         tree = self.make_branch_and_tree('.')
         self.write_changelog('changelog')
         tree.add(['changelog'])
-        self.assertRaises(MissingChangelogError, find_changelog, tree, False)
+        self.assertRaises(MissingChangelogError, find_changelog, tree, merge=False)
 
     def test_find_changelog_nochangelog(self):
         tree = self.make_branch_and_tree('.')
         self.write_changelog('changelog')
-        self.assertRaises(MissingChangelogError, find_changelog, tree, False)
+        self.assertRaises(MissingChangelogError, find_changelog, tree, merge=False)
 
     def test_find_changelog_nochangelog_merge(self):
         tree = self.make_branch_and_tree('.')
-        self.assertRaises(MissingChangelogError, find_changelog, tree, True)
+        self.assertRaises(MissingChangelogError, find_changelog, tree, merge=True)
 
     def test_find_changelog_symlink(self):
         """When there was a symlink debian -> . then the code used to break"""
@@ -211,7 +211,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         tree.add(['changelog'])
         os.symlink('.', 'debian')
         tree.add(['debian'])
-        (cl, lq) = find_changelog(tree, True)
+        (cl, lq) = find_changelog(tree, merge=True)
         self.assertEqual(str(cl), cl_block1)
         self.assertEqual(lq, True)
 
@@ -222,7 +222,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         with open('changelog', 'w') as f:
             f.write('Naughty, naughty')
         tree.add(['changelog', 'debian', 'debian/changelog'])
-        (cl, lq) = find_changelog(tree, True)
+        (cl, lq) = find_changelog(tree, merge=True)
         self.assertEqual(str(cl), cl_block1)
         self.assertEqual(lq, False)
 
@@ -230,7 +230,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         tree = self.make_branch_and_tree('.')
         os.mkdir('debian')
         self.write_changelog('debian/changelog')
-        self.assertRaises(AddChangelogError, find_changelog, tree, False)
+        self.assertRaises(AddChangelogError, find_changelog, tree, merge=False)
 
 
 class StripChangelogMessageTests(TestCase):
@@ -812,44 +812,46 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         # Normal source format -> NORMAL
         tree = self.make_branch_and_tree('.')
         self.writeVersionFile(tree, "3.0 (quilt)")
-        self.assertEquals(BUILD_TYPE_NORMAL, guess_build_type(tree, None, True))
+        self.assertEquals(
+            BUILD_TYPE_NORMAL,
+            guess_build_type(tree, None, contains_upstream_source=True))
 
     def test_normal_source_format_merge(self):
         # Normal source format without upstream source -> MERGE
         tree = self.make_branch_and_tree('.')
         self.writeVersionFile(tree, "3.0 (quilt)")
-        self.assertEquals(BUILD_TYPE_MERGE, guess_build_type(tree, None, False))
+        self.assertEquals(BUILD_TYPE_MERGE, guess_build_type(tree, None, contains_upstream_source=False))
 
     def test_native_source_format(self):
         # Native source format -> NATIVE
         tree = self.make_branch_and_tree('.')
         self.writeVersionFile(tree, "3.0 (native)")
-        self.assertEquals(BUILD_TYPE_NATIVE, guess_build_type(tree, None, True))
+        self.assertEquals(BUILD_TYPE_NATIVE, guess_build_type(tree, None, contains_upstream_source=True))
 
     def test_prev_version_native(self):
         # Native package version -> NATIVE
         tree = self.make_branch_and_tree('.')
         self.assertEquals(BUILD_TYPE_NATIVE,
-            guess_build_type(tree, Version("1.0"), True))
+            guess_build_type(tree, Version("1.0"), contains_upstream_source=True))
 
     def test_empty(self):
         # Empty tree and a non-native package -> NORMAL
         tree = self.make_branch_and_tree('.')
         self.assertEquals(BUILD_TYPE_NORMAL,
-            guess_build_type(tree, Version("1.0-1"), None))
+            guess_build_type(tree, Version("1.0-1"), contains_upstream_source=None))
 
     def test_no_upstream_source(self):
         # No upstream source code and a non-native package -> MERGE
         tree = self.make_branch_and_tree('.')
         tree.mkdir("debian")
         self.assertEquals(BUILD_TYPE_MERGE,
-            guess_build_type(tree, Version("1.0-1"), False))
+            guess_build_type(tree, Version("1.0-1"), contains_upstream_source=False))
 
     def test_default(self):
         # Upstream source code and a non-native package -> NORMAL
         tree = self.make_branch_and_tree('.')
         self.assertEquals(BUILD_TYPE_NORMAL,
-            guess_build_type(tree, Version("1.0-1"), True))
+            guess_build_type(tree, Version("1.0-1"), contains_upstream_source=True))
 
     def test_inconsistent(self):
         # If version string and source format disagree on whether the package is native,
@@ -857,7 +859,7 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.writeVersionFile(tree, "3.0 (native)")
         e = self.assertRaises(InconsistentSourceFormatError, guess_build_type, tree,
-            Version("1.0-1"), True)
+            Version("1.0-1"), contains_upstream_source=True)
         self.assertEquals(
             "Inconsistency between source format and version: version is not native, "
             "format is native.", str(e))

@@ -33,6 +33,8 @@ import subprocess
 
 from debian.changelog import Version
 
+from ... import osutils
+
 from .errors import (
     DchError,
     )
@@ -89,7 +91,8 @@ def upstream_merge_changelog_line(upstream_version):
 
 
 def changelog_add_new_version(
-        tree, upstream_version, distribution_name, changelog, package):
+        tree, subpath, upstream_version, distribution_name, changelog,
+        package):
     """Add an entry to the changelog for a new version.
 
     :param tree: WorkingTree in which the package lives
@@ -107,20 +110,24 @@ def changelog_add_new_version(
             str(package_version(upstream_version, distribution_name, epoch)),
             "-D", "UNRELEASED", "--release-heuristic", "changelog",
             "--package", package, entry_description]
-    create = (not tree.has_filename("debian/changelog"))
+    if not os.path.exists(os.path.join(subpath, 'debian')):
+        tree.mkdir(os.path.join(subpath, 'debian'))
+    cl_path = osutils.pathjoin(subpath, "debian/changelog")
+    create = (not tree.has_filename(cl_path))
     if create:
         argv.append("--create")
     proc = subprocess.Popen(
-        argv, cwd=tree.basedir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        argv, cwd=osutils.pathjoin(tree.basedir, subpath),
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (stdout, stderr) = proc.communicate()
     if proc.returncode != 0:
         raise DchError("Adding changelog entry failed: %s" % stderr)
-    if create:
-        tree.add(["debian/changelog"])
+    if not tree.is_versioned(cl_path):
+        tree.add([cl_path])
 
 
 def do_merge(
-        tree, tarball_filenames, package, version,
+        tree, subpath, tarball_filenames, package, version,
         current_version, upstream_branch, upstream_revisions, merge_type=None,
         force=False, force_pristine_tar=False, committer=None):
     """Actually execute a merge.

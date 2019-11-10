@@ -101,7 +101,7 @@ export_upstream_revision_opt = Option(
     type=str, argname="REVISION")
 
 
-def _check_tree(tree, strict=False):
+def _check_tree(tree, subpath, strict=False):
     if strict:
         for unknown in tree.unknowns():
             from .errors import StrictBuildFailed
@@ -113,7 +113,7 @@ def _check_tree(tree, strict=False):
             "You must resolve these before building.")
 
 
-def _check_uncommitted(tree):
+def _check_uncommitted(tree, subpath):
     if tree.changes_from(tree.basis_tree()).has_changed():
         raise BzrCommandError(gettext(
             "There are uncommitted "
@@ -121,7 +121,7 @@ def _check_uncommitted(tree):
             "before using this command"))
 
 
-def _get_changelog_info(tree, last_version=None, package=None,
+def _get_changelog_info(tree, subpath, last_version=None, package=None,
                         distribution=None):
     from .util import (
         find_changelog,
@@ -132,7 +132,8 @@ def _get_changelog_info(tree, last_version=None, package=None,
     DEFAULT_FALLBACK_DISTRIBUTION = "debian"
     current_version = last_version
     try:
-        (changelog, top_level) = find_changelog(tree, False, max_blocks=2)
+        (changelog, top_level) = find_changelog(
+            tree, subpath, merge=False, max_blocks=2)
     except MissingChangelogError:
         top_level = False
         changelog = None
@@ -216,7 +217,7 @@ def _get_upstream_sources(local_tree, branch, build_type, config,
         yield SelfSplitSource(local_tree)
 
 
-def _get_distiller(tree, branch, changelog, build_type, config,
+def _get_distiller(tree, subpath, branch, changelog, build_type, config,
                    contains_upstream_source=True, top_level=False,
                    orig_dir=default_orig_dir, use_existing=False,
                    export_upstream=None, export_upstream_revision=None):
@@ -236,7 +237,7 @@ def _get_distiller(tree, branch, changelog, build_type, config,
         build_type = config.build_type
     if build_type is None:
         build_type = guess_build_type(
-            tree, changelog.version, contains_upstream_source)
+            tree, changelog.version, subpath, contains_upstream_source)
 
     note(gettext("Building package in %s mode") % build_type)
 
@@ -252,12 +253,12 @@ def _get_distiller(tree, branch, changelog, build_type, config,
 
     if build_type == BUILD_TYPE_MERGE:
         return MergeModeDistiller(
-            tree, upstream_provider, top_level=top_level,
+            tree, subpath, upstream_provider, top_level=top_level,
             use_existing=use_existing)
     elif build_type == BUILD_TYPE_NATIVE:
-        return NativeSourceDistiller(tree)
+        return NativeSourceDistiller(tree, subpath)
     else:
-        return FullSourceDistiller(tree, upstream_provider)
+        return FullSourceDistiller(tree, subpath, upstream_provider)
 
 
 class cmd_builddeb(Command):
@@ -344,7 +345,7 @@ class cmd_builddeb(Command):
         controldir, relpath = ControlDir.open_containing_from_transport(
             transport)
         tree, branch = controldir._get_tree_branch()
-        return tree, branch, is_local, controldir.user_url
+        return tree, branch, is_local, controldir.user_url, relpath
 
     def _get_build_tree(self, revision, tree, branch):
         if revision is None and tree is not None:
@@ -453,26 +454,28 @@ class cmd_builddeb(Command):
 
         location, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
-        tree, branch, is_local, location = self._get_tree_and_branch(location)
+        tree, branch, is_local, location, subpath = self._get_tree_and_branch(
+            location)
         tree = self._get_build_tree(revision, tree, branch)
-        _check_tree(tree, strict=strict)
+        _check_tree(tree, subpath, strict=strict)
 
         with tree.lock_read():
-            config = debuild_config(tree)
+            config = debuild_config(tree, subpath)
             if reuse:
                 note(gettext("Reusing existing build dir"))
                 dont_purge = True
                 use_existing = True
             build_type = self._build_type(merge, native, split)
 
-            contains_upstream_source = tree_contains_upstream_source(tree)
+            contains_upstream_source = tree_contains_upstream_source(
+                    tree, subpath)
             (changelog, top_level) = find_changelog(
-                tree, not contains_upstream_source)
+                tree, subpath, merge=not contains_upstream_source)
 
             if package_merge:
                 try:
                     prev_version = find_previous_upload(
-                        tree, not contains_upstream_source)
+                        tree, subpath, not contains_upstream_source)
                 except NoPreviousUpload:
                     prev_version = None
                 if prev_version is None:
@@ -490,7 +493,7 @@ class cmd_builddeb(Command):
                 orig_dir)
 
             distiller = _get_distiller(
-                tree, branch, build_type=build_type, config=config,
+                tree, subpath, branch, build_type=build_type, config=config,
                 changelog=changelog,
                 contains_upstream_source=contains_upstream_source,
                 orig_dir=orig_dir, use_existing=use_existing,
@@ -562,10 +565,10 @@ class cmd_get_orig_source(Command):
         from .util import (
             find_changelog,
             )
-        tree = WorkingTree.open_containing(directory)[0]
-        config = debuild_config(tree)
+        tree, subpath = WorkingTree.open_containing(directory)
+        config = debuild_config(tree, subpath)
 
-        (changelog, larstiq) = find_changelog(tree, True)
+        (changelog, larstiq) = find_changelog(tree, subpath, merge=True)
         orig_dir = config.orig_dir
         if orig_dir is None:
             orig_dir = default_orig_dir
@@ -674,8 +677,8 @@ class cmd_merge_upstream(Command):
         force_opt, 'revision', 'merge-type',
         snapshot_opt, launchpad_opt, force_pristine_tar_opt]
 
-    def _add_changelog_entry(self, tree, package, version, distribution_name,
-                             changelog):
+    def _add_changelog_entry(self, tree, subpath, package, version,
+                             distribution_name, changelog):
         from .merge_upstream import (
             changelog_add_new_version)
         from .errors import (
@@ -683,7 +686,7 @@ class cmd_merge_upstream(Command):
             )
         try:
             changelog_add_new_version(
-                tree, version, distribution_name, changelog, package)
+                tree, subpath, version, distribution_name, changelog, package)
         except DchError as e:
             note(e)
             raise BzrCommandError(
@@ -717,13 +720,13 @@ class cmd_merge_upstream(Command):
             tree_contains_upstream_source,
             )
 
-        tree, _ = WorkingTree.open_containing(directory)
+        tree, subpath = WorkingTree.open_containing(directory)
         with tree.lock_write():
-            _check_uncommitted(tree)
-            config = debuild_config(tree)
+            _check_uncommitted(tree, subpath)
+            config = debuild_config(tree, subpath)
             (current_version, package, distribution, distribution_name,
              changelog, top_level) = _get_changelog_info(
-                 tree, last_version, package, distribution)
+                 tree, subpath, last_version, package, distribution)
             if package is None:
                 raise BzrCommandError(
                     "You did not specify --package, and "
@@ -731,7 +734,8 @@ class cmd_merge_upstream(Command):
                     "package name, which is needed to know the name to "
                     "give the .orig.tar.gz. Please specify --package.")
 
-            contains_upstream_source = tree_contains_upstream_source(tree)
+            contains_upstream_source = tree_contains_upstream_source(
+                tree, subpath)
             if changelog is None:
                 changelog_version = None
             else:
@@ -739,7 +743,7 @@ class cmd_merge_upstream(Command):
             build_type = config.build_type
             if build_type is None:
                 build_type = guess_build_type(
-                    tree, changelog_version, contains_upstream_source)
+                    tree, changelog_version, subpath, contains_upstream_source)
             need_upstream_tarball = (build_type != BUILD_TYPE_MERGE)
             if build_type == BUILD_TYPE_NATIVE:
                 raise BzrCommandError(gettext(
@@ -788,7 +792,8 @@ class cmd_merge_upstream(Command):
                             "--snapshot requires an upstream branch source"))
                     primary_upstream_source = upstream_branch_source
                 else:
-                    primary_upstream_source = UScanSource(tree, top_level)
+                    primary_upstream_source = UScanSource(
+                        tree, subpath, top_level)
 
             if revision is not None:
                 if upstream_branch is None:
@@ -862,7 +867,7 @@ class cmd_merge_upstream(Command):
                         % e.path)
                 try:
                     conflicts = do_merge(
-                        tree, tarball_filenames, package, version,
+                        tree, subpath, tarball_filenames, package, version,
                         current_version, upstream_branch, upstream_revisions,
                         merge_type, force=force,
                         force_pristine_tar=force_pristine_tar)
@@ -873,10 +878,8 @@ class cmd_merge_upstream(Command):
                 raise BzrCommandError(
                     gettext("Upstream version %s has already been merged.") %
                     version)
-            if not tree.has_filename("debian"):
-                tree.mkdir("debian")
             self._add_changelog_entry(
-                tree, package, version, distribution_name, changelog)
+                tree, subpath, package, version, distribution_name, changelog)
             run_hook(tree, 'merge-upstream', config)
         if not need_upstream_tarball:
             note(gettext("An entry for the new upstream version has been "
@@ -960,12 +963,12 @@ class cmd_import_dsc(Command):
             MissingChangelogError,
             )
         try:
-            tree = WorkingTree.open_containing('.')[0]
+            tree, subpath = WorkingTree.open_containing('.')
         except NotBranchError:
             raise BzrCommandError(gettext(
                 "There is no tree to import the packages in to"))
         with tree.lock_write():
-            _check_uncommitted(tree)
+            _check_uncommitted(tree, subpath)
             if files_list is None:
                 files_list = []
             if file is not None:
@@ -981,7 +984,7 @@ class cmd_import_dsc(Command):
                     "You must give the location of "
                     "at least one source package to install, or use the "
                     "--file option."))
-            config = debuild_config(tree)
+            config = debuild_config(tree, subpath)
             if config.build_type == BUILD_TYPE_MERGE:
                 raise BzrCommandError(
                     gettext("import-dsc in merge mode is not yet supported."))
@@ -990,7 +993,8 @@ class cmd_import_dsc(Command):
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
             try:
-                (changelog, top_level) = find_changelog(tree, False)
+                (changelog, top_level) = find_changelog(
+                    tree, subpath, merge=False)
                 last_version = changelog.version
             except MissingChangelogError:
                 last_version = None
@@ -1191,12 +1195,13 @@ class cmd_builddeb_do(Command):
             guess_build_type,
             tree_contains_upstream_source,
             )
-        t = WorkingTree.open_containing('.')[0]
+        t, subpath = WorkingTree.open_containing('.')
         self.add_cleanup(t.lock_read().unlock)
-        config = debuild_config(t)
-        (changelog, top_level) = find_changelog(t, False, max_blocks=2)
+        config = debuild_config(t, subpath)
+        (changelog, top_level) = find_changelog(
+            t, subpath, merge=False, max_blocks=2)
 
-        contains_upstream_source = tree_contains_upstream_source(t)
+        contains_upstream_source = tree_contains_upstream_source(t, subpath)
         if changelog is None:
             changelog_version = None
         else:
@@ -1204,7 +1209,7 @@ class cmd_builddeb_do(Command):
         build_type = config.build_type
         if build_type is None:
             build_type = guess_build_type(
-                t, changelog_version, contains_upstream_source)
+                t, changelog_version, subpath, contains_upstream_source)
 
         if build_type != BUILD_TYPE_MERGE:
             raise BzrCommandError(gettext(
@@ -1233,7 +1238,7 @@ class cmd_builddeb_do(Command):
              UScanSource(t, top_level)])
 
         distiller = MergeModeDistiller(
-                t, upstream_provider, top_level=top_level)
+                t, subpath, upstream_provider, top_level=top_level)
 
         build_source_dir = os.path.join(
             build_dir,
@@ -1295,13 +1300,13 @@ class cmd_mark_uploaded(Command):
         from .util import (
             find_changelog,
             )
-        t = WorkingTree.open_containing('.')[0]
+        t, subpath = WorkingTree.open_containing('.')
         with t.lock_write():
-            _check_uncommitted(t)
-            config = debuild_config(t)
+            _check_uncommitted(t, subpath)
+            config = debuild_config(t, subpath)
             if merge is None:
                 merge = (config.build_type == BUILD_TYPE_MERGE)
-            (changelog, top_level) = find_changelog(t, merge)
+            (changelog, top_level) = find_changelog(t, subpath, merge=merge)
             if changelog.distributions == 'UNRELEASED':
                 if not force:
                     raise BzrCommandError(gettext(
@@ -1450,7 +1455,7 @@ class cmd_dep3_patch(Command):
         origin = describe_origin(branch, revision_id)
         if packaging_tree is None:
             packaging_tree = packaging_branch.basis_tree()
-        builddeb_config = debuild_config(packaging_tree)
+        builddeb_config = debuild_config(packaging_tree, directory)
         if not no_upstream_check and builddeb_config.upstream_branch:
             upstream_branch = Branch.open(builddeb_config.upstream_branch)
             applied_upstream = determine_applied_upstream(
@@ -1499,7 +1504,7 @@ class LocalTree(object):
         return False
 
 
-def _build_helper(local_tree, branch, target_dir, builder):
+def _build_helper(local_tree, subpath, branch, target_dir, builder):
     # TODO(jelmer): Integrate this with cmd_builddeb
     from .builder import (
         do_build,
@@ -1510,13 +1515,14 @@ def _build_helper(local_tree, branch, target_dir, builder):
         )
 
     (changelog, top_level) = find_changelog(
-        local_tree, False, max_blocks=2)
+        local_tree, subpath, merge=False, max_blocks=2)
 
-    config = debuild_config(local_tree)
-    contains_upstream_source = tree_contains_upstream_source(local_tree)
+    config = debuild_config(local_tree, subpath)
+    contains_upstream_source = tree_contains_upstream_source(
+        local_tree, subpath)
 
     distiller = _get_distiller(
-            local_tree, branch, build_type=None, config=config,
+            local_tree, subpath, branch, build_type=None, config=config,
             changelog=changelog,
             contains_upstream_source=contains_upstream_source,
             top_level=top_level)
@@ -1551,18 +1557,18 @@ class cmd_debrelease(Command):
             dput_changes,
             )
 
-        branch = Branch.open(location)
+        branch, subpath = Branch.open_containing(location)
         # preserve whatever source format we have.
         # TODO(jelmer): Use the local tree if there is one, but check it's
         # clean.
         with LocalTree(branch) as local_tree:
-            _check_tree(local_tree, strict)
-            release(local_tree)
+            _check_tree(local_tree, subpath, strict)
+            release(local_tree, subpath)
 
             td = tempfile.mkdtemp()
             try:
                 changes_file = _build_helper(
-                        local_tree, local_tree.branch,
+                        local_tree, subpath, local_tree.branch,
                         target_dir=(td if not skip_upload else None),
                         builder=builder)
                 if not skip_upload:

@@ -386,11 +386,11 @@ class UScanSourceTests(TestCaseWithTransport):
         self.tree = self.make_branch_and_tree('.')
 
     def test_export_watchfile_none(self):
-        src = UScanSource(self.tree, False)
+        src = UScanSource(self.tree, '', False)
         self.assertRaises(NoSuchFile, src._export_file, 'watch', self.test_dir)
 
     def test_export_watchfile_top_level(self):
-        src = UScanSource(self.tree, True)
+        src = UScanSource(self.tree, '', True)
         self.build_tree(['watch'])
         self.tree.add(['watch'])
         tmpdir = tempfile.mkdtemp()
@@ -400,7 +400,7 @@ class UScanSourceTests(TestCaseWithTransport):
             shutil.rmtree(tmpdir)
 
     def test_export_watchfile(self):
-        src = UScanSource(self.tree, False)
+        src = UScanSource(self.tree, '', False)
         self.build_tree(['debian/', 'debian/watch'])
         self.tree.smart_add(['debian/watch'])
         tmpdir = tempfile.mkdtemp()

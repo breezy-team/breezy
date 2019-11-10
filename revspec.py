@@ -81,9 +81,9 @@ class RevisionSpec_upstream(RevisionSpec):
         from .upstream import StackedUpstreamSource
         from .upstream.branch import LocalUpstreamBranchSource
         from debian.changelog import Version
-        tree = WorkingTree.open_containing('.')[0]
+        tree, subpath = WorkingTree.open_containing('.')
         try:
-            (cl, top_level) = find_changelog(tree, False)
+            (cl, top_level) = find_changelog(tree, subpath, merge=False)
         except MissingChangelogError as e:
             raise InvalidRevisionSpec(
                 self.user_spec, branch,

@@ -48,7 +48,7 @@ def _upstream_version_data(branch, revid):
     """
     db = DistributionBranch(branch, branch)
     tree = branch.repository.revision_tree(revid)
-    changelog, _ignore = find_changelog(tree, False)
+    changelog, _ignore = find_changelog(tree, '', False)
     uver = changelog.version.upstream_version
     upstream_revids = db.pristine_upstream_source.version_as_revisions(
         None, uver)

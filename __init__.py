@@ -221,11 +221,13 @@ def pre_merge_fix_ancestry(merger):
         return
     if getattr(merger, "other_branch", None) is None:
         return
+    # This only works for packages that live in the root. That seems fine,
+    # though?
     if (not merger.this_tree.is_versioned("debian/changelog") or
             not merger.other_tree.is_versioned("debian/changelog")):
         return
-    this_config = debuild_config(merger.this_tree)
-    other_config = debuild_config(merger.other_tree)
+    this_config = debuild_config(merger.this_tree, '')
+    other_config = debuild_config(merger.other_tree, '')
     if not (this_config.build_type == BUILD_TYPE_NATIVE or
             other_config.build_type == BUILD_TYPE_NATIVE):
         from .errors import PackageVersionNotPresent

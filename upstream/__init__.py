@@ -187,8 +187,9 @@ class UScanError(BzrError):
 class UScanSource(UpstreamSource):
     """Upstream source that uses uscan."""
 
-    def __init__(self, tree, top_level):
+    def __init__(self, tree, subpath=None, top_level=False):
         self.tree = tree
+        self.subpath = subpath
         self.top_level = top_level
 
     def _export_file(self, name, directory):
@@ -196,6 +197,8 @@ class UScanSource(UpstreamSource):
             file = name
         else:
             file = 'debian/' + name
+        if self.subpath:
+            file = osutils.pathjoin(self.subpath, file)
         if not self.tree.has_filename(file):
             raise NoSuchFile(file, self.tree)
         output_path = os.path.join(directory, 'debian', name)
