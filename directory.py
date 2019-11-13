@@ -118,6 +118,17 @@ def vcs_darcs_url_to_bzr_url(url):
 
 
 def vcs_hg_url_to_bzr_url(url):
+    if ' -b ' in url:
+        (url, branch) = url.split(' -b ', 1)
+    else:
+        branch = None
+
+    if branch:
+        branch = urlutils.quote(branch, '')
+        if not PY3:
+            branch = branch.encode('utf-8')
+        url = urlutils.join_segment_parameters(
+            url, {'branch': branch})
     return url
 
 

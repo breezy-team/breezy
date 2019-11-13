@@ -25,6 +25,7 @@ from ....tests import TestCase
 from ..directory import (
     fixup_broken_git_url,
     vcs_git_url_to_bzr_url,
+    vcs_hg_url_to_bzr_url,
     )
 
 
@@ -72,3 +73,16 @@ class FixUpGitUrlTests(TestCase):
             'https://salsa.debian.org/jelmer/dulwich',
             fixup_broken_git_url(
                 'https://salsa.debian.org/cgit/jelmer/dulwich'))
+
+
+class VcsHgUrlToBzrUrlTests(TestCase):
+
+    def test_preserves(self):
+        self.assertEqual(
+            'https://bitbucket.org/jelmer/dulwich',
+            vcs_hg_url_to_bzr_url('https://bitbucket.org/jelmer/dulwich'))
+
+    def test_with_branch(self):
+        self.assertEqual(
+            'https://bitbucket.org/jelmer/dulwich,branch=foo',
+            vcs_hg_url_to_bzr_url('https://bitbucket.org/jelmer/dulwich -b foo'))
