@@ -414,7 +414,7 @@ class BzrUploader(object):
                 else:
                     raise NotImplementedError
 
-            for change in changes.added:
+            for change in changes.added + changes.copied:
                 if self.is_ignored(change.path[1]):
                     if not self.quiet:
                         self.outf.write('Ignoring %s\n' % change.path[1])

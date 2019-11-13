@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010, 2016 Canonical Ltd
+# Copyright (C) 2019 Jelmer Vernooij <jelmer@jelmer.uk>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,22 +14,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ...builtins import cmd_init_shared_repository
-from .. import (
-    transport_util,
-    ui_testing,
-    )
+from __future__ import absolute_import
+
+__doc__ = """Generate a shell function for zsh command line completion.
+"""
+
+from ... import commands, version_info  # noqa: F401
 
 
-class TestInitRepository(transport_util.TestCaseWithConnectionHookedTransport):
+bzr_plugin_name = 'zsh_completion'
+bzr_commands = ['zsh-completion']
 
-    def setUp(self):
-        super(TestInitRepository, self).setUp()
-        self.start_logging_connections()
+commands.plugin_cmds.register_lazy('cmd_zsh_completion', [],
+                                   __name__ + '.zshcomp')
 
-    def test_init_shared_repository(self):
-        cmd = cmd_init_shared_repository()
-        # We don't care about the ouput but 'outf' should be defined
-        cmd.outf = ui_testing.StringIOWithEncoding()
-        cmd.run(self.get_url())
-        self.assertEqual(1, len(self.connections))
+
+def load_tests(loader, basic_tests, pattern):
+    testmod_names = [
+        'tests',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+        ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests

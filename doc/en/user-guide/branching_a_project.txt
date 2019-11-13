@@ -60,7 +60,7 @@ as a shared repository. (See `Feature branches
 `Organizing your workspace <organizing_your_workspace.html>`_
 for a commonly used layout.) For example::
 
-  brz init-repo my-repo
+  brz init-shared-repo my-repo
   cd my-repo
 
 You are now ready to grab a branch from someone else and

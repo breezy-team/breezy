@@ -201,6 +201,19 @@ class TestInventoryReads(TestInventory):
         self.assertIs(None, inv.path2id('file/subfile'))
         self.assertIs(None, inv.path2id('link/subfile'))
 
+    def test_is_unmodified(self):
+        f1 = self.make_file(b'file-id', 'file', b'tree-root')
+        f1.revision = b'rev'
+        self.assertTrue(f1.is_unmodified(f1))
+        f2 = self.make_file(b'file-id', 'file', b'tree-root')
+        f2.revision = b'rev'
+        self.assertTrue(f1.is_unmodified(f2))
+        f3 = self.make_file(b'file-id', 'file', b'tree-root')
+        self.assertFalse(f1.is_unmodified(f3))
+        f4 = self.make_file(b'file-id', 'file', b'tree-root')
+        f4.revision = b'rev1'
+        self.assertFalse(f1.is_unmodified(f4))
+
     def test_iter_entries(self):
         inv = self.prepare_inv_with_nested_dirs()
 

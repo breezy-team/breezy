@@ -46,6 +46,7 @@ from .propose import (
 
 
 _DEFAULT_FILES = ['/etc/python-gitlab.cfg', '~/.python-gitlab.cfg']
+DEFAULT_PAGE_SIZE = 50
 
 
 def mp_status_to_status(status):
@@ -238,8 +239,7 @@ class GitLabMergeProposal(MergeProposal):
 def gitlab_url_to_bzr_url(url, name):
     if not PY3:
         name = name.encode('utf-8')
-    return urlutils.join_segment_parameters(
-        git_url_to_bzr_url(url), {"branch": name})
+    return git_url_to_bzr_url(url, branch=name)
 
 
 class GitLab(Hoster):
@@ -301,21 +301,41 @@ class GitLab(Hoster):
         if response.status not in (200, 201):
             raise errors.InvalidHttpResponse(path, response.text)
         # The response should be valid JSON, but let's ignore it
-        json.loads(response.data)
+        project = json.loads(response.data)
         # Spin and wait until import_status for new project
         # is complete.
         deadline = time.time() + timeout
-        while True:
-            project = self._get_project(project_name)
-            if project['import_status'] in ('finished', 'none'):
-                return project
+        while project['import_status'] not in ('finished', 'none'):
             mutter('import status is %s', project['import_status'])
             if time.time() > deadline:
                 raise Exception('timeout waiting for project to become available')
             time.sleep(interval)
+            project = self._get_project(project['path_with_namespace'])
+        return project
 
     def _get_logged_in_username(self):
         return self._current_user['username']
+
+    def _list_paged(self, path, parameters=None, per_page=None):
+        if parameters is None:
+            parameters = {}
+        else:
+            parameters = dict(parameters.items())
+        if per_page:
+            parameters['per_page'] = str(per_page)
+        page = "1"
+        while page:
+            parameters['page'] = page
+            response = self._api_request(
+                'GET', path + '?' +
+                ';'.join(['%s=%s' % item for item in parameters.items()]))
+            if response.status == 403:
+                raise errors.PermissionDenied(response.text)
+            if response.status != 200:
+                raise errors.InvalidHttpResponse(path, response.text)
+            page = response.getheader("X-Next-Page")
+            for entry in json.loads(response.data):
+                yield entry
 
     def _list_merge_requests(self, owner=None, project=None, state=None):
         if project is not None:
@@ -327,14 +347,7 @@ class GitLab(Hoster):
             parameters['state'] = state
         if owner:
             parameters['owner_id'] = urlutils.quote(owner, '')
-        response = self._api_request(
-            'GET', path + '?' +
-            ';'.join(['%s=%s' % item for item in parameters.items()]))
-        if response.status == 403:
-            raise errors.PermissionDenied(response.text)
-        if response.status == 200:
-            return json.loads(response.data)
-        raise errors.InvalidHttpResponse(path, response.text)
+        return self._list_paged(path, parameters, per_page=DEFAULT_PAGE_SIZE)
 
     def _update_merge_request(self, project_id, iid, mr):
         path = 'projects/%s/merge_requests/%s' % (

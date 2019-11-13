@@ -60,7 +60,7 @@ underneath will share their history storage.
 
 ::
 
-  % brz init-repo --trees ~
+  % brz init-shared-repo --trees ~
 
 
 Setting up a remote Repository
@@ -80,7 +80,7 @@ called ``centralhost``. Again, we will use a
 
 ::
 
-  % brz init-repo --no-trees brz+ssh://centralhost/srv/brz/
+  % brz init-shared-repo --no-trees brz+ssh://centralhost/srv/brz/
 
 You can think of this step as similar to setting up a new cvsroot, or
 subversion repository.  The ``--no-trees`` option tells brz to not

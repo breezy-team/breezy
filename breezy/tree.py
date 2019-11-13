@@ -85,6 +85,14 @@ class TreeEntry(object):
     def kind_character(self):
         return "???"
 
+    def is_unmodified(self, other):
+        """Does this entry reference the same entry?
+
+        This is mostly the same as __eq__, but returns False
+        for entries without enough information (i.e. revision is None)
+        """
+        return False
+
 
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
@@ -134,10 +142,10 @@ class TreeChange(object):
     """Describes the changes between the same item in two different trees."""
 
     __slots__ = ['file_id', 'path', 'changed_content', 'versioned', 'parent_id',
-                 'name', 'kind', 'executable']
+                 'name', 'kind', 'executable', 'copied']
 
     def __init__(self, file_id, path, changed_content, versioned, parent_id,
-                 name, kind, executable):
+                 name, kind, executable, copied=False):
         self.file_id = file_id
         self.path = path
         self.changed_content = changed_content
@@ -146,6 +154,7 @@ class TreeChange(object):
         self.name = name
         self.kind = kind
         self.executable = executable
+        self.copied = copied
 
     def __repr__(self):
         return "%s%r" % (self.__class__.__name__, self._as_tuple())
@@ -155,7 +164,7 @@ class TreeChange(object):
 
     def _as_tuple(self):
         return (self.file_id, self.path, self.changed_content, self.versioned,
-                self.parent_id, self.name, self.kind, self.executable)
+                self.parent_id, self.name, self.kind, self.executable, self.copied)
 
     def __eq__(self, other):
         if isinstance(other, TreeChange):
@@ -180,7 +189,8 @@ class TreeChange(object):
             self.file_id, (self.path[0], None), self.changed_content,
             (self.versioned[0], None), (self.parent_id[0], None),
             (self.name[0], None), (self.kind[0], None),
-            (self.executable[0], None))
+            (self.executable[0], None),
+            copied=False)
 
 
 class Tree(object):

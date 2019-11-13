@@ -685,6 +685,9 @@ class _InventoryNoneEntry(object):
     symlink_target = None
     text_sha1 = None
 
+    def is_unmodified(self, other):
+        return other is self
+
 
 _none_entry = _InventoryNoneEntry()
 
@@ -910,18 +913,16 @@ class Merge3Merger(object):
             # we know that the ancestry is linear, and that OTHER did not
             # modify anything
             # See doc/developers/lca_merge_resolution.txt for details
-            other_revision = other_ie.revision
-            if other_revision is not None:
-                # We can't use this shortcut when other_revision is None,
-                # because it may be None because things are WorkingTrees, and
-                # not because it is *actually* None.
-                is_unmodified = False
-                for lca_path, ie in lca_values:
-                    if ie is not None and ie.revision == other_revision:
-                        is_unmodified = True
-                        break
-                if is_unmodified:
-                    continue
+            # We can't use this shortcut when other_revision is None,
+            # because it may be None because things are WorkingTrees, and
+            # not because it is *actually* None.
+            is_unmodified = False
+            for lca_path, ie in lca_values:
+                if ie is not None and other_ie.is_unmodified(ie):
+                    is_unmodified = True
+                    break
+            if is_unmodified:
+                continue
 
             lca_entries = []
             lca_paths = []
@@ -1854,7 +1855,11 @@ class MergeIntoMergeType(Merge3Merger):
         name_in_target = osutils.basename(self._target_subdir)
         merge_into_root = subdir.copy()
         merge_into_root.name = name_in_target
-        if self.this_tree.has_id(merge_into_root.file_id):
+        try:
+            self.this_tree.id2path(merge_into_root.file_id)
+        except errors.NoSuchId:
+            pass
+        else:
             # Give the root a new file-id.
             # This can happen fairly easily if the directory we are
             # incorporating is the root, and both trees have 'TREE_ROOT' as

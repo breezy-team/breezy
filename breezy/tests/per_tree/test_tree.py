@@ -141,6 +141,8 @@ class TestFileIds(TestCaseWithTree):
     def test_id2path(self):
         # translate from file-id back to path
         work_tree = self.make_branch_and_tree('wt')
+        if not work_tree.supports_setting_file_ids():
+            self.skipTest("working tree does not support setting file ids")
         tree = self.get_tree_no_parents_abc_content(work_tree)
         a_id = tree.path2id('a')
         with tree.lock_read():
@@ -291,20 +293,6 @@ class TestIterChildEntries(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         self.assertRaises(errors.NoSuchFile, lambda:
                           list(tree.iter_child_entries('unknown')))
-
-
-class TestHasId(TestCaseWithTree):
-
-    def test_has_id(self):
-        work_tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/file'])
-        work_tree.add('file')
-        file_id = work_tree.path2id('file')
-        tree = self._convert_tree(work_tree)
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        self.assertTrue(tree.has_id(file_id))
-        self.assertFalse(tree.has_id(b'dir-id'))
 
 
 class TestExtras(TestCaseWithTree):

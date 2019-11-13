@@ -225,7 +225,12 @@ def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
     """
     path_details = []
     env = osutils.path_from_environ(key)
-    defaults = {"user": not env, "core": True, "site": True, 'entrypoints': True}
+    defaults = {
+        "user": not env,
+        "core": True,
+        "site": True,
+        'entrypoints': False,
+        }
     if env:
         # Add paths specified by user in order
         for p in env.split(os.pathsep):

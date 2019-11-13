@@ -117,7 +117,8 @@ _brz() {
 
     def test_cmd_ini(self):
         self.complete(['brz', 'ini'])
-        self.assertCompletionContains('init', 'init-repo', 'init-repository')
+        self.assertCompletionContains(
+            'init', 'init-shared-repo', 'init-shared-repository')
         self.assertCompletionOmits('commit')
 
     def test_init_opts(self):
@@ -297,8 +298,9 @@ class TestDataCollector(tests.TestCase):
     def test_commands(self):
         dc = DataCollector()
         dc.commands()
-        self.assertSubset(['init', 'init-repo', 'init-repository'],
-                          dc.data.all_command_aliases())
+        self.assertSubset(
+            ['init', 'init-shared-repo', 'init-shared-repository'],
+            dc.data.all_command_aliases())
 
     def test_commands_from_plugins(self):
         dc = DataCollector()

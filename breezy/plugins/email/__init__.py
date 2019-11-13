@@ -66,6 +66,7 @@ like::
 
 from __future__ import absolute_import
 
+from ... import version_info  # noqa: F401
 from ...config import option_registry
 
 

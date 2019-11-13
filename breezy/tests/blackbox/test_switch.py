@@ -407,7 +407,7 @@ class TestSwitchParentLocationBase(TestCaseWithTransport):
         super(TestSwitchParentLocationBase, self).setUp()
         self.script_runner = script.ScriptRunner()
         self.script_runner.run_script(self, '''
-                $ brz init-repo --no-trees repo
+                $ brz init-shared-repo --no-trees repo
                 Shared repository...
                 Location:
                   shared repository: repo

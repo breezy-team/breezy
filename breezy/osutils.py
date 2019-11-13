@@ -520,9 +520,7 @@ if sys.platform == 'win32':
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
 
-    f = win32utils.get_unicode_argv     # special function or None
-    if f is not None:
-        get_unicode_argv = f
+    get_unicode_argv = getattr(win32utils, 'get_unicode_argv', get_unicode_argv)
     path_from_environ = win32utils.get_environ_unicode
     _get_home_dir = win32utils.get_home_location
     getuser_unicode = win32utils.get_user_name
@@ -1026,24 +1024,32 @@ def rand_chars(num):
 
 def splitpath(p):
     """Turn string into list of parts."""
+    use_bytes = isinstance(p, bytes)
     if os.path.sep == '\\':
         # split on either delimiter because people might use either on
         # Windows
-        if isinstance(p, bytes):
+        if use_bytes:
             ps = re.split(b'[\\\\/]', p)
         else:
             ps = re.split(r'[\\/]', p)
     else:
-        if isinstance(p, bytes):
+        if use_bytes:
             ps = p.split(b'/')
         else:
             ps = p.split('/')
 
+    if use_bytes:
+        parent_dir = b'..'
+        current_empty_dir = (b'.', b'')
+    else:
+        parent_dir = '..'
+        current_empty_dir = ('.', '')
+
     rps = []
     for f in ps:
-        if f in ('..', b'..'):
+        if f == parent_dir:
             raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-        elif f in ('.', '', b'.', b''):
+        elif f in current_empty_dir:
             pass
         else:
             rps.append(f)

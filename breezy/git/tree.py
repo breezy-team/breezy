@@ -333,20 +333,6 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     todo.append((store, subpath, hexsha))
         return ret
 
-    def has_or_had_id(self, file_id):
-        try:
-            self.id2path(file_id)
-        except errors.NoSuchId:
-            return False
-        return True
-
-    def has_id(self, file_id):
-        try:
-            path = self.id2path(file_id)
-        except errors.NoSuchId:
-            return False
-        return self.has_filename(path)
-
     def _lookup_path(self, path):
         if self.tree is None:
             raise errors.NoSuchFile(path)
@@ -463,12 +449,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
             else:
                 yield self._get_file_ie(store, child_path, name, mode, hexsha)
 
-    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
+    def iter_entries_by_dir(self, specific_files=None):
         if self.tree is None:
             return
-        if yield_parents:
-            # TODO(jelmer): Support yield parents
-            raise NotImplementedError
         if specific_files is not None:
             if specific_files in ([""], []):
                 specific_files = None
@@ -997,14 +980,6 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     osutils.safe_unicode(path))
             return None
 
-    def has_id(self, file_id):
-        try:
-            self.id2path(file_id)
-        except errors.NoSuchId:
-            return False
-        else:
-            return True
-
     def id2path(self, file_id):
         if file_id is None:
             return ''
@@ -1121,9 +1096,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 if S_ISGITLINK(mode):
                     pass  # TODO(jelmer): dive into submodule
 
-    def iter_entries_by_dir(self, specific_files=None, yield_parents=False):
-        if yield_parents:
-            raise NotImplementedError(self.iter_entries_by_dir)
+    def iter_entries_by_dir(self, specific_files=None):
         with self.lock_read():
             if specific_files is not None:
                 specific_files = set(specific_files)
@@ -1145,11 +1118,17 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     file_ie = self._get_file_ie(name, path, value)
                 except errors.NoSuchFile:
                     continue
-                if yield_parents or specific_files is None:
+                if specific_files is None:
                     for (dir_path, dir_ie) in self._add_missing_parent_ids(
                             parent, dir_ids):
                         ret[(posixpath.dirname(dir_path), dir_path)] = dir_ie
                 ret[(posixpath.dirname(path), path)] = file_ie
+            # Special casing for directories
+            if specific_files:
+                for path in specific_files:
+                    key = (posixpath.dirname(path), path)
+                    if key not in ret and self.is_versioned(path):
+                        ret[key] = self._get_dir_ie(path, self.path2id(key[0]))
             return ((path, ie) for ((_, path), ie) in sorted(viewitems(ret)))
 
     def iter_references(self):

@@ -105,7 +105,7 @@ This layout is ideal for most projects, particularly moderately sized ones.
 
 To set up::
 
-  brz init-repo project
+  brz init-shared-repo project
   cd project
   brz branch URL trunk
 
@@ -149,7 +149,7 @@ build artifacts (like .o or .class files).
 
 To set up::
 
-  brz init-repo --no-trees project
+  brz init-shared-repo --no-trees project
   cd project
   brz branch URL trunk
   brz checkout --lightweight trunk sandbox

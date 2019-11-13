@@ -55,6 +55,7 @@ from ...transport.http import default_user_agent
 GITHUB_HOST = 'github.com'
 WEB_GITHUB_URL = 'https://github.com'
 API_GITHUB_URL = 'https://api.github.com'
+DEFAULT_PER_PAGE = 50
 
 
 def store_github_token(scheme, host, token):
@@ -207,8 +208,7 @@ def parse_github_branch_url(branch):
 def github_url_to_bzr_url(url, branch_name):
     if not PY3:
         branch_name = branch_name.encode('utf-8')
-    return urlutils.join_segment_parameters(
-        git_url_to_bzr_url(url), {"branch": branch_name})
+    return git_url_to_bzr_url(url, branch_name)
 
 
 class GitHub(Hoster):
@@ -303,13 +303,34 @@ class GitHub(Hoster):
             raise InvalidHttpResponse(path, response.text)
         return json.loads(response.text)
 
+    def _list_paged(self, path, parameters=None, per_page=None):
+        if parameters is None:
+            parameters = {}
+        else:
+            parameters = dict(parameters.items())
+        if per_page:
+            parameters['per_page'] = str(per_page)
+        page = 1
+        i = 0
+        while path:
+            parameters['page'] = str(page)
+            response = self._api_request(
+                'GET', path + '?' +
+                ';'.join(['%s=%s' % (k, urlutils.quote(v))
+                          for (k, v) in parameters.items()]))
+            if response.status != 200:
+                raise InvalidHttpResponse(path, response.text)
+            data = json.loads(response.text)
+            for entry in data['items']:
+                i += 1
+                yield entry
+            if i >= data['total_count']:
+                break
+            page += 1
+
     def _search_issues(self, query):
         path = 'search/issues'
-        response = self._api_request(
-            'GET', path + '?q=' + urlutils.quote(query))
-        if response.status != 200:
-            raise InvalidHttpResponse(path, response.text)
-        return json.loads(response.text)
+        return self._list_paged(path, {'q': query}, per_page=DEFAULT_PER_PAGE)
 
     def _create_fork(self, repo, owner=None):
         (orig_owner, orig_repo) = repo.split('/')
@@ -317,7 +338,7 @@ class GitHub(Hoster):
         if owner:
             path += '?organization=%s' % owner
         response = self._api_request('POST', path)
-        if response != 202:
+        if response.status != 202:
             raise InvalidHttpResponse(path, response.text)
         return json.loads(response.text)
 
@@ -450,7 +471,7 @@ class GitHub(Hoster):
         elif status == 'merged':
             query.append('is:merged')
         query.append('author:%s' % self._current_user['login'])
-        for issue in self._search_issues(query=' '.join(query))['items']:
+        for issue in self._search_issues(query=' '.join(query)):
             url = issue['pull_request']['url']
             response = self._api_request('GET', url)
             if response.status != 200:

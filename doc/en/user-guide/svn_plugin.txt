@@ -30,7 +30,7 @@ Here's a simple example of how you can use brz-svn to hack on a
 GNOME project like **beagle**. Firstly, setup a local shared repository
 for storing your branches in and checkout the trunk::
 
-  brz init-repo beagle-repo
+  brz init-shared-repo beagle-repo
   cd beagle-repo
   brz checkout svn+ssh://svn.gnome.org/svn/beagle/trunk beagle-trunk
 
@@ -69,7 +69,7 @@ repository-to-repository conversion. Here's an example of how to use it::
 
 Here's the recipe from above updated to use a central Breezy mirror::
 
-  brz init-repo beagle-repo
+  brz init-shared-repo beagle-repo
   cd beagle-repo
   brz branch bzr+ssh://brz.gnome.org/beagle.brz/trunk beagle-trunk
   brz branch beagle-trunk beagle-feature1

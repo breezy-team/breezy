@@ -677,6 +677,9 @@ class InterGitGitRepository(InterFromGitRepository):
                     if value == ZERO_SHA:
                         continue
 
+                    if name.endswith(ANNOTATED_TAG_SUFFIX):
+                        continue
+
                     if name in branches or (include_tags and is_tag(name)):
                         ret.append(value)
                 return ret

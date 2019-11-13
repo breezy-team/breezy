@@ -136,7 +136,8 @@ def update_plugin(plugin_name):
     if not os.path.isdir(plugin_name):
         if plugin_name in ('bzr-svn', 'bzr-rewrite'):
             # bzr-svn uses a different repo format
-            call_or_fail([brz(), 'init-repo', '--rich-root-pack', plugin_name])
+            call_or_fail(
+                [brz(), 'init-shared-repo', '--rich-root-pack', plugin_name])
         else:
             os.mkdir(plugin_name)
     if os.path.isdir(release_dir):

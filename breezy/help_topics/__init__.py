@@ -453,11 +453,11 @@ When two branches of the same project share a repository, there is
 generally a large space saving. For some operations (e.g. branching
 within the repository) this translates in to a large time saving.
 
-To create a shared repository use the init-repository command (or the alias
-init-repo). This command takes the location of the repository to create. This
-means that 'brz init-repository repo' will create a directory named 'repo',
-which contains a shared repository. Any new branches that are created in this
-directory will then use it for storage.
+To create a shared repository use the init-shared-repository command (or the
+alias init-shared-repo). This command takes the location of the repository to
+create. This means that 'brz init-shared-repository repo' will create a
+directory named 'repo', which contains a shared repository. Any new branches
+that are created in this directory will then use it for storage.
 
 It is a good idea to create a repository whenever you might create more
 than one branch of a project. This is true for both working areas where you
@@ -466,12 +466,12 @@ projects. In the latter case, it is common to want branches without working
 trees. Since the files in the branch will not be edited directly there is no
 need to use up disk space for a working tree. To create a repository in which
 the branches will not have working trees pass the '--no-trees' option to
-'init-repository'.
+'init-shared-repository'.
 
 Related commands::
 
-  init-repository   Create a shared repository. Use --no-trees to create one
-                    in which new branches won't get a working tree.
+  init-shared-repository   Create a shared repository. Use --no-trees to create
+                           one in which new branches won't get a working tree.
 """
 
 
