@@ -60,6 +60,10 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+ * Fix bb.test_testament.TestTestament.test_testament_non_ascii
+   when the host encoding is non-utf8.
+   (Jelmer Vernooĳ, #1849986)
+
 
 bzr 3.0.1
 #########
