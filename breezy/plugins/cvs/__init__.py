@@ -27,6 +27,7 @@ from ... import (
     controldir,
     errors,
     )
+from ...transport import register_transport_proto
 
 
 class CVSUnsupportedError(errors.UnsupportedFormatError):
@@ -80,3 +81,6 @@ class CVSProber(controldir.Prober):
 
 
 controldir.ControlDirFormat.register_prober(CVSProber)
+
+register_transport_proto(
+    'cvs+pserver://', help="The pserver access protocol for CVS.")
