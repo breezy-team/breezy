@@ -39,6 +39,9 @@ Bug Fixes
  * Fix file graph operations on Git repositories.
    (Jelmer Vernooĳ, #1847913)
 
+ * Allow running tests without launchpadlib installed.
+   (Jelmer Vernooĳ, #1849988)
+
 Documentation
 *************
 
@@ -62,6 +65,10 @@ Testing
 .. Fixes and changes that are only relevant to brz's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+ * Fix bb.test_testament.TestTestament.test_testament_non_ascii
+   when the host encoding is non-utf8.
+   (Jelmer Vernooĳ, #1849986)
 
 
 bzr 3.0.1
