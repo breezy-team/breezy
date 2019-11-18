@@ -82,8 +82,9 @@ class SplitUrlTests(TestCase):
                          split_git_url("git://foo/~bar"))
 
     def test_file(self):
-        self.assertEqual(("", None, None, "/bar"),
-                split_git_url("file:///bar"))
+        self.assertEqual(
+            ("", None, None, "/bar"),
+            split_git_url("file:///bar"))
 
 
 class ParseGitErrorTests(TestCase):
