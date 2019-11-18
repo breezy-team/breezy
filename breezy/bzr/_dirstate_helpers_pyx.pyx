@@ -796,7 +796,7 @@ cdef int minikind_from_mode(int mode): # cannot_raise
 _encode = binascii.b2a_base64
 
 
-cdef unsigned long _time_to_unsigned(object t):
+cdef unsigned long _time_to_unsigned(object t):  # cannot_raise
     cdef double dt
     if PyFloat_Check(t):
         dt = PyFloat_AsDouble(t)
