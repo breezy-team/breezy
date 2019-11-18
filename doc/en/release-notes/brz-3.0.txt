@@ -46,6 +46,9 @@ Bug Fixes
  * Allow running tests without launchpadlib installed.
    (Jelmer Vernooĳ, #1849988)
 
+ * Fix compatibility with Python 3.8.
+   (Jelmer Vernooĳ, Victor Stinner, #1844684)
+
 Documentation
 *************
 
