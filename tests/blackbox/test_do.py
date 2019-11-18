@@ -79,9 +79,9 @@ class TestDo(ExternalBase):
     binary = Deb822()
     binary['Package'] = self.package_name
     binary['Architecture'] = 'all'
-    with open('debian/control', 'w') as f:
+    with open('debian/control', 'wb') as f:
       source.dump(f)
-      f.write('\n')
+      f.write(b'\n')
       binary.dump(f)
     tree.add('debian/control')
 
