@@ -29,11 +29,9 @@ from ...errors import BzrError
 from ...trace import note
 
 from .hooks import run_hook
-from .quilt.wrapper import quilt_push_all
 from .util import (
     get_parent_dir,
     subprocess_setup,
-    FORMAT_3_0_QUILT,
     changes_filename,
     dget_changes,
     )
@@ -91,24 +89,18 @@ class DebBuild(object):
             if self.use_existing:
                 raise NoSourceDirError
 
-    def export(self, apply_quilt_patches=True):
+    def export(self):
         self.distiller.distill(self.target_dir)
-        if apply_quilt_patches:
-            self._apply_quilt_patches()
 
-    def _apply_quilt_patches(self):
-        if not os.path.isfile(
-                os.path.join(self.target_dir, "debian/patches/series")):
-            return
-        format_path = os.path.join(self.target_dir, "debian/source/format")
-        if not os.path.isfile(format_path):
-            return
-        with open(format_path, 'r') as f:
-            if f.read().strip() == FORMAT_3_0_QUILT:
-                quilt_push_all(
-                    os.path.abspath(self.target_dir),
-                    patches_dir='debian/patches',
-                    series_file='debian/patches/series')
+    def before_build(self):
+        subprocess.check_call(
+            ['dpkg-source', '--before-build', self.target_dir],
+            preexec_fn=subprocess_setup)
+
+    def after_build(self):
+        subprocess.check_call(
+            ['dpkg-source', '--after-build', self.target_dir],
+            preexec_fn=subprocess_setup, )
 
     def build(self):
         """This builds the package using the supplied command."""

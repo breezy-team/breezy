@@ -117,6 +117,7 @@ class FullSourceDistiller(SourceDistiller):
         parent_dir = get_parent_dir(target)
         self.upstream_provider.provide(parent_dir)
         export(self.tree, target, subdir=self.subpath)
+        # TODO(jelmer): Unapply patches, if they're applied.
 
 
 class MergeModeDistiller(SourceDistiller):

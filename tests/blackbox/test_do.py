@@ -26,6 +26,7 @@ import tarfile
 from debian.changelog import (Changelog,
                               Version,
                               )
+from debian.deb822 import Deb822
 
 
 from .....tests.blackbox import ExternalBase
@@ -36,6 +37,7 @@ TRIVIAL_PATCH = """--- /dev/null	2012-01-02 01:09:10.986490031 +0100
 @@ -0,0 +1 @@
 +a
 """
+
 
 class TestDo(ExternalBase):
 
@@ -56,7 +58,7 @@ class TestDo(ExternalBase):
     c.distributions = 'unstable'
     c.urgency = 'low'
     c.author = 'James Westby <jw+debian@jameswestby.net>'
-    c.date = 'The,  3 Aug 2006 19:16:22 +0100'
+    c.date = 'Thu,  3 Aug 2006 19:16:22 +0100'
     c.add_change('')
     c.add_change('  *  test build')
     c.add_change('')
@@ -72,6 +74,20 @@ class TestDo(ExternalBase):
     with open(cl_file, 'w') as f:
       c.write_to_open_file(f)
     tree.add(source_files)
+    source = Deb822()
+    source['Source'] = self.package_name
+    binary = Deb822()
+    binary['Package'] = self.package_name
+    binary['Architecture'] = 'all'
+    with open('debian/control', 'w') as f:
+      source.dump(f)
+      f.write('\n')
+      binary.dump(f)
+    tree.add('debian/control')
+
+    self.build_tree(['debian/test-file'])
+    tree.add('debian/test-file')
+
     return tree
 
   def make_merge_mode_config(self, tree):
@@ -152,11 +168,11 @@ class TestDo(ExternalBase):
     tree = self.make_unpacked_source()
     self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
-    self.run_bzr(['bd-do', 'rm debian/changelog'])
+    self.run_bzr(['bd-do', 'rm debian/test-file'])
     # It might be nice if this was actually gone, but that would involve
     # either a comaparison, or removing all the files, but the latter is
     # dangerous. I guess it's a TODO to implement the comparison.
-    self.assertPathExists('debian/changelog')
+    self.assertPathExists('debian/test-file')
 
   def test_new_directories_created(self):
     tree = self.make_unpacked_source()
@@ -169,14 +185,14 @@ class TestDo(ExternalBase):
     tree = self.make_unpacked_source()
     self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
-    self.run_bzr(['bd-do', 'echo a > debian/changelog'])
-    self.assertFileEqual('a\n', 'debian/changelog')
+    self.run_bzr(['bd-do', 'echo a > debian/test-file'])
+    self.assertFileEqual('a\n', 'debian/test-file')
 
   def test_export_purged(self):
     tree = self.make_unpacked_source()
     self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
-    self.run_bzr(['bd-do', 'echo a > debian/changelog'])
+    self.run_bzr(['bd-do', 'echo a > debian/test-file'])
     self.assertPathDoesNotExist(self.build_dir())
 
   def test_uses_shell(self):

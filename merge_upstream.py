@@ -1,7 +1,7 @@
 #    merge_upstream.py -- Merge new upstream versions of packages.
 #    Copyright (C) 2007 Reinhard Tartler <siretart@tauware.de>
 #                  2007 James Westby <jw+debian@jameswestby.net>
-#                  2008 Jelmer Vernooij <jelmer@samba.org>
+#                  2008-2019 Jelmer Vernooij <jelmer@samba.org>
 #
 #    Code is also taken from bzrtools, which is
 #             (C) 2005, 2006, 2007 Aaron Bentley <aaron.bentley@utoronto.ca>

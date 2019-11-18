@@ -1170,9 +1170,11 @@ class cmd_builddeb_do(Command):
     """
 
     takes_args = ['command*']
+    takes_options = [
+        Option('no-preparation', help='Don\'t apply/unapply patches.')]
     aliases = ['bd-do']
 
-    def run(self, command_list=None):
+    def run(self, command_list=None, no_preparation=False):
         import subprocess
         from .source_distiller import (
             MergeModeDistiller,
@@ -1254,11 +1256,20 @@ class cmd_builddeb_do(Command):
         if give_instruction:
             note(gettext('If you want to cancel your changes then exit '
                  'with a non-zero exit code, e.g. run "exit 1".'))
+        if not no_preparation:
+            builder.before_build()
         try:
             builder.build()
         except BuildFailedError:
             raise BzrCommandError(gettext(
                 'Not updating the working tree as the command failed.'))
+        finally:
+            if not no_preparation:
+                try:
+                    builder.after_build()
+                except subprocess.CalledProcessError:
+                    raise BzrCommandError(gettext(
+                        'After build processing failed. Aborting.'))
         note(gettext("Copying debian/ back"))
         if top_level:
             destination = ''
