@@ -84,7 +84,7 @@ class GitFileParentProvider(object):
             self.change_scanner.repository.lookup_bzr_revision_id(
                 text_revision))
         try:
-            path = mapping.parse_file_id(file_id)
+            path = mapping.parse_file_id(file_id).encode('utf-8')
         except ValueError:
             raise KeyError(file_id)
         text_parents = []
@@ -92,7 +92,7 @@ class GitFileParentProvider(object):
             try:
                 (path, text_parent) = (
                     self.change_scanner.find_last_change_revision(
-                        path.encode('utf-8'), commit_parent))
+                        path, commit_parent))
             except KeyError:
                 continue
             if text_parent not in text_parents:
