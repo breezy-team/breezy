@@ -108,6 +108,9 @@ cdef extern from "Python.h":
     int PyBytes_Size(object p)
     int PyBytes_GET_SIZE_void "PyBytes_GET_SIZE" (void *p)
     int PyBytes_CheckExact(object p)
+    int PyFloat_Check(object p)
+    double PyFloat_AsDouble(object p)
+    int PyLong_Check(object p)
     void Py_INCREF(object o)
     void Py_DECREF(object o)
 
@@ -793,6 +796,16 @@ cdef int minikind_from_mode(int mode): # cannot_raise
 _encode = binascii.b2a_base64
 
 
+cdef unsigned long _time_to_unsigned(object t):
+    cdef double dt
+    if PyLong_Check(t):
+        return PyInt_AsUnsignedLongMask(t)
+    if PyFloat_Check(t):
+        dt = PyFloat_AsDouble(t)
+        return <unsigned long>dt
+    raise TypeError("invalid type for time: %r" % t)
+
+
 cdef _pack_stat(stat_value):
     """return a string representing the stat value's key fields.
 
@@ -804,8 +817,8 @@ cdef _pack_stat(stat_value):
     aliased = <int *>result
     aliased[0] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_size))
     # mtime and ctime will often be floats but get converted to PyInt within
-    aliased[1] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_mtime))
-    aliased[2] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_ctime))
+    aliased[1] = htonl(_time_to_unsigned(stat_value.st_mtime))
+    aliased[2] = htonl(_time_to_unsigned(stat_value.st_ctime))
     aliased[3] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_dev))
     aliased[4] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_ino))
     aliased[5] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_mode))
