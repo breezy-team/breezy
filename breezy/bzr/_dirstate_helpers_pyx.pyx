@@ -798,12 +798,10 @@ _encode = binascii.b2a_base64
 
 cdef unsigned long _time_to_unsigned(object t):
     cdef double dt
-    if PyLong_Check(t):
-        return PyInt_AsUnsignedLongMask(t)
     if PyFloat_Check(t):
         dt = PyFloat_AsDouble(t)
         return <unsigned long>dt
-    raise TypeError("invalid type for time: %r" % t)
+    return PyInt_AsUnsignedLongMask(t)
 
 
 cdef _pack_stat(stat_value):
