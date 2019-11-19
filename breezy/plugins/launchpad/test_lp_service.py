@@ -62,7 +62,7 @@ class LaunchpadServiceTests(TestCase):
 
     def test_dev_service(self):
         service = LaunchpadService(lp_instance='dev')
-        self.assertEqual('https://xmlrpc.launchpad.test/bazaar/',
+        self.assertEqual('https://xmlrpc.launchpad.dev/bazaar/',
                          service.service_url)
 
     def test_demo_service(self):
@@ -178,7 +178,7 @@ class TestURLInference(TestCase):
         web_url = service.get_web_url_from_branch_url(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            'https://code.launchpad.test/~foo/bar/baz', web_url)
+            'https://code.launchpad.dev/~foo/bar/baz', web_url)
 
     def test_demo_url(self):
         service = LaunchpadService(lp_instance='demo')
