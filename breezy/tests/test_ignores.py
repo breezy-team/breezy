@@ -90,7 +90,7 @@ class TestUserIgnores(TestCaseInTempDir):
 
     def test_create_with_intermediate_missing(self):
         # $HOME should be set to '.'
-        ignore_path = config.user_ignore_config_filename()
+        ignore_path = bedding.user_ignore_config_path()
         self.assertPathDoesNotExist(ignore_path)
         os.mkdir('empty-home')
 
@@ -101,7 +101,7 @@ class TestUserIgnores(TestCaseInTempDir):
         user_ignores = ignores.get_user_ignores()
         self.assertEqual(set(ignores.USER_DEFAULTS), user_ignores)
 
-        ignore_path = config.user_ignore_config_filename()
+        ignore_path = bedding.user_ignore_config_path()
         self.assertPathDoesNotExist(ignore_path)
 
     def test_use_existing(self):
