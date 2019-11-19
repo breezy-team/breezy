@@ -320,6 +320,78 @@ StaticTuple_repr(StaticTuple *self)
     return result;
 }
 
+/* adapted from tuplehash(), is the specific hash value considered
+ * 'stable'?
+ */
+
+#if PY_MAJOR_VERSION > 3 || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 8)
+/* Hash for tuples. This is a slightly simplified version of the xxHash
+   non-cryptographic hash:
+   - we do not use any parallellism, there is only 1 accumulator.
+   - we drop the final mixing since this is just a permutation of the
+     output space: it does not help against collisions.
+   - at the end, we mangle the length with a single constant.
+   For the xxHash specification, see
+   https://github.com/Cyan4973/xxHash/blob/master/doc/xxhash_spec.md
+
+   Below are the official constants from the xxHash specification. Optimizing
+   compilers should emit a single "rotate" instruction for the
+   _PyHASH_XXROTATE() expansion. If that doesn't happen for some important
+   platform, the macro could be changed to expand to a platform-specific rotate
+   spelling instead.
+*/
+#if SIZEOF_PY_UHASH_T > 4
+#define _PyHASH_XXPRIME_1 ((Py_uhash_t)11400714785074694791ULL)
+#define _PyHASH_XXPRIME_2 ((Py_uhash_t)14029467366897019727ULL)
+#define _PyHASH_XXPRIME_5 ((Py_uhash_t)2870177450012600261ULL)
+#define _PyHASH_XXROTATE(x) ((x << 31) | (x >> 33))  /* Rotate left 31 bits */
+#else
+#define _PyHASH_XXPRIME_1 ((Py_uhash_t)2654435761UL)
+#define _PyHASH_XXPRIME_2 ((Py_uhash_t)2246822519UL)
+#define _PyHASH_XXPRIME_5 ((Py_uhash_t)374761393UL)
+#define _PyHASH_XXROTATE(x) ((x << 13) | (x >> 19))  /* Rotate left 13 bits */
+#endif
+
+/* Tests have shown that it's not worth to cache the hash value, see
+   https://bugs.python.org/issue9685 */
+static Py_hash_t
+StaticTuple_hash(StaticTuple *self)
+{
+    Py_ssize_t i, len = self->size;
+    PyObject **item = self->items;
+
+#if STATIC_TUPLE_HAS_HASH
+    if (self->hash != -1) {
+        return self->hash;
+    }
+#endif
+
+    Py_uhash_t acc = _PyHASH_XXPRIME_5;
+    for (i = 0; i < len; i++) {
+        Py_uhash_t lane = PyObject_Hash(item[i]);
+        if (lane == (Py_uhash_t)-1) {
+            return -1;
+        }
+        acc += lane * _PyHASH_XXPRIME_2;
+        acc = _PyHASH_XXROTATE(acc);
+        acc *= _PyHASH_XXPRIME_1;
+    }
+
+    /* Add input length, mangled to keep the historical value of hash(()). */
+    acc += len ^ (_PyHASH_XXPRIME_5 ^ 3527539UL);
+
+    if (acc == (Py_uhash_t)-1) {
+        acc = 1546275796;
+    }
+
+#if STATIC_TUPLE_HAS_HASH
+    self->hash = acc;
+#endif
+    return acc;
+}
+
+
+#else
 static long
 StaticTuple_hash(StaticTuple *self)
 {
@@ -357,6 +429,7 @@ StaticTuple_hash(StaticTuple *self)
 #endif
     return x;
 }
+#endif
 
 static PyObject *
 StaticTuple_richcompare_to_tuple(StaticTuple *v, PyObject *wt, int op)
