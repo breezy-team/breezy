@@ -36,14 +36,14 @@ class MercurialUnsupportedError(errors.UnsupportedFormatError):
             'use the fastimport format. ')
 
 
-class HgDirFormat(controldir.ControlDirFormat):
+class LocalHgDirFormat(controldir.ControlDirFormat):
     """Mercurial directory format."""
 
     def get_converter(self):
         raise NotImplementedError(self.get_converter)
 
     def get_format_description(self):
-        return "Mercurial control directory"
+        return "Local Mercurial control directory"
 
     def initialize_on_transport(self, transport):
         raise errors.UninitializableFormat(self)
@@ -87,7 +87,35 @@ class LocalHgProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return [HgDirFormat()]
+        return [LocalHgDirFormat()]
+
+
+class SmartHgDirFormat(controldir.ControlDirFormat):
+    """Mercurial directory format."""
+
+    def get_converter(self):
+        raise NotImplementedError(self.get_converter)
+
+    def get_format_description(self):
+        return "Smart Mercurial control directory"
+
+    def initialize_on_transport(self, transport):
+        raise errors.UninitializableFormat(self)
+
+    def is_supported(self):
+        return False
+
+    def supports_transport(self, transport):
+        return False
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+                             basedir=None):
+        raise MercurialUnsupportedError()
+
+    def open(self, transport):
+        # Raise NotBranchError if there is nothing there
+        SmartHgProber().probe_transport(transport)
+        raise NotImplementedError(self.open)
 
 
 class SmartHgProber(controldir.Prober):
@@ -107,8 +135,10 @@ class SmartHgProber(controldir.Prober):
         :param externa_url: External URL for transport
         :return: Boolean indicating whether transport is backed onto hg
         """
-        from breezy.transport.http import Request
-        url = external_url.rstrip("/") + "?cmd=capabilities"
+        from breezy.urlutils import urlparse
+        parsed_url = urlparse.urlparse(external_url)
+        parsed_url = parsed_url._replace(query='cmd=capabilities')
+        url = urlparse.urlunparse(parsed_url)
         resp = transport.request(
             'GET', url, headers={'Accept': 'application/mercurial-0.1'})
         if resp.status == 404:
@@ -134,12 +164,12 @@ class SmartHgProber(controldir.Prober):
         if (external_url.startswith("http:") or
                 external_url.startswith("https:")):
             if klass._has_hg_http_smart_server(transport, external_url):
-                return HgDirFormat()
+                return SmartHgDirFormat()
         raise errors.NotBranchError(path=transport.base)
 
     @classmethod
     def known_formats(cls):
-        return [HgDirFormat()]
+        return set([SmartHgDirFormat()])
 
 
 controldir.ControlDirFormat.register_prober(LocalHgProber)

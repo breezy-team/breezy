@@ -1037,14 +1037,15 @@ class HTTPRedirectHandler(urllib_request.HTTPRedirectHandler):
             newurl = headers.get('uri')
         else:
             return
+
+        newurl = urljoin(req.get_full_url(), newurl)
+
         if self._debuglevel >= 1:
             print('Redirected to: %s (followed: %r)' % (newurl,
                                                         req.follow_redirections))
         if req.follow_redirections is False:
             req.redirected_to = newurl
             return fp
-
-        newurl = urljoin(req.get_full_url(), newurl)
 
         # This call succeeds or raise an error. urllib_request returns
         # if redirect_request returns None, but our
@@ -1829,6 +1830,7 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
                        400,
                        403,
                        404,  # Not found
+                       405,  # Method not allowed
                        416,
                        422,
                        ]
