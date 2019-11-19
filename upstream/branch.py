@@ -88,19 +88,23 @@ def _upstream_branch_version(revhistory, upstream_revision, reverse_tag_dict, pa
     if upstream_revision == NULL_REVISION:
         # No new version to merge
         return previous_version
-    for r in revhistory:
-        if r in reverse_tag_dict:
-            # If there is a newer version tagged in branch,
-            # convert to upstream version
-            # return <upstream_version>+bzr<revno>
-            for tag in reverse_tag_dict[r]:
-                upstream_version = upstream_tag_to_version(
-                        tag, package=package)
-                if upstream_version is not None:
-                    if r != upstream_revision:
-                        upstream_version = add_rev(
-                            str(upstream_version), upstream_revision)
-                    return upstream_version
+    try:
+        for r in revhistory:
+            if r in reverse_tag_dict:
+                # If there is a newer version tagged in branch,
+                # convert to upstream version
+                # return <upstream_version>+bzr<revno>
+                for tag in reverse_tag_dict[r]:
+                    upstream_version = upstream_tag_to_version(
+                            tag, package=package)
+                    if upstream_version is not None:
+                        if r != upstream_revision:
+                            upstream_version = add_rev(
+                                str(upstream_version), upstream_revision)
+                        return upstream_version
+    except RevisionNotPresent:
+        # Ghost revision somewhere on mainline.
+        pass
     return add_rev(str(previous_version), upstream_revision)
 
 
