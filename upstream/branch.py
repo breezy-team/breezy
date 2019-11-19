@@ -27,6 +27,7 @@ from ....branch import (
     )
 from ....bzr import branch as bzr_branch
 from ....errors import (
+    GhostRevisionsHaveNoRevno,
     InvalidRevisionId,
     InvalidRevisionSpec,
     NoSuchRevision,
@@ -133,7 +134,8 @@ def extract_svn_revno(rev):
 
     :param rev: Revision object
     :return: Revision number, None if this was not a Subversion revision or
-         if the revision number could not be determined (bzr-svn not available).
+         if the revision number could not be determined
+         (bzr-svn not available).
     """
     try:
         from ...svn import extract_svn_foreign_revid
@@ -156,12 +158,16 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
     :param version_string: Original version string
     :param revid: Revision id of the revision
     """
-    revno = upstream_branch.revision_id_to_dotted_revno(revid)
-    revno_str = '.'.join(map(str, revno))
+    try:
+        revno = upstream_branch.revision_id_to_dotted_revno(revid)
+    except GhostRevisionsHaveNoRevno:
+        pass
+    else:
+        revno_str = '.'.join(map(str, revno))
 
-    m = re.match(r"^(.*)([\+~])bzr(\d+)$", version_string)
-    if m:
-        return "%s%sbzr%s" % (m.group(1), m.group(2), revno_str)
+        m = re.match(r"^(.*)([\+~])bzr(\d+)$", version_string)
+        if m:
+            return "%s%sbzr%s" % (m.group(1), m.group(2), revno_str)
 
     rev = upstream_branch.repository.get_revision(revid)
     gitid = extract_gitid(rev)
