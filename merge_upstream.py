@@ -110,8 +110,8 @@ def changelog_add_new_version(
             str(package_version(upstream_version, distribution_name, epoch)),
             "-D", "UNRELEASED", "--release-heuristic", "changelog",
             "--package", package, entry_description]
-    if not os.path.exists(os.path.join(subpath, 'debian')):
-        tree.mkdir(os.path.join(subpath, 'debian'))
+    if not tree.has_filename(osutils.pathjoin(subpath, 'debian')):
+        tree.mkdir(osutils.pathjoin(subpath, 'debian'))
     cl_path = osutils.pathjoin(subpath, "debian/changelog")
     create = (not tree.has_filename(cl_path))
     if create:
