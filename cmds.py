@@ -182,7 +182,7 @@ def _get_upstream_branch_source(
     return upstream_source
 
 
-def _get_upstream_sources(local_tree, branch, build_type, config,
+def _get_upstream_sources(local_tree, subpath, branch, build_type, config,
                           upstream_version, top_level, export_upstream=None,
                           export_upstream_revision=None):
     from .upstream import (
@@ -211,7 +211,7 @@ def _get_upstream_sources(local_tree, branch, build_type, config,
             yield upstream_branch_source
     elif config.upstream_branch is not None:
         yield LazyUpstreamBranchSource(config.upstream_branch)
-    yield UScanSource(local_tree, top_level)
+    yield UScanSource(local_tree, subpath, top_level)
 
     if build_type == BUILD_TYPE_SPLIT:
         yield SelfSplitSource(local_tree)
@@ -242,7 +242,7 @@ def _get_distiller(tree, subpath, branch, changelog, build_type, config,
     note(gettext("Building package in %s mode") % build_type)
 
     upstream_sources = list(_get_upstream_sources(
-        tree, branch, build_type=build_type, config=config,
+        tree, subpath, branch, build_type=build_type, config=config,
         upstream_version=changelog.version.upstream_version,
         top_level=top_level, export_upstream=export_upstream,
         export_upstream_revision=export_upstream_revision))
