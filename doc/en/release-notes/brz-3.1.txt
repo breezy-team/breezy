@@ -53,6 +53,10 @@ New Features
    attempt to access Fossil repositories.
    (Jelmer Vernooĳ, #1848821)
 
+ * Add a basic Mercurial plugin that mentions that .hg repositories
+   are unsupported when the user attempts to access one.
+   (Jelmer Vernooĳ)
+
 Improvements
 ************
 
