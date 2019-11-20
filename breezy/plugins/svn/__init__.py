@@ -120,6 +120,8 @@ class SvnRepositoryProber(controldir.Prober):
 
     @classmethod
     def priority(klass, transport):
+        if 'svn' in transport.user_url:
+            return 90
         return 100
 
     def probe_transport(self, transport):
