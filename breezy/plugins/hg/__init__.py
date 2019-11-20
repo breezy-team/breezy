@@ -170,7 +170,7 @@ class SmartHgProber(controldir.Prober):
 
     @classmethod
     def known_formats(cls):
-        return set([SmartHgDirFormat()])
+        return [SmartHgDirFormat()]
 
 
 controldir.ControlDirFormat.register_prober(LocalHgProber)
