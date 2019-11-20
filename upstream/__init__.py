@@ -112,16 +112,18 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.fetch_tarballs)
 
-    def _tarball_path(self, package, version, component, target_dir, format=None):
-        return os.path.join(target_dir, tarball_name(package, version, component,
-                    format=format))
+    def _tarball_path(self, package, version, component, target_dir,
+                      format=None):
+        return os.path.join(
+            target_dir,
+            tarball_name(package, version, component, format=format))
 
 
 class AptSource(UpstreamSource):
     """Upstream source that uses apt-source."""
 
     def fetch_tarballs(self, package, upstream_version, target_dir,
-            _apt_pkg=None, components=None):
+                       _apt_pkg=None, components=None):
         if _apt_pkg is None:
             import apt_pkg
         else:
@@ -137,8 +139,7 @@ class AptSource(UpstreamSource):
         # Handle the case where the apt.sources file contains no source
         # URIs (LP:375897)
         try:
-            get_sources = get_fn(apt_pkg, 'SourceRecords',
-                "GetPkgSrcRecords")
+            get_sources = get_fn(apt_pkg, 'SourceRecords', "GetPkgSrcRecords")
             sources = get_sources()
         except SystemError:
             raise PackageVersionNotPresent(package, upstream_version, self)
@@ -154,7 +155,8 @@ class AptSource(UpstreamSource):
                 if filekind != "tar":
                     continue
                 filename = os.path.basename(filename)
-                if filename.startswith("%s_%s.orig" % (package, upstream_version)):
+                if filename.startswith(
+                        "%s_%s.orig" % (package, upstream_version)):
                     filenames.append(filename)
             if filenames:
                 if self._run_apt_source(package, version, target_dir):
@@ -456,15 +458,15 @@ class UpstreamProvider(object):
         in_target = self.already_exists_in_target(target_dir)
         if in_target is not None:
             note("Upstream tarball already exists in build directory, "
-                    "using that")
+                 "using that")
             return [(p, component_from_orig_tarball(p,
                 self.package, self.version)) for p in in_target]
         if self.already_exists_in_store() is None:
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
             try:
-                paths = self.source.fetch_tarballs(self.package,
-                    self.version, self.store_dir)
+                paths = self.source.fetch_tarballs(
+                    self.package, self.version, self.store_dir)
             except PackageVersionNotPresent:
                 raise MissingUpstreamTarball(self.package, self.version)
             assert isinstance(paths, list)
@@ -579,6 +581,7 @@ class LaunchpadReleaseFileSource(UpstreamSource):
             self.project = project
 
     def fetch_tarballs(self, package, version, target_dir, components=None):
+        note("Retrieving tarball for %s from Launchpad.", package)
         release = self.project.getRelease(version=version)
         if release is None:
             raise PackageVersionNotPresent(package, version, self)
