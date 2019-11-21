@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: breezy
-Version: 3.0.1
+Version: 3.0.2
 Summary: Friendly distributed version control system
 Home-page: https://www.breezy-vcs.org/
 Maintainer: Breezy Developers
@@ -86,6 +86,6 @@ Classifier: Operating System :: POSIX
 Classifier: Programming Language :: Python
 Classifier: Programming Language :: C
 Classifier: Topic :: Software Development :: Version Control
-Provides-Extra: fastimport
 Provides-Extra: git
+Provides-Extra: fastimport
 Provides-Extra: launchpad

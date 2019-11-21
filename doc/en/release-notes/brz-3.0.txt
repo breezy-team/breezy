@@ -5,6 +5,69 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.0.2
+#########
+
+:3.0.2: 2019-11-19
+
+External Compatibility Breaks
+*****************************
+
+None.
+
+New Features
+************
+
+None.
+
+Improvements
+************
+
+None.
+
+Bug Fixes
+*********
+
+ * Disable loading from entrypoints by default, since it can
+   significantly slow down startup on some platforms.
+   (Jelmer Vernooĳ, #1832868)
+
+ * Don't fail when unable to write per-user ignore list due to
+   one of the intermediate directories not existing
+   (Jelmer Vernooĳ, #1851904)
+
+ * Fix file graph operations on Git repositories.
+   (Jelmer Vernooĳ, #1847913)
+
+ * Allow running tests without launchpadlib installed.
+   (Jelmer Vernooĳ, #1849988)
+
+ * Fix compatibility with Python 3.8.
+   (Jelmer Vernooĳ, Victor Stinner, #1844684)
+
+Documentation
+*************
+
+None
+
+API Changes
+***********
+
+None.
+
+Internals
+*********
+
+None.
+
+Testing
+*******
+
+ * Fix bb.test_testament.TestTestament.test_testament_non_ascii
+   when the host encoding is non-utf8.
+   (Jelmer Vernooĳ, #1849986)
+
+
 bzr 3.0.1
 #########
 

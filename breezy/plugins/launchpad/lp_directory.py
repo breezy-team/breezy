@@ -35,7 +35,7 @@ from ... import (
     )
 from ...i18n import gettext
 
-from .lp_api import (
+from .uris import (
     DEFAULT_INSTANCE,
     LAUNCHPAD_DOMAINS,
     )
