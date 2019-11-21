@@ -47,7 +47,7 @@ def write_to_cmd(args, input=""):
     stdout, stderr = process.communicate(input)
     status = process.wait()
     if status < 0:
-        raise Exception("%s killed by signal %i" (args[0], -status))
+        raise Exception("%s killed by signal %i" % (args[0], -status))
     return stdout, stderr, status
 
 

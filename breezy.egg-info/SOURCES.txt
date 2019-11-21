@@ -420,6 +420,7 @@ breezy/plugins/launchpad/test_lp_login.py
 breezy/plugins/launchpad/test_lp_open.py
 breezy/plugins/launchpad/test_lp_service.py
 breezy/plugins/launchpad/test_register.py
+breezy/plugins/launchpad/uris.py
 breezy/plugins/mtn/__init__.py
 breezy/plugins/netrc_credential_store/__init__.py
 breezy/plugins/netrc_credential_store/tests/__init__.py
@@ -1335,7 +1336,7 @@ doc/developers/_build/html/_static/brz-doc.css
 doc/developers/_build/html/_static/doctools.js
 doc/developers/_build/html/_static/documentation_options.js
 doc/developers/_build/html/_static/file.png
-doc/developers/_build/html/_static/jquery-3.2.1.js
+doc/developers/_build/html/_static/jquery-3.4.1.js
 doc/developers/_build/html/_static/jquery.js
 doc/developers/_build/html/_static/language_data.js
 doc/developers/_build/html/_static/minus.png
@@ -1914,7 +1915,7 @@ doc/en/_build/html/_static/bgtop.png
 doc/en/_build/html/_static/doctools.js
 doc/en/_build/html/_static/documentation_options.js
 doc/en/_build/html/_static/file.png
-doc/en/_build/html/_static/jquery-3.2.1.js
+doc/en/_build/html/_static/jquery-3.4.1.js
 doc/en/_build/html/_static/jquery.js
 doc/en/_build/html/_static/language_data.js
 doc/en/_build/html/_static/minus.png

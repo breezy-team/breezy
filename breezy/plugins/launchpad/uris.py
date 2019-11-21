@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Jelmer Vernooij <jelmer@jelmer.uk>
+# Copyright (C) 2009-2012 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,18 +14,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Management of hosted branches."""
+"""Launchpad URIs."""
 
 from __future__ import absolute_import
 
-from ... import version_info  # noqa: F401
-from ...commands import plugin_cmds
 
-plugin_cmds.register_lazy("cmd_propose_merge", ["propose"], __name__ + ".cmds")
-plugin_cmds.register_lazy("cmd_publish_derived", ['publish'], __name__ + ".cmds")
-plugin_cmds.register_lazy("cmd_find_merge_proposal", ['find-proposal'], __name__ + ".cmds")
-plugin_cmds.register_lazy("cmd_github_login", ["gh-login"], __name__ + ".cmds")
-plugin_cmds.register_lazy("cmd_gitlab_login", ["gl-login"], __name__ + ".cmds")
-plugin_cmds.register_lazy(
-    "cmd_my_merge_proposals", ["my-proposals"],
-    __name__ + ".cmds")
+# We use production as the default because edge has been deprecated circa
+# 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
+DEFAULT_INSTANCE = 'production'
+
+LAUNCHPAD_DOMAINS = {
+    'production': 'launchpad.net',
+    'staging': 'staging.launchpad.net',
+    'qastaging': 'qastaging.launchpad.net',
+    'demo': 'demo.launchpad.net',
+    'dev': 'launchpad.dev',
+    }
+
+LAUNCHPAD_BAZAAR_DOMAINS = [
+    'bazaar.%s' % domain
+    for domain in LAUNCHPAD_DOMAINS.values()]

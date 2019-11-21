@@ -100,11 +100,12 @@ class AnnotateProvider(object):
             self.change_scanner.repository.lookup_bzr_revision_id(
                 text_revision))
         text_parents = []
+        path = path.encode('utf-8')
         for commit_parent in self.store[commit_id].parents:
             try:
                 (path, text_parent) = (
                     self.change_scanner.find_last_change_revision(
-                        path.encode('utf-8'), commit_parent))
+                        path, commit_parent))
             except KeyError:
                 continue
             if text_parent not in text_parents:
