@@ -5,6 +5,9 @@ breezy (3.0.2-1) UNRELEASED; urgency=medium
   * Update standards version to 4.4.1, no changes needed.
   * Re-export upstream signing key without extra signatures.
   * New upstream release.
+   + Adds support for Python 3.8. Closes: #943609
+   + Fixes handling of missing .config/breezy directory.
+     Closes: #943908, #944379
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 21 Nov 2019 07:05:09 +0000
 
