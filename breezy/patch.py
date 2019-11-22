@@ -197,4 +197,6 @@ def iter_patched_from_hunks(orig_lines, hunks):
         args = ["patch", "-f", "-s", "--posix", "--binary",
                 "-o", "-", f.name, "-r", "-"]
         stdout, stderr, status = write_to_cmd(args, serialized)
-    return [stdout]
+    if status == 0:
+        return [stdout]
+    raise PatchFailed(stderr)
