@@ -17,27 +17,30 @@
 
 import os.path
 
-from breezy.tests import TestCase
+from breezy.tests import TestCase, TestCaseWithTransport
 
 from breezy.iterablefile import IterableFile
-from breezy.patches import (MalformedLine,
-                            MalformedHunkHeader,
-                            MalformedPatchHeader,
-                            BinaryPatch,
-                            BinaryFiles,
-                            Patch,
-                            ContextLine,
-                            InsertLine,
-                            RemoveLine,
-                            difference_index,
-                            get_patch_names,
-                            hunk_from_header,
-                            iter_patched,
-                            iter_patched_from_hunks,
-                            parse_line,
-                            parse_patch,
-                            parse_patches,
-                            NO_NL)
+from breezy.patches import (
+    AppliedPatches,
+    MalformedLine,
+    MalformedHunkHeader,
+    MalformedPatchHeader,
+    BinaryPatch,
+    BinaryFiles,
+    Patch,
+    ContextLine,
+    InsertLine,
+    RemoveLine,
+    difference_index,
+    get_patch_names,
+    hunk_from_header,
+    iter_patched,
+    iter_patched_from_hunks,
+    parse_line,
+    parse_patch,
+    parse_patches,
+    NO_NL,
+    )
 
 
 class PatchesTester(TestCase):
@@ -321,3 +324,49 @@ class PatchesTester(TestCase):
         """Test the added, removed and hunks values for stats_values."""
         patch = parse_patch(self.datafile("diff"))
         self.assertEqual((299, 407, 48), patch.stats_values())
+
+
+class AppliedPatchesTests(TestCaseWithTransport):
+
+    def test_apply_simple(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'a\n')])
+        tree.add('a')
+        tree.commit('Add a')
+        patch = parse_patch("""\
+--- a
++++ a
+@@ -1 +1 @@
+-a
++b
+""".splitlines(True))
+        with AppliedPatches(tree, [patch]) as newtree:
+            self.assertEqual(b'b\n', newtree.get_file_text('a'))
+
+    def test_apply_delete(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'a\n')])
+        tree.add('a')
+        tree.commit('Add a')
+        patch = parse_patch("""\
+--- a
++++ /dev/null
+@@ -1 +0,0 @@
+-a
+""".splitlines(True))
+        with AppliedPatches(tree, [patch]) as newtree:
+            self.assertFalse(newtree.has_filename('a'))
+
+    def test_apply_add(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'a\n')])
+        tree.add('a')
+        tree.commit('Add a')
+        patch = parse_patch("""\
+--- /dev/null
++++ b
+@@ -0,0 +1 @@
++b
+""".splitlines(True))
+        with AppliedPatches(tree, [patch]) as newtree:
+            self.assertEqual(b'b\n', newtree.get_file_text('b'))
