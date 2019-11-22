@@ -26,6 +26,8 @@ import sys
 import tarfile
 import tempfile
 
+from debian.changelog import Version
+
 from ....errors import BzrError, NoSuchFile
 from .... import osutils
 from ....export import export
@@ -130,26 +132,16 @@ class AptSource(UpstreamSource):
             apt_pkg = _apt_pkg
         apt_pkg.init()
 
-        def get_fn(obj, new_name, old_name):
-            try:
-                return getattr(obj, new_name)
-            except AttributeError:
-                return getattr(obj, old_name)
-
         # Handle the case where the apt.sources file contains no source
         # URIs (LP:375897)
         try:
-            get_sources = get_fn(apt_pkg, 'SourceRecords', "GetPkgSrcRecords")
-            sources = get_sources()
+            sources = apt_pkg.SourceRecords()
         except SystemError:
             raise PackageVersionNotPresent(package, upstream_version, self)
 
-        restart = get_fn(sources, 'restart', 'Restart')
-        restart()
+        sources.restart()
         note("Using apt to look for the upstream tarball.")
-        lookup = get_fn(sources, 'lookup', 'Lookup')
-        while lookup(package):
-            version = get_fn(sources, 'version', 'Version')
+        while sources.lookup(package):
             filenames = []
             for (checksum, size, filename, filekind) in sources.files:
                 if filekind != "tar":
@@ -159,10 +151,13 @@ class AptSource(UpstreamSource):
                         "%s_%s.orig" % (package, upstream_version)):
                     filenames.append(filename)
             if filenames:
-                if self._run_apt_source(package, version, target_dir):
+                if self._run_apt_source(package, sources.version, target_dir):
                     return [os.path.join(target_dir, filename)
                             for filename in filenames]
-        note("apt could not find the needed tarball.")
+                else:
+                    note("apt found %s/%s but could not download.",
+                         package, sources.version)
+        note("apt could not find %s/%s.", package, upstream_version)
         raise PackageVersionNotPresent(package, upstream_version, self)
 
     def _get_command(self, package, version_str):
