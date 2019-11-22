@@ -194,6 +194,7 @@ def iter_patched_from_hunks(orig_lines, hunks):
         # TODO(jelmer): Stream patch contents to command, rather than
         # serializing the entire patch upfront.
         serialized = b''.join([hunk.as_bytes() for hunk in hunks])
-        args = ["patch", "-f", "-s", "--posix", "--binary", "-o", "-", f.name]
+        args = ["patch", "-f", "-s", "--posix", "--binary",
+                "-o", "-", f.name, "-r", "-"]
         stdout, stderr, status = write_to_cmd(args, serialized)
     return [stdout]
