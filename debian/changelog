@@ -5,6 +5,8 @@ breezy-debian (2.8.32) UNRELEASED; urgency=medium
     root.
   * Support -b in Vcs-Hg URLs.
   * Rely on dpkg-source to apply/unapply patches.
+  * Add basic support for stripping files listed in Files-Excluded from
+    upstreams.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 Oct 2019 14:08:55 +0000
 

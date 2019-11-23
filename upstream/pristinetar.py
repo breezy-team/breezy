@@ -24,6 +24,7 @@ from base64 import (
     standard_b64encode,
     )
 import configparser
+from debian.copyright import globs_to_re
 import errno
 import os
 import re
@@ -351,7 +352,8 @@ class PristineTarSource(UpstreamSource):
             self, package, version, tree, parent_ids,
             component=None, md5=None, tarball=None, author=None,
             timestamp=None, subdir=None, exclude=None,
-            force_pristine_tar=False, committer=None):
+            force_pristine_tar=False, committer=None,
+            files_excluded=None):
         """Import a tarball.
 
         :param package: Package name
@@ -365,14 +367,23 @@ class PristineTarSource(UpstreamSource):
         """
         if exclude is None:
             exclude = []
+        if files_excluded:
+            files_excluded_re = globs_to_re(files_excluded)
+        else:
+            files_excluded_re = None
 
         def include_change(c):
-            if not exclude:
-                return True
-            path = c[1][1]
+            try:
+                path = c.path[1]
+            except AttributeError:  # breezy < 3.1
+                path = c[1][1]
             if path is None:
                 return True
-            return not osutils.is_inside_any(exclude, path)
+            if exclude and osutils.is_inside_any(exclude, path):
+                return False
+            if files_excluded_re and files_excluded_re.match(path):
+                return False
+            return True
         message = "Import upstream version %s" % (version,)
         revprops = {}
         supports_custom_revprops = (

@@ -39,11 +39,12 @@ from ...errors import (
     NotBranchError,
     NoColocatedBranchSupport,
     NotLocalUrl,
+    NoSuchFile,
     NoWorkingTree,
     )
 from ...option import Option
 from ...sixish import text_type
-from ...trace import note
+from ...trace import mutter, note
 from ...transport import get_transport
 from ...workingtree import WorkingTree
 
@@ -717,6 +718,7 @@ class cmd_merge_upstream(Command):
             )
         from .util import (
             guess_build_type,
+            get_files_excluded,
             tree_contains_upstream_source,
             )
 
@@ -734,6 +736,11 @@ class cmd_merge_upstream(Command):
                     "package name, which is needed to know the name to "
                     "give the .orig.tar.gz. Please specify --package.")
 
+            try:
+                files_excluded = get_files_excluded(tree, subpath, top_level)
+            except NoSuchFile as e:
+                mutter('Copyright file not found: %s', e)
+                files_excluded = []
             contains_upstream_source = tree_contains_upstream_source(
                 tree, subpath)
             if changelog is None:
@@ -870,7 +877,8 @@ class cmd_merge_upstream(Command):
                         tree, subpath, tarball_filenames, package, version,
                         current_version, upstream_branch, upstream_revisions,
                         merge_type, force=force,
-                        force_pristine_tar=force_pristine_tar)
+                        force_pristine_tar=force_pristine_tar,
+                        files_excluded=files_excluded)
                 except PreviousVersionTagMissing as e:
                     raise BzrCommandError(str(e))
             if (current_version is not None and

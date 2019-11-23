@@ -800,7 +800,8 @@ class DistributionBranch(object):
                         upstream_parents, upstream_tarballs,
                         upstream_branch=None, upstream_revisions=None,
                         timestamp=None, author=None, file_ids_from=None,
-                        force_pristine_tar=False, committer=None):
+                        force_pristine_tar=False, committer=None,
+                        files_excluded=None):
         """Import an upstream part on to the upstream branch.
 
         This imports the upstream part of the code and places it on to
@@ -881,7 +882,7 @@ class DistributionBranch(object):
                 package, version, self.pristine_upstream_tree, parents,
                 component, md5, tarball, author=author, timestamp=timestamp,
                 exclude=exclude, force_pristine_tar=force_pristine_tar,
-                committer=committer)
+                committer=committer, files_excluded=files_excluded)
             self.pristine_upstream_branch.generate_revision_history(revid)
             ret.append((component, tag, revid))
             self.branch.fetch(self.pristine_upstream_branch)
@@ -1354,7 +1355,7 @@ class DistributionBranch(object):
     def merge_upstream(self, tarball_filenames, package, version,
                        previous_version, upstream_branch=None,
                        upstream_revisions=None, merge_type=None, force=False,
-                       force_pristine_tar=False, committer=None):
+                       force_pristine_tar=False, committer=None, files_excluded=None):
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
             if previous_version is not None:
@@ -1389,7 +1390,7 @@ class DistributionBranch(object):
                         upstream_branch=upstream_branch,
                         upstream_revisions=upstream_revisions,
                         force_pristine_tar=force_pristine_tar,
-                        committer=committer)
+                        committer=committer, files_excluded=files_excluded)
                     self._fetch_upstream_to_branch(imported_revids)
                 finally:
                     shutil.rmtree(tarball_dir)

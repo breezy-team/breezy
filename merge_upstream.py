@@ -129,7 +129,8 @@ def changelog_add_new_version(
 def do_merge(
         tree, subpath, tarball_filenames, package, version,
         current_version, upstream_branch, upstream_revisions, merge_type=None,
-        force=False, force_pristine_tar=False, committer=None):
+        force=False, force_pristine_tar=False, committer=None,
+        files_excluded=None):
     """Actually execute a merge.
 
     Args:
@@ -143,6 +144,7 @@ def do_merge(
       upstream_revisions: Dictionary mapping versions to upstream revisions
       merge_type: Merge type
       committer: Committer string to use
+      files_excluded: Files to exclude
     """
     db = DistributionBranch(tree.branch, tree.branch, tree=tree)
     dbs = DistributionBranchSet()
@@ -155,7 +157,7 @@ def do_merge(
         upstream_revisions=upstream_revisions,
         merge_type=merge_type, force=force,
         force_pristine_tar=force_pristine_tar,
-        committer=committer)
+        committer=committer, files_excluded=files_excluded)
 
 
 def fetch_tarball(package, version, orig_dir, locations, v3):
