@@ -334,8 +334,8 @@ class AppliedPatchesTests(TestCaseWithTransport):
         tree.add('a')
         tree.commit('Add a')
         patch = parse_patch("""\
---- a
-+++ a
+--- a/a
++++ a/a
 @@ -1 +1 @@
 -a
 +b
@@ -349,7 +349,7 @@ class AppliedPatchesTests(TestCaseWithTransport):
         tree.add('a')
         tree.commit('Add a')
         patch = parse_patch("""\
---- a
+--- a/a
 +++ /dev/null
 @@ -1 +0,0 @@
 -a
@@ -364,7 +364,7 @@ class AppliedPatchesTests(TestCaseWithTransport):
         tree.commit('Add a')
         patch = parse_patch("""\
 --- /dev/null
-+++ b
++++ a/b
 @@ -0,0 +1 @@
 +b
 """.splitlines(True))
