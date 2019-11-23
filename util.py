@@ -34,6 +34,7 @@ import re
 
 from debian import deb822
 from debian.changelog import Changelog, ChangelogParseError
+from debian.copyright import Copyright
 
 from ... import (
     bugtracker,
@@ -842,3 +843,16 @@ def get_build_architecture():
     except subprocess.CalledProcessError as e:
         raise BzrError(
             "Could not find the build architecture: %s" % e)
+
+
+def get_files_excluded(tree, subpath='', top_level=False):
+    if top_level:
+        path = os.path.join(subpath, 'copyright')
+    else:
+        path = os.path.join(subpath, 'debian', 'copyright')
+    with tree.get_file(path) as f:
+        copyright = Copyright(f)
+        try:
+            return copyright.header["Files-Excluded"].split()
+        except KeyError:
+            return []

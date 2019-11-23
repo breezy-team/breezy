@@ -60,6 +60,7 @@ from ..util import (
     find_last_distribution,
     find_thanks,
     get_build_architecture,
+    get_files_excluded,
     get_commit_info_from_changelog,
     guess_build_type,
     lookup_distribution,
@@ -1002,3 +1003,43 @@ class BuildArchitectureTests(TestCase):
 
     def test_is_str(self):
         self.assertIsInstance(get_build_architecture(), text_type)
+
+
+class FilesExcludedTests(TestCaseWithTransport):
+
+    def test_file_missing(self):
+        tree = self.make_branch_and_tree('.')
+        self.assertRaises(bzr_errors.NoSuchFile, get_files_excluded, tree)
+
+    def test_not_set(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/copyright', """\
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: blah
+
+Files: *
+Copyright:
+ (c) Somebody
+License: MIT
+""")])
+        tree.add(['debian', 'debian/copyright'])
+        self.assertEqual([], get_files_excluded(tree))
+
+    def test_set(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('debian/', ),
+            ('debian/copyright', """\
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: blah
+Files-Excluded: blah/* flattr.png
+
+Files: *
+Copyright:
+ (c) Somebody
+License: MIT
+""")])
+        tree.add(['debian', 'debian/copyright'])
+        self.assertEqual(['blah/*', 'flattr.png'], get_files_excluded(tree))
