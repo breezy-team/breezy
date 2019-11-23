@@ -162,6 +162,12 @@ class LaunchpadMergeProposal(MergeProposal):
             return True
         return not bool(self._mp.preview_diff.conflicts)
 
+    def get_merged_by(self):
+        merge_reporter = self._mp.merge_reporter
+        if merge_reporter is None:
+            return None
+        return merge_reporter.name
+
     def merge(self, commit_message=None):
         target_branch = _mod_branch.Branch.open(
             self.get_target_branch_url())
