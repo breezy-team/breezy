@@ -493,13 +493,18 @@ class UpstreamBranchSource(UpstreamSource):
                 revid = self.version_as_revision(package, version)
                 if revid is None:
                     raise PackageVersionNotPresent(package, version, self)
-            note("Exporting upstream branch revision %s to create the tarball",
-                 revid)
             target_filename = self._tarball_path(
                 package, version, None, target_dir)
             tarball_base = "%s-%s" % (package, version)
             rev_tree = self.upstream_branch.repository.revision_tree(revid)
-            export(rev_tree, target_filename, 'tgz', tarball_base)
+            try:
+                export(rev_tree, target_filename, 'tgz', tarball_base)
+            except UnsupportedOperation as e:
+                note('Not exporting revision from upstream branch: %s', e)
+                raise PackageVersionNotPresent(package, version, self)
+            else:
+                note("Exporting upstream branch revision %s to create "
+                     "the tarball", revid)
         return [target_filename]
 
     def __repr__(self):
