@@ -34,7 +34,7 @@ import re
 
 from debian import deb822
 from debian.changelog import Changelog, ChangelogParseError
-from debian.copyright import Copyright
+from debian.copyright import Copyright, NotMachineReadableError
 
 from ... import (
     bugtracker,
@@ -851,7 +851,10 @@ def get_files_excluded(tree, subpath='', top_level=False):
     else:
         path = os.path.join(subpath, 'debian', 'copyright')
     with tree.get_file(path) as f:
-        copyright = Copyright(f)
+        try:
+            copyright = Copyright(f)
+        except NotMachineReadableError:
+            return []
         try:
             return copyright.header["Files-Excluded"].split()
         except KeyError:
