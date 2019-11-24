@@ -1,4 +1,4 @@
-breezy-debian (2.8.32) UNRELEASED; urgency=medium
+breezy-debian (2.8.32) unstable; urgency=medium
 
   * Support plain local branch source in revspec.
   * Initial support on building packages that don't live in the branch
@@ -8,7 +8,7 @@ breezy-debian (2.8.32) UNRELEASED; urgency=medium
   * Add basic support for stripping files listed in Files-Excluded from
     upstreams.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 19 Oct 2019 14:08:55 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Nov 2019 02:57:14 +0000
 
 breezy-debian (2.8.31) unstable; urgency=medium
 
