@@ -1,4 +1,4 @@
-breezy (3.0.2-1) UNRELEASED; urgency=medium
+breezy (3.0.2-1) unstable; urgency=medium
 
   * Fix bash completion script. Closes: #941532
   * Set Rules-Requires-Root.
@@ -9,7 +9,7 @@ breezy (3.0.2-1) UNRELEASED; urgency=medium
    + Fixes handling of missing .config/breezy directory.
      Closes: #943908, #944379
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 21 Nov 2019 07:05:09 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Nov 2019 02:09:25 +0000
 
 breezy (3.0.1-6) unstable; urgency=medium
 
