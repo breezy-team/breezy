@@ -1,3 +1,9 @@
+breezy-debian (2.8.33) UNRELEASED; urgency=medium
+
+  * Update standards version to 4.4.1, no changes needed.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Nov 2019 03:11:20 +0000
+
 breezy-debian (2.8.32) unstable; urgency=medium
 
   * Support plain local branch source in revspec.
