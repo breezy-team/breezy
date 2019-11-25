@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where brz would previously crash or give incorrect
    or undesirable results.
 
+ * Don't throw an error attempting to read the parent of a ref.
+   (Jelmer Vernooĳ)
+
 Documentation
 *************
 
