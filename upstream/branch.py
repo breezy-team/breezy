@@ -32,6 +32,7 @@ from ....errors import (
     InvalidRevisionSpec,
     NoSuchRevision,
     NoSuchTag,
+    RevisionNotPresent,
     UnsupportedOperation,
     )
 from ....lock import _RelockDebugMixin, LogicalLockResult
@@ -67,8 +68,9 @@ def upstream_tag_to_version(tag_name, package=None):
     return None
 
 
-def _upstream_branch_version(revhistory, upstream_revision, reverse_tag_dict, package,
-                            previous_version, add_rev):
+def _upstream_branch_version(
+        revhistory, upstream_revision, reverse_tag_dict, package,
+        previous_version, add_rev):
     """Determine the version string of an upstream branch.
 
     The upstream version is determined from the most recent tag
@@ -83,7 +85,8 @@ def _upstream_branch_version(revhistory, upstream_revision, reverse_tag_dict, pa
     :param reverse_tag_dict: Reverse tag dictionary (revid -> list of tags)
     :param package: Name of package.
     :param previous_version: Previous upstream version in debian changelog.
-    :param add_rev: Function that can add a revision suffix to a version string.
+    :param add_rev: Function that can add a revision suffix to a version
+        string.
     :return: Name of the upstream revision.
     """
     if upstream_revision == NULL_REVISION:
