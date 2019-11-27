@@ -792,7 +792,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         parent, dir_ids):
                     pass
                 if kind == 'tree-reference' and follow_tree_references:
-                    kind = 'directory'
+                    ie = self._get_dir_ie(path, self.path2id(path))
+                    yield (posixpath.relpath(path, from_dir), 'V', 'directory',
+                           ie)
+                    continue
                 if kind == 'directory':
                     if path != from_dir:
                         if self._has_dir(encoded_path):
