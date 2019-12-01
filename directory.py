@@ -27,7 +27,6 @@ from ...directory_service import directories
 from ...sixish import PY3
 from ...trace import note, warning
 
-import apt_pkg
 from debian.deb822 import Deb822
 from debian.changelog import Version
 
@@ -169,6 +168,7 @@ class AptDirectory(object):
         else:
             version = None
 
+        import apt_pkg
         apt_pkg.init()
 
         sources = apt_pkg.SourceRecords()
@@ -211,6 +211,7 @@ class DgitDirectory(object):
         else:
             version = None
 
+        import apt_pkg
         apt_pkg.init()
 
         sources = apt_pkg.SourceRecords()
