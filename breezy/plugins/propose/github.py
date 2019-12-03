@@ -211,6 +211,10 @@ def github_url_to_bzr_url(url, branch_name):
     return git_url_to_bzr_url(url, branch_name)
 
 
+def strip_optional(url):
+    return url.split('{')[0]
+
+
 class GitHub(Hoster):
 
     name = 'github'
@@ -233,8 +237,8 @@ class GitHub(Hoster):
             raise GitHubLoginRequired(self)
         return response
 
-    def _get_repo(self, path):
-        path = 'repos/' + path
+    def _get_repo(self, owner, repo):
+        path = 'repos/%s/%s' % (owner, repo)
         response = self._api_request('GET', path)
         if response.status == 404:
             raise NoSuchProject(path)
@@ -243,7 +247,7 @@ class GitHub(Hoster):
         raise InvalidHttpResponse(path, response.text)
 
     def _get_repo_pulls(self, path, head=None, state=None):
-        path = 'repos/' + path + '/pulls?'
+        path = path + '?'
         params = {}
         if head is not None:
             params['head'] = head
@@ -259,7 +263,6 @@ class GitHub(Hoster):
         raise InvalidHttpResponse(path, response.text)
 
     def _create_pull(self, path, title, head, base, body=None):
-        path = 'repos/' + path + '/pulls'
         data = {
             'title': title,
             'head': head,
@@ -332,8 +335,7 @@ class GitHub(Hoster):
         path = 'search/issues'
         return self._list_paged(path, {'q': query}, per_page=DEFAULT_PER_PAGE)
 
-    def _create_fork(self, repo, owner=None):
-        path = '/repos/%s/forks' % (repo, )
+    def _create_fork(self, path, owner=None):
         if owner and owner != self._current_user['login']:
             path += '?organization=%s' % owner
         response = self._api_request('POST', path)
@@ -354,17 +356,16 @@ class GitHub(Hoster):
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True):
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
-        base_repo = self._get_repo('%s/%s' % (base_owner, base_project))
+        base_repo = self._get_repo(base_owner, base_project)
         if owner is None:
             owner = self._current_user['login']
         if project is None:
             project = base_repo['name']
         try:
-            remote_repo = self._get_repo('%s/%s' % (owner, project))
+            remote_repo = self._get_repo(owner, project)
         except NoSuchProject:
-            base_repo_path = '%s/%s' % (base_owner, base_project)
-            base_repo = self._get_repo(base_repo_path)
-            remote_repo = self._create_fork(base_repo_path, owner)
+            base_repo = self._get_repo(base_owner, base_project)
+            remote_repo = self._create_fork(base_repo['forks_url'], owner)
             note(gettext('Forking new repository %s from %s') %
                  (remote_repo['html_url'], base_repo['html_url']))
         else:
@@ -385,18 +386,18 @@ class GitHub(Hoster):
 
     def get_push_url(self, branch):
         owner, project, branch_name = parse_github_branch_url(branch)
-        repo = self._get_repo('%s/%s' % (owner, project))
+        repo = self._get_repo(owner, project)
         return github_url_to_bzr_url(repo['ssh_url'], branch_name)
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
-        base_repo = self._get_repo('%s/%s' % (base_owner, base_project))
+        base_repo = self._get_repo(base_owner, base_project)
         if owner is None:
             owner = self._current_user['login']
         if project is None:
             project = base_repo['name']
         try:
-            remote_repo = self._get_repo('%s/%s' % (owner, project))
+            remote_repo = self._get_repo(owner, project)
             full_url = github_url_to_bzr_url(remote_repo['ssh_url'], name)
             return _mod_branch.Branch.open(full_url)
         except NoSuchProject:
@@ -410,15 +411,14 @@ class GitHub(Hoster):
             parse_github_branch_url(source_branch))
         (target_owner, target_repo_name, target_branch_name) = (
             parse_github_branch_url(target_branch))
-        target_repo_path = "%s/%s" % (target_owner, target_repo_name)
-        target_repo = self._get_repo(target_repo_path)
+        target_repo = self._get_repo(target_owner, target_repo_name)
         state = {
             'open': 'open',
             'merged': 'closed',
             'closed': 'closed',
             'all': 'all'}
         pulls = self._get_repo_pulls(
-            target_repo_path,
+            strip_optional(target_repo['pulls_url']),
             head=target_branch_name,
             state=state[status])
         for pull in pulls:
@@ -520,9 +520,11 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         # TODO(jelmer): Allow setting title explicitly?
         title = determine_title(description)
         # TODO(jelmer): Set maintainers_can_modify?
+        target_repo = self.gh._get_repo(
+            self.target_owner, self.target_repo_name)
         try:
             pull_request = self.gh._create_pull(
-                "%s/%s" % (self.target_owner, self.target_repo_name),
+                strip_optional(target_repo['pulls_url']),
                 title=title, body=description,
                 head="%s:%s" % (self.source_owner, self.source_branch_name),
                 base=self.target_branch_name)
