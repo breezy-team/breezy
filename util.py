@@ -852,7 +852,7 @@ def get_files_excluded(tree, subpath='', top_level=False):
         path = os.path.join(subpath, 'debian', 'copyright')
     with tree.get_file(path) as f:
         try:
-            copyright = Copyright(f)
+            copyright = Copyright(f, strict=False)
         except NotMachineReadableError:
             return []
         try:
