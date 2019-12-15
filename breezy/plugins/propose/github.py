@@ -141,6 +141,12 @@ class GitHubMergeProposal(MergeProposal):
     def get_target_branch_url(self):
         return self._branch_from_part(self._pr['base'])
 
+    def get_source_project(self):
+        return self._pr['head']['repo']['full_name']
+
+    def get_target_project(self):
+        return self._pr['base']['repo']['full_name']
+
     def get_description(self):
         return self._pr['body']
 
@@ -478,6 +484,25 @@ class GitHub(Hoster):
 
     def get_proposal_by_url(self, url):
         raise UnsupportedHoster(url)
+
+    def iter_my_projects(self):
+        response = self._api_request('GET', '/user/repos')
+        if response.status != 200:
+            raise InvalidHttpResponse(url, response.text)
+        for project in json.loads(response.text):
+            base_project = project.get('source')
+            if base_project:
+                base_project = base_project['full_name']
+            yield project['full_name'], base_project
+
+    def delete_project(self, path):
+        path = 'repos/' + path
+        response = self._api_request('DELETE', path)
+        if response.status == 404:
+            raise NoSuchProject(path)
+        if response.status == 200:
+            return json.loads(response.text)
+        raise InvalidHttpResponse(path, response.text)
 
 
 class GitHubMergeProposalBuilder(MergeProposalBuilder):
