@@ -183,13 +183,14 @@ class RemoteGitProber(Prober):
         if ct and ct.startswith("application/x-git"):
             from .remote import RemoteGitControlDirFormat
             return RemoteGitControlDirFormat()
-        else:
+        elif not ct:
             from .dir import (
                 BareLocalGitControlDirFormat,
                 )
             ret = BareLocalGitControlDirFormat()
             ret._refs_text = resp.read()
             return ret
+        raise brz_errors.NotBranchError(transport.base)
 
     def probe_transport(self, transport):
         try:
