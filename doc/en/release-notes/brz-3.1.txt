@@ -46,6 +46,10 @@ New Features
    have installed and speeds up import time since psutil brings in
    various other modules. (Jelmer Vernooĳ)
 
+ * A new ``fossil`` plugin has been added that warns users when they
+   attempt to access Fossil repositories.
+   (Jelmer Vernooĳ, #1848821)
+
 Improvements
 ************
 
