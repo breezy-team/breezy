@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where brz would previously crash or give incorrect
    or undesirable results.
 
+* Fix ``brz diff --using`` when {old_path} and {new_path} are not
+  specified in the template. (#1847915, Jelmer Vernooĳ)
+
 Documentation
 *************
 

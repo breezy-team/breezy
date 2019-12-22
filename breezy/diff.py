@@ -729,6 +729,8 @@ class DiffFromTool(DiffPath):
         my_map = {'old_path': old_path, 'new_path': new_path}
         command = [AtTemplate(t).substitute(my_map) for t in
                    self.command_template]
+        if command == self.command_template:
+            command += [old_path, new_path]
         if sys.platform == 'win32':  # Popen doesn't accept unicode on win32
             command_encoded = []
             for c in command:
