@@ -202,12 +202,9 @@ class GenericProcessor(processor.ImportProcessor):
 
     def _load_info_and_params(self):
         from .. import bzr_commit_handler
-        self._mode = bool(self.params.get('mode', 'default'))
-        self._experimental = self._mode == 'experimental'
-
         # This is currently hard-coded but might be configurable via
         # parameters one day if that's needed
-        repo_transport = self.repo.control_files._transport
+        repo_transport = self.repo.control_transport
         self.id_map_path = repo_transport.local_abspath("fastimport-id-map")
 
         # Load the info file, if any
