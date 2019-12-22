@@ -74,6 +74,10 @@ class DarcsDirFormat(controldir.ControlDirFormat):
 class DarcsProber(controldir.Prober):
 
     @classmethod
+    def priority(klass, transport):
+        return 100
+
+    @classmethod
     def probe_transport(klass, transport):
         if transport.has('_darcs'):
             return DarcsDirFormat()

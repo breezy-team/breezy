@@ -131,6 +131,11 @@ API Changes
 * New ``Tree.get_nested_tree`` method for retrieving a nested tree.
   (Jelmer Vernooĳ)
 
+* The ``ControlDirFormat.register_server_prober`` method has been removed.
+  Instead, probers can now have a ``priority`` method to influence
+  when they are run. (Jelmer Vernooĳ)
+
+
 Internals
 *********
 
