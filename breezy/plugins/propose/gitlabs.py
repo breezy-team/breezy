@@ -218,7 +218,7 @@ class GitLabMergeProposal(MergeProposal):
         return (self._mr['state'] == 'closed')
 
     def reopen(self):
-        return self._update(state_event='open')
+        return self._update(state_event='reopen')
 
     def close(self):
         self._update(state_event='close')
