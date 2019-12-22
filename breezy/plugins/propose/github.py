@@ -55,6 +55,7 @@ from ...transport.http import default_user_agent
 GITHUB_HOST = 'github.com'
 WEB_GITHUB_URL = 'https://github.com'
 API_GITHUB_URL = 'https://api.github.com'
+DEFAULT_PER_PAGE = 50
 
 
 def store_github_token(scheme, host, token):
@@ -207,8 +208,7 @@ def parse_github_branch_url(branch):
 def github_url_to_bzr_url(url, branch_name):
     if not PY3:
         branch_name = branch_name.encode('utf-8')
-    return urlutils.join_segment_parameters(
-        git_url_to_bzr_url(url), {"branch": branch_name})
+    return git_url_to_bzr_url(url, branch_name)
 
 
 class GitHub(Hoster):
@@ -303,22 +303,42 @@ class GitHub(Hoster):
             raise InvalidHttpResponse(path, response.text)
         return json.loads(response.text)
 
+    def _list_paged(self, path, parameters=None, per_page=None):
+        if parameters is None:
+            parameters = {}
+        else:
+            parameters = dict(parameters.items())
+        if per_page:
+            parameters['per_page'] = str(per_page)
+        page = 1
+        i = 0
+        while path:
+            parameters['page'] = str(page)
+            response = self._api_request(
+                'GET', path + '?' +
+                ';'.join(['%s=%s' % (k, urlutils.quote(v))
+                          for (k, v) in parameters.items()]))
+            if response.status != 200:
+                raise InvalidHttpResponse(path, response.text)
+            data = json.loads(response.text)
+            for entry in data['items']:
+                i += 1
+                yield entry
+            if i >= data['total_count']:
+                break
+            page += 1
+
     def _search_issues(self, query):
         path = 'search/issues'
-        response = self._api_request(
-            'GET', path + '?q=' + urlutils.quote(query))
-        if response.status != 200:
-            raise InvalidHttpResponse(path, response.text)
-        return json.loads(response.text)
+        return self._list_paged(path, {'q': query}, per_page=DEFAULT_PER_PAGE)
 
     def _create_fork(self, repo, owner=None):
-        (orig_owner, orig_repo) = repo.split('/')
-        path = '/repos/:%s/:%s/forks' % (orig_owner, orig_repo)
-        if owner:
+        path = '/repos/%s/forks' % (repo, )
+        if owner and owner != self._current_user['login']:
             path += '?organization=%s' % owner
         response = self._api_request('POST', path)
         if response.status != 202:
-            raise InvalidHttpResponse(path, response.text)
+            raise InvalidHttpResponse(path, 'status: %d, %r' % (response.status, response.text))
         return json.loads(response.text)
 
     @property
@@ -333,7 +353,6 @@ class GitHub(Hoster):
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True):
-        import github
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo('%s/%s' % (base_owner, base_project))
         if owner is None:
@@ -342,9 +361,10 @@ class GitHub(Hoster):
             project = base_repo['name']
         try:
             remote_repo = self._get_repo('%s/%s' % (owner, project))
-        except github.UnknownObjectException:
-            base_repo = self._get_repo('%s/%s' % (base_owner, base_project))
-            remote_repo = self._create_fork(base_repo, owner)
+        except NoSuchProject:
+            base_repo_path = '%s/%s' % (base_owner, base_project)
+            base_repo = self._get_repo(base_repo_path)
+            remote_repo = self._create_fork(base_repo_path, owner)
             note(gettext('Forking new repository %s from %s') %
                  (remote_repo['html_url'], base_repo['html_url']))
         else:
@@ -369,7 +389,6 @@ class GitHub(Hoster):
         return github_url_to_bzr_url(repo['ssh_url'], branch_name)
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
-        import github
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo('%s/%s' % (base_owner, base_project))
         if owner is None:
@@ -380,7 +399,7 @@ class GitHub(Hoster):
             remote_repo = self._get_repo('%s/%s' % (owner, project))
             full_url = github_url_to_bzr_url(remote_repo['ssh_url'], name)
             return _mod_branch.Branch.open(full_url)
-        except github.UnknownObjectException:
+        except NoSuchProject:
             raise errors.NotBranchError('%s/%s/%s' % (WEB_GITHUB_URL, owner, project))
 
     def get_proposer(self, source_branch, target_branch):
@@ -450,7 +469,7 @@ class GitHub(Hoster):
         elif status == 'merged':
             query.append('is:merged')
         query.append('author:%s' % self._current_user['login'])
-        for issue in self._search_issues(query=' '.join(query))['items']:
+        for issue in self._search_issues(query=' '.join(query)):
             url = issue['pull_request']['url']
             response = self._api_request('GET', url)
             if response.status != 200:
@@ -495,7 +514,6 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
         # Note that commit_message is ignored, since github doesn't support it.
-        import github
         # TODO(jelmer): Probe for right repo name
         if self.target_repo_name.endswith('.git'):
             self.target_repo_name = self.target_repo_name[:-4]
@@ -510,14 +528,24 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 base=self.target_branch_name)
         except ValidationFailed:
             raise MergeProposalExists(self.source_branch.user_url)
+        assignees = []
         if reviewers:
             for reviewer in reviewers:
                 if '@' in reviewer:
                     user = self.gh._get_user_by_email(reviewer)
                 else:
                     user = self.gh._get_user(reviewer)
-                pull_request.assignees.append(user['login'])
-        if labels:
-            for label in labels:
-                pull_request.issue.labels.append(label)
+                assignees.append(user['login'])
+        if labels or assignees:
+            data = {}
+            if labels:
+                data['labels'] = labels
+            if assignees:
+                data['assignees'] = assignees
+            response = self.gh._api_request(
+                'PATCH', pull_request['issue_url'], body=json.dumps(data).encode('utf-8'))
+            if response.status == 422:
+                raise ValidationFailed(json.loads(response.text))
+            if response.status != 200:
+                raise InvalidHttpResponse(pull_request['issue_url'], response.text)
         return GitHubMergeProposal(self.gh, pull_request)

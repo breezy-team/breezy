@@ -1,4 +1,4 @@
-# Copyright (C) 2010-2012 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2019 Jelmer Vernooij <jelmer@samba.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,9 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Monotone foreign branch support.
+"""Fossil foreign branch support.
 
-Currently only tells the user that Monotone is not supported.
+Currently only tells the user that Fossil is not supported.
 """
 
 from __future__ import absolute_import
@@ -29,21 +29,21 @@ from ... import (
     )
 
 
-class MonotoneUnsupportedError(errors.UnsupportedFormatError):
+class FossilUnsupportedError(errors.UnsupportedFormatError):
 
-    _fmt = ('Monotone branches are not yet supported. '
-            'To convert monotone branches to Bazaar branches or vice versa, '
-            'use bzr-fastimport. See http://bazaar-vcs.org/BzrMigration.')
+    _fmt = ('Fossil branches are not yet supported. '
+            'To convert Fossil branches to Bazaar branches or vice versa, '
+            'use fastimport.')
 
 
-class MonotoneDirFormat(controldir.ControlDirFormat):
-    """Monotone directory format."""
+class FossilDirFormat(controldir.ControlDirFormat):
+    """Fossil directory format."""
 
     def get_converter(self):
         raise NotImplementedError(self.get_converter)
 
     def get_format_description(self):
-        return "Monotone control directory"
+        return "Fossil control directory"
 
     def initialize_on_transport(self, transport):
         raise errors.UninitializableFormat(self)
@@ -56,30 +56,39 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise MonotoneUnsupportedError(self)
+        raise FossilUnsupportedError()
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there
-        MonotoneProber().probe_transport(transport)
+        RemoteFossilProber().probe_transport(transport)
         raise NotImplementedError(self.open)
 
 
-class MonotoneProber(controldir.Prober):
+class RemoteFossilProber(controldir.Prober):
 
     @classmethod
     def priority(klass, transport):
-        return 100
+        return 95
 
     @classmethod
     def probe_transport(klass, transport):
-        """Our format is present if the transport has a '_MTN/' subdir."""
-        if transport.has('_MTN'):
-            return MonotoneDirFormat()
-        raise errors.NotBranchError(path=transport.base)
+        from breezy.transport.http import HttpTransport
+        if not isinstance(transport, HttpTransport):
+            raise errors.NotBranchError(path=transport.base)
+        response = transport.request(
+            'POST', transport.base, headers={'Content-Type': 'application/x-fossil'})
+        if response.status == 501:
+            raise errors.NotBranchError(path=transport.base)
+        ct = response.getheader('Content-Type')
+        if ct is None:
+            raise errors.NotBranchError(path=transport.base)
+        if ct.split(';')[0] != 'application/x-fossil':
+            raise errors.NotBranchError(path=transport.base)
+        return FossilDirFormat()
 
     @classmethod
     def known_formats(cls):
-        return [MonotoneDirFormat()]
+        return [FossilDirFormat()]
 
 
-controldir.ControlDirFormat.register_prober(MonotoneProber)
+controldir.ControlDirFormat.register_prober(RemoteFossilProber)

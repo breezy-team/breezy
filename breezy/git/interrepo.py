@@ -671,15 +671,8 @@ class InterGitGitRepository(InterFromGitRepository):
                     "Unsupported search result type %s" % recipe[0])
             args = heads
         if branches is not None:
-            def determine_wants(refs):
-                ret = []
-                for name, value in viewitems(refs):
-                    if value == ZERO_SHA:
-                        continue
-
-                    if name in branches or (include_tags and is_tag(name)):
-                        ret.append(value)
-                return ret
+            determine_wants = self.get_determine_wants_branches(
+                branches, include_tags=include_tags)
         elif fetch_spec is None and revision_id is None:
             determine_wants = self.determine_wants_all
         else:
@@ -697,6 +690,21 @@ class InterGitGitRepository(InterFromGitRepository):
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             wants.add(git_sha)
         return self.get_determine_wants_heads(wants, include_tags=include_tags)
+
+    def get_determine_wants_branches(self, branches, include_tags=False):
+        def determine_wants(refs):
+            ret = []
+            for name, value in viewitems(refs):
+                if value == ZERO_SHA:
+                    continue
+
+                if name.endswith(ANNOTATED_TAG_SUFFIX):
+                    continue
+
+                if name in branches or (include_tags and is_tag(name)):
+                    ret.append(value)
+            return ret
+        return determine_wants
 
     def determine_wants_all(self, refs):
         potential = set([

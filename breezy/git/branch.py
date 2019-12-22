@@ -158,6 +158,10 @@ class GitTags(tag.BasicTags):
                     trace.warning('%s does not point to a valid object',
                                   tag_name)
                     continue
+                except NotCommitError:
+                    trace.warning('%s points to a non-commit object',
+                                  tag_name)
+                    continue
                 target_repo._git.refs[ref_name] = unpeeled or peeled
             else:
                 try:
@@ -168,6 +172,10 @@ class GitTags(tag.BasicTags):
                 except KeyError:
                     trace.warning('%s does not point to a valid object',
                                   ref_name)
+                    continue
+                except NotCommitError:
+                    trace.warning('%s points to a non-commit object',
+                                  tag_name)
                     continue
                 conflicts.append((tag_name, source_revid, target_revid))
         return updates, conflicts

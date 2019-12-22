@@ -126,14 +126,15 @@ class GitMergeDirective(BaseMergeDirective):
         return self.patch.splitlines(True)
 
     def to_files(self):
-        return self.patches
+        return ((summary, patch.splitlines(True)) for (summary, patch) in self.patches)
 
     @classmethod
-    def _generate_commit(cls, repository, revision_id, num, total):
+    def _generate_commit(cls, repository, revision_id, num, total,
+                         context=_mod_diff.DEFAULT_CONTEXT_AMOUNT):
         s = BytesIO()
         store = get_object_store(repository)
         with store.lock_read():
-            commit = store[store._lookup_revision_sha1(revision_id)]
+            commit = store[repository.lookup_bzr_revision_id(revision_id)[0]]
         from dulwich.patch import write_commit_patch, get_summary
         try:
             lhs_parent = repository.get_revision(revision_id).parent_ids[0]
@@ -143,7 +144,8 @@ class GitMergeDirective(BaseMergeDirective):
         tree_2 = repository.revision_tree(revision_id)
         contents = BytesIO()
         differ = GitDiffTree.from_trees_options(
-            tree_1, tree_2, contents, 'utf8', None, 'a/', 'b/', None)
+            tree_1, tree_2, contents, 'utf8', None, 'a/', 'b/', None,
+            context_lines=context)
         differ.show_diff(None, None)
         write_commit_patch(s, commit, contents.getvalue(), (num, total),
                            version_tail)

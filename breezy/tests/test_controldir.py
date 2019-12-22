@@ -104,6 +104,10 @@ class TestProber(tests.TestCaseWithTransport):
         super(TestProber, self).setUp()
         self.prober = self.prober_cls()
 
+    def test_priority(self):
+        transport = self.get_transport(".")
+        self.assertIsInstance(self.prober.priority(transport), int)
+
     def test_probe_transport_empty(self):
         transport = self.get_transport(".")
         self.assertRaises(errors.NotBranchError,

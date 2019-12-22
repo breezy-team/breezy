@@ -1028,12 +1028,6 @@ class ControlDirFormat(object):
     _default_format = None
     """The default format used for new control directories."""
 
-    _server_probers = []
-    """The registered server format probers, e.g. RemoteBzrProber.
-
-    This is a list of Prober-derived classes.
-    """
-
     _probers = []
     """The registered format probers, e.g. BzrProber.
 
@@ -1124,24 +1118,13 @@ class ControlDirFormat(object):
         """
         klass._probers.remove(prober)
 
-    @classmethod
-    def register_server_prober(klass, prober):
-        """Register a control format prober for client-server environments.
-
-        These probers will be used before ones registered with
-        register_prober.  This gives implementations that decide to the
-        chance to grab it before anything looks at the contents of the format
-        file.
-        """
-        klass._server_probers.append(prober)
-
     def __str__(self):
         # Trim the newline
         return self.get_format_description().rstrip()
 
     @classmethod
     def all_probers(klass):
-        return klass._server_probers + klass._probers
+        return klass._probers
 
     @classmethod
     def known_formats(klass):
@@ -1156,7 +1139,9 @@ class ControlDirFormat(object):
     def find_format(klass, transport, probers=None):
         """Return the format present at transport."""
         if probers is None:
-            probers = klass.all_probers()
+            probers = sorted(
+                klass.all_probers(),
+                key=lambda prober: prober.priority(transport))
         for prober_kls in probers:
             prober = prober_kls()
             try:
@@ -1276,8 +1261,8 @@ class Prober(object):
     probers that detect .bzr/ directories and Bazaar smart servers,
     respectively.
 
-    Probers should be registered using the register_server_prober or
-    register_prober methods on ControlDirFormat.
+    Probers should be registered using the register_prober methods on
+    ControlDirFormat.
     """
 
     def probe_transport(self, transport):
@@ -1300,6 +1285,21 @@ class Prober(object):
         :return: A set of known formats.
         """
         raise NotImplementedError(klass.known_formats)
+
+    @classmethod
+    def priority(klass, transport):
+        """Priority of this prober.
+
+        A lower value means the prober gets checked first.
+
+        Other conventions:
+
+        -10: This is a "server" prober
+        0: No priority set
+        10: This is a regular file-based prober
+        100: This is a prober for an unsupported format
+        """
+        return 0
 
 
 class ControlDirFormatInfo(object):

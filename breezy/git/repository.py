@@ -539,7 +539,7 @@ class LocalGitRepository(GitRepository):
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
         revision, roundtrip_revid, verifiers = mapping.import_commit(
-            commit, self.lookup_foreign_revision_id)
+            commit, self.lookup_foreign_revision_id, strict=False)
         if revision is None:
             raise AssertionError
         # FIXME: check verifiers ?

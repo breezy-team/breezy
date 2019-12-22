@@ -265,7 +265,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     blob_id = idmap.lookup_blob_id(
                         pfile_id, prevision)
                 except KeyError:
-                    if not changed_content:
+                    if not change.changed_content:
                         # no-change merge ?
                         blob = Blob()
                         blob.data = tree.get_file_text(change.path[1])
