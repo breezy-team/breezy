@@ -565,10 +565,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
         abspath = self.abspath(relpath)
         kind = file_kind(abspath)
         if (self._repo_supports_tree_reference and kind == 'directory'):
-            entry = self._get_entry(path=relpath)
-            if entry[1] is not None:
-                if entry[1][0][0] == b't':
-                    kind = 'tree-reference'
+            with self.lock_read():
+                entry = self._get_entry(path=relpath)
+                if entry[1] is not None:
+                    if entry[1][0][0] == b't':
+                        kind = 'tree-reference'
         return kind
 
     def _last_revision(self):
