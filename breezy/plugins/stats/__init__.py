@@ -33,6 +33,7 @@ plugin_cmds.register_lazy("cmd_ancestor_growth", [],
 
 def load_tests(loader, basic_tests, pattern):
     testmod_names = [__name__ + '.' + x for x in [
+        'test_blackbox',
         'test_classify',
         'test_stats',
         ]]

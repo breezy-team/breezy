@@ -624,8 +624,6 @@ class BundleTree(Tree):
         except NoSuchId:
             patch_original = None
         else:
-            if old_path is None:
-                import pdb; pdb.set_trace()
             patch_original = self.base_tree.get_file(old_path)
         file_patch = self.patches.get(path)
         if file_patch is None:

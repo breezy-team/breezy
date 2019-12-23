@@ -119,6 +119,9 @@ Bug Fixes
 * Fix passing of directories in specific_files to
   GitWorkingTree.iter_entries_by_dir(). (Jelmer Vernooĳ, #1844054)
 
+* Fix ``brz diff --using`` when {old_path} and {new_path} are not
+  specified in the template. (#1847915, Jelmer Vernooĳ)
+
 Documentation
 *************
 
