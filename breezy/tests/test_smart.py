@@ -2720,7 +2720,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         base_inv = repository.revision_tree(base_revid).root_inventory
         inv = repository.revision_tree(revid).root_inventory
         inv_delta = inv._make_delta(base_inv)
-        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        serializer = inventory_delta.InventoryDeltaSerializer(True, True)
         return b"".join(serializer.delta_to_lines(base_revid, revid, inv_delta))
 
     def test_single(self):
