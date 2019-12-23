@@ -34,6 +34,9 @@ Bug Fixes
 
  * Fix fast-exporting of symlinks on Python 3. (Jelmer Vernooĳ, #1851478)
 
+ * Don't rely on private transport attribute in fast-import.
+   (Jelmer Vernooĳ, #1854607)
+
 Documentation
 *************
 
