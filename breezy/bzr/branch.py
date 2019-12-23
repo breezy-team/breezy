@@ -540,14 +540,17 @@ class BzrBranch8(BzrBranch):
         with self.lock_read():
             if self._reference_info is not None:
                 return self._reference_info
-            with self._transport.get('references') as rio_file:
-                stanzas = rio.read_stanzas(rio_file)
-                info_dict = {
-                    s['tree_path']: (
-                        s['branch_location'],
-                        s['file_id'].encode('ascii')
-                        if 'file_id' in s else None)
-                    for s in stanzas}
+            try:
+                with self._transport.get('references') as rio_file:
+                    stanzas = rio.read_stanzas(rio_file)
+                    info_dict = {
+                        s['tree_path']: (
+                            s['branch_location'],
+                            s['file_id'].encode('ascii')
+                            if 'file_id' in s else None)
+                        for s in stanzas}
+            except errors.NoSuchFile:
+                info_dict = {}
             self._reference_info = info_dict
             return info_dict
 
@@ -572,17 +575,15 @@ class BzrBranch8(BzrBranch):
         """
         return self._get_all_reference_info().get(path, (None, None))
 
-    def reference_parent(self, path, file_id=None, possible_transports=None):
-        """Return the parent branch for a tree-reference file_id.
+    def reference_parent(self, path, possible_transports=None):
+        """Return the parent branch for a tree-reference.
 
-        :param file_id: The file_id of the tree reference
-        :param path: The path of the file_id in the tree
-        :return: A branch associated with the file_id
+        :param path: The path of the nested tree in the tree
+        :return: A branch associated with the nested tree
         """
         branch_location = self.get_reference_info(path)[0]
         if branch_location is None:
-            return Branch.reference_parent(self, path, file_id,
-                                           possible_transports)
+            return Branch.reference_parent(self, path, possible_transports)
         branch_location = urlutils.join(self.user_url, branch_location)
         return Branch.open(branch_location,
                            possible_transports=possible_transports)
@@ -687,14 +688,11 @@ class BzrBranch7(BzrBranch8):
     """A branch with support for a fallback repository."""
 
     def set_reference_info(self, tree_path, branch_location, file_id=None):
-        Branch.set_reference_info(self, file_id, tree_path, branch_location)
-
-    def get_reference_info(self, path):
-        Branch.get_reference_info(self, path)
-
-    def reference_parent(self, path, file_id=None, possible_transports=None):
-        return Branch.reference_parent(
-            self, path, file_id, possible_transports)
+        super(BzrBranch7, self).set_reference_info(
+            tree_path, branch_location, file_id=file_id)
+        format_string = BzrBranchFormat8.get_format_string()
+        mutter('Upgrading branch to format %r', format_string)
+        self._transport.put_bytes('format', format_string)
 
 
 class BzrBranch6(BzrBranch7):
@@ -862,6 +860,8 @@ class BzrBranchFormat6(BranchFormatMetadir):
     def supports_set_append_revisions_only(self):
         return True
 
+    supports_reference_locations = True
+
 
 class BzrBranchFormat8(BranchFormatMetadir):
     """Metadir format supporting storing locations of subtree branches."""
@@ -945,7 +945,9 @@ class BzrBranchFormat7(BranchFormatMetadir):
         """See breezy.branch.BranchFormat.make_tags()."""
         return _mod_tag.BasicTags(branch)
 
-    supports_reference_locations = False
+    # This is a white lie; as soon as you set a reference location, we upgrade
+    # you to BzrBranchFormat8.
+    supports_reference_locations = True
 
 
 class BranchReferenceFormat(BranchFormatMetadir):

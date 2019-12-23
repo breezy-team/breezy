@@ -16,22 +16,40 @@
 
 from __future__ import absolute_import
 
-
-from ..lazy_import import lazy_import
+from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     errors,
     transport as _mod_transport,
     urlutils,
     )
-from breezy.bundle import serializer as _serializer
+from breezy.bzr.bundle import serializer as _serializer
 from breezy.merge_directive import MergeDirective
 from breezy.i18n import gettext
 """)
-from ..sixish import (
+
+from .sixish import (
     BytesIO,
     )
-from ..trace import note
+from .trace import note
+
+
+class Mergeable(object):
+    """A mergeable object."""
+
+    def install_revisions(self, repository):
+        """Install the data from this mergeable into the specified repository.
+
+        :param repository: Repository
+        """
+        raise NotImplementedError(self.install_revisions)
+
+    def get_merge_request(self, repository):
+        """Extract merge request data.
+
+        :return: tuple with (base_revision_id, target_revision_id, verified)
+        """
+        raise NotImplementedError(self.get_merge_request)
 
 
 def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
@@ -40,8 +58,8 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
     :return: An object supporting get_target_revision.  Raises NotABundle if
         the target is not a mergeable type.
     """
-    child_transport = _mod_transport.get_transport(url,
-                                                   possible_transports=possible_transports)
+    child_transport = _mod_transport.get_transport(
+        url, possible_transports=possible_transports)
     transport = child_transport.clone('..')
     filename = transport.relpath(child_transport.base)
     mergeable, transport = read_mergeable_from_transport(transport, filename,

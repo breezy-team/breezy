@@ -41,7 +41,10 @@ import codecs
 import sys
 
 
-__copyright__ = "Copyright 2005-2012 Canonical Ltd."
+__copyright__ = (
+    "Copyright 2005-2012 Canonical Ltd.\n"
+    "Copyright 2017-2019 Breezy developers"
+)
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
@@ -50,7 +53,7 @@ __copyright__ = "Copyright 2005-2012 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (3, 0, 3, 'dev', 0)
+version_info = (3, 1, 0, 'dev', 0)
 
 
 def _format_version_tuple(version_info):

@@ -23,11 +23,11 @@ library so that it doesn't need to be done for messages that won't be emitted.
 Messages are classified by severity levels: critical, error, warning, info,
 and debug.
 
-They can be sent to two places: to stderr, and to ~/.brz.log.  For purposes
-such as running the test suite, they can also be redirected away from both of
-those two places to another location.
+They can be sent to two places: stderr, and `$XDG_CACHE_HOME/breezy/brz.log`.
+For purposes such as running the test suite, they can also be redirected away
+from both of those two places to another location.
 
-~/.brz.log gets all messages, and full tracebacks for uncaught exceptions.
+`brz.log` gets all messages, and full tracebacks for uncaught exceptions.
 This trace file is always in UTF-8, regardless of the user's default encoding,
 so that we can always rely on writing any message.
 
@@ -72,6 +72,7 @@ import breezy
 
 lazy_import(globals(), """
 from breezy import (
+    bedding,
     debug,
     errors,
     osutils,
@@ -96,7 +97,7 @@ _verbosity_level = 0
 # than push/pop_log_file.
 _trace_file = None
 
-# Absolute path for ~/.brz.log.  Not changed even if the log/trace output is
+# Absolute path for brz.log.  Not changed even if the log/trace output is
 # redirected elsewhere.  Used to show the location in --version.
 _brz_log_filename = None
 
@@ -203,23 +204,22 @@ def _rollover_trace_maybe(trace_fname):
 
 
 def _get_brz_log_filename():
+    """Return the brz log filename.
+
+    :return: A path to the log file
+    :raise EnvironmentError: If the cache directory could not be created
+    """
     brz_log = osutils.path_from_environ('BRZ_LOG')
     if brz_log:
         return brz_log
-    home = osutils.path_from_environ('BRZ_HOME')
-    if home is None:
-        # GZ 2012-02-01: Logging to the home dir is bad, but XDG is unclear
-        #                over what would be better. On windows, bug 240550
-        #                suggests LOCALAPPDATA be used instead.
-        home = osutils._get_home_dir()
-    return os.path.join(home, '.brz.log')
+    return os.path.join(bedding.cache_dir(), 'brz.log')
 
 
 def _open_brz_log():
-    """Open the .brz.log trace file.
+    """Open the brz.log trace file.
 
     If the log is more than a particular length, the old file is renamed to
-    .brz.log.old and a new file is started.  Otherwise, we append to the
+    brz.log.old and a new file is started.  Otherwise, we append to the
     existing file.
 
     This sets the global _brz_log_filename.
@@ -251,9 +251,10 @@ def _open_brz_log():
                 break
         return os.fdopen(fd, 'ab', 0)  # unbuffered
 
-    _brz_log_filename = _get_brz_log_filename()
-    _rollover_trace_maybe(_brz_log_filename)
     try:
+        _brz_log_filename = _get_brz_log_filename()
+        _rollover_trace_maybe(_brz_log_filename)
+
         brz_log_file = _open_or_create_log_file(_brz_log_filename)
         brz_log_file.write(b'\n')
         if brz_log_file.tell() <= 2:
@@ -280,7 +281,7 @@ def _open_brz_log():
 
 
 def enable_default_logging():
-    """Configure default logging: messages to stderr and debug to .brz.log
+    """Configure default logging: messages to stderr and debug to brz.log
 
     This should only be called once per process.
 
@@ -490,13 +491,13 @@ def _qualified_exception_name(eclass, unqualified_breezy_errors=False):
 
 
 def report_exception(exc_info, err_file):
-    """Report an exception to err_file (typically stderr) and to .brz.log.
+    """Report an exception to err_file (typically stderr) and to brz.log.
 
     This will show either a full traceback or a short message as appropriate.
 
     :return: The appropriate exit code for this error.
     """
-    # Log the full traceback to ~/.brz.log
+    # Log the full traceback to brz.log
     log_exception_quietly()
     if 'error' in debug.debug_flags:
         print_exception(exc_info, err_file)

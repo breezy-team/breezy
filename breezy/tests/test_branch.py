@@ -23,6 +23,7 @@ also see this file.
 """
 
 from .. import (
+    bedding,
     branch as _mod_branch,
     config,
     controldir,
@@ -117,7 +118,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
                              b"push_location = foo\n"
                              b"push_location:policy = norecurse\n" % local_path.encode(
                                  'utf-8'),
-                             config.locations_config_filename())
+                             bedding.locations_config_path())
 
     # TODO RBC 20051029 test getting a push location from a branch in a
     # recursive section - that is, it appends the branch name.

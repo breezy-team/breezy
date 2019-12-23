@@ -14,7 +14,7 @@ To create a mirror branch, set-up a shared repository
 (or ``checkout``) command to create the mirror.
 For example::
 
-  brz init-repo PROJECT
+  brz init-shared-repo PROJECT
   cd PROJECT
   brz branch bzr+ssh://centralhost/srv/brz/PROJECT/trunk
 

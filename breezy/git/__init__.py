@@ -33,6 +33,7 @@ from .. import (  # noqa: F401
     __version__ as breezy_version,
     errors as brz_errors,
     trace,
+    urlutils,
     version_info,
     )
 
@@ -103,6 +104,10 @@ RevisionSpec_dwim.append_possible_lazy_revspec(
 
 class LocalGitProber(Prober):
 
+    @classmethod
+    def priority(klass, transport):
+        return 10
+
     def probe_transport(self, transport):
         try:
             external_url = transport.external_url()
@@ -112,7 +117,6 @@ class LocalGitProber(Prober):
                 external_url.startswith("https:")):
             # Already handled by RemoteGitProber
             raise brz_errors.NotBranchError(path=transport.base)
-        from .. import urlutils
         if urlutils.split(transport.base)[1] == ".git":
             raise brz_errors.NotBranchError(path=transport.base)
         if not transport.has_any(['objects', '.git/objects', '.git']):
@@ -142,52 +146,63 @@ def user_agent_for_github():
     return "git/Breezy/%s" % breezy_version
 
 
+def is_github_url(url):
+    (scheme, user, password, host, port,
+     path) = urlutils.parse_url(url)
+    return host == "github.com"
+
+
 class RemoteGitProber(Prober):
+
+    @classmethod
+    def priority(klass, transport):
+        # This is a surprisingly good heuristic to determine whether this
+        # prober is more likely to succeed than the Bazaar one.
+        if 'git' in transport.base:
+            return -15
+        return -10
 
     def probe_http_transport(self, transport):
         # This function intentionally doesn't use any of the support code under
         # breezy.git, since it's called for every repository that's
         # accessed over HTTP, whether it's Git, Bzr or something else.
         # Importing Dulwich and the other support code adds unnecessray slowdowns.
-        from .. import urlutils
         base_url, _ = urlutils.split_segment_parameters(
             transport.external_url())
         url = urlutils.URL.from_string(base_url)
         url.user = url.quoted_user = None
         url.password = url.quoted_password = None
+        host = url.host
         url = urlutils.join(str(url), "info/refs") + "?service=git-upload-pack"
-        from ..transport.http import Request
         headers = {"Content-Type": "application/x-git-upload-pack-request",
                    "Accept": "application/x-git-upload-pack-result",
                    }
-        req = Request('GET', url, accepted_errors=[200, 403, 404, 405],
-                      headers=headers)
-        (scheme, user, password, host, port,
-         path) = urlutils.parse_url(req.get_full_url())
-        if host == "github.com":
+        if is_github_url(url):
             # GitHub requires we lie.
             # https://github.com/dulwich/dulwich/issues/562
-            req.add_header("User-Agent", user_agent_for_github())
+            headers["User-Agent"] = user_agent_for_github()
         elif host == "bazaar.launchpad.net":
             # Don't attempt Git probes against bazaar.launchpad.net; pad.lv/1744830
             raise brz_errors.NotBranchError(transport.base)
-        resp = transport._perform(req)
-        if resp.code in (404, 405):
+        resp = transport.request('GET', url, headers=headers)
+        if resp.status in (404, 405):
             raise brz_errors.NotBranchError(transport.base)
-        headers = resp.headers
-        ct = headers.get("Content-Type")
-        if ct is None:
-            raise brz_errors.NotBranchError(transport.base)
-        if ct.startswith("application/x-git"):
+        elif resp.status != 200:
+            raise brz_errors.InvalidHttpResponse(
+                url, 'Unable to handle http code %d' % resp.status)
+
+        ct = resp.getheader("Content-Type")
+        if ct and ct.startswith("application/x-git"):
             from .remote import RemoteGitControlDirFormat
             return RemoteGitControlDirFormat()
-        else:
+        elif not ct:
             from .dir import (
                 BareLocalGitControlDirFormat,
                 )
             ret = BareLocalGitControlDirFormat()
             ret._refs_text = resp.read()
             return ret
+        raise brz_errors.NotBranchError(transport.base)
 
     def probe_transport(self, transport):
         try:
@@ -219,7 +234,7 @@ class RemoteGitProber(Prober):
 
 
 ControlDirFormat.register_prober(LocalGitProber)
-ControlDirFormat._server_probers.append(RemoteGitProber)
+ControlDirFormat.register_prober(RemoteGitProber)
 
 register_transport_proto(
     'git://', help="Access using the Git smart server protocol.")

@@ -1550,21 +1550,21 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         if self._new_pack is not None:
-            operation = cleanup.OperationWithCleanups(self._new_pack.abort)
-            operation.add_cleanup(setattr, self, '_new_pack', None)
-            # If we aborted while in the middle of finishing the write
-            # group, _remove_pack_indices could fail because the indexes are
-            # already gone.  But they're not there we shouldn't fail in this
-            # case, so we pass ignore_missing=True.
-            operation.add_cleanup(self._remove_pack_indices, self._new_pack,
-                                  ignore_missing=True)
-            operation.run_simple()
+            with cleanup.ExitStack() as stack:
+                stack.callback(setattr, self, '_new_pack', None)
+                # If we aborted while in the middle of finishing the write
+                # group, _remove_pack_indices could fail because the indexes are
+                # already gone.  But they're not there we shouldn't fail in this
+                # case, so we pass ignore_missing=True.
+                stack.callback(self._remove_pack_indices, self._new_pack,
+                               ignore_missing=True)
+                self._new_pack.abort()
         for resumed_pack in self._resumed_packs:
-            operation = cleanup.OperationWithCleanups(resumed_pack.abort)
-            # See comment in previous finally block.
-            operation.add_cleanup(self._remove_pack_indices, resumed_pack,
-                                  ignore_missing=True)
-            operation.run_simple()
+            with cleanup.ExitStack() as stack:
+                # See comment in previous finally block.
+                stack.callback(self._remove_pack_indices, resumed_pack,
+                               ignore_missing=True)
+                resumed_pack.abort()
         del self._resumed_packs[:]
 
     def _remove_resumed_pack_indices(self):

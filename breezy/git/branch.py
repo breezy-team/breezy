@@ -76,7 +76,17 @@ from .refs import (
 from .unpeel_map import (
     UnpeelMap,
     )
-from .urls import git_url_to_bzr_url
+from .urls import (
+    git_url_to_bzr_url,
+    bzr_url_to_git_url,
+    )
+
+
+def _calculate_revnos(branch):
+    if branch._format.stores_revno():
+        return True
+    config = branch.get_config_stack()
+    return config.get('calculate_revnos')
 
 
 class GitPullResult(branch.PullResult):
@@ -85,6 +95,8 @@ class GitPullResult(branch.PullResult):
     def _lookup_revno(self, revid):
         if not isinstance(revid, bytes):
             raise TypeError(revid)
+        if not _calculate_revnos(self.target_branch):
+            return None
         # Try in source branch first, it'll be faster
         with self.target_branch.lock_read():
             return self.target_branch.revision_id_to_revno(revid)
@@ -146,6 +158,10 @@ class GitTags(tag.BasicTags):
                     trace.warning('%s does not point to a valid object',
                                   tag_name)
                     continue
+                except NotCommitError:
+                    trace.warning('%s points to a non-commit object',
+                                  tag_name)
+                    continue
                 target_repo._git.refs[ref_name] = unpeeled or peeled
             else:
                 try:
@@ -156,6 +172,10 @@ class GitTags(tag.BasicTags):
                 except KeyError:
                     trace.warning('%s does not point to a valid object',
                                   ref_name)
+                    continue
+                except NotCommitError:
+                    trace.warning('%s points to a non-commit object',
+                                  tag_name)
                     continue
                 conflicts.append((tag_name, source_revid, target_revid))
         return updates, conflicts
@@ -321,6 +341,10 @@ class GitBranchFormat(branch.BranchFormat):
     def set_reference(self, controldir, name, target):
         return controldir.set_branch_reference(target, name)
 
+    def stores_revno(self):
+        """True if this branch format store revision numbers."""
+        return False
+
 
 class LocalGitBranchFormat(GitBranchFormat):
 
@@ -464,49 +488,76 @@ class GitBranch(ForeignBranch):
         # Git doesn't do stacking (yet...)
         raise branch.UnstackableBranchFormat(self._format, self.base)
 
-    def _get_parent_location(self):
-        """See Branch.get_parent()."""
-        # FIXME: Set "origin" url from .git/config ?
-        cs = self.repository._git.get_config_stack()
+    def _get_push_origin(self, cs):
+        """Get the name for the push origin.
+
+        The exact behaviour is documented in the git-config(1) manpage.
+        """
         try:
-            location = cs.get((b"remote", b'origin'), b"url")
+            return cs.get((b'branch', self.name.encode('utf-8')), b'pushRemote')
+        except KeyError:
+            try:
+                return cs.get((b'branch', ), b'remote')
+            except KeyError:
+                try:
+                    return cs.get((b'branch', self.name.encode('utf-8')), b'remote')
+                except KeyError:
+                    return b'origin'
+
+    def _get_origin(self, cs):
+        try:
+            return cs.get((b'branch', self.name.encode('utf-8')), b'remote')
+        except KeyError:
+            return b'origin'
+
+    def _get_related_push_branch(self, cs):
+        remote = self._get_push_origin(cs)
+        try:
+            location = cs.get((b"remote", remote), b"url")
         except KeyError:
             return None
 
-        params = {}
+        return git_url_to_bzr_url(location.decode('utf-8'), ref=self.ref)
+
+    def _get_related_merge_branch(self, cs):
+        remote = self._get_origin(cs)
         try:
-            ref = cs.get((b"remote", b"origin"), b"merge")
+            location = cs.get((b"remote", remote), b"url")
         except KeyError:
-            pass
-        else:
-            if ref != b'HEAD':
-                try:
-                    params['branch'] = urlutils.escape(ref_to_branch_name(ref))
-                except ValueError:
-                    params['ref'] = urlutils.quote_from_bytes(ref)
+            return None
 
-        url = git_url_to_bzr_url(location.decode('utf-8'))
-        return urlutils.join_segment_parameters(url, params)
+        try:
+            ref = cs.get((b"branch", remote), b"merge")
+        except KeyError:
+            ref = self.ref
 
-    def set_parent(self, location):
-        # FIXME: Set "origin" url in .git/config ?
-        cs = self.repository._git.get_config()
-        this_url = urlutils.split_segment_parameters(self.user_url)[0]
-        target_url, target_params = urlutils.split_segment_parameters(location)
-        location = urlutils.relative_url(this_url, target_url)
-        cs.set((b"remote", b"origin"), b"url", location)
-        if 'branch' in target_params:
-            cs.set((b"remote", b"origin"), b"merge",
-                   branch_name_to_ref(target_params['branch']))
-        elif 'ref' in target_params:
-            cs.set((b"remote", b"origin"), b"merge",
-                   target_params['ref'])
-        else:
-            # TODO(jelmer): Maybe unset rather than setting to HEAD?
-            cs.set((b"remote", b"origin"), b"merge", 'HEAD')
+        return git_url_to_bzr_url(location.decode('utf-8'), ref=ref)
+
+    def _get_parent_location(self):
+        """See Branch.get_parent()."""
+        cs = self.repository._git.get_config_stack()
+        return self._get_related_merge_branch(cs)
+
+    def _write_git_config(self, cs):
         f = BytesIO()
         cs.write_to_file(f)
         self.repository._git._put_named_file('config', f.getvalue())
+
+    def set_parent(self, location):
+        cs = self.repository._git.get_config()
+        remote = self._get_origin(cs)
+        this_url = urlutils.split_segment_parameters(self.user_url)[0]
+        target_url, branch, ref = bzr_url_to_git_url(location)
+        location = urlutils.relative_url(this_url, target_url)
+        cs.set((b"remote", remote), b"url", location)
+        if branch:
+            cs.set((b"branch", remote), b"merge", branch_name_to_ref(branch))
+        elif ref:
+            cs.set((b"branch", remote), b"merge", ref)
+        else:
+            # TODO(jelmer): Maybe unset rather than setting to HEAD?
+            cs.set((b"branch", remote), b"merge", b'HEAD')
+        self._write_git_config(cs)
 
     def break_lock(self):
         raise NotImplementedError(self.break_lock)
@@ -720,7 +771,10 @@ class LocalGitBranch(GitBranch):
     def get_push_location(self):
         """See Branch.get_push_location."""
         push_loc = self.get_config_stack().get('push_location')
-        return push_loc
+        if push_loc is not None:
+            return push_loc
+        cs = self.repository._git.get_config_stack()
+        return self._get_related_push_branch(cs)
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
@@ -739,7 +793,7 @@ class LocalGitBranch(GitBranch):
         :param refs: Refs dictionary (name -> git sha1)
         :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
         """
-        refs = self.repository._git.refs
+        refs = self.repository.controldir.get_refs_container()
         for ref_name, unpeeled in viewitems(refs.as_dict()):
             try:
                 tag_name = ref_to_tag_name(ref_name)
@@ -757,12 +811,11 @@ class LocalGitBranch(GitBranch):
         return GitMemoryTree(self, self.repository._git.object_store,
                              self.head)
 
-    def reference_parent(self, path, file_id=None, possible_transports=None):
-        """Return the parent branch for a tree-reference file_id
+    def reference_parent(self, path, possible_transports=None):
+        """Return the parent branch for a tree-reference.
 
-        :param path: The path of the file_id in the tree
-        :param file_id: Optional file_id of the tree reference
-        :return: A branch associated with the file_id
+        :param path: The path of the nested tree in the tree
+        :return: A branch associated with the nested tree
         """
         # FIXME should provide multiple branches, based on config
         url = urlutils.join(self.user_url, path)
@@ -776,6 +829,8 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
         raise TypeError(revid)
     # Try in source branch first, it'll be faster
     with local_branch.lock_read():
+        if not _calculate_revnos(local_branch):
+            return None
         try:
             return local_branch.revision_id_to_revno(revid)
         except errors.NoSuchRevision:
@@ -784,6 +839,8 @@ def _quick_lookup_revno(local_branch, remote_branch, revid):
                 return graph.find_distance_to_null(
                     revid, [(revision.NULL_REVISION, 0)])
             except errors.GhostRevisionsHaveNoRevno:
+                if not _calculate_revnos(remote_branch):
+                    return None
                 # FIXME: Check using graph.find_distance_to_null() ?
                 with remote_branch.lock_read():
                     return remote_branch.revision_id_to_revno(revid)
@@ -1106,6 +1163,9 @@ class InterGitLocalGitBranch(InterGitBranch):
                                                         self.target.repository)
         if stop_revision is None:
             stop_revision = self.source.last_revision()
+        if fetch_tags is None:
+            c = self.source.get_config_stack()
+            fetch_tags = c.get('branch.fetch_tags')
         determine_wants = interrepo.get_determine_wants_revids(
             [stop_revision], include_tags=fetch_tags)
         interrepo.fetch_objects(determine_wants, limit=limit)
@@ -1221,7 +1281,10 @@ class InterToGitBranch(branch.GenericInterBranch):
         if stop_revision is None:
             (stop_revno, stop_revision) = self.source.last_revision_info()
         elif stop_revno is None:
-            stop_revno = self.source.revision_id_to_revno(stop_revision)
+            try:
+                stop_revno = self.source.revision_id_to_revno(stop_revision)
+            except errors.NoSuchRevision:
+                stop_revno = None
         if not isinstance(stop_revision, bytes):
             raise TypeError(stop_revision)
         main_ref = self.target.ref

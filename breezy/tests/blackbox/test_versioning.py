@@ -57,7 +57,7 @@ class TestMkdir(TestCaseWithTransport):
         self.log('delta.added = %r' % delta.added)
 
         self.assertEqual(len(delta.added), 1)
-        self.assertEqual(delta.added[0][0], 'foo')
+        self.assertEqual(delta.added[0].path[1], 'foo')
         self.assertFalse(delta.modified)
 
     def test_mkdir_in_subdir(self):
@@ -78,8 +78,8 @@ class TestMkdir(TestCaseWithTransport):
         self.log('delta.added = %r' % delta.added)
 
         self.assertEqual(len(delta.added), 2)
-        self.assertEqual(delta.added[0][0], 'dir')
-        self.assertEqual(delta.added[1][0], pathjoin('dir', 'subdir'))
+        self.assertEqual(delta.added[0].path[1], 'dir')
+        self.assertEqual(delta.added[1].path[1], pathjoin('dir', 'subdir'))
         self.assertFalse(delta.modified)
 
     def test_mkdir_w_nested_trees(self):
@@ -100,17 +100,17 @@ class TestMkdir(TestCaseWithTransport):
 
         delta = wt.changes_from(wt.basis_tree())
         self.assertEqual(len(delta.added), 1)
-        self.assertEqual(delta.added[0][0], 'dir')
+        self.assertEqual(delta.added[0].path[1], 'dir')
         self.assertFalse(delta.modified)
 
         delta = wt_a.changes_from(wt_a.basis_tree())
         self.assertEqual(len(delta.added), 1)
-        self.assertEqual(delta.added[0][0], 'dir')
+        self.assertEqual(delta.added[0].path[1], 'dir')
         self.assertFalse(delta.modified)
 
         delta = wt_b.changes_from(wt_b.basis_tree())
         self.assertEqual(len(delta.added), 1)
-        self.assertEqual(delta.added[0][0], 'dir')
+        self.assertEqual(delta.added[0].path[1], 'dir')
         self.assertFalse(delta.modified)
 
     def test_mkdir_quiet(self):

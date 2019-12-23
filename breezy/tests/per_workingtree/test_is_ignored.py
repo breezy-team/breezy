@@ -15,7 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy import config, ignores, tests
+from breezy import (
+    bedding,
+    ignores,
+    tests,
+    )
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -29,8 +33,8 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
     def _set_user_ignore_content(self, ignores):
         """Create user ignore file and set its content to ignores."""
-        config.ensure_config_dir_exists()
-        user_ignore_file = config.user_ignore_config_filename()
+        bedding.ensure_config_dir_exists()
+        user_ignore_file = bedding.user_ignore_config_path()
         with open(user_ignore_file, 'wb') as f:
             f.write(ignores)
 
@@ -136,8 +140,8 @@ class TestIsIgnored(TestCaseWithWorkingTree):
     def test_global_ignored(self):
         tree = self.make_branch_and_tree('.')
 
-        config.ensure_config_dir_exists()
-        user_ignore_file = config.user_ignore_config_filename()
+        bedding.ensure_config_dir_exists()
+        user_ignore_file = bedding.user_ignore_config_path()
         self._set_user_ignore_content(
             b'*.py[co]\n'
             b'./.shelf\n'

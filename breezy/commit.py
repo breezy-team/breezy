@@ -57,17 +57,19 @@ from . import (
     ui,
     )
 from .branch import Branch
-from .cleanup import OperationWithCleanups
+from .cleanup import ExitStack
 import breezy.config
 from .errors import (BzrError,
                      ConflictsInTree,
                      StrictCommitFailed
                      )
 from .osutils import (get_user_encoding,
+                      has_symlinks,
                       is_inside_any,
                       minimum_path_selection,
                       )
 from .trace import mutter, note, is_quiet
+from .tree import TreeChange
 from .urlutils import unescape_for_display
 from .i18n import gettext
 
@@ -95,14 +97,11 @@ def filter_excluded(iter_changes, exclude):
     :return: iter_changes function
     """
     for change in iter_changes:
-        old_path = change[1][0]
-        new_path = change[1][1]
+        new_excluded = (change.path[1] is not None and
+                        is_inside_any(exclude, change.path[1]))
 
-        new_excluded = (new_path is not None and
-                        is_inside_any(exclude, new_path))
-
-        old_excluded = (old_path is not None and
-                        is_inside_any(exclude, old_path))
+        old_excluded = (change.path[0] is not None and
+                        is_inside_any(exclude, change.path[0]))
 
         if old_excluded and new_excluded:
             continue
@@ -159,13 +158,16 @@ class ReportCommitToLog(NullCommitReporter):
             unescape_for_display(location, 'utf-8'))
 
     def completed(self, revno, rev_id):
-        self._note(gettext('Committed revision %d.'), revno)
-        # self._note goes to the console too; so while we want to log the
-        # rev_id, we can't trivially only log it. (See bug 526425). Long
-        # term we should rearrange the reporting structure, but for now
-        # we just mutter seperately. We mutter the revid and revno together
-        # so that concurrent bzr invocations won't lead to confusion.
-        mutter('Committed revid %s as revno %d.', rev_id, revno)
+        if revno is not None:
+            self._note(gettext('Committed revision %d.'), revno)
+            # self._note goes to the console too; so while we want to log the
+            # rev_id, we can't trivially only log it. (See bug 526425). Long
+            # term we should rearrange the reporting structure, but for now
+            # we just mutter seperately. We mutter the revid and revno together
+            # so that concurrent bzr invocations won't lead to confusion.
+            mutter('Committed revid %s as revno %d.', rev_id, revno)
+        else:
+            self._note(gettext('Committed revid %s.'), rev_id)
 
     def deleted(self, path):
         self._note(gettext('deleted %s'), path)
@@ -283,191 +285,166 @@ class Commit(object):
         :param lossy: When committing to a foreign VCS, ignore any
             data that can not be natively represented.
         """
-        operation = OperationWithCleanups(self._commit)
-        self.revprops = revprops or {}
-        # XXX: Can be set on __init__ or passed in - this is a bit ugly.
-        self.config_stack = config or self.config_stack
-        return operation.run(
-            message=message,
-            timestamp=timestamp,
-            timezone=timezone,
-            committer=committer,
-            specific_files=specific_files,
-            rev_id=rev_id,
-            allow_pointless=allow_pointless,
-            strict=strict,
-            verbose=verbose,
-            working_tree=working_tree,
-            local=local,
-            reporter=reporter,
-            message_callback=message_callback,
-            recursive=recursive,
-            exclude=exclude,
-            possible_master_transports=possible_master_transports,
-            lossy=lossy)
+        with ExitStack() as stack:
+            self.revprops = revprops or {}
+            # XXX: Can be set on __init__ or passed in - this is a bit ugly.
+            self.config_stack = config or self.config_stack
+            mutter('preparing to commit')
 
-    def _commit(self, operation, message, timestamp, timezone, committer,
-                specific_files, rev_id, allow_pointless, strict, verbose,
-                working_tree, local, reporter, message_callback, recursive,
-                exclude, possible_master_transports, lossy):
-        mutter('preparing to commit')
-
-        if working_tree is None:
-            raise BzrError("working_tree must be passed into commit().")
-        else:
-            self.work_tree = working_tree
-            self.branch = self.work_tree.branch
-            if getattr(self.work_tree, 'requires_rich_root', lambda: False)():
-                if not self.branch.repository.supports_rich_root():
-                    raise errors.RootNotRich()
-        if message_callback is None:
-            if message is not None:
-                if isinstance(message, bytes):
-                    message = message.decode(get_user_encoding())
-
-                def message_callback(x):
-                    return message
+            if working_tree is None:
+                raise BzrError("working_tree must be passed into commit().")
             else:
-                raise BzrError("The message or message_callback keyword"
-                               " parameter is required for commit().")
+                self.work_tree = working_tree
+                self.branch = self.work_tree.branch
+                if getattr(self.work_tree, 'requires_rich_root', lambda: False)():
+                    if not self.branch.repository.supports_rich_root():
+                        raise errors.RootNotRich()
+            if message_callback is None:
+                if message is not None:
+                    if isinstance(message, bytes):
+                        message = message.decode(get_user_encoding())
 
-        self.bound_branch = None
-        self.any_entries_deleted = False
-        if exclude is not None:
-            self.exclude = sorted(
-                minimum_path_selection(exclude))
-        else:
-            self.exclude = []
-        self.local = local
-        self.master_branch = None
-        self.recursive = recursive
-        self.rev_id = None
-        # self.specific_files is None to indicate no filter, or any iterable to
-        # indicate a filter - [] means no files at all, as per iter_changes.
-        if specific_files is not None:
-            self.specific_files = sorted(
-                minimum_path_selection(specific_files))
-        else:
-            self.specific_files = None
+                    def message_callback(x):
+                        return message
+                else:
+                    raise BzrError("The message or message_callback keyword"
+                                   " parameter is required for commit().")
 
-        self.allow_pointless = allow_pointless
-        self.message_callback = message_callback
-        self.timestamp = timestamp
-        self.timezone = timezone
-        self.committer = committer
-        self.strict = strict
-        self.verbose = verbose
+            self.bound_branch = None
+            self.any_entries_deleted = False
+            if exclude is not None:
+                self.exclude = sorted(
+                    minimum_path_selection(exclude))
+            else:
+                self.exclude = []
+            self.local = local
+            self.master_branch = None
+            self.recursive = recursive
+            self.rev_id = None
+            # self.specific_files is None to indicate no filter, or any iterable to
+            # indicate a filter - [] means no files at all, as per iter_changes.
+            if specific_files is not None:
+                self.specific_files = sorted(
+                    minimum_path_selection(specific_files))
+            else:
+                self.specific_files = None
 
-        self.work_tree.lock_write()
-        operation.add_cleanup(self.work_tree.unlock)
-        self.parents = self.work_tree.get_parent_ids()
-        self.pb = ui.ui_factory.nested_progress_bar()
-        operation.add_cleanup(self.pb.finished)
-        self.basis_revid = self.work_tree.last_revision()
-        self.basis_tree = self.work_tree.basis_tree()
-        self.basis_tree.lock_read()
-        operation.add_cleanup(self.basis_tree.unlock)
-        # Cannot commit with conflicts present.
-        if len(self.work_tree.conflicts()) > 0:
-            raise ConflictsInTree
+            self.allow_pointless = allow_pointless
+            self.message_callback = message_callback
+            self.timestamp = timestamp
+            self.timezone = timezone
+            self.committer = committer
+            self.strict = strict
+            self.verbose = verbose
 
-        # Setup the bound branch variables as needed.
-        self._check_bound_branch(operation, possible_master_transports)
+            stack.enter_context(self.work_tree.lock_write())
+            self.parents = self.work_tree.get_parent_ids()
+            self.pb = ui.ui_factory.nested_progress_bar()
+            stack.callback(self.pb.finished)
+            self.basis_revid = self.work_tree.last_revision()
+            self.basis_tree = self.work_tree.basis_tree()
+            stack.enter_context(self.basis_tree.lock_read())
+            # Cannot commit with conflicts present.
+            if len(self.work_tree.conflicts()) > 0:
+                raise ConflictsInTree
 
-        # Check that the working tree is up to date
-        old_revno, old_revid, new_revno = self._check_out_of_date_tree()
+            # Setup the bound branch variables as needed.
+            self._check_bound_branch(stack, possible_master_transports)
+            if self.config_stack is None:
+                self.config_stack = self.work_tree.get_config_stack()
 
-        # Complete configuration setup
-        if reporter is not None:
-            self.reporter = reporter
-        elif self.reporter is None:
-            self.reporter = self._select_reporter()
-        if self.config_stack is None:
-            self.config_stack = self.work_tree.get_config_stack()
+            # Check that the working tree is up to date
+            old_revno, old_revid, new_revno = self._check_out_of_date_tree()
 
-        # Setup the progress bar. As the number of files that need to be
-        # committed in unknown, progress is reported as stages.
-        # We keep track of entries separately though and include that
-        # information in the progress bar during the relevant stages.
-        self.pb_stage_name = ""
-        self.pb_stage_count = 0
-        self.pb_stage_total = 5
-        if self.bound_branch:
-            # 2 extra stages: "Uploading data to master branch" and "Merging
-            # tags to master branch"
-            self.pb_stage_total += 2
-        self.pb.show_pct = False
-        self.pb.show_spinner = False
-        self.pb.show_eta = False
-        self.pb.show_count = True
-        self.pb.show_bar = True
+            # Complete configuration setup
+            if reporter is not None:
+                self.reporter = reporter
+            elif self.reporter is None:
+                self.reporter = self._select_reporter()
 
-        # After a merge, a selected file commit is not supported.
-        # See 'bzr help merge' for an explanation as to why.
-        if len(self.parents) > 1 and self.specific_files is not None:
-            raise CannotCommitSelectedFileMerge(self.specific_files)
-        # Excludes are a form of selected file commit.
-        if len(self.parents) > 1 and self.exclude:
-            raise CannotCommitSelectedFileMerge(self.exclude)
-
-        # Collect the changes
-        self._set_progress_stage("Collecting changes", counter=True)
-        self._lossy = lossy
-        self.builder = self.branch.get_commit_builder(
-            self.parents, self.config_stack, timestamp, timezone, committer,
-            self.revprops, rev_id, lossy=lossy)
-
-        if self.builder.updates_branch and self.bound_branch:
-            self.builder.abort()
-            raise AssertionError(
-                "bound branches not supported for commit builders "
-                "that update the branch")
-
-        try:
-            # find the location being committed to
+            # Setup the progress bar. As the number of files that need to be
+            # committed in unknown, progress is reported as stages.
+            # We keep track of entries separately though and include that
+            # information in the progress bar during the relevant stages.
+            self.pb_stage_name = ""
+            self.pb_stage_count = 0
+            self.pb_stage_total = 5
             if self.bound_branch:
-                master_location = self.master_branch.base
-            else:
-                master_location = self.branch.base
+                # 2 extra stages: "Uploading data to master branch" and "Merging
+                # tags to master branch"
+                self.pb_stage_total += 2
+            self.pb.show_pct = False
+            self.pb.show_spinner = False
+            self.pb.show_eta = False
+            self.pb.show_count = True
+            self.pb.show_bar = True
 
-            # report the start of the commit
-            self.reporter.started(new_revno, self.rev_id, master_location)
+            # After a merge, a selected file commit is not supported.
+            # See 'bzr help merge' for an explanation as to why.
+            if len(self.parents) > 1 and self.specific_files is not None:
+                raise CannotCommitSelectedFileMerge(self.specific_files)
+            # Excludes are a form of selected file commit.
+            if len(self.parents) > 1 and self.exclude:
+                raise CannotCommitSelectedFileMerge(self.exclude)
 
-            self._update_builder_with_changes()
-            self._check_pointless()
+            # Collect the changes
+            self._set_progress_stage("Collecting changes", counter=True)
+            self._lossy = lossy
+            self.builder = self.branch.get_commit_builder(
+                self.parents, self.config_stack, timestamp, timezone, committer,
+                self.revprops, rev_id, lossy=lossy)
 
-            # TODO: Now the new inventory is known, check for conflicts.
-            # ADHB 2006-08-08: If this is done, populate_new_inv should not add
-            # weave lines, because nothing should be recorded until it is known
-            # that commit will succeed.
-            self._set_progress_stage("Saving data locally")
-            self.builder.finish_inventory()
+            if self.builder.updates_branch and self.bound_branch:
+                self.builder.abort()
+                raise AssertionError(
+                    "bound branches not supported for commit builders "
+                    "that update the branch")
 
-            # Prompt the user for a commit message if none provided
-            message = message_callback(self)
-            self.message = message
+            try:
+                # find the location being committed to
+                if self.bound_branch:
+                    master_location = self.master_branch.base
+                else:
+                    master_location = self.branch.base
 
-            # Add revision data to the local branch
-            self.rev_id = self.builder.commit(self.message)
+                # report the start of the commit
+                self.reporter.started(new_revno, self.rev_id, master_location)
 
-        except Exception:
-            mutter("aborting commit write group because of exception:")
-            trace.log_exception_quietly()
-            self.builder.abort()
-            raise
+                self._update_builder_with_changes()
+                self._check_pointless()
 
-        self._update_branches(old_revno, old_revid, new_revno)
+                # TODO: Now the new inventory is known, check for conflicts.
+                # ADHB 2006-08-08: If this is done, populate_new_inv should not add
+                # weave lines, because nothing should be recorded until it is known
+                # that commit will succeed.
+                self._set_progress_stage("Saving data locally")
+                self.builder.finish_inventory()
 
-        # Make the working tree be up to date with the branch. This
-        # includes automatic changes scheduled to be made to the tree, such
-        # as updating its basis and unversioning paths that were missing.
-        self.work_tree.unversion(self.deleted_paths)
-        self._set_progress_stage("Updating the working tree")
-        self.work_tree.update_basis_by_delta(self.rev_id,
-                                             self.builder.get_basis_delta())
-        self.reporter.completed(new_revno, self.rev_id)
-        self._process_post_hooks(old_revno, new_revno)
-        return self.rev_id
+                # Prompt the user for a commit message if none provided
+                message = message_callback(self)
+                self.message = message
+
+                # Add revision data to the local branch
+                self.rev_id = self.builder.commit(self.message)
+
+            except Exception:
+                mutter("aborting commit write group because of exception:")
+                trace.log_exception_quietly()
+                self.builder.abort()
+                raise
+
+            self._update_branches(old_revno, old_revid, new_revno)
+
+            # Make the working tree be up to date with the branch. This
+            # includes automatic changes scheduled to be made to the tree, such
+            # as updating its basis and unversioning paths that were missing.
+            self.work_tree.unversion(self.deleted_paths)
+            self._set_progress_stage("Updating the working tree")
+            self.work_tree.update_basis_by_delta(self.rev_id,
+                                                 self.builder.get_basis_delta())
+            self.reporter.completed(new_revno, self.rev_id)
+            self._process_post_hooks(old_revno, new_revno)
+            return self.rev_id
 
     def _update_branches(self, old_revno, old_revid, new_revno):
         """Update the master and local branch to the new revision.
@@ -495,6 +472,9 @@ class Commit(object):
                     self.branch.fetch(self.master_branch, self.rev_id)
 
             # and now do the commit locally.
+            if new_revno is None:
+                # Keep existing behaviour around ghosts
+                new_revno = 1
             self.branch.set_last_revision_info(new_revno, self.rev_id)
         else:
             try:
@@ -531,7 +511,7 @@ class Commit(object):
             return
         raise PointlessCommit()
 
-    def _check_bound_branch(self, operation, possible_master_transports=None):
+    def _check_bound_branch(self, stack, possible_master_transports=None):
         """Check to see if the local branch is bound.
 
         If it is bound, then most of the commit will actually be
@@ -571,8 +551,7 @@ class Commit(object):
         # Now things are ready to change the master branch
         # so grab the lock
         self.bound_branch = self.branch
-        self.master_branch.lock_write()
-        operation.add_cleanup(self.master_branch.unlock)
+        stack.enter_context(self.master_branch.lock_write())
 
     def _check_out_of_date_tree(self):
         """Check that the working tree is up to date.
@@ -588,19 +567,25 @@ class Commit(object):
             # - in a checkout scenario the tree may have no
             # parents but the branch may do.
             first_tree_parent = breezy.revision.NULL_REVISION
-        try:
-            old_revno, master_last = self.master_branch.last_revision_info()
-        except errors.UnsupportedOperation:
+        if (self.master_branch._format.stores_revno() or
+                self.config_stack.get('calculate_revnos')):
+            try:
+                old_revno, master_last = self.master_branch.last_revision_info()
+            except errors.UnsupportedOperation:
+                master_last = self.master_branch.last_revision()
+                old_revno = self.branch.revision_id_to_revno(master_last)
+        else:
             master_last = self.master_branch.last_revision()
-            old_revno = self.branch.revision_id_to_revno(master_last)
+            old_revno = None
         if master_last != first_tree_parent:
             if master_last != breezy.revision.NULL_REVISION:
                 raise errors.OutOfDateTree(self.work_tree)
-        if self.branch.repository.has_revision(first_tree_parent):
+        if (old_revno is not None and
+                self.branch.repository.has_revision(first_tree_parent)):
             new_revno = old_revno + 1
         else:
             # ghost parents never appear in revision history.
-            new_revno = 1
+            new_revno = None
         return old_revno, master_last, new_revno
 
     def _process_pre_hooks(self, old_revno, new_revno):
@@ -700,25 +685,28 @@ class Commit(object):
         deleted_paths = []
         for change in iter_changes:
             if report_changes:
-                old_path = change[1][0]
-                new_path = change[1][1]
-                versioned = change[3][1]
-            kind = change[6][1]
-            versioned = change[3][1]
+                old_path = change.path[0]
+                new_path = change.path[1]
+                versioned = change.versioned[1]
+            kind = change.kind[1]
+            versioned = change.versioned[1]
             if kind is None and versioned:
                 # 'missing' path
                 if report_changes:
                     reporter.missing(new_path)
-                deleted_paths.append(change[1][1])
+                if change.kind[0] == 'symlink' and not self.work_tree.supports_symlinks():
+                    trace.warning('Ignoring "%s" as symlinks are not '
+                                  'supported on this filesystem.' % (change.path[0],))
+                    continue
+                deleted_paths.append(change.path[1])
                 # Reset the new path (None) and new versioned flag (False)
-                change = (change[0], (change[1][0], None), change[2],
-                          (change[3][0], False)) + change[4:]
-                new_path = change[1][1]
+                change = change.discard_new()
+                new_path = change.path[1]
                 versioned = False
             elif kind == 'tree-reference':
                 if self.recursive == 'down':
-                    self._commit_nested_tree(change[1][1])
-            if change[3][0] or change[3][1]:
+                    self._commit_nested_tree(change.path[1])
+            if change.versioned[0] or change.versioned[1]:
                 yield change
                 if report_changes:
                     if new_path is None:

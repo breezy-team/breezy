@@ -55,7 +55,7 @@ For a project with multiple branches that are all related, it is best to use a
 shared repository to hold all of the branches.  To set this up, do::
 
   $ cd /srv/bzr
-  $ brz init-repo --no-trees projectx
+  $ brz init-shared-repo --no-trees projectx
 
 The ``--no-trees`` option saves space by not creating a copy of the working
 files on the server's filesystem.  Then, any branch created under

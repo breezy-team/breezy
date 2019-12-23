@@ -172,11 +172,8 @@ class BodyExternalMailClient(MailClient):
             basename = 'attachment'
         pathname = osutils.mkdtemp(prefix='bzr-mail-')
         attach_path = osutils.pathjoin(pathname, basename + extension)
-        outfile = open(attach_path, 'wb')
-        try:
+        with open(attach_path, 'wb') as outfile:
             outfile.write(attachment)
-        finally:
-            outfile.close()
         if body is not None:
             kwargs = {'body': body}
         else:

@@ -37,6 +37,7 @@ class TestChangesFrom(TestCaseWithWorkingTree):
         self.assertEqual([], d.added)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.modified)
 
     def test_unknown_specific_file(self):
@@ -51,4 +52,5 @@ class TestChangesFrom(TestCaseWithWorkingTree):
         self.assertEqual([], d.added)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.copied)
         self.assertEqual([], d.modified)

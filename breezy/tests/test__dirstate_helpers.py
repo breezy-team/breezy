@@ -1200,11 +1200,13 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         state, entry = self.get_state_with_a()
         self.build_tree(['a'])
 
-        # Make sure we are using the win32 implementation of _is_executable
-        state._is_executable = state._is_executable_win32
+        # Make sure we are using the version of _is_executable that doesn't
+        # check the filesystem mode.
+        state._use_filesystem_for_exec = False
 
         # The file on disk is not executable, but we are marking it as though
-        # it is. With _is_executable_win32 we ignore what is on disk.
+        # it is. With _use_filesystem_for_exec disabled we ignore what is on
+        # disk.
         entry[1][0] = (b'f', b'', 0, True, dirstate.DirState.NULLSTAT)
 
         stat_value = os.lstat('a')
@@ -1258,7 +1260,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         state._sha1_provider = UppercaseSHA1Provider()
         # If we used the standard provider, it would look like nothing has
         # changed
-        file_ids_changed = [change[0] for change
+        file_ids_changed = [change.file_id for change
                             in tree.iter_changes(tree.basis_tree())]
         self.assertEqual([b'a-file-id'], file_ids_changed)
 
@@ -1289,12 +1291,9 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         self.overrideAttr(dirstate, '_process_entry', self._process_entry)
 
     def assertChangedFileIds(self, expected, tree):
-        tree.lock_read()
-        try:
-            file_ids = [info[0] for info
+        with tree.lock_read():
+            file_ids = [info.file_id for info
                         in tree.iter_changes(tree.basis_tree())]
-        finally:
-            tree.unlock()
         self.assertEqual(sorted(expected), sorted(file_ids))
 
     def test_exceptions_raised(self):
@@ -1327,7 +1326,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
         tree.add(['file'], [b'file-id'])
-        self.assertChangedFileIds([tree.get_root_id(), b'file-id'], tree)
+        self.assertChangedFileIds([tree.path2id(''), b'file-id'], tree)
         tree.commit('one')
         self.assertChangedFileIds([], tree)
 

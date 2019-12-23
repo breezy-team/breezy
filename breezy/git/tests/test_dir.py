@@ -27,6 +27,7 @@ from ... import (
     errors,
     urlutils,
     )
+from ...transport import get_transport
 from ...tests import TestSkipped
 
 from .. import (
@@ -75,6 +76,13 @@ class TestGitDir(tests.TestCaseInTempDir):
         gd = controldir.ControlDir.open('foo')
         self.assertEqual(gd.control_url.rstrip('/'),
                          urlutils.local_path_to_url(os.path.abspath(gitrepo.controldir())))
+
+    def test_shared_repository(self):
+        t = get_transport('.')
+        self.assertRaises(
+            errors.SharedRepositoriesUnsupported,
+            dir.LocalGitControlDirFormat().initialize_on_transport_ex, t,
+            shared_repo=True)
 
 
 class TestGitDirFormat(tests.TestCase):

@@ -364,89 +364,87 @@ class BzrUploader(object):
         # --create-prefix option ?)
         changes = self.tree.changes_from(from_tree)
         with self.tree.lock_read():
-            for (path, id, kind) in changes.removed:
-                if self.is_ignored(path):
+            for change in changes.removed:
+                if self.is_ignored(change.path[0]):
                     if not self.quiet:
-                        self.outf.write('Ignoring %s\n' % path)
+                        self.outf.write('Ignoring %s\n' % change.path[0])
                     continue
-                if kind == 'file':
-                    self.delete_remote_file(path)
-                elif kind == 'directory':
-                    self.delete_remote_dir_maybe(path)
-                elif kind == 'symlink':
-                    self.delete_remote_file(path)
+                if change.kind[0] == 'file':
+                    self.delete_remote_file(change.path[0])
+                elif change.kind[0] == 'directory':
+                    self.delete_remote_dir_maybe(change.path[0])
+                elif change.kind[0] == 'symlink':
+                    self.delete_remote_file(change.path[0])
                 else:
                     raise NotImplementedError
 
-            for (old_path, new_path, id, kind,
-                 content_change, exec_change) in changes.renamed:
-                if self.is_ignored(old_path) and self.is_ignored(new_path):
+            for change in changes.renamed:
+                if self.is_ignored(change.path[0]) and self.is_ignored(change.path[1]):
                     if not self.quiet:
-                        self.outf.write('Ignoring %s\n' % old_path)
-                        self.outf.write('Ignoring %s\n' % new_path)
+                        self.outf.write('Ignoring %s\n' % change.path[0])
+                        self.outf.write('Ignoring %s\n' % change.path[1])
                     continue
-                if content_change:
-                    # We update the old_path content because renames and
+                if change.changed_content:
+                    # We update the change.path[0] content because renames and
                     # deletions are differed.
-                    self.upload_file(old_path, new_path)
-                self.rename_remote(old_path, new_path)
+                    self.upload_file(change.path[0], change.path[1])
+                self.rename_remote(change.path[0], change.path[1])
             self.finish_renames()
             self.finish_deletions()
 
-            for (path, id, old_kind, new_kind) in changes.kind_changed:
-                if self.is_ignored(path):
+            for change in changes.kind_changed:
+                if self.is_ignored(change.path[1]):
                     if not self.quiet:
-                        self.outf.write('Ignoring %s\n' % path)
+                        self.outf.write('Ignoring %s\n' % change.path[1])
                     continue
-                if old_kind in ('file', 'symlink'):
-                    self.delete_remote_file(path)
-                elif old_kind == 'directory':
-                    self.delete_remote_dir(path)
+                if change.kind[0] in ('file', 'symlink'):
+                    self.delete_remote_file(change.path[0])
+                elif change.kind[0] == 'directory':
+                    self.delete_remote_dir(change.path[0])
                 else:
                     raise NotImplementedError
 
-                if new_kind == 'file':
-                    self.upload_file(path, path)
-                elif new_kind == 'symlink':
-                    target = self.tree.get_symlink_target(path)
-                    self.upload_symlink(path, target)
-                elif new_kind == 'directory':
-                    self.make_remote_dir(path)
+                if change.kind[1] == 'file':
+                    self.upload_file(change.path[1], change.path[1])
+                elif change.kind[1] == 'symlink':
+                    target = self.tree.get_symlink_target(change.path[1])
+                    self.upload_symlink(change.path[1], target)
+                elif change.kind[1] == 'directory':
+                    self.make_remote_dir(change.path[1])
                 else:
                     raise NotImplementedError
 
-            for (path, id, kind) in changes.added:
-                if self.is_ignored(path):
+            for change in changes.added + changes.copied:
+                if self.is_ignored(change.path[1]):
                     if not self.quiet:
-                        self.outf.write('Ignoring %s\n' % path)
+                        self.outf.write('Ignoring %s\n' % change.path[1])
                     continue
-                if kind == 'file':
-                    self.upload_file(path, path)
-                elif kind == 'directory':
-                    self.make_remote_dir(path)
-                elif kind == 'symlink':
-                    target = self.tree.get_symlink_target(path)
+                if change.kind[1] == 'file':
+                    self.upload_file(change.path[1], change.path[1])
+                elif change.kind[1] == 'directory':
+                    self.make_remote_dir(change.path[1])
+                elif change.kind[1] == 'symlink':
+                    target = self.tree.get_symlink_target(change.path[1])
                     try:
-                        self.upload_symlink(path, target)
+                        self.upload_symlink(change.path[1], target)
                     except errors.TransportNotPossible:
                         if not self.quiet:
                             self.outf.write('Not uploading symlink %s -> %s\n'
-                                            % (path, target))
+                                            % (change.path[1], target))
                 else:
                     raise NotImplementedError
 
             # XXX: Add a test for exec_change
-            for (path, id, kind,
-                 content_change, exec_change) in changes.modified:
-                if self.is_ignored(path):
+            for change in changes.modified:
+                if self.is_ignored(change.path[1]):
                     if not self.quiet:
-                        self.outf.write('Ignoring %s\n' % path)
+                        self.outf.write('Ignoring %s\n' % change.path[1])
                     continue
-                if kind == 'file':
-                    self.upload_file(path, path)
-                elif kind == 'symlink':
-                    target = self.tree.get_symlink_target(path)
-                    self.upload_symlink(path, target)
+                if change.kind[1] == 'file':
+                    self.upload_file(change.path[1], change.path[1])
+                elif change.kind[1] == 'symlink':
+                    target = self.tree.get_symlink_target(change.path[1])
+                    self.upload_symlink(change.path[1], target)
                 else:
                     raise NotImplementedError
 
@@ -503,12 +501,10 @@ class cmd_upload(commands.Command):
              directory)
 
         if wt:
-            wt.lock_read()
             locked = wt
         else:
-            branch.lock_read()
             locked = branch
-        try:
+        with locked.lock_read():
             if wt:
                 changes = wt.changes_from(wt.basis_tree())
 
@@ -566,8 +562,6 @@ class cmd_upload(commands.Command):
                 uploader.upload_full_tree()
             else:
                 uploader.upload_tree()
-        finally:
-            locked.unlock()
 
         # We uploaded successfully, remember it
         with branch.lock_write():

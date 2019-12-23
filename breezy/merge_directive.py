@@ -23,6 +23,7 @@ from . import lazy_import
 lazy_import.lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,
+    cleanup,
     diff,
     email_message,
     errors,
@@ -37,7 +38,7 @@ from breezy import (
 from breezy.bzr import (
     testament,
     )
-from breezy.bundle import (
+from breezy.bzr.bundle import (
     serializer as bundle_serializer,
     )
 """)
@@ -596,10 +597,8 @@ class MergeDirective2(BaseMergeDirective):
         If the message is not supplied, the message from revision_id will be
         used for the commit.
         """
-        locked = []
-        try:
-            repository.lock_write()
-            locked.append(repository)
+        with cleanup.ExitStack() as exit_stack:
+            exit_stack.enter_context(repository.lock_write())
             t_revision_id = revision_id
             if revision_id == b'null:':
                 t_revision_id = None
@@ -609,8 +608,7 @@ class MergeDirective2(BaseMergeDirective):
                 submit_branch = _mod_branch.Branch.open(target_branch)
             else:
                 submit_branch = local_target_branch
-            submit_branch.lock_read()
-            locked.append(submit_branch)
+            exit_stack.enter_context(submit_branch.lock_read())
             if submit_branch.get_public_branch() is not None:
                 target_branch = submit_branch.get_public_branch()
             submit_revision_id = submit_branch.last_revision()
@@ -636,16 +634,12 @@ class MergeDirective2(BaseMergeDirective):
 
             if public_branch is not None and not include_bundle:
                 public_branch_obj = _mod_branch.Branch.open(public_branch)
-                public_branch_obj.lock_read()
-                locked.append(public_branch_obj)
+                exit_stack.enter_context(public_branch_obj.lock_read())
                 if not public_branch_obj.repository.has_revision(
                         revision_id):
                     raise errors.PublicBranchOutOfDate(public_branch,
                                                        revision_id)
             testament_sha1 = t.as_sha1()
-        finally:
-            for entry in reversed(locked):
-                entry.unlock()
         return klass(revision_id, testament_sha1, time, timezone,
                      target_branch, patch, public_branch, message, bundle,
                      base_revision_id)

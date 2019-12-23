@@ -65,5 +65,5 @@ def classify_delta(delta):
     # number of lines changed in a file.
     types = []
     for d in delta.added + delta.modified:
-        types.append(classify_filename(d[0]))
+        types.append(classify_filename(d.path[1] or d.path[0]))
     return types

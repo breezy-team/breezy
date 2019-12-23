@@ -96,6 +96,7 @@ MERGE_MODIFIED_HEADER_1 = b"BZR merge-modified list format 1"
 # impossible as there is no clear relationship between the working tree format
 # and the conflict list file format.
 CONFLICT_HEADER_1 = b"BZR conflict list format 1"
+ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
 
 
 class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
@@ -126,6 +127,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
         self._control_files = _control_files
         self._detect_case_handling()
+        self._setup_directory_is_tree_reference()
 
         if _inventory is None:
             # This will be acquired on lock_read() or lock_write()
@@ -160,7 +162,37 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         else:
             self.case_sensitive = False
 
-        self._setup_directory_is_tree_reference()
+    def get_transform(self, pb=None):
+        from ..transform import TreeTransform
+        return TreeTransform(self, pb=pb)
+
+    def _setup_directory_is_tree_reference(self):
+        if self._branch.repository._format.supports_tree_reference:
+            self._directory_is_tree_reference = \
+                self._directory_may_be_tree_reference
+        else:
+            self._directory_is_tree_reference = \
+                self._directory_is_never_tree_reference
+
+    def _directory_is_never_tree_reference(self, relpath):
+        return False
+
+    def _directory_may_be_tree_reference(self, relpath):
+        # as a special case, if a directory contains control files then
+        # it's a tree reference, except that the root of the tree is not
+        return relpath and osutils.isdir(self.abspath(relpath) + u"/.bzr")
+        # TODO: We could ask all the control formats whether they
+        # recognize this directory, but at the moment there's no cheap api
+        # to do that.  Since we probably can only nest bzr checkouts and
+        # they always use this name it's ok for now.  -- mbp 20060306
+        #
+        # FIXME: There is an unhandled case here of a subdirectory
+        # containing .bzr but not a branch; that will probably blow up
+        # when you try to commit it.  It might happen if there is a
+        # checkout in a subdirectory.  This can be avoided by not adding
+        # it.  mbp 20070306
+
+
 
     def _serialize(self, inventory, out_file):
         xml5.serializer_v5.write_inventory(
@@ -252,7 +284,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             InventoryFile,
             InventoryLink)
         with self.lock_tree_write():
-            inv = Inventory(self.get_root_id())
+            inv = Inventory(self.path2id(''))
             for path, file_id, parent, kind in new_inventory_list:
                 name = os.path.basename(path)
                 if name == "":
@@ -398,19 +430,18 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
             # Bail out if we are going to delete files we shouldn't
             if not keep_files and not force:
-                for (file_id, path, content_change, versioned, parent_id, name,
-                     kind, executable) in self.iter_changes(
-                         self.basis_tree(), include_unchanged=True,
-                         require_versioned=False, want_unversioned=True,
-                         specific_files=files):
-                    if versioned[0] is False:
+                for change in self.iter_changes(
+                        self.basis_tree(), include_unchanged=True,
+                        require_versioned=False, want_unversioned=True,
+                        specific_files=files):
+                    if change.versioned[0] is False:
                         # The record is unknown or newly added
-                        files_to_backup.append(path[1])
-                    elif (content_change and (kind[1] is not None)
-                            and osutils.is_inside_any(files, path[1])):
+                        files_to_backup.append(change.path[1])
+                    elif (change.changed_content and (change.kind[1] is not None)
+                            and osutils.is_inside_any(files, change.path[1])):
                         # Versioned and changed, but not deleted, and still
                         # in one of the dirs to be deleted.
-                        files_to_backup.append(path[1])
+                        files_to_backup.append(change.path[1])
 
             def backup(file_to_backup):
                 backup_name = self.controldir._available_backup_name(
@@ -626,25 +657,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 result = self._deserialize(f)
             self._set_inventory(result, dirty=False)
             return result
-
-    def get_root_id(self):
-        """Return the id of this trees root"""
-        with self.lock_read():
-            return self._inventory.root.file_id
-
-    def has_id(self, file_id):
-        # files that have been deleted are excluded
-        inv, inv_file_id = self._unpack_file_id(file_id)
-        if not inv.has_id(inv_file_id):
-            return False
-        path = inv.id2path(inv_file_id)
-        return osutils.lexists(self.abspath(path))
-
-    def has_or_had_id(self, file_id):
-        if file_id == self.get_root_id():
-            return True
-        inv, inv_file_id = self._unpack_file_id(file_id)
-        return inv.has_id(inv_file_id)
 
     def all_file_ids(self):
         """Iterate through file_ids for this tree.
@@ -866,9 +878,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
     def set_merge_modified(self, modified_hashes):
         def iter_stanzas():
-            for file_id in modified_hashes:
+            for path, sha1 in modified_hashes.items():
+                file_id = self.path2id(path)
+                if file_id is None:
+                    continue
                 yield _mod_rio.Stanza(file_id=file_id.decode('utf8'),
-                                      hash=modified_hashes[file_id])
+                                      hash=sha1)
         with self.lock_tree_write():
             self._put_rio('merge-hashes', iter_stanzas(),
                           MERGE_MODIFIED_HEADER_1)
@@ -899,12 +914,13 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     # RioReader reads in Unicode, so convert file_ids back to
                     # utf8
                     file_id = cache_utf8.encode(s.get("file_id"))
-                    if not self.has_id(file_id):
+                    try:
+                        path = self.id2path(file_id)
+                    except errors.NoSuchId:
                         continue
                     text_hash = s.get("hash").encode('ascii')
-                    path = self.id2path(file_id)
                     if text_hash == self.get_file_sha1(path):
-                        merge_hashes[file_id] = text_hash
+                        merge_hashes[path] = text_hash
                 return merge_hashes
             finally:
                 hashfile.close()
@@ -916,7 +932,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 if child_entry.kind == 'directory':
                     add_children(inventory, child_entry)
         with self.lock_write():
-            if other_tree.get_root_id() == self.get_root_id():
+            if other_tree.path2id('') == self.path2id(''):
                 raise errors.BadSubsumeSource(self, other_tree,
                                               'Trees have the same root')
             try:
@@ -1344,7 +1360,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 if after:
                     basis = self.basis_tree()
                     with basis.lock_read():
-                        if not basis.has_id(to_id):
+                        try:
+                            basis.id2path(to_id)
+                        except errors.NoSuchId:
                             rename_entry.change_id = True
                             allowed = True
                 if not allowed:

@@ -22,6 +22,7 @@ from ... import (
     errors,
     hooks,
     registry,
+    urlutils,
     )
 
 
@@ -50,6 +51,11 @@ class UnsupportedHoster(errors.BzrError):
     def __init__(self, branch):
         errors.BzrError.__init__(self)
         self.branch = branch
+
+
+class ReopenFailed(errors.BzrError):
+
+    _fmt = "Reopening the merge proposal failed: %(error)s."
 
 
 class ProposeMergeHooks(hooks.Hooks):
@@ -110,6 +116,14 @@ class MergeProposal(object):
         """Set the description of the merge proposal."""
         raise NotImplementedError(self.set_description)
 
+    def get_commit_message(self):
+        """Get the proposed commit message."""
+        raise NotImplementedError(self.get_commit_message)
+
+    def set_commit_message(self, commit_message):
+        """Set the propose commit message."""
+        raise NotImplementedError(self.set_commit_message)
+
     def get_source_branch_url(self):
         """Return the source branch."""
         raise NotImplementedError(self.get_source_branch_url)
@@ -125,6 +139,24 @@ class MergeProposal(object):
     def is_merged(self):
         """Check whether this merge proposal has been merged."""
         raise NotImplementedError(self.is_merged)
+
+    def is_closed(self):
+        """Check whether this merge proposal is closed
+
+        This can either mean that it is merged or rejected.
+        """
+        raise NotImplementedError(self.is_closed)
+
+    def merge(self, commit_message=None):
+        """Merge this merge proposal."""
+        raise NotImplementedError(self.merge)
+
+    def can_be_merged(self):
+        """Can this merge proposal be merged?
+
+        The answer to this can be no if e.g. it has conflics.
+        """
+        raise NotImplementedError(self.can_be_merged)
 
 
 class MergeProposalBuilder(object):
@@ -153,13 +185,14 @@ class MergeProposalBuilder(object):
         raise NotImplementedError(self.get_infotext)
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None):
+                        prerequisite_branch=None, commit_message=None):
         """Create a proposal to merge a branch for merging.
 
         :param description: Description for the merge proposal
         :param reviewers: Optional list of people to ask reviews from
         :param labels: Labels to attach to the proposal
         :param prerequisite_branch: Optional prerequisite branch
+        :param commit_message: Optional commit message
         :return: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)
@@ -172,6 +205,10 @@ class Hoster(object):
     # Does this hoster support arbitrary labels being attached to merge
     # proposals?
     supports_merge_proposal_labels = None
+
+    # Does this hoster support suggesting a commit message in the
+    # merge proposal?
+    supports_merge_proposal_commit_message = None
 
     # The base_url that would be visible to users. I.e. https://github.com/
     # rather than https://api.github.com/
@@ -211,7 +248,7 @@ class Hoster(object):
         raise NotImplementedError(self.get_proposer)
 
     def iter_proposals(self, source_branch, target_branch, status='open'):
-        """Get a merge proposal for a specified branch tuple.
+        """Get the merge proposals for a specified branch tuple.
 
         :param source_branch: Source branch
         :param target_branch: Target branch
@@ -220,14 +257,30 @@ class Hoster(object):
         """
         raise NotImplementedError(self.iter_proposals)
 
+    def get_proposal_by_url(self, url):
+        """Retrieve a branch proposal by URL.
+
+        :param url: Merge proposal URL.
+        :return: MergeProposal object
+        :raise UnsupportedHoster: Hoster does not support this URL
+        """
+        raise NotImplementedError(self.get_proposal_by_url)
+
     def hosts(self, branch):
         """Return true if this hoster hosts given branch."""
         raise NotImplementedError(self.hosts)
 
     @classmethod
-    def probe(cls, branch):
+    def probe_from_branch(cls, branch):
         """Create a Hoster object if this hoster knows about a branch."""
-        raise NotImplementedError(cls.probe)
+        url = urlutils.split_segment_parameters(branch.user_url)[0]
+        return cls.probe_from_url(
+            url, possible_transports=[branch.control_transport])
+
+    @classmethod
+    def probe_from_url(cls, url, possible_hosters=None):
+        """Create a Hoster object if this hoster knows about a URL."""
+        raise NotImplementedError(cls.probe_from_url)
 
     # TODO(jelmer): Some way of cleaning up old branch proposals/branches
 
@@ -259,7 +312,7 @@ def get_hoster(branch, possible_hosters=None):
                 return hoster
     for name, hoster_cls in hosters.items():
         try:
-            hoster = hoster_cls.probe(branch)
+            hoster = hoster_cls.probe_from_branch(branch)
         except UnsupportedHoster:
             pass
         else:
@@ -267,6 +320,16 @@ def get_hoster(branch, possible_hosters=None):
                 possible_hosters.append(hoster)
             return hoster
     raise UnsupportedHoster(branch)
+
+
+def get_proposal_by_url(url):
+    for name, hoster_cls in hosters.items():
+        for instance in hoster_cls.iter_instances():
+            try:
+                return instance.get_proposal_by_url(url)
+            except UnsupportedHoster:
+                pass
+    raise UnsupportedHoster(url)
 
 
 hosters = registry.Registry()

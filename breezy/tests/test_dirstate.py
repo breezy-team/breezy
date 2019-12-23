@@ -394,7 +394,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         # There are no files on disk and no parents
         tree = self.make_branch_and_tree('tree')
         expected_result = ([], [
-            ((b'', b'', tree.get_root_id()),  # common details
+            ((b'', b'', tree.path2id('')),  # common details
              [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
               ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
@@ -407,7 +407,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         rev_id = tree.commit('first post')
         root_stat_pack = dirstate.pack_stat(os.stat(tree.basedir))
         expected_result = ([rev_id], [
-            ((b'', b'', tree.get_root_id()),  # common details
+            ((b'', b'', tree.path2id('')),  # common details
              [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
               (b'd', b'', 0, False, rev_id),  # first parent details
               ])])
@@ -427,7 +427,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         rev_id2 = tree2.commit('second post', allow_pointless=True)
         tree.merge_from_branch(tree2.branch)
         expected_result = ([rev_id, rev_id2], [
-            ((b'', b'', tree.get_root_id()),  # common details
+            ((b'', b'', tree.path2id('')),  # common details
              [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
               (b'd', b'', 0, False, rev_id),  # first parent details
               (b'd', b'', 0, False, rev_id),  # second parent details
@@ -446,7 +446,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/unknown'])
         expected_result = ([], [
-            ((b'', b'', tree.get_root_id()),  # common details
+            ((b'', b'', tree.path2id('')),  # common details
              [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
               ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
@@ -463,7 +463,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         # There are files on disk and no parents
         tree = self.get_tree_with_a_file()
         expected_result = ([], [
-            ((b'', b'', tree.get_root_id()),  # common details
+            ((b'', b'', tree.path2id('')),  # common details
              [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
               ]),
             ((b'', b'a file', b'a-file-id'),  # common
@@ -481,7 +481,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         # and length:
         self.build_tree_contents([('tree/a file', b'new content\n')])
         expected_result = ([rev_id], [
-            ((b'', b'', tree.get_root_id()),  # common details
+            ((b'', b'', tree.path2id('')),  # common details
              [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
               (b'd', b'', 0, False, rev_id),  # first parent details
               ]),
@@ -508,7 +508,7 @@ class TestTreeToDirState(TestCaseWithDirState):
         # and length again, giving us three distinct values:
         self.build_tree_contents([('tree/a file', b'new content\n')])
         expected_result = ([rev_id, rev_id2], [
-            ((b'', b'', tree.get_root_id()),  # common details
+            ((b'', b'', tree.path2id('')),  # common details
              [(b'd', b'', 0, False, dirstate.DirState.NULLSTAT),  # current tree
               (b'd', b'', 0, False, rev_id),  # first parent details
               (b'd', b'', 0, False, rev_id),  # second parent details
@@ -573,7 +573,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
         # get a state object
         # no parents, default tree content
         expected_result = ([], [
-            ((b'', b'', tree.get_root_id()),  # common details
+            ((b'', b'', tree.path2id('')),  # common details
              # current tree details, but new from_tree skips statting, it
              # uses set_state_from_inventory, and thus depends on the
              # inventory state.
@@ -899,7 +899,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             tree1.add(['a', 'a/b', 'a-b', 'a/b/foo', 'a-b/bar'],
                       [b'a-id', b'b-id', b'a-b-id', b'foo-id', b'bar-id'])
             tree1.commit('rev1', rev_id=b'rev1')
-            root_id = tree1.get_root_id()
+            root_id = tree1.path2id('')
             inv = tree1.root_inventory
         finally:
             tree1.unlock()
@@ -1045,7 +1045,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         tree2.lock_write()
         try:
             revid2 = tree2.commit('foo')
-            root_id = tree2.get_root_id()
+            root_id = tree2.path2id('')
         finally:
             tree2.unlock()
         state = dirstate.DirState.initialize('dirstate')
@@ -1116,7 +1116,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             tree2.put_file_bytes_non_atomic('a file', b'new file-content')
             revid2 = tree2.commit('foo')
-            root_id = tree2.get_root_id()
+            root_id = tree2.path2id('')
         finally:
             tree2.unlock()
         # check the layout in memory
@@ -1337,10 +1337,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # incorrect absent in tree 1, and future changes go to pot.
         tree1 = self.make_branch_and_tree('tree1')
         self.build_tree(['tree1/b'])
-        tree1.lock_write()
-        try:
+        with tree1.lock_write():
             tree1.add(['b'], [b'b-id'])
-            root_id = tree1.get_root_id()
+            root_id = tree1.path2id('')
             inv = tree1.root_inventory
             state = dirstate.DirState.initialize('dirstate')
             try:
@@ -1358,8 +1357,6 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 self.assertEqual(expected_result1, values)
             finally:
                 state.unlock()
-        finally:
-            tree1.unlock()
 
 
 class TestDirStateHashUpdates(TestCaseWithDirState):
@@ -1826,9 +1823,11 @@ class TestDirstateSortOrder(tests.TestCaseWithTransport):
 class InstrumentedDirState(dirstate.DirState):
     """An DirState with instrumented sha1 functionality."""
 
-    def __init__(self, path, sha1_provider, worth_saving_limit=0):
-        super(InstrumentedDirState, self).__init__(path, sha1_provider,
-                                                   worth_saving_limit=worth_saving_limit)
+    def __init__(self, path, sha1_provider, worth_saving_limit=0,
+                 use_filesystem_for_exec=True):
+        super(InstrumentedDirState, self).__init__(
+            path, sha1_provider, worth_saving_limit=worth_saving_limit,
+            use_filesystem_for_exec=use_filesystem_for_exec)
         self._time_offset = 0
         self._log = []
         # member is dynamically set in DirState.__init__ to turn on trace

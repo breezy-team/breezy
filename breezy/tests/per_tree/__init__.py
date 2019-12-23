@@ -174,7 +174,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         This variation changes the executable flag of b/c to True.
         """
         self._make_abc_tree(tree)
-        tt = transform.TreeTransform(tree)
+        tt = tree.get_transform()
         trans_id = tt.trans_id_tree_path('b/c')
         tt.set_executability(True, trans_id)
         tt.apply()
@@ -206,7 +206,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         This variation renames b/c to e, and makes it executable.
         """
         self._make_abc_tree(tree)
-        tt = transform.TreeTransform(tree)
+        tt = tree.get_transform()
         trans_id = tt.trans_id_tree_path('b/c')
         parent_trans_id = tt.trans_id_tree_path('')
         tt.adjust_path('e', parent_trans_id, trans_id)
@@ -222,7 +222,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
         self._make_abc_tree(tree)
         self.build_tree(['d/'], transport=tree.controldir.root_transport)
         tree.add(['d'])
-        tt = transform.TreeTransform(tree)
+        tt = tree.get_transform()
         trans_id = tt.trans_id_tree_path('b')
         parent_trans_id = tt.trans_id_tree_path('d')
         tt.adjust_path('e', parent_trans_id, trans_id)
@@ -270,7 +270,7 @@ class TestCaseWithTree(TestCaseWithControlDir):
                  ]
         self.build_tree(paths)
         tree.add(paths)
-        tt = transform.TreeTransform(tree)
+        tt = tree.get_transform()
         if symlinks:
             root_transaction_id = tt.trans_id_tree_path('')
             tt.new_symlink('symlink',

@@ -2585,11 +2585,10 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                     old_tree = trees[revision.parent_ids[0]]
                 yield trees[revision.revision_id].changes_from(old_tree)
 
-    def get_revision_delta(self, revision_id, specific_fileids=None):
+    def get_revision_delta(self, revision_id):
         with self.lock_read():
             r = self.get_revision(revision_id)
-            return list(self.get_deltas_for_revisions([r],
-                                                      specific_fileids=specific_fileids))[0]
+            return list(self.get_deltas_for_revisions([r]))[0]
 
     def revision_trees(self, revision_ids):
         with self.lock_read():
@@ -3397,6 +3396,9 @@ class RemoteBranchFormat(branch.BranchFormat):
     def supports_set_append_revisions_only(self):
         self._ensure_real()
         return self._custom_format.supports_set_append_revisions_only()
+
+    def stores_revno(self):
+        return True
 
     def _use_default_local_heads_to_fetch(self):
         # If the branch format is a metadir format *and* its heads_to_fetch

@@ -284,6 +284,13 @@ class WorkingTreeAlreadyPopulated(InternalBzrError):
         self.base = base
 
 
+class NoWhoami(BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+            "Please, set your name with the 'whoami' command.\n"
+            'E.g. brz whoami "Your Name <name@example.com>"')
+
+
 class BzrCommandError(BzrError):
     """Error from user command"""
 
@@ -1865,6 +1872,13 @@ class NonAsciiRevisionId(UnsupportedOperation):
     """
 
 
+class SharedRepositoriesUnsupported(UnsupportedOperation):
+    _fmt = "Shared repositories are not supported by %(format)r."
+
+    def __init__(self, format):
+        BzrError.__init__(self, format=format)
+
+
 class GhostTagsNotSupported(BzrError):
 
     _fmt = "Ghost tags not supported by format %(format)r."
@@ -2302,21 +2316,6 @@ class ShelvedChanges(UncommittedChanges):
 
     _fmt = ('Working tree "%(display_url)s" has shelved changes'
             ' (See brz shelve --list).%(more)s')
-
-
-class UnableCreateSymlink(BzrError):
-
-    _fmt = 'Unable to create symlink %(path_str)son this platform'
-
-    def __init__(self, path=None):
-        path_str = ''
-        if path:
-            try:
-                path_str = repr(str(path))
-            except UnicodeEncodeError:
-                path_str = repr(path)
-            path_str += ' '
-        self.path_str = path_str
 
 
 class UnableEncodePath(BzrError):

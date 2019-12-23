@@ -274,10 +274,10 @@ class GitDir(ControlDir):
         for ref in self.get_refs_container().keys():
             try:
                 branch_name = ref_to_branch_name(ref)
-            except ValueError:
-                continue
             except UnicodeDecodeError:
                 trace.warning("Ignoring branch %r with unicode error ref", ref)
+                continue
+            except ValueError:
                 continue
             ret[branch_name] = self.open_branch(ref=ref)
         return ret
@@ -351,14 +351,19 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         from .transportgit import TransportRepo
 
         def _open(transport):
-            return TransportRepo(transport, self.bare,
-                                 refs_text=getattr(self, "_refs_text", None))
+            try:
+                return TransportRepo(transport, self.bare,
+                                     refs_text=getattr(self, "_refs_text", None))
+            except ValueError as e:
+                if e.args == ('Expected file to start with \'gitdir: \'', ):
+                    raise brz_errors.NotBranchError(path=transport.base)
+                raise
 
         def redirected(transport, e, redirection_notice):
             trace.note(redirection_notice)
             return transport._redirected_to(e.source, e.target)
         gitrepo = do_catching_redirections(_open, transport, redirected)
-        if not gitrepo._controltransport.has('HEAD'):
+        if not _found and not gitrepo._controltransport.has('objects'):
             raise brz_errors.NotBranchError(path=transport.base)
         return LocalGitDir(transport, gitrepo, self)
 
@@ -376,6 +381,9 @@ class LocalGitControlDirFormat(GitControlDirFormat):
                                    stack_on_pwd=None, repo_format_name=None,
                                    make_working_trees=None,
                                    shared_repo=False, vfs_only=False):
+        if shared_repo:
+            raise brz_errors.SharedRepositoriesUnsupported(self)
+
         def make_directory(transport):
             transport.mkdir('.')
             return transport
@@ -414,6 +422,11 @@ class LocalGitControlDirFormat(GitControlDirFormat):
             raise brz_errors.NotBranchError(path=transport.base)
         return external_url.startswith("file:")
 
+    def is_control_filename(self, filename):
+        return (filename == '.git'
+                or filename.startswith('.git/')
+                or filename.startswith('.git\\'))
+
 
 class BareLocalGitControlDirFormat(LocalGitControlDirFormat):
 
@@ -422,6 +435,9 @@ class BareLocalGitControlDirFormat(LocalGitControlDirFormat):
 
     def get_format_description(self):
         return "Local Git Repository (bare)"
+
+    def is_control_filename(self, filename):
+        return False
 
 
 class LocalGitDir(GitDir):
@@ -455,11 +471,6 @@ class LocalGitDir(GitDir):
         else:
             self.transport = transport.clone('.git')
         self._mode_check_done = None
-
-    def is_control_filename(self, filename):
-        return (filename == '.git'
-                or filename.startswith('.git/')
-                or filename.startswith('.git\\'))
 
     def _get_symref(self, ref):
         ref_chain, unused_sha = self._git.refs.follow(ref)

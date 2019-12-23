@@ -152,7 +152,7 @@ class ControlDir(ControlComponent):
         this in the future - for instance to make bzr talk with svn working
         trees.
         """
-        raise NotImplementedError(self.is_control_filename)
+        return self._format.is_control_filename(filename)
 
     def needs_format_conversion(self, format=None):
         """Return true if this controldir needs convert_format run on it.
@@ -561,7 +561,8 @@ class ControlDir(ControlComponent):
             recurse = True
             try:
                 controldir = klass.open_from_transport(current_transport)
-            except (errors.NotBranchError, errors.PermissionDenied):
+            except (errors.NotBranchError, errors.PermissionDenied,
+                    errors.UnknownFormatError):
                 pass
             else:
                 recurse, value = evaluate(controldir)
@@ -1027,12 +1028,6 @@ class ControlDirFormat(object):
     _default_format = None
     """The default format used for new control directories."""
 
-    _server_probers = []
-    """The registered server format probers, e.g. RemoteBzrProber.
-
-    This is a list of Prober-derived classes.
-    """
-
     _probers = []
     """The registered format probers, e.g. BzrProber.
 
@@ -1123,24 +1118,13 @@ class ControlDirFormat(object):
         """
         klass._probers.remove(prober)
 
-    @classmethod
-    def register_server_prober(klass, prober):
-        """Register a control format prober for client-server environments.
-
-        These probers will be used before ones registered with
-        register_prober.  This gives implementations that decide to the
-        chance to grab it before anything looks at the contents of the format
-        file.
-        """
-        klass._server_probers.append(prober)
-
     def __str__(self):
         # Trim the newline
         return self.get_format_description().rstrip()
 
     @classmethod
     def all_probers(klass):
-        return klass._server_probers + klass._probers
+        return klass._probers
 
     @classmethod
     def known_formats(klass):
@@ -1155,7 +1139,9 @@ class ControlDirFormat(object):
     def find_format(klass, transport, probers=None):
         """Return the format present at transport."""
         if probers is None:
-            probers = klass.all_probers()
+            probers = sorted(
+                klass.all_probers(),
+                key=lambda prober: prober.priority(transport))
         for prober_kls in probers:
             prober = prober_kls()
             try:
@@ -1246,6 +1232,22 @@ class ControlDirFormat(object):
         """
         raise NotImplementedError(self.supports_transport)
 
+    @classmethod
+    def is_control_filename(klass, filename):
+        """True if filename is the name of a path which is reserved for
+        controldirs.
+
+        :param filename: A filename within the root transport of this
+            controldir.
+
+        This is true IF and ONLY IF the filename is part of the namespace reserved
+        for bzr control dirs. Currently this is the '.bzr' directory in the root
+        of the root_transport. it is expected that plugins will need to extend
+        this in the future - for instance to make bzr talk with svn working
+        trees.
+        """
+        raise NotImplementedError(self.is_control_filename)
+
 
 class Prober(object):
     """Abstract class that can be used to detect a particular kind of
@@ -1259,8 +1261,8 @@ class Prober(object):
     probers that detect .bzr/ directories and Bazaar smart servers,
     respectively.
 
-    Probers should be registered using the register_server_prober or
-    register_prober methods on ControlDirFormat.
+    Probers should be registered using the register_prober methods on
+    ControlDirFormat.
     """
 
     def probe_transport(self, transport):
@@ -1283,6 +1285,21 @@ class Prober(object):
         :return: A set of known formats.
         """
         raise NotImplementedError(klass.known_formats)
+
+    @classmethod
+    def priority(klass, transport):
+        """Priority of this prober.
+
+        A lower value means the prober gets checked first.
+
+        Other conventions:
+
+        -10: This is a "server" prober
+        0: No priority set
+        10: This is a regular file-based prober
+        100: This is a prober for an unsupported format
+        """
+        return 0
 
 
 class ControlDirFormatInfo(object):
@@ -1461,8 +1478,13 @@ class RepoInitHookParams(object):
 
 def is_control_filename(filename):
     """Check if filename is used for control directories."""
-    # TODO(jelmer): Allow registration by other VCSes
-    return filename == '.bzr'
+    # TODO(jelmer): Instead, have a function that returns all control
+    # filenames.
+    for key, format in format_registry.items():
+        if format().is_control_filename(filename):
+            return True
+    else:
+        return False
 
 
 class RepositoryAcquisitionPolicy(object):

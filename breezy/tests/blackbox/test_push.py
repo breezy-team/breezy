@@ -949,7 +949,7 @@ class TestPushOutput(script.TestCaseWithTransportAndScript):
 
     def test_push_with_revspec(self):
         self.run_script("""
-            $ brz init-repo .
+            $ brz init-shared-repo .
             Shared repository with trees (format: 2a)
             Location:
               shared repository: .

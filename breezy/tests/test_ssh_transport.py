@@ -14,7 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from breezy.tests import TestCase
+from breezy import config
+from breezy.tests import TestCase, TestCaseWithTransport
 from breezy.errors import SSHVendorNotFound, UnknownSSH
 from breezy.transport.ssh import (
     OpenSSHSubprocessVendor,
@@ -37,73 +38,95 @@ class TestSSHVendorManager(SSHVendorManager):
         return self._ssh_version_string
 
 
-class SSHVendorManagerTests(TestCase):
+class SSHVendorManagerTests(TestCaseWithTransport):
 
     def test_register_vendor(self):
         manager = TestSSHVendorManager()
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         vendor = object()
         manager.register_vendor("vendor", vendor)
-        self.assertIs(manager.get_vendor({"BRZ_SSH": "vendor"}), vendor)
+        self.overrideEnv('BRZ_SSH', 'vendor')
+        self.assertIs(manager.get_vendor(), vendor)
 
     def test_default_vendor(self):
         manager = TestSSHVendorManager()
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         vendor = object()
         manager.register_default_vendor(vendor)
-        self.assertIs(manager.get_vendor({}), vendor)
+        self.assertIs(manager.get_vendor(), vendor)
 
     def test_get_vendor_by_environment(self):
         manager = TestSSHVendorManager()
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
-        self.assertRaises(UnknownSSH,
-                          manager.get_vendor, {"BRZ_SSH": "vendor"})
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
+        self.overrideEnv('BRZ_SSH', 'vendor')
+        self.assertRaises(UnknownSSH, manager.get_vendor)
         vendor = object()
         manager.register_vendor("vendor", vendor)
-        self.assertIs(manager.get_vendor({"BRZ_SSH": "vendor"}), vendor)
+        self.assertIs(manager.get_vendor(), vendor)
+
+    def test_get_vendor_by_config(self):
+        manager = TestSSHVendorManager()
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
+        config.GlobalStack().set('ssh', 'vendor')
+        self.assertRaises(UnknownSSH, manager.get_vendor)
+        vendor = object()
+        manager.register_vendor("vendor", vendor)
+        self.assertIs(manager.get_vendor(), vendor)
 
     def test_get_vendor_by_inspection_openssh(self):
         manager = TestSSHVendorManager()
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         manager.set_ssh_version_string("OpenSSH")
-        self.assertIsInstance(manager.get_vendor({}), OpenSSHSubprocessVendor)
+        self.assertIsInstance(manager.get_vendor(), OpenSSHSubprocessVendor)
 
     def test_get_vendor_by_inspection_sshcorp(self):
         manager = TestSSHVendorManager()
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         manager.set_ssh_version_string("SSH Secure Shell")
-        self.assertIsInstance(manager.get_vendor({}), SSHCorpSubprocessVendor)
+        self.assertIsInstance(manager.get_vendor(), SSHCorpSubprocessVendor)
 
     def test_get_vendor_by_inspection_lsh(self):
         manager = TestSSHVendorManager()
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         manager.set_ssh_version_string("lsh")
-        self.assertIsInstance(manager.get_vendor({}), LSHSubprocessVendor)
+        self.assertIsInstance(manager.get_vendor(), LSHSubprocessVendor)
 
     def test_get_vendor_by_inspection_plink(self):
         manager = TestSSHVendorManager()
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         manager.set_ssh_version_string("plink")
         # Auto-detect of plink vendor disabled, on Windows recommended
         # default ssh-client is paramiko
         # see https://bugs.launchpad.net/bugs/414743
-        #~self.assertIsInstance(manager.get_vendor({}), PLinkSubprocessVendor)
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        #~self.assertIsInstance(manager.get_vendor(), PLinkSubprocessVendor)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
 
     def test_cached_vendor(self):
         manager = TestSSHVendorManager()
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         vendor = object()
         manager.register_vendor("vendor", vendor)
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
         # Once the vendor is found the result is cached (mainly because of the
         # 'get_vendor' sometimes can be an expensive operation) and later
         # invocations of the 'get_vendor' just returns the cached value.
-        self.assertIs(manager.get_vendor({"BRZ_SSH": "vendor"}), vendor)
-        self.assertIs(manager.get_vendor({}), vendor)
+        self.overrideEnv('BRZ_SSH', 'vendor')
+        self.assertIs(manager.get_vendor(), vendor)
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertIs(manager.get_vendor(), vendor)
         # The cache can be cleared by the 'clear_cache' method
         manager.clear_cache()
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
 
     def test_get_vendor_search_order(self):
         # The 'get_vendor' method search for SSH vendors as following:
@@ -118,33 +141,37 @@ class SSHVendorManagerTests(TestCase):
 
         manager = TestSSHVendorManager()
         # At first no vendors are found
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        self.overrideEnv('BRZ_SSH', None)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor)
 
         # If the default vendor is registered it will be returned
         default_vendor = object()
         manager.register_default_vendor(default_vendor)
-        self.assertIs(manager.get_vendor({}), default_vendor)
+        self.assertIs(manager.get_vendor(), default_vendor)
 
         # If the known vendor is found in the system it will be returned
         manager.clear_cache()
         manager.set_ssh_version_string("OpenSSH")
-        self.assertIsInstance(manager.get_vendor({}), OpenSSHSubprocessVendor)
+        self.assertIsInstance(manager.get_vendor(), OpenSSHSubprocessVendor)
 
         # If the BRZ_SSH environment variable is found it will be treated as
         # the vendor name
         manager.clear_cache()
         vendor = object()
         manager.register_vendor("vendor", vendor)
-        self.assertIs(manager.get_vendor({"BRZ_SSH": "vendor"}), vendor)
+        self.overrideEnv('BRZ_SSH', 'vendor')
+        self.assertIs(manager.get_vendor(), vendor)
 
         # Last cached value always checked first
-        self.assertIs(manager.get_vendor({}), vendor)
+        self.overrideEnv('BRZ_SSH', 'vendor')
+        self.assertIs(manager.get_vendor(), vendor)
 
     def test_get_vendor_from_path_win32_plink(self):
         manager = TestSSHVendorManager()
         manager.set_ssh_version_string("plink: Release 0.60")
         plink_path = "C:/Program Files/PuTTY/plink.exe"
-        vendor = manager.get_vendor({"BRZ_SSH": plink_path})
+        self.overrideEnv('BRZ_SSH', plink_path)
+        vendor = manager.get_vendor()
         self.assertIsInstance(vendor, PLinkSubprocessVendor)
         args = vendor._get_vendor_specific_argv("user", "host", 22, ["bzr"])
         self.assertEqual(args[0], plink_path)
@@ -154,7 +181,8 @@ class SSHVendorManagerTests(TestCase):
         manager.set_ssh_version_string(
             "OpenSSH_5.1p1 Debian-5, OpenSSL, 0.9.8g 19 Oct 2007")
         openssh_path = "/usr/bin/ssh"
-        vendor = manager.get_vendor({"BRZ_SSH": openssh_path})
+        self.overrideEnv('BRZ_SSH', openssh_path)
+        vendor = manager.get_vendor()
         self.assertIsInstance(vendor, OpenSSHSubprocessVendor)
         args = vendor._get_vendor_specific_argv("user", "host", 22, ["bzr"])
         self.assertEqual(args[0], openssh_path)

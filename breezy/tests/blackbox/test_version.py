@@ -56,7 +56,7 @@ class TestVersion(TestCase):
         self.assertContainsRe(out, r"(?m)^  Python standard library:")
         self.assertContainsRe(out, r"(?m)^  breezy:")
         self.assertContainsRe(out, r"(?m)^  Breezy configuration:")
-        self.assertContainsRe(out, r'(?m)^  Breezy log file:.*\.brz\.log')
+        self.assertContainsRe(out, r'(?m)^  Breezy log file:.*[\\/]breezy[\\/]brz\.log')
 
     def test_version_short(self):
         self.permit_source_tree_branch_repo()
@@ -71,7 +71,7 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         # Even though trace._brz_log_filename variable
         # is used only to keep actual log filename
         # and changing this variable in selftest
-        # don't change main .brz.log location,
+        # don't change main brz.log location,
         # and therefore pretty safe,
         # but we run these tests in separate temp dir
         # with relative unicoded path
@@ -108,17 +108,19 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
 
 class TestVersionBzrLogLocation(TestCaseInTempDir):
 
+    def default_log(self):
+        return os.path.join(os.environ['BRZ_HOME'], 'breezy', 'brz.log')
+
     def test_simple(self):
         brz_log = 'my.brz.log'
         self.overrideEnv('BRZ_LOG', brz_log)
-        default_log = os.path.join(os.environ['BRZ_HOME'], '.brz.log')
-        self.assertPathDoesNotExist([default_log, brz_log])
+        self.assertPathDoesNotExist([self.default_log(), brz_log])
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(
             out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
-        self.assertPathDoesNotExist(default_log)
         self.assertPathExists(brz_log)
+        self.assertPathDoesNotExist(self.default_log())
 
     def test_dev_null(self):
         # This test uses a subprocess to cause the log opening logic to
@@ -128,13 +130,12 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         else:
             brz_log = '/dev/null'
         self.overrideEnv('BRZ_LOG', brz_log)
-        default_log = os.path.join(os.environ['BRZ_HOME'], '.brz.log')
-        self.assertPathDoesNotExist(default_log)
+        self.assertPathDoesNotExist(self.default_log())
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(
             out, br"(?m)^  Breezy log file: " + brz_log.encode('ascii'))
-        self.assertPathDoesNotExist(default_log)
+        self.assertPathDoesNotExist(self.default_log())
 
     def test_unicode_brz_log(self):
         uni_val = u"\xa7"
@@ -145,7 +146,6 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
             self.skipTest(
                 "Test string %r unrepresentable in user encoding %s" % (
                     uni_val, enc))
-        self.overrideEnv('BRZ_HOME', self.test_base_dir)
         brz_log = os.path.join(self.test_base_dir, uni_val)
         if PY3:
             self.overrideEnv("BRZ_LOG", brz_log)

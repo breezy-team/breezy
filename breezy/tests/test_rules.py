@@ -142,6 +142,5 @@ class TestRulesPath(tests.TestCase):
         else:
             self.brz_home = '/home/bogus/.config/breezy'
 
-    def test_rules_filename(self):
-        self.assertEqual(rules.rules_filename(),
-                         self.brz_home + '/rules')
+    def test_rules_path(self):
+        self.assertEqual(rules.rules_path(), self.brz_home + '/rules')
