@@ -422,7 +422,8 @@ def _dget(cls, dsc_location, target_dir):
     if not os.path.isdir(target_dir):
         raise errors.NotADirectory(target_dir)
     path, dsc_t = open_transport(dsc_location)
-    dsc_contents = open_file_via_transport(path, dsc_t).read()
+    with open_file_via_transport(path, dsc_t) as f:
+        dsc_contents = f.read()
     dsc = cls(dsc_contents)
     for file_details in dsc['files']:
         name = file_details['name']
