@@ -1832,6 +1832,7 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
                        403,
                        404,  # Not found
                        405,  # Method not allowed
+                       409,
                        416,
                        422,
                        501,  # Not implemented
@@ -1945,6 +1946,7 @@ class HttpTransport(ConnectedTransport):
     def request(self, method, url, fields=None, headers=None, **urlopen_kw):
         if fields is not None:
             data = urlencode(fields).encode()
+            assert urlopen_kw.pop('body', None) is None
         else:
             data = urlopen_kw.pop('body', None)
         if headers is None:
@@ -2031,9 +2033,14 @@ class HttpTransport(ConnectedTransport):
 
             @property
             def text(self):
+                if self.status == 204:
+                    return None
                 charset = cgi.parse_header(
                     self._actual.headers['Content-Type'])[1].get('charset')
-                return self.data.decode(charset)
+                if charset:
+                    return self.data.decode(charset)
+                else:
+                    return self.data.decode()
 
             def read(self, amt=None):
                 return self._actual.read(amt)

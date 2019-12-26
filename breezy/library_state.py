@@ -69,7 +69,7 @@ class BzrLibraryState(object):
         :param trace: A breezy.trace.Config context manager to use, perhaps
             breezy.trace.DefaultConfig.
         """
-        self._ui = ui
+        self._ui = ui or breezy.ui.ui_factory
         self._trace = trace
         # There is no overrides by default, they are set later when the command
         # arguments are parsed.

@@ -200,6 +200,10 @@ class GitTreeSubmodule(_mod_tree.TreeLink):
         self.reference_revision = reference_revision
 
     @property
+    def executable(self):
+        return False
+
+    @property
     def kind(self):
         return 'tree-reference'
 
