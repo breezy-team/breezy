@@ -233,6 +233,7 @@ class GitHub(Hoster):
 
     def _api_request(self, method, path, body=None):
         headers = {
+            'Content-Type': 'application/json',
             'Accept': 'application/vnd.github.v3+json'}
         if self._token:
             headers['Authorization'] = 'token %s' % self._token
@@ -268,19 +269,23 @@ class GitHub(Hoster):
             return json.loads(response.text)
         raise InvalidHttpResponse(path, response.text)
 
-    def _create_pull(self, path, title, head, base, body=None):
+    def _create_pull(self, path, title, head, base, body=None, labels=None, assignee=None):
         data = {
             'title': title,
             'head': head,
             'base': base,
         }
+        if labels is not None:
+            data['labels'] = labels
+        if assignee is not None:
+            data['assignee'] = assignee
         if body:
             data['body'] = body
 
         response = self._api_request(
             'POST', path, body=json.dumps(data).encode('utf-8'))
         if response.status != 201:
-            raise InvalidHttpResponse(path, response.text)
+            raise InvalidHttpResponse(path, 'req is invalid %d %r: %r' % (response.status, data, response.text))
         return json.loads(response.text)
 
     def _get_user_by_email(self, email):
@@ -297,7 +302,7 @@ class GitHub(Hoster):
 
     def _get_user(self, username=None):
         if username:
-            path = 'users/:%s' % username
+            path = 'users/%s' % username
         else:
             path = 'user'
         response = self._api_request('GET', path)
@@ -306,7 +311,7 @@ class GitHub(Hoster):
         return json.loads(response.text)
 
     def _get_organization(self, name):
-        path = 'orgs/:%s' % name
+        path = 'orgs/%s' % name
         response = self._api_request('GET', path)
         if response.status != 200:
             raise InvalidHttpResponse(path, response.text)
@@ -547,32 +552,24 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         # TODO(jelmer): Set maintainers_can_modify?
         target_repo = self.gh._get_repo(
             self.target_owner, self.target_repo_name)
-        try:
-            pull_request = self.gh._create_pull(
-                strip_optional(target_repo['pulls_url']),
-                title=title, body=description,
-                head="%s:%s" % (self.source_owner, self.source_branch_name),
-                base=self.target_branch_name)
-        except ValidationFailed:
-            raise MergeProposalExists(self.source_branch.user_url)
         assignees = []
         if reviewers:
+            assignees = []
             for reviewer in reviewers:
                 if '@' in reviewer:
                     user = self.gh._get_user_by_email(reviewer)
                 else:
                     user = self.gh._get_user(reviewer)
                 assignees.append(user['login'])
-        if labels or assignees:
-            data = {}
-            if labels:
-                data['labels'] = labels
-            if assignees:
-                data['assignees'] = assignees
-            response = self.gh._api_request(
-                'PATCH', pull_request['issue_url'], body=json.dumps(data).encode('utf-8'))
-            if response.status == 422:
-                raise ValidationFailed(json.loads(response.text))
-            if response.status != 200:
-                raise InvalidHttpResponse(pull_request['issue_url'], response.text)
+        else:
+            assignees = None
+        try:
+            pull_request = self.gh._create_pull(
+                strip_optional(target_repo['pulls_url']),
+                title=title, body=description,
+                head="%s:%s" % (self.source_owner, self.source_branch_name),
+                base=self.target_branch_name,
+                labels=labels, assignee=assignees)
+        except ValidationFailed:
+            raise MergeProposalExists(self.source_branch.user_url)
         return GitHubMergeProposal(self.gh, pull_request)

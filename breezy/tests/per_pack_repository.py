@@ -884,7 +884,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             # can only stack on repositories that have compatible internal
             # metadata
             if getattr(repo._format, 'supports_tree_reference', False):
-                matching_format_name = 'pack-0.92-subtree'
+                matching_format_name = '2a'
             else:
                 if repo._format.supports_chks:
                     matching_format_name = '2a'
@@ -915,7 +915,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         if getattr(repo._format, 'supports_tree_reference', False):
             # can only stack on repositories that have compatible internal
             # metadata
-            matching_format_name = 'pack-0.92-subtree'
+            matching_format_name = '2a'
             mismatching_format_name = 'rich-root-pack'
         else:
             if repo.supports_rich_root():

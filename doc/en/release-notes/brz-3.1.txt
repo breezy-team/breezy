@@ -49,6 +49,11 @@ New Features
  * Warn the user when they attempt to use Breezy in a Subversion
    working copy. (Jelmer Vernooĳ)
 
+ * The ``2a`` format now officially supports storing tree references.
+   It always partially supported storing tree reference data,
+   and would happily pull in tree reference data from other repository
+   formats. (Jelmer Vernooĳ)
+
  * A new ``fossil`` plugin has been added that warns users when they
    attempt to access Fossil repositories.
    (Jelmer Vernooĳ, #1848821)
