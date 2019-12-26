@@ -32,7 +32,7 @@ import shutil
 import subprocess
 import tempfile
 
-from .. import debug
+from .... import debug
 from ..errors import (
     PackageVersionNotPresent,
     )
