@@ -433,8 +433,8 @@ class Launchpad(Hoster):
         for mp in self.launchpad.me.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
 
-    def iter_my_projects(self):
-        # Launchpad doesn't really have the concept of "my projets"
+    def iter_my_forks(self):
+        # Launchpad doesn't really have the concept of "forks"
         return iter([])
 
     def get_proposal_by_url(self, url):

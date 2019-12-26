@@ -514,12 +514,12 @@ class GitLab(Hoster):
                 owner=self._get_logged_in_username(), state=state):
             yield GitLabMergeProposal(self, mp)
 
-    def iter_my_projects(self):
+    def iter_my_forks(self):
         for project in self._list_projects(owner=self._get_logged_in_username()):
             base_project = project.get('forked_from_project')
-            if base_project:
-                base_project = base_project['path_with_namespace']
-            yield project['path_with_namespace'], base_project
+            if not base_project:
+                continue
+            yield project['path_with_namespace']
 
     def get_proposal_by_url(self, url):
         try:

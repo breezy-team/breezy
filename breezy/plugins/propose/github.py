@@ -490,21 +490,22 @@ class GitHub(Hoster):
     def get_proposal_by_url(self, url):
         raise UnsupportedHoster(url)
 
-    def iter_my_projects(self):
+    def iter_my_forks(self):
         response = self._api_request('GET', '/user/repos')
         if response.status != 200:
             raise InvalidHttpResponse(url, response.text)
         for project in json.loads(response.text):
-            base_project = project.get('source')
-            if base_project:
-                base_project = base_project['full_name']
-            yield project['full_name'], base_project
+            if not project['fork']:
+                continue
+            yield project['full_name']
 
     def delete_project(self, path):
         path = 'repos/' + path
         response = self._api_request('DELETE', path)
         if response.status == 404:
             raise NoSuchProject(path)
+        if response.status == 204:
+            return
         if response.status == 200:
             return json.loads(response.text)
         raise InvalidHttpResponse(path, response.text)
