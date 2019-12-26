@@ -43,7 +43,7 @@ from ... import (
     version_string as breezy_version,
     )
 from ...config import AuthenticationConfig, GlobalStack
-from ...errors import InvalidHttpResponse
+from ...errors import InvalidHttpResponse, PermissionDenied
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...sixish import PY3
@@ -278,6 +278,8 @@ class GitHub(Hoster):
 
         response = self._api_request(
             'POST', path, body=json.dumps(data).encode('utf-8'))
+        if response.status == 403:
+            raise PermissionDenied(path, response.text)
         if response.status != 201:
             raise InvalidHttpResponse(path, 'req is invalid %d %r: %r' % (response.status, data, response.text))
         return json.loads(response.text)
