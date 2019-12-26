@@ -203,8 +203,8 @@ def parse_git_error(url, message):
         base_url, _ = urlutils.split_segment_parameters(url)
         return HeadUpdateFailed(base_url)
     if message.startswith('access denied or repository not exported:'):
-        extra, path = message.split(': ', 1)
-        return PermissionDenied(path, extra)
+        extra, path = message.split(':', 1)
+        return PermissionDenied(path.strip(), extra)
     if message.endswith('You are not allowed to push code to this project.'):
         return PermissionDenied(url, message)
     if message.endswith(' does not appear to be a git repository'):
