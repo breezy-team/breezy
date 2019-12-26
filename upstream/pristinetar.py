@@ -32,13 +32,13 @@ import shutil
 import subprocess
 import tempfile
 
+from .. import debug
 from ..errors import (
     PackageVersionNotPresent,
     )
 from ..upstream import UpstreamSource
 from ....export import export
 from ..util import (
-    debuild_config,
     subprocess_setup,
     )
 
@@ -182,8 +182,7 @@ def make_pristine_tar_delta_from_tree(
         except PristineTarDeltaTooLarge:
             raise
         except PristineTarError:  # I.e. not PristineTarDeltaTooLarge
-            conf = debuild_config(tree)
-            if conf.debug_pristine_tar:
+            if 'pristine-tar' in debug.debug_flags:
                 revno, revid = tree.branch.last_revision_info()
                 preserved = osutils.pathjoin(osutils.dirname(tarball_path),
                                              'orig-%s' % (revno,))
