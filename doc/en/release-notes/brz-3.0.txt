@@ -32,6 +32,14 @@ Bug Fixes
 .. Fixes for situations where brz would previously crash or give incorrect
    or undesirable results.
 
+ * Don't throw an error attempting to read the parent of a ref.
+   (Jelmer Vernooĳ)
+
+ * Fix fast-exporting of symlinks on Python 3. (Jelmer Vernooĳ, #1851478)
+
+ * Don't rely on private transport attribute in fast-import.
+   (Jelmer Vernooĳ, #1854607)
+
 Documentation
 *************
 

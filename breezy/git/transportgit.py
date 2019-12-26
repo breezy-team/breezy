@@ -212,7 +212,11 @@ class TransportRefsContainer(RefsContainer):
         except NoSuchFile:
             return None
         with f:
-            header = f.read(len(SYMREF))
+            try:
+                header = f.read(len(SYMREF))
+            except ReadError:
+                # probably a directory
+                return None
             if header == SYMREF:
                 # Read only the first line
                 return header + next(iter(f)).rstrip(b"\r\n")

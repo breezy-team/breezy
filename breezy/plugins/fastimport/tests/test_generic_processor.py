@@ -39,11 +39,8 @@ def load_tests(loader, standard_tests, pattern):
         ('pack-0.92', {'branch_format': 'pack-0.92'}),
         ('1.9-rich-root', {'branch_format': '1.9-rich-root'}),
     ]
-    try:
-        from ....bzr.groupcompress_repo import RepositoryFormat2a
-        scenarios.append(('2a', {'branch_format': '2a'}))
-    except ImportError:
-        pass
+    from ....bzr.groupcompress_repo import RepositoryFormat2a
+    scenarios.append(('2a', {'branch_format': '2a'}))
     suite = loader.suiteClass()
     result = tests.multiply_tests(standard_tests, scenarios, suite)
     return result
