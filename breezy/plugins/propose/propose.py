@@ -301,12 +301,12 @@ class Hoster(object):
         """
         raise NotImplementedError(self.iter_my_proposals)
 
-    def iter_my_projects(self):
-        """Iterate over the currently logged in users' projects.
+    def iter_my_forks(self):
+        """Iterate over the currently logged in users' forks.
 
-        :return: Iterator over (project_name, base_project_name)
+        :return: Iterator over project_name
         """
-        raise NotImplementedError(self.iter_my_projects)
+        raise NotImplementedError(self.iter_my_forks)
 
     def delete_project(self, name):
         """Delete a project.
