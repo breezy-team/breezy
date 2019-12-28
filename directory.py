@@ -24,6 +24,7 @@ import re
 
 from ... import urlutils
 from ...directory_service import directories
+from ...errors import DependencyNotPresent
 from ...sixish import PY3
 from ...trace import note, warning
 
@@ -168,7 +169,10 @@ class AptDirectory(object):
         else:
             version = None
 
-        import apt_pkg
+        try:
+            import apt_pkg
+        except ImportError as e:
+            raise DependencyNotPresent('apt_pkg', e)
         apt_pkg.init()
 
         sources = apt_pkg.SourceRecords()
@@ -211,7 +215,11 @@ class DgitDirectory(object):
         else:
             version = None
 
-        import apt_pkg
+        try:
+            import apt_pkg
+        except ImportError as e:
+            raise DependencyNotPresent('apt_pkg', e)
+
         apt_pkg.init()
 
         sources = apt_pkg.SourceRecords()

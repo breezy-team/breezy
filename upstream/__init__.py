@@ -26,9 +26,7 @@ import sys
 import tarfile
 import tempfile
 
-from debian.changelog import Version
-
-from ....errors import BzrError, NoSuchFile
+from ....errors import BzrError, DependencyNotPresent, NoSuchFile
 from .... import osutils
 from ....export import export
 from ....sixish import PY3
@@ -127,7 +125,10 @@ class AptSource(UpstreamSource):
     def fetch_tarballs(self, package, upstream_version, target_dir,
                        _apt_pkg=None, components=None):
         if _apt_pkg is None:
-            import apt_pkg
+            try:
+                import apt_pkg
+            except ImportError as e:
+                raise DependencyNotPresent('apt_pkg', e)
         else:
             apt_pkg = _apt_pkg
         apt_pkg.init()
@@ -454,8 +455,9 @@ class UpstreamProvider(object):
         if in_target is not None:
             note("Upstream tarball already exists in build directory, "
                  "using that")
-            return [(p, component_from_orig_tarball(p,
-                self.package, self.version)) for p in in_target]
+            return [
+                (p, component_from_orig_tarball(p, self.package, self.version))
+                for p in in_target]
         if self.already_exists_in_store() is None:
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
@@ -484,8 +486,8 @@ class UpstreamProvider(object):
         if paths is None:
             return None
         for path in paths:
-            repack_tarball(path, os.path.basename(path),
-                    target_dir=target_dir)
+            repack_tarball(
+                path, os.path.basename(path), target_dir=target_dir)
         return paths
 
 
@@ -497,7 +499,7 @@ def extract_tarball_version(path, packagename):
     """
     basename = os.path.basename(path)
     for extension in [".tar.gz", ".tgz", ".tar.bz2", ".tar.lzma", ".tar.xz",
-            ".zip"]:
+                      ".zip"]:
         if basename.endswith(extension):
             basename = basename[:-len(extension)]
             break
