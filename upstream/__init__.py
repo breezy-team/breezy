@@ -348,6 +348,9 @@ class StackedUpstreamSource(UpstreamSource):
                     package, version, target_dir, components)
             except PackageVersionNotPresent:
                 pass
+            except DependencyNotPresent as e:
+                warning('not checking %r due to missing dependency: %s',
+                        source, e)
             else:
                 return paths
         raise PackageVersionNotPresent(package, version, self)
@@ -375,6 +378,9 @@ class StackedUpstreamSource(UpstreamSource):
                 return source.version_as_revisions(package, version, tarballs)
             except PackageVersionNotPresent:
                 pass
+            except DependencyNotPresent as e:
+                warning('not checking %r due to missing dependency: %s',
+                        source, e)
         raise PackageVersionNotPresent(package, version, self)
 
     def has_version(self, package, version, tarballs=None):
