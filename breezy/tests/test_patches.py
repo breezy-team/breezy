@@ -333,7 +333,7 @@ class AppliedPatchesTests(TestCaseWithTransport):
         self.build_tree_contents([('a', 'a\n')])
         tree.add('a')
         tree.commit('Add a')
-        patch = parse_patch("""\
+        patch = parse_patch(b"""\
 --- a/a
 +++ a/a
 @@ -1 +1 @@
@@ -348,7 +348,7 @@ class AppliedPatchesTests(TestCaseWithTransport):
         self.build_tree_contents([('a', 'a\n')])
         tree.add('a')
         tree.commit('Add a')
-        patch = parse_patch("""\
+        patch = parse_patch(b"""\
 --- a/a
 +++ /dev/null
 @@ -1 +0,0 @@
@@ -362,7 +362,7 @@ class AppliedPatchesTests(TestCaseWithTransport):
         self.build_tree_contents([('a', 'a\n')])
         tree.add('a')
         tree.commit('Add a')
-        patch = parse_patch("""\
+        patch = parse_patch(b"""\
 --- /dev/null
 +++ a/b
 @@ -0,0 +1 @@

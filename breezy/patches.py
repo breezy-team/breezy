@@ -586,10 +586,10 @@ def apply_patches(tt, patches, prefix=1):
             orig_contents = tt._tree.get_file_text(oldname)
             tt.delete_contents(trans_id)
 
-        if patch.newname != '/dev/null':
+        if patch.newname != b'/dev/null':
             newname = strip_prefix(patch.newname.decode())
-            new_contents = b''.join(iter_patched_from_hunks(
-                orig_contents.splitlines(True), patch.hunks))
+            new_contents = iter_patched_from_hunks(
+                orig_contents.splitlines(True), patch.hunks)
             if trans_id is None:
                 parts = os.path.split(newname)
                 trans_id = tt.root
