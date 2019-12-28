@@ -11,6 +11,8 @@ python:
   - 2.7
   - 3.5
   - 3.6
+  - 3.7
+  - 3.8
 
 script:
   - make check
@@ -18,6 +20,7 @@ script:
 install:
   - sudo apt install python-all-dev subunit python-debian python-apt python-testtools patchutils pristine-tar devscripts python-lzma libalgorithm-merge-perl python-distro-info quilt python-yaml
   - pip install cython
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then pip install lzma; fi
   - pip install git+https://salsa.debian.org/python-debian-team/python-debian
   - travis_retry pip install -U setuptools
   - travis_retry pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit dulwich bzr+lp:brz pyyaml
