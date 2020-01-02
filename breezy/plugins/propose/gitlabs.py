@@ -235,6 +235,12 @@ class GitLabMergeProposal(MergeProposal):
         else:
             raise ValueError(self._mr['merge_status'])
 
+    def get_merged_by(self):
+        user = self._mr.get('merged_by')
+        if user is None:
+            return None
+        return user['username']
+
 
 def gitlab_url_to_bzr_url(url, name):
     if not PY3:

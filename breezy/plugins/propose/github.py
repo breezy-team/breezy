@@ -187,6 +187,12 @@ class GitHubMergeProposal(MergeProposal):
         # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
         self._pr.merge(commit_message=commit_message)
 
+    def get_merged_by(self):
+        merged_by = self._pr.get('merged_by')
+        if merged_by is None:
+            return None
+        return merged_by['login']
+
 
 def parse_github_url(url):
     (scheme, user, password, host, port, path) = urlutils.parse_url(
