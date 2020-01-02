@@ -43,7 +43,7 @@ from ... import (
     version_string as breezy_version,
     )
 from ...config import AuthenticationConfig, GlobalStack
-from ...errors import InvalidHttpResponse
+from ...errors import InvalidHttpResponse, PermissionDenied
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...sixish import PY3
@@ -193,6 +193,12 @@ class GitHubMergeProposal(MergeProposal):
         # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
         self._pr.merge(commit_message=commit_message)
 
+    def get_merged_by(self):
+        merged_by = self._pr.get('merged_by')
+        if merged_by is None:
+            return None
+        return merged_by['login']
+
 
 def parse_github_url(url):
     (scheme, user, password, host, port, path) = urlutils.parse_url(
@@ -284,6 +290,8 @@ class GitHub(Hoster):
 
         response = self._api_request(
             'POST', path, body=json.dumps(data).encode('utf-8'))
+        if response.status == 403:
+            raise PermissionDenied(path, response.text)
         if response.status != 201:
             raise InvalidHttpResponse(path, 'req is invalid %d %r: %r' % (response.status, data, response.text))
         return json.loads(response.text)

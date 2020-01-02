@@ -512,7 +512,8 @@ class BzrFastExporter(object):
                 yield commands.FileModifyCommand(
                     change.path[1].encode("utf-8"),
                     helpers.kind_to_mode('symlink', False),
-                    None, tree_new.get_symlink_target(change.path[1]))
+                    None, tree_new.get_symlink_target(
+                        change.path[1]).encode('utf-8'))
             elif change.kind[1] == 'directory':
                 if not self.plain_format:
                     yield commands.FileModifyCommand(
