@@ -120,6 +120,9 @@ Bug Fixes
 * Fix ``brz diff --using`` when {old_path} and {new_path} are not
   specified in the template. (#1847915, Jelmer Vernooĳ)
 
+* Ignore ghost tags when interacting with remote Git repositories.
+  (Jelmer Vernooĳ)
+
 Documentation
 *************
 
