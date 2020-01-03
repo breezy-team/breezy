@@ -233,8 +233,14 @@ class UScanSource(UpstreamSource):
     @staticmethod
     def _xml_report_extract_errors(text):
         from xml.sax.saxutils import unescape
-        for m in re.finditer(b"<errors>(.*)</errors>", text):
-            raise UScanError(unescape(m.group(1).decode()))
+        lines = [unescape(m.group(1).decode())
+                 for m in re.finditer(b"<errors>(.*)</errors>", text)]
+        for line in lines:
+            if not line.startswith('uscan warn: '):
+                raise UScanError(line)
+
+        for line in lines:
+            raise UScanError(line)
 
     @staticmethod
     def _xml_report_extract_upstream_version(text):
