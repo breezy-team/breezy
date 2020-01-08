@@ -168,6 +168,9 @@ class LaunchpadMergeProposal(MergeProposal):
             return None
         return merge_reporter.name
 
+    def get_merged_at(self):
+        return self._mp.date_merged
+
     def merge(self, commit_message=None):
         target_branch = _mod_branch.Branch.open(
             self.get_target_branch_url())
