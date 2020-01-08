@@ -163,6 +163,11 @@ class MergeProposal(object):
         """
         raise NotImplementedError(self.get_merged_by)
 
+    def get_merged_at(self):
+        """If this proposal was merged, when it was merged.
+        """
+        raise NotImplementedError(self.get_merged_at)
+
 
 class MergeProposalBuilder(object):
     """Merge proposal creator.

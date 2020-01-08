@@ -193,6 +193,13 @@ class GitHubMergeProposal(MergeProposal):
             return None
         return merged_by['login']
 
+    def get_merged_at(self):
+        merged_at = self._pr.get('merged_at')
+        if merged_at is None:
+            return None
+        import dateutil.parser
+        return dateutil.parser.parse(merged_at)
+
 
 def parse_github_url(url):
     (scheme, user, password, host, port, path) = urlutils.parse_url(
