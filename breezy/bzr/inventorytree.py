@@ -226,6 +226,8 @@ class InventoryTree(Tree):
                 inventory_file_ids = []
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
+                    if inv_file_id is None:
+                        continue
                     if inventory is not self.root_inventory:  # for now
                         raise AssertionError("%r != %r" % (
                             inventory, self.root_inventory))
