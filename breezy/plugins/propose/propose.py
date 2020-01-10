@@ -132,6 +132,12 @@ class MergeProposal(object):
         """Return the target branch."""
         raise NotImplementedError(self.get_target_branch_url)
 
+    def get_source_project(self):
+        raise NotImplementedError(self.get_source_project)
+
+    def get_target_project(self):
+        raise NotImplementedError(self.get_target_project)
+
     def close(self):
         """Close the merge proposal (without merging it)."""
         raise NotImplementedError(self.close)
@@ -304,6 +310,18 @@ class Hoster(object):
             known.
         """
         raise NotImplementedError(self.iter_my_proposals)
+
+    def iter_my_forks(self):
+        """Iterate over the currently logged in users' forks.
+
+        :return: Iterator over project_name
+        """
+        raise NotImplementedError(self.iter_my_forks)
+
+    def delete_project(self, name):
+        """Delete a project.
+        """
+        raise NotImplementedError(self.delete_project)
 
     @classmethod
     def iter_instances(cls):

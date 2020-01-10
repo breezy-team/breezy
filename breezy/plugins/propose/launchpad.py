@@ -436,6 +436,10 @@ class Launchpad(Hoster):
         for mp in self.launchpad.me.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
 
+    def iter_my_forks(self):
+        # Launchpad doesn't really have the concept of "forks"
+        return iter([])
+
     def get_proposal_by_url(self, url):
         # Launchpad doesn't have a way to find a merge proposal by URL.
         (scheme, user, password, host, port, path) = urlutils.parse_url(
