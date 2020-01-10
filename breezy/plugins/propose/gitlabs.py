@@ -241,6 +241,13 @@ class GitLabMergeProposal(MergeProposal):
             return None
         return user['username']
 
+    def get_merged_at(self):
+        merged_at = self._mr.get('merged_at')
+        if merged_at is None:
+            return None
+        import iso8601
+        return iso8601.parse_date(merged_at)
+
 
 def gitlab_url_to_bzr_url(url, name):
     if not PY3:
