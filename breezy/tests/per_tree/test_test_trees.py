@@ -434,7 +434,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
             ('', 'directory'),
             ('subtree', 'tree-reference')]
         with tree.lock_read():
-            path_entries = list(tree.iter_entries_by_dir(follow_tree_references=False))
+            path_entries = list(tree.iter_entries_by_dir(recurse_nested=False))
             actual = [(path, ie.kind)
                       for path, ie in path_entries]
         self.assertEqual(expected, actual)
@@ -446,7 +446,7 @@ class TestTreeShapes(per_tree.TestCaseWithTree):
             ('subtree', 'directory'),
             ('subtree/a', 'file')]
         with tree.lock_read():
-            path_entries = list(tree.iter_entries_by_dir(follow_tree_references=True))
+            path_entries = list(tree.iter_entries_by_dir(recurse_nested=True))
             actual = [(path, ie.kind)
                       for path, ie in path_entries]
         self.assertEqual(expected, actual)

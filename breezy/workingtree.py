@@ -729,7 +729,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         return osutils.file_kind(self.abspath(relpath))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
-                   follow_tree_references=False):
+                   recurse_nested=False):
         """List all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.

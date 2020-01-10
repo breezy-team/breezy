@@ -1017,7 +1017,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             return wt
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
-                   follow_tree_references=False):
+                   recurse_nested=False):
         """List all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
@@ -1122,7 +1122,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     fk = osutils.file_kind(fap)
                     if fk == 'directory' and self._directory_is_tree_reference(f):
-                        if not follow_tree_references:
+                        if not recurse_nested:
                             fk = 'tree-reference'
                         else:
                             subtree = self.get_nested_tree(f)
@@ -1728,7 +1728,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self.control_transport.put_bytes(
                 'format', self._format.as_string())
 
-    def _check_for_tree_references(self, iterator, follow_tree_references, specific_files=None):
+    def _check_for_tree_references(self, iterator, recurse_nested, specific_files=None):
         """See if directories have become tree-references."""
         blocked_parent_ids = set()
         for path, ie in iterator:
@@ -1745,10 +1745,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 ie = inventory.TreeReference(ie.file_id, ie.name, ie.parent_id)
                 blocked_parent_ids.add(ie.file_id)
 
-            if ie.kind == 'tree-reference' and follow_tree_references:
+            if ie.kind == 'tree-reference' and recurse_nested:
                 subtree = self.get_nested_tree(path)
                 for subpath, ie in subtree.iter_entries_by_dir(
-                        follow_tree_references=follow_tree_references,
+                        recurse_nested=recurse_nested,
                         specific_files=specific_files):
                     if subpath:
                         full_subpath = osutils.pathjoin(path, subpath)
@@ -1758,7 +1758,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             else:
                 yield path, ie
 
-    def iter_entries_by_dir(self, specific_files=None, follow_tree_references=False):
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """See Tree.iter_entries_by_dir()"""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
@@ -1768,7 +1768,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             return iterator
         else:
             return self._check_for_tree_references(
-                iterator, follow_tree_references=follow_tree_references,
+                iterator, recurse_nested=recurse_nested,
                 specific_files=specific_files)
 
     def get_canonical_paths(self, paths):

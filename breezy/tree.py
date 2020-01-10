@@ -317,7 +317,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.id2path)
 
-    def iter_entries_by_dir(self, specific_files=None, follow_tree_references=False):
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -342,7 +342,7 @@ class Tree(object):
 
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
 
-        If follow_tree_references is enabled then nested trees are included as if
+        If recurse_nested is enabled then nested trees are included as if
         they were a part of the tree. If is disabled then TreeReference
         objects (without any children) are yielded.
         """
@@ -358,13 +358,13 @@ class Tree(object):
         raise NotImplementedError(self.iter_child_entries)
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
-                   follow_tree_references=False):
+                   recurse_nested=False):
         """List all files in this tree.
 
         :param include_root: Whether to include the entry for the tree root
         :param from_dir: Directory under which to list files
         :param recursive: Whether to list files recursively
-        :param follow_tree_references: enter nested trees
+        :param recurse_nested: enter nested trees
         :return: iterator over tuples of
             (path, versioned, kind, inventory entry)
         """
