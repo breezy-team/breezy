@@ -1017,7 +1017,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             return wt
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
-                   follow_tree_references=False):
+                   recurse_nested=False):
         """List all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
@@ -1122,7 +1122,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
 
                     fk = osutils.file_kind(fap)
                     if fk == 'directory' and self._directory_is_tree_reference(f):
-                        if not follow_tree_references:
+                        if not recurse_nested:
                             fk = 'tree-reference'
                         else:
                             subtree = self.get_nested_tree(f)

@@ -528,7 +528,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return osutils.lexists(self.abspath(filename))
 
     def _iter_files_recursive(self, from_dir=None, include_dirs=False,
-                              follow_tree_references=False):
+                              recurse_nested=False):
         if from_dir is None:
             from_dir = u""
         if not isinstance(from_dir, text_type):
@@ -545,7 +545,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     dirnames.remove(name)
                     continue
                 relpath = os.path.join(dir_relpath, name)
-                if not follow_tree_references and self._directory_is_tree_reference(relpath.decode(osutils._fs_enc)):
+                if not recurse_nested and self._directory_is_tree_reference(relpath.decode(osutils._fs_enc)):
                     dirnames.remove(name)
                 if include_dirs:
                     try:
@@ -747,7 +747,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 path, stat_result)
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
-                   follow_tree_references=False):
+                   recurse_nested=False):
         if from_dir is None or from_dir == '.':
             from_dir = u""
         dir_ids = {}
@@ -764,7 +764,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 path_iterator = sorted(
                     self._iter_files_recursive(
                         from_dir, include_dirs=True,
-                        follow_tree_references=follow_tree_references))
+                        recurse_nested=recurse_nested))
             else:
                 encoded_from_dir = self.abspath(from_dir).encode(
                     osutils._fs_enc)
@@ -791,7 +791,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 for dir_path, dir_ie in self._add_missing_parent_ids(
                         parent, dir_ids):
                     pass
-                if kind == 'tree-reference' and follow_tree_references:
+                if kind == 'tree-reference' and recurse_nested:
                     ie = self._get_dir_ie(path, self.path2id(path))
                     yield (posixpath.relpath(path, from_dir), 'V', 'directory',
                            ie)

@@ -125,7 +125,7 @@ class TestListFiles(TestCaseWithTree):
         with tree.lock_read():
             actual = [(path, status, kind, ie.file_id)
                       for path, status, kind, ie in
-                      tree.list_files(recursive=True, follow_tree_references=False, include_root=True)]
+                      tree.list_files(recursive=True, recurse_nested=False, include_root=True)]
         self.assertEqual(expected, actual)
 
     def test_list_files_with_followed_reference(self):
@@ -139,6 +139,6 @@ class TestListFiles(TestCaseWithTree):
             actual = [(path, status, kind)
                       for path, status, kind, ie in
                       tree.list_files(
-                          recursive=True, follow_tree_references=True,
+                          recursive=True, recurse_nested=True,
                           include_root=True)]
         self.assertEqual(expected, actual)

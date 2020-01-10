@@ -354,13 +354,13 @@ class Tree(object):
         raise NotImplementedError(self.iter_child_entries)
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
-                   follow_tree_references=False):
+                   recurse_nested=False):
         """List all files in this tree.
 
         :param include_root: Whether to include the entry for the tree root
         :param from_dir: Directory under which to list files
         :param recursive: Whether to list files recursively
-        :param follow_tree_references: enter nested trees
+        :param recurse_nested: enter nested trees
         :return: iterator over tuples of
             (path, versioned, kind, inventory entry)
         """

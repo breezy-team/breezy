@@ -778,7 +778,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         return bool(self.path2id(filename))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
-                   follow_tree_references=False):
+                   recurse_nested=False):
         # The only files returned by this are those from the version
         if from_dir is None:
             from_dir_id = None
@@ -793,11 +793,11 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             # skip the root for compatibility with the current apis.
             next(entries)
         for path, entry in entries:
-            if entry.kind == 'tree-reference' and follow_tree_references:
+            if entry.kind == 'tree-reference' and recurse_nested:
                 subtree = self._get_nested_tree(
                     path, entry.file_id, entry.reference_revision)
                 for subpath, status, kind, entry in subtree.list_files(
-                        include_root=True, follow_tree_references=follow_tree_references,
+                        include_root=True, recurse_nested=recurse_nested,
                         recursive=recursive):
                     if subpath:
                         full_subpath = osutils.pathjoin(path, subpath)

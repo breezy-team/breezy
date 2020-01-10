@@ -434,7 +434,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return self._submodules
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
-                   follow_tree_references=False):
+                   recurse_nested=False):
         if self.tree is None:
             return
         if from_dir is None or from_dir == '.':
@@ -465,7 +465,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     continue
                 child_path = posixpath.join(path, name)
                 child_relpath = posixpath.join(relpath, name)
-                if S_ISGITLINK(mode) and follow_tree_references:
+                if S_ISGITLINK(mode) and recurse_nested:
                     mode = stat.S_IFDIR
                     store = self._get_submodule_store(child_relpath)
                     hexsha = store[hexsha].tree
@@ -1200,7 +1200,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             self._ensure_versioned_dir(index_path)
 
     def _recurse_index_entries(self, index=None, basepath=b"",
-                               follow_tree_references=False):
+                               recurse_nested=False):
         # Iterate over all index entries
         with self.lock_read():
             if index is None:
@@ -1208,11 +1208,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             for path, value in index.items():
                 (ctime, mtime, dev, ino, mode, uid, gid, size, sha,
                  flags) = value
-                if S_ISGITLINK(mode) and follow_tree_references:
+                if S_ISGITLINK(mode) and recurse_nested:
                     subindex = self._get_submodule_index(path)
                     for entry in self._recurse_index_entries(
                             index=subindex, basepath=path,
-                            follow_tree_references=follow_tree_references):
+                            recurse_nested=recurse_nested):
                         yield entry
                 else:
                     yield (posixpath.join(basepath, path), value)
