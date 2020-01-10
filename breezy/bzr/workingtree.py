@@ -1234,7 +1234,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     from_id=from_id,
                     from_tail=from_tail,
                     from_parent_id=from_parent_id,
-                    to_inv=to_inv,
                     to_rel=to_rel, to_tail=from_tail,
                     to_parent_id=to_dir_id)
                 rename_entries.append(rename_entry)
@@ -1308,12 +1307,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             to_dir, to_tail = os.path.split(to_rel)
             to_inv, to_dir_id = self._path2inv_file_id(to_dir)
             rename_entry = InventoryWorkingTree._RenameEntry(
-                from_inv=from_inv,
                 from_rel=from_rel,
                 from_id=from_id,
                 from_tail=from_tail,
                 from_parent_id=from_parent_id,
-                to_inv=(to_inv or from_inv),
                 to_rel=to_rel, to_tail=to_tail,
                 to_parent_id=to_dir_id)
             rename_entries.append(rename_entry)
