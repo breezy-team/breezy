@@ -2027,41 +2027,6 @@ class GhostRevisionUnusableHere(BzrError):
         self.revision_id = revision_id
 
 
-class IllegalUseOfScopeReplacer(InternalBzrError):
-
-    _fmt = ("ScopeReplacer object %(name)r was used incorrectly:"
-            " %(msg)s%(extra)s")
-
-    def __init__(self, name, msg, extra=None):
-        BzrError.__init__(self)
-        self.name = name
-        self.msg = msg
-        if extra:
-            self.extra = ': ' + str(extra)
-        else:
-            self.extra = ''
-
-
-class InvalidImportLine(InternalBzrError):
-
-    _fmt = "Not a valid import statement: %(msg)\n%(text)s"
-
-    def __init__(self, text, msg):
-        BzrError.__init__(self)
-        self.text = text
-        self.msg = msg
-
-
-class ImportNameCollision(InternalBzrError):
-
-    _fmt = ("Tried to import an object to the same name as"
-            " an existing object. %(name)s")
-
-    def __init__(self, name):
-        BzrError.__init__(self)
-        self.name = name
-
-
 class NotAMergeDirective(BzrError):
     """File starting with %(firstline)r is not a merge directive"""
 

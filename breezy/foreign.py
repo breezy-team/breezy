@@ -27,10 +27,12 @@ from .revision import Revision
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    errors,
     registry,
     )
 """)
+from . import (
+    errors,
+    )
 
 
 class VcsMapping(object):

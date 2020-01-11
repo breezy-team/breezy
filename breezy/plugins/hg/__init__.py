@@ -21,12 +21,13 @@ Currently only tells the user that Mercurial is not supported.
 
 from __future__ import absolute_import
 
-from ... import version_info  # noqa: F401
-
 from ... import (
     controldir,
     errors,
     )
+
+import breezy
+from breezy import version_info  # noqa: F401
 
 
 class MercurialUnsupportedError(errors.UnsupportedFormatError):

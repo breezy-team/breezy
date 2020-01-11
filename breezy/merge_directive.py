@@ -26,7 +26,6 @@ from breezy import (
     cleanup,
     diff,
     email_message,
-    errors,
     gpg,
     hooks,
     registry,
@@ -42,6 +41,9 @@ from breezy.bzr.bundle import (
     serializer as bundle_serializer,
     )
 """)
+from . import (
+    errors,
+    )
 from .sixish import (
     BytesIO,
     )
