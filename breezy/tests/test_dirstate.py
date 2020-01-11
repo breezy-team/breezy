@@ -2565,7 +2565,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state.update_basis_by_delta(delta, b'target')
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(state,
-                                                           b'target', _Repo())
+                                                           b'target', _Repo(), None)
         # The target now that delta has been applied should match the
         # RevisionTree
         self.assertEqual([], list(dirstate_tree.iter_changes(target_tree)))
