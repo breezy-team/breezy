@@ -162,6 +162,15 @@ class LaunchpadMergeProposal(MergeProposal):
             return True
         return not bool(self._mp.preview_diff.conflicts)
 
+    def get_merged_by(self):
+        merge_reporter = self._mp.merge_reporter
+        if merge_reporter is None:
+            return None
+        return merge_reporter.name
+
+    def get_merged_at(self):
+        return self._mp.date_merged
+
     def merge(self, commit_message=None):
         target_branch = _mod_branch.Branch.open(
             self.get_target_branch_url())
@@ -426,6 +435,10 @@ class Launchpad(Hoster):
         statuses = status_to_lp_mp_statuses(status)
         for mp in self.launchpad.me.getMergeProposals(status=statuses):
             yield LaunchpadMergeProposal(mp)
+
+    def iter_my_forks(self):
+        # Launchpad doesn't really have the concept of "forks"
+        return iter([])
 
     def get_proposal_by_url(self, url):
         # Launchpad doesn't have a way to find a merge proposal by URL.

@@ -105,3 +105,17 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         with tree.lock_read():
             sub_tree2 = tree.get_nested_tree('sub-tree')
             self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
+
+    def test_get_containing_nested_tree(self):
+        tree, sub_tree = self.make_nested_trees()
+        self.build_tree_contents([('tree/sub-tree/foo', 'bar')])
+        sub_tree.add('foo')
+        sub_tree.commit('rev1')
+        sub_tree_root_id = sub_tree.path2id('')
+        with tree.lock_read():
+            sub_tree2, subpath = tree.get_containing_nested_tree(
+                'sub-tree/foo')
+            self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
+            self.assertEqual(subpath, 'foo')
+            self.assertEqual((None, None), tree.get_containing_nested_tree(
+                'not-subtree/bar'))

@@ -2218,7 +2218,11 @@ class _PreviewTree(inventorytree.InventoryTree):
         for entry, trans_id in self._make_inv_entries(todo):
             yield entry
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
+        if recurse_nested:
+            raise NotImplementedError(
+                'follow tree references not yet supported')
+
         # This may not be a maximally efficient implementation, but it is
         # reasonably straightforward.  An implementation that grafts the
         # TreeTransform changes onto the tree's iter_entries_by_dir results
@@ -2242,8 +2246,13 @@ class _PreviewTree(inventorytree.InventoryTree):
         path_entries.sort()
         return path_entries
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         """See WorkingTree.list_files."""
+        if recurse_nested:
+            raise NotImplementedError(
+                'follow tree references not yet supported')
+
         # XXX This should behave like WorkingTree.list_files, but is really
         # more like RevisionTree.list_files.
         if from_dir == '.':

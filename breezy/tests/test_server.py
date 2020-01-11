@@ -249,6 +249,10 @@ class TestingChrootServer(chroot.ChrootServer):
 
 class TestThread(cethread.CatchingExceptionThread):
 
+    if not getattr(cethread.CatchingExceptionThread, 'is_alive', None):
+        def is_alive(self):
+            return self.isAlive()
+
     def join(self, timeout=5):
         """Overrides to use a default timeout.
 
@@ -256,7 +260,7 @@ class TestThread(cethread.CatchingExceptionThread):
         serving a client connection is hung.
         """
         super(TestThread, self).join(timeout)
-        if timeout and self.isAlive():
+        if timeout and self.is_alive():
             # The timeout expired without joining the thread, the thread is
             # therefore stucked and that's a failure as far as the test is
             # concerned. We used to hang here.

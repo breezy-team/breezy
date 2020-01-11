@@ -104,6 +104,10 @@ RevisionSpec_dwim.append_possible_lazy_revspec(
 
 class LocalGitProber(Prober):
 
+    @classmethod
+    def priority(klass, transport):
+        return 10
+
     def probe_transport(self, transport):
         try:
             external_url = transport.external_url()
@@ -150,6 +154,14 @@ def is_github_url(url):
 
 class RemoteGitProber(Prober):
 
+    @classmethod
+    def priority(klass, transport):
+        # This is a surprisingly good heuristic to determine whether this
+        # prober is more likely to succeed than the Bazaar one.
+        if 'git' in transport.base:
+            return -15
+        return -10
+
     def probe_http_transport(self, transport):
         # This function intentionally doesn't use any of the support code under
         # breezy.git, since it's called for every repository that's
@@ -183,13 +195,14 @@ class RemoteGitProber(Prober):
         if ct and ct.startswith("application/x-git"):
             from .remote import RemoteGitControlDirFormat
             return RemoteGitControlDirFormat()
-        else:
+        elif not ct:
             from .dir import (
                 BareLocalGitControlDirFormat,
                 )
             ret = BareLocalGitControlDirFormat()
             ret._refs_text = resp.read()
             return ret
+        raise brz_errors.NotBranchError(transport.base)
 
     def probe_transport(self, transport):
         try:
@@ -221,7 +234,7 @@ class RemoteGitProber(Prober):
 
 
 ControlDirFormat.register_prober(LocalGitProber)
-ControlDirFormat._server_probers.append(RemoteGitProber)
+ControlDirFormat.register_prober(RemoteGitProber)
 
 register_transport_proto(
     'git://', help="Access using the Git smart server protocol.")

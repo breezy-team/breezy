@@ -101,8 +101,8 @@ def get_user_ignores():
         # since get_* should be a safe operation
         try:
             _set_user_ignores(USER_DEFAULTS)
-        except (IOError, OSError) as e:
-            if e.errno not in (errno.EPERM,):
+        except EnvironmentError as e:
+            if e.errno not in (errno.EPERM, errno.ENOENT):
                 raise
         return patterns
 

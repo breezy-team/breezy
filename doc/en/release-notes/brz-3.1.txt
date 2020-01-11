@@ -49,6 +49,15 @@ New Features
  * Warn the user when they attempt to use Breezy in a Subversion
    working copy. (Jelmer Vernooĳ)
 
+ * The ``2a`` format now officially supports storing tree references.
+   It always partially supported storing tree reference data,
+   and would happily pull in tree reference data from other repository
+   formats. (Jelmer Vernooĳ)
+
+ * A new ``fossil`` plugin has been added that warns users when they
+   attempt to access Fossil repositories.
+   (Jelmer Vernooĳ, #1848821)
+
 Improvements
 ************
 
@@ -80,6 +89,9 @@ Improvements
 * Fix support for reading Git repositories over HTTP without
   a smart server. (Jelmer Vernooĳ)
 
+* CVS pserver URLs now indicate that the pserver protocol is not
+  supported. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
@@ -108,6 +120,12 @@ Bug Fixes
 * Fix passing of directories in specific_files to
   GitWorkingTree.iter_entries_by_dir(). (Jelmer Vernooĳ, #1844054)
 
+* Fix ``brz diff --using`` when {old_path} and {new_path} are not
+  specified in the template. (#1847915, Jelmer Vernooĳ)
+
+* Ignore ghost tags when interacting with remote Git repositories.
+  (Jelmer Vernooĳ)
+
 Documentation
 *************
 
@@ -130,6 +148,11 @@ API Changes
 
 * New ``Tree.get_nested_tree`` method for retrieving a nested tree.
   (Jelmer Vernooĳ)
+
+* The ``ControlDirFormat.register_server_prober`` method has been removed.
+  Instead, probers can now have a ``priority`` method to influence
+  when they are run. (Jelmer Vernooĳ)
+
 
 Internals
 *********

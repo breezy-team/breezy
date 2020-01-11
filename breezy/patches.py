@@ -21,6 +21,7 @@ from .errors import (
     BzrError,
     )
 
+import os
 import re
 
 
@@ -544,14 +545,14 @@ def iter_patched_from_hunks(orig_lines, hunks):
             yield orig_line
             line_no += 1
         for hunk_line in hunk.lines:
-            seen_patch.append(str(hunk_line))
+            seen_patch.append(hunk_line.contents)
             if isinstance(hunk_line, InsertLine):
                 yield hunk_line.contents
             elif isinstance(hunk_line, (ContextLine, RemoveLine)):
                 orig_line = next(orig_lines)
                 if orig_line != hunk_line.contents:
                     raise PatchConflict(line_no, orig_line,
-                                        b"".join(seen_patch))
+                                        b''.join(seen_patch))
                 if isinstance(hunk_line, ContextLine):
                     yield orig_line
                 else:
@@ -561,3 +562,61 @@ def iter_patched_from_hunks(orig_lines, hunks):
     if orig_lines is not None:
         for line in orig_lines:
             yield line
+
+
+def apply_patches(tt, patches, prefix=1):
+    """Apply patches to a TreeTransform.
+
+    :param tt: TreeTransform instance
+    :param patches: List of patches
+    :param prefix: Number leading path segments to strip
+    """
+    def strip_prefix(p):
+        return '/'.join(p.split('/')[1:])
+
+    from breezy.bzr.generate_ids import gen_file_id
+    # TODO(jelmer): Extract and set mode
+    for patch in patches:
+        if patch.oldname == b'/dev/null':
+            trans_id = None
+            orig_contents = b''
+        else:
+            oldname = strip_prefix(patch.oldname.decode())
+            trans_id = tt.trans_id_tree_path(oldname)
+            orig_contents = tt._tree.get_file_text(oldname)
+            tt.delete_contents(trans_id)
+
+        if patch.newname != b'/dev/null':
+            newname = strip_prefix(patch.newname.decode())
+            new_contents = iter_patched_from_hunks(
+                orig_contents.splitlines(True), patch.hunks)
+            if trans_id is None:
+                parts = os.path.split(newname)
+                trans_id = tt.root
+                for part in parts[1:-1]:
+                    trans_id = tt.new_directory(part, trans_id)
+                tt.new_file(
+                    parts[-1], trans_id, new_contents,
+                    file_id=gen_file_id(newname))
+            else:
+                tt.create_file(new_contents, trans_id)
+
+
+class AppliedPatches(object):
+    """Context that provides access to a tree with patches applied.
+    """
+
+    def __init__(self, tree, patches, prefix=1):
+        self.tree = tree
+        self.patches = patches
+        self.prefix = prefix
+
+    def __enter__(self):
+        from .transform import TransformPreview
+        self._tt = TransformPreview(self.tree)
+        apply_patches(self._tt, self.patches, prefix=self.prefix)
+        return self._tt.get_preview_tree()
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self._tt.finalize()
+        return False

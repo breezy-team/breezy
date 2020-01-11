@@ -317,7 +317,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.id2path)
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -341,6 +341,10 @@ class Tree(object):
         The yield order (ignoring root) would be::
 
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
+
+        If recurse_nested is enabled then nested trees are included as if
+        they were a part of the tree. If is disabled then TreeReference
+        objects (without any children) are yielded.
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
@@ -353,12 +357,14 @@ class Tree(object):
         """
         raise NotImplementedError(self.iter_child_entries)
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         """List all files in this tree.
 
         :param include_root: Whether to include the entry for the tree root
         :param from_dir: Directory under which to list files
         :param recursive: Whether to list files recursively
+        :param recurse_nested: enter nested trees
         :return: iterator over tuples of
             (path, versioned, kind, inventory entry)
         """
@@ -369,6 +375,19 @@ class Tree(object):
             for path, entry in self.iter_entries_by_dir():
                 if entry.kind == 'tree-reference':
                     yield path
+
+    def get_containing_nested_tree(self, path):
+        """Find the nested tree that contains a path.
+
+        :return: tuple with (nested tree and path inside the nested tree)
+        """
+        for nested_path in self.iter_references():
+            nested_path += '/'
+            if path.startswith(nested_path):
+                nested_tree = self.get_nested_tree(nested_path)
+                return nested_tree, path[len(nested_path):]
+        else:
+            return None, None
 
     def get_nested_tree(self, path):
         """Open the nested tree at the specified path.

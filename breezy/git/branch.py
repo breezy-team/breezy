@@ -30,6 +30,7 @@ from dulwich.repo import check_ref_format
 
 from .. import (
     branch,
+    cleanup,
     config,
     controldir,
     errors,
@@ -235,9 +236,9 @@ class GitTags(tag.BasicTags):
                 master = None
             else:
                 master = to_tags.branch.get_master_branch()
-            if master is not None:
-                master.lock_write()
-            try:
+            with cleanup.ExitStack() as es:
+                if master is not None:
+                    es.enter_context(master.lock_write())
                 updates, conflicts = self._merge_to_non_git(
                     to_tags, source_tag_refs, overwrite=overwrite)
                 if master is not None:
@@ -248,9 +249,6 @@ class GitTags(tag.BasicTags):
                     updates.update(extra_updates)
                     conflicts += extra_conflicts
                 return updates, conflicts
-            finally:
-                if master is not None:
-                    master.unlock()
 
     def get_tag_dict(self):
         ret = {}
@@ -1038,37 +1036,30 @@ class InterFromGitBranch(branch.GenericInterBranch):
         bound_location = self.target.get_bound_location()
         if local and not bound_location:
             raise errors.LocalRequiresBoundBranch()
-        master_branch = None
         source_is_master = False
-        self.source.lock_read()
-        if bound_location:
-            # bound_location comes from a config file, some care has to be
-            # taken to relate it to source.user_url
-            normalized = urlutils.normalize_url(bound_location)
-            try:
-                relpath = self.source.user_transport.relpath(normalized)
-                source_is_master = (relpath == '')
-            except (errors.PathNotChild, urlutils.InvalidURL):
-                source_is_master = False
-        if not local and bound_location and not source_is_master:
-            # not pulling from master, so we need to update master.
-            master_branch = self.target.get_master_branch(possible_transports)
-            master_branch.lock_write()
-        try:
-            try:
-                if master_branch:
-                    # pull from source into master.
-                    master_branch.pull(self.source, overwrite, stop_revision,
-                                       run_hooks=False)
-                result = self._basic_pull(stop_revision, overwrite, run_hooks,
-                                          _override_hook_target,
-                                          _hook_master=master_branch)
-            finally:
-                self.source.unlock()
-        finally:
-            if master_branch:
-                master_branch.unlock()
-        return result
+        with cleanup.ExitStack() as es:
+            es.enter_context(self.source.lock_read())
+            if bound_location:
+                # bound_location comes from a config file, some care has to be
+                # taken to relate it to source.user_url
+                normalized = urlutils.normalize_url(bound_location)
+                try:
+                    relpath = self.source.user_transport.relpath(normalized)
+                    source_is_master = (relpath == '')
+                except (errors.PathNotChild, urlutils.InvalidURL):
+                    source_is_master = False
+            if not local and bound_location and not source_is_master:
+                # not pulling from master, so we need to update master.
+                master_branch = self.target.get_master_branch(possible_transports)
+                es.enter_context(master_branch.lock_write())
+                # pull from source into master.
+                master_branch.pull(self.source, overwrite, stop_revision,
+                                   run_hooks=False)
+            else:
+                master_branch = None
+            return self._basic_pull(stop_revision, overwrite, run_hooks,
+                                    _override_hook_target,
+                                    _hook_master=master_branch)
 
     def _basic_push(self, overwrite, stop_revision):
         if overwrite is True:
@@ -1135,6 +1126,9 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
             result.new_revid = stop_revision
             for name, sha in viewitems(
                     self.source.repository._git.refs.as_dict(b"refs/tags")):
+                if sha not in self.source.repository._git:
+                    trace.mutter('Ignoring missing SHA: %s', sha)
+                    continue
                 refs[tag_name_to_ref(name)] = sha
             return refs
         self.target.repository.send_pack(

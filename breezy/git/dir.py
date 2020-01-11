@@ -363,7 +363,7 @@ class LocalGitControlDirFormat(GitControlDirFormat):
             trace.note(redirection_notice)
             return transport._redirected_to(e.source, e.target)
         gitrepo = do_catching_redirections(_open, transport, redirected)
-        if not gitrepo._controltransport.has('objects'):
+        if not _found and not gitrepo._controltransport.has('objects'):
             raise brz_errors.NotBranchError(path=transport.base)
         return LocalGitDir(transport, gitrepo, self)
 
