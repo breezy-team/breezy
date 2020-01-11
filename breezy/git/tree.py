@@ -297,7 +297,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         try:
             info = self._submodule_info()[relpath]
         except KeyError:
-            nested_repo_transport = self._repository.controldir.control_transport.clone(
+            nested_repo_transport = self._repository.controldir.user_transport.clone(
                 relpath.decode('utf-8'))
         else:
             nested_repo_transport = self._repository.controldir.control_transport.clone(
