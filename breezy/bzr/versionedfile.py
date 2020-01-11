@@ -29,7 +29,6 @@ lazy_import(globals(), """
 from breezy import (
     annotate,
     bencode,
-    errors,
     graph as _mod_graph,
     osutils,
     multiparent,
@@ -43,6 +42,9 @@ from breezy.bzr import (
     knit,
     )
 """)
+from .. import (
+    errors,
+    )
 from ..registry import Registry
 from ..sixish import (
     BytesIO,

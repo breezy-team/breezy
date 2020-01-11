@@ -21,6 +21,7 @@ from __future__ import absolute_import
 from ... import (
     commands,
     config,
+    errors,
     lazy_import,
     option,
     osutils,
@@ -30,7 +31,6 @@ import stat
 
 from breezy import (
     controldir,
-    errors,
     globbing,
     ignores,
     revision,

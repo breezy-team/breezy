@@ -51,11 +51,14 @@ from importlib import util as importlib_util
 from breezy import (
     bedding,
     debug,
-    errors,
     help_topics,
     trace,
     )
 """)
+
+from . import (
+    errors,
+    )
 
 
 _MODULE_PREFIX = "breezy.plugins."

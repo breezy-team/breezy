@@ -46,6 +46,10 @@ New Features
    have installed and speeds up import time since psutil brings in
    various other modules. (Jelmer Vernooĳ)
 
+ * Add a basic Mercurial plugin that mentions that .hg repositories
+   are unsupported when the user attempts to access one.
+   (Jelmer Vernooĳ)
+
  * The ``2a`` format now officially supports storing tree references.
    It always partially supported storing tree reference data,
    and would happily pull in tree reference data from other repository
