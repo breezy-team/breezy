@@ -25,6 +25,10 @@ import sys
 import breezy.bzr
 import breezy.git
 
+from . import (
+    errors,
+    )
+
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
 import time
@@ -38,7 +42,6 @@ from breezy import (
     directory_service,
     delta,
     config as _mod_config,
-    errors,
     globbing,
     gpg,
     hooks,

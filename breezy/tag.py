@@ -40,10 +40,13 @@ import sys
 from breezy import (
     bencode,
     cleanup,
-    errors,
     trace,
     )
 """)
+
+from . import (
+    errors,
+    )
 
 
 def _reconcile_tags(source_dict, dest_dict, overwrite):

@@ -38,7 +38,6 @@ from breezy import (
     cleanup,
     controldir,
     debug,
-    errors,
     filters as _mod_filters,
     osutils,
     revision as _mod_revision,
@@ -53,6 +52,9 @@ from breezy.bzr import (
     )
 """)
 
+from .. import (
+    errors,
+    )
 from .inventory import Inventory, ROOT_ID, entry_factory
 from ..lock import LogicalLockResult
 from ..lockable_files import LockableFiles

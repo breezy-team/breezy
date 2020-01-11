@@ -26,8 +26,7 @@ from ... import (
     errors,
     )
 
-import breezy
-from breezy import version_info  # noqa: F401
+from ... import version_info  # noqa: F401
 
 
 class MercurialUnsupportedError(errors.UnsupportedFormatError):
@@ -175,4 +174,4 @@ class SmartHgProber(controldir.Prober):
 
 
 controldir.ControlDirFormat.register_prober(LocalHgProber)
-controldir.ControlDirFormat.register_server_prober(SmartHgProber)
+controldir.ControlDirFormat.register_prober(SmartHgProber)

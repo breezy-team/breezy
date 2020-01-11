@@ -22,7 +22,6 @@ import itertools
 
 from breezy import (
     controldir,
-    errors,
     lockable_files,
     lockdir,
     osutils,
@@ -38,6 +37,9 @@ from breezy.bzr import (
     xml7,
     )
 """)
+from .. import (
+    errors,
+    )
 from ..repository import (
     InterRepository,
     IsInWriteGroupError,
