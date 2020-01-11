@@ -116,8 +116,8 @@ class RebaseState1(RebaseState):
     def write_plan(self, replace_map):
         """See `RebaseState`."""
         self.wt.update_feature_flags({b"rebase-v1": b"write-required"})
-        content = marshall_rebase_plan(self.wt.branch.last_revision_info(),
-            replace_map)
+        content = marshall_rebase_plan(
+            self.wt.branch.last_revision_info(), replace_map)
         assert isinstance(content, bytes)
         self.transport.put_bytes(REBASE_PLAN_FILENAME, content)
 
@@ -196,7 +196,7 @@ def regenerate_default_revid(repository, revid):
 
 
 def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
-    generate_revid, skip_full_merged=False):
+                         generate_revid, skip_full_merged=False):
     """Create a simple rebase plan that replays history based
     on one revision being replayed on top of another.
 
@@ -228,7 +228,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
         if lca == set([NULL_REVISION]):
             raise UnrelatedBranches()
         start_revid = order[0]
-    todo = order[order.index(start_revid):order.index(stop_revid)+1]
+    todo = order[order.index(start_revid):order.index(stop_revid) + 1]
     heads_cache = FrozenHeadsCache(graph)
     # XXX: The output replacemap'd parents should get looked up in some manner
     # by the heads cache? RBC 20080719
@@ -295,7 +295,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                 children[p] = []
             children[p].append(r)
 
-    parent_map.update(graph.get_parent_map(filter(lambda x: not x in parent_map, renames.values())))
+    parent_map.update(graph.get_parent_map(filter(lambda x: x not in parent_map, renames.values())))
 
     # todo contains a list of revisions that need to
     # be rewritten
@@ -322,7 +322,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                 else:
                     parents = parent_map[c]
                 assert isinstance(parents, tuple), \
-                        "Expected tuple of parents, got: %r" % parents
+                    "Expected tuple of parents, got: %r" % parents
                 # replace r in parents with replace_map[r][0]
                 if not replace_map[r][0] in parents:
                     parents = list(parents)
@@ -391,10 +391,11 @@ def wrap_iter_changes(old_iter_changes, map_tree):
             new_parent = map_tree.new_id(change.parent_id[1])
         else:
             new_parent = change.parent_id[1]
-        yield TreeChange(map_tree.new_id(change.file_id), change.path,
-                change.changed_content, change.versioned,
-                (old_parent, new_parent), change.name, change.kind,
-                change.executable)
+        yield TreeChange(
+            map_tree.new_id(change.file_id), change.path,
+            change.changed_content, change.versioned,
+            (old_parent, new_parent), change.name, change.kind,
+            change.executable)
 
 
 class CommitBuilderRevisionRewriter(object):
@@ -419,8 +420,8 @@ class CommitBuilderRevisionRewriter(object):
         :param new_parents: Revision ids of the new parent revisions.
         """
         assert isinstance(new_parents, tuple), "CommitBuilderRevisionRewriter: Expected tuple for %r" % new_parents
-        mutter('creating copy %r of %r with new parents %r' %
-                                   (newrevid, oldrevid, new_parents))
+        mutter('creating copy %r of %r with new parents %r',
+               (newrevid, oldrevid, new_parents))
         oldrev = self.repository.get_revision(oldrevid)
 
         revprops = dict(oldrev.properties)
@@ -432,7 +433,8 @@ class CommitBuilderRevisionRewriter(object):
         nonghost_newparents = self._get_present_revisions(new_parents)
         oldtree = self.repository.revision_tree(oldrevid)
         if self.map_ids:
-            fileid_map = map_file_ids(self.repository, nonghost_oldparents,
+            fileid_map = map_file_ids(
+                self.repository, nonghost_oldparents,
                 nonghost_newparents)
             mappedtree = MapTree(oldtree, fileid_map)
         else:
@@ -449,8 +451,8 @@ class CommitBuilderRevisionRewriter(object):
         old_base_tree = self.repository.revision_tree(old_base)
         old_iter_changes = oldtree.iter_changes(old_base_tree)
         iter_changes = wrap_iter_changes(old_iter_changes, mappedtree)
-        builder = self.repository.get_commit_builder(branch=None,
-            parents=new_parents, committer=oldrev.committer,
+        builder = self.repository.get_commit_builder(
+            branch=None, parents=new_parents, committer=oldrev.committer,
             timestamp=oldrev.timestamp, timezone=oldrev.timezone,
             revprops=revprops, revision_id=newrevid,
             config_stack=_mod_config.GlobalStack())
@@ -499,8 +501,8 @@ class WorkingTreeRevisionRewriter(object):
         self.state.write_active_revid(oldrevid)
         merger = Merger(self.wt.branch, this_tree=self.wt)
         merger.set_other_revision(oldrevid, self.wt.branch)
-        base_revid = self.determine_base(oldrevid, oldrev.parent_ids,
-                                           newrevid, newparents)
+        base_revid = self.determine_base(
+            oldrevid, oldrev.parent_ids, newrevid, newparents)
         mutter('replaying %r as %r with base %r and new parents %r' %
                (oldrevid, newrevid, base_revid, newparents))
         merger.set_base_revision(base_revid, self.wt.branch)
@@ -538,7 +540,7 @@ class WorkingTreeRevisionRewriter(object):
             return oldparents[1]
 
         try:
-            return self.graph.find_unique_lca(*[oldparents[0],newparents[1]])
+            return self.graph.find_unique_lca(*[oldparents[0], newparents[1]])
         except NoCommonAncestor:
             return oldparents[0]
 
@@ -558,15 +560,16 @@ class WorkingTreeRevisionRewriter(object):
             if [oldrev.committer] == authors:
                 authors = None
         else:
-            if not oldrev.committer in authors:
+            if oldrev.committer not in authors:
                 authors.append(oldrev.committer)
         if 'author' in revprops:
             del revprops['author']
         if 'authors' in revprops:
             del revprops['authors']
-        self.wt.commit(message=oldrev.message, timestamp=oldrev.timestamp,
-                  timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid,
-                  committer=committer, authors=authors)
+        self.wt.commit(
+            message=oldrev.message, timestamp=oldrev.timestamp,
+            timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid,
+            committer=committer, authors=authors)
 
 
 def complete_revert(wt, newparents):

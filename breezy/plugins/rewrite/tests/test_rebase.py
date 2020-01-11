@@ -48,8 +48,8 @@ from ..rebase import (
 class RebasePlanReadWriterTests(TestCase):
 
     def test_simple_marshall_rebase_plan(self):
-        self.assertEqualDiff(
-b"""# Bazaar rebase plan 1
+        self.assertEqualDiff(b"""\
+# Bazaar rebase plan 1
 1 bla
 oldrev newrev newparent1 newparent2
 """, marshall_rebase_plan((1, b"bla"),
@@ -58,14 +58,14 @@ oldrev newrev newparent1 newparent2
     def test_simple_unmarshall_rebase_plan(self):
         self.assertEquals(((1, b"bla"),
                           {b"oldrev": (b"newrev", (b"newparent1", b"newparent2"))}),
-                         unmarshall_rebase_plan(b"""# Bazaar rebase plan 1
+                          unmarshall_rebase_plan(b"""# Bazaar rebase plan 1
 1 bla
 oldrev newrev newparent1 newparent2
 """))
 
     def test_unmarshall_rebase_plan_formatunknown(self):
         self.assertRaises(UnknownFormatError,
-                         unmarshall_rebase_plan, b"""# Bazaar rebase plan x
+                          unmarshall_rebase_plan, b"""# Bazaar rebase plan x
 1 bla
 oldrev newrev newparent1 newparent2
 """)
@@ -90,14 +90,14 @@ class ConversionTests(TestCaseWithTransport):
         wt.commit(message='change hello', rev_id=b"bla2")
 
         wt.branch.repository.lock_write()
-        newrev = CommitBuilderRevisionRewriter(wt.branch.repository)(b"bla2", b"bla4",
-                (b"bloe",))
+        newrev = CommitBuilderRevisionRewriter(wt.branch.repository)(
+            b"bla2", b"bla4", (b"bloe",))
         self.assertEqual(b"bla4", newrev)
         self.assertTrue(wt.branch.repository.has_revision(newrev))
-        self.assertEqual((b"bloe",),
-                wt.branch.repository.get_parent_map([newrev])[newrev])
-        self.assertEqual("bla2",
-            wt.branch.repository.get_revision(newrev).properties["rebase-of"])
+        self.assertEqual(
+            (b"bloe",), wt.branch.repository.get_parent_map([newrev])[newrev])
+        self.assertEqual(
+            "bla2", wt.branch.repository.get_revision(newrev).properties["rebase-of"])
         wt.branch.repository.unlock()
 
 
@@ -121,10 +121,11 @@ class PlanCreatorTests(TestCaseWithTransport):
 
         b.repository.lock_read()
         graph = b.repository.get_graph()
-        self.assertEquals({b'bla2': (b'newbla2', (b"bloe",))},
+        self.assertEquals(
+            {b'bla2': (b'newbla2', (b"bloe",))},
             generate_simple_plan(
                 graph.find_difference(b.last_revision(), b"bla")[0],
-                b"bla2", None, b"bloe", graph, lambda y, _: b"new"+y))
+                b"bla2", None, b"bloe", graph, lambda y, _: b"new" + y))
         b.repository.unlock()
 
     def test_simple_plan_creator_extra_history(self):
@@ -146,15 +147,14 @@ class PlanCreatorTests(TestCaseWithTransport):
             f.write('universe')
         wt.commit(message='change hello again', rev_id=b"bla3")
 
-        b.repository.lock_read()
-        graph = b.repository.get_graph()
-        self.assertEquals(
-            {b'bla2': (b'newbla2', (b"bloe",)), b'bla3': (b'newbla3', (b'newbla2',))},
-            generate_simple_plan(
-                graph.find_difference(b.last_revision(), b"bloe")[0],
-                b"bla2", None, b"bloe",
-                graph, lambda y, _: b"new"+y))
-        b.repository.unlock()
+        with b.repository.lock_read():
+            graph = b.repository.get_graph()
+            self.assertEquals(
+                {b'bla2': (b'newbla2', (b"bloe",)), b'bla3': (b'newbla3', (b'newbla2',))},
+                generate_simple_plan(
+                    graph.find_difference(b.last_revision(), b"bloe")[0],
+                    b"bla2", None, b"bloe",
+                    graph, lambda y, _: b"new" + y))
 
     def test_generate_transpose_plan(self):
         wt = self.make_branch_and_tree('.')
@@ -188,23 +188,25 @@ class PlanCreatorTests(TestCaseWithTransport):
         graph = b.repository.get_graph()
         self.assertEquals({
             b'blie': (b'newblie', (b'lala',))},
-            generate_transpose_plan(graph.iter_ancestry([b"blie"]),
-            {b"bla": b"lala"}, graph, lambda y, _: b"new"+y))
+            generate_transpose_plan(graph.iter_ancestry(
+                [b"blie"]),
+                {b"bla": b"lala"}, graph, lambda y, _: b"new" + y))
         self.assertEquals({
             b'bla2': (b'newbla2', (b'lala',)),
             b'bla3': (b'newbla3', (b'newbla2',)),
             b'blie': (b'newblie', (b'lala',)),
             b'bloe': (b'newbloe', (b'lala',))},
-            generate_transpose_plan(graph.iter_ancestry(b.repository._all_revision_ids()),
-            {b"bla": b"lala"},
-            graph, lambda y, _: b"new"+y))
+            generate_transpose_plan(graph.iter_ancestry(
+                b.repository._all_revision_ids()),
+                {b"bla": b"lala"}, graph, lambda y, _: b"new" + y))
         b.repository.unlock()
 
     def test_generate_transpose_plan_one(self):
         graph = Graph(DictParentsProvider({"bla": ("bloe",), "bloe": (), "lala": ()}))
-        self.assertEquals({"bla": ("newbla", ("lala",))},
-                generate_transpose_plan(graph.iter_ancestry(["bla", "bloe"]),
-                    {"bloe": "lala"}, graph, lambda y, _: "new"+y))
+        self.assertEquals(
+            {"bla": ("newbla", ("lala",))},
+            generate_transpose_plan(graph.iter_ancestry(
+                ["bla", "bloe"]), {"bloe": "lala"}, graph, lambda y, _: "new" + y))
 
     def test_plan_with_already_merged(self):
         """We need to use a merge base that makes sense.
@@ -225,16 +227,17 @@ class PlanCreatorTests(TestCaseWithTransport):
         E -> (E', [D', C])
         """
         parents_map = {
-                "A": (),
-                "B": ("A",),
-                "C": ("B",),
-                "D": ("A",),
-                "E": ("D", "B")
+            "A": (),
+            "B": ("A",),
+            "C": ("B",),
+            "D": ("A",),
+            "E": ("D", "B")
         }
         graph = Graph(DictParentsProvider(parents_map))
-        self.assertEquals({"D": ("D'", ("C",)), "E": ("E'", ("D'",))},
-            generate_simple_plan(["D", "E"], "D", None, "C",
-                graph, lambda y, _: y+"'"))
+        self.assertEquals(
+            {"D": ("D'", ("C",)), "E": ("E'", ("D'",))},
+            generate_simple_plan(
+                ["D", "E"], "D", None, "C", graph, lambda y, _: y + "'"))
 
     def test_plan_with_already_merged_skip_merges(self):
         """We need to use a merge base that makes sense.
@@ -254,16 +257,17 @@ class PlanCreatorTests(TestCaseWithTransport):
         D -> (D', [C])
         """
         parents_map = {
-                "A": (),
-                "B": ("A",),
-                "C": ("B",),
-                "D": ("A",),
-                "E": ("D", "B")
+            "A": (),
+            "B": ("A",),
+            "C": ("B",),
+            "D": ("A",),
+            "E": ("D", "B")
         }
         graph = Graph(DictParentsProvider(parents_map))
-        self.assertEquals({"D": ("D'", ("C",))},
-                generate_simple_plan(["D", "E"], "D", None, "C",
-                    graph, lambda y, _: y+"'", True))
+        self.assertEquals(
+            {"D": ("D'", ("C",))},
+            generate_simple_plan(
+                ["D", "E"], "D", None, "C", graph, lambda y, _: y + "'", True))
 
 
 class RebaseStateTests(TestCaseWithTransport):
@@ -299,7 +303,7 @@ class RebaseStateTests(TestCaseWithTransport):
         self.wt.add('hello')
         self.wt.commit(message='add hello', rev_id=b"bla")
         self.state.write_plan(
-                {b"oldrev": (b"newrev", [b"newparent1", b"newparent2"])})
+            {b"oldrev": (b"newrev", [b"newparent1", b"newparent2"])})
         self.assertEqualDiff(b"""# Bazaar rebase plan 1
 1 bla
 oldrev newrev newparent1 newparent2
@@ -313,13 +317,14 @@ oldrev newrev newparent1 newparent2
         self.assertRaises(NoSuchFile, self.state.read_plan)
 
     def test_read_rebase_plan(self):
-        self.wt._transport.put_bytes(REBASE_PLAN_FILENAME,
+        self.wt._transport.put_bytes(
+            REBASE_PLAN_FILENAME,
             b"""# Bazaar rebase plan 1
 1 bla
 oldrev newrev newparent1 newparent2
 """)
-        self.assertEquals(((1, b"bla"),
-            {b"oldrev": (b"newrev", (b"newparent1", b"newparent2"))}),
+        self.assertEquals(
+            ((1, b"bla"), {b"oldrev": (b"newrev", (b"newparent1", b"newparent2"))}),
             self.state.read_plan())
 
     def test_read_nonexistant(self):
@@ -348,23 +353,22 @@ class RebaseTodoTests(TestCase):
         class Repository:
             def has_revision(self, revid):
                 return revid == "bloe"
-        self.assertEquals([],
-                list(rebase_todo(Repository(), { "bla": ("bloe", [])})))
+        self.assertEquals(
+            [], list(rebase_todo(Repository(), {"bla": ("bloe", [])})))
 
     def test_notstarted(self):
         class Repository:
             def has_revision(self, revid):
                 return False
-        self.assertEquals(["bla"],
-                list(rebase_todo(Repository(), { "bla": ("bloe", [])})))
+        self.assertEquals(["bla"], list(rebase_todo(Repository(), {"bla": ("bloe", [])})))
 
     def test_halfway(self):
         class Repository:
             def has_revision(self, revid):
                 return revid == "bloe"
-        self.assertEquals(["ha"],
-                list(rebase_todo(Repository(), { "bla": ("bloe", []),
-                                                 "ha": ("hee", [])})))
+        self.assertEquals(
+            ["ha"],
+            list(rebase_todo(Repository(), {"bla": ("bloe", []), "ha": ("hee", [])})))
 
 
 class ReplaySnapshotTests(TestCaseWithTransport):
@@ -401,8 +405,8 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id=b"newparent")
         wt.branch.repository.fetch(oldrepos)
         wt.branch.repository.lock_write()
-        CommitBuilderRevisionRewriter(wt.branch.repository)(b"oldcommit", b"newcommit",
-                (b"newparent",))
+        CommitBuilderRevisionRewriter(wt.branch.repository)(
+            b"oldcommit", b"newcommit", (b"newparent",))
         wt.branch.repository.unlock()
         oldrev = wt.branch.repository.get_revision(b"oldcommit")
         newrev = wt.branch.repository.get_revision(b"newcommit")
@@ -435,9 +439,8 @@ class ReplaySnapshotTests(TestCaseWithTransport):
 
     def test_multi_revisions(self):
         wt = self.make_branch_and_tree("old")
-        self.build_tree_contents([('old/afile', 'afilecontent'),
-                         ('old/sfile', 'sfilecontent'),
-                         ('old/notherfile', 'notherfilecontent')])
+        self.build_tree_contents(
+            [('old/afile', 'afilecontent'), ('old/sfile', 'sfilecontent'), ('old/notherfile', 'notherfilecontent')])
         wt.add(['sfile'])
         wt.add(["afile"], [b"somefileid"])
         wt.commit("bla", rev_id=b"oldgrandparent")
@@ -447,9 +450,8 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id=b"oldcommit")
         oldrepos = wt.branch.repository
         wt = self.make_branch_and_tree("new")
-        self.build_tree_contents([('new/afile', 'afilecontent'),
-                         ('new/sfile', 'sfilecontent'),
-                         ('new/notherfile', 'notherfilecontent')])
+        self.build_tree_contents(
+            [('new/afile', 'afilecontent'), ('new/sfile', 'sfilecontent'), ('new/notherfile', 'notherfilecontent')])
         wt.add(['sfile'])
         wt.add(["afile"], [b"afileid"])
         wt.commit("bla", rev_id=b"newgrandparent")
@@ -488,8 +490,8 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id=b"newparent")
         wt.branch.repository.fetch(oldrepos)
         wt.branch.repository.lock_write()
-        CommitBuilderRevisionRewriter(wt.branch.repository)(b"oldcommit", b"newcommit",
-                (b"newparent",))
+        CommitBuilderRevisionRewriter(wt.branch.repository)(
+            b"oldcommit", b"newcommit", (b"newparent",))
         wt.branch.repository.unlock()
         oldrev = wt.branch.repository.get_revision(b"oldcommit")
         newrev = wt.branch.repository.get_revision(b"newcommit")
@@ -519,12 +521,12 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         wt.add(["afile"], ids=[b"newid"])
         wt.commit("bla", rev_id=b"newparent")
         wt.branch.repository.fetch(oldrepos)
-        wt.lock_write()
-        replayer = WorkingTreeRevisionRewriter(wt, RebaseState1(wt))
-        self.assertRaises(ConflictsInTree,
-            replayer, b"oldcommit", b"newcommit",
-            [b"newparent"], )
-        wt.unlock()
+        with wt.lock_write():
+            replayer = WorkingTreeRevisionRewriter(wt, RebaseState1(wt))
+            self.assertRaises(
+                ConflictsInTree,
+                replayer, b"oldcommit", b"newcommit",
+                [b"newparent"], )
 
     def test_simple(self):
         wt = self.make_branch_and_tree("old")
@@ -570,8 +572,8 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         wt.add_pending_merge(b"ghost")
         wt.commit("bla", rev_id=b"oldcommit")
         # newparent (the new base for the rebased commit)
-        new_tree = wt.controldir.sprout("new",
-            revision_id=b'base').open_workingtree()
+        new_tree = wt.controldir.sprout(
+            "new", revision_id=b'base').open_workingtree()
         new_tree.branch.repository.fetch(wt.branch.repository)
         wt = new_tree
         self.build_tree_contents([('new/afile', 'base content')])
@@ -621,7 +623,7 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         oldwt.commit("base", rev_id=b"A")
         newwt = oldwt.controldir.sprout("new").open_workingtree()
         with open("old/afile", "w") as f:
-            f.write("A\n"*10 + "B\n")
+            f.write("A\n" * 10 + "B\n")
         oldwt.commit("bla", rev_id=b"B")
         with open("old/afile", "w") as f:
             f.write("A\n" * 10 + "C\n")
@@ -632,7 +634,7 @@ class TestReplayWorkingtree(TestCaseWithTransport):
             f.write("D\n")
         newwt.commit("bla", rev_id=b"D")
         with open("new/afile", "w") as f:
-            f.write("E\n" + "A\n"*10 + "B\n")
+            f.write("E\n" + "A\n" * 10 + "B\n")
         with open("new/bfile", "w") as f:
             f.write("D\nE\n")
         newwt.add_pending_merge(b"B")

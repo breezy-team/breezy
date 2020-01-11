@@ -43,7 +43,8 @@ class TestRebaseSimple(ExternalBase):
 
     def test_notneeded(self):
         os.chdir('../feature')
-        self.assertEquals('No revisions to rebase.\n',
+        self.assertEquals(
+            'No revisions to rebase.\n',
             self.run_bzr('rebase ../main')[0])
 
     def test_custom_merge_type(self):
@@ -61,7 +62,8 @@ class TestRebaseSimple(ExternalBase):
         self.make_file('barbla', "bloe")
         self.run_bzr('add')
         self.run_bzr('commit -m bloe')
-        self.assertEquals('No revisions to rebase.\n',
+        self.assertEquals(
+            'No revisions to rebase.\n',
             self.run_bzr('rebase ../main')[0])
 
     def test_notneeded_main_ahead(self):
@@ -69,7 +71,8 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('add')
         self.run_bzr('commit -m bloe')
         os.chdir('../feature')
-        self.assertEquals("Base branch is descendant of current branch. Pulling instead.\n",
+        self.assertEquals(
+            "Base branch is descendant of current branch. Pulling instead.\n",
             self.run_bzr('rebase ../main')[0])
         self.assertEquals(Branch.open("../feature").last_revision_info(),
                           Branch.open("../main").last_revision_info())
@@ -86,12 +89,14 @@ class TestRebaseSimple(ExternalBase):
         self.build_tree_contents([('feature/hoi', 'my data')])
         self.run_bzr('add', working_dir='feature')
         self.run_bzr('commit -m this feature')
-        self.assertEqual(('', ' M  hello\nAll changes applied successfully.\n'),
+        self.assertEqual(
+            ('', ' M  hello\nAll changes applied successfully.\n'),
             self.run_bzr('merge ../main', working_dir='feature'))
         out, err = self.run_bzr('rebase --pending-merges', working_dir='feature')
         self.assertEqual('', out)
         self.assertContainsRe(err, 'modified hello')
-        self.assertEqual(('3\n', ''),
+        self.assertEqual(
+            ('3\n', ''),
             self.run_bzr('revno', working_dir='feature'))
 
     def test_simple_success(self):
@@ -152,7 +157,8 @@ class TestRebaseSimple(ExternalBase):
         self.assertPathDoesNotExist('hoi')
         self.assertPathDoesNotExist('hooi')
         branch = Branch.open(".")
-        self.assertEquals("these",
+        self.assertEquals(
+            "these",
             branch.repository.get_revision(branch.last_revision()).message)
         self.assertPathExists('hoooi')
 
@@ -213,10 +219,10 @@ class TestRebaseSimple(ExternalBase):
         self.make_file('hoi', "my data")
         self.run_bzr('add')
         self.run_bzr('commit -m this')
-        self.assertEquals('',
-            self.run_bzr('rebase --onto -2 ../main')[0])
-        self.assertEquals('3\n',
-            self.run_bzr('revno')[0])
+        self.assertEquals(
+            '', self.run_bzr('rebase --onto -2 ../main')[0])
+        self.assertEquals(
+            '3\n', self.run_bzr('revno')[0])
 
     def test_unrelated(self):
         os.chdir('..')
@@ -239,8 +245,7 @@ class TestRebaseSimple(ExternalBase):
         out, err = self.run_bzr('rebase -v ../main')
         self.assertContainsRe(err, '1 revisions will be rebased:')
         self.assertEqual('', out)
-        self.assertEqual('3\n',
-                self.run_bzr('revno')[0])
+        self.assertEqual('3\n', self.run_bzr('revno')[0])
 
     def test_useless_merge(self):
         self.make_file('bar', '42')
@@ -312,8 +317,7 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('add')
         self.run_bzr('commit -m blah')
         os.chdir('..')
-        self.assertEquals('',
-            self.run_bzr('rebase -d feature main')[0])
+        self.assertEquals('', self.run_bzr('rebase -d feature main')[0])
 
 
 class ReplayTests(ExternalBase):

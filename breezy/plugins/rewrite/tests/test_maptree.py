@@ -71,8 +71,8 @@ class EmptyMapTreeTests(TestCaseWithTransport):
         builder.build(['bla'])
         builder.finish_tree()
         self.maptree = MapTree(self.oldtree, {})
-        self.assertEquals("foo",
-                self.maptree.id2path(self.maptree.path2id("foo")))
+        self.assertEquals(
+            "foo", self.maptree.id2path(self.maptree.path2id("foo")))
 
 
 class MapFileIdTests(TestCase):

@@ -36,8 +36,7 @@ gettext = translation.gettext
 
 for cmd in ['rebase', 'rebase_abort', 'rebase_continue', 'rebase_todo',
             'replay', 'pseudonyms', 'rebase_foreign']:
-    plugin_cmds.register_lazy("cmd_%s" % cmd, [],
-        __name__ + ".commands")
+    plugin_cmds.register_lazy("cmd_%s" % cmd, [], __name__ + ".commands")
 
 
 def show_rebase_summary(params):
@@ -46,7 +45,7 @@ def show_rebase_summary(params):
     features = getattr(params.new_tree._format, "features", None)
     if features is None:
         return
-    if not "rebase-v1" in features:
+    if "rebase-v1" not in features:
         return
     from .rebase import (
         RebaseState1,

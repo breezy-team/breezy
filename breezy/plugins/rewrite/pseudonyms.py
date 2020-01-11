@@ -69,7 +69,7 @@ svn_branch_path_finder = SubversionBranchUrlFinder()
 
 
 def _extract_converted_from_revid(rev):
-    if not "converted-from" in rev.properties:
+    if "converted-from" not in rev.properties:
         return
 
     for line in rev.properties.get("converted-from", "").splitlines():
@@ -79,16 +79,17 @@ def _extract_converted_from_revid(rev):
 
 def _extract_cscvs(rev):
     """Older-style launchpad-cscvs import."""
-    if not "cscvs-svn-branch-path" in rev.properties:
+    if "cscvs-svn-branch-path" not in rev.properties:
         return
-    yield ("svn", "%s:%s:%s" % (
-         rev.properties["cscvs-svn-repository-uuid"],
-         rev.properties["cscvs-svn-revision-number"],
-         urlutils.quote(rev.properties["cscvs-svn-branch-path"].strip("/"))))
+    yield (
+        "svn", "%s:%s:%s" % (
+            rev.properties["cscvs-svn-repository-uuid"],
+            rev.properties["cscvs-svn-revision-number"],
+            urlutils.quote(rev.properties["cscvs-svn-branch-path"].strip("/"))))
 
 
 def _extract_git_svn_id(rev):
-    if not "git-svn-id" in rev.properties:
+    if "git-svn-id" not in rev.properties:
         return
     (full_url, revnum, uuid) = parse_git_svn_id(rev.properties['git-svn-id'])
     branch_path = svn_branch_path_finder.find_branch_path(uuid, full_url)
@@ -110,7 +111,8 @@ def _extract_foreign_revid(rev):
     except errors.InvalidRevisionId:
         pass
     else:
-        yield (mapping.vcs.abbreviation,
+        yield (
+            mapping.vcs.abbreviation,
             mapping.vcs.serialize_foreign_revid(foreign_revid))
 
 
