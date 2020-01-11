@@ -30,3 +30,15 @@ plugin_cmds.register_lazy("cmd_gitlab_login", ["gl-login"], __name__ + ".cmds")
 plugin_cmds.register_lazy(
     "cmd_my_merge_proposals", ["my-proposals"],
     __name__ + ".cmds")
+
+
+from ...propose import hosters
+hosters.register_lazy(
+    "launchpad", "breezy.plugins.propose.launchpad",
+    "Launchpad")
+hosters.register_lazy(
+    "github", "breezy.plugins.propose.github",
+    "GitHub")
+hosters.register_lazy(
+    "gitlab", "breezy.plugins.propose.gitlabs",
+    "GitLab")

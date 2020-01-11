@@ -159,14 +159,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(1, len(result))
         if tree.has_versioned_directories():
             self.assertEqual(
-                ('filename', 'V', 'directory', tree.path2id('filename')),
-                (result[0][0], result[0][1], result[0][2],
-                    getattr(result[0][3], 'file_id', None)))
+                ('filename', 'V', 'directory'),
+                (result[0][0], result[0][1], result[0][2]))
         else:
             self.assertEqual(
-                ('filename', '?', 'directory', None),
-                (result[0][0], result[0][1], result[0][2],
-                    getattr(result[0][3], 'file_id', None)))
+                ('filename', '?', 'directory'),
+                (result[0][0], result[0][1], result[0][2]))
 
     def test_get_config_stack(self):
         # Smoke test that all working trees succeed getting a config

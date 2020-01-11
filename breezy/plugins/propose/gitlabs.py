@@ -34,7 +34,7 @@ from ...sixish import PY3
 from ...trace import mutter
 from ...transport import get_transport
 
-from .propose import (
+from ...propose import (
     Hoster,
     MergeProposal,
     MergeProposalBuilder,
@@ -255,8 +255,8 @@ class GitLabMergeProposal(MergeProposal):
         merged_at = self._mr.get('merged_at')
         if merged_at is None:
             return None
-        import dateutil.parser
-        return dateutil.parser.parse(merged_at)
+        import iso8601
+        return iso8601.parse_date(merged_at)
 
 
 def gitlab_url_to_bzr_url(url, name):
