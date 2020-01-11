@@ -421,7 +421,7 @@ class CommitBuilderRevisionRewriter(object):
         """
         assert isinstance(new_parents, tuple), "CommitBuilderRevisionRewriter: Expected tuple for %r" % new_parents
         mutter('creating copy %r of %r with new parents %r',
-               (newrevid, oldrevid, new_parents))
+               newrevid, oldrevid, new_parents)
         oldrev = self.repository.get_revision(oldrevid)
 
         revprops = dict(oldrev.properties)
