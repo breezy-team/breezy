@@ -34,7 +34,7 @@ from ...sixish import PY3
 from ...trace import mutter
 from ...transport import get_transport
 
-from .propose import (
+from ...propose import (
     Hoster,
     MergeProposal,
     MergeProposalBuilder,

@@ -23,7 +23,7 @@ import re
 import shutil
 import tempfile
 
-from .propose import (
+from ...propose import (
     Hoster,
     LabelsUnsupported,
     MergeProposal,
