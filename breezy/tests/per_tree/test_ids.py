@@ -55,6 +55,30 @@ class Path2IdTests(TestCaseWithTree):
         self.assertEqual('dir/file', self.tree_a.id2path(b'file-id'))
         self.assertRaises(errors.NoSuchId, self.tree_a.id2path, b'nonexistant')
 
+    def skip_if_no_reference(self, tree):
+        if not getattr(tree, 'supports_tree_reference', lambda: False)():
+            raise tests.TestNotApplicable('Tree references not supported')
+
+    def create_nested(self):
+        work_tree = self.make_branch_and_tree('wt')
+        with work_tree.lock_write():
+            self.skip_if_no_reference(work_tree)
+            subtree = self.make_branch_and_tree('wt/subtree')
+            self.build_tree(['wt/subtree/a'])
+            subtree.add(['a'])
+            subtree.commit('foo')
+            work_tree.add_reference(subtree)
+        tree = self._convert_tree(work_tree)
+        self.skip_if_no_reference(tree)
+        return tree, subtree
+
+    def test_path2id_nested_tree(self):
+        tree, subtree = self.create_nested()
+        self.assertIsNot(None, tree.path2id('subtree'))
+        self.assertIsNot(None, tree.path2id('subtree/a'))
+        self.assertEqual('subtree', tree.id2path(tree.path2id('subtree')))
+        self.assertEqual('subtree/a', tree.id2path(tree.path2id('subtree/a')))
+
 
 class Path2IdsTests(TestCaseWithTree):
 
