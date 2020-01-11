@@ -438,7 +438,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return self._submodules
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
-                   follow_tree_references=False):
+                   recurse_nested=False):
         if self.tree is None:
             return
         if from_dir is None or from_dir == '.':
@@ -469,7 +469,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     continue
                 child_path = posixpath.join(path, name)
                 child_relpath = posixpath.join(relpath, name)
-                if S_ISGITLINK(mode) and follow_tree_references:
+                if S_ISGITLINK(mode) and recurse_nested:
                     mode = stat.S_IFDIR
                     store = self._get_submodule_store(child_relpath)
                     hexsha = store[hexsha].tree
@@ -531,7 +531,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                                         file_id)
 
     def iter_entries_by_dir(self, specific_files=None,
-                            follow_tree_references=False):
+                            recurse_nested=False):
         if self.tree is None:
             return
         if specific_files is not None:
@@ -552,7 +552,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     continue
                 child_path = posixpath.join(path, name)
                 child_path_decoded = child_path.decode('utf-8')
-                if follow_tree_references and S_ISGITLINK(mode):
+                if recurse_nested and S_ISGITLINK(mode):
                     mode = stat.S_IFDIR
                     store = self._get_submodule_store(child_path)
                     hexsha = store[hexsha].tree
@@ -1213,7 +1213,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             self._ensure_versioned_dir(index_path)
 
     def _recurse_index_entries(self, index=None, basepath=b"",
-                               follow_tree_references=False):
+                               recurse_nested=False):
         # Iterate over all index entries
         with self.lock_read():
             if index is None:
@@ -1221,17 +1221,17 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             for path, value in index.items():
                 (ctime, mtime, dev, ino, mode, uid, gid, size, sha,
                  flags) = value
-                if S_ISGITLINK(mode) and follow_tree_references:
+                if S_ISGITLINK(mode) and recurse_nested:
                     subindex = self._get_submodule_index(path)
                     for entry in self._recurse_index_entries(
                             index=subindex, basepath=path,
-                            follow_tree_references=follow_tree_references):
+                            recurse_nested=recurse_nested):
                         yield entry
                 else:
                     yield (posixpath.join(basepath, path), value)
 
     def iter_entries_by_dir(self, specific_files=None,
-                            follow_tree_references=False):
+                            recurse_nested=False):
         with self.lock_read():
             if specific_files is not None:
                 specific_files = set(specific_files)
@@ -1243,7 +1243,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 ret[(u"", u"")] = root_ie
             dir_ids = {u"": root_ie.file_id}
             for path, value in self._recurse_index_entries(
-                    follow_tree_references=follow_tree_references):
+                    recurse_nested=recurse_nested):
                 if self.mapping.is_special_file(path):
                     continue
                 path = path.decode("utf-8")

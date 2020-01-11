@@ -2218,8 +2218,8 @@ class _PreviewTree(inventorytree.InventoryTree):
         for entry, trans_id in self._make_inv_entries(todo):
             yield entry
 
-    def iter_entries_by_dir(self, specific_files=None, follow_tree_references=False):
-        if follow_tree_references:
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
+        if recurse_nested:
             raise NotImplementedError(
                 'follow tree references not yet supported')
 
@@ -2247,9 +2247,9 @@ class _PreviewTree(inventorytree.InventoryTree):
         return path_entries
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
-                   follow_tree_references=False):
+                   recurse_nested=False):
         """See WorkingTree.list_files."""
-        if follow_tree_references:
+        if recurse_nested:
             raise NotImplementedError(
                 'follow tree references not yet supported')
 
