@@ -123,10 +123,10 @@ import tempfile
 
 try:
     import urllib.parse as urlparse
-    from urllib.parse import splituser, splitnport
+    from urllib.parse import splituser
 except ImportError:
     import urlparse
-    from urllib import splituser, splitnport
+    from urllib import splituser
 
 # urlparse only supports a limited number of schemes by default
 register_urlparse_netloc_protocol('git')
@@ -165,13 +165,11 @@ def split_git_url(url):
     :param url: Git URL
     :return: Tuple with host, port, username, path.
     """
-    (scheme, netloc, loc, _, _) = urlparse.urlsplit(url)
-    path = urlparse.unquote(loc)
+    parsed_url = urlparse.urlparse(url)
+    path = urlparse.unquote(parsed_url.path)
     if path.startswith("/~"):
         path = path[1:]
-    (username, hostport) = splituser(netloc)
-    (host, port) = splitnport(hostport, None)
-    return (host, port, username, path)
+    return ((parsed_url.hostname or '', parsed_url.port, parsed_url.username, path))
 
 
 class RemoteGitError(BzrError):
@@ -205,8 +203,8 @@ def parse_git_error(url, message):
         base_url, _ = urlutils.split_segment_parameters(url)
         return HeadUpdateFailed(base_url)
     if message.startswith('access denied or repository not exported:'):
-        extra, path = message.split(': ', 1)
-        return PermissionDenied(path, extra)
+        extra, path = message.split(':', 1)
+        return PermissionDenied(path.strip(), extra)
     if message.endswith('You are not allowed to push code to this project.'):
         return PermissionDenied(url, message)
     if message.endswith(' does not appear to be a git repository'):
@@ -842,6 +840,9 @@ class GitRemoteRevisionTree(RevisionTree):
 
     def get_file_text(self, path):
         raise GitSmartRemoteNotSupported(self.get_file_text, self)
+
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        raise GitSmartRemoteNotSupported(self.list_files, self)
 
 
 class RemoteGitRepository(GitRepository):

@@ -1826,6 +1826,7 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
     accepted_errors = [200,  # Ok
                        201,
                        202,
+                       204,
                        206,  # Partial content
                        400,
                        403,
@@ -1833,6 +1834,7 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
                        405,  # Method not allowed
                        416,
                        422,
+                       501,  # Not implemented
                        ]
     """The error codes the caller will handle.
 

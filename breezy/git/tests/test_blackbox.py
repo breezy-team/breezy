@@ -216,6 +216,28 @@ class TestGitBlackBox(ExternalBase):
         self.assertNotContainsRe(error, 'Committed revision 2.')
         self.assertContainsRe(error, 'Committed revid .*.')
 
+    def test_log_file(self):
+        # Smoke test for "bzr log" in a git repository.
+        repo = GitRepo.init(self.test_dir)
+        builder = tests.GitBranchBuilder()
+        builder.set_file('a', b'text for a\n', False)
+        r1 = builder.commit(b'Joe Foo <joe@foo.com>', u'First')
+        builder.set_file('a', b'text 3a for a\n', False)
+        r2a = builder.commit(b'Joe Foo <joe@foo.com>', u'Second a', base=r1)
+        builder.set_file('a', b'text 3b for a\n', False)
+        r2b = builder.commit(b'Joe Foo <joe@foo.com>', u'Second b', base=r1)
+        builder.set_file('a', b'text 4 for a\n', False)
+        builder.commit(b'Joe Foo <joe@foo.com>', u'Third', merge=[r2a], base=r2b)
+        builder.finish()
+
+        # Check that bzr log does not fail and includes the revision.
+        output, error = self.run_bzr(['log', '-n2', 'a'])
+        self.assertEqual(error, '')
+        self.assertIn('Second a', output)
+        self.assertIn('Second b', output)
+        self.assertIn('First', output)
+        self.assertIn('Third', output)
+
     def test_tags(self):
         git_repo, commit_sha1 = self.simple_commit()
         git_repo.refs[b"refs/tags/foo"] = commit_sha1
