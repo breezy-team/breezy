@@ -1229,7 +1229,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 from_parent_id = from_entry.parent_id
                 to_rel = osutils.pathjoin(to_dir, from_tail)
                 rename_entry = InventoryWorkingTree._RenameEntry(
-                    from_inv=from_inv,
                     from_rel=from_rel,
                     from_id=from_id,
                     from_tail=from_tail,
