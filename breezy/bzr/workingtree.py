@@ -1728,7 +1728,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self.control_transport.put_bytes(
                 'format', self._format.as_string())
 
-    def _check_for_tree_references(self, iterator):
+    def _check_for_tree_references(self, iterator, recurse_nested, specific_files=None):
         """See if directories have become tree-references."""
         blocked_parent_ids = set()
         for path, ie in iterator:
@@ -1740,12 +1740,25 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 continue
             if (ie.kind == 'directory' and
                     self._directory_is_tree_reference(path)):
+
                 # This InventoryDirectory needs to be a TreeReference
                 ie = inventory.TreeReference(ie.file_id, ie.name, ie.parent_id)
                 blocked_parent_ids.add(ie.file_id)
-            yield path, ie
 
-    def iter_entries_by_dir(self, specific_files=None):
+            if ie.kind == 'tree-reference' and recurse_nested:
+                subtree = self.get_nested_tree(path)
+                for subpath, ie in subtree.iter_entries_by_dir(
+                        recurse_nested=recurse_nested,
+                        specific_files=specific_files):
+                    if subpath:
+                        full_subpath = osutils.pathjoin(path, subpath)
+                    else:
+                        full_subpath = path
+                    yield full_subpath, ie
+            else:
+                yield path, ie
+
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """See Tree.iter_entries_by_dir()"""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
@@ -1754,7 +1767,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         if not self.supports_tree_reference():
             return iterator
         else:
-            return self._check_for_tree_references(iterator)
+            return self._check_for_tree_references(
+                iterator, recurse_nested=recurse_nested,
+                specific_files=specific_files)
 
     def get_canonical_paths(self, paths):
         """Look up canonical paths for multiple items.

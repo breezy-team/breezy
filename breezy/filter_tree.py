@@ -63,14 +63,14 @@ class ContentFilterTree(tree.Tree):
     def is_executable(self, path):
         return self.backing_tree.is_executable(path)
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         # NB: This simply returns the parent tree's entries; the length may be
         # wrong but it can't easily be calculated without filtering the whole
         # text.  Currently all callers cope with this; perhaps they should be
         # updated to a narrower interface that only provides things guaranteed
         # cheaply available across all trees. -- mbp 20110705
         return self.backing_tree.iter_entries_by_dir(
-            specific_files=specific_files)
+            specific_files=specific_files, recurse_nested=recurse_nested)
 
     def lock_read(self):
         return self.backing_tree.lock_read()
