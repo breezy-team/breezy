@@ -282,7 +282,7 @@ def joinpath(base, *args):
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
 def _posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""
-    url = strip_segment_parameters_raw(url)
+    url = strip_segment_parameters(url)
     file_localhost_prefix = 'file://localhost/'
     if url.startswith(file_localhost_prefix):
         path = url[len(file_localhost_prefix) - 1:]
@@ -310,7 +310,7 @@ def _win32_local_path_from_url(url):
     if not url.startswith('file://'):
         raise InvalidURL(url, 'local urls must start with file:///, '
                          'UNC path urls must start with file://')
-    url = strip_segment_parameters_raw(url)
+    url = strip_segment_parameters(url)
     # We strip off all 3 slashes
     win32_url = url[len('file:'):]
     # check for UNC path: //HOST/path
