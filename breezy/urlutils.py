@@ -282,7 +282,7 @@ def joinpath(base, *args):
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
 def _posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""
-    url = split_segment_parameters_raw(url)[0]
+    url = strip_segment_parameters_raw(url)
     file_localhost_prefix = 'file://localhost/'
     if url.startswith(file_localhost_prefix):
         path = url[len(file_localhost_prefix) - 1:]
@@ -310,7 +310,7 @@ def _win32_local_path_from_url(url):
     if not url.startswith('file://'):
         raise InvalidURL(url, 'local urls must start with file:///, '
                          'UNC path urls must start with file://')
-    url = split_segment_parameters_raw(url)[0]
+    url = strip_segment_parameters_raw(url)
     # We strip off all 3 slashes
     win32_url = url[len('file:'):]
     # check for UNC path: //HOST/path
@@ -574,6 +574,16 @@ def split_segment_parameters(url):
     return (base_url, parameters)
 
 
+def strip_segment_parameters(url):
+    """Strip the segment parameters from a URL.
+
+    :param url: A relative or absolute URL
+    :return: url
+    """
+    base_url, subsegments = split_segment_parameters_raw(url)
+    return base_url
+
+
 def join_segment_parameters_raw(base, *subsegments):
     """Create a new URL by adding subsegments to an existing one.
 
@@ -822,7 +832,7 @@ def derive_to_location(from_location):
     is used without a path, e.g. c:foo-bar => foo-bar.
     If no /, path separator or : is found, the from_location is returned.
     """
-    from_location, unused_params = split_segment_parameters(from_location)
+    from_location = strip_segment_parameters(from_location)
     if from_location.find("/") >= 0 or from_location.find(os.sep) >= 0:
         return os.path.basename(from_location.rstrip("/\\"))
     else:

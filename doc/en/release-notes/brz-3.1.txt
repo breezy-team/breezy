@@ -154,6 +154,10 @@ API Changes
   Instead, probers can now have a ``priority`` method to influence
   when they are run. (Jelmer Vernooĳ)
 
+* New ``urlutils.strip_segment_parameters`` function for
+  stripping segment parameters from a URL.
+  (Jelmer Vernooĳ)
+
 
 Internals
 *********

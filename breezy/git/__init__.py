@@ -167,8 +167,7 @@ class RemoteGitProber(Prober):
         # breezy.git, since it's called for every repository that's
         # accessed over HTTP, whether it's Git, Bzr or something else.
         # Importing Dulwich and the other support code adds unnecessray slowdowns.
-        base_url, _ = urlutils.split_segment_parameters(
-            transport.external_url())
+        base_url = urlutils.strip_segment_parameters(transport.external_url())
         url = urlutils.URL.from_string(base_url)
         url.user = url.quoted_user = None
         url.password = url.quoted_password = None

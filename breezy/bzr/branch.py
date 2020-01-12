@@ -973,7 +973,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
     def get_reference(self, a_controldir, name=None):
         """See BranchFormat.get_reference()."""
         transport = a_controldir.get_branch_transport(None, name=name)
-        url = urlutils.split_segment_parameters(a_controldir.user_url)[0]
+        url = urlutils.strip_segment_parameters(a_controldir.user_url)
         return urlutils.join(
             url, transport.get_bytes('location').decode('utf-8'))
 

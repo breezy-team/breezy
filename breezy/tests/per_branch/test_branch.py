@@ -165,8 +165,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
         branch_b = wt_a.branch.controldir.sprout(
             'b', revision_id=rev1).open_branch()
         self.assertEqual(
-            urlutils.split_segment_parameters(wt_a.branch.user_url)[0],
-            urlutils.split_segment_parameters(branch_b.get_parent())[0])
+            urlutils.strip_segment_parameters(wt_a.branch.user_url),
+            urlutils.strip_segment_parameters(branch_b.get_parent()))
         return branch_b
 
     def test_clone_branch_nickname(self):
