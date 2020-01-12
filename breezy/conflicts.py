@@ -27,7 +27,6 @@ lazy_import(globals(), """
 import errno
 
 from breezy import (
-    errors,
     osutils,
     rio,
     trace,
@@ -38,6 +37,7 @@ from breezy.i18n import gettext, ngettext
 """)
 from . import (
     cache_utf8,
+    errors,
     commands,
     option,
     registry,

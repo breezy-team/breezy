@@ -887,7 +887,7 @@ class BzrDirPreSplitOut(BzrDir):
                            possible_transports=possible_transports)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               possible_transports=None, accelerator_tree=None,
+               recurse=None, possible_transports=None, accelerator_tree=None,
                hardlink=False, stacked=False, create_tree_if_local=True,
                source_branch=None):
         """See ControlDir.sprout()."""

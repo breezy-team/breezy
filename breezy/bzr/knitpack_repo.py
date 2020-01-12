@@ -18,6 +18,10 @@
 
 from __future__ import absolute_import
 
+from .. import (
+    errors,
+    )
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import time
@@ -25,7 +29,6 @@ import time
 from breezy import (
     controldir,
     debug,
-    errors,
     osutils,
     revision as _mod_revision,
     trace,

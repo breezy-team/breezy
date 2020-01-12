@@ -43,7 +43,6 @@ import stat
 from breezy import (
     cleanup,
     conflicts as _mod_conflicts,
-    errors,
     filters as _mod_filters,
     merge,
     revision as _mod_revision,
@@ -56,6 +55,9 @@ from breezy.bzr import (
     )
 """)
 
+from . import (
+    errors,
+    )
 from .controldir import (
     ControlComponent,
     ControlComponentFormatRegistry,

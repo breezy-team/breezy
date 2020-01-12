@@ -23,13 +23,15 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     branch,
-    errors,
     version_info_formats,
     workingtree,
     )
 from breezy.i18n import gettext
 """)
 
+from . import (
+    errors,
+    )
 from .commands import Command
 from .option import Option, RegistryOption
 from .sixish import text_type

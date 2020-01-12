@@ -23,11 +23,14 @@ and for applying a changeset.
 
 from __future__ import absolute_import
 
+from ... import (
+    errors,
+    )
+
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     branch,
-    errors,
     merge_directive,
     revision as _mod_revision,
     urlutils,

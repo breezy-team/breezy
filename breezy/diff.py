@@ -31,7 +31,6 @@ import tempfile
 from breezy import (
     cleanup,
     controldir,
-    errors,
     osutils,
     textfile,
     timestamp,
@@ -42,6 +41,9 @@ from breezy.workingtree import WorkingTree
 from breezy.i18n import gettext
 """)
 
+from . import (
+    errors,
+    )
 from .registry import (
     Registry,
     )

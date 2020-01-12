@@ -27,11 +27,13 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     atomicfile,
-    bedding,
     globbing,
     trace,
     )
 """)
+from . import (
+    bedding,
+    )
 
 # ~/.config/breezy/ignore will be filled out using
 # this ignore list, if it does not exist

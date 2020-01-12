@@ -360,6 +360,39 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertEqual(rev2, new_branch.tags.lookup_tag('tag-a'))
         new_branch.repository.get_revision(rev2)
 
+    def test_branch_with_nested_trees(self):
+        orig = self.make_branch_and_tree('source', format='development-subtree')
+        subtree = self.make_branch_and_tree('source/subtree')
+        self.build_tree(['source/subtree/a'])
+        subtree.add(['a'])
+        subtree.commit('add subtree contents')
+        orig.add_reference(subtree)
+        orig.commit('add subtree')
+
+        self.run_bzr('branch source target')
+
+        target = WorkingTree.open('target')
+        target_subtree = WorkingTree.open('target/subtree')
+        self.assertTreesEqual(orig, target)
+        self.assertTreesEqual(subtree, target_subtree)
+
+    def test_branch_with_nested_trees_no_recurse(self):
+        orig = self.make_branch_and_tree('source', format='development-subtree')
+        subtree = self.make_branch_and_tree('source/subtree')
+        self.build_tree(['source/subtree/a'])
+        subtree.add(['a'])
+        subtree.commit('add subtree contents')
+        orig.add_reference(subtree)
+        orig.commit('add subtree')
+
+        self.run_bzr('branch --no-recurse-nested source target')
+
+        target = WorkingTree.open('target')
+        self.addCleanup(subtree.lock_read().unlock)
+        basis = subtree.basis_tree()
+        self.addCleanup(basis.lock_read().unlock)
+        self.assertRaises(errors.NotBranchError, WorkingTree.open, 'target/subtree')
+
 
 class TestBranchStacked(tests.TestCaseWithTransport):
     """Tests for branch --stacked"""
