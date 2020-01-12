@@ -544,7 +544,7 @@ class GitBranch(ForeignBranch):
     def set_parent(self, location):
         cs = self.repository._git.get_config()
         remote = self._get_origin(cs)
-        this_url = urlutils.split_segment_parameters(self.user_url)[0]
+        this_url = urlutils.strip_segment_parameters(self.user_url)
         target_url, branch, ref = bzr_url_to_git_url(location)
         location = urlutils.relative_url(this_url, target_url)
         cs.set((b"remote", remote), b"url", location)

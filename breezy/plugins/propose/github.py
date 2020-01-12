@@ -219,7 +219,7 @@ def parse_github_url(url):
 
 
 def parse_github_branch_url(branch):
-    url = urlutils.split_segment_parameters(branch.user_url)[0]
+    url = urlutils.strip_segment_parameters(branch.user_url)
     owner, repo_name = parse_github_url(url)
     return owner, repo_name, branch.name
 

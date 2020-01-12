@@ -201,7 +201,7 @@ def parse_git_error(url, message):
                 message.endswith(' not found.'))):
         return NotBranchError(url, message)
     if message == "HEAD failed to update":
-        base_url, _ = urlutils.split_segment_parameters(url)
+        base_url = urlutils.strip_segment_parameters(url)
         return HeadUpdateFailed(base_url)
     if message.startswith('access denied or repository not exported:'):
         extra, path = message.split(':', 1)
@@ -677,7 +677,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         url = urlutils.URL.from_string(transport.external_url())
         url.user = url.quoted_user = None
         url.password = url.quoted_password = None
-        url = urlutils.split_segment_parameters(str(url))[0]
+        url = urlutils.strip_segment_parameters(str(url))
         super(BzrGitHttpClient, self).__init__(url, *args, **kwargs)
 
     def _http_request(self, url, headers=None, data=None,
@@ -741,7 +741,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
 
 
 def _git_url_and_path_from_transport(external_url):
-    url, _ = urlutils.split_segment_parameters(external_url)
+    url = urlutils.strip_segment_parameters(external_url)
     return urlparse.urlsplit(url)
 
 
