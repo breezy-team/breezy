@@ -154,7 +154,7 @@ class GitHubMergeProposal(MergeProposal):
         return None
 
     def set_commit_message(self, message):
-        self._patch({'title': message})
+        raise errors.UnsupportedOperation(self.set_commit_message, self)
 
     def _patch(self, data):
         response = self._gh._api_request(
