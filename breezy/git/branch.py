@@ -816,7 +816,8 @@ class LocalGitBranch(GitBranch):
         :return: A branch associated with the nested tree
         """
         # FIXME should provide multiple branches, based on config
-        url = urlutils.join(self.user_url, path)
+        url = urlutils.split_segment_parameters_raw(self.user_url)[0]
+        url = urlutils.join(url, path)
         return branch.Branch.open(
             url,
             possible_transports=possible_transports)

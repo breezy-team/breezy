@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 import gzip
+from io import BytesIO
 import re
 
 from .. import (
@@ -718,7 +719,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         # before issuing the next to still allow for connection reuse from the
         # pool.
         if response.getheader("Content-Encoding") == "gzip":
-            read = gzip.GzipFile(fileobj=response).read
+            read = gzip.GzipFile(fileobj=BytesIO(response.read())).read
         else:
             read = response.read
 

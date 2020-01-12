@@ -1461,15 +1461,21 @@ class cmd_branch(Command):
                             ' allow branch to proceed.'),
                      Option('bind',
                             help="Bind new branch to from location."),
+                     Option('no-recurse-nested',
+                            help='Do not recursively check out nested trees.'),
                      ]
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
             use_existing_dir=False, switch=False, bind=False,
-            files_from=None):
+            files_from=None, no_recurse_nested=False):
         from breezy import switch as _mod_switch
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location)
+        if no_recurse_nested:
+            recurse = 'none'
+        else:
+            recurse = 'down'
         if not (hardlink or files_from):
             # accelerator_tree is usually slower because you have to read N
             # files (no readahead, lots of seeks, etc), but allow the user to
@@ -1521,7 +1527,8 @@ class cmd_branch(Command):
                     possible_transports=[to_transport],
                     accelerator_tree=accelerator_tree, hardlink=hardlink,
                     stacked=stacked, force_new_repo=standalone,
-                    create_tree_if_local=not no_tree, source_branch=br_from)
+                    create_tree_if_local=not no_tree, source_branch=br_from,
+                    recurse=recurse)
                 branch = to_dir.open_branch(
                     possible_transports=[
                         br_from.controldir.root_transport, to_transport])
@@ -1536,7 +1543,8 @@ class cmd_branch(Command):
             except errors.NoRepositoryPresent:
                 to_repo = to_dir.create_repository()
             to_repo.fetch(br_from.repository, revision_id=revision_id)
-            branch = br_from.sprout(to_dir, revision_id=revision_id)
+            branch = br_from.sprout(
+                to_dir, revision_id=revision_id)
         br_from.tags.merge_to(branch.tags)
 
         # If the source branch is stacked, the new branch may
