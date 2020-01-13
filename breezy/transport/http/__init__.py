@@ -2579,6 +2579,17 @@ class HttpTransport(ConnectedTransport):
                                         target_path)
             return transport.get_transport_from_url(new_url)
 
+    def _options(self, relpath):
+        abspath = self._remote_path(relpath)
+        resp = self.request('OPTIONS', abspath)
+        if resp.status == 404:
+            raise errors.NoSuchFile(abspath)
+        if resp.status in (403, 405):
+            raise errors.InvalidHttpResponse(
+                abspath,
+                "OPTIONS not supported or forbidden for remote URL")
+        return resp.getheaders()
+
 
 # TODO: May be better located in smart/medium.py with the other
 # SmartMedium classes

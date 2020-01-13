@@ -46,6 +46,9 @@ New Features
    have installed and speeds up import time since psutil brings in
    various other modules. (Jelmer Vernooĳ)
 
+ * Warn the user when they attempt to use Breezy in a Subversion
+   working copy. (Jelmer Vernooĳ)
+
  * Add a basic Mercurial plugin that mentions that .hg repositories
    are unsupported when the user attempts to access one.
    (Jelmer Vernooĳ)
