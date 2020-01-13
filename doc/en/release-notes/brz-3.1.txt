@@ -49,6 +49,10 @@ New Features
  * Warn the user when they attempt to use Breezy in a Subversion
    working copy. (Jelmer Vernooĳ)
 
+ * Add a basic Mercurial plugin that mentions that .hg repositories
+   are unsupported when the user attempts to access one.
+   (Jelmer Vernooĳ)
+
  * The ``2a`` format now officially supports storing tree references.
    It always partially supported storing tree reference data,
    and would happily pull in tree reference data from other repository
@@ -57,10 +61,6 @@ New Features
  * A new ``fossil`` plugin has been added that warns users when they
    attempt to access Fossil repositories.
    (Jelmer Vernooĳ, #1848821)
-
- * Add a basic Mercurial plugin that mentions that .hg repositories
-   are unsupported when the user attempts to access one.
-   (Jelmer Vernooĳ)
 
 Improvements
 ************
@@ -156,6 +156,10 @@ API Changes
 * The ``ControlDirFormat.register_server_prober`` method has been removed.
   Instead, probers can now have a ``priority`` method to influence
   when they are run. (Jelmer Vernooĳ)
+
+* New ``urlutils.strip_segment_parameters`` function for
+  stripping segment parameters from a URL.
+  (Jelmer Vernooĳ)
 
 
 Internals

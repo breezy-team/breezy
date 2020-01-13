@@ -23,16 +23,13 @@ from ... import version_info  # noqa: F401
 
 from ... import (
     config,
+    errors,
     lazy_import,
     )
 
 lazy_import.lazy_import(globals(), """
 import errno
 import netrc
-
-from breezy import (
-    errors,
-    )
 """)
 
 

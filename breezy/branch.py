@@ -1357,7 +1357,7 @@ class Branch(controldir.ControlComponent):
 
     def create_checkout(self, to_location, revision_id=None,
                         lightweight=False, accelerator_tree=None,
-                        hardlink=False):
+                        hardlink=False, recurse_nested=True):
         """Create a checkout of a branch.
 
         :param to_location: The url to produce the checkout at
@@ -1370,6 +1370,7 @@ class Branch(controldir.ControlComponent):
             content is different.
         :param hardlink: If true, hard-link files from accelerator_tree,
             where possible.
+        :param recurse_nested: Whether to recurse into nested trees
         :return: The tree of the created checkout
         """
         t = transport.get_transport(to_location)

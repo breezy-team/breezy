@@ -154,7 +154,7 @@ class GitHubMergeProposal(MergeProposal):
         return None
 
     def set_commit_message(self, message):
-        self._patch({'title': message})
+        raise errors.UnsupportedOperation(self.set_commit_message, self)
 
     def _patch(self, data):
         response = self._gh._api_request(
@@ -219,7 +219,7 @@ def parse_github_url(url):
 
 
 def parse_github_branch_url(branch):
-    url = urlutils.split_segment_parameters(branch.user_url)[0]
+    url = urlutils.strip_segment_parameters(branch.user_url)
     owner, repo_name = parse_github_url(url)
     return owner, repo_name, branch.name
 

@@ -150,7 +150,7 @@ def parse_gitlab_url(url):
 
 
 def parse_gitlab_branch_url(branch):
-    url = urlutils.split_segment_parameters(branch.user_url)[0]
+    url = urlutils.strip_segment_parameters(branch.user_url)
     host, path = parse_gitlab_url(url)
     return host, path, branch.name
 

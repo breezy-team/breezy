@@ -25,12 +25,14 @@ import sys
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    errors,
     osutils,
     trace,
     win32utils,
     )
 """)
+from . import (
+    errors,
+    )
 from .sixish import (
     PY3,
     )

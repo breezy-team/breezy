@@ -48,11 +48,14 @@ from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     config,
-    errors,
     osutils,
     registry,
     )
 """)
+
+from .. import (
+    errors,
+    )
 
 
 class ContentFilter(object):

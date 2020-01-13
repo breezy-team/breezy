@@ -305,7 +305,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 relpath.decode('utf-8'))
         else:
             nested_repo_transport = self._repository.controldir.control_transport.clone(
-                posixpath.join('modules', info[1]))
+                posixpath.join('modules', info[1].decode('utf-8')))
         nested_controldir = _mod_controldir.ControlDir.open_from_transport(
             nested_repo_transport)
         return nested_controldir.find_repository()
@@ -618,8 +618,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
         """See RevisionTree.get_symlink_target."""
         (store, mode, hexsha) = self._lookup_path(path)
         if S_ISGITLINK(mode):
-            nested_repo = self._get_submodule_repository(path.encode('utf-8'))
-            return nested_repo.lookup_foreign_revision_id(hexsha)
+            try:
+                nested_repo = self._get_submodule_repository(path.encode('utf-8'))
+            except errors.NotBranchError:
+                return self.mapping.revision_id_foreign_to_bzr(hexsha)
+            else:
+                return nested_repo.lookup_foreign_revision_id(hexsha)
         else:
             return None
 

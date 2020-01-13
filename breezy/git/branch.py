@@ -544,7 +544,7 @@ class GitBranch(ForeignBranch):
     def set_parent(self, location):
         cs = self.repository._git.get_config()
         remote = self._get_origin(cs)
-        this_url = urlutils.split_segment_parameters(self.user_url)[0]
+        this_url = urlutils.strip_segment_parameters(self.user_url)
         target_url, branch, ref = bzr_url_to_git_url(location)
         location = urlutils.relative_url(this_url, target_url)
         cs.set((b"remote", remote), b"url", location)
@@ -816,7 +816,8 @@ class LocalGitBranch(GitBranch):
         :return: A branch associated with the nested tree
         """
         # FIXME should provide multiple branches, based on config
-        url = urlutils.join(self.user_url, path)
+        url = urlutils.split_segment_parameters_raw(self.user_url)[0]
+        url = urlutils.join(url, path)
         return branch.Branch.open(
             url,
             possible_transports=possible_transports)

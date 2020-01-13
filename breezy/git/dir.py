@@ -21,6 +21,7 @@ from __future__ import absolute_import
 
 from .. import (
     branch as _mod_branch,
+    cleanup,
     errors as brz_errors,
     trace,
     osutils,
@@ -185,9 +186,33 @@ class GitDir(ControlDir):
             result.open_branch(name="").name == result_branch.name and
             isinstance(target_transport, LocalTransport) and
                 (result_repo is None or result_repo.make_working_trees())):
-            result.create_workingtree(
+            wt = result.create_workingtree(
                 accelerator_tree=accelerator_tree,
                 hardlink=hardlink, from_branch=result_branch)
+        else:
+            wt = None
+        if recurse == 'down':
+            with cleanup.ExitStack() as stack:
+                basis = None
+                if wt is not None:
+                    basis = wt.basis_tree()
+                elif result_branch is not None:
+                    basis = result_branch.basis_tree()
+                elif source_branch is not None:
+                    basis = source_branch.basis_tree()
+                if basis is not None:
+                    stack.enter_context(basis.lock_read())
+                    subtrees = basis.iter_references()
+                else:
+                    subtrees = []
+                for path in subtrees:
+                    target = urlutils.join(url, urlutils.escape(path))
+                    sublocation = source_branch.reference_parent(
+                        path, possible_transports=possible_transports)
+                    sublocation.controldir.sprout(
+                        target, basis.get_reference_revision(path),
+                        force_new_repo=force_new_repo, recurse=recurse,
+                        stacked=stacked)
         return result
 
     def clone_on_transport(self, transport, revision_id=None,

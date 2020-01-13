@@ -21,12 +21,12 @@ Currently only tells the user that Mercurial is not supported.
 
 from __future__ import absolute_import
 
-from ... import version_info  # noqa: F401
-
 from ... import (
     controldir,
     errors,
     )
+
+from ... import version_info  # noqa: F401
 
 
 class MercurialUnsupportedError(errors.UnsupportedFormatError):
@@ -159,7 +159,7 @@ class SmartHgProber(controldir.Prober):
         if scheme not in klass._supported_schemes:
             raise errors.NotBranchError(path=transport.base)
         from breezy import urlutils
-        external_url = urlutils.split_segment_parameters(external_url)[0]
+        external_url = urlutils.strip_segment_parameters(external_url)
         # Explicitly check for .hg directories here, so we avoid
         # loading foreign branches through Mercurial.
         if (external_url.startswith("http:") or
