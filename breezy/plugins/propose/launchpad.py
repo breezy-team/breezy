@@ -199,6 +199,8 @@ class Launchpad(Hoster):
 
     supports_merge_proposal_commit_message = True
 
+    merge_proposal_description_format = 'plain'
+
     def __init__(self, staging=False):
         self._staging = staging
         if staging:

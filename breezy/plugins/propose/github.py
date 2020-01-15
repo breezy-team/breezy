@@ -22,6 +22,7 @@ import json
 import os
 
 from ...propose import (
+    determine_title,
     Hoster,
     HosterLoginRequired,
     MergeProposal,
@@ -69,10 +70,6 @@ def retrieve_github_token(scheme, host):
         return None
     with open(path, 'r') as f:
         return f.read().strip()
-
-
-def determine_title(description):
-    return description.splitlines()[0]
 
 
 class ValidationFailed(errors.BzrError):
@@ -240,6 +237,7 @@ class GitHub(Hoster):
 
     supports_merge_proposal_labels = True
     supports_merge_proposal_commit_message = False
+    merge_proposal_description_format = 'markdown'
 
     def __repr__(self):
         return "GitHub()"

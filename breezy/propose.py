@@ -230,6 +230,10 @@ class Hoster(object):
     # rather than https://api.github.com/
     base_url = None
 
+    # The syntax to use for formatting merge proposal descriptions.
+    # Common values: 'plain', 'markdown'
+    merge_proposal_description_format = None
+
     def publish_derived(self, new_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True):
@@ -328,6 +332,11 @@ class Hoster(object):
         :return: Hoster instances
         """
         raise NotImplementedError(cls.iter_instances)
+
+
+def determine_title(description):
+    """Determine the title for a merge proposal based on full description."""
+    return description.splitlines()[0].split('.')[0]
 
 
 def get_hoster(branch, possible_hosters=None):

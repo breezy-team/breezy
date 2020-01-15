@@ -17,6 +17,7 @@
 import os
 
 from ..propose import (
+    determine_title,
     get_proposal_by_url,
     get_hoster,
     Hoster,
@@ -106,3 +107,13 @@ class TestGetProposal(SampleHosterTestCase):
 
         url = urlutils.local_path_to_url(os.path.join(self.test_dir, 'hosted', 'proposal'))
         self.assertIsInstance(get_proposal_by_url(url), MergeProposal)
+
+
+class DetermineTitleTests(tests.TestCase):
+
+    def test_determine_title(self):
+        self.assertEqual('Make some change', determine_title("""\
+Make some change.
+
+And here are some more details.
+"""))
