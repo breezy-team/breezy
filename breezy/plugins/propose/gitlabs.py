@@ -169,6 +169,10 @@ def parse_gitlab_merge_request_url(url):
     return host, '/'.join(parts[:-2]), int(parts[-1])
 
 
+def determine_title(description):
+    return description.splitlines()[0].split('.')[0]
+
+
 class GitLabMergeProposal(MergeProposal):
 
     def __init__(self, gl, mr):
@@ -189,7 +193,7 @@ class GitLabMergeProposal(MergeProposal):
         return self._mr['description']
 
     def set_description(self, description):
-        self._update(description=description, title=description.splitlines()[0])
+        self._update(description=description, title=determine_title(description))
 
     def get_commit_message(self):
         return self._mr.get('merge_commit_message')
@@ -270,6 +274,7 @@ class GitLab(Hoster):
 
     supports_merge_proposal_labels = True
     supports_merge_proposal_commit_message = False
+    merge_proposal_description_format = 'markdown'
 
     def __repr__(self):
         return "<GitLab(%r)>" % self.base_url
@@ -548,11 +553,11 @@ class GitLab(Hoster):
         return GitLabMergeProposal(mr)
 
     def delete_project(self, project):
-        path = 'projects/%s' % urlutils.quote(str(project_name), '')
+        path = 'projects/%s' % urlutils.quote(str(project), '')
         response = self._api_request('DELETE', path)
         if response.status == 404:
-            raise NoSuchProject(project_name)
-        if response.status != 200:
+            raise NoSuchProject(project)
+        if response.status != 202:
             raise errors.InvalidHttpResponse(path, response.text)
 
 
@@ -594,7 +599,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         source_project = self.gl._get_project(self.source_project_name)
         target_project = self.gl._get_project(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly
-        title = description.splitlines()[0]
+        title = determine_title(description)
         # TODO(jelmer): Allow setting allow_collaboration field
         # TODO(jelmer): Allow setting milestone field
         # TODO(jelmer): Allow setting squash field
