@@ -1417,7 +1417,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                 raise errors.NoRoundtrippingSupport(self.source, self.target)
             (old_sha1, result.old_revid) = old_refs.get(
                 main_ref, (ZERO_SHA, NULL_REVISION))
-            if result.old_revid is None:
+            if lossy or result.old_revid is None:
                 result.old_revid = self.target.lookup_foreign_revision_id(
                     old_sha1)
             result.new_revid = new_refs[main_ref][1]
