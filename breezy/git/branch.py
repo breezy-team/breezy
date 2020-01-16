@@ -816,11 +816,9 @@ class LocalGitBranch(GitBranch):
         :return: A branch associated with the nested tree
         """
         # FIXME should provide multiple branches, based on config
-        url = urlutils.split_segment_parameters_raw(self.user_url)[0]
+        url = urlutils.strip_segment_parameters(self.user_url)
         url = urlutils.join(url, path)
-        return branch.Branch.open(
-            url,
-            possible_transports=possible_transports)
+        return branch.Branch.open(url, possible_transports=possible_transports)
 
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
