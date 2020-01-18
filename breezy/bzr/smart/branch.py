@@ -439,3 +439,17 @@ class SmartServerBranchRequestGetPhysicalLockStatus(SmartServerBranchRequest):
             return SuccessfulSmartServerResponse((b'yes',))
         else:
             return SuccessfulSmartServerResponse((b'no',))
+
+
+class SmartServerBranchRequestGetAllReferenceInfo(SmartServerBranchRequest):
+    """Get the reference information.
+
+    New in 3.1.
+    """
+
+    def do_with_branch(self, branch):
+        all_reference_info = branch._get_all_reference_info()
+        content = bencode.bencode([
+            (key.encode('utf-8'), value[0].encode('utf-8'), value[1] or b'')
+            for (key, value) in all_reference_info.items()])
+        return SuccessfulSmartServerResponse((b'ok', ), content)
