@@ -450,6 +450,24 @@ class BzrBranch(Branch, _RelockDebugMixin):
             reconciler = BranchReconciler(self, thorough=thorough)
             return reconciler.reconcile()
 
+    def reference_parent(self, file_id, path, possible_transports=None):
+        """Return the parent branch for a tree-reference file_id
+
+        :param path: The path of the nested tree in the tree
+        :return: A branch associated with the nested tree
+        """
+        # FIXME should provide multiple branches, based on config
+        return Branch.open(self.controldir.root_transport.clone(path).base,
+                           possible_transports=possible_transports)
+
+    def set_reference_info(self, file_id, branch_location, path=None):
+        """Set the branch location to use for a tree reference."""
+        raise errors.UnsupportedOperation(self.set_reference_info, self)
+
+    def get_reference_info(self, file_id, path=None):
+        """Get the tree_path and branch_location for a tree reference."""
+        raise errors.UnsupportedOperation(self.get_reference_info, self)
+
 
 class BzrBranch8(BzrBranch):
     """A branch that stores tree-reference locations."""
@@ -518,15 +536,15 @@ class BzrBranch8(BzrBranch):
     def _set_all_reference_info(self, info_dict):
         """Replace all reference info stored in a branch.
 
-        :param info_dict: A dict of {file_id: (tree_path, branch_location)}
+        :param info_dict: A dict of {file_id: (branch_location, tree_path)}
         """
         s = BytesIO()
         writer = rio.RioWriter(s)
-        for tree_path, (branch_location, file_id) in viewitems(info_dict):
-            stanza = rio.Stanza(tree_path=tree_path,
+        for tree_path, (branch_location, tree_path) in viewitems(info_dict):
+            stanza = rio.Stanza(file_id=file_id,
                                 branch_location=branch_location)
-            if file_id is not None:
-                stanza.add('file_id', file_id)
+            if tree_path is not None:
+                stanza.add('tree_path', tree_path)
             writer.write_stanza(stanza)
         with self.lock_write():
             self._transport.put_bytes('references', s.getvalue())
@@ -544,46 +562,45 @@ class BzrBranch8(BzrBranch):
                 with self._transport.get('references') as rio_file:
                     stanzas = rio.read_stanzas(rio_file)
                     info_dict = {
-                        s['tree_path']: (
+                        s['file_id'].encode('ascii'): (
                             s['branch_location'],
-                            s['file_id'].encode('ascii')
-                            if 'file_id' in s else None)
+                            s['tree_path'])
                         for s in stanzas}
             except errors.NoSuchFile:
                 info_dict = {}
             self._reference_info = info_dict
             return info_dict
 
-    def set_reference_info(self, tree_path, branch_location, file_id=None):
+    def set_reference_info(self, file_id, branch_location, tree_path=None):
         """Set the branch location to use for a tree reference.
 
-        :param tree_path: The path of the tree reference in the tree.
         :param branch_location: The location of the branch to retrieve tree
             references from.
         :param file_id: The file-id of the tree reference.
+        :param tree_path: The path of the tree reference in the tree.
         """
         info_dict = self._get_all_reference_info()
-        info_dict[tree_path] = (branch_location, file_id)
+        info_dict[file_id] = (branch_location, tree_path)
         if branch_location is None:
-            del info_dict[tree_path]
+            del info_dict[file_id]
         self._set_all_reference_info(info_dict)
 
-    def get_reference_info(self, path):
+    def get_reference_info(self, file_id):
         """Get the tree_path and branch_location for a tree reference.
 
-        :return: a tuple of (branch_location, file_id)
+        :return: a tuple of (branch_location, tree_path)
         """
-        return self._get_all_reference_info().get(path, (None, None))
+        return self._get_all_reference_info().get(file_id, (None, None))
 
-    def reference_parent(self, path, possible_transports=None):
+    def reference_parent(self, file_id, path, possible_transports=None):
         """Return the parent branch for a tree-reference.
 
         :param path: The path of the nested tree in the tree
         :return: A branch associated with the nested tree
         """
-        branch_location = self.get_reference_info(path)[0]
+        branch_location = self.get_reference_info(file_id)[0]
         if branch_location is None:
-            return Branch.reference_parent(self, path, possible_transports)
+            return BzrBranch.reference_parent(self, path, possible_transports)
         branch_location = urlutils.join(self.user_url, branch_location)
         return Branch.open(branch_location,
                            possible_transports=possible_transports)
@@ -687,9 +704,9 @@ class BzrBranch8(BzrBranch):
 class BzrBranch7(BzrBranch8):
     """A branch with support for a fallback repository."""
 
-    def set_reference_info(self, tree_path, branch_location, file_id=None):
+    def set_reference_info(self, file_id, branch_location, tree_path=None):
         super(BzrBranch7, self).set_reference_info(
-            tree_path, branch_location, file_id=file_id)
+            file_id, branch_location, tree_path)
         format_string = BzrBranchFormat8.get_format_string()
         mutter('Upgrading branch to format %r', format_string)
         self._transport.put_bytes('format', format_string)

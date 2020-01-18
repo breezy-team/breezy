@@ -676,14 +676,6 @@ class Branch(controldir.ControlComponent):
             raise errors.UpgradeRequired(self.user_url)
         self.get_config_stack().set('append_revisions_only', enabled)
 
-    def set_reference_info(self, tree_path, branch_location, file_id=None):
-        """Set the branch location to use for a tree reference."""
-        raise errors.UnsupportedOperation(self.set_reference_info, self)
-
-    def get_reference_info(self, path):
-        """Get the tree_path and branch_location for a tree reference."""
-        raise errors.UnsupportedOperation(self.get_reference_info, self)
-
     def fetch(self, from_branch, last_revision=None, limit=None):
         """Copy revisions from from_branch into this branch.
 
@@ -1412,7 +1404,7 @@ class Branch(controldir.ControlComponent):
         basis_tree = tree.basis_tree()
         with basis_tree.lock_read():
             for path in basis_tree.iter_references():
-                reference_parent = self.reference_parent(path)
+                reference_parent = tree.reference_parent(path)
                 reference_parent.create_checkout(
                     tree.abspath(path),
                     basis_tree.get_reference_revision(path), lightweight)
@@ -1424,16 +1416,6 @@ class Branch(controldir.ControlComponent):
         :return: A `ReconcileResult` object.
         """
         raise NotImplementedError(self.reconcile)
-
-    def reference_parent(self, path, possible_transports=None):
-        """Return the parent branch for a tree-reference file_id
-
-        :param path: The path of the nested tree in the tree
-        :return: A branch associated with the nested tree
-        """
-        # FIXME should provide multiple branches, based on config
-        return Branch.open(self.controldir.root_transport.clone(path).base,
-                           possible_transports=possible_transports)
 
     def supports_tags(self):
         return self._format.supports_tags()
