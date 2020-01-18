@@ -1273,18 +1273,7 @@ class Branch(controldir.ControlComponent):
     def update_references(self, target):
         if not getattr(self._format, 'supports_reference_locations', False):
             return
-        reference_dict = self._get_all_reference_info()
-        if len(reference_dict) == 0:
-            return
-        old_base = self.base
-        new_base = target.base
-        target_reference_dict = target._get_all_reference_info()
-        for tree_path, (branch_location, file_id) in viewitems(reference_dict):
-            branch_location = urlutils.rebase_url(branch_location,
-                                                  old_base, new_base)
-            target_reference_dict.setdefault(
-                tree_path, (branch_location, file_id))
-        target._set_all_reference_info(target_reference_dict)
+        return InterBranch.get(self, target).update_references()
 
     def check(self, refs):
         """Check consistency of the branch.
@@ -2104,6 +2093,11 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.fetch)
 
+    def update_references(self):
+        """Import reference information from source to target.
+        """
+        raise NotImplementedError(self.update_references)
+
 
 def _fix_overwrite_type(overwrite):
     if isinstance(overwrite, bool):
@@ -2140,8 +2134,8 @@ class GenericInterBranch(InterBranch):
                      be truncated to end with revision_id.
         """
         with self.source.lock_read(), self.target.lock_write():
-            self.source.update_references(self.target)
             self.source._synchronize_history(self.target, revision_id)
+            self.update_references()
             try:
                 parent = self.source.get_parent()
             except errors.InaccessibleParent as e:
@@ -2310,7 +2304,6 @@ class GenericInterBranch(InterBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         result.old_revno, result.old_revid = self.target.last_revision_info()
-        self.source.update_references(self.target)
         overwrite = _fix_overwrite_type(overwrite)
         if result.old_revid != stop_revision:
             # We assume that during 'push' this repository is closer than
@@ -2322,6 +2315,7 @@ class GenericInterBranch(InterBranch):
             result.tag_updates, result.tag_conflicts = (
                 self.source.tags.merge_to(
                     self.target.tags, "tags" in overwrite))
+        self.update_references()
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
@@ -2357,7 +2351,6 @@ class GenericInterBranch(InterBranch):
         with self.source.lock_read():
             # We assume that during 'pull' the target repository is closer than
             # the source one.
-            self.source.update_references(self.target)
             graph = self.target.repository.get_graph(self.source.repository)
             # TODO: Branch formats should have a flag that indicates
             # that revno's are expensive, and pull() should honor that flag.
@@ -2374,6 +2367,7 @@ class GenericInterBranch(InterBranch):
                 self.source.tags.merge_to(
                     self.target.tags, "tags" in overwrite,
                     ignore_master=not merge_tags_to_master))
+            self.update_references()
             result.new_revno, result.new_revid = (
                 self.target.last_revision_info())
             if _hook_master:
@@ -2386,6 +2380,22 @@ class GenericInterBranch(InterBranch):
                 for hook in Branch.hooks['post_pull']:
                     hook(result)
             return result
+
+    def update_references(self):
+        if not getattr(self.source._format, 'supports_reference_locations', False):
+            return
+        reference_dict = self.source._get_all_reference_info()
+        if len(reference_dict) == 0:
+            return
+        old_base = self.source.base
+        new_base = self.target.base
+        target_reference_dict = self.target._get_all_reference_info()
+        for tree_path, (branch_location, file_id) in viewitems(reference_dict):
+            branch_location = urlutils.rebase_url(branch_location,
+                                                  old_base, new_base)
+            target_reference_dict.setdefault(
+                tree_path, (branch_location, file_id))
+        self.target._set_all_reference_info(target_reference_dict)
 
 
 InterBranch.register_optimiser(GenericInterBranch)
