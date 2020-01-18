@@ -4218,6 +4218,15 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             ret[p.decode('utf-8')] = (u.decode('utf-8'), f if f else None)
         return ret
 
+    def reference_parent(self, path, possible_transports=None):
+        branch_location = self.get_reference_info(path)[0]
+        if branch_location is None:
+            return branch.Branch.reference_parent(self, path, possible_transports)
+        branch_location = urlutils.join(self.user_url, branch_location)
+        return branch.Branch.open(
+            branch_location, possible_transports=possible_transports)
+
+
 
 class RemoteConfig(object):
     """A Config that reads and writes from smart verbs.
