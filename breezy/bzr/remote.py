@@ -3397,6 +3397,11 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._ensure_real()
         return self._custom_format.supports_set_append_revisions_only()
 
+    @property
+    def supports_reference_locations(self):
+        self._ensure_real()
+        return self._custom_format.supports_reference_locations
+
     def stores_revno(self):
         return True
 
@@ -4179,15 +4184,27 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
 
     def get_reference_info(self, path):
         """Get the tree_path and branch_location for a tree reference."""
+        if not self._format.supports_reference_locations:
+            raise errors.UnsupportedOperation(self.get_reference_info, self)
         return self._get_all_reference_info().get(path, (None, None))
 
     def set_reference_info(self, tree_path, branch_location, file_id=None):
         """Set the branch location to use for a tree reference."""
+        if not self._format.supports_reference_locations:
+            raise errors.UnsupportedOperation(self.set_reference_info, self)
         self._ensure_real()
         self._real_branch.set_reference_info(
             tree_path, branch_location, file_id=file_id)
 
+    def _set_all_reference_info(self, reference_info):
+        if not self._format.supports_reference_locations:
+            raise errors.UnsupportedOperation(self.set_reference_info, self)
+        self._ensure_real()
+        self._real_branch._set_all_reference_info(reference_info)
+
     def _get_all_reference_info(self):
+        if not self._format.supports_reference_locations:
+            return {}
         try:
             response, handler = self._call_expecting_body(
                 b'Branch.get_all_reference_info', self._remote_path())

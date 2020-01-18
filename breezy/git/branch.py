@@ -343,6 +343,8 @@ class GitBranchFormat(branch.BranchFormat):
         """True if this branch format store revision numbers."""
         return False
 
+    supports_reference_locations = False
+
 
 class LocalGitBranchFormat(GitBranchFormat):
 

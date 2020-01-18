@@ -1279,7 +1279,7 @@ class Branch(controldir.ControlComponent):
             revision_id=revision_id)
 
     def update_references(self, target):
-        if not getattr(self._format, 'supports_reference_locations', False):
+        if not self._format.supports_reference_locations:
             return
         reference_dict = self._get_all_reference_info()
         if len(reference_dict) == 0:

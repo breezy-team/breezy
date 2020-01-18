@@ -173,3 +173,5 @@ class BzrBranchFormat5(BranchFormatMetadir):
 
     def supports_tags(self):
         return False
+
+    supports_reference_locations = False
