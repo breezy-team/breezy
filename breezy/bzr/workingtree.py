@@ -1796,7 +1796,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 else:
                     yield get_canonical_path(self, path, normalize)
 
-    def get_reference_info(self, path):
+    def get_reference_info(self, path, branch=None):
         return self.branch.get_reference_info(path)[0]
 
     def set_reference_info(self, tree_path, branch_location):

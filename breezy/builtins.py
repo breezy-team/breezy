@@ -6723,30 +6723,27 @@ class cmd_reference(Command):
 
     takes_args = ['path?', 'location?']
     takes_options = [
+        'directory',
         Option('force-unversioned',
                help='Set reference even if path is not versioned.'),
         ]
 
-    def run(self, path=None, location=None, force_unversioned=False):
-        branchdir = '.'
-        if path is not None:
-            branchdir = path
+    def run(self, path=None, directory='.', location=None, force_unversioned=False):
         tree, branch, relpath = (
-            controldir.ControlDir.open_containing_tree_or_branch(branchdir))
-        if path is not None:
-            path = relpath
+            controldir.ControlDir.open_containing_tree_or_branch(directory))
         if tree is None:
             tree = branch.basis_tree()
         if path is None:
-            info = [
-                (path, tree.get_reference_info(path))
-                for path in tree.iter_references()]
-            self._display_reference_info(tree, branch, info)
+            with tree.lock_read():
+                info = [
+                    (path, tree.get_reference_info(path, branch))
+                    for path in tree.iter_references()]
+                self._display_reference_info(tree, branch, info)
         else:
             if not tree.is_versioned(path) and not force_unversioned:
                 raise errors.NotVersionedError(path)
             if location is None:
-                info = [(path, tree.get_reference_info(path))]
+                info = [(path, tree.get_reference_info(path, branch))]
                 self._display_reference_info(tree, branch, info)
             else:
                 tree.set_reference_info(path, location)

@@ -30,9 +30,12 @@ class TestReference(TestCaseWithTransport):
         return controldir.format_registry.make_controldir('development-subtree')
 
     def test_no_args_lists(self):
-        branch = self.make_branch('branch')
-        branch.set_reference_info('path', 'http://example.org', b'file-id')
-        branch.set_reference_info('lath', 'http://example.org/2', b'file-id2')
+        tree = self.make_branch_and_tree('branch')
+        branch = tree.branch
+        branch.set_reference_info('path', 'http://example.org')
+        tree.add_reference(self.make_branch_and_tree('branch/path'))
+        tree.add_reference(self.make_branch_and_tree('branch/lath'))
+        branch.set_reference_info('lath', 'http://example.org/2')
         out, err = self.run_bzr('reference', working_dir='branch')
         lines = out.splitlines()
         self.assertEqual('lath http://example.org/2', lines[0])
@@ -40,12 +43,11 @@ class TestReference(TestCaseWithTransport):
 
     def make_tree_with_reference(self):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/newpath'])
-        tree.add('newpath', b'file-id')
-        tree.branch.set_reference_info(
-            'newpath', 'http://example.org', b'file-id')
-        tree.branch.set_reference_info('lath', 'http://example.org/2',
-                                       b'file-id2')
+        subtree = self.make_branch_and_tree('tree/newpath')
+        tree.add_reference(subtree)
+        tree.commit('add reference')
+        tree.set_reference_info('newpath', 'http://example.org')
+        tree.set_reference_info('lath', 'http://example.org/2')
         return tree
 
     def test_uses_working_tree_location(self):
@@ -67,19 +69,16 @@ class TestReference(TestCaseWithTransport):
 
     def test_one_arg_uses_containing_tree(self):
         tree = self.make_tree_with_reference()
-        out, err = self.run_bzr('reference tree/newpath')
+        out, err = self.run_bzr('reference -d tree newpath')
         self.assertEqual('newpath http://example.org\n', out)
 
     def test_two_args_sets(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
-        tree.add('file', b'file-id')
-        out, err = self.run_bzr('reference tree/file http://example.org')
-        location, file_id = tree.branch.get_reference_info('file')
-        tree_location = tree.get_reference_info('file')
-        self.assertEqual('http://example.org', tree_location)
+        tree.add('file')
+        out, err = self.run_bzr('reference -d tree file http://example.org')
+        location = tree.get_reference_info('file')
         self.assertEqual('http://example.org', location)
-        self.assertEqual(b'file-id', file_id)
         self.assertEqual('', out)
         self.assertEqual('', err)
 

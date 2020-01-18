@@ -3415,6 +3415,8 @@ class RemoteBranchFormat(branch.BranchFormat):
                 return True
         return False
 
+    supports_reference_locations = False
+
 
 class RemoteBranchStore(_mod_config.IniFileStore):
     """Branch store which attempts to use HPSS calls to retrieve branch store.

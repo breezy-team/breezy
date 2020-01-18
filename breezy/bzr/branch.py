@@ -466,8 +466,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """
         # FIXME should provide multiple branches, based on config
         try:
-            return Branch.open_from_transport(self.controldir.root_transport.clone(path),
-                               possible_transports=possible_transports)
+            return Branch.open_from_transport(
+                self.controldir.root_transport.clone(path),
+                possible_transports=possible_transports)
         except errors.NotBranchError:
             return None
 

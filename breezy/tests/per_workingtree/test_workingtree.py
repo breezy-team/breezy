@@ -1342,7 +1342,10 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
             tree.add_reference(subtree)
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Tree cannot hold references.')
-        reference_parent = tree.branch.reference_parent(
+        if not getattr(tree.branch._format, 'supports_reference_locations', False):
+            raise tests.TestNotApplicable('Branch cannot hold reference locations.')
+        tree.commit('Add reference.')
+        reference_parent = tree.reference_parent(
             urlutils.relative_url(
                 urlutils.strip_segment_parameters(tree.branch.user_url),
                 urlutils.strip_segment_parameters(subtree.branch.user_url)))
@@ -1356,6 +1359,9 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
             tree.add_reference(subtree)
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Tree cannot hold references.')
+        if not getattr(tree.branch._format, 'supports_reference_locations', False):
+            raise tests.TestNotApplicable('Branch cannot hold reference locations.')
+        tree.commit('Add reference')
         reference_parent = tree.reference_parent(
             urlutils.relative_url(
                 urlutils.strip_segment_parameters(tree.branch.user_url),
@@ -1413,7 +1419,6 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
             tree.set_reference_info('path/to/file', reference_location)
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
-        tree.commit('set reference')
         return tree
 
     def test_reference_parent_from_reference_info_(self):
@@ -1480,7 +1485,6 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         new_tree = tree.controldir.sprout(
             'branch/new-branch').open_workingtree()
         new_tree.set_reference_info('../foo', '../foo')
-        new_tree.commit('update references')
         tree.pull(new_tree.branch)
         self.assertEqual('foo', tree.get_reference_info('../foo'))
 

@@ -1328,7 +1328,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def reference_parent(self, path, possible_transports=None):
         raise errors.UnsupportedOperation(self.reference_parent, self)
 
-    def get_reference_info(self, path):
+    def get_reference_info(self, path, branch=None):
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     def set_reference_info(self, tree_path, branch_location):
