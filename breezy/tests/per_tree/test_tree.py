@@ -78,7 +78,7 @@ class TestPlanFileMerge(TestCaseWithTree):
 class TestReference(TestCaseWithTree):
 
     def skip_if_no_reference(self, tree):
-        if not getattr(tree, 'supports_tree_reference', lambda: False)():
+        if not tree.supports_tree_reference():
             raise tests.TestNotApplicable('Tree references not supported')
 
     def create_nested(self):
