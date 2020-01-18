@@ -842,10 +842,8 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport, t)
 
     def test_sprout_recursive(self):
-        tree = self.make_branch_and_tree('tree1',
-                                         format='development-subtree')
-        sub_tree = self.make_branch_and_tree('tree1/subtree',
-                                             format='development-subtree')
+        tree = self.make_branch_and_tree('tree1')
+        sub_tree = self.make_branch_and_tree('tree1/subtree')
         sub_tree.set_root_id(b'subtree-root')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])

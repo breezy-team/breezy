@@ -450,6 +450,27 @@ class BzrBranch(Branch, _RelockDebugMixin):
             reconciler = BranchReconciler(self, thorough=thorough)
             return reconciler.reconcile()
 
+    def set_reference_info(self, tree_path, branch_location, file_id=None):
+        """Set the branch location to use for a tree reference."""
+        raise errors.UnsupportedOperation(self.set_reference_info, self)
+
+    def get_reference_info(self, path):
+        """Get the tree_path and branch_location for a tree reference."""
+        raise errors.UnsupportedOperation(self.get_reference_info, self)
+
+    def reference_parent(self, path, possible_transports=None):
+        """Return the parent branch for a tree-reference file_id
+
+        :param path: The path of the nested tree in the tree
+        :return: A branch associated with the nested tree
+        """
+        # FIXME should provide multiple branches, based on config
+        try:
+            return Branch.open_from_transport(self.controldir.root_transport.clone(path),
+                               possible_transports=possible_transports)
+        except errors.NotBranchError:
+            return None
+
 
 class BzrBranch8(BzrBranch):
     """A branch that stores tree-reference locations."""
@@ -583,7 +604,7 @@ class BzrBranch8(BzrBranch):
         """
         branch_location = self.get_reference_info(path)[0]
         if branch_location is None:
-            return Branch.reference_parent(self, path, possible_transports)
+            return BzrBranch.reference_parent(self, path, possible_transports)
         branch_location = urlutils.join(self.user_url, branch_location)
         return Branch.open(branch_location,
                            possible_transports=possible_transports)

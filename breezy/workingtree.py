@@ -1325,6 +1325,15 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         with self.lock_read():
             return next(self.get_canonical_paths([path]))
 
+    def reference_parent(self, path, possible_transports=None):
+        raise errors.UnsupportedOperation(self.reference_parent, self)
+
+    def get_reference_info(self, path):
+        raise errors.UnsupportedOperation(self.get_reference_info, self)
+
+    def set_reference_info(self, tree_path, branch_location):
+        raise errors.UnsupportedOperation(self.set_reference_info, self)
+
 
 class WorkingTreeFormatRegistry(ControlComponentFormatRegistry):
     """Registry for working tree formats."""

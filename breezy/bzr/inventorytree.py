@@ -199,7 +199,10 @@ class InventoryTree(Tree):
                 trace.mutter_callsite(
                     2, "id2path with nested trees scales with tree size.")
             for path in self.iter_references():
-                subtree = self.get_nested_tree(path)
+                try:
+                    subtree = self.get_nested_tree(path)
+                except errors.NotBranchError:
+                    continue
                 try:
                     return osutils.pathjoin(path, subtree.id2path(file_id))
                 except errors.NoSuchId:

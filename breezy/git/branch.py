@@ -809,17 +809,6 @@ class LocalGitBranch(GitBranch):
         return GitMemoryTree(self, self.repository._git.object_store,
                              self.head)
 
-    def reference_parent(self, path, possible_transports=None):
-        """Return the parent branch for a tree-reference.
-
-        :param path: The path of the nested tree in the tree
-        :return: A branch associated with the nested tree
-        """
-        # FIXME should provide multiple branches, based on config
-        url = urlutils.strip_segment_parameters(self.user_url)
-        url = urlutils.join(url, path)
-        return branch.Branch.open(url, possible_transports=possible_transports)
-
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
     if not isinstance(revid, bytes):

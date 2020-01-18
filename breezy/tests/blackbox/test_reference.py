@@ -76,6 +76,8 @@ class TestReference(TestCaseWithTransport):
         tree.add('file', b'file-id')
         out, err = self.run_bzr('reference tree/file http://example.org')
         location, file_id = tree.branch.get_reference_info('file')
+        tree_location = tree.get_reference_info('file')
+        self.assertEqual('http://example.org', tree_location)
         self.assertEqual('http://example.org', location)
         self.assertEqual(b'file-id', file_id)
         self.assertEqual('', out)
