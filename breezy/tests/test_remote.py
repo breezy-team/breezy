@@ -4529,3 +4529,23 @@ class TestRepositoryAnnotate(TestRemoteRepository):
             (b'baserevid', b'line 1\n'),
             (b'somerevid', b'line2\n')],
             list(tree.annotate_iter('filename')))
+
+
+class TestBranchGetAllReferenceInfo(RemoteBranchTestCase):
+
+    def test_get_all_reference_info(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            b'Branch.get_stacked_on_url', (b'quack/',),
+            b'error', (b'NotStacked',))
+        client.add_expected_call(
+            b'Branch.get_all_reference_info', (b'quack/',),
+            b'success', (b'ok',), bencode.bencode([
+                (b'some/path', b'https://www.example.com/', b'')]))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch._get_all_reference_info()
+        self.assertFinished(client)
+        self.assertEqual({'some/path': ('https://www.example.com/', None)}, result)

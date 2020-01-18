@@ -947,21 +947,6 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
     def _get_config_store(self):
         return RemoteControlStore(self)
 
-    def get_reference_info(self, path):
-        """Get the tree_path and branch_location for a tree reference."""
-        self._ensure_real()
-        return self._real_branch.get_reference_info(path)
-
-    def set_reference_info(self, tree_path, branch_location, file_id=None):
-        """Set the branch location to use for a tree reference."""
-        self._ensure_real()
-        self._real_branch.set_reference_info(
-            tree_path, branch_location, file_id=file_id)
-
-    def _get_all_reference_info(self):
-        self._ensure_real()
-        return self._real_branch._get_all_reference_info()
-
 
 class RemoteInventoryTree(InventoryRevisionTree):
 
@@ -4191,6 +4176,30 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         with self.lock_write():
             reconciler = BranchReconciler(self, thorough=thorough)
             return reconciler.reconcile()
+
+    def get_reference_info(self, path):
+        """Get the tree_path and branch_location for a tree reference."""
+        return self._get_all_reference_info().get(path, (None, None))
+
+    def set_reference_info(self, tree_path, branch_location, file_id=None):
+        """Set the branch location to use for a tree reference."""
+        self._ensure_real()
+        self._real_branch.set_reference_info(
+            tree_path, branch_location, file_id=file_id)
+
+    def _get_all_reference_info(self):
+        try:
+            response, handler = self._call_expecting_body(
+                b'Branch.get_all_reference_info', self._remote_path())
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_branch._get_all_reference_info()
+        if len(response) and response[0] != b'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        ret = {}
+        for (p, u, f) in bencode.bdecode(handler.read_body_bytes()):
+            ret[p.decode('utf-8')] = (u.decode('utf-8'), f if f else None)
+        return ret
 
 
 class RemoteConfig(object):
