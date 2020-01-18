@@ -22,6 +22,11 @@ from __future__ import absolute_import
 from io import BytesIO
 from collections import defaultdict
 
+from dulwich.config import (
+    ConfigFile as GitConfigFile,
+    parse_submodules,
+    )
+
 from dulwich.objects import (
     NotCommitError,
     ZERO_SHA,
@@ -980,6 +985,20 @@ class InterFromGitBranch(branch.GenericInterBranch):
             other_branch=self.source)
         return head, refs
 
+    def update_references(self, revid=None):
+        if revid is None:
+            revid = self.target.last_revision()
+        tree = self.target.repository.revision_tree(revid)
+        try:
+            with tree.get_file('.gitmodules') as f:
+                for path, url, section in parse_submodules(
+                        GitConfigFile.from_file(f)):
+                    self.target.set_reference_info(
+                        path.decode('utf-8'), url.decode('utf-8'),
+                        tree.path2id(path.decode('utf-8')))
+        except errors.NoSuchFile:
+            pass
+
     def _basic_pull(self, stop_revision, overwrite, run_hooks,
                     _override_hook_target, _hook_master):
         if overwrite is True:
@@ -1007,6 +1026,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 result.tag_conflicts = tags_ret
             (result.new_revno, result.new_revid) = \
                 self.target.last_revision_info()
+            self.update_references(revid=result.new_revid)
             if _hook_master:
                 result.master_branch = _hook_master
                 result.local_branch = result.target_branch
@@ -1075,6 +1095,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             self.target.tags, "tags" in overwrite, ignore_master=True)
         (result.tag_updates, result.tag_conflicts) = tags_ret
         result.new_revno, result.new_revid = self.target.last_revision_info()
+        self.update_references(revid=result.new_revid)
         return result
 
 
