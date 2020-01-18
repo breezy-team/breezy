@@ -947,6 +947,21 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
     def _get_config_store(self):
         return RemoteControlStore(self)
 
+    def get_reference_info(self, path):
+        """Get the tree_path and branch_location for a tree reference."""
+        self._ensure_real()
+        return self._real_branch.get_reference_info(path)
+
+    def set_reference_info(self, tree_path, branch_location, file_id=None):
+        """Set the branch location to use for a tree reference."""
+        self._ensure_real()
+        self._real_branch.set_reference_info(
+            tree_path, branch_location, file_id=file_id)
+
+    def _get_all_reference_info(self):
+        self._ensure_real()
+        return self._real_branch._get_all_reference_info()
+
 
 class RemoteInventoryTree(InventoryRevisionTree):
 
