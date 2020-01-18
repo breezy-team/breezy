@@ -2149,8 +2149,8 @@ class GenericInterBranch(InterBranch):
                      be truncated to end with revision_id.
         """
         with self.source.lock_read(), self.target.lock_write():
-            self.update_references()
             self.source._synchronize_history(self.target, revision_id)
+            self.update_references()
             try:
                 parent = self.source.get_parent()
             except errors.InaccessibleParent as e:
@@ -2319,7 +2319,6 @@ class GenericInterBranch(InterBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         result.old_revno, result.old_revid = self.target.last_revision_info()
-        self.update_references()
         overwrite = _fix_overwrite_type(overwrite)
         if result.old_revid != stop_revision:
             # We assume that during 'push' this repository is closer than
@@ -2331,6 +2330,7 @@ class GenericInterBranch(InterBranch):
             result.tag_updates, result.tag_conflicts = (
                 self.source.tags.merge_to(
                     self.target.tags, "tags" in overwrite))
+        self.update_references()
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
@@ -2366,7 +2366,6 @@ class GenericInterBranch(InterBranch):
         with self.source.lock_read():
             # We assume that during 'pull' the target repository is closer than
             # the source one.
-            self.update_references()
             graph = self.target.repository.get_graph(self.source.repository)
             # TODO: Branch formats should have a flag that indicates
             # that revno's are expensive, and pull() should honor that flag.
@@ -2383,6 +2382,7 @@ class GenericInterBranch(InterBranch):
                 self.source.tags.merge_to(
                     self.target.tags, "tags" in overwrite,
                     ignore_master=not merge_tags_to_master))
+            self.update_references()
             result.new_revno, result.new_revid = (
                 self.target.last_revision_info())
             if _hook_master:
