@@ -170,10 +170,6 @@ def parse_gitlab_merge_request_url(url):
     return host, '/'.join(parts[:-2]), int(parts[-1])
 
 
-def determine_title(description):
-    return description.splitlines()[0].split('.')[0]
-
-
 class GitLabMergeProposal(MergeProposal):
 
     def __init__(self, gl, mr):
