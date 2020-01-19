@@ -207,8 +207,13 @@ class GitDir(ControlDir):
                     subtrees = []
                 for path in subtrees:
                     target = urlutils.join(url, urlutils.escape(path))
-                    sublocation = source_branch.reference_parent(
+                    sublocation = wt.reference_parent(
                         path, possible_transports=possible_transports)
+                    if sublocation is None:
+                        trace.warning(
+                            'Ignoring nested tree %s, parent location unknown.',
+                            path)
+                        continue
                     sublocation.controldir.sprout(
                         target, basis.get_reference_revision(path),
                         force_new_repo=force_new_repo, recurse=recurse,

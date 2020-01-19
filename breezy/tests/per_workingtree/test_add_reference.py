@@ -61,6 +61,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
                 self.assertEqual(
                     sub_tree.last_revision(),
                     tree.get_reference_revision('sub-tree'))
+        self.assertEqual(['sub-tree'], list(tree.iter_references()))
 
     def test_add_reference_same_root(self):
         tree = self.make_branch_and_tree('tree')

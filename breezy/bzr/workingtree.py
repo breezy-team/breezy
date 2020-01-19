@@ -1796,6 +1796,23 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 else:
                     yield get_canonical_path(self, path, normalize)
 
+    def get_reference_info(self, path, branch=None):
+        file_id = self.path2id(path)
+        if file_id is None:
+            return None
+        return self.branch.get_reference_info(file_id)[0]
+
+    def set_reference_info(self, tree_path, branch_location):
+        file_id = self.path2id(tree_path)
+        if file_id is None:
+            raise errors.NoSuchFile(tree_path)
+        self.branch.set_reference_info(file_id, branch_location, tree_path)
+
+    def reference_parent(self, path, branch=None, possible_transports=None):
+        return self.branch.reference_parent(
+            self.path2id(path),
+            path, possible_transports=possible_transports)
+
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):
     """Base class for working trees that live in bzr meta directories."""

@@ -367,6 +367,7 @@ class TestBranch(tests.TestCaseWithTransport):
         subtree.add(['a'])
         subtree.commit('add subtree contents')
         orig.add_reference(subtree)
+        orig.set_reference_info('subtree', subtree.branch.user_url)
         orig.commit('add subtree')
 
         self.run_bzr('branch source target')
@@ -375,6 +376,20 @@ class TestBranch(tests.TestCaseWithTransport):
         target_subtree = WorkingTree.open('target/subtree')
         self.assertTreesEqual(orig, target)
         self.assertTreesEqual(subtree, target_subtree)
+
+    def test_branch_with_nested_trees_reference_unset(self):
+        orig = self.make_branch_and_tree('source', format='development-subtree')
+        subtree = self.make_branch_and_tree('source/subtree')
+        self.build_tree(['source/subtree/a'])
+        subtree.add(['a'])
+        subtree.commit('add subtree contents')
+        orig.add_reference(subtree)
+        orig.commit('add subtree')
+
+        self.run_bzr('branch source target')
+
+        target = WorkingTree.open('target')
+        self.assertRaises(errors.NotBranchError, WorkingTree.open, 'target/subtree')
 
     def test_branch_with_nested_trees_no_recurse(self):
         orig = self.make_branch_and_tree('source', format='development-subtree')

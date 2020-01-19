@@ -3415,6 +3415,8 @@ class RemoteBranchFormat(branch.BranchFormat):
                 return True
         return False
 
+    supports_reference_locations = False
+
 
 class RemoteBranchStore(_mod_config.IniFileStore):
     """Branch store which attempts to use HPSS calls to retrieve branch store.
@@ -4176,6 +4178,29 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         with self.lock_write():
             reconciler = BranchReconciler(self, thorough=thorough)
             return reconciler.reconcile()
+
+    def set_reference_info(self, tree_path, branch_location, file_id=None):
+        raise errors.UnsupportedOperation(self.set_reference_info, self)
+
+    def get_reference_info(self, tree_path):
+        raise errors.UnsupportedOperation(self.get_reference_info, self)
+
+    def _get_all_reference_info(self):
+        self._ensure_real()
+        return self._real_branch._get_all_reference_info()
+
+    def reference_parent(self, path, possible_transports=None):
+        """Return the parent branch for a tree-reference.
+
+        :param path: The path of the nested tree in the tree
+        :return: A branch associated with the nested tree
+        """
+        branch_location = self.get_reference_info(path)[0]
+        if branch_location is None:
+            return BzrBranch.reference_parent(self, path, possible_transports)
+        branch_location = urlutils.join(self.user_url, branch_location)
+        return Branch.open(branch_location,
+                           possible_transports=possible_transports)
 
 
 class RemoteConfig(object):
