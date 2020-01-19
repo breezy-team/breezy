@@ -790,7 +790,8 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
 
     def reference_parent(self, path, branch=None, possible_transports=None):
         if branch is not None:
-            parent_url = branch.get_reference_info(path)[0]
+            file_id = self.path2id(path)
+            parent_url = branch.get_reference_info(file_id)[0]
         else:
             subdir = ControlDir.open_from_transport(
                 self._repository.user_transport.clone(path))
@@ -802,7 +803,7 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             possible_transports=possible_transports)
 
     def get_reference_info(self, path, branch=None):
-        return branch.get_reference_info(path)[0]
+        return branch.get_reference_info(self.path2id(path))[0]
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
                    recurse_nested=False):

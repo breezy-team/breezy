@@ -1377,18 +1377,10 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         self.assertIs(None, loc)
 
     def test_set_reference_info(self):
-        tree = self.make_branch_and_tree('branch')
-        try:
-            tree.set_reference_info('path/to/file', 'path/to/location')
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        self.make_tree_with_reference('branch', 'path/to/location')
 
     def test_set_get_reference_info(self):
-        tree = self.make_branch_and_tree('branch')
-        try:
-            tree.set_reference_info('path/to/file', 'path/to/location')
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
+        tree = self.make_tree_with_reference('branch', 'path/to/location')
         # Create a new instance to ensure storage is permanent
         tree = WorkingTree.open('branch')
         branch_location = tree.get_reference_info('path/to/file')
@@ -1398,12 +1390,14 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
 
     def test_set_null_reference_info(self):
         tree = self.make_branch_and_tree('branch')
+        self.build_tree(['branch/file'])
+        tree.add(['file'])
         try:
-            tree.set_reference_info('path/to/file', 'path/to/location')
+            tree.set_reference_info('file', 'path/to/location')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
-        tree.set_reference_info('path/to/file', None)
-        branch_location = tree.get_reference_info('path/to/file')
+        tree.set_reference_info('file', None)
+        branch_location = tree.get_reference_info('file')
         self.assertIs(None, branch_location)
 
     def test_set_null_reference_info_when_null(self):
@@ -1413,10 +1407,19 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
         self.assertIs(None, branch_location)
-        tree.set_reference_info('path/to/file', None)
+        self.build_tree(['branch/file'])
+        tree.add(['file'])
+        try:
+            tree.set_reference_info('file', None)
+        except errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
 
     def make_tree_with_reference(self, location, reference_location):
         tree = self.make_branch_and_tree(location)
+        self.build_tree(
+            [os.path.join(location, name)
+             for name in ['path/', 'path/to/', 'path/to/file']])
+        tree.add(['path', 'path/to', 'path/to/file'])
         try:
             tree.set_reference_info('path/to/file', reference_location)
         except errors.UnsupportedOperation:
@@ -1431,12 +1434,7 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         self.assertEqual(parent.base, referenced_branch.base)
 
     def test_branch_relative_reference_location(self):
-        tree = self.make_branch_and_tree('branch')
-        try:
-            tree.set_reference_info('path/to/file', '../reference_branch')
-        except errors.UnsupportedOperation:
-            raise tests.TestNotApplicable('Branch cannot hold references.')
-        tree.commit('add reference')
+        tree = self.make_tree_with_reference('branch', '../reference_branch')
         referenced_branch = self.make_branch('reference_branch')
         parent = tree.reference_parent('path/to/file')
         self.assertEqual(parent.base, referenced_branch.base)
@@ -1492,6 +1490,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree = self.make_tree_with_reference('branch', 'reference')
         new_tree = tree.controldir.sprout(
             'branch/new-branch').open_workingtree()
+        self.build_tree(['branch/new-branch/foo'])
+        new_tree.add('foo')
         new_tree.set_reference_info('foo', '../foo')
         new_tree.branch.update_references(tree.branch)
         self.assertEqual(
@@ -1504,6 +1504,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree = self.make_tree_with_reference('branch', 'reference')
         new_tree = tree.controldir.sprout(
             'branch/new-branch').open_workingtree()
+        self.build_tree(['branch/new-branch/foo'])
+        new_tree.add('foo')
         new_tree.set_reference_info('foo', '../foo')
         new_tree.commit('set reference')
         tree.pull(new_tree.branch)
@@ -1515,6 +1517,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree = self.make_tree_with_reference('branch', 'reference')
         new_tree = tree.controldir.sprout(
             'branch/new-branch').open_workingtree()
+        self.build_tree(['branch/new-branch/foo'])
+        new_tree.add(['foo'])
         new_tree.set_reference_info('foo', '../foo')
         new_tree.commit('add reference')
         tree.pull(new_tree.branch)
