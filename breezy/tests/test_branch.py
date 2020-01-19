@@ -327,7 +327,7 @@ class TestBranch67(object):
         self.assertPathDoesNotExist('a/.bzr/branch/bound')
         self.assertEqual('ftp://example.com', branch.get_bound_location())
 
-    def do_checkout_test(self, lightweight=False):
+    def do_checkout_test(self, lightweight):
         tree = self.make_branch_and_tree('source',
                                          format=self.get_format_name_subtree())
         subtree = self.make_branch_and_tree('source/subtree',
@@ -339,7 +339,9 @@ class TestBranch67(object):
         subsubtree.add('file')
         subtree.add('file')
         subtree.add_reference(subsubtree)
+        subtree.set_reference_info('subsubtree', subsubtree.branch.user_url)
         tree.add_reference(subtree)
+        tree.set_reference_info('subtree', subtree.branch.user_url)
         tree.commit('a revision')
         subtree.commit('a subtree file')
         subsubtree.commit('a subsubtree file')
@@ -355,7 +357,7 @@ class TestBranch67(object):
             self.assertEndsWith(subbranch.base, 'target/subtree/subsubtree/')
 
     def test_checkout_with_references(self):
-        self.do_checkout_test()
+        self.do_checkout_test(lightweight=False)
 
     def test_light_checkout_with_references(self):
         self.do_checkout_test(lightweight=True)
