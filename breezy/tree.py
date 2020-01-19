@@ -428,7 +428,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.path_content_summary)
 
-    def get_reference_revision(self, path):
+    def get_reference_revision(self, path, branch=None):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"
                                   % self.__class__.__name__)
