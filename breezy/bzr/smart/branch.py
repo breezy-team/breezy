@@ -450,6 +450,6 @@ class SmartServerBranchRequestGetAllReferenceInfo(SmartServerBranchRequest):
     def do_with_branch(self, branch):
         all_reference_info = branch._get_all_reference_info()
         content = bencode.bencode([
-            (key.encode('utf-8'), value[0].encode('utf-8'), value[1] or b'')
+            (key, value[0].encode('utf-8'), value[1].encode('utf-8') if value[1] else b'')
             for (key, value) in all_reference_info.items()])
         return SuccessfulSmartServerResponse((b'ok', ), content)

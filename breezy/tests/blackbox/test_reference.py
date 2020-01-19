@@ -32,10 +32,10 @@ class TestReference(TestCaseWithTransport):
     def test_no_args_lists(self):
         tree = self.make_branch_and_tree('branch')
         branch = tree.branch
-        branch.set_reference_info('path', 'http://example.org')
         tree.add_reference(self.make_branch_and_tree('branch/path'))
         tree.add_reference(self.make_branch_and_tree('branch/lath'))
-        branch.set_reference_info('lath', 'http://example.org/2')
+        tree.set_reference_info('path', 'http://example.org')
+        tree.set_reference_info('lath', 'http://example.org/2')
         out, err = self.run_bzr('reference', working_dir='branch')
         lines = out.splitlines()
         self.assertEqual('lath http://example.org/2', lines[0])
@@ -45,9 +45,8 @@ class TestReference(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         subtree = self.make_branch_and_tree('tree/newpath')
         tree.add_reference(subtree)
-        tree.commit('add reference')
         tree.set_reference_info('newpath', 'http://example.org')
-        tree.set_reference_info('lath', 'http://example.org/2')
+        tree.commit('add reference')
         return tree
 
     def test_uses_working_tree_location(self):
@@ -57,7 +56,6 @@ class TestReference(TestCaseWithTransport):
 
     def test_uses_basis_tree_location(self):
         tree = self.make_tree_with_reference()
-        tree.commit('add newpath')
         tree.controldir.destroy_workingtree()
         out, err = self.run_bzr('reference', working_dir='tree')
         self.assertContainsRe(out, 'newpath http://example.org\n')
@@ -90,10 +88,11 @@ class TestReference(TestCaseWithTransport):
 
     def test_missing_file_forced(self):
         tree = self.make_branch_and_tree('tree')
+        tree.add_reference(self.make_branch_and_tree('tree/file'))
         out, err = self.run_bzr(
             'reference --force-unversioned file http://example.org',
             working_dir='tree')
-        location, file_id = tree.branch.get_reference_info('file')
+        location = tree.get_reference_info('file')
         self.assertEqual('http://example.org', location)
         self.assertEqual('', out)
         self.assertEqual('', err)

@@ -367,7 +367,7 @@ class TestBranch(tests.TestCaseWithTransport):
         subtree.add(['a'])
         subtree.commit('add subtree contents')
         orig.add_reference(subtree)
-        orig.branch.set_reference_info('subtree', subtree.branch.user_url)
+        orig.set_reference_info('subtree', subtree.branch.user_url)
         orig.commit('add subtree')
 
         self.run_bzr('branch source target')

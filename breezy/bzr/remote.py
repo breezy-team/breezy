@@ -4182,19 +4182,19 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             reconciler = BranchReconciler(self, thorough=thorough)
             return reconciler.reconcile()
 
-    def get_reference_info(self, path):
+    def get_reference_info(self, file_id):
         """Get the tree_path and branch_location for a tree reference."""
         if not self._format.supports_reference_locations:
             raise errors.UnsupportedOperation(self.get_reference_info, self)
-        return self._get_all_reference_info().get(path, (None, None))
+        return self._get_all_reference_info().get(file_id, (None, None))
 
-    def set_reference_info(self, tree_path, branch_location, file_id=None):
+    def set_reference_info(self, file_id, branch_location, tree_path=None):
         """Set the branch location to use for a tree reference."""
         if not self._format.supports_reference_locations:
             raise errors.UnsupportedOperation(self.set_reference_info, self)
         self._ensure_real()
         self._real_branch.set_reference_info(
-            tree_path, branch_location, file_id)
+            file_id, branch_location, tree_path)
 
     def _set_all_reference_info(self, reference_info):
         if not self._format.supports_reference_locations:
@@ -4214,17 +4214,17 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         if len(response) and response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         ret = {}
-        for (p, u, f) in bencode.bdecode(handler.read_body_bytes()):
-            ret[p.decode('utf-8')] = (u.decode('utf-8'), f if f else None)
+        for (f, u, p) in bencode.bdecode(handler.read_body_bytes()):
+            ret[f] = (u.decode('utf-8'), p.decode('utf-8') if p else None)
         return ret
 
-    def reference_parent(self, path, possible_transports=None):
+    def reference_parent(self, file_id, path, possible_transports=None):
         """Return the parent branch for a tree-reference.
 
         :param path: The path of the nested tree in the tree
         :return: A branch associated with the nested tree
         """
-        branch_location = self.get_reference_info(path)[0]
+        branch_location = self.get_reference_info(file_id)[0]
         if branch_location is None:
             try:
                 return branch.Branch.open_from_transport(
@@ -4234,7 +4234,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 return None
         return branch.Branch.open(
             urlutils.join(
-                urlutils.strip_segment_parameters(self.user_url), self.get_reference_info(path)[0]),
+                urlutils.strip_segment_parameters(self.user_url), branch_location),
             possible_transports=possible_transports)
 
 

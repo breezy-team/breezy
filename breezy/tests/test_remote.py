@@ -4542,10 +4542,10 @@ class TestBranchGetAllReferenceInfo(RemoteBranchTestCase):
         client.add_expected_call(
             b'Branch.get_all_reference_info', (b'quack/',),
             b'success', (b'ok',), bencode.bencode([
-                (b'some/path', b'https://www.example.com/', b'')]))
+                (b'file-id', b'https://www.example.com/', b'')]))
         transport.mkdir('quack')
         transport = transport.clone('quack')
         branch = self.make_remote_branch(transport, client)
         result = branch._get_all_reference_info()
         self.assertFinished(client)
-        self.assertEqual({'some/path': ('https://www.example.com/', None)}, result)
+        self.assertEqual({b'file-id': ('https://www.example.com/', None)}, result)

@@ -491,11 +491,11 @@ class BzrBranch8(tests.TestCaseWithTransport):
     def test_reference_info_caches_cleared(self):
         branch = self.make_branch('branch')
         with branch.lock_write():
-            branch.set_reference_info('path2', 'location2', b'file-id')
+            branch.set_reference_info(b'file-id', 'location2', 'path2')
         doppelganger = _mod_branch.Branch.open('branch')
-        doppelganger.set_reference_info('path3', 'location3', b'file-id')
-        self.assertEqual(('location3', b'file-id'),
-                         branch.get_reference_info('path3'))
+        doppelganger.set_reference_info(b'file-id', 'location3', 'path3')
+        self.assertEqual(('location3', 'path3'),
+                         branch.get_reference_info(b'file-id'))
 
     def _recordParentMapCalls(self, repo):
         self._parent_map_calls = []
