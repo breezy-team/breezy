@@ -310,7 +310,7 @@ class Tree(object):
         """Iterate through all paths, including paths for missing files."""
         raise NotImplementedError(self.all_versioned_paths)
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         """Return the path for a file id.
 
         :raises NoSuchId:

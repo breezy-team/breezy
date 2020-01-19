@@ -47,7 +47,10 @@ from ...sixish import (
     )
 from ..testament import StrictTestament
 from ...trace import mutter, warning
-from ...tree import Tree
+from ...tree import (
+    Tree,
+    find_previous_path,
+    )
 from ..xml5 import serializer_v5
 
 
@@ -595,12 +598,12 @@ class BundleTree(Tree):
             return None
         return self.base_tree.path2id(old_path)
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         """Return the new path in the target tree of the file with id file_id"""
         path = self._new_id_r.get(file_id)
         if path is not None:
             return path
-        old_path = self.base_tree.id2path(file_id)
+        old_path = self.base_tree.id2path(file_id, recurse)
         if old_path is None:
             raise NoSuchId(file_id, self)
         if old_path in self.deleted:
@@ -618,10 +621,8 @@ class BundleTree(Tree):
                 in the text-store, so that the file contents would
                 then be cached.
         """
-        file_id = self.path2id(path)
-        try:
-            old_path = self.base_tree.id2path(file_id)
-        except NoSuchId:
+        old_path = find_previous_path(self, self.base_tree, path)
+        if old_path is None:
             patch_original = None
         else:
             patch_original = self.base_tree.get_file(old_path)
@@ -771,7 +772,7 @@ class BundleTree(Tree):
             paths.append(result)
         for id in self.base_tree.all_file_ids():
             try:
-                path = self.id2path(id)
+                path = self.id2path(id, recurse='none')
             except NoSuchId:
                 continue
             paths.append((path, id))

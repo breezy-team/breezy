@@ -147,7 +147,7 @@ class MockTree(object):
     def path2id(self, path):
         return self.ids.get(path)
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         try:
             return self.paths[file_id]
         except KeyError:

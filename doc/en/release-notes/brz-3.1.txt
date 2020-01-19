@@ -164,6 +164,10 @@ API Changes
   stripping segment parameters from a URL.
   (Jelmer Vernooĳ)
 
+* ``Tree.id2path`` has a new optional argument ``recurse``,
+  that determines whether it scans through nested trees.
+  (Jelmer Vernooĳ)
+
 
 Internals
 *********
