@@ -23,6 +23,7 @@ import os
 import re
 
 from .. import (
+    branch as _mod_branch,
     debug,
     errors,
     lazy_import,
@@ -199,7 +200,10 @@ class InventoryTree(Tree):
                 trace.mutter_callsite(
                     2, "id2path with nested trees scales with tree size.")
             for path in self.iter_references():
-                subtree = self.get_nested_tree(path)
+                try:
+                    subtree = self.get_nested_tree(path)
+                except errors.NotBranchError:
+                    continue
                 try:
                     return osutils.pathjoin(path, subtree.id2path(file_id))
                 except errors.NoSuchId:
@@ -784,6 +788,22 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def has_filename(self, filename):
         return bool(self.path2id(filename))
 
+    def reference_parent(self, path, branch=None, possible_transports=None):
+        if branch is not None:
+            parent_url = branch.get_reference_info(path)[0]
+        else:
+            subdir = ControlDir.open_from_transport(
+                self._repository.user_transport.clone(path))
+            parent_url = subdir.open_branch().get_parent()
+        if parent_url is None:
+            return None
+        return _mod_branch.Branch.open(
+            parent_url,
+            possible_transports=possible_transports)
+
+    def get_reference_info(self, path, branch=None):
+        return branch.get_reference_info(path)[0]
+
     def list_files(self, include_root=False, from_dir=None, recursive=True,
                    recurse_nested=False):
         # The only files returned by this are those from the version
@@ -823,7 +843,8 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
 
     def _get_nested_tree(self, path, file_id, reference_revision):
         # Just a guess..
-        subdir = ControlDir.open_from_transport(self._repository.user_transport.clone(path))
+        subdir = ControlDir.open_from_transport(
+            self._repository.user_transport.clone(path))
         subrepo = subdir.find_repository()
         try:
             revtree = subrepo.revision_tree(reference_revision)
