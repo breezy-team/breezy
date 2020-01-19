@@ -342,7 +342,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             raise _mod_tree.FileTimestampUnavailable(path)
         return rev.timestamp
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         try:
             path = self.mapping.parse_file_id(file_id)
         except ValueError:
@@ -1072,7 +1072,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     osutils.safe_unicode(path))
             return None
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         if file_id is None:
             return ''
         if type(file_id) is not bytes:

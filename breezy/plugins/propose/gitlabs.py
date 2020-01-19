@@ -35,6 +35,7 @@ from ...trace import mutter
 from ...transport import get_transport
 
 from ...propose import (
+    determine_title,
     Hoster,
     MergeProposal,
     MergeProposalBuilder,

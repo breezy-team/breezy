@@ -25,6 +25,7 @@ import errno
 from dulwich.ignore import (
     IgnoreFilterManager,
     )
+from dulwich.config import ConfigFile as GitConfigFile
 from dulwich.file import GitFile, FileLocked
 from dulwich.index import (
     Index,
@@ -49,6 +50,7 @@ import stat
 import sys
 
 from .. import (
+    branch as _mod_branch,
     conflicts as _mod_conflicts,
     errors,
     controldir as _mod_controldir,
@@ -61,6 +63,7 @@ from .. import (
     trace,
     transport as _mod_transport,
     tree,
+    urlutils,
     workingtree,
     )
 from ..decorators import (
@@ -1240,7 +1243,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def _read_submodule_head(self, path):
         return read_submodule_head(self.abspath(path))
 
-    def get_reference_revision(self, path):
+    def get_reference_revision(self, path, branch=None):
         hexsha = self._read_submodule_head(path)
         if hexsha is None:
             return _mod_revision.NULL_REVISION
@@ -1324,6 +1327,48 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 else:
                     new_parents = [revision_id]
                 tree.set_parent_ids(new_parents)
+
+    def reference_parent(self, path, possible_transports=None):
+        remote_url = self.get_reference_info(path)
+        if remote_url is None:
+            trace.warning("Unable to find submodule info for %s", path)
+            return None
+        return _mod_branch.Branch.open(remote_url, possible_transports=possible_transports)
+
+    def get_reference_info(self, path):
+        submodule_info = self._submodule_info()
+        info = submodule_info.get(path.encode('utf-8'))
+        if info is None:
+            return None
+        return info[0].decode('utf-8')
+
+    def set_reference_info(self, tree_path, branch_location):
+        path = self.abspath('.gitmodules')
+        try:
+            config = GitConfigFile.from_path(path)
+        except EnvironmentError as e:
+            if e.errno == errno.ENOENT:
+                config = GitConfigFile()
+            else:
+                raise
+        section = (b'submodule', tree_path.encode('utf-8'))
+        if branch_location is None:
+            try:
+                del config[section]
+            except KeyError:
+                pass
+        else:
+            branch_location = urlutils.join(
+                urlutils.strip_segment_parameters(self.branch.user_url),
+                branch_location)
+            config.set(
+                section,
+                b'path', tree_path.encode('utf-8'))
+            config.set(
+                section,
+                b'url', branch_location.encode('utf-8'))
+        config.write_to_path(path)
+        self.add('.gitmodules')
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):

@@ -51,7 +51,7 @@ from .sixish import (
     text_type,
     viewitems,
     )
-from .trace import mutter, mutter_callsite, note, is_quiet
+from .trace import mutter, mutter_callsite, note, is_quiet, warning
 
 
 class UnstackableBranchFormat(errors.BzrError):
@@ -676,14 +676,6 @@ class Branch(controldir.ControlComponent):
             raise errors.UpgradeRequired(self.user_url)
         self.get_config_stack().set('append_revisions_only', enabled)
 
-    def set_reference_info(self, tree_path, branch_location, file_id=None):
-        """Set the branch location to use for a tree reference."""
-        raise errors.UnsupportedOperation(self.set_reference_info, self)
-
-    def get_reference_info(self, path):
-        """Get the tree_path and branch_location for a tree reference."""
-        raise errors.UnsupportedOperation(self.get_reference_info, self)
-
     def fetch(self, from_branch, last_revision=None, limit=None):
         """Copy revisions from from_branch into this branch.
 
@@ -1279,20 +1271,9 @@ class Branch(controldir.ControlComponent):
             revision_id=revision_id)
 
     def update_references(self, target):
-        if not getattr(self._format, 'supports_reference_locations', False):
+        if not self._format.supports_reference_locations:
             return
-        reference_dict = self._get_all_reference_info()
-        if len(reference_dict) == 0:
-            return
-        old_base = self.base
-        new_base = target.base
-        target_reference_dict = target._get_all_reference_info()
-        for tree_path, (branch_location, file_id) in viewitems(reference_dict):
-            branch_location = urlutils.rebase_url(branch_location,
-                                                  old_base, new_base)
-            target_reference_dict.setdefault(
-                tree_path, (branch_location, file_id))
-        target._set_all_reference_info(target_reference_dict)
+        return InterBranch.get(self, target).update_references()
 
     def check(self, refs):
         """Check consistency of the branch.
@@ -1412,7 +1393,10 @@ class Branch(controldir.ControlComponent):
         basis_tree = tree.basis_tree()
         with basis_tree.lock_read():
             for path in basis_tree.iter_references():
-                reference_parent = self.reference_parent(path)
+                reference_parent = tree.reference_parent(path)
+                if reference_parent is None:
+                    warning('Branch location for %s unknown.', path)
+                    continue
                 reference_parent.create_checkout(
                     tree.abspath(path),
                     basis_tree.get_reference_revision(path), lightweight)
@@ -1424,16 +1408,6 @@ class Branch(controldir.ControlComponent):
         :return: A `ReconcileResult` object.
         """
         raise NotImplementedError(self.reconcile)
-
-    def reference_parent(self, path, possible_transports=None):
-        """Return the parent branch for a tree-reference file_id
-
-        :param path: The path of the nested tree in the tree
-        :return: A branch associated with the nested tree
-        """
-        # FIXME should provide multiple branches, based on config
-        return Branch.open(self.controldir.root_transport.clone(path).base,
-                           possible_transports=possible_transports)
 
     def supports_tags(self):
         return self._format.supports_tags()
@@ -2119,6 +2093,11 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.fetch)
 
+    def update_references(self):
+        """Import reference information from source to target.
+        """
+        raise NotImplementedError(self.update_references)
+
 
 def _fix_overwrite_type(overwrite):
     if isinstance(overwrite, bool):
@@ -2155,8 +2134,8 @@ class GenericInterBranch(InterBranch):
                      be truncated to end with revision_id.
         """
         with self.source.lock_read(), self.target.lock_write():
-            self.source.update_references(self.target)
             self.source._synchronize_history(self.target, revision_id)
+            self.update_references()
             try:
                 parent = self.source.get_parent()
             except errors.InaccessibleParent as e:
@@ -2325,7 +2304,6 @@ class GenericInterBranch(InterBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         result.old_revno, result.old_revid = self.target.last_revision_info()
-        self.source.update_references(self.target)
         overwrite = _fix_overwrite_type(overwrite)
         if result.old_revid != stop_revision:
             # We assume that during 'push' this repository is closer than
@@ -2337,6 +2315,7 @@ class GenericInterBranch(InterBranch):
             result.tag_updates, result.tag_conflicts = (
                 self.source.tags.merge_to(
                     self.target.tags, "tags" in overwrite))
+        self.update_references()
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
@@ -2372,7 +2351,6 @@ class GenericInterBranch(InterBranch):
         with self.source.lock_read():
             # We assume that during 'pull' the target repository is closer than
             # the source one.
-            self.source.update_references(self.target)
             graph = self.target.repository.get_graph(self.source.repository)
             # TODO: Branch formats should have a flag that indicates
             # that revno's are expensive, and pull() should honor that flag.
@@ -2389,6 +2367,7 @@ class GenericInterBranch(InterBranch):
                 self.source.tags.merge_to(
                     self.target.tags, "tags" in overwrite,
                     ignore_master=not merge_tags_to_master))
+            self.update_references()
             result.new_revno, result.new_revid = (
                 self.target.last_revision_info())
             if _hook_master:
@@ -2401,6 +2380,26 @@ class GenericInterBranch(InterBranch):
                 for hook in Branch.hooks['post_pull']:
                     hook(result)
             return result
+
+    def update_references(self):
+        if not getattr(self.source._format, 'supports_reference_locations', False):
+            return
+        reference_dict = self.source._get_all_reference_info()
+        if len(reference_dict) == 0:
+            return
+        old_base = self.source.base
+        new_base = self.target.base
+        target_reference_dict = self.target._get_all_reference_info()
+        for tree_path, (branch_location, file_id) in viewitems(reference_dict):
+            try:
+                branch_location = urlutils.rebase_url(branch_location,
+                                                      old_base, new_base)
+            except urlutils.InvalidRebaseURLs:
+                # Fall back to absolute URL
+                branch_location = urlutils.join(old_base, branch_location)
+            target_reference_dict.setdefault(
+                tree_path, (branch_location, file_id))
+        self.target._set_all_reference_info(target_reference_dict)
 
 
 InterBranch.register_optimiser(GenericInterBranch)

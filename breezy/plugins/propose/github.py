@@ -22,6 +22,7 @@ import json
 import os
 
 from ...propose import (
+    determine_title,
     Hoster,
     HosterLoginRequired,
     MergeProposal,
@@ -69,10 +70,6 @@ def retrieve_github_token(scheme, host):
         return None
     with open(path, 'r') as f:
         return f.read().strip()
-
-
-def determine_title(description):
-    return description.splitlines()[0].split('.')[0]
 
 
 class ValidationFailed(errors.BzrError):

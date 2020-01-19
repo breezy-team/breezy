@@ -65,6 +65,7 @@ from ..sixish import viewitems
 from ..trace import (
     mutter,
     note,
+    warning,
     )
 
 from .. import (
@@ -453,22 +454,30 @@ class BzrDir(controldir.ControlDir):
             else:
                 wt = None
             if recurse == 'down':
-                basis = None
+                tree = None
                 if wt is not None:
-                    basis = wt.basis_tree()
-                elif result_branch is not None:
-                    basis = result_branch.basis_tree()
-                elif source_branch is not None:
-                    basis = source_branch.basis_tree()
-                if basis is not None:
+                    tree = wt
+                    basis = tree.basis_tree()
                     stack.enter_context(basis.lock_read())
-                    subtrees = basis.iter_references()
+                elif result_branch is not None:
+                    basis = tree = result_branch.basis_tree()
+                elif source_branch is not None:
+                    basis = tree = source_branch.basis_tree()
+                if tree is not None:
+                    stack.enter_context(tree.lock_read())
+                    subtrees = tree.iter_references()
                 else:
                     subtrees = []
                 for path in subtrees:
                     target = urlutils.join(url, urlutils.escape(path))
-                    sublocation = source_branch.reference_parent(
-                        path, possible_transports=possible_transports)
+                    sublocation = tree.reference_parent(
+                        path, branch=result_branch,
+                        possible_transports=possible_transports)
+                    if sublocation is None:
+                        warning(
+                            'Ignoring nested tree %s, parent location unknown.',
+                            path)
+                        continue
                     sublocation.controldir.sprout(
                         target, basis.get_reference_revision(path),
                         force_new_repo=force_new_repo, recurse=recurse,

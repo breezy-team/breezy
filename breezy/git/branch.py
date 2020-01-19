@@ -22,6 +22,11 @@ from __future__ import absolute_import
 from io import BytesIO
 from collections import defaultdict
 
+from dulwich.config import (
+    ConfigFile as GitConfigFile,
+    parse_submodules,
+    )
+
 from dulwich.objects import (
     NotCommitError,
     ZERO_SHA,
@@ -342,6 +347,8 @@ class GitBranchFormat(branch.BranchFormat):
     def stores_revno(self):
         """True if this branch format store revision numbers."""
         return False
+
+    supports_reference_locations = False
 
 
 class LocalGitBranchFormat(GitBranchFormat):
@@ -809,19 +816,6 @@ class LocalGitBranch(GitBranch):
         return GitMemoryTree(self, self.repository._git.object_store,
                              self.head)
 
-    def reference_parent(self, path, possible_transports=None):
-        """Return the parent branch for a tree-reference.
-
-        :param path: The path of the nested tree in the tree
-        :return: A branch associated with the nested tree
-        """
-        # FIXME should provide multiple branches, based on config
-        url = urlutils.split_segment_parameters_raw(self.user_url)[0]
-        url = urlutils.join(url, path)
-        return branch.Branch.open(
-            url,
-            possible_transports=possible_transports)
-
 
 def _quick_lookup_revno(local_branch, remote_branch, revid):
     if not isinstance(revid, bytes):
@@ -982,6 +976,20 @@ class InterFromGitBranch(branch.GenericInterBranch):
             other_branch=self.source)
         return head, refs
 
+    def update_references(self, revid=None):
+        if revid is None:
+            revid = self.target.last_revision()
+        tree = self.target.repository.revision_tree(revid)
+        try:
+            with tree.get_file('.gitmodules') as f:
+                for path, url, section in parse_submodules(
+                        GitConfigFile.from_file(f)):
+                    self.target.set_reference_info(
+                        path.decode('utf-8'), url.decode('utf-8'),
+                        tree.path2id(path.decode('utf-8')))
+        except errors.NoSuchFile:
+            pass
+
     def _basic_pull(self, stop_revision, overwrite, run_hooks,
                     _override_hook_target, _hook_master):
         if overwrite is True:
@@ -1009,6 +1017,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 result.tag_conflicts = tags_ret
             (result.new_revno, result.new_revid) = \
                 self.target.last_revision_info()
+            self.update_references(revid=result.new_revid)
             if _hook_master:
                 result.master_branch = _hook_master
                 result.local_branch = result.target_branch
@@ -1077,6 +1086,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             self.target.tags, "tags" in overwrite, ignore_master=True)
         (result.tag_updates, result.tag_conflicts) = tags_ret
         result.new_revno, result.new_revid = self.target.last_revision_info()
+        self.update_references(revid=result.new_revid)
         return result
 
 
@@ -1419,7 +1429,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                 raise errors.NoRoundtrippingSupport(self.source, self.target)
             (old_sha1, result.old_revid) = old_refs.get(
                 main_ref, (ZERO_SHA, NULL_REVISION))
-            if result.old_revid is None:
+            if lossy or result.old_revid is None:
                 result.old_revid = self.target.lookup_foreign_revision_id(
                     old_sha1)
             result.new_revid = new_refs[main_ref][1]

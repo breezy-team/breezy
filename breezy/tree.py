@@ -310,7 +310,7 @@ class Tree(object):
         """Iterate through all paths, including paths for missing files."""
         raise NotImplementedError(self.all_versioned_paths)
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         """Return the path for a file id.
 
         :raises NoSuchId:
@@ -428,7 +428,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.path_content_summary)
 
-    def get_reference_revision(self, path):
+    def get_reference_revision(self, path, branch=None):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"
                                   % self.__class__.__name__)

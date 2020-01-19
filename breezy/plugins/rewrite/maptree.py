@@ -120,5 +120,5 @@ class MapTree(object):
             return None
         return self.new_id(file_id)
 
-    def id2path(self, file_id):
-        return self.oldtree.id2path(self.old_id(file_id=file_id))
+    def id2path(self, file_id, recurse='down'):
+        return self.oldtree.id2path(self.old_id(file_id=file_id), recurse=recurse)

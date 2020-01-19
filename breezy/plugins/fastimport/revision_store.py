@@ -47,7 +47,7 @@ class _TreeShim(object):
         self._new_info_by_path = {new_path: ie
                                   for _, new_path, file_id, ie in inv_delta}
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         if file_id in self._new_info_by_id:
             new_path = self._new_info_by_id[file_id][0]
             if new_path is None:

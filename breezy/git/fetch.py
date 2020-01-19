@@ -55,6 +55,7 @@ from ..sixish import text_type
 from ..bzr.testament import (
     StrictTestament3,
     )
+from ..tree import find_previous_path
 from ..tsort import (
     topo_sort,
     )
@@ -125,9 +126,8 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     # Check what revision we should store
     parent_keys = []
     for ptree in parent_bzr_trees:
-        try:
-            ppath = ptree.id2path(file_id)
-        except errors.NoSuchId:
+        ppath = find_previous_path(base_bzr_tree, ptree, decoded_path, file_id)
+        if ppath is None:
             continue
         pkind = ptree.kind(ppath)
         if (pkind == ie.kind and

@@ -130,6 +130,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
         self.views = self._make_views()
         # --- allow tests to select the dirstate iter_changes implementation
         self._iter_changes = dirstate._process_entry
+        self._repo_supports_tree_reference = getattr(
+            self._branch.repository._format, "supports_tree_reference",
+            False)
 
     def _add(self, files, ids, kinds):
         """See MutableTree._add."""
@@ -471,22 +474,23 @@ class DirStateWorkingTree(InventoryWorkingTree):
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         "Convert a file-id to a path."
         with self.lock_read():
             state = self.current_dirstate()
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
-                if 'evil' in debug.debug_flags:
-                    trace.mutter_callsite(
-                        2, "Tree.id2path scans all nested trees.")
-                for nested_path in self.iter_references():
-                    nested_tree = self.get_nested_tree(nested_path)
-                    try:
-                        return osutils.pathjoin(
-                            nested_path, nested_tree.id2path(file_id))
-                    except errors.NoSuchId:
-                        pass
+                if recurse == 'down':
+                    if 'evil' in debug.debug_flags:
+                        trace.mutter_callsite(
+                            2, "Tree.id2path scans all nested trees.")
+                    for nested_path in self.iter_references():
+                        nested_tree = self.get_nested_tree(nested_path)
+                        try:
+                            return osutils.pathjoin(
+                                nested_path, nested_tree.id2path(file_id))
+                        except errors.NoSuchId:
+                            pass
                 raise errors.NoSuchId(tree=self, file_id=file_id)
             path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
             return path_utf8.decode('utf8')
@@ -550,20 +554,21 @@ class DirStateWorkingTree(InventoryWorkingTree):
             # When the repo doesn't support references, we will have nothing to
             # return
             return
-        for key, tree_details in self.current_dirstate()._iter_entries():
-            if tree_details[0][0] in (b'a', b'r'):  # absent, relocated
-                # not relevant to the working tree
-                continue
-            if not key[1]:
-                # the root is not a reference.
-                continue
-            relpath = pathjoin(key[0].decode('utf8'), key[1].decode('utf8'))
-            try:
-                if self.kind(relpath) == 'tree-reference':
-                    yield relpath
-            except errors.NoSuchFile:
-                # path is missing on disk.
-                continue
+        with self.lock_read():
+            for key, tree_details in self.current_dirstate()._iter_entries():
+                if tree_details[0][0] in (b'a', b'r'):  # absent, relocated
+                    # not relevant to the working tree
+                    continue
+                if not key[1]:
+                    # the root is not a reference.
+                    continue
+                relpath = pathjoin(key[0].decode('utf8'), key[1].decode('utf8'))
+                try:
+                    if self.kind(relpath) == 'tree-reference':
+                        yield relpath
+                except errors.NoSuchFile:
+                    # path is missing on disk.
+                    continue
 
     def _observed_sha1(self, path, sha_and_stat):
         """See MutableTree._observed_sha1."""
@@ -1750,17 +1755,22 @@ class DirStateRevisionTree(InventoryTree):
         pred = self.has_filename
         return set((p for p in paths if not pred(p)))
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         "Convert a file-id to a path."
         with self.lock_read():
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
-                for nested_path in self.iter_references():
-                    nested_tree = self.get_nested_tree(nested_path)
-                    try:
-                        return osutils.pathjoin(nested_path, nested_tree.id2path(file_id))
-                    except errors.NoSuchId:
-                        pass
+                if recurse == 'down':
+                    if 'evil' in debug.debug_flags:
+                        trace.mutter_callsite(
+                            2, "Tree.id2path scans all nested trees.")
+
+                    for nested_path in self.iter_references():
+                        nested_tree = self.get_nested_tree(nested_path)
+                        try:
+                            return osutils.pathjoin(nested_path, nested_tree.id2path(file_id))
+                        except errors.NoSuchId:
+                            pass
                 raise errors.NoSuchId(tree=self, file_id=file_id)
             path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
             return path_utf8.decode('utf8')

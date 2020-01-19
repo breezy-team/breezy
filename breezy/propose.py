@@ -334,6 +334,11 @@ class Hoster(object):
         raise NotImplementedError(cls.iter_instances)
 
 
+def determine_title(description):
+    """Determine the title for a merge proposal based on full description."""
+    return description.splitlines()[0].split('.')[0]
+
+
 def get_hoster(branch, possible_hosters=None):
     """Find the hoster for a branch.
 

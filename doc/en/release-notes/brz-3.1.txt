@@ -46,6 +46,9 @@ New Features
    have installed and speeds up import time since psutil brings in
    various other modules. (Jelmer Vernooĳ)
 
+ * Information about tree references can now be updated on remote
+   branches. (Jelmer Vernooĳ)
+
  * Warn the user when they attempt to use Breezy in a Subversion
    working copy. (Jelmer Vernooĳ)
 
@@ -159,6 +162,10 @@ API Changes
 
 * New ``urlutils.strip_segment_parameters`` function for
   stripping segment parameters from a URL.
+  (Jelmer Vernooĳ)
+
+* ``Tree.id2path`` has a new optional argument ``recurse``,
+  that determines whether it scans through nested trees.
   (Jelmer Vernooĳ)
 
 
