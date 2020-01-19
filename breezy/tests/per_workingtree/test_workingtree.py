@@ -1385,8 +1385,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree = WorkingTree.open('branch')
         branch_location = tree.get_reference_info('path/to/file')
         self.assertEqual(
-            urlutils.join(tree.branch.user_url, 'path/to/location'),
-            urlutils.join(tree.branch.user_url, branch_location))
+            urlutils.join(urlutils.strip_segment_parameters(tree.branch.user_url), 'path/to/location'),
+            urlutils.join(urlutils.strip_segment_parameters(tree.branch.user_url), branch_location))
 
     def test_set_null_reference_info(self):
         tree = self.make_branch_and_tree('branch')
@@ -1518,7 +1518,7 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         new_tree.commit('set reference')
         tree.pull(new_tree.branch)
         self.assertEqual(
-            urlutils.join(urlutils.strip_segment_parameters(tree.branch.user_url), 'foo'),
+            urlutils.join(urlutils.strip_segment_parameters(new_tree.branch.user_url), '../foo'),
             urlutils.join(tree.branch.user_url, tree.get_reference_info('foo')))
 
     def test_push_updates_references(self):
@@ -1532,8 +1532,8 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         tree.pull(new_tree.branch)
         tree.update()
         self.assertEqual(
-            urlutils.join(tree.branch.user_url, 'foo'),
-            urlutils.join(tree.branch.user_url, tree.get_reference_info('foo')))
+            urlutils.join(urlutils.strip_segment_parameters(new_tree.branch.user_url), '../foo'),
+            urlutils.join(urlutils.strip_segment_parameters(tree.branch.user_url), tree.get_reference_info('foo')))
 
     def test_merge_updates_references(self):
         orig_tree = self.make_tree_with_reference('branch', 'reference')
