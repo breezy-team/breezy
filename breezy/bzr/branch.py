@@ -465,11 +465,20 @@ class BzrBranch(Branch, _RelockDebugMixin):
         :return: A branch associated with the nested tree
         """
         try:
-            return Branch.open_from_transport(
-                self.controldir.root_transport.clone(path),
-                possible_transports=possible_transports)
-        except errors.NotBranchError:
-            return None
+            branch_location = self.get_reference_info(file_id)[0]
+        except errors.UnsupportedOperation:
+            branch_location = None
+        if branch_location is None:
+            try:
+                return Branch.open_from_transport(
+                    self.controldir.root_transport.clone(path),
+                    possible_transports=possible_transports)
+            except errors.NotBranchError:
+                return None
+        return Branch.open(
+            urlutils.join(
+                urlutils.strip_segment_parameters(self.user_url), branch_location),
+            possible_transports=possible_transports)
 
 
 class BzrBranch8(BzrBranch):
@@ -565,7 +574,7 @@ class BzrBranch8(BzrBranch):
                 with self._transport.get('references') as rio_file:
                     stanzas = rio.read_stanzas(rio_file)
                     info_dict = {
-                        s['file_id'].encode('ascii'): (
+                        s['file_id'].encode('utf-8'): (
                             s['branch_location'],
                             s['tree_path'] if 'tree_path' in s else None)
                         for s in stanzas}
@@ -594,25 +603,6 @@ class BzrBranch8(BzrBranch):
         :return: a tuple of (branch_location, tree_path)
         """
         return self._get_all_reference_info().get(file_id, (None, None))
-
-    def reference_parent(self, file_id, path, possible_transports=None):
-        """Return the parent branch for a tree-reference.
-
-        :param path: The path of the nested tree in the tree
-        :return: A branch associated with the nested tree
-        """
-        branch_location = self.get_reference_info(file_id)[0]
-        if branch_location is None:
-            try:
-                return Branch.open_from_transport(
-                    self.controldir.root_transport.clone(path),
-                    possible_transports=possible_transports)
-            except errors.NotBranchError:
-                return None
-        else:
-            branch_location = urlutils.join(self.user_url, branch_location)
-            return Branch.open(
-                branch_location, possible_transports=possible_transports)
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
