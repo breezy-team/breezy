@@ -2391,8 +2391,12 @@ class GenericInterBranch(InterBranch):
         new_base = self.target.base
         target_reference_dict = self.target._get_all_reference_info()
         for tree_path, (branch_location, file_id) in viewitems(reference_dict):
-            branch_location = urlutils.rebase_url(branch_location,
-                                                  old_base, new_base)
+            try: 
+                branch_location = urlutils.rebase_url(branch_location,
+                                                      old_base, new_base)
+            except urlutils.InvalidRebaseURLs:
+                # Fall back to absolute URL
+                branch_location = urlutils.join(old_base, branch_location)
             target_reference_dict.setdefault(
                 tree_path, (branch_location, file_id))
         self.target._set_all_reference_info(target_reference_dict)

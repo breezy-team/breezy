@@ -3420,8 +3420,6 @@ class RemoteBranchFormat(branch.BranchFormat):
                 return True
         return False
 
-    supports_reference_locations = False
-
 
 class RemoteBranchStore(_mod_config.IniFileStore):
     """Branch store which attempts to use HPSS calls to retrieve branch store.
@@ -4228,10 +4226,16 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         """
         branch_location = self.get_reference_info(path)[0]
         if branch_location is None:
-            return BzrBranch.reference_parent(self, path, possible_transports)
-        branch_location = urlutils.join(self.user_url, branch_location)
-        return Branch.open(branch_location,
-                           possible_transports=possible_transports)
+            try:
+                return branch.Branch.open_from_transport(
+                    self.controldir.root_transport.clone(path),
+                    possible_transports=possible_transports)
+            except errors.NotBranchError:
+                return None
+        return branch.Branch.open(
+            urlutils.join(
+                urlutils.strip_segment_parameters(self.user_url), self.get_reference_info(path)[0]),
+            possible_transports=possible_transports)
 
 
 class RemoteConfig(object):

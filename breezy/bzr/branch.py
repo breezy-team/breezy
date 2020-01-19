@@ -472,6 +472,11 @@ class BzrBranch(Branch, _RelockDebugMixin):
                     possible_transports=possible_transports)
             except errors.NotBranchError:
                 return None
+        return Branch.open(
+            urlutils.join(
+                urlutils.strip_segment_parameters(self.user_url), self.get_reference_info(path)[0]),
+            possible_transports=possible_transports)
+
 
 
 class BzrBranch8(BzrBranch):
