@@ -459,18 +459,19 @@ class BzrBranch(Branch, _RelockDebugMixin):
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     def reference_parent(self, path, possible_transports=None):
-        """Return the parent branch for a tree-reference file_id
+        """Return the parent branch for a tree-reference.
 
         :param path: The path of the nested tree in the tree
         :return: A branch associated with the nested tree
         """
-        # FIXME should provide multiple branches, based on config
-        try:
-            return Branch.open_from_transport(
-                self.controldir.root_transport.clone(path),
-                possible_transports=possible_transports)
-        except errors.NotBranchError:
-            return None
+        branch_location = self.get_reference_info(path)[0]
+        if branch_location is None:
+            try:
+                return Branch.open_from_transport(
+                    self.controldir.root_transport.clone(path),
+                    possible_transports=possible_transports)
+            except errors.NotBranchError:
+                return None
 
 
 class BzrBranch8(BzrBranch):
@@ -605,10 +606,16 @@ class BzrBranch8(BzrBranch):
         """
         branch_location = self.get_reference_info(path)[0]
         if branch_location is None:
-            return BzrBranch.reference_parent(self, path, possible_transports)
-        branch_location = urlutils.join(self.user_url, branch_location)
-        return Branch.open(branch_location,
-                           possible_transports=possible_transports)
+            try:
+                return Branch.open_from_transport(
+                    self.controldir.root_transport.clone(path),
+                    possible_transports=possible_transports)
+            except errors.NotBranchError:
+                return None
+        else:
+            branch_location = urlutils.join(self.user_url, branch_location)
+            return Branch.open(
+                branch_location, possible_transports=possible_transports)
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""

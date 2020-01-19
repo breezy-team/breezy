@@ -1802,7 +1802,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def set_reference_info(self, tree_path, branch_location):
         self.branch.set_reference_info(tree_path, branch_location)
 
-    def reference_parent(self, path, possible_transports=None):
+    def reference_parent(self, path, branch=None, possible_transports=None):
         return self.branch.reference_parent(
             path, possible_transports=possible_transports)
 

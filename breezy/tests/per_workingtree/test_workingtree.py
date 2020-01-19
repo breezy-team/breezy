@@ -1392,7 +1392,9 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
         # Create a new instance to ensure storage is permanent
         tree = WorkingTree.open('branch')
         branch_location = tree.get_reference_info('path/to/file')
-        self.assertEqual('path/to/location', branch_location)
+        self.assertEqual(
+            urlutils.local_path_to_url('branch/path/to/location'),
+            urlutils.join(tree.branch.user_url, branch_location))
 
     def test_set_null_reference_info(self):
         tree = self.make_branch_and_tree('branch')
@@ -1419,6 +1421,7 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
             tree.set_reference_info('path/to/file', reference_location)
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
+        tree.commit('commit reference')
         return tree
 
     def test_reference_parent_from_reference_info_(self):
@@ -1433,6 +1436,7 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
             tree.set_reference_info('path/to/file', '../reference_branch')
         except errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
+        tree.commit('add reference')
         referenced_branch = self.make_branch('reference_branch')
         parent = tree.reference_parent('path/to/file')
         self.assertEqual(parent.base, referenced_branch.base)
@@ -1440,75 +1444,99 @@ class TestReferenceLocation(TestCaseWithWorkingTree):
     def test_sprout_copies_reference_location(self):
         tree = self.make_tree_with_reference('branch', '../reference')
         new_tree = tree.branch.controldir.sprout('new-branch').open_workingtree()
-        self.assertEqual('../reference', new_tree.get_reference_info('path/to/file'))
+        self.assertEqual(
+            urlutils.local_path_to_url('reference'),
+            urlutils.join(urlutils.strip_segment_parameters(new_tree.branch.user_url),
+                          new_tree.get_reference_info('path/to/file')))
 
     def test_clone_copies_reference_location(self):
         tree = self.make_tree_with_reference('branch', '../reference')
         new_tree = tree.controldir.clone('new-branch').open_workingtree()
-        self.assertEqual('../reference',
-                         new_tree.get_reference_info('path/to/file'))
+        self.assertEqual(
+            urlutils.local_path_to_url('reference'),
+            urlutils.join(urlutils.strip_segment_parameters(new_tree.branch.user_url),
+                          new_tree.get_reference_info('path/to/file')))
 
     def test_copied_locations_are_rebased(self):
         tree = self.make_tree_with_reference('branch', 'reference')
         new_tree = tree.controldir.sprout(
             'branch/new-branch').open_workingtree()
-        self.assertEqual('../reference',
-                         new_tree.get_reference_info('path/to/file'))
+        self.assertEqual(
+            urlutils.local_path_to_url('branch/reference'),
+            urlutils.join(urlutils.strip_segment_parameters(new_tree.branch.user_url),
+                          new_tree.get_reference_info('path/to/file')))
 
     def test_update_references_retains_old_references(self):
         tree = self.make_tree_with_reference('branch', 'reference')
         new_tree = self.make_tree_with_reference(
             'new_branch', 'reference2')
         new_tree.branch.update_references(tree.branch)
-        self.assertEqual('reference',
-                         tree.get_reference_info('path/to/file'))
+        self.assertEqual(
+            urlutils.local_path_to_url('branch/reference'),
+            urlutils.join(
+                urlutils.strip_segment_parameters(tree.branch.user_url),
+                tree.get_reference_info('path/to/file')))
 
     def test_update_references_retains_known_references(self):
         tree = self.make_tree_with_reference('branch', 'reference')
         new_tree = self.make_tree_with_reference(
             'new_branch', 'reference2')
         new_tree.branch.update_references(tree.branch)
-        self.assertEqual('reference',
-                         tree.get_reference_info('path/to/file'))
+        self.assertEqual(
+            urlutils.local_path_to_url('branch/reference'),
+            urlutils.join(
+                urlutils.strip_segment_parameters(tree.branch.user_url),
+                tree.get_reference_info('path/to/file')))
 
     def test_update_references_skips_known_references(self):
         tree = self.make_tree_with_reference('branch', 'reference')
         new_tree = tree.controldir.sprout(
             'branch/new-branch').open_workingtree()
-        new_tree.set_reference_info('../foo', '../foo')
+        new_tree.set_reference_info('foo', '../foo')
         new_tree.branch.update_references(tree.branch)
-        self.assertEqual('reference',
-                         tree.get_reference_info('path/to/file'))
+        self.assertEqual(
+            urlutils.local_path_to_url('branch/reference'),
+            urlutils.join(
+                urlutils.strip_segment_parameters(tree.branch.user_url),
+                tree.get_reference_info('path/to/file')))
 
     def test_pull_updates_references(self):
         tree = self.make_tree_with_reference('branch', 'reference')
         new_tree = tree.controldir.sprout(
             'branch/new-branch').open_workingtree()
-        new_tree.set_reference_info('../foo', '../foo')
+        new_tree.set_reference_info('foo', '../foo')
+        new_tree.commit('set reference')
         tree.pull(new_tree.branch)
-        self.assertEqual('foo', tree.get_reference_info('../foo'))
+        self.assertEqual(
+            urlutils.local_path_to_url('branch/foo'),
+            urlutils.join(tree.branch.user_url, tree.get_reference_info('foo')))
 
     def test_push_updates_references(self):
         tree = self.make_tree_with_reference('branch', 'reference')
         new_tree = tree.controldir.sprout(
             'branch/new-branch').open_workingtree()
-        new_tree.set_reference_info('../foo', '../foo')
-        new_tree.branch.push(tree.branch)
-        self.assertEqual('foo', tree.get_reference_info('../foo'))
+        new_tree.set_reference_info('foo', '../foo')
+        new_tree.commit('add reference')
+        tree.pull(new_tree.branch)
+        tree.update()
+        self.assertEqual(
+            urlutils.local_path_to_url('branch/foo'),
+            urlutils.join(tree.branch.user_url, tree.get_reference_info('foo')))
 
     def test_merge_updates_references(self):
-        branch = self.make_tree_with_reference('branch', 'reference').branch
-        tree = self.make_branch_and_tree('tree')
+        orig_tree = self.make_tree_with_reference('branch', 'reference')
+        tree = orig_tree.controldir.sprout('tree').open_workingtree()
         tree.commit('foo')
-        branch.pull(tree.branch)
-        checkout = branch.create_checkout('checkout', lightweight=True)
+        orig_tree.pull(tree.branch)
+        checkout = orig_tree.branch.create_checkout('checkout', lightweight=True)
         checkout.commit('bar')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         merger = merge.Merger.from_revision_ids(tree,
-                                                branch.last_revision(),
-                                                other_branch=branch)
+                                                orig_tree.branch.last_revision(),
+                                                other_branch=orig_tree.branch)
         merger.merge_type = merge.Merge3Merger
         merger.do_merge()
-        self.assertEqual('../branch/reference',
-                         tree.get_reference_info('path/to/file'))
+        self.assertEqual(
+            urlutils.local_path_to_url('branch/reference'),
+            urlutils.join(urlutils.strip_segment_parameters(tree.branch.user_url), tree.get_reference_info('path/to/file')))

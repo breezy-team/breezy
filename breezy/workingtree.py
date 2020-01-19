@@ -1325,7 +1325,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         with self.lock_read():
             return next(self.get_canonical_paths([path]))
 
-    def reference_parent(self, path, possible_transports=None):
+    def reference_parent(self, path, branch=None, possible_transports=None):
         raise errors.UnsupportedOperation(self.reference_parent, self)
 
     def get_reference_info(self, path, branch=None):

@@ -63,6 +63,7 @@ from .. import (
     trace,
     transport as _mod_transport,
     tree,
+    urlutils,
     workingtree,
     )
 from ..decorators import (
@@ -1357,6 +1358,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             except KeyError:
                 pass
         else:
+            branch_location = urlutils.join(
+                urlutils.strip_segment_parameters(self.branch.user_url),
+                branch_location)
             config.set(
                 section,
                 b'path', tree_path.encode('utf-8'))

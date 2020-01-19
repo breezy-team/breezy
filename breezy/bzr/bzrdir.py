@@ -457,10 +457,12 @@ class BzrDir(controldir.ControlDir):
                 tree = None
                 if wt is not None:
                     tree = wt
+                    basis = tree.basis_tree()
+                    stack.enter_context(basis.lock_read())
                 elif result_branch is not None:
-                    tree = result_branch.basis_tree()
+                    basis = tree = result_branch.basis_tree()
                 elif source_branch is not None:
-                    tree = source_branch.basis_tree()
+                    basis = tree = source_branch.basis_tree()
                 if tree is not None:
                     stack.enter_context(tree.lock_read())
                     subtrees = tree.iter_references()
@@ -469,14 +471,15 @@ class BzrDir(controldir.ControlDir):
                 for path in subtrees:
                     target = urlutils.join(url, urlutils.escape(path))
                     sublocation = tree.reference_parent(
-                        path, possible_transports=possible_transports)
+                        path, branch=result_branch,
+                        possible_transports=possible_transports)
                     if sublocation is None:
                         warning(
                             'Ignoring nested tree %s, parent location unknown.',
                             path)
                         continue
                     sublocation.controldir.sprout(
-                        target, tree.get_reference_revision(path),
+                        target, basis.get_reference_revision(path),
                         force_new_repo=force_new_repo, recurse=recurse,
                         stacked=stacked)
             return result
