@@ -2155,7 +2155,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             path = osutils.pathjoin(*path)
         return self._transform.final_file_id(self._path2trans_id(path))
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._final_paths._determine_path(trans_id)

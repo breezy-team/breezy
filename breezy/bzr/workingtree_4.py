@@ -474,22 +474,23 @@ class DirStateWorkingTree(InventoryWorkingTree):
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         "Convert a file-id to a path."
         with self.lock_read():
             state = self.current_dirstate()
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
-                if 'evil' in debug.debug_flags:
-                    trace.mutter_callsite(
-                        2, "Tree.id2path scans all nested trees.")
-                for nested_path in self.iter_references():
-                    nested_tree = self.get_nested_tree(nested_path)
-                    try:
-                        return osutils.pathjoin(
-                            nested_path, nested_tree.id2path(file_id))
-                    except errors.NoSuchId:
-                        pass
+                if recurse == 'down':
+                    if 'evil' in debug.debug_flags:
+                        trace.mutter_callsite(
+                            2, "Tree.id2path scans all nested trees.")
+                    for nested_path in self.iter_references():
+                        nested_tree = self.get_nested_tree(nested_path)
+                        try:
+                            return osutils.pathjoin(
+                                nested_path, nested_tree.id2path(file_id))
+                        except errors.NoSuchId:
+                            pass
                 raise errors.NoSuchId(tree=self, file_id=file_id)
             path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
             return path_utf8.decode('utf8')
@@ -1754,17 +1755,22 @@ class DirStateRevisionTree(InventoryTree):
         pred = self.has_filename
         return set((p for p in paths if not pred(p)))
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         "Convert a file-id to a path."
         with self.lock_read():
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
-                for nested_path in self.iter_references():
-                    nested_tree = self.get_nested_tree(nested_path)
-                    try:
-                        return osutils.pathjoin(nested_path, nested_tree.id2path(file_id))
-                    except errors.NoSuchId:
-                        pass
+                if recurse == 'down':
+                    if 'evil' in debug.debug_flags:
+                        trace.mutter_callsite(
+                            2, "Tree.id2path scans all nested trees.")
+
+                    for nested_path in self.iter_references():
+                        nested_tree = self.get_nested_tree(nested_path)
+                        try:
+                            return osutils.pathjoin(nested_path, nested_tree.id2path(file_id))
+                        except errors.NoSuchId:
+                            pass
                 raise errors.NoSuchId(tree=self, file_id=file_id)
             path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
             return path_utf8.decode('utf8')

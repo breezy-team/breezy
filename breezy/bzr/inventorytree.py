@@ -186,7 +186,7 @@ class InventoryTree(Tree):
             return None, None
         return inv, ie.file_id
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         """Return the path for a file id.
 
         :raises NoSuchId:
@@ -195,17 +195,17 @@ class InventoryTree(Tree):
         try:
             return inventory.id2path(file_id)
         except errors.NoSuchId:
-            if 'evil' in debug.debug_flags:
-                trace.mutter_callsite(
-                    2, "id2path with nested trees scales with tree size.")
-            for path in self.iter_references():
-                subtree = self.get_nested_tree(path)
-                try:
-                    return osutils.pathjoin(path, subtree.id2path(file_id))
-                except errors.NoSuchId:
-                    pass
-            else:
-                raise errors.NoSuchId(self, file_id)
+            if recurse == 'down':
+                if 'evil' in debug.debug_flags:
+                    trace.mutter_callsite(
+                        2, "id2path with nested trees scales with tree size.")
+                for path in self.iter_references():
+                    subtree = self.get_nested_tree(path)
+                    try:
+                        return osutils.pathjoin(path, subtree.id2path(file_id))
+                    except errors.NoSuchId:
+                        pass
+            raise errors.NoSuchId(self, file_id)
 
     def all_file_ids(self):
         return {entry.file_id for path, entry in self.iter_entries_by_dir()}
