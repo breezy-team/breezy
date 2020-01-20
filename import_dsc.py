@@ -48,6 +48,7 @@ from ...errors import (
     BzrError,
     AlreadyBranchError,
     NotBranchError,
+    NoRoundtrippingSupport,
     NoWorkingTree,
     UnrelatedBranches,
     )
@@ -840,8 +841,13 @@ class DistributionBranch(object):
                 if revid is None:
                     # FIXME: This is wrong for component tarballs
                     revid = upstream_branch.last_revision()
-                self.pristine_upstream_branch.fetch(
-                        upstream_branch, last_revision=revid)
+                try:
+                    self.pristine_upstream_branch.fetch(
+                            upstream_branch, last_revision=revid)
+                except NoRoundtrippingSupport:
+                    fetch_result = self.pristine_upstream_branch.fetch(
+                        upstream_branch, last_revision=revid, lossy=True)
+                    revid = fetch_result.revidmap[revid]
                 upstream_branch.tags.merge_to(
                     self.pristine_upstream_branch.tags)
                 parents.append(revid)
