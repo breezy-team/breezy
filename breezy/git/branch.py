@@ -1371,7 +1371,7 @@ class InterToGitBranch(branch.GenericInterBranch):
     def fetch(self, stop_revision=None, fetch_tags=None, lossy=False,
               limit=None):
         if stop_revision is None:
-            stop_revision = self.source.stop_revision()
+            stop_revision = self.source.last_revision()
         ret = []
         if fetch_tags:
             for k, v in viewitems(self.source.tags.get_tag_dict()):
