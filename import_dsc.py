@@ -677,8 +677,7 @@ class DistributionBranch(object):
                 pull_branch.pristine_upstream_branch,
                 stop_revision=pull_revision)
             self.pristine_upstream_source.tag_version(version, pull_revision)
-            self.branch.fetch(
-                self.pristine_upstream_branch, last_revision=pull_revision)
+            self.branch.fetch(self.pristine_upstream_branch, pull_revision)
             self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
         checkout_upstream_version(
             self.pristine_upstream_tree, package, version, pull_revisions)
@@ -793,8 +792,7 @@ class DistributionBranch(object):
         # since self.tree was locked.
         self.branch.repository.refresh_data()
         for (component, tag, revid) in imported_revids:
-            self.branch.fetch(
-                self.pristine_upstream_branch, last_revision=revid)
+            self.branch.fetch(self.pristine_upstream_branch, revid)
         self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
 
     def import_upstream(self, upstream_part, package, version,
@@ -843,10 +841,10 @@ class DistributionBranch(object):
                     revid = upstream_branch.last_revision()
                 try:
                     self.pristine_upstream_branch.fetch(
-                            upstream_branch, last_revision=revid)
+                            upstream_branch, revid)
                 except NoRoundtrippingSupport:
                     fetch_result = self.pristine_upstream_branch.fetch(
-                        upstream_branch, last_revision=revid, lossy=True)
+                        upstream_branch, revid, lossy=True)
                     revid = fetch_result.revidmap[revid]
                 upstream_branch.tags.merge_to(
                     self.pristine_upstream_branch.tags)
@@ -1067,8 +1065,7 @@ class DistributionBranch(object):
                     package, last_contained_version.upstream_version)):
                 revid = self.revid_of_version(last_contained_version)
                 parents.append(revid)
-                self.pristine_upstream_branch.fetch(
-                    self.branch, last_revision=revid)
+                self.pristine_upstream_branch.fetch(self.branch, revid)
         pull_parents = self.get_parents(versions)
         if ((first_parent == NULL_REVISION and len(pull_parents) > 0)
                 or len(pull_parents) > 1):
@@ -1089,7 +1086,7 @@ class DistributionBranch(object):
                 parents.append(pull_revid)
                 self.pristine_upstream_branch.fetch(
                         pull_branch.pristine_upstream_branch,
-                        last_revision=pull_revid)
+                        pull_revid)
                 pull_branch.pristine_upstream_branch.tags.merge_to(
                         self.pristine_upstream_branch.tags)
         # FIXME: What about other versions ?
@@ -1111,7 +1108,7 @@ class DistributionBranch(object):
 
     def _fetch_from_branch(self, branch, revid):
         branch.branch.tags.merge_to(self.branch.tags)
-        self.branch.fetch(branch.branch, last_revision=revid)
+        self.branch.fetch(branch.branch, revid)
         if self.pristine_upstream_branch.last_revision() == NULL_REVISION:
             self.pristine_upstream_tree.pull(branch.pristine_upstream_branch)
             branch.pristine_upstream_branch.tags.merge_to(

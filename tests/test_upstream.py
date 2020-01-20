@@ -94,7 +94,7 @@ from ..upstream.pristinetar import (
     )
 
 
-svn_plugin = PluginLoadedFeature('svn')
+svn_plugin = ModuleAvailableFeature('breezy.plugins.svn.mapping')
 dulwich = ModuleAvailableFeature('dulwich')
 
 
