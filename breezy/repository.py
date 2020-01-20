@@ -65,6 +65,18 @@ class CannotSetRevisionId(errors.BzrError):
     _fmt = "Repository format does not support setting revision ids."
 
 
+class FetchResult(object):
+    """Result of a fetch operation.
+
+    :ivar revidmap: For lossy fetches, map from source revid to target revid.
+    :ivar total_fetched: Number of revisions fetched
+    """
+
+    def __init__(self, total_fetched=None, revidmap=None):
+        self.total_fetched = total_fetched
+        self.revidmap = revidmap
+
+
 class CommitBuilder(object):
     """Provides an interface to build up a commit.
 
@@ -686,7 +698,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def _resume_write_group(self, tokens):
         raise errors.UnsuspendableWriteGroup(self)
 
-    def fetch(self, source, revision_id=None, find_ghosts=False):
+    def fetch(self, source, revision_id=None, find_ghosts=False, lossy=False):
         """Fetch the content required to construct revision_id from source.
 
         If revision_id is None, then all content is copied.
@@ -701,6 +713,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         :param revision_id: If specified, all the content needed for this
             revision ID will be copied to the target.  Fetch will determine for
             itself which content needs to be copied.
+        :return: A FetchResult object
         """
         if self.is_in_write_group():
             raise errors.InternalBzrError(
@@ -717,7 +730,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 self.get_revision(revision_id)
             return 0, []
         inter = InterRepository.get(source, self)
-        return inter.fetch(revision_id=revision_id, find_ghosts=find_ghosts)
+        return inter.fetch(
+            revision_id=revision_id, find_ghosts=find_ghosts, lossy=lossy)
 
     def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
                            timezone=None, committer=None, revprops=None,
@@ -1500,14 +1514,14 @@ class InterRepository(InterObject):
                 pass
             self.target.fetch(self.source, revision_id=revision_id)
 
-    def fetch(self, revision_id=None, find_ghosts=False):
+    def fetch(self, revision_id=None, find_ghosts=False, lossy=False):
         """Fetch the content required to construct revision_id.
 
         The content is copied from self.source to self.target.
 
         :param revision_id: if None all content is copied, if NULL_REVISION no
                             content is copied.
-        :return: None.
+        :return: FetchResult
         """
         raise NotImplementedError(self.fetch)
 
