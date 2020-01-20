@@ -543,7 +543,9 @@ class InterGitNonGitRepository(InterFromGitRepository):
             determine_wants, mapping, lossy=lossy)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
-        return FetchResult()
+        result = FetchResult()
+        result.refs = remote_refs
+        return result
 
 
 class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
@@ -682,7 +684,9 @@ class InterGitGitRepository(InterFromGitRepository):
                 args, include_tags=include_tags)
         wants_recorder = DetermineWantsRecorder(determine_wants)
         self.fetch_objects(wants_recorder, mapping, limit=limit, lossy=lossy)
-        return FetchResult()
+        result = FetchResult()
+        result.refs = wants_recorder.remote_refs
+        return result
 
     def get_determine_wants_revids(self, revids, include_tags=False):
         wants = set()

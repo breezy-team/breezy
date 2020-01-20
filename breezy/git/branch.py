@@ -1210,17 +1210,17 @@ class InterGitLocalGitBranch(InterGitBranch):
         fetch_tags = c.get('branch.fetch_tags')
 
         if stop_revision is None:
-            refs = interrepo.fetch(branches=[self.source.ref], include_tags=fetch_tags)
+            result = interrepo.fetch(branches=[self.source.ref], include_tags=fetch_tags)
             try:
-                head = refs[self.source.ref]
+                head = result.refs[self.source.ref]
             except KeyError:
                 stop_revision = revision.NULL_REVISION
             else:
                 stop_revision = self.target.lookup_foreign_revision_id(head)
         else:
-            refs = interrepo.fetch(
+            result = interrepo.fetch(
                 revision_id=stop_revision, include_tags=fetch_tags)
-        return refs, stop_revision
+        return result.refs, stop_revision
 
     def pull(self, stop_revision=None, overwrite=False,
              possible_transports=None, run_hooks=True, local=False):
