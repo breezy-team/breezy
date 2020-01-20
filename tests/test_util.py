@@ -110,6 +110,15 @@ class RecursiveCopyTests(TestCaseInTempDir):
         self.assertPathExists('a/d/e')
         self.assertPathExists('a/f')
 
+    def test_recursive_copy_symlink(self):
+        os.mkdir('a')
+        os.symlink('c', 'a/link')
+        os.mkdir('b')
+        recursive_copy('a', 'b')
+        self.assertPathExists('b')
+        self.assertPathExists('b/link')
+        self.assertEqual('c', os.readlink('b/link'))
+
 
 class SafeDecodeTests(TestCase):
 
@@ -193,16 +202,19 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         tree = self.make_branch_and_tree('.')
         self.write_changelog('changelog')
         tree.add(['changelog'])
-        self.assertRaises(MissingChangelogError, find_changelog, tree, merge=False)
+        self.assertRaises(
+            MissingChangelogError, find_changelog, tree, merge=False)
 
     def test_find_changelog_nochangelog(self):
         tree = self.make_branch_and_tree('.')
         self.write_changelog('changelog')
-        self.assertRaises(MissingChangelogError, find_changelog, tree, merge=False)
+        self.assertRaises(
+            MissingChangelogError, find_changelog, tree, merge=False)
 
     def test_find_changelog_nochangelog_merge(self):
         tree = self.make_branch_and_tree('.')
-        self.assertRaises(MissingChangelogError, find_changelog, tree, merge=True)
+        self.assertRaises(
+            MissingChangelogError, find_changelog, tree, merge=True)
 
     def test_find_changelog_symlink(self):
         """When there was a symlink debian -> . then the code used to break"""
@@ -616,9 +628,8 @@ class ChangelogInfoTests(TestCaseWithTransport):
     def test_get_commit_info_none(self):
         wt = self.make_branch_and_tree(".")
         changelog = Changelog()
-        message, authors, thanks, bugs = \
-                get_commit_info_from_changelog(changelog, wt.branch,
-                        _lplib=MockLaunchpad())
+        message, authors, thanks, bugs = get_commit_info_from_changelog(
+            changelog, wt.branch, _lplib=MockLaunchpad())
         self.assertEqual(None, message)
         self.assertEqual([], authors)
         self.assertEqual([], thanks)
@@ -631,24 +642,22 @@ class ChangelogInfoTests(TestCaseWithTransport):
                    "  * Second change, thanks to B. Hacker"]
         author = "J. Maintainer <maint@example.com"
         changelog.new_block(changes=changes, author=author)
-        message, authors, thanks, bugs = \
-                get_commit_info_from_changelog(changelog, wt.branch,
-                        _lplib=MockLaunchpad())
+        message, authors, thanks, bugs = get_commit_info_from_changelog(
+            changelog, wt.branch, _lplib=MockLaunchpad())
         self.assertEqual("\n".join(strip_changelog_message(changes)), message)
         self.assertEqual([author]+find_extra_authors(changes), authors)
         self.assertEqual(text_type, type(authors[0]))
         self.assertEqual(find_thanks(changes), thanks)
-        self.assertEqual(find_bugs_fixed(changes, wt.branch,
-                    _lplib=MockLaunchpad()), bugs)
+        self.assertEqual(find_bugs_fixed(
+            changes, wt.branch, _lplib=MockLaunchpad()), bugs)
 
     def assertUnicodeCommitInfo(self, changes):
         wt = self.make_branch_and_tree(".")
         changelog = Changelog()
         author = "J. Maintainer <maint@example.com>"
         changelog.new_block(changes=changes, author=author)
-        message, authors, thanks, bugs = \
-                get_commit_info_from_changelog(changelog, wt.branch,
-                        _lplib=MockLaunchpad())
+        message, authors, thanks, bugs = get_commit_info_from_changelog(
+            changelog, wt.branch, _lplib=MockLaunchpad())
         self.assertEqual(u'[ \xc1. Hacker ]\n'
                          u'* First ch\xe1nge, LP: #12345\n'
                          u'* Second change, thanks to \xde. Hacker',
@@ -668,7 +677,7 @@ class ChangelogInfoTests(TestCaseWithTransport):
 class MockLaunchpad(object):
 
     def __init__(self, debian_bug_to_ubuntu_bugs={},
-            ubuntu_bug_to_debian_bugs={}):
+                 ubuntu_bug_to_debian_bugs={}):
         self.debian_bug_to_ubuntu_bugs = debian_bug_to_ubuntu_bugs
         self.ubuntu_bug_to_debian_bugs = ubuntu_bug_to_debian_bugs
         self.debian_bug_lookups = []
@@ -726,46 +735,55 @@ class FindPreviousUploadTests(TestCase):
         author = "J. Maintainer <maint@example.com>"
         for version, distro in versions_and_distributions:
             cl.new_block(changes=changes, author=author,
-                                distributions=distro, version=version)
+                         distributions=distro, version=version)
         return cl
 
     def test_find_previous_upload_debian(self):
-        cl = self.make_changelog([("0.1-1", "unstable"),
-                ("0.1-2", "unstable")])
+        cl = self.make_changelog(
+            [("0.1-1", "unstable"),
+             ("0.1-2", "unstable")])
         self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
-        cl = self.make_changelog([("0.1-1", "unstable"),
-                ("0.1-1.1", "stable-security"), ("0.1-2", "unstable")])
+        cl = self.make_changelog(
+            [("0.1-1", "unstable"),
+             ("0.1-1.1", "stable-security"), ("0.1-2", "unstable")])
         self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
 
     def test_find_previous_upload_ubuntu(self):
-        cl = self.make_changelog([("0.1-1", "lucid"),
-                ("0.1-2", "lucid")])
+        cl = self.make_changelog(
+            [("0.1-1", "lucid"),
+             ("0.1-2", "lucid")])
         self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
-        cl = self.make_changelog([("0.1-1", "lucid"),
-                ("0.1-1.1", "unstable"), ("0.1-2", "maverick")])
+        cl = self.make_changelog(
+            [("0.1-1", "lucid"),
+             ("0.1-1.1", "unstable"), ("0.1-2", "maverick")])
         self.requireFeature(DistroInfoFeature)
-        self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
+        self.assertEqual(
+                Version("0.1-1"), changelog_find_previous_upload(cl))
 
     def test_find_previous_upload_ubuntu_pocket(self):
-        cl = self.make_changelog([("0.1-1", "lucid-updates"),
-                ("0.1-2", "lucid-updates")])
+        cl = self.make_changelog(
+            [("0.1-1", "lucid-updates"),
+             ("0.1-2", "lucid-updates")])
         self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
 
     def test_find_previous_upload_unknown(self):
-        cl = self.make_changelog([("0.1-1", "lucid"),
-                ("0.1-2", "dunno")])
+        cl = self.make_changelog(
+            [("0.1-1", "lucid"),
+             ("0.1-2", "dunno")])
         self.assertRaises(NoPreviousUpload, changelog_find_previous_upload, cl)
 
     def test_find_previous_upload_missing(self):
-        cl = self.make_changelog([("0.1-1", "unstable"),
-                ("0.1-2", "lucid")])
+        cl = self.make_changelog(
+            [("0.1-1", "unstable"),
+             ("0.1-2", "lucid")])
         self.assertRaises(NoPreviousUpload, changelog_find_previous_upload, cl)
         cl = self.make_changelog([("0.1-1", "unstable")])
         self.assertRaises(NoPreviousUpload, changelog_find_previous_upload, cl)
 
     def test_find_previous_upload_unreleased(self):
-        cl = self.make_changelog([("0.1-1", "unstable"),
-                ("0.1-2", "UNRELEASED")])
+        cl = self.make_changelog(
+            [("0.1-1", "unstable"),
+             ("0.1-2", "UNRELEASED")])
         self.assertEqual(Version("0.1-1"), changelog_find_previous_upload(cl))
 
 
@@ -777,22 +795,25 @@ class SourceFormatTests(TestCaseWithTransport):
 
     def test_source_format_newline(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([("debian/", ), ("debian/source/",),
-            ("debian/source/format", "3.0 (native)\n")])
+        self.build_tree_contents(
+            [("debian/", ), ("debian/source/",),
+             ("debian/source/format", "3.0 (native)\n")])
         tree.add(["debian", "debian/source", "debian/source/format"])
         self.assertEquals("3.0 (native)", tree_get_source_format(tree))
 
     def test_source_format(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([("debian/",), ("debian/source/",),
-            ("debian/source/format", "3.0 (quilt)")])
+        self.build_tree_contents(
+            [("debian/",), ("debian/source/",),
+             ("debian/source/format", "3.0 (quilt)")])
         tree.add(["debian", "debian/source", "debian/source/format"])
         self.assertEquals("3.0 (quilt)", tree_get_source_format(tree))
 
     def test_source_format_file_unversioned(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([("debian/",), ("debian/source/",),
-            ("debian/source/format", "3.0 (quilt)")])
+        self.build_tree_contents(
+            [("debian/",), ("debian/source/",),
+             ("debian/source/format", "3.0 (quilt)")])
         self.assertEquals("3.0 (quilt)", tree_get_source_format(tree))
 
 
@@ -805,8 +826,9 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         :param tree: Tree to write to.
         :param format_string: Format string to write.
         """
-        self.build_tree_contents([("debian/",), ("debian/source/",),
-            ("debian/source/format", format_string)])
+        self.build_tree_contents(
+            [("debian/",), ("debian/source/",),
+             ("debian/source/format", format_string)])
         tree.add(["debian", "debian/source", "debian/source/format"])
 
     def test_normal_source_format(self):
@@ -821,49 +843,62 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         # Normal source format without upstream source -> MERGE
         tree = self.make_branch_and_tree('.')
         self.writeVersionFile(tree, "3.0 (quilt)")
-        self.assertEquals(BUILD_TYPE_MERGE, guess_build_type(tree, None, contains_upstream_source=False))
+        self.assertEquals(
+            BUILD_TYPE_MERGE,
+            guess_build_type(tree, None, contains_upstream_source=False))
 
     def test_native_source_format(self):
         # Native source format -> NATIVE
         tree = self.make_branch_and_tree('.')
         self.writeVersionFile(tree, "3.0 (native)")
-        self.assertEquals(BUILD_TYPE_NATIVE, guess_build_type(tree, None, contains_upstream_source=True))
+        self.assertEquals(
+            BUILD_TYPE_NATIVE,
+            guess_build_type(tree, None, contains_upstream_source=True))
 
     def test_prev_version_native(self):
         # Native package version -> NATIVE
         tree = self.make_branch_and_tree('.')
-        self.assertEquals(BUILD_TYPE_NATIVE,
-            guess_build_type(tree, Version("1.0"), contains_upstream_source=True))
+        self.assertEquals(
+            BUILD_TYPE_NATIVE,
+            guess_build_type(
+                tree, Version("1.0"), contains_upstream_source=True))
 
     def test_empty(self):
         # Empty tree and a non-native package -> NORMAL
         tree = self.make_branch_and_tree('.')
-        self.assertEquals(BUILD_TYPE_NORMAL,
-            guess_build_type(tree, Version("1.0-1"), contains_upstream_source=None))
+        self.assertEquals(
+            BUILD_TYPE_NORMAL,
+            guess_build_type(
+                tree, Version("1.0-1"), contains_upstream_source=None))
 
     def test_no_upstream_source(self):
         # No upstream source code and a non-native package -> MERGE
         tree = self.make_branch_and_tree('.')
         tree.mkdir("debian")
-        self.assertEquals(BUILD_TYPE_MERGE,
-            guess_build_type(tree, Version("1.0-1"), contains_upstream_source=False))
+        self.assertEquals(
+            BUILD_TYPE_MERGE,
+            guess_build_type(
+                tree, Version("1.0-1"), contains_upstream_source=False))
 
     def test_default(self):
         # Upstream source code and a non-native package -> NORMAL
         tree = self.make_branch_and_tree('.')
-        self.assertEquals(BUILD_TYPE_NORMAL,
-            guess_build_type(tree, Version("1.0-1"), contains_upstream_source=True))
+        self.assertEquals(
+            BUILD_TYPE_NORMAL,
+            guess_build_type(
+                tree, Version("1.0-1"), contains_upstream_source=True))
 
     def test_inconsistent(self):
-        # If version string and source format disagree on whether the package is native,
-        # raise an exception.
+        # If version string and source format disagree on whether the package
+        # is native, raise an exception.
         tree = self.make_branch_and_tree('.')
         self.writeVersionFile(tree, "3.0 (native)")
-        e = self.assertRaises(InconsistentSourceFormatError, guess_build_type, tree,
+        e = self.assertRaises(
+            InconsistentSourceFormatError, guess_build_type, tree,
             Version("1.0-1"), contains_upstream_source=True)
         self.assertEquals(
-            "Inconsistency between source format and version: version is not native, "
-            "format is native.", str(e))
+            "Inconsistency between source format and version: "
+            "version is not native, format is native.", str(e))
 
 
 class TestExtractOrigTarballs(TestCaseInTempDir):
@@ -889,8 +924,8 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
                 import lzma
                 f = lzma.LZMAFile(tar_path, "w")
             else:
-                raise AssertionError("Unknown compressin type %r" %
-                    compression)
+                raise AssertionError(
+                    "Unknown compressin type %r" % compression)
             try:
                 tf = tarfile.open(None, 'w', f)
                 try:
@@ -906,55 +941,67 @@ class TestExtractOrigTarballs(TestCaseInTempDir):
     def test_single_orig_tar_gz(self):
         tar_path = self.create_tarball("package", "0.1", "gz")
         os.mkdir("target")
-        extract_orig_tarballs([(tar_path, None)], "target",
-            strip_components=1)
+        extract_orig_tarballs(
+            [(tar_path, None)], "target", strip_components=1)
         self.assertEquals(os.listdir("target"), ["README"])
 
     def test_single_orig_tar_bz2(self):
         tar_path = self.create_tarball("package", "0.1", "bz2")
         os.mkdir("target")
-        extract_orig_tarballs([(tar_path, None)], "target",
-            strip_components=1)
+        extract_orig_tarballs(
+            [(tar_path, None)], "target", strip_components=1)
         self.assertEquals(os.listdir("target"), ["README"])
 
     def test_single_orig_tar_xz(self):
         self.requireFeature(LzmaFeature)
         tar_path = self.create_tarball("package", "0.1", "xz")
         os.mkdir("target")
-        extract_orig_tarballs([(tar_path, None)], "target",
-            strip_components=1)
+        extract_orig_tarballs(
+            [(tar_path, None)], "target", strip_components=1)
         self.assertEquals(os.listdir("target"), ["README"])
 
     def test_multiple_tarballs(self):
         base_tar_path = self.create_tarball("package", "0.1", "bz2")
-        tar_path_extra = self.create_tarball("package", "0.1", "bz2", part="extra")
+        tar_path_extra = self.create_tarball(
+            "package", "0.1", "bz2", part="extra")
         os.mkdir("target")
-        extract_orig_tarballs([(base_tar_path, None), (tar_path_extra, "extra")], "target",
+        extract_orig_tarballs(
+            [(base_tar_path, None), (tar_path_extra, "extra")], "target",
             strip_components=1)
-        self.assertEquals(sorted(os.listdir("target")),
+        self.assertEquals(
+            sorted(os.listdir("target")),
             sorted(["README", "extra"]))
 
 
 class ComponentFromOrigTarballTests(TestCase):
 
     def test_base_tarball(self):
-        self.assertIs(None,
-            component_from_orig_tarball("foo_0.1.orig.tar.gz", "foo", "0.1"))
-        self.assertRaises(ValueError,
+        self.assertIs(
+            None,
+            component_from_orig_tarball(
+                "foo_0.1.orig.tar.gz", "foo", "0.1"))
+        self.assertRaises(
+            ValueError,
             component_from_orig_tarball, "foo_0.1.orig.tar.gz", "bar", "0.1")
 
     def test_invalid_extension(self):
-        self.assertRaises(ValueError,
+        self.assertRaises(
+            ValueError,
             component_from_orig_tarball, "foo_0.1.orig.unknown", "foo", "0.1")
 
     def test_component(self):
-        self.assertEquals("comp",
-            component_from_orig_tarball("foo_0.1.orig-comp.tar.gz", "foo", "0.1"))
-        self.assertEquals("comp-dash",
-            component_from_orig_tarball("foo_0.1.orig-comp-dash.tar.gz", "foo", "0.1"))
+        self.assertEquals(
+            "comp",
+            component_from_orig_tarball(
+                "foo_0.1.orig-comp.tar.gz", "foo", "0.1"))
+        self.assertEquals(
+            "comp-dash",
+            component_from_orig_tarball(
+                "foo_0.1.orig-comp-dash.tar.gz", "foo", "0.1"))
 
     def test_invalid_character(self):
-        self.assertRaises(ValueError,
+        self.assertRaises(
+            ValueError,
             component_from_orig_tarball, "foo_0.1.orig;.tar.gz", "foo", "0.1")
 
 

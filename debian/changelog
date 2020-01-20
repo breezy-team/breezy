@@ -4,6 +4,7 @@ breezy-debian (2.8.33) UNRELEASED; urgency=medium
   * Set Rules-Requires-Root.
   * Rely on -Dpristine-tar to enable pristine-tar debugging, rather than
     the custom debug-pristine-tar configuration setting.
+  * Don't follow symlinks when exporting directories.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 24 Nov 2019 03:11:20 +0000
 

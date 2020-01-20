@@ -153,7 +153,12 @@ def recursive_copy(fromdir, todir):
                 os.mkdir(tosubdir)
             recursive_copy(path, tosubdir)
         else:
-            shutil.copy(path, todir)
+            # Python 3 has a follow_symlinks argument to shutil.copy, but
+            # Python 2 does not...
+            if os.path.islink(path):
+                os.symlink(os.readlink(path), os.path.join(todir, entry))
+            else:
+                shutil.copy(path, todir)
 
 
 def find_changelog(t, subpath='', merge=False, max_blocks=1):
