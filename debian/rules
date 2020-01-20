@@ -82,7 +82,7 @@ override_dh_compress:
 
 override_dh_strip:
 ifeq (,$(filter nostrip,$(DEB_BUILD_OPTIONS)))
-	dh_strip -ppython3-breezy --dbgsym-migration='python3-breezy-dbg (<< 3.0.0~bzr7141-2)'
+	dh_strip -ppython3-breezy
 endif
 
 override_dh_link:
