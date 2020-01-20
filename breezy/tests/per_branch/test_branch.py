@@ -108,7 +108,8 @@ class TestBranch(per_branch.TestCaseWithBranch):
         rev1 = wt.commit('lala!', allow_pointless=False)
 
         b2 = self.make_branch('b2')
-        b2.fetch(b1)
+        result = b2.fetch(b1)
+        self.assertIsInstance(result, repository.FetchResult)
 
         rev = b2.repository.get_revision(rev1)
         tree = b2.repository.revision_tree(rev1)

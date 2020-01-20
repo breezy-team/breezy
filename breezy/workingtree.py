@@ -657,7 +657,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             merger.other_rev_id = to_revision
             if _mod_revision.is_null(merger.other_rev_id):
                 raise errors.NoCommits(branch)
-            self.branch.fetch(branch, last_revision=merger.other_rev_id)
+            self.branch.fetch(branch, stop_revision=merger.other_rev_id)
             merger.other_basis = merger.other_rev_id
             merger.other_tree = self.branch.repository.revision_tree(
                 merger.other_rev_id)
