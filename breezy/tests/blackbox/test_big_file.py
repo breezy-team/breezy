@@ -35,7 +35,7 @@ from breezy.tests import (
     )
 
 BIG_FILE_SIZE = 1024 * 1024 * 500
-BIG_FILE_CHUNK_SIZE = 1024 * 1024
+BIG_FILE_CHUNK_SIZE = 1024
 
 RESOURCE = resource.RLIMIT_AS
 LIMIT = 1024 * 1024 * 100
@@ -43,7 +43,7 @@ LIMIT = 1024 * 1024 * 100
 
 def make_big_file(path):
     blob_1mb = BIG_FILE_CHUNK_SIZE * b'\x0c'
-    fd = os.open(path, os.O_CREAT|os.O_WRONLY)
+    fd = os.open(path, os.O_CREAT | os.O_WRONLY)
     try:
         for i in range(BIG_FILE_SIZE // BIG_FILE_CHUNK_SIZE):
             os.write(fd, blob_1mb)
