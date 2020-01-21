@@ -43,9 +43,12 @@ LIMIT = 1024 * 1024 * 100
 
 def make_big_file(path):
     blob_1mb = BIG_FILE_CHUNK_SIZE * b'\x0c'
-    with open(path, 'wb') as f:
+    fd = os.open(path, os.O_CREAT|os.O_WRONLY)
+    try:
         for i in range(BIG_FILE_SIZE // BIG_FILE_CHUNK_SIZE):
-            f.write(blob_1mb)
+            os.write(fd, blob_1mb)
+    finally:
+        os.close(fd)
 
 
 class TestAdd(tests.TestCaseWithTransport):
