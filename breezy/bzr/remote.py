@@ -2209,7 +2209,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 if_present_ids=if_present_ids, limit=limit)
 
     def fetch(self, source, revision_id=None, find_ghosts=False,
-              fetch_spec=None):
+              fetch_spec=None, lossy=False):
         # No base implementation to use as RemoteRepository is not a subclass
         # of Repository; so this is a copy of Repository.fetch().
         if fetch_spec is not None and revision_id is not None:
@@ -2227,7 +2227,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             if (revision_id is not None
                     and not _mod_revision.is_null(revision_id)):
                 self.get_revision(revision_id)
-            return 0, []
+            return _mod_repository.FetchResult(0)
         # if there is no specific appropriate InterRepository, this will get
         # the InterRepository base class, which raises an
         # IncompatibleRepositories when asked to fetch.
@@ -2237,7 +2237,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise errors.UnsupportedOperation(
                 "fetch_spec not supported for %r" % inter)
         return inter.fetch(revision_id=revision_id,
-                           find_ghosts=find_ghosts, fetch_spec=fetch_spec)
+                           find_ghosts=find_ghosts, fetch_spec=fetch_spec,
+                           lossy=lossy)
 
     def create_bundle(self, target, base, fileobj, format=None):
         self._ensure_real()

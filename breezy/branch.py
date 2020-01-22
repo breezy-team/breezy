@@ -676,18 +676,18 @@ class Branch(controldir.ControlComponent):
             raise errors.UpgradeRequired(self.user_url)
         self.get_config_stack().set('append_revisions_only', enabled)
 
-    def fetch(self, from_branch, last_revision=None, limit=None):
+    def fetch(self, from_branch, stop_revision=None, limit=None, lossy=False):
         """Copy revisions from from_branch into this branch.
 
         :param from_branch: Where to copy from.
-        :param last_revision: What revision to stop at (None for at the end
+        :param stop_revision: What revision to stop at (None for at the end
                               of the branch.
         :param limit: Optional rough limit of revisions to fetch
         :return: None
         """
         with self.lock_write():
             return InterBranch.get(from_branch, self).fetch(
-                last_revision, limit=limit)
+                stop_revision, limit=limit, lossy=lossy)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
@@ -2085,11 +2085,12 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.copy_content_into)
 
-    def fetch(self, stop_revision=None, limit=None):
+    def fetch(self, stop_revision=None, limit=None, lossy=False):
         """Fetch revisions.
 
         :param stop_revision: Last revision to fetch
         :param limit: Optional rough limit of revisions to fetch
+        :return: FetchResult object
         """
         raise NotImplementedError(self.fetch)
 
@@ -2146,7 +2147,7 @@ class GenericInterBranch(InterBranch):
             if self.source._push_should_merge_tags():
                 self.source.tags.merge_to(self.target.tags)
 
-    def fetch(self, stop_revision=None, limit=None):
+    def fetch(self, stop_revision=None, limit=None, lossy=False):
         if self.target.base == self.source.base:
             return (0, [])
         with self.source.lock_read(), self.target.lock_write():
@@ -2161,6 +2162,7 @@ class GenericInterBranch(InterBranch):
             fetch_spec = fetch_spec_factory.make_fetch_spec()
             return self.target.repository.fetch(
                 self.source.repository,
+                lossy=lossy,
                 fetch_spec=fetch_spec)
 
     def _update_revisions(self, stop_revision=None, overwrite=False,

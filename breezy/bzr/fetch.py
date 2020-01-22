@@ -74,14 +74,11 @@ class RepoFetcher(object):
         self._last_revision = last_revision
         self._fetch_spec = fetch_spec
         self.find_ghosts = find_ghosts
-        self.from_repository.lock_read()
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               str(self.from_repository), str(self.from_repository._format),
-               str(self.to_repository), str(self.to_repository._format))
-        try:
+        with self.from_repository.lock_read():
+            mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+                   str(self.from_repository), str(self.from_repository._format),
+                   str(self.to_repository), str(self.to_repository._format))
             self.__fetch()
-        finally:
-            self.from_repository.unlock()
 
     def __fetch(self):
         """Primary worker function.
