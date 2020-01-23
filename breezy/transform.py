@@ -33,6 +33,7 @@ lazy_import.lazy_import(globals(), """
 from breezy import (
     annotate,
     bencode,
+    cleanup,
     controldir,
     commit,
     conflicts,
@@ -455,7 +456,7 @@ class TreeTransformBase(object):
             return None
         # the file is old; the old id is still valid
         if self._new_root == trans_id:
-            return self._tree.get_root_id()
+            return self._tree.path2id('')
         return self._tree.path2id(path)
 
     def final_file_id(self, trans_id):
@@ -1823,7 +1824,7 @@ class TreeTransform(DiskTreeTransform):
                     child_pb.update(gettext('removing file'),
                                     num, total_entries)
                 if trans_id == self._new_root:
-                    file_id = self._tree.get_root_id()
+                    file_id = self._tree.path2id('')
                 else:
                     file_id = self.tree_file_id(trans_id)
                 # File-id isn't really being deleted, just moved
@@ -2035,12 +2036,15 @@ class _PreviewTree(inventorytree.InventoryTree):
         self._iter_changes_cache = dict((c.file_id, c) for c in
                                         self._transform.iter_changes())
 
+    def supports_tree_reference(self):
+        # TODO(jelmer): Support tree references in _PreviewTree.
+        # return self._transform._tree.supports_tree_reference()
+        return False
+
     def _content_change(self, file_id):
         """Return True if the content of this file changed"""
         changes = self._iter_changes_cache.get(file_id)
-        # changes[2] is true if the file content changed.  See
-        # InterTree.iter_changes.
-        return (changes is not None and changes[2])
+        return (changes is not None and changes.changed_content)
 
     def _get_repository(self):
         repo = getattr(self._transform._tree, '_repository', None)
@@ -2102,9 +2106,6 @@ class _PreviewTree(inventorytree.InventoryTree):
         """This Tree does not use inventory as its backing data."""
         raise NotImplementedError(_PreviewTree.root_inventory)
 
-    def get_root_id(self):
-        return self._transform.final_file_id(self._transform.root)
-
     def all_file_ids(self):
         tree_ids = set(self._transform._tree.all_file_ids())
         tree_ids.difference_update(self._transform.tree_file_id(t)
@@ -2124,21 +2125,6 @@ class _PreviewTree(inventorytree.InventoryTree):
             for t in self._transform._new_id)
 
         return tree_paths
-
-    def _has_id(self, file_id, fallback_check):
-        if file_id in self._transform._r_new_id:
-            return True
-        elif file_id in {self._transform.tree_file_id(trans_id) for
-                         trans_id in self._transform._removed_id}:
-            return False
-        else:
-            return fallback_check(file_id)
-
-    def has_id(self, file_id):
-        return self._has_id(file_id, self._transform._tree.has_id)
-
-    def has_or_had_id(self, file_id):
-        return self._has_id(file_id, self._transform._tree.has_or_had_id)
 
     def _path2trans_id(self, path):
         # We must not use None here, because that is a valid value to store.
@@ -2169,7 +2155,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             path = osutils.pathjoin(*path)
         return self._transform.final_file_id(self._path2trans_id(path))
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._final_paths._determine_path(trans_id)
@@ -2186,11 +2172,6 @@ class _PreviewTree(inventorytree.InventoryTree):
         children.update(self._by_parent.get(trans_id, []))
         self._all_children_cache[trans_id] = children
         return children
-
-    def _iter_children(self, file_id):
-        trans_id = self._transform.trans_id_file_id(file_id)
-        for child_trans_id in self._all_children(trans_id):
-            yield self._transform.final_file_id(child_trans_id)
 
     def extras(self):
         possible_extras = set(self._transform.trans_id_tree_path(p) for p
@@ -2242,7 +2223,11 @@ class _PreviewTree(inventorytree.InventoryTree):
         for entry, trans_id in self._make_inv_entries(todo):
             yield entry
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
+        if recurse_nested:
+            raise NotImplementedError(
+                'follow tree references not yet supported')
+
         # This may not be a maximally efficient implementation, but it is
         # reasonably straightforward.  An implementation that grafts the
         # TreeTransform changes onto the tree's iter_entries_by_dir results
@@ -2266,8 +2251,13 @@ class _PreviewTree(inventorytree.InventoryTree):
         path_entries.sort()
         return path_entries
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         """See WorkingTree.list_files."""
+        if recurse_nested:
+            raise NotImplementedError(
+                'follow tree references not yet supported')
+
         # XXX This should behave like WorkingTree.list_files, but is really
         # more like RevisionTree.list_files.
         if from_dir == '.':
@@ -2288,7 +2278,7 @@ class _PreviewTree(inventorytree.InventoryTree):
         else:
             if from_dir is None and include_root is True:
                 root_entry = inventory.make_entry(
-                    'directory', '', ROOT_PARENT, self.get_root_id())
+                    'directory', '', ROOT_PARENT, self.path2id(''))
                 yield '', 'V', 'directory', root_entry
             entries = self._iter_entries_for_dir(from_dir or '')
             for path, entry in entries:
@@ -2356,6 +2346,15 @@ class _PreviewTree(inventorytree.InventoryTree):
         if kind == 'file':
             with self.get_file(path) as fileobj:
                 return sha_file(fileobj)
+
+    def get_reference_revision(self, path):
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
+        reference_revision = self._transform._new_reference_revision.get(trans_id)
+        if reference_revision is None:
+            return self._transform._tree.get_reference_revision(path)
+        return reference_revision
 
     def is_executable(self, path):
         trans_id = self._path2trans_id(path)
@@ -2568,13 +2567,6 @@ class FinalPaths(object):
         return [(self.get_path(t), t) for t in trans_ids]
 
 
-def topology_sorted_ids(tree):
-    """Determine the topological order of the ids in a tree"""
-    file_ids = list(tree)
-    file_ids.sort(key=tree.id2path)
-    return file_ids
-
-
 def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
                delta_from_tree=False):
     """Create working tree for a branch, using a TreeTransform.
@@ -2601,15 +2593,13 @@ def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
     :param delta_from_tree: If true, build_tree may use the input Tree to
         generate the inventory delta.
     """
-    with wt.lock_tree_write(), tree.lock_read():
+    with cleanup.ExitStack() as exit_stack:
+        exit_stack.enter_context(wt.lock_tree_write())
+        exit_stack.enter_context(tree.lock_read())
         if accelerator_tree is not None:
-            accelerator_tree.lock_read()
-        try:
-            return _build_tree(tree, wt, accelerator_tree, hardlink,
-                               delta_from_tree)
-        finally:
-            if accelerator_tree is not None:
-                accelerator_tree.unlock()
+            exit_stack.enter_context(accelerator_tree.lock_read())
+        return _build_tree(tree, wt, accelerator_tree, hardlink,
+                           delta_from_tree)
 
 
 def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
@@ -2620,7 +2610,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     file_trans_id = {}
     top_pb = ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
-    if tree.get_root_id() is not None:
+    if tree.path2id('') is not None:
         # This is kind of a hack: we should be altering the root
         # as part of the regular tree shape diff logic.
         # The conditional test here is to avoid doing an
@@ -2628,14 +2618,14 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         # is set within the tree, nor setting the root and thus
         # marking the tree as dirty, because we use two different
         # idioms here: tree interfaces and inventory interfaces.
-        if wt.get_root_id() != tree.get_root_id():
-            wt.set_root_id(tree.get_root_id())
+        if wt.path2id('') != tree.path2id(''):
+            wt.set_root_id(tree.path2id(''))
             wt.flush()
     tt = wt.get_transform()
     divert = set()
     try:
         pp.next_phase()
-        file_trans_id[wt.get_root_id()] = tt.trans_id_tree_path('')
+        file_trans_id[wt.path2id('')] = tt.trans_id_tree_path('')
         with ui.ui_factory.nested_progress_bar() as pb:
             deferred_contents = []
             num = 0

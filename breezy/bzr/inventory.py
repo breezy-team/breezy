@@ -322,6 +322,12 @@ class InventoryEntry(object):
                    self.parent_id,
                    self.revision))
 
+    def is_unmodified(self, other):
+        other_revision = getattr(other, 'revision', None)
+        if other_revision is None:
+            return False
+        return self.revision == other.revision
+
     def __eq__(self, other):
         if other is self:
             # For the case when objects are cached
@@ -852,6 +858,39 @@ class CommonInventory(object):
         if self.root is not None:
             descend(self.root, u'')
         return accum
+
+    def get_entry_by_path_partial(self, relpath):
+        """Like get_entry_by_path, but return TreeReference objects.
+
+        :param relpath: Path to resolve, either as string with / as separators,
+            or as list of elements.
+        :return: tuple with ie, resolved elements and elements left to resolve
+        """
+        if isinstance(relpath, (str, text_type)):
+            names = osutils.splitpath(relpath)
+        else:
+            names = relpath
+
+        try:
+            parent = self.root
+        except errors.NoSuchId:
+            # root doesn't exist yet so nothing else can
+            return None, None, None
+        if parent is None:
+            return None, None, None
+        for i, f in enumerate(names):
+            try:
+                children = getattr(parent, 'children', None)
+                if children is None:
+                    return None, None, None
+                cie = children[f]
+                if cie.kind == 'tree-reference':
+                    return cie, names[:i + 1], names[i + 1:]
+                parent = cie
+            except KeyError:
+                # or raise an error?
+                return None, None, None
+        return parent, names, []
 
     def get_entry_by_path(self, relpath):
         """Return an inventory entry by path.

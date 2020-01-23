@@ -151,6 +151,17 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(b"", output)
         self.assertTrue(error.endswith(b"Created new branch.\n"))
 
+    def test_push_without_calculate_revnos(self):
+        self.run_bzr(['init', '--git', 'bla'])
+        self.run_bzr(['init', '--git', 'foo'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        output, error = self.run_bzr(
+            ['push', '-Ocalculate_revnos=no', '-d', 'foo', 'bla'])
+        self.assertEqual("", output)
+        self.assertContainsRe(
+            error,
+            'Pushed up to revision id git(.*).\n')
+
     def test_push_lossy_non_mainline(self):
         self.run_bzr(['init', '--git', 'bla'])
         self.run_bzr(['init', 'foo'])
@@ -167,6 +178,27 @@ class TestGitBlackBox(ExternalBase):
             'performance, push into a Bazaar repository.\n'
             'All changes applied successfully.\n'
             'Pushed up to revision 2.\n', error)
+
+    def test_push_lossy_non_mainline_incremental(self):
+        self.run_bzr(['init', '--git', 'bla'])
+        self.run_bzr(['init', 'foo'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        output, error = self.run_bzr(['push', '--lossy', '-d', 'foo', 'bla'])
+        self.assertEqual("", output)
+        self.assertEqual(
+            'Pushing from a Bazaar to a Git repository. For better '
+            'performance, push into a Bazaar repository.\n'
+            'All changes applied successfully.\n'
+            'Pushed up to revision 2.\n', error)
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        output, error = self.run_bzr(['push', '--lossy', '-d', 'foo', 'bla'])
+        self.assertEqual("", output)
+        self.assertEqual(
+            'Pushing from a Bazaar to a Git repository. For better '
+            'performance, push into a Bazaar repository.\n'
+            'All changes applied successfully.\n'
+            'Pushed up to revision 3.\n', error)
 
     def test_log(self):
         # Smoke test for "bzr log" in a git repository.
@@ -185,6 +217,47 @@ class TestGitBlackBox(ExternalBase):
 
         # Check that bzr log does not fail and includes the revision.
         output, error = self.run_bzr(['log', '-v'])
+        self.assertContainsRe(output, 'revno: 1')
+
+    def test_log_without_revno(self):
+        # Smoke test for "bzr log -v" in a git repository.
+        self.simple_commit()
+
+        # Check that bzr log does not fail and includes the revision.
+        output, error = self.run_bzr(['log', '-Ocalculate_revnos=no'])
+        self.assertNotContainsRe(output, 'revno: 1')
+
+    def test_commit_without_revno(self):
+        repo = GitRepo.init(self.test_dir)
+        output, error = self.run_bzr(
+            ['commit', '-Ocalculate_revnos=yes', '--unchanged', '-m', 'one'])
+        self.assertContainsRe(error, 'Committed revision 1.')
+        output, error = self.run_bzr(
+            ['commit', '-Ocalculate_revnos=no', '--unchanged', '-m', 'two'])
+        self.assertNotContainsRe(error, 'Committed revision 2.')
+        self.assertContainsRe(error, 'Committed revid .*.')
+
+    def test_log_file(self):
+        # Smoke test for "bzr log" in a git repository.
+        repo = GitRepo.init(self.test_dir)
+        builder = tests.GitBranchBuilder()
+        builder.set_file('a', b'text for a\n', False)
+        r1 = builder.commit(b'Joe Foo <joe@foo.com>', u'First')
+        builder.set_file('a', b'text 3a for a\n', False)
+        r2a = builder.commit(b'Joe Foo <joe@foo.com>', u'Second a', base=r1)
+        builder.set_file('a', b'text 3b for a\n', False)
+        r2b = builder.commit(b'Joe Foo <joe@foo.com>', u'Second b', base=r1)
+        builder.set_file('a', b'text 4 for a\n', False)
+        builder.commit(b'Joe Foo <joe@foo.com>', u'Third', merge=[r2a], base=r2b)
+        builder.finish()
+
+        # Check that bzr log does not fail and includes the revision.
+        output, error = self.run_bzr(['log', '-n2', 'a'])
+        self.assertEqual(error, '')
+        self.assertIn('Second a', output)
+        self.assertIn('Second b', output)
+        self.assertIn('First', output)
+        self.assertIn('Third', output)
 
     def test_tags(self):
         git_repo, commit_sha1 = self.simple_commit()
@@ -423,6 +496,28 @@ class SwitchTests(ExternalBase):
             basis_tree = tree.basis_tree()
             with basis_tree.lock_read():
                 self.assertEqual([], list(tree.iter_changes(basis_tree)))
+
+    def test_branch_with_nested_trees(self):
+        orig = self.make_branch_and_tree('source', format='git')
+        subtree = self.make_branch_and_tree('source/subtree', format='git')
+        self.build_tree(['source/subtree/a'])
+        self.build_tree_contents([('source/.gitmodules', """\
+[submodule "subtree"]
+    path = subtree
+    url = %s
+""" % subtree.user_url)])
+        subtree.add(['a'])
+        subtree.commit('add subtree contents')
+        orig.add_reference(subtree)
+        orig.add(['.gitmodules'])
+        orig.commit('add subtree')
+
+        self.run_bzr('branch source target')
+
+        target = WorkingTree.open('target')
+        target_subtree = WorkingTree.open('target/subtree')
+        self.assertTreesEqual(orig, target)
+        self.assertTreesEqual(subtree, target_subtree)
 
 
 class SwitchScriptTests(TestCaseWithTransportAndScript):

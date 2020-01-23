@@ -53,6 +53,7 @@ from .. import lazy_import
 lazy_import.lazy_import(globals(), """
 from breezy import (
     cache_utf8,
+    cleanup,
     conflicts as _mod_conflicts,
     globbing,
     ignores,
@@ -83,6 +84,7 @@ from ..tree import (
     TreeEntry,
     TreeFile,
     TreeLink,
+    TreeReference,
     )
 from ..workingtree import (
     WorkingTree,
@@ -192,8 +194,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # checkout in a subdirectory.  This can be avoided by not adding
         # it.  mbp 20070306
 
-
-
     def _serialize(self, inventory, out_file):
         xml5.serializer_v5.write_inventory(
             self._inventory, out_file, working=True)
@@ -284,7 +284,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             InventoryFile,
             InventoryLink)
         with self.lock_tree_write():
-            inv = Inventory(self.get_root_id())
+            inv = Inventory(self.path2id(''))
             for path, file_id, parent, kind in new_inventory_list:
                 name = os.path.basename(path)
                 if name == "":
@@ -499,6 +499,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     note(message)
             self.apply_inventory_delta(inv_delta)
 
+    def get_nested_tree(self, path):
+        return WorkingTree.open(self.abspath(path))
+
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees."""
         parent_ids = [rev for (rev, tree) in parents_list]
@@ -657,25 +660,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 result = self._deserialize(f)
             self._set_inventory(result, dirty=False)
             return result
-
-    def get_root_id(self):
-        """Return the id of this trees root"""
-        with self.lock_read():
-            return self._inventory.root.file_id
-
-    def has_id(self, file_id):
-        # files that have been deleted are excluded
-        inv, inv_file_id = self._unpack_file_id(file_id)
-        if not inv.has_id(inv_file_id):
-            return False
-        path = inv.id2path(inv_file_id)
-        return osutils.lexists(self.abspath(path))
-
-    def has_or_had_id(self, file_id):
-        if file_id == self.get_root_id():
-            return True
-        inv, inv_file_id = self._unpack_file_id(file_id)
-        return inv.has_id(inv_file_id)
 
     def all_file_ids(self):
         """Iterate through file_ids for this tree.
@@ -951,7 +935,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 if child_entry.kind == 'directory':
                     add_children(inventory, child_entry)
         with self.lock_write():
-            if other_tree.get_root_id() == self.get_root_id():
+            if other_tree.path2id('') == self.path2id(''):
                 raise errors.BadSubsumeSource(self, other_tree,
                                               'Trees have the same root')
             try:
@@ -1032,7 +1016,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             wt._write_inventory(child_inv)
             return wt
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         """List all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
@@ -1043,7 +1028,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         :param from_dir: start from this directory or None for the root
         :param recursive: whether to recurse into subdirectories or not
         """
-        with self.lock_read():
+        with cleanup.ExitStack() as exit_stack:
+            exit_stack.enter_context(self.lock_read())
             if from_dir is None and include_root is True:
                 yield ('', 'V', 'directory', self.root_inventory.root)
             # Convert these into local objects to save lookup times
@@ -1057,29 +1043,30 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             fk_entries = {
                 'directory': TreeDirectory,
                 'file': TreeFile,
-                'symlink': TreeLink
+                'symlink': TreeLink,
+                'tree-reference': TreeReference,
                 }
 
             # directory file_id, relative path, absolute path, reverse sorted
             # children
             if from_dir is not None:
-                inv, from_dir_id = self._path2inv_file_id(from_dir)
+                from_inv, from_dir_id = self._path2inv_file_id(from_dir)
                 if from_dir_id is None:
                     # Directory not versioned
                     return
                 from_dir_abspath = pathjoin(self.basedir, from_dir)
             else:
-                inv = self.root_inventory
-                from_dir_id = inv.root.file_id
+                from_inv = self.root_inventory
+                from_dir_id = from_inv.root.file_id
                 from_dir_abspath = self.basedir
             children = sorted(os.listdir(from_dir_abspath))
             # jam 20060527 The kernel sized tree seems equivalent whether we
             # use a deque and popleft to keep them sorted, or if we use a plain
             # list and just reverse() them.
             children = deque(children)
-            stack = [(from_dir_id, u'', from_dir_abspath, children)]
+            stack = [(from_inv, from_dir_id, u'', from_dir_abspath, children)]
             while stack:
-                (from_dir_id, from_dir_relpath, from_dir_abspath,
+                (inv, from_dir_id, from_dir_relpath, from_dir_abspath,
                  children) = stack[-1]
 
                 while children:
@@ -1134,6 +1121,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                                 c = '?'
 
                     fk = osutils.file_kind(fap)
+                    if fk == 'directory' and self._directory_is_tree_reference(f):
+                        if not recurse_nested:
+                            fk = 'tree-reference'
+                        else:
+                            subtree = self.get_nested_tree(f)
+                            exit_stack.enter_context(subtree.lock_read())
+                            inv = subtree.root_inventory
+                            f_ie = inv.get_entry(f_ie.file_id)
+                            fk = 'directory'
 
                     # make a last minute entry
                     if f_ie:
@@ -1152,7 +1148,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     if recursive:
                         new_children = sorted(os.listdir(fap))
                         new_children = deque(new_children)
-                        stack.append((f_ie.file_id, fp, fap, new_children))
+                        stack.append((inv, f_ie.file_id, fp, fap, new_children))
                         # Break out of inner loop,
                         # so that we start outer loop with child
                         break
@@ -1254,7 +1250,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # restore the inventory on error
                 self._inventory_is_modified = original_modified
                 raise
-            # FIXME: Should potentially also write the from_invs
+            # TODO(jelmer): what about the from_invs?
             self._write_inventory(to_inv)
             return rename_tuples
 
@@ -1289,8 +1285,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             if from_id is None:
                 # if file is missing in the inventory maybe it's in the
                 # basis_tree
+                # TODO(jelmer): This is going to break with nested trees.
+                from_inv = self.root_inventory
                 basis_tree = self.branch.basis_tree()
-                from_id = basis_tree.path2id(from_rel)
+                basis_from_inv, from_id = basis_tree._path2inv_file_id(from_rel)
                 if from_id is None:
                     raise errors.BzrRenameFailedError(
                         from_rel, to_rel,
@@ -1299,8 +1297,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     from_entry = from_inv.get_entry(from_id)
                 except errors.NoSuchId:
                     # put entry back in the inventory so we can rename it
-                    from_entry = basis_tree.root_inventory.get_entry(
-                        from_id).copy()
+                    from_entry = basis_from_inv.get_entry(from_id).copy()
                     from_inv.add(from_entry)
             else:
                 from_inv, from_inv_id = self._unpack_file_id(from_id)
@@ -1379,7 +1376,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 if after:
                     basis = self.basis_tree()
                     with basis.lock_read():
-                        if not basis.has_id(to_id):
+                        try:
+                            basis.id2path(to_id)
+                        except errors.NoSuchId:
                             rename_entry.change_id = True
                             allowed = True
                 if not allowed:
@@ -1729,7 +1728,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self.control_transport.put_bytes(
                 'format', self._format.as_string())
 
-    def _check_for_tree_references(self, iterator):
+    def _check_for_tree_references(self, iterator, recurse_nested, specific_files=None):
         """See if directories have become tree-references."""
         blocked_parent_ids = set()
         for path, ie in iterator:
@@ -1741,12 +1740,25 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 continue
             if (ie.kind == 'directory' and
                     self._directory_is_tree_reference(path)):
+
                 # This InventoryDirectory needs to be a TreeReference
                 ie = inventory.TreeReference(ie.file_id, ie.name, ie.parent_id)
                 blocked_parent_ids.add(ie.file_id)
-            yield path, ie
 
-    def iter_entries_by_dir(self, specific_files=None):
+            if ie.kind == 'tree-reference' and recurse_nested:
+                subtree = self.get_nested_tree(path)
+                for subpath, ie in subtree.iter_entries_by_dir(
+                        recurse_nested=recurse_nested,
+                        specific_files=specific_files):
+                    if subpath:
+                        full_subpath = osutils.pathjoin(path, subpath)
+                    else:
+                        full_subpath = path
+                    yield full_subpath, ie
+            else:
+                yield path, ie
+
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """See Tree.iter_entries_by_dir()"""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
@@ -1755,7 +1767,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         if not self.supports_tree_reference():
             return iterator
         else:
-            return self._check_for_tree_references(iterator)
+            return self._check_for_tree_references(
+                iterator, recurse_nested=recurse_nested,
+                specific_files=specific_files)
 
     def get_canonical_paths(self, paths):
         """Look up canonical paths for multiple items.
@@ -1781,6 +1795,23 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     yield path
                 else:
                     yield get_canonical_path(self, path, normalize)
+
+    def get_reference_info(self, path, branch=None):
+        file_id = self.path2id(path)
+        if file_id is None:
+            return None
+        return self.branch.get_reference_info(file_id)[0]
+
+    def set_reference_info(self, tree_path, branch_location):
+        file_id = self.path2id(tree_path)
+        if file_id is None:
+            raise errors.NoSuchFile(tree_path)
+        self.branch.set_reference_info(file_id, branch_location, tree_path)
+
+    def reference_parent(self, path, branch=None, possible_transports=None):
+        return self.branch.reference_parent(
+            self.path2id(path),
+            path, possible_transports=possible_transports)
 
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):

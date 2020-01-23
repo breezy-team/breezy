@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ...builtins import cmd_init_repository
+from ...builtins import cmd_init_shared_repository
 from .. import (
     transport_util,
     ui_testing,
@@ -27,8 +27,8 @@ class TestInitRepository(transport_util.TestCaseWithConnectionHookedTransport):
         super(TestInitRepository, self).setUp()
         self.start_logging_connections()
 
-    def test_init_repository(self):
-        cmd = cmd_init_repository()
+    def test_init_shared_repository(self):
+        cmd = cmd_init_shared_repository()
         # We don't care about the ouput but 'outf' should be defined
         cmd.outf = ui_testing.StringIOWithEncoding()
         cmd.run(self.get_url())

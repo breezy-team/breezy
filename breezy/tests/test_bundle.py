@@ -32,12 +32,12 @@ from ..bzr import (
     bzrdir,
     inventory,
     )
-from ..bundle.apply_bundle import install_bundle, merge_bundle
-from ..bundle.bundle_data import BundleTree
-from ..bundle.serializer import write_bundle, read_bundle, v09, v4
-from ..bundle.serializer.v08 import BundleSerializerV08
-from ..bundle.serializer.v09 import BundleSerializerV09
-from ..bundle.serializer.v4 import BundleSerializerV4
+from ..bzr.bundle.apply_bundle import install_bundle, merge_bundle
+from ..bzr.bundle.bundle_data import BundleTree
+from ..bzr.bundle.serializer import write_bundle, read_bundle, v09, v4
+from ..bzr.bundle.serializer.v08 import BundleSerializerV08
+from ..bzr.bundle.serializer.v09 import BundleSerializerV09
+from ..bzr.bundle.serializer.v4 import BundleSerializerV4
 from ..bzr import knitrepo
 from . import (
     features,
@@ -147,11 +147,11 @@ class MockTree(object):
     def path2id(self, path):
         return self.ids.get(path)
 
-    def id2path(self, file_id):
-        return self.paths.get(file_id)
-
-    def has_id(self, file_id):
-        return self.id2path(file_id) is not None
+    def id2path(self, file_id, recurse='down'):
+        try:
+            return self.paths[file_id]
+        except KeyError:
+            raise errors.NoSuchId(file_id, self)
 
     def get_file(self, path):
         result = BytesIO()
@@ -270,7 +270,7 @@ class BTreeTester(tests.TestCase):
         btree = self.make_tree_1()[0]
         btree.note_rename("grandparent/parent/file",
                           "grandparent/alt_parent/file")
-        self.assertTrue(btree.id2path(b"e") is None)
+        self.assertRaises(errors.NoSuchId, btree.id2path, b"e")
         self.assertFalse(btree.is_versioned("grandparent/parent/file"))
         btree.note_id(b"e", "grandparent/parent/file")
         return btree
@@ -291,16 +291,6 @@ class BTreeTester(tests.TestCase):
             self.assertEqual(f.read(), b"Extra cheese\n")
         self.assertEqual(
             btree.get_symlink_target('grandparent/parent/symlink'), 'venus')
-
-    def test_adds2(self):
-        """File/inventory adds, with patch-compatibile renames"""
-        btree = self.make_tree_2()
-        btree.contents_by_id = False
-        add_patch = self.unified_diff([b"Hello\n"], [b"Extra cheese\n"])
-        btree.note_patch("grandparent/parent/file", add_patch)
-        btree.note_id(b'f', 'grandparent/parent/symlink', kind='symlink')
-        btree.note_target('grandparent/parent/symlink', 'venus')
-        self.adds_test(btree)
 
     def make_tree_3(self):
         btree, mtree = self.make_tree_1()
@@ -324,23 +314,13 @@ class BTreeTester(tests.TestCase):
         btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
         self.get_file_test(btree)
 
-    def test_get_file2(self):
-        """Get file contents, with patch-compatible renames"""
-        btree = self.make_tree_3()
-        btree.contents_by_id = False
-        mod_patch = self.unified_diff([], [b"Lemon\n"])
-        btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
-        mod_patch = self.unified_diff([], [b"Hello\n"])
-        btree.note_patch("grandparent/alt_parent/file", mod_patch)
-        self.get_file_test(btree)
-
     def test_delete(self):
         "Deletion by bundle"
         btree = self.make_tree_1()[0]
         with btree.get_file(btree.id2path(b"c")) as f:
             self.assertEqual(f.read(), b"Hello\n")
         btree.note_deletion("grandparent/parent/file")
-        self.assertTrue(btree.id2path(b"c") is None)
+        self.assertRaises(errors.NoSuchId, btree.id2path, b"c")
         self.assertFalse(btree.is_versioned("grandparent/parent/file"))
 
     def sorted_ids(self, tree):
@@ -511,9 +491,7 @@ class BundleTester(object):
         for ancestor in ancestors:
             old = self.b1.repository.revision_tree(ancestor)
             new = tree.branch.repository.revision_tree(ancestor)
-            old.lock_read()
-            new.lock_read()
-            try:
+            with old.lock_read(), new.lock_read():
                 # Check that there aren't any inventory level changes
                 delta = new.changes_from(old)
                 self.assertFalse(delta.has_changed(),
@@ -528,9 +506,6 @@ class BundleTester(object):
                         continue
                     self.assertEqual(
                         old_file.read(), new.get_file(path).read())
-            finally:
-                new.unlock()
-                old.unlock()
         if not _mod_revision.is_null(rev_id):
             tree.branch.generate_revision_history(rev_id)
             tree.update()
@@ -1355,7 +1330,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
 
         :return: The in-memory bundle
         """
-        from ..bundle import serializer
+        from ..bzr.bundle import serializer
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = self.get_raw(BytesIO(b''.join(bundle_txt)))
         new_text = new_text.replace(b'<file file_id="exe-1"',
@@ -1482,7 +1457,7 @@ class V4_2aBundleTester(V4BundleTester):
 
         :return: The in-memory bundle
         """
-        from ..bundle import serializer
+        from ..bzr.bundle import serializer
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = self.get_raw(BytesIO(b''.join(bundle_txt)))
         # We are going to be replacing some text to set the executable bit on a

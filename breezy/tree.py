@@ -61,6 +61,14 @@ class FileTimestampUnavailable(errors.BzrError):
         self.path = path
 
 
+class MissingNestedTree(errors.BzrError):
+
+    _fmt = "The nested tree for %(path)s can not be resolved."""
+
+    def __init__(self, path):
+        self.path = path
+
+
 class TreeEntry(object):
     """An entry that implements the minimum interface used by commands.
     """
@@ -76,6 +84,14 @@ class TreeEntry(object):
 
     def kind_character(self):
         return "???"
+
+    def is_unmodified(self, other):
+        """Does this entry reference the same entry?
+
+        This is mostly the same as __eq__, but returns False
+        for entries without enough information (i.e. revision is None)
+        """
+        return False
 
 
 class TreeDirectory(TreeEntry):
@@ -126,10 +142,10 @@ class TreeChange(object):
     """Describes the changes between the same item in two different trees."""
 
     __slots__ = ['file_id', 'path', 'changed_content', 'versioned', 'parent_id',
-                 'name', 'kind', 'executable']
+                 'name', 'kind', 'executable', 'copied']
 
     def __init__(self, file_id, path, changed_content, versioned, parent_id,
-                 name, kind, executable):
+                 name, kind, executable, copied=False):
         self.file_id = file_id
         self.path = path
         self.changed_content = changed_content
@@ -138,28 +154,32 @@ class TreeChange(object):
         self.name = name
         self.kind = kind
         self.executable = executable
+        self.copied = copied
+
+    def __repr__(self):
+        return "%s%r" % (self.__class__.__name__, self._as_tuple())
 
     def __len__(self):
         return len(self.__slots__)
 
-    def __tuple__(self):
+    def _as_tuple(self):
         return (self.file_id, self.path, self.changed_content, self.versioned,
-                self.parent_id, self.name, self.kind, self.executable)
+                self.parent_id, self.name, self.kind, self.executable, self.copied)
 
     def __eq__(self, other):
         if isinstance(other, TreeChange):
-            return tuple(self) == tuple(other)
+            return self._as_tuple() == other._as_tuple()
         if isinstance(other, tuple):
-            return tuple(self) == other
+            return self._as_tuple() == other
         return False
 
     def __lt__(self, other):
-        return tuple(self) < tuple(other)
+        return self._as_tuple() < other._as_tuple()
 
-    def __getitem__(self, i):
-        if isinstance(i, slice):
-            return tuple(self).__getitem__(i)
-        return getattr(self, self.__slots__[i])
+    def meta_modified(self):
+        if self.versioned == (True, True):
+            return (self.executable[0] != self.executable[1])
+        return False
 
     def is_reparented(self):
         return self.parent_id[0] != self.parent_id[1]
@@ -169,7 +189,8 @@ class TreeChange(object):
             self.file_id, (self.path[0], None), self.changed_content,
             (self.versioned[0], None), (self.parent_id[0], None),
             (self.name[0], None), (self.kind[0], None),
-            (self.executable[0], None))
+            (self.executable[0], None),
+            copied=False)
 
 
 class Tree(object):
@@ -289,14 +310,14 @@ class Tree(object):
         """Iterate through all paths, including paths for missing files."""
         raise NotImplementedError(self.all_versioned_paths)
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         """Return the path for a file id.
 
         :raises NoSuchId:
         """
         raise NotImplementedError(self.id2path)
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -320,6 +341,10 @@ class Tree(object):
         The yield order (ignoring root) would be::
 
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
+
+        If recurse_nested is enabled then nested trees are included as if
+        they were a part of the tree. If is disabled then TreeReference
+        objects (without any children) are yielded.
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
@@ -332,12 +357,14 @@ class Tree(object):
         """
         raise NotImplementedError(self.iter_child_entries)
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         """List all files in this tree.
 
         :param include_root: Whether to include the entry for the tree root
         :param from_dir: Directory under which to list files
         :param recursive: Whether to list files recursively
+        :param recurse_nested: enter nested trees
         :return: iterator over tuples of
             (path, versioned, kind, inventory entry)
         """
@@ -348,6 +375,28 @@ class Tree(object):
             for path, entry in self.iter_entries_by_dir():
                 if entry.kind == 'tree-reference':
                     yield path
+
+    def get_containing_nested_tree(self, path):
+        """Find the nested tree that contains a path.
+
+        :return: tuple with (nested tree and path inside the nested tree)
+        """
+        for nested_path in self.iter_references():
+            nested_path += '/'
+            if path.startswith(nested_path):
+                nested_tree = self.get_nested_tree(nested_path)
+                return nested_tree, path[len(nested_path):]
+        else:
+            return None, None
+
+    def get_nested_tree(self, path):
+        """Open the nested tree at the specified path.
+
+        :param path: Path from which to resolve tree reference.
+        :return: A Tree object for the nested tree
+        :raise MissingNestedTree: If the nested tree can not be resolved
+        """
+        raise NotImplementedError(self.get_nested_tree)
 
     def kind(self, path):
         raise NotImplementedError("Tree subclass %s must implement kind"
@@ -379,7 +428,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.path_content_summary)
 
-    def get_reference_revision(self, path):
+    def get_reference_revision(self, path, branch=None):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"
                                   % self.__class__.__name__)
@@ -511,10 +560,6 @@ class Tree(object):
         :return: The path the symlink points to.
         """
         raise NotImplementedError(self.get_symlink_target)
-
-    def get_root_id(self):
-        """Return the file_id for the root of this tree."""
-        raise NotImplementedError(self.get_root_id)
 
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):

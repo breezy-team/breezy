@@ -16,11 +16,11 @@
 
 from __future__ import absolute_import
 
-from breezy.bundle.serializer import _get_bundle_header
-from breezy.bundle.serializer.v08 import BundleSerializerV08, BundleReader
-from breezy.bundle.bundle_data import BundleInfo
+from . import _get_bundle_header
+from .v08 import BundleSerializerV08, BundleReader
+from ..bundle_data import BundleInfo
 
-from breezy.bzr.testament import StrictTestament3
+from ...testament import StrictTestament3
 
 
 """Serializer for bundle format 0.9"""
@@ -66,8 +66,8 @@ class BundleInfo09(BundleInfo):
         testament = StrictTestament3.from_revision(repository, revision_id)
         return testament.as_sha1()
 
-    def _testament_sha1(self, revision, tree):
-        return StrictTestament3(revision, tree).as_sha1()
+    def _testament(self, revision, tree):
+        return StrictTestament3(revision, tree)
 
 
 class BundleReaderV09(BundleReader):

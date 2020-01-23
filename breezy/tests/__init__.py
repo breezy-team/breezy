@@ -4161,6 +4161,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_permissions',
         'breezy.tests.test_plugins',
         'breezy.tests.test_progress',
+        'breezy.tests.test_propose',
         'breezy.tests.test_pyutils',
         'breezy.tests.test_read_bundle',
         'breezy.tests.test_reconcile',

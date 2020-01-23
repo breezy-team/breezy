@@ -735,9 +735,7 @@ class TestStaleLockDir(TestCaseWithTransport):
         """
         self.overrideAttr(lockdir, 'get_host_name',
                           lambda: 'aproperhostname')
-        # This is off by default at present; see the discussion in the bug.
-        # If you change the default, don't forget to update the docs.
-        config.GlobalStack().set('locks.steal_dead', True)
+        # Stealing dead locks is enabled by default.
         # Create a lock pretending to come from a different nonexistent
         # process on the same machine.
         l1 = LockDir(self.get_transport(), 'a',
@@ -754,10 +752,12 @@ class TestStaleLockDir(TestCaseWithTransport):
         """Automatic breaking can be turned off"""
         l1 = LockDir(self.get_transport(), 'a',
                      extra_holder_info={'pid': '12312313'})
+        # Stealing dead locks is enabled by default, so disable it.
+        config.GlobalStack().set('locks.steal_dead', False)
         token_1 = l1.attempt_lock()
         self.addCleanup(l1.unlock)
         l2 = LockDir(self.get_transport(), 'a')
-        # This fails now, because dead lock breaking is off by default.
+        # This fails now, because dead lock breaking is disabled.
         self.assertRaises(LockContention,
                           l2.attempt_lock)
         # and it's in fact not broken

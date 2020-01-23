@@ -42,6 +42,7 @@ from .. import (
     osutils,
     ui,
     )
+from ..tree import find_previous_path
 from ..lock import LogicalLockResult
 from ..revision import (
     NULL_REVISION,
@@ -228,24 +229,21 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
         base_tree = tree._repository.revision_tree(NULL_REVISION)
         other_parent_trees = []
 
-    def find_unchanged_parent_ie(file_id, kind, other, parent_trees):
+    def find_unchanged_parent_ie(path, kind, other, parent_trees):
         for ptree in parent_trees:
-            try:
-                ppath = ptree.id2path(file_id)
-            except errors.NoSuchId:
-                pass
-            else:
+            ppath = find_previous_path(tree, ptree, path)
+            if ppath is not None:
                 pkind = ptree.kind(ppath)
                 if kind == "file":
                     if (pkind == "file" and
                             ptree.get_file_sha1(ppath) == other):
                         return (
-                            file_id, ptree.get_file_revision(ppath))
+                            ptree.path2id(ppath), ptree.get_file_revision(ppath))
                 if kind == "symlink":
                     if (pkind == "symlink" and
                             ptree.get_symlink_target(ppath) == other):
                         return (
-                            file_id, ptree.get_file_revision(ppath))
+                            ptree.path2id(ppath), ptree.get_file_revision(ppath))
         raise KeyError
 
     # Find all the changed blobs
@@ -257,7 +255,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             blob_id = None
             try:
                 (pfile_id, prevision) = find_unchanged_parent_ie(
-                    change.file_id, change.kind[1], sha1, other_parent_trees)
+                    change.path[1], change.kind[1], sha1, other_parent_trees)
             except KeyError:
                 pass
             else:
@@ -267,7 +265,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     blob_id = idmap.lookup_blob_id(
                         pfile_id, prevision)
                 except KeyError:
-                    if not changed_content:
+                    if not change.changed_content:
                         # no-change merge ?
                         blob = Blob()
                         blob.data = tree.get_file_text(change.path[1])
@@ -290,7 +288,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     blob, (change.file_id, tree.get_file_revision(change.path[1])), change.path[1])
             try:
                 find_unchanged_parent_ie(
-                    change.file_id, change.kind[1], target, other_parent_trees)
+                    change.path[1], change.kind[1], target, other_parent_trees)
             except KeyError:
                 if change.changed_content:
                     yield (change.path[1], blob,
@@ -492,15 +490,6 @@ class BazaarObjectStore(BaseObjectStore):
         return self.mapping.export_commit(rev, tree_sha, parent_lookup,
                                           lossy, verifiers)
 
-    def _create_fileid_map_blob(self, tree):
-        # FIXME: This can probably be a lot more efficient,
-        # not all files necessarily have to be processed.
-        file_ids = {}
-        for (path, ie) in tree.iter_entries_by_dir():
-            if self.mapping.generate_file_id(path) != ie.file_id:
-                file_ids[path] = ie.file_id
-        return self.mapping.export_fileid_map(file_ids)
-
     def _revision_to_objects(self, rev, tree, lossy, add_cache_entry=None):
         """Convert a revision to a set of git objects.
 
@@ -529,13 +518,7 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[self[base_sha1].tree]
-            root_key_data = (tree.get_root_id(), tree.get_revision_id())
-        if not lossy and self.mapping.BZR_FILE_IDS_FILE is not None:
-            b = self._create_fileid_map_blob(tree)
-            if b is not None:
-                root_tree[self.mapping.BZR_FILE_IDS_FILE] = (
-                    (stat.S_IFREG | 0o644), b.id)
-                yield self.mapping.BZR_FILE_IDS_FILE, b
+            root_key_data = (tree.path2id(''), tree.get_revision_id())
         if add_cache_entry is not None:
             add_cache_entry(root_tree, root_key_data, "")
         yield "", root_tree
@@ -631,15 +614,7 @@ class BazaarObjectStore(BaseObjectStore):
             path,
             bzr_tree.iter_child_entries(path),
             get_ie_sha1, unusual_modes, self.mapping.BZR_DUMMY_FILE,
-            bzr_tree.get_root_id() == fileid)
-        if (bzr_tree.get_root_id() == fileid and
-                self.mapping.BZR_FILE_IDS_FILE is not None):
-            if tree is None:
-                tree = Tree()
-            b = self._create_fileid_map_blob(bzr_tree)
-            # If this is the root tree, add the file ids
-            tree[self.mapping.BZR_FILE_IDS_FILE] = (
-                (stat.S_IFREG | 0o644), b.id)
+            bzr_tree.path2id('') == fileid)
         if tree is not None:
             _check_expected_sha(expected_sha, tree)
         return tree

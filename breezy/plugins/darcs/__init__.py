@@ -21,6 +21,7 @@ Currently only tells the user to use fastimport/fastexport.
 
 from __future__ import absolute_import
 
+from ... import version_info  # noqa: F401
 from breezy import (
     controldir,
     errors,
@@ -71,6 +72,10 @@ class DarcsDirFormat(controldir.ControlDirFormat):
 
 
 class DarcsProber(controldir.Prober):
+
+    @classmethod
+    def priority(klass, transport):
+        return 100
 
     @classmethod
     def probe_transport(klass, transport):

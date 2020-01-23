@@ -141,16 +141,9 @@ class TestPush(per_branch.TestCaseWithBranch):
         source.add(['a'])
         source.commit('a')
 
-        source.branch.lock_read()
-        try:
-            target.lock_write()
-            try:
-                source.branch.push(
-                    target, stop_revision=source.last_revision())
-            finally:
-                target.unlock()
-        finally:
-            source.branch.unlock()
+        with source.branch.lock_read(), target.lock_write():
+            source.branch.push(
+                target, stop_revision=source.last_revision())
 
     def test_push_within_repository(self):
         """Push from one branch to another inside the same repository."""

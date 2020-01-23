@@ -83,5 +83,9 @@ class TestCacheDirectory(TestCase):
         # get_cache_directory returns the path to a directory inside the
         # Breezy cache directory.
         from . import lp_api
-        expected_path = osutils.pathjoin(bedding.cache_dir(), 'launchpad')
-        self.assertEqual(expected_path, lp_api.get_cache_directory())
+        try:
+            expected_path = osutils.pathjoin(bedding.cache_dir(), 'launchpad')
+        except EnvironmentError:
+            self.assertRaises(EnvironmentError, lp_api.get_cache_directory)
+        else:
+            self.assertEqual(expected_path, lp_api.get_cache_directory())

@@ -133,8 +133,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)
-        self.assertTrue(RemoteBzrProber
-                        in controldir.ControlDirFormat._server_probers)
+        self.assertIn(RemoteBzrProber, controldir.ControlDirFormat._probers)
         self.assertIsInstance(fmt, RemoteBzrDirFormat)
 
     def test_open_detected_smart_format(self):
@@ -4530,3 +4529,23 @@ class TestRepositoryAnnotate(TestRemoteRepository):
             (b'baserevid', b'line 1\n'),
             (b'somerevid', b'line2\n')],
             list(tree.annotate_iter('filename')))
+
+
+class TestBranchGetAllReferenceInfo(RemoteBranchTestCase):
+
+    def test_get_all_reference_info(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            b'Branch.get_stacked_on_url', (b'quack/',),
+            b'error', (b'NotStacked',))
+        client.add_expected_call(
+            b'Branch.get_all_reference_info', (b'quack/',),
+            b'success', (b'ok',), bencode.bencode([
+                (b'file-id', b'https://www.example.com/', b'')]))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch._get_all_reference_info()
+        self.assertFinished(client)
+        self.assertEqual({b'file-id': ('https://www.example.com/', None)}, result)

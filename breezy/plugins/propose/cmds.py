@@ -38,7 +38,7 @@ from ...option import (
     )
 from ...sixish import text_type
 from ...trace import note
-from . import (
+from ... import (
     propose as _mod_propose,
     )
 
@@ -199,9 +199,9 @@ class cmd_propose_merge(Command):
                 prerequisite_branch=prerequisite_branch, labels=labels,
                 commit_message=commit_message)
         except _mod_propose.MergeProposalExists as e:
-            raise errors.BzrCommandError(gettext(
-                'There is already a branch merge proposal: %s') % e.url)
-        note(gettext('Merge proposal created: %s') % proposal.url)
+            note(gettext('There is already a branch merge proposal: %s'), e.url)
+        else:
+            note(gettext('Merge proposal created: %s') % proposal.url)
 
 
 class cmd_find_merge_proposal(Command):
@@ -338,8 +338,7 @@ class cmd_my_merge_proposals(Command):
             closed='Closed merge proposals')]
 
     def run(self, status='open', verbose=False):
-        from .propose import hosters
-        for name, hoster_cls in hosters.items():
+        for name, hoster_cls in _mod_propose.hosters.items():
             for instance in hoster_cls.iter_instances():
                 for mp in instance.iter_my_proposals(status=status):
                     self.outf.write('%s\n' % mp.url)
@@ -348,9 +347,11 @@ class cmd_my_merge_proposals(Command):
                             '(Merging %s into %s)\n' %
                             (mp.get_source_branch_url(),
                              mp.get_target_branch_url()))
-                        self.outf.writelines(
-                            ['\t%s\n' % l
-                             for l in mp.get_description().splitlines()])
+                        description = mp.get_description()
+                        if description:
+                            self.outf.writelines(
+                                ['\t%s\n' % l
+                                 for l in description.splitlines()])
                         self.outf.write('\n')
 
 
@@ -362,6 +363,5 @@ class cmd_land_merge_proposal(Command):
         Option('message', help='Commit message to use.', type=str)]
 
     def run(self, url, message=None):
-        from .propose import get_proposal_by_url
-        proposal = get_proposal_by_url(url)
+        proposal = _mod_propose.get_proposal_by_url(url)
         proposal.merge(commit_message=message)

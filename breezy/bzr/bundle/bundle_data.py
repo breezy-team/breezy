@@ -23,31 +23,35 @@ from io import BytesIO
 import os
 import pprint
 
-from .. import (
+from ... import (
     cache_utf8,
     osutils,
     timestamp,
     )
 from . import apply_bundle
-from ..errors import (
+from ...errors import (
     TestamentMismatch,
     BzrError,
+    NoSuchId,
     )
-from ..bzr.inventory import (
+from ..inventory import (
     Inventory,
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
     )
-from ..osutils import sha_string, pathjoin
-from ..revision import Revision, NULL_REVISION
-from ..sixish import (
+from ...osutils import sha_string, pathjoin
+from ...revision import Revision, NULL_REVISION
+from ...sixish import (
     viewitems,
     )
-from ..bzr.testament import StrictTestament
-from ..trace import mutter, warning
-from ..tree import Tree
-from ..bzr.xml5 import serializer_v5
+from ..testament import StrictTestament
+from ...trace import mutter, warning
+from ...tree import (
+    Tree,
+    find_previous_path,
+    )
+from ..xml5 import serializer_v5
 
 
 class RevisionInfo(object):
@@ -294,6 +298,9 @@ class BundleInfo(object):
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
+    def _testament(self, revision, tree):
+        raise NotImplementedError(self._testament)
+
     def _validate_revision(self, tree, revision_id):
         """Make sure all revision entries match their checksum."""
 
@@ -306,7 +313,8 @@ class BundleInfo(object):
             raise AssertionError()
         if not (rev.revision_id == revision_id):
             raise AssertionError()
-        sha1 = self._testament_sha1(rev, tree)
+        testament = self._testament(rev, tree)
+        sha1 = testament.as_sha1()
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:
@@ -482,7 +490,6 @@ class BundleTree(Tree):
         self.patches = {}
         self._targets = {}  # new path => new symlink target
         self.deleted = []
-        self.contents_by_id = True
         self.revision_id = revision_id
         self._inventory = None
 
@@ -579,9 +586,6 @@ class BundleTree(Tree):
             return None
         return new_path
 
-    def get_root_id(self):
-        return self.path2id('')
-
     def path2id(self, path):
         """Return the id of the file present at path in the target tree."""
         file_id = self._new_id.get(path)
@@ -594,29 +598,20 @@ class BundleTree(Tree):
             return None
         return self.base_tree.path2id(old_path)
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         """Return the new path in the target tree of the file with id file_id"""
         path = self._new_id_r.get(file_id)
         if path is not None:
             return path
-        old_path = self.base_tree.id2path(file_id)
+        old_path = self.base_tree.id2path(file_id, recurse)
         if old_path is None:
-            return None
+            raise NoSuchId(file_id, self)
         if old_path in self.deleted:
-            return None
-        return self.new_path(old_path)
-
-    def old_contents_id(self, file_id):
-        """Return the id in the base_tree for the given file_id.
-        Return None if the file did not exist in base.
-        """
-        if self.contents_by_id:
-            if self.base_tree.has_id(file_id):
-                return file_id
-            else:
-                return None
-        new_path = self.id2path(file_id)
-        return self.base_tree.path2id(new_path)
+            raise NoSuchId(file_id, self)
+        new_path = self.new_path(old_path)
+        if new_path is None:
+            raise NoSuchId(file_id, self)
+        return new_path
 
     def get_file(self, path):
         """Return a file-like object containing the new contents of the
@@ -626,14 +621,11 @@ class BundleTree(Tree):
                 in the text-store, so that the file contents would
                 then be cached.
         """
-        file_id = self.path2id(path)
-        base_id = self.old_contents_id(file_id)
-        if (base_id is not None and
-                base_id != self.base_tree.get_root_id()):
-            old_path = self.base_tree.id2path(base_id)
-            patch_original = self.base_tree.get_file(old_path)
-        else:
+        old_path = find_previous_path(self, self.base_tree, path)
+        if old_path is None:
             patch_original = None
+        else:
+            patch_original = self.base_tree.get_file(old_path)
         file_patch = self.patches.get(path)
         if file_patch is None:
             if (patch_original is None and
@@ -779,8 +771,9 @@ class BundleTree(Tree):
         for result in viewitems(self._new_id):
             paths.append(result)
         for id in self.base_tree.all_file_ids():
-            path = self.id2path(id)
-            if path is None:
+            try:
+                path = self.id2path(id, recurse='none')
+            except NoSuchId:
                 continue
             paths.append((path, id))
         paths.sort()

@@ -733,13 +733,19 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
     repo = branch.repository
     graph = repo.get_graph()
     if start_rev_id is None and end_rev_id is None:
-        try:
-            br_revno, br_rev_id = branch.last_revision_info()
-        except errors.GhostRevisionsHaveNoRevno:
+        if branch._format.stores_revno() or \
+                config.GlobalStack().get('calculate_revnos'):
+            try:
+                br_revno, br_rev_id = branch.last_revision_info()
+            except errors.GhostRevisionsHaveNoRevno:
+                br_rev_id = branch.last_revision()
+                cur_revno = None
+            else:
+                cur_revno = br_revno
+        else:
             br_rev_id = branch.last_revision()
             cur_revno = None
-        else:
-            cur_revno = br_revno
+
         graph_iter = graph.iter_lefthand_ancestry(br_rev_id,
                                                   (_mod_revision.NULL_REVISION,))
         while True:
@@ -1010,13 +1016,13 @@ def _update_fileids(delta, fileids, stop_on):
       fileids set once their add or remove entry is detected respectively
     """
     if stop_on == 'add':
-        for item in delta.added:
-            if item[1] in fileids:
-                fileids.remove(item[1])
+        for item in delta.added + delta.copied:
+            if item.file_id in fileids:
+                fileids.remove(item.file_id)
     elif stop_on == 'delete':
         for item in delta.removed:
-            if item[1] in fileids:
-                fileids.remove(item[1])
+            if item.file_id in fileids:
+                fileids.remove(item.file_id)
 
 
 def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
@@ -1091,11 +1097,6 @@ def _get_revision_limits(branch, start_revision, end_revision):
             raise TypeError(start_revision)
         end_rev_id = end_revision.rev_id
         end_revno = end_revision.revno
-    if end_revno is None:
-        try:
-            end_revno = branch.revno()
-        except errors.GhostRevisionsHaveNoRevno:
-            end_revno = None
 
     if branch.last_revision() != _mod_revision.NULL_REVISION:
         if (start_rev_id == _mod_revision.NULL_REVISION
@@ -1793,12 +1794,14 @@ class GnuChangelogLogFormatter(LogFormatter):
 
         if revision.delta is not None and revision.delta.has_changed():
             for c in revision.delta.added + revision.delta.removed + revision.delta.modified:
-                path, = c[:1]
+                if c.path[0] is None:
+                    path = c.path[1]
+                else:
+                    path = c.path[0]
                 to_file.write('\t* %s:\n' % (path,))
-            for c in revision.delta.renamed:
-                oldpath, newpath = c[:2]
+            for c in revision.delta.renamed + revision.delta.copied:
                 # For renamed files, show both the old and the new path
-                to_file.write('\t* %s:\n\t* %s:\n' % (oldpath, newpath))
+                to_file.write('\t* %s:\n\t* %s:\n' % (c.path[0], c.path[1]))
             to_file.write('\n')
 
         if not revision.rev.message:
@@ -2037,7 +2040,7 @@ def show_flat_log(repository, history, last_revno, lf):
         lf.log_revision(lr)
 
 
-def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
+def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
     """Find file-ids and kinds given a list of files and a revision range.
 
     We search for files at the end of the range. If not found there,
@@ -2047,8 +2050,8 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
     :param file_list: the list of paths given on the command line;
       the first of these can be a branch location or a file path,
       the remainder must be file paths
-    :param add_cleanup: When the branch returned is read locked,
-      an unlock call will be queued to the cleanup.
+    :param exit_stack: When the branch returned is read locked,
+      an unlock call will be queued to the exit stack.
     :return: (branch, info_list, start_rev_info, end_rev_info) where
       info_list is a list of (relative_path, file_id, kind) tuples where
       kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
@@ -2057,7 +2060,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
     from breezy.builtins import _get_revision_range
     tree, b, path = controldir.ControlDir.open_containing_tree_or_branch(
         file_list[0])
-    add_cleanup(b.lock_read().unlock)
+    exit_stack.enter_context(b.lock_read())
     # XXX: It's damn messy converting a list of paths to relative paths when
     # those paths might be deleted ones, they might be on a case-insensitive
     # filesystem and/or they might be in silly locations (like another branch).

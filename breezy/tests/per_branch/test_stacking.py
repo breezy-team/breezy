@@ -38,12 +38,9 @@ class TestStacking(TestCaseWithBranch):
     def check_lines_added_or_present(self, stacked_branch, revid):
         # similar to a failure seen in bug 288751 by mbp 20081120
         stacked_repo = stacked_branch.repository
-        stacked_repo.lock_read()
-        try:
+        with stacked_repo.lock_read():
             list(stacked_repo.inventories.iter_lines_added_or_present_in_keys(
                 [(revid,)]))
-        finally:
-            stacked_repo.unlock()
 
     def test_get_set_stacked_on_url(self):
         # branches must either:
@@ -134,12 +131,9 @@ class TestStacking(TestCaseWithBranch):
         # reading the graph from the stacked branch's repository should see
         # data from the stacked-on branch
         new_repo = new_branch.repository
-        new_repo.lock_read()
-        try:
+        with new_repo.lock_read():
             self.assertEqual(new_repo.get_parent_map([trunk_revid]),
                              {trunk_revid: (NULL_REVISION, )})
-        finally:
-            new_repo.unlock()
 
     def test_sprout_stacked(self):
         # We have a mainline

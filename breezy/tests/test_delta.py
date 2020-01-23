@@ -21,6 +21,7 @@ from .. import (
     revision as _mod_revision,
     tests,
     )
+from ..tree import TreeChange
 from ..sixish import (
     PY3,
     StringIO,
@@ -31,10 +32,10 @@ class InstrumentedReporter(object):
     def __init__(self):
         self.calls = []
 
-    def report(self, file_id, path, versioned, renamed, modified, exe_change,
+    def report(self, path, versioned, renamed, copied, modified, exe_change,
                kind):
-        self.calls.append((file_id, path, versioned, renamed, modified,
-                           exe_change, kind))
+        self.calls.append(
+            (path, versioned, renamed, copied, modified, exe_change, kind))
 
 
 class TestReportChanges(tests.TestCase):
@@ -42,7 +43,7 @@ class TestReportChanges(tests.TestCase):
 
     def assertReport(self, expected, file_id=b'fid', path='path',
                      versioned_change='unchanged', renamed=False,
-                     modified='unchanged', exe_change=False,
+                     copied=False, modified='unchanged', exe_change=False,
                      kind=('file', 'file'), old_path=None,
                      unversioned_filter=None, view_info=None):
         if expected is None:
@@ -51,12 +52,12 @@ class TestReportChanges(tests.TestCase):
             expected_lines = [expected]
         self.assertReportLines(expected_lines, file_id, path,
                                versioned_change, renamed,
-                               modified, exe_change,
+                               copied, modified, exe_change,
                                kind, old_path,
                                unversioned_filter, view_info)
 
     def assertReportLines(self, expected_lines, file_id=b'fid', path='path',
-                          versioned_change='unchanged', renamed=False,
+                          versioned_change='unchanged', renamed=False, copied=False,
                           modified='unchanged', exe_change=False,
                           kind=('file', 'file'), old_path=None,
                           unversioned_filter=None, view_info=None):
@@ -64,9 +65,10 @@ class TestReportChanges(tests.TestCase):
 
         def result_line(format, *args):
             result.append(format % args)
-        reporter = _mod_delta._ChangeReporter(result_line,
-                                              unversioned_filter=unversioned_filter, view_info=view_info)
-        reporter.report(file_id, (old_path, path), versioned_change, renamed,
+        reporter = _mod_delta._ChangeReporter(
+            result_line, unversioned_filter=unversioned_filter,
+            view_info=view_info)
+        reporter.report((old_path, path), versioned_change, renamed, copied,
                         modified, exe_change, kind)
         if expected_lines is not None:
             self.assertEqualDiff('\n'.join(expected_lines), '\n'.join(result))
@@ -157,16 +159,19 @@ class TestReportChanges(tests.TestCase):
                            executable=(False, False),
                            versioned_change='unchanged',
                            renamed=False,
+                           copied=False,
                            modified='unchanged',
                            exe_change=False):
         reporter = InstrumentedReporter()
-        _mod_delta.report_changes([(file_id, paths, content_change, versioned,
-                                    parent_id, name, kind, executable)], reporter)
+        _mod_delta.report_changes([
+            TreeChange(
+                file_id, paths, content_change, versioned, parent_id,
+                name, kind, executable, copied)], reporter)
         output = reporter.calls[0]
-        self.assertEqual(file_id, output[0])
-        self.assertEqual(paths, output[1])
-        self.assertEqual(versioned_change, output[2])
-        self.assertEqual(renamed, output[3])
+        self.assertEqual(paths, output[0])
+        self.assertEqual(versioned_change, output[1])
+        self.assertEqual(renamed, output[2])
+        self.assertEqual(copied, output[3])
         self.assertEqual(modified, output[4])
         self.assertEqual(exe_change, output[5])
         self.assertEqual(kind, output[6])
@@ -243,34 +248,33 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         os.unlink('filename')
         self.build_tree(['filename/'])
         delta = tree.changes_from(tree.basis_tree())
-        self.assertEqual([('filename', b'file-id', 'file', 'directory')],
-                         delta.kind_changed)
+        self.assertEqual([('filename', 'file', 'directory')],
+                         [(c.path[1], c.kind[0], c.kind[1]) for c in delta.kind_changed])
         self.assertEqual([], delta.added)
         self.assertEqual([], delta.removed)
         self.assertEqual([], delta.renamed)
         self.assertEqual([], delta.modified)
         self.assertEqual([], delta.unchanged)
         self.assertTrue(delta.has_changed())
-        self.assertTrue(delta.touches_file_id(b'file-id'))
         self.assertEqual('kind changed:\n  filename (file => directory)\n',
                          self.show_string(delta))
         other_delta = _mod_delta.TreeDelta()
         self.assertNotEqual(other_delta, delta)
-        other_delta.kind_changed = [('filename', b'file-id', 'file',
-                                     'symlink')]
+        other_delta.kind_changed = [
+            TreeChange(
+                b'file-id',
+                ('filename', 'filename'), True, (True, True),
+                (tree.path2id(''), tree.path2id('')),
+                ('filename', 'filename'),
+                ('file', 'symlink'), (False, False))]
         self.assertNotEqual(other_delta, delta)
-        other_delta.kind_changed = [('filename', b'file-id', 'file',
-                                     'directory')]
+        other_delta.kind_changed = [
+            TreeChange(
+                b'file-id',
+                ('filename', 'filename'), True, (True, True),
+                (tree.path2id(''), tree.path2id('')), ('filename', 'filename'),
+                ('file', 'directory'), (False, False))]
         self.assertEqual(other_delta, delta)
-        if PY3:
-            self.assertEqualDiff("TreeDelta(added=[], removed=[], renamed=[],"
-                                 " kind_changed=[('filename', b'file-id', 'file', 'directory')],"
-                                 " modified=[], unchanged=[], unversioned=[])", repr(delta))
-        else:
-            self.assertEqualDiff("TreeDelta(added=[], removed=[], renamed=[],"
-                                 " kind_changed=[(u'filename', 'file-id', 'file', 'directory')],"
-                                 " modified=[], unchanged=[], unversioned=[])", repr(delta))
-
         self.assertEqual('K  filename (file => directory) file-id\n',
                          self.show_string(delta, show_ids=True,
                                           short_status=True))
@@ -280,10 +284,12 @@ class TestChangesFrom(tests.TestCaseWithTransport):
         self.assertEqual([], delta.kind_changed)
         # This loses the fact that kind changed, remembering it as a
         # modification
-        self.assertEqual([('filename', 'dirname', b'file-id', 'directory',
-                           True, False)], delta.renamed)
+        self.assertEqual([TreeChange(
+            b'file-id', ('filename', 'dirname'), True,
+            (True, True), (tree.path2id(''), tree.path2id('')),
+            ('filename', 'dirname'), ('file', 'directory'), (False, False))],
+            delta.renamed)
         self.assertTrue(delta.has_changed())
-        self.assertTrue(delta.touches_file_id(b'file-id'))
 
 
 class TestDeltaShow(tests.TestCaseWithTransport):
@@ -344,7 +350,7 @@ A  f4
         d, long_status, short_status = self._get_delta()
         out = StringIO()
 
-        def always(path, file_id):
+        def always(path):
             return True
         _mod_delta.report_delta(out, d, short_status=True, predicate=always)
         self.assertEqual(short_status, out.getvalue())
@@ -353,7 +359,7 @@ A  f4
         d, long_status, short_status = self._get_delta()
         out = StringIO()
 
-        def only_f2(path, file_id):
+        def only_f2(path):
             return path == 'f2'
         _mod_delta.report_delta(out, d, short_status=True, predicate=only_f2)
         self.assertEqual("A  f2\n", out.getvalue())
@@ -362,16 +368,7 @@ A  f4
         d, long_status, short_status = self._get_delta()
         out = StringIO()
 
-        def only_f2(path, file_id):
+        def only_f2(path):
             return path == 'f2'
         _mod_delta.report_delta(out, d, short_status=False, predicate=only_f2)
-        self.assertEqual("added:\n  f2\n", out.getvalue())
-
-    def test_long_status_id_predicate(self):
-        d, long_status, short_status = self._get_delta()
-        out = StringIO()
-
-        def only_f2_id(path, file_id):
-            return file_id == b'f2-id'
-        _mod_delta.report_delta(out, d, predicate=only_f2_id)
         self.assertEqual("added:\n  f2\n", out.getvalue())

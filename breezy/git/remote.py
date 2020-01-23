@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 import gzip
+from io import BytesIO
 import re
 
 from .. import (
@@ -59,6 +60,7 @@ from ..transport import (
 
 from . import (
     lazy_check_versions,
+    is_github_url,
     user_agent_for_github,
     )
 lazy_check_versions()
@@ -122,10 +124,10 @@ import tempfile
 
 try:
     import urllib.parse as urlparse
-    from urllib.parse import splituser, splitnport
+    from urllib.parse import splituser
 except ImportError:
     import urlparse
-    from urllib import splituser, splitnport
+    from urllib import splituser
 
 # urlparse only supports a limited number of schemes by default
 register_urlparse_netloc_protocol('git')
@@ -164,13 +166,11 @@ def split_git_url(url):
     :param url: Git URL
     :return: Tuple with host, port, username, path.
     """
-    (scheme, netloc, loc, _, _) = urlparse.urlsplit(url)
-    path = urlparse.unquote(loc)
+    parsed_url = urlparse.urlparse(url)
+    path = urlparse.unquote(parsed_url.path)
     if path.startswith("/~"):
         path = path[1:]
-    (username, hostport) = splituser(netloc)
-    (host, port) = splitnport(hostport, None)
-    return (host, port, username, path)
+    return ((parsed_url.hostname or '', parsed_url.port, parsed_url.username, path))
 
 
 class RemoteGitError(BzrError):
@@ -201,14 +201,17 @@ def parse_git_error(url, message):
                 message.endswith(' not found.'))):
         return NotBranchError(url, message)
     if message == "HEAD failed to update":
-        base_url, _ = urlutils.split_segment_parameters(url)
+        base_url = urlutils.strip_segment_parameters(url)
         return HeadUpdateFailed(base_url)
     if message.startswith('access denied or repository not exported:'):
-        extra, path = message.split(': ', 1)
-        return PermissionDenied(path, extra)
+        extra, path = message.split(':', 1)
+        return PermissionDenied(path.strip(), extra)
     if message.endswith('You are not allowed to push code to this project.'):
         return PermissionDenied(url, message)
     if message.endswith(' does not appear to be a git repository'):
+        return NotBranchError(url, message)
+    if re.match('(.+) is not a valid repository name',
+                message.splitlines()[0]):
         return NotBranchError(url, message)
     m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
     if m:
@@ -674,7 +677,8 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         url = urlutils.URL.from_string(transport.external_url())
         url.user = url.quoted_user = None
         url.password = url.quoted_password = None
-        super(BzrGitHttpClient, self).__init__(str(url), *args, **kwargs)
+        url = urlutils.strip_segment_parameters(str(url))
+        super(BzrGitHttpClient, self).__init__(url, *args, **kwargs)
 
     def _http_request(self, url, headers=None, data=None,
                       allow_compression=False):
@@ -689,7 +693,8 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             `redirect_location` properties, and `read` is a consumable read
             method for the response data.
         """
-        headers['User-agent'] = user_agent_for_github()
+        if is_github_url(url):
+            headers['User-agent'] = user_agent_for_github()
         headers["Pragma"] = "no-cache"
         if allow_compression:
             headers["Accept-Encoding"] = "gzip"
@@ -714,7 +719,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
         # before issuing the next to still allow for connection reuse from the
         # pool.
         if response.getheader("Content-Encoding") == "gzip":
-            read = gzip.GzipFile(fileobj=response).read
+            read = gzip.GzipFile(fileobj=BytesIO(response.read())).read
         else:
             read = response.read
 
@@ -733,6 +738,11 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
                 pass
 
         return WrapResponse(response), read
+
+
+def _git_url_and_path_from_transport(external_url):
+    url = urlutils.strip_segment_parameters(external_url)
+    return urlparse.urlsplit(url)
 
 
 class RemoteGitControlDirFormat(GitControlDirFormat):
@@ -761,25 +771,18 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         """Open this directory.
 
         """
-        # we dont grok readonly - git isn't integrated with transport.
-        url = transport.base
-        if url.startswith('readonly+'):
-            url = url[len('readonly+'):]
-        scheme = urlparse.urlsplit(transport.external_url())[0]
+        split_url = _git_url_and_path_from_transport(transport.external_url())
         if isinstance(transport, GitSmartTransport):
             client = transport._get_client()
-            client_path = transport._get_path()
-        elif scheme in ("http", "https"):
+        elif split_url.scheme in ("http", "https"):
             client = BzrGitHttpClient(transport)
-            client_path, _ = urlutils.split_segment_parameters(transport._path)
-        elif scheme == 'file':
+        elif split_url.scheme in ('file', ):
             client = dulwich.client.LocalGitClient()
-            client_path = transport.local_abspath('.')
         else:
             raise NotBranchError(transport.base)
         if not _found:
             pass  # TODO(jelmer): Actually probe for something
-        return RemoteGitDir(transport, self, client, client_path)
+        return RemoteGitDir(transport, self, client, split_url.path)
 
     def get_format_description(self):
         return "Remote Git Repository"
@@ -838,6 +841,9 @@ class GitRemoteRevisionTree(RevisionTree):
 
     def get_file_text(self, path):
         raise GitSmartRemoteNotSupported(self.get_file_text, self)
+
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        raise GitSmartRemoteNotSupported(self.list_files, self)
 
 
 class RemoteGitRepository(GitRepository):

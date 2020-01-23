@@ -61,7 +61,7 @@ copy of the current trunk as australia-integration::
 
   $ mkdir -p /srv/bzr
   $ cd /srv/bzr
-  $ bzr init-repo --no-trees projectx
+  $ bzr init-shared-repo --no-trees projectx
   $ cd projectx
   $ bzr branch bzr+ssh://server.example.com/srv/bzr/trunk
   $ bzr branch trunk australia-integration

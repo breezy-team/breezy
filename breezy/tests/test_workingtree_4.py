@@ -538,22 +538,19 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
                                           format=format_name)
         tree2 = self.make_branch_and_tree('tree2',
                                           format=format_name)
-        self.assertNotEqual(tree1.get_root_id(), tree2.get_root_id())
+        self.assertNotEqual(tree1.path2id(''), tree2.path2id(''))
         # when you branch, it inherits the same root id
         tree1.commit('first post')
         tree3 = tree1.controldir.sprout('tree3').open_workingtree()
-        self.assertEqual(tree3.get_root_id(), tree1.get_root_id())
+        self.assertEqual(tree3.path2id(''), tree1.path2id(''))
 
     def test_set_root_id(self):
         # similar to some code that fails in the dirstate-plus-subtree branch
         # -- setting the root id while adding a parent seems to scramble the
         # dirstate invariants. -- mbp 20070303
         def validate():
-            wt.lock_read()
-            try:
+            with wt.lock_read():
                 wt.current_dirstate()._validate()
-            finally:
-                wt.unlock()
         wt = self.make_workingtree('tree')
         wt.set_root_id(b'TREE-ROOTID')
         validate()
@@ -567,10 +564,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
 
     def test_default_root_id(self):
         tree = self.make_branch_and_tree('tag', format='dirstate-tags')
-        self.assertEqual(inventory.ROOT_ID, tree.get_root_id())
+        self.assertEqual(inventory.ROOT_ID, tree.path2id(''))
         tree = self.make_branch_and_tree('subtree',
                                          format='development-subtree')
-        self.assertNotEqual(inventory.ROOT_ID, tree.get_root_id())
+        self.assertNotEqual(inventory.ROOT_ID, tree.path2id(''))
 
     def test_non_subtree_with_nested_trees(self):
         # prior to dirstate, st/diff/commit ignored nested trees.
@@ -595,9 +592,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
                      (None, b'root'),
                      (None, u'dir'),
                      (None, 'directory'),
-                     (None, False)),
+                     (None, False), False),
                     (b'root', (None, u''), True, (False, True), (None, None),
-                     (None, u''), (None, 'directory'), (None, 0))]
+                     (None, u''), (None, 'directory'), (None, False), False)]
         self.assertEqual(
             expected,
             list(tree.iter_changes(tree.basis_tree(), specific_files=['dir'])))
@@ -616,7 +613,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
                      (b'root', b'root'),
                      ('dir', 'dir'),
                      ('directory', None),
-                     (False, False))]
+                     (False, False), False)]
         self.assertEqual(expected, list(tree.iter_changes(tree.basis_tree())))
         tree.unlock()
 
@@ -663,7 +660,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        changes = [c[1] for c in
+        changes = [c.path for c in
                    tree.iter_changes(basis, want_unversioned=True)]
         self.assertEqual([(None, 'unversioned'),
                           (None, 'versioned/unversioned'),

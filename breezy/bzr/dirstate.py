@@ -235,6 +235,7 @@ from . import (
     )
 from .. import (
     cache_utf8,
+    cleanup,
     config,
     debug,
     errors,
@@ -1311,21 +1312,18 @@ class DirState(object):
         result = DirState.initialize(dir_state_filename,
                                      sha1_provider=sha1_provider)
         try:
-            with tree.lock_read():
-                try:
-                    parent_ids = tree.get_parent_ids()
-                    num_parents = len(parent_ids)
-                    parent_trees = []
-                    for parent_id in parent_ids:
-                        parent_tree = tree.branch.repository.revision_tree(
-                            parent_id)
-                        parent_trees.append((parent_id, parent_tree))
-                        parent_tree.lock_read()
-                    result.set_parent_trees(parent_trees, [])
-                    result.set_state_from_inventory(tree.root_inventory)
-                finally:
-                    for revid, parent_tree in parent_trees:
-                        parent_tree.unlock()
+            with cleanup.ExitStack() as exit_stack:
+                exit_stack.enter_context(tree.lock_read())
+                parent_ids = tree.get_parent_ids()
+                num_parents = len(parent_ids)
+                parent_trees = []
+                for parent_id in parent_ids:
+                    parent_tree = tree.branch.repository.revision_tree(
+                        parent_id)
+                    parent_trees.append((parent_id, parent_tree))
+                    exit_stack.enter_context(parent_tree.lock_read())
+                result.set_parent_trees(parent_trees, [])
+                result.set_state_from_inventory(tree.root_inventory)
         except:
             # The caller won't have a chance to unlock this, so make sure we
             # cleanup ourselves
@@ -3867,10 +3865,10 @@ class ProcessEntryPython(object):
 
         :param result: A result tuple.
         """
-        if not self.partial or not result[0]:
+        if not self.partial or not result.file_id:
             return
-        self.seen_ids.add(result[0])
-        new_path = result[1][1]
+        self.seen_ids.add(result.file_id)
+        new_path = result.path[1]
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
             self.search_specific_file_parents.update(
@@ -4294,8 +4292,8 @@ class ProcessEntryPython(object):
                 # expansion.
                 if changed:
                     self._gather_result_for_consistency(result)
-                    if (result[6][0] == 'directory' and
-                            result[6][1] != 'directory'):
+                    if (result.kind[0] == 'directory' and
+                            result.kind[1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
                         if entry[1][self.source_index][0] == b'r':

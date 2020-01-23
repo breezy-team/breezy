@@ -24,13 +24,10 @@ from .branch import (
     )
 from .repository import Repository
 from .revision import Revision
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy import (
+from . import (
     errors,
     registry,
     )
-""")
 
 
 class VcsMapping(object):

@@ -80,6 +80,7 @@ from ..errors import (
     )
 
 from ..lock import LogicalLockResult
+from ..trace import warning
 
 
 class TransportRefsContainer(RefsContainer):
@@ -211,7 +212,11 @@ class TransportRefsContainer(RefsContainer):
         except NoSuchFile:
             return None
         with f:
-            header = f.read(len(SYMREF))
+            try:
+                header = f.read(len(SYMREF))
+            except ReadError:
+                # probably a directory
+                return None
             if header == SYMREF:
                 # Read only the first line
                 return header + next(iter(f)).rstrip(b"\r\n")
@@ -233,11 +238,8 @@ class TransportRefsContainer(RefsContainer):
         del self._packed_refs[name]
         if name in self._peeled_refs:
             del self._peeled_refs[name]
-        f = self.transport.open_write_stream("packed-refs")
-        try:
+        with self.transport.open_write_stream("packed-refs") as f:
             write_packed_refs(f, self._packed_refs, self._peeled_refs)
-        finally:
-            f.close()
 
     def set_symbolic_ref(self, name, other):
         """Make a ref point at another ref.
@@ -430,11 +432,11 @@ class TransportRepo(BaseRepo):
             refs_container = InfoRefsContainer(BytesIO(refs_text))
             try:
                 head = TransportRefsContainer(
-                    self._commontransport).read_loose_ref("HEAD")
+                    self._commontransport).read_loose_ref(b"HEAD")
             except KeyError:
                 pass
             else:
-                refs_container._refs["HEAD"] = head
+                refs_container._refs[b"HEAD"] = head
         else:
             refs_container = TransportRefsContainer(
                 self._commontransport, self._controltransport)
@@ -589,16 +591,7 @@ class TransportObjectStore(PackBasedObjectStore):
             return ret
 
     def _update_pack_cache(self):
-        pack_files = set()
-        pack_dir_contents = self._pack_names()
-        for name in pack_dir_contents:
-            if name.startswith("pack-") and name.endswith(".pack"):
-                # verify that idx exists first (otherwise the pack was not yet
-                # fully written)
-                idx_name = os.path.splitext(name)[0] + ".idx"
-                if idx_name in pack_dir_contents:
-                    pack_files.add(os.path.splitext(name)[0])
-
+        pack_files = set(self._pack_names())
         new_packs = []
         for basename in pack_files:
             pack_name = basename + ".pack"
@@ -607,6 +600,8 @@ class TransportObjectStore(PackBasedObjectStore):
                     size = self.pack_transport.stat(pack_name).st_size
                 except TransportNotPossible:
                     f = self.pack_transport.get(pack_name)
+                    # TODO(jelmer): Don't read entire file into memory?
+                    f = BytesIO(f.read())
                     pd = PackData(pack_name, f)
                 else:
                     pd = PackData(
@@ -625,19 +620,30 @@ class TransportObjectStore(PackBasedObjectStore):
         return new_packs
 
     def _pack_names(self):
+        pack_files = []
         try:
-            return self.pack_transport.list_dir(".")
+            dir_contents = self.pack_transport.list_dir(".")
+            for name in dir_contents:
+                if name.startswith("pack-") and name.endswith(".pack"):
+                    # verify that idx exists first (otherwise the pack was not yet
+                    # fully written)
+                    idx_name = os.path.splitext(name)[0] + ".idx"
+                    if idx_name in dir_contents:
+                        pack_files.append(os.path.splitext(name)[0])
         except TransportNotPossible:
             try:
                 f = self.transport.get('info/packs')
             except NoSuchFile:
-                # Hmm, warn about running 'git update-server-info' ?
-                return iter([])
+                warning('No info/packs on remote host;'
+                        'run \'git update-server-info\' on remote.')
             else:
                 with f:
-                    return read_packs_file(f)
+                    pack_files = [
+                        os.path.splitext(name)[0]
+                        for name in read_packs_file(f)]
         except NoSuchFile:
-            return iter([])
+            pass
+        return pack_files
 
     def _remove_pack(self, pack):
         self.pack_transport.delete(os.path.basename(pack.index.path))
@@ -700,11 +706,8 @@ class TransportObjectStore(PackBasedObjectStore):
         p._filename = basename + ".pack"
         f.seek(0)
         self.pack_transport.put_file(basename + ".pack", f)
-        idxfile = self.pack_transport.open_write_stream(basename + ".idx")
-        try:
+        with self.pack_transport.open_write_stream(basename + ".idx") as idxfile:
             write_pack_index_v2(idxfile, entries, p.get_stored_checksum())
-        finally:
-            idxfile.close()
         idxfile = self.pack_transport.get(basename + ".idx")
         idx = load_pack_index_file(basename + ".idx", idxfile)
         final_pack = Pack.from_objects(p, idx)
@@ -729,19 +732,13 @@ class TransportObjectStore(PackBasedObjectStore):
 
         pack_sha = p.index.objects_sha1()
 
-        datafile = self.pack_transport.open_write_stream(
-            "pack-%s.pack" % pack_sha.decode('ascii'))
-        try:
+        with self.pack_transport.open_write_stream(
+                "pack-%s.pack" % pack_sha.decode('ascii')) as datafile:
             entries, data_sum = write_pack_objects(datafile, p.pack_tuples())
-        finally:
-            datafile.close()
         entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
-        idxfile = self.pack_transport.open_write_stream(
-            "pack-%s.idx" % pack_sha.decode('ascii'))
-        try:
+        with self.pack_transport.open_write_stream(
+                "pack-%s.idx" % pack_sha.decode('ascii')) as idxfile:
             write_pack_index_v2(idxfile, entries, data_sum)
-        finally:
-            idxfile.close()
 
     def add_pack(self):
         """Add a new pack to this object store.

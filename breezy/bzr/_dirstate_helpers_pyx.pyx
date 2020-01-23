@@ -109,6 +109,9 @@ cdef extern from "Python.h":
     int PyBytes_Size(object p)
     int PyBytes_GET_SIZE_void "PyBytes_GET_SIZE" (void *p)
     int PyBytes_CheckExact(object p)
+    int PyFloat_Check(object p)
+    double PyFloat_AsDouble(object p)
+    int PyLong_Check(object p)
     void Py_INCREF(object o)
     void Py_DECREF(object o)
 
@@ -397,7 +400,7 @@ def _bisect_path_left(paths, path):
     path_size = PyBytes_Size(path)
 
     while _lo < _hi:
-        _mid = (_lo + _hi) / 2
+        _mid = (_lo + _hi) // 2
         cur = PyList_GetItem_object_void(paths, _mid)
         cur_cstr = PyBytes_AS_STRING_void(cur)
         cur_size = PyBytes_GET_SIZE_void(cur)
@@ -450,7 +453,7 @@ def _bisect_path_right(paths, path):
     path_size = PyBytes_Size(path)
 
     while _lo < _hi:
-        _mid = (_lo + _hi) / 2
+        _mid = (_lo + _hi) // 2
         cur = PyList_GetItem_object_void(paths, _mid)
         cur_cstr = PyBytes_AS_STRING_void(cur)
         cur_size = PyBytes_GET_SIZE_void(cur)
@@ -497,7 +500,7 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
     dirname_size = PyBytes_Size(dirname)
 
     while _lo < _hi:
-        _mid = (_lo + _hi) / 2
+        _mid = (_lo + _hi) // 2
         # Grab the dirname for the current dirblock
         # cur = dirblocks[_mid][0]
         cur = PyTuple_GetItem_void_void(
@@ -794,6 +797,14 @@ cdef int minikind_from_mode(int mode): # cannot_raise
 _encode = binascii.b2a_base64
 
 
+cdef unsigned long _time_to_unsigned(object t):  # cannot_raise
+    cdef double dt
+    if PyFloat_Check(t):
+        dt = PyFloat_AsDouble(t)
+        return <unsigned long>dt
+    return PyInt_AsUnsignedLongMask(t)
+
+
 cdef _pack_stat(stat_value):
     """return a string representing the stat value's key fields.
 
@@ -805,8 +816,8 @@ cdef _pack_stat(stat_value):
     aliased = <int *>result
     aliased[0] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_size))
     # mtime and ctime will often be floats but get converted to PyInt within
-    aliased[1] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_mtime))
-    aliased[2] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_ctime))
+    aliased[1] = htonl(_time_to_unsigned(stat_value.st_mtime))
+    aliased[2] = htonl(_time_to_unsigned(stat_value.st_ctime))
     aliased[3] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_dev))
     aliased[4] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_ino))
     aliased[5] = htonl(PyInt_AsUnsignedLongMask(stat_value.st_mode))
@@ -1402,10 +1413,10 @@ cdef class ProcessEntryC:
 
         :param result: A result tuple.
         """
-        if not self.partial or not result[0]:
+        if not self.partial or not result.file_id:
             return 0
-        self.seen_ids.add(result[0])
-        new_path = result[1][1]
+        self.seen_ids.add(result.file_id)
+        new_path = result.path[1]
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
             self.search_specific_file_parents.update(
@@ -1940,8 +1951,8 @@ cdef class ProcessEntryC:
                 # expansion.
                 if changed:
                     self._gather_result_for_consistency(result)
-                    if (result[6][0] == 'directory' and
-                        result[6][1] != 'directory'):
+                    if (result.kind[0] == 'directory' and
+                        result.kind[1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
                         if entry[1][self.source_index][0] == b'r':

@@ -41,8 +41,8 @@ import shutil
 import stat
 
 from breezy import (
+    cleanup,
     conflicts as _mod_conflicts,
-    errors,
     filters as _mod_filters,
     merge,
     revision as _mod_revision,
@@ -55,6 +55,9 @@ from breezy.bzr import (
     )
 """)
 
+from . import (
+    errors,
+    )
 from .controldir import (
     ControlComponent,
     ControlComponentFormatRegistry,
@@ -398,10 +401,6 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                 parents.append(revision_id)
         return parents
 
-    def get_root_id(self):
-        """Return the id of this trees root"""
-        raise NotImplementedError(self.get_root_id)
-
     def clone(self, to_controldir, revision_id=None):
         """Duplicate this working tree into to_bzr, including all state.
 
@@ -424,7 +423,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def copy_content_into(self, tree, revision_id=None):
         """Copy the current content and user files of this tree into tree."""
         with self.lock_read():
-            tree.set_root_id(self.get_root_id())
+            tree.set_root_id(self.path2id(''))
             if revision_id is None:
                 merge.transform_tree(tree, self)
             else:
@@ -658,7 +657,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             merger.other_rev_id = to_revision
             if _mod_revision.is_null(merger.other_rev_id):
                 raise errors.NoCommits(branch)
-            self.branch.fetch(branch, last_revision=merger.other_rev_id)
+            self.branch.fetch(branch, stop_revision=merger.other_rev_id)
             merger.other_basis = merger.other_rev_id
             merger.other_tree = self.branch.repository.revision_tree(
                 merger.other_rev_id)
@@ -731,7 +730,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def kind(self, relpath):
         return osutils.file_kind(self.abspath(relpath))
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         """List all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
@@ -841,8 +841,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                         this_tree=self,
                         change_reporter=change_reporter,
                         show_base=show_base)
-                    basis_root_id = basis_tree.get_root_id()
-                    new_root_id = new_basis_tree.get_root_id()
+                    basis_root_id = basis_tree.path2id('')
+                    new_root_id = new_basis_tree.path2id('')
                     if new_root_id is not None and basis_root_id != new_root_id:
                         self.set_root_id(new_root_id)
                 # TODO - dedup parents list with things merged by pull ?
@@ -998,31 +998,28 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def revert(self, filenames=None, old_tree=None, backups=True,
                pb=None, report_changes=False):
         from .conflicts import resolve
-        with self.lock_tree_write():
+        with cleanup.ExitStack() as exit_stack:
+            exit_stack.enter_context(self.lock_tree_write())
             if old_tree is None:
                 basis_tree = self.basis_tree()
-                basis_tree.lock_read()
+                exit_stack.enter_context(basis_tree.lock_read())
                 old_tree = basis_tree
             else:
                 basis_tree = None
-            try:
-                conflicts = transform.revert(self, old_tree, filenames, backups, pb,
-                                             report_changes)
-                if filenames is None and len(self.get_parent_ids()) > 1:
-                    parent_trees = []
-                    last_revision = self.last_revision()
-                    if last_revision != _mod_revision.NULL_REVISION:
-                        if basis_tree is None:
-                            basis_tree = self.basis_tree()
-                            basis_tree.lock_read()
-                        parent_trees.append((last_revision, basis_tree))
-                    self.set_parent_trees(parent_trees)
-                    resolve(self)
-                else:
-                    resolve(self, filenames, ignore_misses=True, recursive=True)
-            finally:
-                if basis_tree is not None:
-                    basis_tree.unlock()
+            conflicts = transform.revert(self, old_tree, filenames, backups, pb,
+                                         report_changes)
+            if filenames is None and len(self.get_parent_ids()) > 1:
+                parent_trees = []
+                last_revision = self.last_revision()
+                if last_revision != _mod_revision.NULL_REVISION:
+                    if basis_tree is None:
+                        basis_tree = self.basis_tree()
+                        exit_stack.enter_context(basis_tree.lock_read())
+                    parent_trees.append((last_revision, basis_tree))
+                self.set_parent_trees(parent_trees)
+                resolve(self)
+            else:
+                resolve(self, filenames, ignore_misses=True, recursive=True)
             return conflicts
 
     def store_uncommitted(self):
@@ -1170,11 +1167,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
                 # the working tree is up to date with the branch
                 # we can merge the specified revision from master
                 to_tree = self.branch.repository.revision_tree(revision)
-                to_root_id = to_tree.get_root_id()
+                to_root_id = to_tree.path2id('')
 
                 basis = self.basis_tree()
                 with basis.lock_read():
-                    if (basis.get_root_id() is None or basis.get_root_id() != to_root_id):
+                    if (basis.path2id('') is None or basis.path2id('') != to_root_id):
                         self.set_root_id(to_root_id)
                         self.flush()
 
@@ -1327,6 +1324,15 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """
         with self.lock_read():
             return next(self.get_canonical_paths([path]))
+
+    def reference_parent(self, path, branch=None, possible_transports=None):
+        raise errors.UnsupportedOperation(self.reference_parent, self)
+
+    def get_reference_info(self, path, branch=None):
+        raise errors.UnsupportedOperation(self.get_reference_info, self)
+
+    def set_reference_info(self, tree_path, branch_location):
+        raise errors.UnsupportedOperation(self.set_reference_info, self)
 
 
 class WorkingTreeFormatRegistry(ControlComponentFormatRegistry):

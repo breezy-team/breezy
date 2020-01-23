@@ -65,6 +65,7 @@ from ..sixish import viewitems
 from ..trace import (
     mutter,
     note,
+    warning,
     )
 
 from .. import (
@@ -319,17 +320,17 @@ class BzrDir(controldir.ControlDir):
         policy = self.determine_repository_policy(force_new_repo)
         return policy.acquire_repository()[0]
 
-    def _find_source_repo(self, add_cleanup, source_branch):
+    def _find_source_repo(self, exit_stack, source_branch):
         """Find the source branch and repo for a sprout operation.
 
         This is helper intended for use by _sprout.
 
         :returns: (source_branch, source_repository).  Either or both may be
             None.  If not None, they will be read-locked (and their unlock(s)
-            scheduled via the add_cleanup param).
+            scheduled via the exit_stack param).
         """
         if source_branch is not None:
-            add_cleanup(source_branch.lock_read().unlock)
+            exit_stack.enter_context(source_branch.lock_read())
             return source_branch, source_branch.repository
         try:
             source_branch = self.open_branch()
@@ -341,9 +342,9 @@ class BzrDir(controldir.ControlDir):
             except errors.NoRepositoryPresent:
                 source_repository = None
             else:
-                add_cleanup(source_repository.lock_read().unlock)
+                exit_stack.enter_context(source_repository.lock_read())
         else:
-            add_cleanup(source_branch.lock_read().unlock)
+            exit_stack.enter_context(source_branch.lock_read())
         return source_branch, source_repository
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
@@ -376,115 +377,112 @@ class BzrDir(controldir.ControlDir):
             when working locally.
         :return: The created control directory
         """
-        operation = cleanup.OperationWithCleanups(self._sprout)
-        return operation.run(
-            url, revision_id=revision_id, force_new_repo=force_new_repo,
-            recurse=recurse, possible_transports=possible_transports,
-            accelerator_tree=accelerator_tree, hardlink=hardlink,
-            stacked=stacked, source_branch=source_branch,
-            create_tree_if_local=create_tree_if_local)
-
-    def _sprout(self, op, url, revision_id=None, force_new_repo=False,
-                recurse='down', possible_transports=None,
-                accelerator_tree=None, hardlink=False, stacked=False,
-                source_branch=None, create_tree_if_local=True, lossy=False):
-        add_cleanup = op.add_cleanup
-        fetch_spec_factory = fetch.FetchSpecFactory()
-        if revision_id is not None:
-            fetch_spec_factory.add_revision_ids([revision_id])
-            fetch_spec_factory.source_branch_stop_revision_id = revision_id
-        if possible_transports is None:
-            possible_transports = []
-        else:
-            possible_transports = list(possible_transports) + [
-                self.root_transport]
-        target_transport = _mod_transport.get_transport(url,
-                                                        possible_transports)
-        target_transport.ensure_base()
-        cloning_format = self.cloning_metadir(stacked)
-        # Create/update the result branch
-        try:
-            result = controldir.ControlDir.open_from_transport(
-                target_transport)
-        except errors.NotBranchError:
-            result = cloning_format.initialize_on_transport(target_transport)
-        source_branch, source_repository = self._find_source_repo(
-            add_cleanup, source_branch)
-        fetch_spec_factory.source_branch = source_branch
-        # if a stacked branch wasn't requested, we don't create one
-        # even if the origin was stacked
-        if stacked and source_branch is not None:
-            stacked_branch_url = self.root_transport.base
-        else:
-            stacked_branch_url = None
-        repository_policy = result.determine_repository_policy(
-            force_new_repo, stacked_branch_url, require_stacking=stacked)
-        result_repo, is_new_repo = repository_policy.acquire_repository(
-            possible_transports=possible_transports)
-        add_cleanup(result_repo.lock_write().unlock)
-        fetch_spec_factory.source_repo = source_repository
-        fetch_spec_factory.target_repo = result_repo
-        if stacked or (len(result_repo._fallback_repositories) != 0):
-            target_repo_kind = fetch.TargetRepoKinds.STACKED
-        elif is_new_repo:
-            target_repo_kind = fetch.TargetRepoKinds.EMPTY
-        else:
-            target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
-        fetch_spec_factory.target_repo_kind = target_repo_kind
-        if source_repository is not None:
-            fetch_spec = fetch_spec_factory.make_fetch_spec()
-            result_repo.fetch(source_repository, fetch_spec=fetch_spec)
-
-        if source_branch is None:
-            # this is for sprouting a controldir without a branch; is that
-            # actually useful?
-            # Not especially, but it's part of the contract.
-            result_branch = result.create_branch()
-        else:
-            result_branch = source_branch.sprout(
-                result, revision_id=revision_id,
-                repository_policy=repository_policy, repository=result_repo)
-        mutter("created new branch %r" % (result_branch,))
-
-        # Create/update the result working tree
-        if (create_tree_if_local and not result.has_workingtree()
-                and isinstance(target_transport, local.LocalTransport)
-                and (result_repo is None or result_repo.make_working_trees())
-                and result.open_branch(
-                    name="",
-                    possible_transports=possible_transports).name == result_branch.name):
-            wt = result.create_workingtree(
-                accelerator_tree=accelerator_tree, hardlink=hardlink,
-                from_branch=result_branch)
-            with wt.lock_write():
-                if not wt.is_versioned(''):
-                    try:
-                        wt.set_root_id(self.open_workingtree.get_root_id())
-                    except errors.NoWorkingTree:
-                        pass
-        else:
-            wt = None
-        if recurse == 'down':
-            basis = None
-            if wt is not None:
-                basis = wt.basis_tree()
-            elif result_branch is not None:
-                basis = result_branch.basis_tree()
-            elif source_branch is not None:
-                basis = source_branch.basis_tree()
-            if basis is not None:
-                add_cleanup(basis.lock_read().unlock)
-                subtrees = basis.iter_references()
+        with cleanup.ExitStack() as stack:
+            fetch_spec_factory = fetch.FetchSpecFactory()
+            if revision_id is not None:
+                fetch_spec_factory.add_revision_ids([revision_id])
+                fetch_spec_factory.source_branch_stop_revision_id = revision_id
+            if possible_transports is None:
+                possible_transports = []
             else:
-                subtrees = []
-            for path in subtrees:
-                target = urlutils.join(url, urlutils.escape(path))
-                sublocation = source_branch.reference_parent(path)
-                sublocation.controldir.sprout(
-                    target, basis.get_reference_revision(path),
-                    force_new_repo=force_new_repo, recurse=recurse,
-                    stacked=stacked)
-        return result
+                possible_transports = list(possible_transports) + [
+                    self.root_transport]
+            target_transport = _mod_transport.get_transport(url,
+                                                            possible_transports)
+            target_transport.ensure_base()
+            cloning_format = self.cloning_metadir(stacked)
+            # Create/update the result branch
+            try:
+                result = controldir.ControlDir.open_from_transport(
+                    target_transport)
+            except errors.NotBranchError:
+                result = cloning_format.initialize_on_transport(target_transport)
+            source_branch, source_repository = self._find_source_repo(
+                stack, source_branch)
+            fetch_spec_factory.source_branch = source_branch
+            # if a stacked branch wasn't requested, we don't create one
+            # even if the origin was stacked
+            if stacked and source_branch is not None:
+                stacked_branch_url = self.root_transport.base
+            else:
+                stacked_branch_url = None
+            repository_policy = result.determine_repository_policy(
+                force_new_repo, stacked_branch_url, require_stacking=stacked)
+            result_repo, is_new_repo = repository_policy.acquire_repository(
+                possible_transports=possible_transports)
+            stack.enter_context(result_repo.lock_write())
+            fetch_spec_factory.source_repo = source_repository
+            fetch_spec_factory.target_repo = result_repo
+            if stacked or (len(result_repo._fallback_repositories) != 0):
+                target_repo_kind = fetch.TargetRepoKinds.STACKED
+            elif is_new_repo:
+                target_repo_kind = fetch.TargetRepoKinds.EMPTY
+            else:
+                target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+            fetch_spec_factory.target_repo_kind = target_repo_kind
+            if source_repository is not None:
+                fetch_spec = fetch_spec_factory.make_fetch_spec()
+                result_repo.fetch(source_repository, fetch_spec=fetch_spec)
+
+            if source_branch is None:
+                # this is for sprouting a controldir without a branch; is that
+                # actually useful?
+                # Not especially, but it's part of the contract.
+                result_branch = result.create_branch()
+            else:
+                result_branch = source_branch.sprout(
+                    result, revision_id=revision_id,
+                    repository_policy=repository_policy, repository=result_repo)
+            mutter("created new branch %r" % (result_branch,))
+
+            # Create/update the result working tree
+            if (create_tree_if_local and not result.has_workingtree()
+                    and isinstance(target_transport, local.LocalTransport)
+                    and (result_repo is None or result_repo.make_working_trees())
+                    and result.open_branch(
+                        name="",
+                        possible_transports=possible_transports).name == result_branch.name):
+                wt = result.create_workingtree(
+                    accelerator_tree=accelerator_tree, hardlink=hardlink,
+                    from_branch=result_branch)
+                with wt.lock_write():
+                    if not wt.is_versioned(''):
+                        try:
+                            wt.set_root_id(self.open_workingtree.path2id(''))
+                        except errors.NoWorkingTree:
+                            pass
+            else:
+                wt = None
+            if recurse == 'down':
+                tree = None
+                if wt is not None:
+                    tree = wt
+                    basis = tree.basis_tree()
+                    stack.enter_context(basis.lock_read())
+                elif result_branch is not None:
+                    basis = tree = result_branch.basis_tree()
+                elif source_branch is not None:
+                    basis = tree = source_branch.basis_tree()
+                if tree is not None:
+                    stack.enter_context(tree.lock_read())
+                    subtrees = tree.iter_references()
+                else:
+                    subtrees = []
+                for path in subtrees:
+                    target = urlutils.join(url, urlutils.escape(path))
+                    sublocation = tree.reference_parent(
+                        path, branch=result_branch,
+                        possible_transports=possible_transports)
+                    if sublocation is None:
+                        warning(
+                            'Ignoring nested tree %s, parent location unknown.',
+                            path)
+                        continue
+                    sublocation.controldir.sprout(
+                        target, basis.get_reference_revision(path),
+                        force_new_repo=force_new_repo, recurse=recurse,
+                        stacked=stacked)
+            return result
 
     def _available_backup_name(self, base):
         """Find a non-existing backup file name based on base.

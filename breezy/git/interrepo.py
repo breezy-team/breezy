@@ -46,6 +46,7 @@ from ..errors import (
     NoSuchRevision,
     )
 from ..repository import (
+    FetchResult,
     InterRepository,
     )
 from ..revision import (
@@ -319,7 +320,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 return revidmap
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-              fetch_spec=None, mapped_refs=None):
+              fetch_spec=None, mapped_refs=None, lossy=False):
         if mapped_refs is not None:
             stop_revisions = mapped_refs
         elif revision_id is not None:
@@ -336,9 +337,10 @@ class InterToLocalGitRepository(InterToGitRepository):
                               for revid in self.source.all_revision_ids()]
         self._warn_slow()
         try:
-            self.fetch_objects(stop_revisions, lossy=False)
+            revidmap = self.fetch_objects(stop_revisions, lossy=lossy)
         except NoPushSupport:
             raise NoRoundtrippingSupport(self.source, self.target)
+        return FetchResult(revidmap)
 
     @staticmethod
     def is_compatible(source, target):
@@ -516,7 +518,7 @@ class InterGitNonGitRepository(InterFromGitRepository):
         return self.get_determine_wants_heads(wants, include_tags=include_tags)
 
     def fetch(self, revision_id=None, find_ghosts=False,
-              mapping=None, fetch_spec=None, include_tags=False):
+              mapping=None, fetch_spec=None, include_tags=False, lossy=False):
         if mapping is None:
             mapping = self.source.get_mapping()
         if revision_id is not None:
@@ -537,11 +539,13 @@ class InterGitNonGitRepository(InterFromGitRepository):
         else:
             determine_wants = self.determine_wants_all
 
-        (pack_hint, _, remote_refs) = self.fetch_objects(determine_wants,
-                                                         mapping)
+        (pack_hint, _, remote_refs) = self.fetch_objects(
+            determine_wants, mapping, lossy=lossy)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
-        return remote_refs
+        result = FetchResult()
+        result.refs = remote_refs
+        return result
 
 
 class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
@@ -657,7 +661,7 @@ class InterGitGitRepository(InterFromGitRepository):
 
     def fetch(self, revision_id=None, find_ghosts=False,
               mapping=None, fetch_spec=None, branches=None, limit=None,
-              include_tags=False):
+              include_tags=False, lossy=False):
         if mapping is None:
             mapping = self.source.get_mapping()
         if revision_id is not None:
@@ -671,23 +675,18 @@ class InterGitGitRepository(InterFromGitRepository):
                     "Unsupported search result type %s" % recipe[0])
             args = heads
         if branches is not None:
-            def determine_wants(refs):
-                ret = []
-                for name, value in viewitems(refs):
-                    if value == ZERO_SHA:
-                        continue
-
-                    if name in branches or (include_tags and is_tag(name)):
-                        ret.append(value)
-                return ret
+            determine_wants = self.get_determine_wants_branches(
+                branches, include_tags=include_tags)
         elif fetch_spec is None and revision_id is None:
             determine_wants = self.determine_wants_all
         else:
             determine_wants = self.get_determine_wants_revids(
                 args, include_tags=include_tags)
         wants_recorder = DetermineWantsRecorder(determine_wants)
-        self.fetch_objects(wants_recorder, mapping, limit=limit)
-        return wants_recorder.remote_refs
+        self.fetch_objects(wants_recorder, mapping, limit=limit, lossy=lossy)
+        result = FetchResult()
+        result.refs = wants_recorder.remote_refs
+        return result
 
     def get_determine_wants_revids(self, revids, include_tags=False):
         wants = set()
@@ -697,6 +696,21 @@ class InterGitGitRepository(InterFromGitRepository):
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             wants.add(git_sha)
         return self.get_determine_wants_heads(wants, include_tags=include_tags)
+
+    def get_determine_wants_branches(self, branches, include_tags=False):
+        def determine_wants(refs):
+            ret = []
+            for name, value in viewitems(refs):
+                if value == ZERO_SHA:
+                    continue
+
+                if name.endswith(ANNOTATED_TAG_SUFFIX):
+                    continue
+
+                if name in branches or (include_tags and is_tag(name)):
+                    ret.append(value)
+            return ret
+        return determine_wants
 
     def determine_wants_all(self, refs):
         potential = set([

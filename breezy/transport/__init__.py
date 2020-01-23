@@ -31,18 +31,7 @@ from __future__ import absolute_import
 import errno
 import sys
 
-from ..lazy_import import lazy_import
-lazy_import(globals(), """
 from stat import S_ISDIR
-
-from breezy import (
-    errors,
-    location as _mod_location,
-    osutils,
-    ui,
-    urlutils,
-    )
-""")
 
 from ..sixish import (
     BytesIO,
@@ -53,8 +42,12 @@ from ..trace import (
     mutter,
     )
 from .. import (
+    errors,
     hooks,
     registry,
+    osutils,
+    ui,
+    urlutils,
     )
 
 
@@ -94,6 +87,16 @@ def _get_transport_modules():
     modules.add('breezy.transport.pathfilter')
     result = sorted(modules)
     return result
+
+
+class UnusableRedirect(errors.BzrError):
+
+    _fmt = ("Unable to follow redirect from %(source)s to %(target)s: "
+            "%(reason)s.")
+
+    def __init__(self, source, target, reason):
+        super(UnusableRedirect, self).__init__(
+            source=source, target=target, reason=reason)
 
 
 class TransportListRegistry(registry.Registry):
@@ -1235,11 +1238,13 @@ class Transport(object):
         The redirection can be handled only if the relpath involved is not
         renamed by the redirection.
 
-        :returns: A transport or None.
+        :returns: A transport
+        :raise UnusableRedirect: when redirection can not be provided
         """
         # This returns None by default, meaning the transport can't handle the
         # redirection.
-        return None
+        raise UnusableRedirect(
+            source, target, "transport does not support redirection")
 
 
 class _SharedConnection(object):
@@ -1569,8 +1574,9 @@ def get_transport(base, possible_transports=None, purpose=None):
     """
     if base is None:
         base = '.'
+    from ..location import location_to_url
     return get_transport_from_url(
-        _mod_location.location_to_url(base, purpose=purpose),
+        location_to_url(base, purpose=purpose),
         possible_transports)
 
 

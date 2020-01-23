@@ -45,6 +45,7 @@ from breezy.bzr import (
     versionedfile,
     vf_search,
     )
+from breezy.bzr.bundle import serializer
 
 from breezy.recordcounter import RecordCounter
 from breezy.i18n import gettext
@@ -65,6 +66,7 @@ from .inventory import (
 
 from ..repository import (
     CommitBuilder,
+    FetchResult,
     InterRepository,
     Repository,
     RepositoryFormat,
@@ -655,6 +657,9 @@ class VersionedFileRepository(Repository):
         if self.chk_bytes is not None:
             self.chk_bytes.add_fallback_versioned_files(repository.chk_bytes)
 
+    def create_bundle(self, target, base, fileobj, format=None):
+        return serializer.write_bundle(self, target, base, fileobj, format)
+
     @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         super(VersionedFileRepository, self).unlock()
@@ -925,7 +930,7 @@ class VersionedFileRepository(Repository):
         self._safe_to_return_from_cache = False
 
     def fetch(self, source, revision_id=None, find_ghosts=False,
-              fetch_spec=None):
+              fetch_spec=None, lossy=False):
         """Fetch the content required to construct revision_id from source.
 
         If revision_id is None and fetch_spec is None, then all content is
@@ -963,14 +968,15 @@ class VersionedFileRepository(Repository):
             if (revision_id is not None
                     and not _mod_revision.is_null(revision_id)):
                 self.get_revision(revision_id)
-            return 0, []
+            return FetchResult(0)
         inter = InterRepository.get(source, self)
         if (fetch_spec is not None
                 and not getattr(inter, "supports_fetch_spec", False)):
             raise errors.UnsupportedOperation(
                 "fetch_spec not supported for %r" % inter)
         return inter.fetch(revision_id=revision_id,
-                           find_ghosts=find_ghosts, fetch_spec=fetch_spec)
+                           find_ghosts=find_ghosts, fetch_spec=fetch_spec,
+                           lossy=lossy)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -2325,7 +2331,7 @@ class InterVersionedFileRepository(InterRepository):
     supports_fetch_spec = True
 
     def fetch(self, revision_id=None, find_ghosts=False,
-              fetch_spec=None):
+              fetch_spec=None, lossy=False):
         """Fetch the content required to construct revision_id.
 
         The content is copied from self.source to self.target.
@@ -2334,6 +2340,8 @@ class InterVersionedFileRepository(InterRepository):
                             content is copied.
         :return: None.
         """
+        if lossy:
+            raise errors.LossyPushToSameVCS(self.source, self.target)
         if self.target._format.experimental:
             ui.ui_factory.show_user_warning(
                 'experimental_format_fetch',
@@ -2351,6 +2359,7 @@ class InterVersionedFileRepository(InterRepository):
                             last_revision=revision_id,
                             fetch_spec=fetch_spec,
                             find_ghosts=find_ghosts)
+            return FetchResult()
 
     def _walk_to_common_revisions(self, revision_ids, if_present_ids=None):
         """Walk out from revision_ids in source to revisions target has.
@@ -2638,7 +2647,7 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                                    current_revision_id, revision.parent_ids))
             if self._converting_to_rich_root:
                 self._revision_id_to_root_id[current_revision_id] = \
-                    tree.get_root_id()
+                    tree.path2id('')
             # Determine which texts are in present in this revision but not in
             # any of the available parents.
             texts_possibly_new_in_tree = set()
@@ -2766,8 +2775,10 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                   len(revision_ids))
 
     def fetch(self, revision_id=None, find_ghosts=False,
-              fetch_spec=None):
+              fetch_spec=None, lossy=False):
         """See InterRepository.fetch()."""
+        if lossy:
+            raise errors.LossyPushToSameVCS(self.source, self.target)
         if fetch_spec is not None:
             revision_ids = fetch_spec.get_keys()
         else:
@@ -2793,21 +2804,21 @@ class InterDifferingSerializer(InterVersionedFileRepository):
                     search_revision_ids = [revision_id]
                 else:
                     search_revision_ids = None
-                revision_ids = self.target.search_missing_revision_ids(self.source,
-                                                                       revision_ids=search_revision_ids,
-                                                                       find_ghosts=find_ghosts).get_keys()
+                revision_ids = self.target.search_missing_revision_ids(
+                    self.source, revision_ids=search_revision_ids,
+                    find_ghosts=find_ghosts).get_keys()
             if not revision_ids:
-                return 0, 0
+                return FetchResult(0)
             revision_ids = tsort.topo_sort(
                 self.source.get_graph().get_parent_map(revision_ids))
             if not revision_ids:
-                return 0, 0
+                return FetchResult(0)
             # Walk though all revisions; get inventory deltas, copy referenced
             # texts that delta references, insert the delta, revision and
             # signature.
             with ui.ui_factory.nested_progress_bar() as pb:
                 self._fetch_all_revisions(revision_ids, pb)
-            return len(revision_ids), 0
+            return FetchResult(len(revision_ids))
 
     def _get_basis(self, first_revision_id):
         """Get a revision and tree which exists in the target.
@@ -2912,9 +2923,10 @@ def _install_revision(repository, rev, revision_tree, signature,
         # the parents inserted are not those commit would do - in particular
         # they are not filtered by heads(). RBC, AB
         for revision, tree in viewitems(parent_trees):
-            if not tree.has_id(ie.file_id):
+            try:
+                path = tree.id2path(ie.file_id)
+            except errors.NoSuchId:
                 continue
-            path = tree.id2path(ie.file_id)
             parent_id = tree.get_file_revision(path)
             if parent_id in text_parents:
                 continue

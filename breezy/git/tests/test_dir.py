@@ -27,6 +27,7 @@ from ... import (
     errors,
     urlutils,
     )
+from ...transport import get_transport
 from ...tests import TestSkipped
 
 from .. import (
@@ -53,11 +54,17 @@ class TestGitDir(tests.TestCaseInTempDir):
         gd = controldir.ControlDir.open('.')
         self.assertIsInstance(gd, dir.LocalGitDir)
 
+    def test_open_ref_parent(self):
+        r = GitRepo.init(".")
+        cid = r.do_commit(message=b"message", ref=b'refs/heads/foo/bar')
+        gd = controldir.ControlDir.open('.')
+        self.assertRaises(errors.NotBranchError, gd.open_branch, 'foo')
+
     def test_open_workingtree(self):
-        GitRepo.init(".")
+        r = GitRepo.init(".")
+        r.do_commit(message=b"message")
 
         gd = controldir.ControlDir.open('.')
-        raise TestSkipped
         wt = gd.open_workingtree()
         self.assertIsInstance(wt, workingtree.GitWorkingTree)
 
@@ -75,6 +82,13 @@ class TestGitDir(tests.TestCaseInTempDir):
         gd = controldir.ControlDir.open('foo')
         self.assertEqual(gd.control_url.rstrip('/'),
                          urlutils.local_path_to_url(os.path.abspath(gitrepo.controldir())))
+
+    def test_shared_repository(self):
+        t = get_transport('.')
+        self.assertRaises(
+            errors.SharedRepositoriesUnsupported,
+            dir.LocalGitControlDirFormat().initialize_on_transport_ex, t,
+            shared_repo=True)
 
 
 class TestGitDirFormat(tests.TestCase):

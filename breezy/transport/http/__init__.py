@@ -24,6 +24,7 @@ from __future__ import absolute_import
 DEBUG = 0
 
 import base64
+import cgi
 import errno
 import os
 import re
@@ -43,10 +44,10 @@ try:
 except ImportError:  # python < 3
     import urllib2 as urllib_request
 try:
-    from urllib.parse import urljoin, splitport, splittype, splithost
+    from urllib.parse import urljoin, splitport, splittype, splithost, urlencode
 except ImportError:
     from urlparse import urljoin
-    from urllib import splitport, splittype, splithost
+    from urllib import splitport, splittype, splithost, urlencode
 
 # TODO: handle_response should be integrated into the http/__init__.py
 from .response import handle_response
@@ -80,6 +81,7 @@ from ...sixish import (
 from ...trace import mutter
 from ...transport import (
     ConnectedTransport,
+    UnusableRedirect,
     )
 
 
@@ -1035,14 +1037,15 @@ class HTTPRedirectHandler(urllib_request.HTTPRedirectHandler):
             newurl = headers.get('uri')
         else:
             return
+
+        newurl = urljoin(req.get_full_url(), newurl)
+
         if self._debuglevel >= 1:
             print('Redirected to: %s (followed: %r)' % (newurl,
                                                         req.follow_redirections))
         if req.follow_redirections is False:
             req.redirected_to = newurl
             return fp
-
-        newurl = urljoin(req.get_full_url(), newurl)
 
         # This call succeeds or raise an error. urllib_request returns
         # if redirect_request returns None, but our
@@ -1821,11 +1824,17 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
     """
 
     accepted_errors = [200,  # Ok
+                       201,
+                       202,
+                       204,
                        206,  # Partial content
                        400,
                        403,
                        404,  # Not found
+                       405,  # Method not allowed
                        416,
+                       422,
+                       501,  # Not implemented
                        ]
     """The error codes the caller will handle.
 
@@ -1935,12 +1944,12 @@ class HttpTransport(ConnectedTransport):
 
     def request(self, method, url, fields=None, headers=None, **urlopen_kw):
         if fields is not None:
-            raise NotImplementedError(
-                'the fields argument is not yet supported')
-        body = urlopen_kw.pop('body', None)
+            data = urlencode(fields).encode()
+        else:
+            data = urlopen_kw.pop('body', None)
         if headers is None:
             headers = {}
-        request = Request(method, url, body, headers)
+        request = Request(method, url, data, headers)
         request.follow_redirections = (urlopen_kw.pop('retries', 0) > 0)
         if urlopen_kw:
             raise NotImplementedError(
@@ -2011,6 +2020,10 @@ class HttpTransport(ConnectedTransport):
                 return self._actual.code
 
             @property
+            def reason(self):
+                return self._actual.reason
+
+            @property
             def data(self):
                 if self._data is None:
                     self._data = self._actual.read()
@@ -2018,10 +2031,15 @@ class HttpTransport(ConnectedTransport):
 
             @property
             def text(self):
-                return self.data.decode()
+                charset = cgi.parse_header(
+                    self._actual.headers['Content-Type'])[1].get('charset')
+                return self.data.decode(charset)
 
             def read(self, amt=None):
                 return self._actual.read(amt)
+
+            def readlines(self):
+                return self._actual.readlines()
 
             def readline(self, size=-1):
                 return self._actual.readline(size)
@@ -2069,16 +2087,28 @@ class HttpTransport(ConnectedTransport):
             if range_header is not None:
                 bytes = 'bytes=' + range_header
                 headers = {'Range': bytes}
+        else:
+            range_header = None
 
         response = self.request('GET', abspath, headers=headers)
 
         if response.status == 404:  # not found
             raise errors.NoSuchFile(abspath)
-        elif response.status in (400, 416):
+        elif response.status == 416:
             # We don't know which, but one of the ranges we specified was
             # wrong.
             raise errors.InvalidHttpRange(abspath, range_header,
                                           'Server return code %d' % response.status)
+        elif response.status == 400:
+            if range_header:
+                # We don't know which, but one of the ranges we specified was
+                # wrong.
+                raise errors.InvalidHttpRange(
+                    abspath, range_header,
+                    'Server return code %d' % response.status)
+            else:
+                raise errors.InvalidHttpResponse(
+                    abspath, 'Unexpected status %d' % response.status)
         elif response.status not in (200, 206):
             raise errors.InvalidHttpResponse(
                 abspath, 'Unexpected status %d' % response.status)
@@ -2493,7 +2523,8 @@ class HttpTransport(ConnectedTransport):
         The redirection can be handled only if the relpath involved is not
         renamed by the redirection.
 
-        :returns: A transport or None.
+        :returns: A transport
+        :raise UnusableRedirect: when the URL can not be reinterpreted
         """
         parsed_source = self._split_url(source)
         parsed_target = self._split_url(target)
@@ -2504,7 +2535,8 @@ class HttpTransport(ConnectedTransport):
         if not parsed_target.path.endswith(excess_tail):
             # The final part of the url has been renamed, we can't handle the
             # redirection.
-            return None
+            raise UnusableRedirect(
+                source, target, "final part of the url was renamed")
 
         target_path = parsed_target.path
         if excess_tail:
@@ -2546,6 +2578,17 @@ class HttpTransport(ConnectedTransport):
                                         parsed_target.host, parsed_target.port,
                                         target_path)
             return transport.get_transport_from_url(new_url)
+
+    def _options(self, relpath):
+        abspath = self._remote_path(relpath)
+        resp = self.request('OPTIONS', abspath)
+        if resp.status == 404:
+            raise errors.NoSuchFile(abspath)
+        if resp.status in (403, 405):
+            raise errors.InvalidHttpResponse(
+                abspath,
+                "OPTIONS not supported or forbidden for remote URL")
+        return resp.getheaders()
 
 
 # TODO: May be better located in smart/medium.py with the other
