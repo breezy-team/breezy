@@ -1,0 +1,16 @@
+=== modified file 'breezy/bzr/_dirstate_helpers_pyx.pyx'
+--- old/breezy/bzr/_dirstate_helpers_pyx.pyx	2019-11-21 07:05:22 +0000
++++ new/breezy/bzr/_dirstate_helpers_pyx.pyx	2020-01-23 03:13:37 +0000
+@@ -797,10 +797,8 @@
+ 
+ 
+ cdef unsigned long _time_to_unsigned(object t):  # cannot_raise
+-    cdef double dt
+     if PyFloat_Check(t):
+-        dt = PyFloat_AsDouble(t)
+-        return <unsigned long>dt
++        t = t.__int__()
+     return PyInt_AsUnsignedLongMask(t)
+ 
+ 
+
