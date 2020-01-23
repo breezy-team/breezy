@@ -1,4 +1,4 @@
-breezy (3.0.2-2) UNRELEASED; urgency=medium
+breezy (3.0.2-2) unstable; urgency=medium
 
   * Wrap long lines in changelog entries: 3.0.1-4, 2.4.0~beta4-4.
   * Drop transition for old debug package migration.
@@ -6,7 +6,7 @@ breezy (3.0.2-2) UNRELEASED; urgency=medium
   * Add patch 21_fix_ancient_time: Fix conversion of ctime to int on
     certain platforms. Closes: #949280
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Mon, 20 Jan 2020 02:53:23 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 23 Jan 2020 03:14:51 +0000
 
 breezy (3.0.2-1) unstable; urgency=medium
 
