@@ -40,6 +40,9 @@ Bug Fixes
  * Don't rely on private transport attribute in fast-import.
    (Jelmer Vernooĳ, #1854607)
 
+ * Fix conversion of time_t to int on certain platforms (arm64, armhf,
+   ppc64el). (Jelmer Vernooĳ)
+
 Documentation
 *************
 
