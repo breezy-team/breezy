@@ -1207,7 +1207,7 @@ class InterTree(InterObject):
 InterTree.register_optimiser(InterTree)
 
 
-def find_previous_paths(from_tree, to_tree, paths):
+def find_previous_paths(from_tree, to_tree, paths, recurse='none'):
     """Find previous tree paths.
 
     :param from_tree: From tree
@@ -1218,11 +1218,11 @@ def find_previous_paths(from_tree, to_tree, paths):
     """
     ret = {}
     for path in paths:
-        ret[path] = find_previous_path(from_tree, to_tree, path)
+        ret[path] = find_previous_path(from_tree, to_tree, path, recurse=recurse)
     return ret
 
 
-def find_previous_path(from_tree, to_tree, path, file_id=None):
+def find_previous_path(from_tree, to_tree, path, file_id=None, recurse='none'):
     """Find previous tree path.
 
     :param from_tree: From tree
@@ -1236,7 +1236,7 @@ def find_previous_path(from_tree, to_tree, path, file_id=None):
     if file_id is None:
         raise errors.NoSuchFile(path)
     try:
-        return to_tree.id2path(file_id)
+        return to_tree.id2path(file_id, recurse=recurse)
     except errors.NoSuchId:
         return None
 
