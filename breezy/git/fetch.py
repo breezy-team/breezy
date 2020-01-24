@@ -182,12 +182,13 @@ def import_git_submodule(texts, mapping, path, name, hexshas,
     (base_mode, mode) = modes
     if base_hexsha == hexsha and base_mode == mode:
         return [], {}
+    path = path.decode('utf-8')
     file_id = lookup_file_id(path)
     invdelta = []
     ie = TreeReference(file_id, name.decode("utf-8"), parent_id)
     ie.revision = revision_id
     if base_hexsha is not None:
-        old_path = path.decode("utf-8")  # Renames are not supported yet
+        old_path = path  # Renames are not supported yet
         if stat.S_ISDIR(base_mode):
             invdelta.extend(remove_disappeared_children(
                 base_bzr_tree, old_path, lookup_object(base_hexsha), [],
