@@ -239,12 +239,12 @@ class TestPythonGroupCompressor(TestGroupCompressor):
                 b'different\n',
                 b'moredifferent\n'], None)
         compressor.compress(
-                ('label3',), [
-                    b'new\n',
-                    b'common very very long line\n',
-                    b'plus more text\n',
-                    b'different\n',
-                    b'moredifferent\n'], None)
+            ('label3',),
+            [b'new\n',
+             b'common very very long line\n',
+             b'plus more text\n',
+             b'different\n',
+             b'moredifferent\n'], None)
         self.assertAlmostEqual(1.9, compressor.ratio(), 1)
 
     def test_two_nosha_delta(self):
