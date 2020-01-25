@@ -1197,9 +1197,8 @@ class VersionedFileRepository(Repository):
         stream = self.inventories.get_record_stream(keys, 'unordered', True)
         for record in stream:
             if record.storage_kind != 'absent':
-                chunks = record.get_bytes_as('chunked')
+                lines = record.get_bytes_as('lines')
                 revid = record.key[-1]
-                lines = osutils.chunks_to_lines(chunks)
                 for line in lines:
                     yield line, revid
 

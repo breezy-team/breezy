@@ -125,6 +125,8 @@ class ChunkedContentFactory(ContentFactory):
             return self._chunks
         elif storage_kind == 'fulltext':
             return b''.join(self._chunks)
+        elif storage_kind == 'lines':
+            return list(osutils.chunks_to_lines(self._chunks))
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
@@ -160,6 +162,8 @@ class FulltextContentFactory(ContentFactory):
             return self._text
         elif storage_kind == 'chunked':
             return [self._text]
+        elif storage_kind == 'lines':
+            return self._text.splitlines(True)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
@@ -188,6 +192,8 @@ class FileBackedContentFactory(ContentFactory):
             return self.file.read()
         elif storage_kind == 'chunked':
             return list(osutils.file_iterator(self.file))
+        elif storage_kind == 'lines':
+            return self.file.readlines()
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
@@ -1058,13 +1064,11 @@ class VersionedFiles(object):
                                   if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
         # easily exhaust memory.
-        chunks_to_lines = osutils.chunks_to_lines
         for record in self.get_record_stream(needed_parents, 'unordered',
                                              True):
             if record.storage_kind == 'absent':
                 continue
-            mpvf.add_version(chunks_to_lines(record.get_bytes_as('chunked')),
-                             record.key, [])
+            mpvf.add_version(record.get_bytes_as('lines'), record.key, [])
         for (key, parent_keys, expected_sha1, mpdiff), lines in zip(
                 records, mpvf.get_line_list(versions)):
             if len(parent_keys) == 1:

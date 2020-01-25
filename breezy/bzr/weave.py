@@ -426,7 +426,7 @@ class Weave(VersionedFile):
                     record.storage_kind == 'chunked'):
                 self.add_lines(
                     record.key[0], parents,
-                    osutils.chunks_to_lines(record.get_bytes_as('chunked')))
+                    record.get_bytes_as('lines'))
             else:
                 adapter_key = record.storage_kind, 'fulltext'
                 try:

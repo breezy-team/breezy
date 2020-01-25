@@ -273,8 +273,7 @@ class DeltaAnnotatedToFullText(KnitAdapter):
             [compression_parent], 'unordered', True))
         if basis_entry.storage_kind == 'absent':
             raise errors.RevisionNotPresent(compression_parent, self._basis_vf)
-        basis_chunks = basis_entry.get_bytes_as('chunked')
-        basis_lines = osutils.chunks_to_lines(basis_chunks)
+        basis_lines = basis_entry.get_bytes_as('lines')
         # Manually apply the delta because we have one annotated content and
         # one plain.
         basis_content = PlainKnitContent(basis_lines, compression_parent)
@@ -309,8 +308,7 @@ class DeltaPlainToFullText(KnitAdapter):
             [compression_parent], 'unordered', True))
         if basis_entry.storage_kind == 'absent':
             raise errors.RevisionNotPresent(compression_parent, self._basis_vf)
-        basis_chunks = basis_entry.get_bytes_as('chunked')
-        basis_lines = osutils.chunks_to_lines(basis_chunks)
+        basis_lines = basis_entry.get_bytes_as('lines')
         basis_content = PlainKnitContent(basis_lines, compression_parent)
         # Manually apply the delta because we have one annotated content and
         # one plain.
@@ -381,19 +379,21 @@ class KnitContentFactory(ContentFactory):
                 self._create_network_bytes()
             return self._network_bytes
         if ('-ft-' in self.storage_kind
-                and storage_kind in ('chunked', 'fulltext')):
+                and storage_kind in ('chunked', 'fulltext', 'lines')):
             adapter_key = (self.storage_kind, 'fulltext')
             adapter_factory = adapter_registry.get(adapter_key)
             adapter = adapter_factory(None)
             bytes = adapter.get_bytes(self)
             if storage_kind == 'chunked':
                 return [bytes]
+            elif storage_kind == 'lines':
+                return bytes.splitlines(True)
             else:
                 return bytes
         if self._knit is not None:
             # Not redundant with direct conversion above - that only handles
             # fulltext cases.
-            if storage_kind == 'chunked':
+            if storage_kind in ('chunked', 'lines'):
                 return self._knit.get_lines(self.key[0])
             elif storage_kind == 'fulltext':
                 return self._knit.get_text(self.key[0])
@@ -435,9 +435,9 @@ class LazyKnitContentFactory(ContentFactory):
                 # all the keys etc are contained in the bytes returned in the
                 # first record.
                 return b''
-        if storage_kind in ('chunked', 'fulltext'):
+        if storage_kind in ('chunked', 'fulltext', 'lines'):
             chunks = self._generator._get_one_work(self.key).text()
-            if storage_kind == 'chunked':
+            if storage_kind in ('chunked', 'lines'):
                 return chunks
             else:
                 return b''.join(chunks)
@@ -1747,9 +1747,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                         buffered = True
                 if not buffered:
                     self._index.add_records([index_entry])
-            elif record.storage_kind == 'chunked':
-                self.add_lines(record.key, parents,
-                               osutils.chunks_to_lines(record.get_bytes_as('chunked')))
+            elif record.storage_kind in ('chunked', 'file'):
+                self.add_lines(record.key, parents, record.get_bytes_as('lines'))
             else:
                 # Not suitable for direct insertion as a
                 # delta, either because it's not the right format, or this
@@ -2109,7 +2108,7 @@ class _ContentMapGenerator(object):
         if key in self.nonlocal_keys:
             record = next(self.get_record_stream())
             # Create a content object on the fly
-            lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
+            lines = record.get_bytes_as('lines')
             return PlainKnitContent(lines, record.key)
         else:
             # local keys we can ask for directly

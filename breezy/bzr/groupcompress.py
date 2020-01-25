@@ -466,7 +466,7 @@ class _LazyGroupCompressFactory(object):
                 return self._manager._wire_bytes()
             else:
                 return b''
-        if storage_kind in ('fulltext', 'chunked'):
+        if storage_kind in ('fulltext', 'chunked', 'lines'):
             if self._bytes is None:
                 # Grab and cache the raw bytes for this entry
                 # and break the ref-cycle with _manager since we don't need it
@@ -482,8 +482,10 @@ class _LazyGroupCompressFactory(object):
                 # refcycle here, but instead in manager.get_record_stream()
             if storage_kind == 'fulltext':
                 return self._bytes
-            else:
+            elif storage_kind == 'chunked':
                 return [self._bytes]
+            else:
+                return self._bytes.splitlines(True)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
