@@ -880,14 +880,9 @@ class VersionedFileRepository(Repository):
         """Check a single text."""
         # Check it is extractable.
         # TODO: check length.
-        if record.storage_kind == 'chunked':
-            chunks = record.get_bytes_as(record.storage_kind)
-            sha1 = osutils.sha_strings(chunks)
-            length = sum(map(len, chunks))
-        else:
-            content = record.get_bytes_as('fulltext')
-            sha1 = osutils.sha_string(content)
-            length = len(content)
+        chunks = record.get_bytes_as('chunked')
+        sha1 = osutils.sha_strings(chunks)
+        length = sum(map(len, chunks))
         if item_data and sha1 != item_data[1]:
             checker._report_items.append(
                 'sha1 mismatch: %s has sha1 %s expected %s referenced by %s' %

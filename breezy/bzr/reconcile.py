@@ -152,8 +152,8 @@ class VersionedFileRepoReconciler(object):
                 # The check for the left most parent only handles knit
                 # compressors, but this code only applies to knit and weave
                 # repositories anyway.
-                bytes = record.get_bytes_as('fulltext')
-                yield FulltextContentFactory(record.key, wanted_parents, record.sha1, bytes)
+                chunks = record.get_bytes_as('chunked')
+                yield ChunkedContentFactory(record.key, wanted_parents, record.sha1, chunks)
             else:
                 adapted_record = AdapterFactory(
                     record.key, wanted_parents, record)
