@@ -228,9 +228,9 @@ class FTAnnotatedToUnannotated(KnitAdapter):
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
         content = self._annotate_factory.parse_fulltext(contents, rec[1])
-        size, bytes = self._data._record_to_data(
+        size, chunks = self._data._record_to_data(
             (rec[1],), rec[3], content.text())
-        return bytes
+        return b''.join(chunks)
 
 
 class DeltaAnnotatedToUnannotated(KnitAdapter):
@@ -243,8 +243,8 @@ class DeltaAnnotatedToUnannotated(KnitAdapter):
         delta = self._annotate_factory.parse_line_delta(contents, rec[1],
                                                         plain=True)
         contents = self._plain_factory.lower_line_delta(delta)
-        size, bytes = self._data._record_to_data((rec[1],), rec[3], contents)
-        return bytes
+        size, chunks = self._data._record_to_data((rec[1],), rec[3], contents)
+        return b''.join(chunks)
 
 
 class FTAnnotatedToFullText(KnitAdapter):
@@ -1096,8 +1096,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         if delta:
             options.append(b'line-delta')
             store_lines = self._factory.lower_line_delta(delta_hunks)
-            size, data = self._record_to_data(key, digest,
-                                              store_lines)
+            size, data = self._record_to_data(key, digest, store_lines)
         else:
             options.append(b'fulltext')
             # isinstance is slower and we have no hierarchy.
@@ -1113,8 +1112,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # get mixed annotation + content and feed it into the
                 # serialiser.
                 store_lines = self._factory.lower_fulltext(content)
-                size, data = self._record_to_data(key, digest,
-                                                  store_lines)
+                size, data = self._record_to_data(key, digest, store_lines)
 
         access_memo = self._access.add_raw_records([(key, size)], data)[0]
         self._index.add_records(
@@ -1727,7 +1725,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # needed by in the kndx index support raising on a duplicate
                 # add with identical parents and options.
                 access_memo = self._access.add_raw_records(
-                    [(record.key, len(bytes))], bytes)[0]
+                    [(record.key, len(bytes))], [bytes])[0]
                 index_entry = (record.key, options, access_memo, parents)
                 if b'fulltext' not in options:
                     # Not a fulltext, so we need to make sure the compression
@@ -2064,7 +2062,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
             the 1000's lines and their \\n's. Using dense_lines if it is
             already known is a win because the string join to create bytes in
             this function spends less time resizing the final string.
-        :return: (len, a BytesIO instance with the raw data ready to read.)
+        :return: (len, chunked bytestring with compressed data)
         """
         chunks = [b"version %s %d %s\n" % (key[-1], len(lines), digest)]
         chunks.extend(dense_lines or lines)
@@ -2075,8 +2073,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     'data must be plain bytes was %s' % type(chunk))
         if lines and not lines[-1].endswith(b'\n'):
             raise ValueError('corrupt lines value %r' % lines)
-        compressed_bytes = b''.join(tuned_gzip.chunks_to_gzip(chunks))
-        return len(compressed_bytes), compressed_bytes
+        compressed_chunks = tuned_gzip.chunks_to_gzip(chunks)
+        return sum(map(len, compressed_chunks)), compressed_chunks
 
     def _split_header(self, line):
         rec = line.split()
@@ -3238,11 +3236,12 @@ class _KnitKeyAccess(object):
 
         :param sizes: An iterable of tuples containing the key and size of each
             raw data segment.
-        :param raw_data: A bytestring containing the data.
+        :param raw_data: A chunked bytestring containing the data.
         :return: A list of memos to retrieve the record later. Each memo is an
             opaque index memo. For _KnitKeyAccess the memo is (key, pos,
             length), where the key is the record key.
         """
+        raw_data = b''.join(raw_data)
         if not isinstance(raw_data, bytes):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
