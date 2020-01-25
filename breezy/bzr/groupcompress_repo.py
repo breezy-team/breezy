@@ -698,9 +698,9 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                         % (chk_inv.revision_id, p_id_map.key()[0],
                            canon_p_id_map.key()[0]))
                     self._data_changed = True
-                yield versionedfile.ChunkedContentFactory(record.key,
-                                                          record.parents, record.sha1,
-                                                          canonical_inv.to_lines())
+                yield versionedfile.ChunkedContentFactory(
+                    record.key, record.parents, record.sha1, canonical_inv.to_lines(),
+                    chunks_are_lines=True)
             # We have finished processing all of the inventory records, we
             # don't need these sets anymore
         return _filtered_inv_stream()

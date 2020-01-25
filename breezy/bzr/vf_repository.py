@@ -853,8 +853,8 @@ class VersionedFileRepository(Repository):
         """Check a single text from this repository."""
         if kind == 'inventories':
             rev_id = record.key[0]
-            inv = self._deserialise_inventory(rev_id,
-                                              record.get_bytes_as('fulltext'))
+            inv = self._deserialise_inventory(
+                rev_id, record.get_bytes_as('fulltext'))
             if last_object is not None:
                 delta = inv._make_delta(last_object)
                 for old_path, path, file_id, ie in delta:
@@ -880,14 +880,9 @@ class VersionedFileRepository(Repository):
         """Check a single text."""
         # Check it is extractable.
         # TODO: check length.
-        if record.storage_kind == 'chunked':
-            chunks = record.get_bytes_as(record.storage_kind)
-            sha1 = osutils.sha_strings(chunks)
-            length = sum(map(len, chunks))
-        else:
-            content = record.get_bytes_as('fulltext')
-            sha1 = osutils.sha_string(content)
-            length = len(content)
+        chunks = record.get_bytes_as('chunked')
+        sha1 = osutils.sha_strings(chunks)
+        length = sum(map(len, chunks))
         if item_data and sha1 != item_data[1]:
             checker._report_items.append(
                 'sha1 mismatch: %s has sha1 %s expected %s referenced by %s' %
@@ -1197,9 +1192,8 @@ class VersionedFileRepository(Repository):
         stream = self.inventories.get_record_stream(keys, 'unordered', True)
         for record in stream:
             if record.storage_kind != 'absent':
-                chunks = record.get_bytes_as('chunked')
+                lines = record.get_bytes_as('lines')
                 revid = record.key[-1]
-                lines = osutils.chunks_to_lines(chunks)
                 for line in lines:
                     yield line, revid
 

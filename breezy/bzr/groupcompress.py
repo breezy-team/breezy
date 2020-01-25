@@ -466,7 +466,7 @@ class _LazyGroupCompressFactory(object):
                 return self._manager._wire_bytes()
             else:
                 return b''
-        if storage_kind in ('fulltext', 'chunked'):
+        if storage_kind in ('fulltext', 'chunked', 'lines'):
             if self._bytes is None:
                 # Grab and cache the raw bytes for this entry
                 # and break the ref-cycle with _manager since we don't need it
@@ -482,8 +482,10 @@ class _LazyGroupCompressFactory(object):
                 # refcycle here, but instead in manager.get_record_stream()
             if storage_kind == 'fulltext':
                 return self._bytes
-            else:
+            elif storage_kind == 'chunked':
                 return [self._bytes]
+            else:
+                return osutils.split_lines(self._bytes)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
@@ -566,9 +568,9 @@ class _LazyGroupContentManager(object):
         old_length = self._block._content_length
         end_point = 0
         for factory in self._factories:
-            bytes = factory.get_bytes_as('fulltext')
+            chunks = factory.get_bytes_as('chunked')
             (found_sha1, start_point, end_point,
-             type) = compressor.compress(factory.key, [bytes], factory.sha1)
+             type) = compressor.compress(factory.key, chunks, factory.sha1)
             # Now update this factory with the new offsets, etc
             factory.sha1 = found_sha1
             factory._start = start_point
@@ -1369,7 +1371,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         if keys is None:
             keys = self.keys()
             for record in self.get_record_stream(keys, 'unordered', True):
-                record.get_bytes_as('fulltext')
+                record.get_bytes_as('chunked')
         else:
             return self.get_record_stream(keys, 'unordered', True)
 
@@ -1670,8 +1672,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 result[record.key] = record.sha1
             else:
                 if record.storage_kind != 'absent':
-                    result[record.key] = osutils.sha_string(
-                        record.get_bytes_as('fulltext'))
+                    result[record.key] = osutils.sha_strings(
+                        record.get_bytes_as('chunked'))
         return result
 
     def insert_record_stream(self, stream):
@@ -1823,25 +1825,26 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     self._index.add_records(nodes, random_id=random_id)
                     continue
             try:
-                bytes = record.get_bytes_as('fulltext')
+                chunks = record.get_bytes_as('chunked')
             except errors.UnavailableRepresentation:
-                adapter_key = record.storage_kind, 'fulltext'
+                adapter_key = record.storage_kind, 'chunked'
                 adapter = get_adapter(adapter_key)
-                bytes = adapter.get_bytes(record)
+                chunks = adapter.get_bytes(record, 'chunked')
+            chunks_len = sum(map(len, chunks))
             if len(record.key) > 1:
                 prefix = record.key[0]
                 soft = (prefix == last_prefix)
             else:
                 prefix = None
                 soft = False
-            if max_fulltext_len < len(bytes):
-                max_fulltext_len = len(bytes)
+            if max_fulltext_len < chunks_len:
+                max_fulltext_len = chunks_len
                 max_fulltext_prefix = prefix
             (found_sha1, start_point, end_point,
              type) = self._compressor.compress(record.key,
-                                               [bytes], record.sha1, soft=soft,
+                                               chunks, record.sha1, soft=soft,
                                                nostore_sha=nostore_sha)
-            # delta_ratio = float(len(bytes)) / (end_point - start_point)
+            # delta_ratio = float(chunks_len) / (end_point - start_point)
             # Check if we want to continue to include that text
             if (prefix == max_fulltext_prefix
                     and end_point < 2 * max_fulltext_len):
@@ -1859,10 +1862,10 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             if start_new_block:
                 self._compressor.pop_last()
                 flush()
-                max_fulltext_len = len(bytes)
+                max_fulltext_len = chunks_len
                 (found_sha1, start_point, end_point,
                  type) = self._compressor.compress(
-                     record.key, [bytes], record.sha1)
+                     record.key, chunks, record.sha1)
             if record.key[-1] is None:
                 key = record.key[:-1] + (b'sha1:' + found_sha1,)
             else:
@@ -1915,7 +1918,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 pb.update('Walking content', key_idx, total)
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(key, self)
-            lines = osutils.split_lines(record.get_bytes_as('fulltext'))
+            lines = record.get_bytes_as('lines')
             for line in lines:
                 yield line, key
         if pb is not None:

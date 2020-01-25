@@ -2007,8 +2007,7 @@ class _PlanMergeBase(object):
         for record in self.vf.get_record_stream(keys, 'unordered', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self.vf)
-            result[record.key[-1]] = osutils.chunks_to_lines(
-                record.get_bytes_as('chunked'))
+            result[record.key[-1]] = record.get_bytes_as('lines')
         return result
 
     def plan_merge(self):
