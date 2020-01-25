@@ -22,6 +22,7 @@ from dulwich.object_store import (
     tree_lookup_path,
     )
 
+from .. import osutils
 from ..errors import (
     NoSuchRevision,
     UnavailableRepresentation,
@@ -32,7 +33,7 @@ from ..revision import (
     )
 
 
-class GitFulltextContentFactory(object):
+class GitBlobContentFactory(object):
     """Static data content factory.
 
     This takes a fulltext when created and just returns that during
@@ -52,17 +53,19 @@ class GitFulltextContentFactory(object):
         """Create a ContentFactory."""
         self.store = store
         self.key = (path, revision)
-        self.storage_kind = 'fulltext'
+        self.storage_kind = 'git-blob'
         self.parents = None
         self.blob_id = blob_id
 
     def get_bytes_as(self, storage_kind):
         if storage_kind == 'fulltext':
             return self.store[self.blob_id].as_raw_string()
+        elif storage_kind == 'lines':
+            return osutils.chunks_to_lines(self.store[self.blob_id].as_raw_chunks())
         elif storage_kind == 'chunked':
             return self.store[self.blob_id].as_raw_chunks()
         raise UnavailableRepresentation(self.key, storage_kind,
-                                        'fulltext')
+                                        self.storage_kind)
 
 
 class GitAbsentContentFactory(object):
@@ -153,5 +156,5 @@ class AnnotateProvider(object):
             except KeyError:
                 yield GitAbsentContentFactory(store, path, text_revision)
             else:
-                yield GitFulltextContentFactory(
+                yield GitBlobContentFactory(
                     store, path, text_revision, blob_sha)

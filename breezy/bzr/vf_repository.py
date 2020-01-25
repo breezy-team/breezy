@@ -853,8 +853,8 @@ class VersionedFileRepository(Repository):
         """Check a single text from this repository."""
         if kind == 'inventories':
             rev_id = record.key[0]
-            inv = self._deserialise_inventory(rev_id,
-                                              record.get_bytes_as('fulltext'))
+            inv = self._deserialise_inventory(
+                rev_id, record.get_bytes_as('fulltext'))
             if last_object is not None:
                 delta = inv._make_delta(last_object)
                 for old_path, path, file_id, ie in delta:

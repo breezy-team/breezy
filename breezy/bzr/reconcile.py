@@ -35,7 +35,7 @@ from ..reconcile import ReconcileResult
 from ..i18n import gettext
 from ..trace import mutter
 from ..tsort import topo_sort
-from .versionedfile import AdapterFactory, FulltextContentFactory
+from .versionedfile import AdapterFactory, ChunkedContentFactory
 
 
 class VersionedFileRepoReconciler(object):
@@ -344,10 +344,10 @@ class KnitReconciler(VersionedFileRepoReconciler):
 
         def fix_parents(stream):
             for record in stream:
-                bytes = record.get_bytes_as('fulltext')
+                chunks = record.get_bytes_as('chunked')
                 new_key = (new_file_id, record.key[-1])
                 parents = new_parents[new_key]
-                yield FulltextContentFactory(new_key, parents, record.sha1, bytes)
+                yield ChunkedContentFactory(new_key, parents, record.sha1, chunks)
         stream = self.repo.texts.get_record_stream(
             needed_keys, 'topological', True)
         self.repo._remove_file_id(new_file_id)

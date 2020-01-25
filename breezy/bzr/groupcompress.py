@@ -485,7 +485,7 @@ class _LazyGroupCompressFactory(object):
             elif storage_kind == 'chunked':
                 return [self._bytes]
             else:
-                return self._bytes.splitlines(True)
+                return osutils.split_lines(self._bytes)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
@@ -1368,7 +1368,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         if keys is None:
             keys = self.keys()
             for record in self.get_record_stream(keys, 'unordered', True):
-                record.get_bytes_as('fulltext')
+                record.get_bytes_as('chunked')
         else:
             return self.get_record_stream(keys, 'unordered', True)
 
@@ -1669,8 +1669,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 result[record.key] = record.sha1
             else:
                 if record.storage_kind != 'absent':
-                    result[record.key] = osutils.sha_string(
-                        record.get_bytes_as('fulltext'))
+                    result[record.key] = osutils.sha_strings(
+                        record.get_bytes_as('chunked'))
         return result
 
     def insert_record_stream(self, stream):
@@ -1831,7 +1831,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             except errors.UnavailableRepresentation:
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
-                bytes = adapter.get_bytes(record)
+                bytes = adapter.get_bytes(record, 'fulltext')
             if len(record.key) > 1:
                 prefix = record.key[0]
                 soft = (prefix == last_prefix)
@@ -1919,7 +1919,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 pb.update('Walking content', key_idx, total)
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(key, self)
-            lines = osutils.split_lines(record.get_bytes_as('fulltext'))
+            lines = record.get_bytes_as('lines')
             for line in lines:
                 yield line, key
         if pb is not None:

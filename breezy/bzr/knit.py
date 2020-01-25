@@ -223,7 +223,10 @@ class KnitAdapter(object):
 class FTAnnotatedToUnannotated(KnitAdapter):
     """An adapter from FT annotated knits to unannotated ones."""
 
-    def get_bytes(self, factory):
+    def get_bytes(self, factory, target_storage_kind):
+        if target_storage_kind != 'knit-ft-gz':
+            raise errors.UnavailableRepresentation(
+                factory.key, target_storage_kind, factory.storage_kind)
         annotated_compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
@@ -236,7 +239,10 @@ class FTAnnotatedToUnannotated(KnitAdapter):
 class DeltaAnnotatedToUnannotated(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
-    def get_bytes(self, factory):
+    def get_bytes(self, factory, target_storage_kind):
+        if target_storage_kind != 'knit-delta-gz':
+            raise errors.UnavailableRepresentation(
+                factory.key, target_storage_kind, factory.storage_kind)
         annotated_compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
@@ -250,19 +256,24 @@ class DeltaAnnotatedToUnannotated(KnitAdapter):
 class FTAnnotatedToFullText(KnitAdapter):
     """An adapter from FT annotated knits to unannotated ones."""
 
-    def get_bytes(self, factory):
+    def get_bytes(self, factory, target_storage_kind):
         annotated_compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
         content, delta = self._annotate_factory.parse_record(factory.key[-1],
                                                              contents, factory._build_details, None)
-        return b''.join(content.text())
+        if target_storage_kind == 'fulltext':
+            return b''.join(content.text())
+        elif target_storage_kind in ('chunked', 'lines'):
+            return content.text()
+        raise errors.UnavailableRepresentation(
+            factory.key, target_storage_kind, factory.storage_kind)
 
 
 class DeltaAnnotatedToFullText(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
-    def get_bytes(self, factory):
+    def get_bytes(self, factory, target_storage_kind):
         annotated_compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
@@ -279,25 +290,36 @@ class DeltaAnnotatedToFullText(KnitAdapter):
         basis_content = PlainKnitContent(basis_lines, compression_parent)
         basis_content.apply_delta(delta, rec[1])
         basis_content._should_strip_eol = factory._build_details[1]
-        return b''.join(basis_content.text())
+
+        if target_storage_kind == 'fulltext':
+            return b''.join(basis_content.text())
+        elif target_storage_kind in ('chunked', 'lines'):
+            return basis_content.text()
+        raise errors.UnavailableRepresentation(
+            factory.key, target_storage_kind, factory.storage_kind)
 
 
 class FTPlainToFullText(KnitAdapter):
     """An adapter from FT plain knits to unannotated ones."""
 
-    def get_bytes(self, factory):
+    def get_bytes(self, factory, target_storage_kind):
         compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(compressed_bytes)
         content, delta = self._plain_factory.parse_record(factory.key[-1],
                                                           contents, factory._build_details, None)
-        return b''.join(content.text())
+        if target_storage_kind == 'fulltext':
+            return b''.join(content.text())
+        elif target_storage_kind in ('chunked', 'lines'):
+            return content.text()
+        raise errors.UnavailableRepresentation(
+            factory.key, target_storage_kind, factory.storage_kind)
 
 
 class DeltaPlainToFullText(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
-    def get_bytes(self, factory):
+    def get_bytes(self, factory, target_storage_kind):
         compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(compressed_bytes)
@@ -314,7 +336,12 @@ class DeltaPlainToFullText(KnitAdapter):
         # one plain.
         content, _ = self._plain_factory.parse_record(rec[1], contents,
                                                       factory._build_details, basis_content)
-        return b''.join(content.text())
+        if target_storage_kind == 'fulltext':
+            return b''.join(content.text())
+        elif target_storage_kind in ('chunked', 'lines'):
+            return content.text()
+        raise errors.UnavailableRepresentation(
+            factory.key, target_storage_kind, factory.storage_kind)
 
 
 class KnitContentFactory(ContentFactory):
@@ -387,7 +414,7 @@ class KnitContentFactory(ContentFactory):
             if storage_kind == 'chunked':
                 return [bytes]
             elif storage_kind == 'lines':
-                return bytes.splitlines(True)
+                return osutils.split_lines(bytes)
             else:
                 return bytes
         if self._knit is not None:
@@ -1710,7 +1737,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                     except KeyError:
                         adapter_key = (record.storage_kind, "knit-ft-gz")
                         adapter = get_adapter(adapter_key)
-                    bytes = adapter.get_bytes(record)
+                    bytes = adapter.get_bytes(record, adapter_key[1])
                 else:
                     # It's a knit record, it has a _raw_record field (even if
                     # it was reconstituted from a network stream).
@@ -1758,12 +1785,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 self._access.flush()
                 try:
                     # Try getting a fulltext directly from the record.
-                    bytes = record.get_bytes_as('fulltext')
+                    lines = record.get_bytes_as('lines')
                 except errors.UnavailableRepresentation:
-                    adapter_key = record.storage_kind, 'fulltext'
+                    adapter_key = record.storage_kind, 'lines'
                     adapter = get_adapter(adapter_key)
-                    bytes = adapter.get_bytes(record)
-                lines = split_lines(bytes)
+                    lines = adapter.get_bytes(record, 'lines')
                 try:
                     self.add_lines(record.key, parents, lines)
                 except errors.RevisionAlreadyPresent:
@@ -2199,9 +2225,9 @@ class _ContentMapGenerator(object):
                 if component_id in self._contents_map:
                     content = self._contents_map[component_id]
                 else:
-                    content, delta = self._factory.parse_record(key[-1],
-                                                                record, record_details, content,
-                                                                copy_base_content=multiple_versions)
+                    content, delta = self._factory.parse_record(
+                        key[-1], record, record_details, content,
+                        copy_base_content=multiple_versions)
                     if multiple_versions:
                         self._contents_map[component_id] = content
 

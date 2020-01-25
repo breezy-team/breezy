@@ -1092,8 +1092,8 @@ class KnitReconcilePacker(KnitPacker):
                     raise errors.BzrError('Mismatched key parent %r:%r' %
                                           (key, parent_keys))
                 parents.append(parent_key[1])
-            text_lines = osutils.split_lines(next(repo.texts.get_record_stream(
-                [key], 'unordered', True)).get_bytes_as('fulltext'))
+            text_lines = next(repo.texts.get_record_stream(
+                [key], 'unordered', True)).get_bytes_as('lines')
             output_texts.add_lines(key, parent_keys, text_lines,
                                    random_id=True, check_content=False)
         # 5) check that nothing inserted has a reference outside the keyspace.

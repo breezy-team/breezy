@@ -179,7 +179,7 @@ class WeaveContentFactory(ContentFactory):
     def get_bytes_as(self, storage_kind):
         if storage_kind == 'fulltext':
             return self._weave.get_text(self.key[-1])
-        elif storage_kind == 'chunked':
+        elif storage_kind in ('chunked', 'lines'):
             return self._weave.get_lines(self.key[-1])
         else:
             raise UnavailableRepresentation(self.key, storage_kind, 'fulltext')

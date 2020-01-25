@@ -628,19 +628,19 @@ class TextVersionedFiles(VersionedFiles):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent([record.key[0]], self)
             # adapt to non-tuple interface
-            if record.storage_kind == 'fulltext':
+            if record.storage_kind in ('fulltext', 'chunks', 'lines'):
                 self.add_lines(record.key, None,
-                               osutils.split_lines(record.get_bytes_as('fulltext')))
+                               record.get_bytes_as('lines'))
             else:
-                adapter_key = record.storage_kind, 'fulltext'
+                adapter_key = record.storage_kind, 'lines'
                 try:
                     adapter = adapters[adapter_key]
                 except KeyError:
                     adapter_factory = adapter_registry.get(adapter_key)
                     adapter = adapter_factory(self)
                     adapters[adapter_key] = adapter
-                lines = osutils.split_lines(adapter.get_bytes(
-                    record, record.get_bytes_as(record.storage_kind)))
+                lines = adapter.get_bytes(
+                    record, record.get_bytes_as(record.storage_kind))
                 try:
                     self.add_lines(record.key, None, lines)
                 except errors.RevisionAlreadyPresent:
