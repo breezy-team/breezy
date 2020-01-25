@@ -1750,16 +1750,12 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             # Note: At this point we still have 1 copy of the fulltext (in
             #       record and the var 'bytes'), and this generates 2 copies of
             #       the compressed text (one for bytes, one in chunks)
-            # TODO: Push 'chunks' down into the _access api, so that we don't
-            #       have to double compressed memory here
             # TODO: Figure out how to indicate that we would be happy to free
             #       the fulltext content at this point. Note that sometimes we
             #       will want it later (streaming CHK pages), but most of the
             #       time we won't (everything else)
-            data = b''.join(chunks)
-            del chunks
             index, start, length = self._access.add_raw_records(
-                [(None, len(data))], data)[0]
+                [(None, bytes_len)], chunks)[0]
             nodes = []
             for key, reads, refs in keys_to_add:
                 nodes.append((key, b"%d %d %s" % (start, length, reads), refs))
@@ -1803,10 +1799,9 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 if record.storage_kind == 'groupcompress-block':
                     # Insert the raw block into the target repo
                     insert_manager = record._manager
-                    bytes = record._manager._block.to_bytes()
+                    bytes_len, chunks = record._manager._block.to_chunks()
                     _, start, length = self._access.add_raw_records(
-                        [(None, len(bytes))], bytes)[0]
-                    del bytes
+                        [(None, bytes_len)], chunks)[0]
                     block_start = start
                     block_length = length
                 if record.storage_kind in ('groupcompress-block',

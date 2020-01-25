@@ -422,20 +422,19 @@ class Weave(VersionedFile):
                 raise RevisionNotPresent([record.key[0]], self)
             # adapt to non-tuple interface
             parents = [parent[0] for parent in record.parents]
-            if (record.storage_kind == 'fulltext' or
-                    record.storage_kind == 'chunked'):
+            if record.storage_kind in ('fulltext', 'chunked', 'lines'):
                 self.add_lines(
                     record.key[0], parents,
                     record.get_bytes_as('lines'))
             else:
-                adapter_key = record.storage_kind, 'fulltext'
+                adapter_key = record.storage_kind, 'lines'
                 try:
                     adapter = adapters[adapter_key]
                 except KeyError:
                     adapter_factory = adapter_registry.get(adapter_key)
                     adapter = adapter_factory(self)
                     adapters[adapter_key] = adapter
-                lines = split_lines(adapter.get_bytes(record))
+                lines = adapter.get_bytes(record, 'lines')
                 try:
                     self.add_lines(record.key[0], parents, lines)
                 except RevisionAlreadyPresent:

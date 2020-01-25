@@ -1214,7 +1214,11 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # Each is source_kind, requested_kind, adapter class
         scenarios = [
             ('knit-delta-gz', 'fulltext', _mod_knit.DeltaPlainToFullText),
+            ('knit-delta-gz', 'lines', _mod_knit.DeltaPlainToFullText),
+            ('knit-delta-gz', 'chunked', _mod_knit.DeltaPlainToFullText),
             ('knit-ft-gz', 'fulltext', _mod_knit.FTPlainToFullText),
+            ('knit-ft-gz', 'lines', _mod_knit.FTPlainToFullText),
+            ('knit-ft-gz', 'chunked', _mod_knit.FTPlainToFullText),
             ('knit-annotated-delta-gz', 'knit-delta-gz',
                 _mod_knit.DeltaAnnotatedToUnannotated),
             ('knit-annotated-delta-gz', 'fulltext',
@@ -1222,6 +1226,10 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
             ('knit-annotated-ft-gz', 'knit-ft-gz',
                 _mod_knit.FTAnnotatedToUnannotated),
             ('knit-annotated-ft-gz', 'fulltext',
+                _mod_knit.FTAnnotatedToFullText),
+            ('knit-annotated-ft-gz', 'lines',
+                _mod_knit.FTAnnotatedToFullText),
+            ('knit-annotated-ft-gz', 'chunked',
                 _mod_knit.FTAnnotatedToFullText),
             ]
         for source, requested, klass in scenarios:

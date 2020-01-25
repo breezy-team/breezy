@@ -1978,6 +1978,7 @@ class _DirectPackAccess(object):
             length), where the index field is the write_index object supplied
             to the PackAccess object.
         """
+        raw_data = b''.join(raw_data)
         if not isinstance(raw_data, bytes):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
