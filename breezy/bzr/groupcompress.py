@@ -1031,7 +1031,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
                                  ' the output lines')
         bytes = b''.join(chunks)
         delta = self._delta_index.make_delta(bytes, max_delta_size)
-        if (delta is None):
+        if delta is None:
             type = 'fulltext'
             enc_length = encode_base128_int(input_len)
             len_mini_header = 1 + len(enc_length)
