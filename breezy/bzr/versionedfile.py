@@ -164,6 +164,34 @@ class FulltextContentFactory(ContentFactory):
                                                self.storage_kind)
 
 
+class FileBackedContentFactory(ContentFactory):
+    """File-based content factory.
+    """
+
+    def __init__(self, key, parents, fileobj):
+        self.key = key
+        self.parents = parents
+        self.file = fileobj
+        self.storage_kind = 'file'
+        self._sha1 = None
+
+    @property
+    def sha1(self):
+        if self._sha1 is None:
+            self.file.seek(0)
+            self._size, self._sha1 = osutils.size_sha_file(self.file)
+        return self._sha1
+
+    def get_bytes_as(self, storage_kind):
+        self.file.seek(0)
+        if storage_kind == 'fulltext':
+            return self.file.read()
+        elif storage_kind == 'chunked':
+            return list(osutils.file_iterator(self.file))
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
+
+
 class AbsentContentFactory(ContentFactory):
     """A placeholder content factory for unavailable texts.
 
