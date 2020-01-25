@@ -171,7 +171,7 @@ class FulltextContentFactory(ContentFactory):
                                                self.storage_kind)
 
 
-class FileBackedContentFactory(ContentFactory):
+class FileContentFactory(ContentFactory):
     """File-based content factory.
     """
 

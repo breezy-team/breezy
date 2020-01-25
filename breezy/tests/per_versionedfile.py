@@ -1243,16 +1243,16 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         transport = self.get_transport()
         return make_file_factory(annotated, mapper)(transport)
 
-    def helpGetBytes(self, f, ft_adapter, delta_adapter):
+    def helpGetBytes(self, f, ft_name, ft_adapter, delta_name, delta_adapter):
         """Grab the interested adapted texts for tests."""
         # origin is a fulltext
         entries = f.get_record_stream([(b'origin',)], 'unordered', False)
         base = next(entries)
-        ft_data = ft_adapter.get_bytes(base)
+        ft_data = ft_adapter.get_bytes(base, ft_name)
         # merged is both a delta and multiple parents.
         entries = f.get_record_stream([(b'merged',)], 'unordered', False)
         merged = next(entries)
-        delta_data = delta_adapter.get_bytes(merged)
+        delta_data = delta_adapter.get_bytes(merged, delta_name)
         return ft_data, delta_data
 
     def test_deannotation_noeol(self):
@@ -1260,10 +1260,9 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # we need a full text, and a delta
         f = self.get_knit()
         get_diamond_files(f, 1, trailing_eol=False)
-        ft_data, delta_data = self.helpGetBytes(f,
-                                                _mod_knit.FTAnnotatedToUnannotated(
-                                                    None),
-                                                _mod_knit.DeltaAnnotatedToUnannotated(None))
+        ft_data, delta_data = self.helpGetBytes(
+            f, 'knit-ft-gz', _mod_knit.FTAnnotatedToUnannotated(None),
+            'knit-delta-gz', _mod_knit.DeltaAnnotatedToUnannotated(None))
         self.assertEqual(
             b'version origin 1 b284f94827db1fa2970d9e2014f080413b547a7e\n'
             b'origin\n'
@@ -1279,10 +1278,9 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # we need a full text, and a delta
         f = self.get_knit()
         get_diamond_files(f, 1)
-        ft_data, delta_data = self.helpGetBytes(f,
-                                                _mod_knit.FTAnnotatedToUnannotated(
-                                                    None),
-                                                _mod_knit.DeltaAnnotatedToUnannotated(None))
+        ft_data, delta_data = self.helpGetBytes(
+            f, 'knit-ft-gz', _mod_knit.FTAnnotatedToUnannotated(None),
+            'knit-delta-gz', _mod_knit.DeltaAnnotatedToUnannotated(None))
         self.assertEqual(
             b'version origin 1 00e364d235126be43292ab09cb4686cf703ddc17\n'
             b'origin\n'
@@ -1301,10 +1299,9 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # Reconstructing a full text requires a backing versioned file, and it
         # must have the base lines requested from it.
         logged_vf = versionedfile.RecordingVersionedFilesDecorator(f)
-        ft_data, delta_data = self.helpGetBytes(f,
-                                                _mod_knit.FTAnnotatedToFullText(
-                                                    None),
-                                                _mod_knit.DeltaAnnotatedToFullText(logged_vf))
+        ft_data, delta_data = self.helpGetBytes(
+            f, 'fulltext', _mod_knit.FTAnnotatedToFullText(None),
+            'fulltext', _mod_knit.DeltaAnnotatedToFullText(logged_vf))
         self.assertEqual(b'origin', ft_data)
         self.assertEqual(b'base\nleft\nright\nmerged', delta_data)
         self.assertEqual([('get_record_stream', [(b'left',)], 'unordered',
@@ -1318,10 +1315,9 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # Reconstructing a full text requires a backing versioned file, and it
         # must have the base lines requested from it.
         logged_vf = versionedfile.RecordingVersionedFilesDecorator(f)
-        ft_data, delta_data = self.helpGetBytes(f,
-                                                _mod_knit.FTAnnotatedToFullText(
-                                                    None),
-                                                _mod_knit.DeltaAnnotatedToFullText(logged_vf))
+        ft_data, delta_data = self.helpGetBytes(
+            f, 'fulltext', _mod_knit.FTAnnotatedToFullText(None),
+            'fulltext', _mod_knit.DeltaAnnotatedToFullText(logged_vf))
         self.assertEqual(b'origin\n', ft_data)
         self.assertEqual(b'base\nleft\nright\nmerged\n', delta_data)
         self.assertEqual([('get_record_stream', [(b'left',)], 'unordered',
@@ -1338,10 +1334,9 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # Reconstructing a full text requires a backing versioned file, and it
         # must have the base lines requested from it.
         logged_vf = versionedfile.RecordingVersionedFilesDecorator(f)
-        ft_data, delta_data = self.helpGetBytes(f,
-                                                _mod_knit.FTPlainToFullText(
-                                                    None),
-                                                _mod_knit.DeltaPlainToFullText(logged_vf))
+        ft_data, delta_data = self.helpGetBytes(
+            f, 'fulltext', _mod_knit.FTPlainToFullText(None),
+            'fulltext', _mod_knit.DeltaPlainToFullText(logged_vf))
         self.assertEqual(b'origin\n', ft_data)
         self.assertEqual(b'base\nleft\nright\nmerged\n', delta_data)
         self.assertEqual([('get_record_stream', [(b'left',)], 'unordered',
@@ -1358,10 +1353,9 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # Reconstructing a full text requires a backing versioned file, and it
         # must have the base lines requested from it.
         logged_vf = versionedfile.RecordingVersionedFilesDecorator(f)
-        ft_data, delta_data = self.helpGetBytes(f,
-                                                _mod_knit.FTPlainToFullText(
-                                                    None),
-                                                _mod_knit.DeltaPlainToFullText(logged_vf))
+        ft_data, delta_data = self.helpGetBytes(
+                f, 'fulltext', _mod_knit.FTPlainToFullText(None),
+                'fulltext', _mod_knit.DeltaPlainToFullText(logged_vf))
         self.assertEqual(b'origin', ft_data)
         self.assertEqual(b'base\nleft\nright\nmerged', delta_data)
         self.assertEqual([('get_record_stream', [(b'left',)], 'unordered',
