@@ -1354,8 +1354,8 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # must have the base lines requested from it.
         logged_vf = versionedfile.RecordingVersionedFilesDecorator(f)
         ft_data, delta_data = self.helpGetBytes(
-                f, 'fulltext', _mod_knit.FTPlainToFullText(None),
-                'fulltext', _mod_knit.DeltaPlainToFullText(logged_vf))
+            f, 'fulltext', _mod_knit.FTPlainToFullText(None),
+            'fulltext', _mod_knit.DeltaPlainToFullText(logged_vf))
         self.assertEqual(b'origin', ft_data)
         self.assertEqual(b'base\nleft\nright\nmerged', delta_data)
         self.assertEqual([('get_record_stream', [(b'left',)], 'unordered',
