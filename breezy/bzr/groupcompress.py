@@ -568,7 +568,7 @@ class _LazyGroupContentManager(object):
         for factory in self._factories:
             bytes = factory.get_bytes_as('fulltext')
             (found_sha1, start_point, end_point,
-             type) = compressor.compress(factory.key, bytes, factory.sha1)
+             type) = compressor.compress(factory.key, [bytes], factory.sha1)
             # Now update this factory with the new offsets, etc
             factory.sha1 = found_sha1
             factory._start = start_point
@@ -826,14 +826,14 @@ class _CommonGroupCompressor(object):
         else:
             self._settings = settings
 
-    def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
+    def compress(self, key, chunks, expected_sha, nostore_sha=None, soft=False):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output
             for identification of the text during decompression. If the last
             element is b'None' it is replaced with the sha1 of the text -
             e.g. sha1:xxxxxxx.
-        :param bytes: The bytes to be compressed
+        :param chunks: Chunks of bytes to be compressed
         :param expected_sha: If non-None, the sha the lines are believed to
             have. During compression the sha is calculated; a mismatch will
             cause an error.
@@ -847,7 +847,7 @@ class _CommonGroupCompressor(object):
 
         :seealso VersionedFiles.add_lines:
         """
-        if not bytes:  # empty, like a dir entry, etc
+        if not chunks:  # empty, like a dir entry, etc
             if nostore_sha == _null_sha1:
                 raise errors.ExistingContent()
             return _null_sha1, 0, 0, 'fulltext'
@@ -855,23 +855,25 @@ class _CommonGroupCompressor(object):
         if expected_sha is not None:
             sha1 = expected_sha
         else:
-            sha1 = osutils.sha_string(bytes)
+            sha1 = osutils.sha_strings(chunks)
         if nostore_sha is not None:
             if sha1 == nostore_sha:
                 raise errors.ExistingContent()
         if key[-1] is None:
             key = key[:-1] + (b'sha1:' + sha1,)
 
-        start, end, type = self._compress(key, bytes, len(bytes) / 2, soft)
+        length = sum(map(len, chunks))
+
+        start, end, type = self._compress(key, chunks, length / 2, soft)
         return sha1, start, end, type
 
-    def _compress(self, key, bytes, max_delta_size, soft=False):
+    def _compress(self, key, chunks, max_delta_size, soft=False):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output for identification
             of the text during decompression.
 
-        :param bytes: The bytes to be compressed
+        :param chunks: The chunks of bytes to be compressed
 
         :param max_delta_size: The size above which we issue a fulltext instead
             of a delta.
@@ -956,10 +958,10 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         # The actual content is managed by LinesDeltaIndex
         self.chunks = self._delta_index.lines
 
-    def _compress(self, key, bytes, max_delta_size, soft=False):
+    def _compress(self, key, chunks, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
-        input_len = len(bytes)
-        new_lines = osutils.split_lines(bytes)
+        input_len = sum(map(len, chunks))
+        new_lines = osutils.chunks_to_lines(chunks)
         out_lines, index_lines = self._delta_index.make_delta(
             new_lines, bytes_length=input_len, soft=soft)
         delta_length = sum(map(len, out_lines))
@@ -1011,9 +1013,9 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         max_bytes_to_index = self._settings.get('max_bytes_to_index', 0)
         self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
-    def _compress(self, key, bytes, max_delta_size, soft=False):
+    def _compress(self, key, chunks, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
-        input_len = len(bytes)
+        input_len = sum(map(len, chunks))
         # By having action/label/sha1/len, we can parse the group if the index
         # was ever destroyed, we have the key in 'label', we know the final
         # bytes are valid from sha1, and we know where to find the end of this
@@ -1027,13 +1029,14 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
             raise AssertionError('_source_offset != endpoint'
                                  ' somehow the DeltaIndex got out of sync with'
                                  ' the output lines')
+        bytes = b''.join(chunks)
         delta = self._delta_index.make_delta(bytes, max_delta_size)
         if (delta is None):
             type = 'fulltext'
-            enc_length = encode_base128_int(len(bytes))
+            enc_length = encode_base128_int(input_len)
             len_mini_header = 1 + len(enc_length)
             self._delta_index.add_source(bytes, len_mini_header)
-            new_chunks = [b'f', enc_length, bytes]
+            new_chunks = [b'f', enc_length] + chunks
         else:
             type = 'delta'
             enc_length = encode_base128_int(len(delta))
@@ -1841,7 +1844,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 max_fulltext_prefix = prefix
             (found_sha1, start_point, end_point,
              type) = self._compressor.compress(record.key,
-                                               bytes, record.sha1, soft=soft,
+                                               [bytes], record.sha1, soft=soft,
                                                nostore_sha=nostore_sha)
             # delta_ratio = float(len(bytes)) / (end_point - start_point)
             # Check if we want to continue to include that text
@@ -1863,8 +1866,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 flush()
                 max_fulltext_len = len(bytes)
                 (found_sha1, start_point, end_point,
-                 type) = self._compressor.compress(record.key, bytes,
-                                                   record.sha1)
+                 type) = self._compressor.compress(
+                     record.key, [bytes], record.sha1)
             if record.key[-1] is None:
                 key = record.key[:-1] + (b'sha1:' + found_sha1,)
             else:
