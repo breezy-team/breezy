@@ -44,6 +44,7 @@ from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.plugins.launchpad import (
     lp_api,
+    uris as lp_uris,
     )
 
 from launchpadlib import uris
@@ -447,7 +448,7 @@ class Launchpad(Hoster):
         (scheme, user, password, host, port, path) = urlutils.parse_url(
             url)
         LAUNCHPAD_CODE_DOMAINS = [
-            ('code.%s' % domain) for domain in lp_api.LAUNCHPAD_DOMAINS.values()]
+            ('code.%s' % domain) for domain in lp_uris.LAUNCHPAD_DOMAINS.values()]
         if host not in LAUNCHPAD_CODE_DOMAINS:
             raise UnsupportedHoster(url)
         # TODO(jelmer): Check if this is a launchpad URL. Otherwise, raise
