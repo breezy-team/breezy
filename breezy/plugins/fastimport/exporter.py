@@ -59,7 +59,7 @@ import breezy.branch
 import breezy.revision
 from ... import (
     builtins,
-    errors as bazErrors,
+    errors,
     lazy_import,
     osutils,
     progress,
@@ -214,8 +214,8 @@ class BzrFastExporter(object):
 
     def interesting_history(self):
         if self.revision:
-            rev1, rev2 = builtins._get_revision_range(self.revision,
-                                                      self.branch, "fast-export")
+            rev1, rev2 = builtins._get_revision_range(
+                self.revision, self.branch, "fast-export")
             start_rev_id = rev1.rev_id
             end_rev_id = rev2.rev_id
         else:
@@ -310,7 +310,7 @@ class BzrFastExporter(object):
         try:
             if tree.kind(path) != 'directory':
                 return False
-        except bazErrors.NoSuchFile:
+        except errors.NoSuchFile:
             self.warning("Skipping empty_dir detection - no file_id for %s" %
                          (path,))
             return False
@@ -343,7 +343,7 @@ class BzrFastExporter(object):
         # Get the Revision object
         try:
             revobj = self.branch.repository.get_revision(revid)
-        except bazErrors.NoSuchRevision:
+        except errors.NoSuchRevision:
             # This is a ghost revision. Mark it as not found and next!
             self.revid_to_mark[revid] = -1
             return
@@ -458,7 +458,7 @@ class BzrFastExporter(object):
     def _get_revision_trees(self, parent, revision_id):
         try:
             tree_old = self.branch.repository.revision_tree(parent)
-        except bazErrors.UnexpectedInventoryFormat:
+        except errors.UnexpectedInventoryFormat:
             self.warning(
                 "Parent is malformed - diffing against previous parent")
             # We can't find the old parent. Let's diff against his parent
@@ -467,7 +467,7 @@ class BzrFastExporter(object):
         tree_new = None
         try:
             tree_new = self.branch.repository.revision_tree(revision_id)
-        except bazErrors.UnexpectedInventoryFormat:
+        except errors.UnexpectedInventoryFormat:
             # We can't really do anything anymore
             self.warning("Revision %s is malformed - skipping" % revision_id)
         return tree_old, tree_new
@@ -475,6 +475,7 @@ class BzrFastExporter(object):
     def _get_filecommands(self, parent, revision_id):
         """Get the list of FileCommands for the changes between two revisions."""
         tree_old, tree_new = self._get_revision_trees(parent, revision_id)
+
         if not(tree_old and tree_new):
             # Something is wrong with this revision - ignore the filecommands
             return
@@ -523,8 +524,7 @@ class BzrFastExporter(object):
             else:
                 self.warning("cannot export '%s' of kind %s yet - ignoring" %
                              (change.path[1], change.kind[1]))
-        for (path, mode), chunks in tree_new.iter_files_bytes(
-                files_to_get):
+        for (path, mode), chunks in tree_new.iter_files_bytes(files_to_get):
             yield commands.FileModifyCommand(
                 path.encode("utf-8"), mode, None, b''.join(chunks))
 
@@ -580,7 +580,7 @@ class BzrFastExporter(object):
 
             # Renaming a directory implies all children must be renamed.
             # Note: changes_from() doesn't handle this
-            if kind == 'directory' and tree_old.kind(change.path[0]) == 'directory':
+            if change.kind == ('directory', 'directory'):
                 for p, e in tree_old.iter_entries_by_dir(specific_files=[change.path[0]]):
                     if e.kind == 'directory' and self.plain_format:
                         continue
