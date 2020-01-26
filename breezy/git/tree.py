@@ -813,7 +813,7 @@ def tree_delta_from_git_changes(changes, mappings,
             (oldversioned, newversioned),
             (oldparent, newparent), (oldname, newname),
             (oldkind, newkind), (oldexe, newexe),
-            copied=(change_type=='copy'))
+            copied=(change_type == 'copy'))
         if oldpath is None:
             added.append((newpath, newkind))
         elif newpath is None or newmode == 0:
@@ -870,7 +870,9 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
     """
     if target_extras is None:
         target_extras = set()
-    for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+    for (change_type, old, new) in changes:
+        (oldpath, oldmode, oldsha) = old
+        (newpath, newmode, newsha) = new
         if oldpath is not None:
             oldpath_decoded = oldpath.decode('utf-8')
         else:
@@ -941,7 +943,8 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
             (oldversioned, newversioned),
             (oldparent, newparent), (oldname, newname),
-            (oldkind, newkind), (oldexe, newexe))
+            (oldkind, newkind), (oldexe, newexe),
+            copied=(change_type == 'copy'))
 
 
 class InterGitTrees(_mod_tree.InterTree):
