@@ -548,6 +548,8 @@ class BzrFastExporter(object):
                 self.warning("cannot export '%s' of kind %s yet - ignoring" %
                              (change.path[1], change.kind[1]))
 
+        # TODO(jelmer): Improve performance on remote repositories
+        # by using Repository.iter_files_bytes for bzr repositories here.
         for (path, mode), chunks in tree_new.iter_files_bytes(files_to_get):
             yield commands.FileModifyCommand(
                 path.encode("utf-8"), mode, None, b''.join(chunks))
