@@ -75,6 +75,7 @@ class ContentFactory(object):
     """Abstract interface for insertion and retrieval from a VersionedFile.
 
     :ivar sha1: None, or the sha1 of the content fulltext.
+    :ivar size: None, or the size of the content fulltext.
     :ivar storage_kind: The native storage kind of this factory. One of
         'mpdiff', 'knit-annotated-ft', 'knit-annotated-delta', 'knit-ft',
         'knit-delta', 'fulltext', 'knit-annotated-ft-gz',
@@ -89,6 +90,7 @@ class ContentFactory(object):
     def __init__(self):
         """Create a ContentFactory."""
         self.sha1 = None
+        self.size = None
         self.storage_kind = None
         self.key = None
         self.parents = None
@@ -102,6 +104,7 @@ class ChunkedContentFactory(ContentFactory):
     satisfies this, as does a list of lines.
 
     :ivar sha1: None, or the sha1 of the content fulltext.
+    :ivar size: None, or the size of the content fulltext.
     :ivar storage_kind: The native storage kind of this factory. Always
         'chunked'
     :ivar key: The key of this content. Each key is a tuple with a single
@@ -115,6 +118,7 @@ class ChunkedContentFactory(ContentFactory):
     def __init__(self, key, parents, sha1, chunks, chunks_are_lines=None):
         """Create a ContentFactory."""
         self.sha1 = sha1
+        self.size = sum(map(len, chunks))
         self.storage_kind = 'chunked'
         self.key = key
         self.parents = parents
@@ -153,6 +157,7 @@ class FulltextContentFactory(ContentFactory):
     def __init__(self, key, parents, sha1, text):
         """Create a ContentFactory."""
         self.sha1 = sha1
+        self.size = len(text)
         self.storage_kind = 'fulltext'
         self.key = key
         self.parents = parents
@@ -181,6 +186,7 @@ class FileContentFactory(ContentFactory):
         self.file = fileobj
         self.storage_kind = 'file'
         self._sha1 = None
+        self._size = None
 
     @property
     def sha1(self):
@@ -214,6 +220,7 @@ class AbsentContentFactory(ContentFactory):
     def __init__(self, key):
         """Create a ContentFactory."""
         self.sha1 = None
+        self.size = None
         self.storage_kind = 'absent'
         self.key = key
         self.parents = None
