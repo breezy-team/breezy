@@ -65,6 +65,9 @@ New Features
    attempt to access Fossil repositories.
    (Jelmer Vernooĳ, #1848821)
 
+ * Support rename and copy tracking when accessing Git
+   repositories. (Jelmer Vernooĳ, #1760740)
+
 Improvements
 ************
 

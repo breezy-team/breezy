@@ -24,11 +24,12 @@ import errno
 from io import BytesIO
 import os
 
+from dulwich import __version__ as dulwich_version
 from dulwich.config import (
     parse_submodules,
     ConfigFile as GitConfigFile,
     )
-from dulwich.diff_tree import tree_changes
+from dulwich.diff_tree import tree_changes, RenameDetector
 from dulwich.errors import NotTreeError
 from dulwich.index import (
     blob_from_path_and_stat,
@@ -737,7 +738,9 @@ def tree_delta_from_git_changes(changes, mappings,
         target_extras = set()
     ret = delta.TreeDelta()
     added = []
-    for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+    for (change_type, old, new) in changes:
+        (oldpath, oldmode, oldsha) = old
+        (newpath, newmode, newsha) = new
         if newpath == b'' and not include_root:
             continue
         if oldpath is not None:
@@ -809,13 +812,17 @@ def tree_delta_from_git_changes(changes, mappings,
             fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
             (oldversioned, newversioned),
             (oldparent, newparent), (oldname, newname),
-            (oldkind, newkind), (oldexe, newexe))
+            (oldkind, newkind), (oldexe, newexe),
+            copied=(change_type=='copy'))
         if oldpath is None:
             added.append((newpath, newkind))
         elif newpath is None or newmode == 0:
             ret.removed.append(change)
         elif oldpath != newpath:
-            ret.renamed.append(change)
+            if change_type == 'copy':
+                ret.copied.append(change)
+            else:
+                ret.renamed.append(change)
         elif mode_kind(oldmode) != mode_kind(newmode):
             ret.kind_changed.append(change)
         elif oldsha != newsha or oldmode != newmode:
@@ -1016,9 +1023,13 @@ class InterGitRevisionTrees(InterGitTrees):
                     self.target._repository._git.object_store])
         else:
             store = self.source._repository._git.object_store
-        return store.tree_changes(
-            self.source.tree, self.target.tree, want_unchanged=want_unchanged,
-            include_trees=True, change_type_same=True), set()
+        if dulwich_version >= (0, 19, 15):
+            rename_detector = RenameDetector(store)
+        else:
+            rename_detector = None
+        return tree_changes(
+            store, self.source.tree, self.target.tree, want_unchanged=want_unchanged,
+            include_trees=True, change_type_same=True, rename_detector=rename_detector), set()
 
 
 _mod_tree.InterTree.register_optimiser(InterGitRevisionTrees)
@@ -1557,6 +1568,10 @@ class InterIndexGitTree(InterGitTrees):
     def __init__(self, source, target):
         super(InterIndexGitTree, self).__init__(source, target)
         self._index = target.index
+        if dulwich_version >= (0, 19, 15):
+            self.rename_detector = RenameDetector(self.source.store)
+        else:
+            self.rename_detector = None
 
     @classmethod
     def is_compatible(cls, source, target):
@@ -1578,7 +1593,8 @@ class InterIndexGitTree(InterGitTrees):
             return changes_between_git_tree_and_working_copy(
                 self.source.store, self.source.tree,
                 self.target, want_unchanged=want_unchanged,
-                want_unversioned=want_unversioned)
+                want_unversioned=want_unversioned,
+                rename_detector=self.rename_detector)
 
 
 _mod_tree.InterTree.register_optimiser(InterIndexGitTree)
@@ -1586,7 +1602,8 @@ _mod_tree.InterTree.register_optimiser(InterIndexGitTree)
 
 def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                                               want_unchanged=False,
-                                              want_unversioned=False):
+                                              want_unversioned=False,
+                                              rename_detector=None):
     """Determine the changes between a git tree and a working tree with index.
 
     """
@@ -1641,6 +1658,7 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
             extras.add(np)
     to_tree_sha = commit_tree(
         store, dirified + [(p, s, m) for (p, (s, m)) in blobs.items()])
-    return store.tree_changes(
+    return tree_changes(store,
         from_tree_sha, to_tree_sha, include_trees=True,
+        rename_detector=rename_detector,
         want_unchanged=want_unchanged, change_type_same=True), extras
