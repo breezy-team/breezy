@@ -252,10 +252,10 @@ class BzrFastExporter(object):
             if self.baseline:
                 self.emit_baseline(interesting.pop(0), self.ref)
             for i in range(0, len(interesting), REVISIONS_CHUNK_SIZE):
-                history = list(self.branch.repository.iter_revisions(
-                    interesting[i:i + REVISIONS_CHUNK_SIZE]))
-                for revid, revobj in history:
-                    self.emit_commit(revid, revobj, self.ref)
+                chunk = interesting[i:i + REVISIONS_CHUNK_SIZE]
+                history = dict(self.branch.repository.iter_revisions(chunk))
+                for revid in chunk:
+                    self.emit_commit(revid, history[revid], self.ref)
             if self.branch.supports_tags() and not self.no_tags:
                 self.emit_tags()
 
