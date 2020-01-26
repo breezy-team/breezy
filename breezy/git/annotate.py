@@ -56,6 +56,7 @@ class GitBlobContentFactory(object):
         self.storage_kind = 'git-blob'
         self.parents = None
         self.blob_id = blob_id
+        self.size = None
 
     def get_bytes_as(self, storage_kind):
         if storage_kind == 'fulltext':
@@ -87,6 +88,7 @@ class GitAbsentContentFactory(object):
         self.key = (path, revision)
         self.storage_kind = 'absent'
         self.parents = None
+        self.size = None
 
     def get_bytes_as(self, storage_kind):
         raise ValueError

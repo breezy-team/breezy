@@ -441,6 +441,7 @@ class _LazyGroupCompressFactory(object):
         self.key = key
         self.parents = parents
         self.sha1 = None
+        self.size = None
         # Note: This attribute coupled with Manager._factories creates a
         #       reference cycle. Perhaps we would rather use a weakref(), or
         #       find an appropriate time to release the ref. After the first
@@ -569,8 +570,12 @@ class _LazyGroupContentManager(object):
         end_point = 0
         for factory in self._factories:
             chunks = factory.get_bytes_as('chunked')
+            chunks_len = factory.size
+            if chunks_len is None:
+                chunks_len = sum(map(len, chunks))
             (found_sha1, start_point, end_point,
-             type) = compressor.compress(factory.key, chunks, factory.sha1)
+             type) = compressor.compress(
+                 factory.key, chunks, chunks_len, factory.sha1)
             # Now update this factory with the new offsets, etc
             factory.sha1 = found_sha1
             factory._start = start_point
@@ -828,7 +833,8 @@ class _CommonGroupCompressor(object):
         else:
             self._settings = settings
 
-    def compress(self, key, chunks, expected_sha, nostore_sha=None, soft=False):
+    def compress(self, key, chunks, length, expected_sha, nostore_sha=None,
+                 soft=False):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output
@@ -836,6 +842,7 @@ class _CommonGroupCompressor(object):
             element is b'None' it is replaced with the sha1 of the text -
             e.g. sha1:xxxxxxx.
         :param chunks: Chunks of bytes to be compressed
+        :param length: Length of chunks
         :param expected_sha: If non-None, the sha the lines are believed to
             have. During compression the sha is calculated; a mismatch will
             cause an error.
@@ -864,18 +871,18 @@ class _CommonGroupCompressor(object):
         if key[-1] is None:
             key = key[:-1] + (b'sha1:' + sha1,)
 
-        length = sum(map(len, chunks))
-
-        start, end, type = self._compress(key, chunks, length / 2, soft)
+        start, end, type = self._compress(key, chunks, length, length / 2, soft)
         return sha1, start, end, type
 
-    def _compress(self, key, chunks, max_delta_size, soft=False):
+    def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output for identification
             of the text during decompression.
 
         :param chunks: The chunks of bytes to be compressed
+
+        :param input_len: The length of the chunks
 
         :param max_delta_size: The size above which we issue a fulltext instead
             of a delta.
@@ -960,9 +967,8 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         # The actual content is managed by LinesDeltaIndex
         self.chunks = self._delta_index.lines
 
-    def _compress(self, key, chunks, max_delta_size, soft=False):
+    def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
-        input_len = sum(map(len, chunks))
         new_lines = osutils.chunks_to_lines(chunks)
         out_lines, index_lines = self._delta_index.make_delta(
             new_lines, bytes_length=input_len, soft=soft)
@@ -1015,9 +1021,8 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         max_bytes_to_index = self._settings.get('max_bytes_to_index', 0)
         self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
-    def _compress(self, key, chunks, max_delta_size, soft=False):
+    def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
-        input_len = sum(map(len, chunks))
         # By having action/label/sha1/len, we can parse the group if the index
         # was ever destroyed, we have the key in 'label', we know the final
         # bytes are valid from sha1, and we know where to find the end of this
@@ -1032,8 +1037,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
                                  ' somehow the DeltaIndex got out of sync with'
                                  ' the output lines')
         bytes = b''.join(chunks)
-        delta = self._delta_index.make_delta(
-            bytes, max_delta_size, bytes_length=input_len)
+        delta = self._delta_index.make_delta(bytes, max_delta_size)
         if delta is None:
             type = 'fulltext'
             enc_length = encode_base128_int(input_len)
@@ -1348,9 +1352,9 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         # chunks in memory.
         chunks = list(chunk_iter)
         record = ChunkedContentFactory(key, parents, None, chunks)
-        sha1 = list(self._insert_record_stream(
+        sha1, size = list(self._insert_record_stream(
             [record], random_id=random_id, nostore_sha=nostore_sha))[0]
-        return sha1, sum(map(len, chunks)), None
+        return sha1, size, None
 
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
@@ -1831,7 +1835,9 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 adapter_key = record.storage_kind, 'chunked'
                 adapter = get_adapter(adapter_key)
                 chunks = adapter.get_bytes(record, 'chunked')
-            chunks_len = sum(map(len, chunks))
+            chunks_len = record.size
+            if chunks_len is None:
+                chunks_len = sum(map(len, chunks))
             if len(record.key) > 1:
                 prefix = record.key[0]
                 soft = (prefix == last_prefix)
@@ -1842,9 +1848,9 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 max_fulltext_len = chunks_len
                 max_fulltext_prefix = prefix
             (found_sha1, start_point, end_point,
-             type) = self._compressor.compress(record.key,
-                                               chunks, record.sha1, soft=soft,
-                                               nostore_sha=nostore_sha)
+             type) = self._compressor.compress(
+                 record.key, chunks, chunks_len, record.sha1, soft=soft,
+                 nostore_sha=nostore_sha)
             # delta_ratio = float(chunks_len) / (end_point - start_point)
             # Check if we want to continue to include that text
             if (prefix == max_fulltext_prefix
@@ -1866,13 +1872,13 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 max_fulltext_len = chunks_len
                 (found_sha1, start_point, end_point,
                  type) = self._compressor.compress(
-                     record.key, chunks, record.sha1)
+                     record.key, chunks, chunks_len, record.sha1)
             if record.key[-1] is None:
                 key = record.key[:-1] + (b'sha1:' + found_sha1,)
             else:
                 key = record.key
             self._unadded_refs[key] = record.parents
-            yield found_sha1
+            yield found_sha1, chunks_len
             as_st = static_tuple.StaticTuple.from_sequence
             if record.parents is not None:
                 parents = as_st([as_st(p) for p in record.parents])
