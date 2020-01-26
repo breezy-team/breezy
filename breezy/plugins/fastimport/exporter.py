@@ -81,6 +81,8 @@ lazy_import.lazy_import(globals(),
 from fastimport import commands
 """)
 
+REVISIONS_CHUNK_SIZE = 1000
+
 
 def _get_output_stream(destination):
     if destination is None or destination == '-':
@@ -230,8 +232,8 @@ class BzrFastExporter(object):
         # revisions to exclude now ...
         if start_rev_id is not None:
             self.note("Calculating the revisions to exclude ...")
-            self.excluded_revisions = set([rev_id for rev_id, _, _, _ in
-                                           self.branch.iter_merge_sorted_revisions(start_rev_id)])
+            self.excluded_revisions = set(
+                [rev_id for rev_id, _, _, _ in self.branch.iter_merge_sorted_revisions(start_rev_id)])
             if self.baseline:
                 # needed so the first relative commit knows its parent
                 self.excluded_revisions.remove(start_rev_id)
@@ -249,8 +251,11 @@ class BzrFastExporter(object):
                 self.emit_features()
             if self.baseline:
                 self.emit_baseline(interesting.pop(0), self.ref)
-            for revid in interesting:
-                self.emit_commit(revid, self.ref)
+            for i in range(0, len(interesting), REVISIONS_CHUNK_SIZE):
+                history = list(self.branch.repository.iter_revisions(
+                    interesting[i:i + REVISIONS_CHUNK_SIZE]))
+                for revid, revobj in history:
+                    self.emit_commit(revid, revobj, self.ref)
             if self.branch.supports_tags() and not self.no_tags:
                 self.emit_tags()
 
@@ -336,14 +341,10 @@ class BzrFastExporter(object):
         self.print_cmd(commands.ResetCommand(ref, None))
         self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
-    def emit_commit(self, revid, ref):
+    def emit_commit(self, revid, revobj, ref):
         if revid in self.revid_to_mark or revid in self.excluded_revisions:
             return
-
-        # Get the Revision object
-        try:
-            revobj = self.branch.repository.get_revision(revid)
-        except errors.NoSuchRevision:
+        if revobj is None:
             # This is a ghost revision. Mark it as not found and next!
             self.revid_to_mark[revid] = -1
             return
@@ -367,8 +368,8 @@ class BzrFastExporter(object):
 
         # Print the commit
         mark = ncommits + 1
-        self.revid_to_mark[revid] = mark
-        file_cmds = self._get_filecommands(parent, revid)
+        self.revid_to_mark[revobj.revision_id] = mark
+        file_cmds = self._get_filecommands(parent, revobj.revision_id)
         self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
         # Report progress and checkpoint if it's time for that
