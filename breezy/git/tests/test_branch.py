@@ -245,6 +245,35 @@ class BranchTests(tests.TestCaseInTempDir):
         # Dulwich raises a UserWarning for tags with invalid target
         self.assertIn(('ref refs/tags/lala points at non-present sha ' + ("aa" * 20), ), [w.args for w in warnings])
 
+    def test_interbranch_pull_submodule(self):
+        path = "d"
+        os.mkdir(path)
+        os.chdir(path)
+        GitRepo.init('.')
+        bb = tests.GitBranchBuilder()
+        bb.set_file("foobar", b"foo\nbar\n", False)
+        mark1 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
+        bb.set_submodule("core", b'102ee7206ebc4227bec8ac02450972e6738f4a33')
+        bb.set_file('.gitmodules', b"""\
+[submodule "core"]
+  path = core
+  url = https://github.com/phhusson/QuasselC.git
+""", False)
+        mark2 = bb.commit(b"Somebody <somebody@someorg.org>", b"mymsg")
+        marks = bb.finish()
+        os.chdir("..")
+        gitsha1 = marks[mark1]
+        gitsha2 = marks[mark2]
+        oldrepo = Repository.open(path)
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        newbranch = self.make_branch('g')
+        inter_branch = InterBranch.get(Branch.open(path), newbranch)
+        inter_branch.pull()
+        self.assertEqual(revid2, newbranch.last_revision())
+        self.assertEqual(
+            ('https://github.com/phhusson/QuasselC.git', 'core'),
+            newbranch.get_reference_info(newbranch.basis_tree().path2id('core')))
+
     def test_interbranch_pull(self):
         path, (gitsha1, gitsha2) = self.make_tworev_branch()
         oldrepo = Repository.open(path)

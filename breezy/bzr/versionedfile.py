@@ -56,26 +56,26 @@ from ..textmerge import TextMerge
 
 
 adapter_registry = Registry()
-adapter_registry.register_lazy(('knit-delta-gz', 'fulltext'), 'breezy.bzr.knit',
-                               'DeltaPlainToFullText')
-adapter_registry.register_lazy(('knit-ft-gz', 'fulltext'), 'breezy.bzr.knit',
-                               'FTPlainToFullText')
 adapter_registry.register_lazy(('knit-annotated-delta-gz', 'knit-delta-gz'),
                                'breezy.bzr.knit', 'DeltaAnnotatedToUnannotated')
-adapter_registry.register_lazy(('knit-annotated-delta-gz', 'fulltext'),
-                               'breezy.bzr.knit', 'DeltaAnnotatedToFullText')
 adapter_registry.register_lazy(('knit-annotated-ft-gz', 'knit-ft-gz'),
                                'breezy.bzr.knit', 'FTAnnotatedToUnannotated')
-adapter_registry.register_lazy(('knit-annotated-ft-gz', 'fulltext'),
-                               'breezy.bzr.knit', 'FTAnnotatedToFullText')
-# adapter_registry.register_lazy(('knit-annotated-ft-gz', 'chunked'),
-#     'breezy.bzr.knit', 'FTAnnotatedToChunked')
+for target_storage_kind in ('fulltext', 'chunked', 'lines'):
+    adapter_registry.register_lazy(('knit-delta-gz', target_storage_kind), 'breezy.bzr.knit',
+                                   'DeltaPlainToFullText')
+    adapter_registry.register_lazy(('knit-ft-gz', target_storage_kind), 'breezy.bzr.knit',
+                                   'FTPlainToFullText')
+    adapter_registry.register_lazy(('knit-annotated-ft-gz', target_storage_kind),
+                                   'breezy.bzr.knit', 'FTAnnotatedToFullText')
+    adapter_registry.register_lazy(('knit-annotated-delta-gz', target_storage_kind),
+                                   'breezy.bzr.knit', 'DeltaAnnotatedToFullText')
 
 
 class ContentFactory(object):
     """Abstract interface for insertion and retrieval from a VersionedFile.
 
     :ivar sha1: None, or the sha1 of the content fulltext.
+    :ivar size: None, or the size of the content fulltext.
     :ivar storage_kind: The native storage kind of this factory. One of
         'mpdiff', 'knit-annotated-ft', 'knit-annotated-delta', 'knit-ft',
         'knit-delta', 'fulltext', 'knit-annotated-ft-gz',
@@ -90,6 +90,7 @@ class ContentFactory(object):
     def __init__(self):
         """Create a ContentFactory."""
         self.sha1 = None
+        self.size = None
         self.storage_kind = None
         self.key = None
         self.parents = None
@@ -103,6 +104,7 @@ class ChunkedContentFactory(ContentFactory):
     satisfies this, as does a list of lines.
 
     :ivar sha1: None, or the sha1 of the content fulltext.
+    :ivar size: None, or the size of the content fulltext.
     :ivar storage_kind: The native storage kind of this factory. Always
         'chunked'
     :ivar key: The key of this content. Each key is a tuple with a single
@@ -110,21 +112,28 @@ class ChunkedContentFactory(ContentFactory):
     :ivar parents: A tuple of parent keys for self.key. If the object has
         no parent information, None (as opposed to () for an empty list of
         parents).
+    :ivar chunks_are_lines: Whether chunks are lines.
      """
 
-    def __init__(self, key, parents, sha1, chunks):
+    def __init__(self, key, parents, sha1, chunks, chunks_are_lines=None):
         """Create a ContentFactory."""
         self.sha1 = sha1
+        self.size = sum(map(len, chunks))
         self.storage_kind = 'chunked'
         self.key = key
         self.parents = parents
         self._chunks = chunks
+        self._chunks_are_lines = chunks_are_lines
 
     def get_bytes_as(self, storage_kind):
         if storage_kind == 'chunked':
             return self._chunks
         elif storage_kind == 'fulltext':
             return b''.join(self._chunks)
+        elif storage_kind == 'lines':
+            if self._chunks_are_lines:
+                return self._chunks
+            return list(osutils.chunks_to_lines(self._chunks))
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
@@ -148,6 +157,7 @@ class FulltextContentFactory(ContentFactory):
     def __init__(self, key, parents, sha1, text):
         """Create a ContentFactory."""
         self.sha1 = sha1
+        self.size = len(text)
         self.storage_kind = 'fulltext'
         self.key = key
         self.parents = parents
@@ -160,6 +170,39 @@ class FulltextContentFactory(ContentFactory):
             return self._text
         elif storage_kind == 'chunked':
             return [self._text]
+        elif storage_kind == 'lines':
+            return osutils.split_lines(self._text)
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
+
+
+class FileContentFactory(ContentFactory):
+    """File-based content factory.
+    """
+
+    def __init__(self, key, parents, fileobj):
+        self.key = key
+        self.parents = parents
+        self.file = fileobj
+        self.storage_kind = 'file'
+        self._sha1 = None
+        self._size = None
+
+    @property
+    def sha1(self):
+        if self._sha1 is None:
+            self.file.seek(0)
+            self._size, self._sha1 = osutils.size_sha_file(self.file)
+        return self._sha1
+
+    def get_bytes_as(self, storage_kind):
+        self.file.seek(0)
+        if storage_kind == 'fulltext':
+            return self.file.read()
+        elif storage_kind == 'chunked':
+            return list(osutils.file_iterator(self.file))
+        elif storage_kind == 'lines':
+            return self.file.readlines()
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
@@ -177,6 +220,7 @@ class AbsentContentFactory(ContentFactory):
     def __init__(self, key):
         """Create a ContentFactory."""
         self.sha1 = None
+        self.size = None
         self.storage_kind = 'absent'
         self.key = key
         self.parents = None
@@ -1030,13 +1074,11 @@ class VersionedFiles(object):
                                   if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
         # easily exhaust memory.
-        chunks_to_lines = osutils.chunks_to_lines
         for record in self.get_record_stream(needed_parents, 'unordered',
                                              True):
             if record.storage_kind == 'absent':
                 continue
-            mpvf.add_version(chunks_to_lines(record.get_bytes_as('chunked')),
-                             record.key, [])
+            mpvf.add_version(record.get_bytes_as('lines'), record.key, [])
         for (key, parent_keys, expected_sha1, mpdiff), lines in zip(
                 records, mpvf.get_line_list(versions)):
             if len(parent_keys) == 1:
@@ -1546,7 +1588,9 @@ class _PlanMergeVersionedFile(VersionedFiles):
                 lines = self._lines[key]
                 parents = self._parents[key]
                 pending.remove(key)
-                yield ChunkedContentFactory(key, parents, None, lines)
+                yield ChunkedContentFactory(
+                    key, parents, None, lines,
+                    chunks_are_lines=True)
         for versionedfile in self.fallback_versionedfiles:
             for record in versionedfile.get_record_stream(
                     pending, 'unordered', True):
@@ -1775,9 +1819,9 @@ class VirtualVersionedFiles(VersionedFiles):
             if lines is not None:
                 if not isinstance(lines, list):
                     raise AssertionError
-                yield ChunkedContentFactory((k,), None,
-                                            sha1=osutils.sha_strings(lines),
-                                            chunks=lines)
+                yield ChunkedContentFactory(
+                    (k,), None, sha1=osutils.sha_strings(lines),
+                    chunks=lines, chunks_are_lines=True)
             else:
                 yield AbsentContentFactory((k,))
 

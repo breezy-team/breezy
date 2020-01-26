@@ -987,8 +987,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 for path, url, section in parse_submodules(
                         GitConfigFile.from_file(f)):
                     self.target.set_reference_info(
-                        path.decode('utf-8'), url.decode('utf-8'),
-                        tree.path2id(path.decode('utf-8')))
+                        tree.path2id(path.decode('utf-8')), url.decode('utf-8'),
+                        path.decode('utf-8'))
         except errors.NoSuchFile:
             pass
 

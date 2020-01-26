@@ -1964,6 +1964,23 @@ class _DirectPackAccess(object):
         self._reload_func = reload_func
         self._flush_func = flush_func
 
+    def add_raw_record(self, key, size, raw_data):
+        """Add raw knit bytes to a storage area.
+
+        The data is spooled to the container writer in one bytes-record per
+        raw data item.
+
+        :param key: key of the data segment
+        :param size: length of the data segment
+        :param raw_data: A bytestring containing the data.
+        :return: An opaque index memo For _DirectPackAccess the memo is
+            (index, pos, length), where the index field is the write_index
+            object supplied to the PackAccess object.
+        """
+        p_offset, p_length = self._container_writer.add_bytes_record(
+            b''.join(raw_data), [])
+        return (self._write_index, p_offset, p_length)
+
     def add_raw_records(self, key_sizes, raw_data):
         """Add raw knit bytes to a storage area.
 
@@ -1978,16 +1995,16 @@ class _DirectPackAccess(object):
             length), where the index field is the write_index object supplied
             to the PackAccess object.
         """
+        raw_data = b''.join(raw_data)
         if not isinstance(raw_data, bytes):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []
         offset = 0
         for key, size in key_sizes:
-            p_offset, p_length = self._container_writer.add_bytes_record(
-                raw_data[offset:offset + size], [])
+            result.append(
+                self.add_raw_record(key, size, [raw_data[offset:offset + size]]))
             offset += size
-            result.append((self._write_index, p_offset, p_length))
         return result
 
     def flush(self):

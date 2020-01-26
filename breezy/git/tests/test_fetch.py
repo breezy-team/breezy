@@ -502,7 +502,7 @@ class ImportObjects(TestCaseWithTransport):
         self.assertEqual(2, len(ret))
         self.assertEqual(
             ret[0], ("foo/bar", None, base_inv.path2id("foo/bar"), None))
-        self.assertEqual(ret[1][:3], ("foo", b"foo",
+        self.assertEqual(ret[1][:3], ("foo", "foo",
                                       self._mapping.generate_file_id("foo")))
         ie = ret[1][3]
         self.assertEqual(ie.kind, "tree-reference")

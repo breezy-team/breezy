@@ -209,7 +209,7 @@ class PlanCreatorTests(TestCaseWithTransport):
                 ["bla", "bloe"]), {"bloe": "lala"}, graph, lambda y, _: "new" + y))
 
     def test_plan_with_already_merged(self):
-        """We need to use a merge base that makes sense.
+        r"""We need to use a merge base that makes sense.
 
         A
         | \
@@ -240,7 +240,7 @@ class PlanCreatorTests(TestCaseWithTransport):
                 ["D", "E"], "D", None, "C", graph, lambda y, _: y + "'"))
 
     def test_plan_with_already_merged_skip_merges(self):
-        """We need to use a merge base that makes sense.
+        r"""We need to use a merge base that makes sense.
 
         A
         | \
@@ -593,7 +593,7 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         self.assertEquals(oldrev.timezone, newrev.timezone)
 
     def test_already_merged(self):
-        """We need to use a merge base that makes sense.
+        r"""We need to use a merge base that makes sense.
 
         A
         | \

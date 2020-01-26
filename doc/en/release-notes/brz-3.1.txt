@@ -99,6 +99,10 @@ Improvements
 * CVS pserver URLs now indicate that the pserver protocol is not
   supported. (Jelmer Vernooĳ)
 
+ * Git repositories with submodules can now be imported into 2a
+   branches; submodules are converted to nested trees.
+   (Jelmer Vernooĳ, #402814)
+
 Bug Fixes
 *********
 

@@ -228,8 +228,7 @@ class LinesDeltaIndex(object):
                 if block[-1] < min_match_bytes:
                     # This block may be a 'short' block, check
                     old_start, new_start, range_len = block
-                    matched_bytes = sum(map(len,
-                                            lines[new_start:new_start + range_len]))
+                    matched_bytes = sum(map(len, lines[new_start:new_start + range_len]))
                     if matched_bytes < min_match_bytes:
                         block = None
             if block is not None:
@@ -287,10 +286,8 @@ class LinesDeltaIndex(object):
             out_lines.append(copy_bytes)
             index_lines.append(False)
 
-    def make_delta(self, new_lines, bytes_length=None, soft=False):
+    def make_delta(self, new_lines, bytes_length, soft=False):
         """Compute the delta for this content versus the original content."""
-        if bytes_length is None:
-            bytes_length = sum(map(len, new_lines))
         # reserved for content type, content length
         out_lines = [b'', b'', encode_base128_int(bytes_length)]
         index_lines = [False, False, False]
