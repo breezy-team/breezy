@@ -1034,8 +1034,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
                                  ' somehow the DeltaIndex got out of sync with'
                                  ' the output lines')
         bytes = b''.join(chunks)
-        delta = self._delta_index.make_delta(
-            bytes, max_delta_size, bytes_length=input_len)
+        delta = self._delta_index.make_delta(bytes, max_delta_size)
         if delta is None:
             type = 'fulltext'
             enc_length = encode_base128_int(input_len)
