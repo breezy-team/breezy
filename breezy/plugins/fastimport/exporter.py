@@ -249,8 +249,21 @@ class BzrFastExporter(object):
         for i in range(0, len(interesting), REVISIONS_CHUNK_SIZE):
             chunk = interesting[i:i + REVISIONS_CHUNK_SIZE]
             history = dict(self.branch.repository.iter_revisions(chunk))
+            trees_needed = set()
+            trees = {}
             for revid in chunk:
-                self.emit_commit(revid, history[revid], self.ref)
+                trees_needed.update(self.preprocess_commit(revid, history[revid], self.ref))
+
+            for tree in self._get_revision_trees(trees_needed):
+                trees[tree.get_revision_id()] = tree
+
+            for revid in chunk:
+                revobj = history[revid]
+                if len(revobj.parent_ids) == 0:
+                    parent = breezy.revision.NULL_REVISION
+                else:
+                    parent = revobj.parent_ids[0]
+                self.emit_commit(revobj, self.ref, trees[parent], trees[revid])
 
     def run(self):
         # Export the data
@@ -341,45 +354,48 @@ class BzrFastExporter(object):
         # Emit a full source tree of the first commit's parent
         mark = 1
         self.revid_to_mark[revobj.revision_id] = mark
-        tree_old, tree_new = list(self._get_revision_trees(
-            [breezy.revision.NULL_REVISION, revobj.revision_id]))
+        tree_old = self.branch.repository.revision_tree(
+            breezy.revision.NULL_REVISION)
+        [tree_new] = list(self._get_revision_trees([revobj.revision_id]))
         file_cmds = self._get_filecommands(tree_old, tree_new)
         self.print_cmd(commands.ResetCommand(ref, None))
         self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
-    def emit_commit(self, revid, revobj, ref):
+    def preprocess_commit(self, revid, revobj, ref):
         if revid in self.revid_to_mark or revid in self.excluded_revisions:
             return
         if revobj is None:
             # This is a ghost revision. Mark it as not found and next!
             self.revid_to_mark[revid] = -1
             return
-
         # Get the primary parent
         # TODO: Consider the excluded revisions when deciding the parents.
         # Currently, a commit with parents that are excluded ought to be
         # triggering the ref calculation below (and it is not).
         # IGC 20090824
-        ncommits = len(self.revid_to_mark)
-        nparents = len(revobj.parent_ids)
-        if nparents == 0:
+        if len(revobj.parent_ids) == 0:
             parent = breezy.revision.NULL_REVISION
         else:
             parent = revobj.parent_ids[0]
 
+        # Print the commit
+        mark = len(self.revid_to_mark) + 1
+        self.revid_to_mark[revobj.revision_id] = mark
+
+        return [parent, revobj.revision_id]
+
+    def emit_commit(self, revobj, ref, tree_old, tree_new):
         # For parentless commits we need to issue reset command first, otherwise
         # git-fast-import will assume previous commit was this one's parent
-        if nparents == 0:
+        if tree_old.get_revision_id() == breezy.revision.NULL_REVISION:
             self.print_cmd(commands.ResetCommand(ref, None))
 
-        # Print the commit
-        mark = ncommits + 1
-        self.revid_to_mark[revobj.revision_id] = mark
-        tree_old, tree_new = list(self._get_revision_trees([parent, revobj.revision_id]))
         file_cmds = self._get_filecommands(tree_old, tree_new)
+        mark = self.revid_to_mark[revobj.revision_id]
         self.print_cmd(self._get_commit_command(ref, mark, revobj, file_cmds))
 
         # Report progress and checkpoint if it's time for that
+        ncommits = len(self.revid_to_mark)
         self.report_progress(ncommits)
         if (self.checkpoint is not None and self.checkpoint > 0 and ncommits and
                 ncommits % self.checkpoint == 0):
