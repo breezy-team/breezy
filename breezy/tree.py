@@ -1203,7 +1203,7 @@ class InterTree(InterObject):
                 target_sha1 = target_verifier_data
             return (source_sha1 == target_sha1)
 
-    def find_target_path(self, path, file_id=None):
+    def find_target_path(self, path):
         """Find target tree path.
 
         :param path: Path to search for (exists in source)
@@ -1211,8 +1211,7 @@ class InterTree(InterObject):
         :raise NoSuchFile: If the path doesn't exist in source
         """
 
-        if file_id is None:
-            file_id = self.source.path2id(path)
+        file_id = self.source.path2id(path)
         if file_id is None:
             raise errors.NoSuchFile(path)
         try:
@@ -1248,7 +1247,7 @@ def find_previous_paths(from_tree, to_tree, paths):
     return InterTree.get(from_tree, to_tree).find_target_paths(paths)
 
 
-def find_previous_path(from_tree, to_tree, path, file_id=None):
+def find_previous_path(from_tree, to_tree, path):
     """Find previous tree path.
 
     :param from_tree: From tree
@@ -1257,7 +1256,7 @@ def find_previous_path(from_tree, to_tree, path, file_id=None):
     :return: path in to_tree, or None if there is no equivalent path.
     :raise NoSuchFile: If the path doesn't exist in from_tree
     """
-    return InterTree.get(from_tree, to_tree).find_target_path(path, file_id)
+    return InterTree.get(from_tree, to_tree).find_target_path(path)
 
 
 def get_canonical_path(tree, path, normalize):
