@@ -442,6 +442,7 @@ class LazyKnitContentFactory(ContentFactory):
         self.key = key
         self.parents = parents
         self.sha1 = None
+        self.size = None
         self._generator = generator
         self.storage_kind = "knit-delta-closure"
         if not first:
