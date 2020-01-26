@@ -1762,8 +1762,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             #       the fulltext content at this point. Note that sometimes we
             #       will want it later (streaming CHK pages), but most of the
             #       time we won't (everything else)
-            index, start, length = self._access.add_raw_records(
-                [(None, bytes_len)], chunks)[0]
+            index, start, length = self._access.add_raw_record(
+                None, bytes_len, chunks)
             nodes = []
             for key, reads, refs in keys_to_add:
                 nodes.append((key, b"%d %d %s" % (start, length, reads), refs))
@@ -1808,8 +1808,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     # Insert the raw block into the target repo
                     insert_manager = record._manager
                     bytes_len, chunks = record._manager._block.to_chunks()
-                    _, start, length = self._access.add_raw_records(
-                        [(None, bytes_len)], chunks)[0]
+                    _, start, length = self._access.add_raw_record(
+                        None, bytes_len, chunks)
                     block_start = start
                     block_length = length
                 if record.storage_kind in ('groupcompress-block',

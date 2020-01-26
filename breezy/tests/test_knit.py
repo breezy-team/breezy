@@ -320,10 +320,16 @@ class KnitRecordAccessTestsMixin(object):
     """Tests for getting and putting knit records."""
 
     def test_add_raw_records(self):
-        """Add_raw_records adds records retrievable later."""
+        """add_raw_records adds records retrievable later."""
         access = self.get_access()
         memos = access.add_raw_records([(b'key', 10)], [b'1234567890'])
         self.assertEqual([b'1234567890'], list(access.get_raw_records(memos)))
+
+    def test_add_raw_record(self):
+        """add_raw_record adds records retrievable later."""
+        access = self.get_access()
+        memos = access.add_raw_record(b'key', 10, [b'1234567890'])
+        self.assertEqual([b'1234567890'], list(access.get_raw_records([memos])))
 
     def test_add_several_raw_records(self):
         """add_raw_records with many records and read some back."""
