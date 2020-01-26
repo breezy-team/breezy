@@ -349,16 +349,12 @@ class LocalGitRepository(GitRepository):
             if not isinstance(o, Commit):
                 continue
             revid = mapping.revision_id_foreign_to_bzr(o)
-            roundtrip_revid = mapping.get_revision_id(o)
-            yield o.id, revid, (roundtrip_revid if revid != roundtrip_revid else None)
+            yield o.id, revid
 
     def all_revision_ids(self):
         ret = set()
-        for git_sha, revid, roundtrip_revid in self._iter_revision_ids():
-            if roundtrip_revid:
-                ret.add(roundtrip_revid)
-            else:
-                ret.add(revid)
+        for git_sha, revid in self._iter_revision_ids():
+            ret.add(revid)
         return list(ret)
 
     def _get_parents(self, revid, no_alternates=False):
@@ -508,25 +504,7 @@ class LocalGitRepository(GitRepository):
             (git_sha, mapping) = mapping_registry.revision_id_bzr_to_foreign(
                 bzr_revid)
         except errors.InvalidRevisionId:
-            if mapping is None:
-                mapping = self.get_mapping()
-            try:
-                return (self._git.refs[mapping.revid_as_refname(bzr_revid)],
-                        mapping)
-            except KeyError:
-                # Update refs from Git commit objects
-                # FIXME: Hitting this a lot will be very inefficient...
-                with ui.ui_factory.nested_progress_bar() as pb:
-                    for i, (git_sha, revid, roundtrip_revid) in enumerate(
-                            self._iter_revision_ids()):
-                        if not roundtrip_revid:
-                            continue
-                        pb.update("resolving revision id", i)
-                        refname = mapping.revid_as_refname(roundtrip_revid)
-                        self._git.refs[refname] = git_sha
-                        if roundtrip_revid == bzr_revid:
-                            return git_sha, mapping
-                raise errors.NoSuchRevision(self, bzr_revid)
+            raise errors.NoSuchRevision(self, bzr_revid)
         else:
             return (git_sha, mapping)
 
