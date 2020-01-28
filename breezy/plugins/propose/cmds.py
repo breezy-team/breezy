@@ -144,6 +144,7 @@ class cmd_propose_merge(Command):
         Option('name', help='Name of the new remote branch.', type=str),
         Option('description', help='Description of the change.', type=str),
         Option('prerequisite', help='Prerequisite branch.', type=str),
+        Option('wip', help='Mark merge request as work-in-progress'),
         Option(
             'commit-message',
             help='Set commit message for merge, if supported', type=str),
@@ -158,7 +159,7 @@ class cmd_propose_merge(Command):
 
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
-            labels=None, prerequisite=None, commit_message=None):
+            labels=None, prerequisite=None, commit_message=None, wip=False):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -197,7 +198,8 @@ class cmd_propose_merge(Command):
             proposal = proposal_builder.create_proposal(
                 description=description, reviewers=reviewers,
                 prerequisite_branch=prerequisite_branch, labels=labels,
-                commit_message=commit_message)
+                commit_message=commit_message,
+                work_in_progress=wip)
         except _mod_propose.MergeProposalExists as e:
             note(gettext('There is already a branch merge proposal: %s'), e.url)
         else:
