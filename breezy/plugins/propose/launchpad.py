@@ -545,7 +545,8 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                              revid=self.source_branch.last_revision())
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None):
+                        prerequisite_branch=None, commit_message=None,
+                        work_in_progress=False):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported(self)
@@ -571,6 +572,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
                 prerequisite_branch=prereq,
                 initial_comment=description.strip(),
                 commit_message=commit_message,
+                needs_review=(not work_in_progress),
                 reviewers=[reviewer.self_link for reviewer in reviewer_objs],
                 review_types=['' for reviewer in reviewer_objs])
         except WebserviceFailure as e:

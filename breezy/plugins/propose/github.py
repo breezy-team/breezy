@@ -553,7 +553,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         return None
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None):
+                        prerequisite_branch=None, commit_message=None,
+                        work_in_progress=False):
         """Perform the submission."""
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
@@ -583,7 +584,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 title=title, body=description,
                 head="%s:%s" % (self.source_owner, self.source_branch_name),
                 base=self.target_branch_name,
-                labels=labels, assignee=assignees)
+                labels=labels, assignee=assignees,
+                draft=(not work_in_progress))
         except ValidationFailed:
             raise MergeProposalExists(self.source_branch.user_url)
         return GitHubMergeProposal(self.gh, pull_request)
