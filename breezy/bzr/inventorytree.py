@@ -292,6 +292,14 @@ class InventoryTree(Tree):
         return vf.plan_lca_merge(last_revision_a, last_revision_b,
                                  last_revision_base)
 
+    def _iter_parent_trees(self):
+        """Iterate through parent trees, defaulting to Tree.revision_tree."""
+        for revision_id in self.get_parent_ids():
+            try:
+                yield self.revision_tree(revision_id)
+            except errors.NoSuchRevisionInTree:
+                yield self.branch.repository.revision_tree(revision_id)
+
     def _get_file_revision(self, path, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
         last_revision = tree_revision
