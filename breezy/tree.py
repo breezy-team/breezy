@@ -575,14 +575,6 @@ class Tree(object):
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def _iter_parent_trees(self):
-        """Iterate through parent trees, defaulting to Tree.revision_tree."""
-        for revision_id in self.get_parent_ids():
-            try:
-                yield self.revision_tree(revision_id)
-            except errors.NoSuchRevisionInTree:
-                yield self.repository.revision_tree(revision_id)
-
     def path2id(self, path):
         """Return the id for path in this tree."""
         raise NotImplementedError(self.path2id)

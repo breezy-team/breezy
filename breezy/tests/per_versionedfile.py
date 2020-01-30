@@ -910,6 +910,7 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
             return next(self.plan_merge_vf.get_record_stream(
                 [(b'root', suffix)], 'unordered', True))
         self.assertEqual(b'a', get_record(b'A').get_bytes_as('fulltext'))
+        self.assertEqual(b'a', b''.join(get_record(b'A').iter_bytes_as('chunked')))
         self.assertEqual(b'c', get_record(b'C').get_bytes_as('fulltext'))
         self.assertEqual(b'e', get_record(b'E:').get_bytes_as('fulltext'))
         self.assertEqual('absent', get_record('F').storage_kind)
@@ -1940,6 +1941,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             ft_bytes = factory.get_bytes_as('fulltext')
             self.assertIsInstance(ft_bytes, bytes)
             chunked_bytes = factory.get_bytes_as('chunked')
+            self.assertEqualDiff(ft_bytes, b''.join(chunked_bytes))
+            chunked_bytes = factory.iter_bytes_as('chunked')
             self.assertEqualDiff(ft_bytes, b''.join(chunked_bytes))
 
         self.assertStreamOrder(sort_order, seen, keys)

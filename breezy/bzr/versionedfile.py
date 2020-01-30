@@ -137,6 +137,15 @@ class ChunkedContentFactory(ContentFactory):
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
+    def iter_bytes_as(self, storage_kind):
+        if storage_kind == 'chunked':
+            return iter(self._chunks)
+        elif storage_kind == 'lines':
+            if self._chunks_are_lines:
+                return iter(self._chunks)
+            return osutils.chunks_to_lines(self._chunks)
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
 
 class FulltextContentFactory(ContentFactory):
     """Static data content factory.
@@ -175,6 +184,14 @@ class FulltextContentFactory(ContentFactory):
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
+    def iter_bytes_as(self, storage_kind):
+        if storage_kind == 'chunked':
+            return iter([self._text])
+        elif storage_kind == 'lines':
+            return iter(osutils.split_lines(self._text))
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
+
 
 class FileContentFactory(ContentFactory):
     """File-based content factory.
@@ -199,6 +216,15 @@ class FileContentFactory(ContentFactory):
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
+    def iter_bytes_as(self, storage_kind):
+        self.file.seek(0)
+        if storage_kind == 'chunked':
+            return osutils.file_iterator(self.file)
+        elif storage_kind == 'lines':
+            return self.file
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
+
 
 class AbsentContentFactory(ContentFactory):
     """A placeholder content factory for unavailable texts.
@@ -219,6 +245,12 @@ class AbsentContentFactory(ContentFactory):
         self.parents = None
 
     def get_bytes_as(self, storage_kind):
+        raise ValueError('A request was made for key: %s, but that'
+                         ' content is not available, and the calling'
+                         ' code does not handle if it is missing.'
+                         % (self.key,))
+
+    def iter_bytes_as(self, storage_kind):
         raise ValueError('A request was made for key: %s, but that'
                          ' content is not available, and the calling'
                          ' code does not handle if it is missing.'

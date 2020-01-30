@@ -1191,7 +1191,7 @@ class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
                     continue
                 yield b"ok\0%d\n" % identifier
                 compressor = zlib.compressobj()
-                for bytes in record.get_bytes_as('chunked'):
+                for bytes in record.iter_bytes_as('chunked'):
                     data = compressor.compress(bytes)
                     if data:
                         yield data

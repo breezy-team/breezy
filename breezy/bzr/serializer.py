@@ -34,26 +34,35 @@ class Serializer(object):
         """
         raise NotImplementedError(self.write_inventory)
 
-    def write_inventory_to_string(self, inv):
-        """Produce a simple string representation of an inventory.
+    def write_inventory_to_chunks(self, inv):
+        """Produce a simple bytestring chunk representation of an inventory.
 
         Note: this is a *whole inventory* operation, and should only be used
         sparingly, as it does not scale well with large trees.
 
         The requirement for the contents of the string is that it can be passed
-        to read_inventory_from_string and the result is an identical inventory
+        to read_inventory_from_lines and the result is an identical inventory
         in memory.
-
-        (All serializers as of 2009-07-29 produce XML, but this is not mandated
-        by the interface.)
         """
-        raise NotImplementedError(self.write_inventory_to_string)
+        raise NotImplementedError(self.write_inventory_to_chunks)
 
-    def read_inventory_from_string(self, string, revision_id=None,
-                                   entry_cache=None, return_from_cache=False):
-        """Read string into an inventory object.
+    def write_inventory_to_lines(self, inv):
+        """Produce a simple lines representation of an inventory.
 
-        :param string: The serialized inventory to read.
+        Note: this is a *whole inventory* operation, and should only be used
+        sparingly, as it does not scale well with large trees.
+
+        The requirement for the contents of the string is that it can be passed
+        to read_inventory_from_lines and the result is an identical inventory
+        in memory.
+        """
+        raise NotImplementedError(self.write_inventory_to_lines)
+
+    def read_inventory_from_lines(self, lines, revision_id=None,
+                                  entry_cache=None, return_from_cache=False):
+        """Read bytestring chunks into an inventory object.
+
+        :param lines: The serialized inventory to read.
         :param revision_id: If not-None, the expected revision id of the
             inventory. Some serialisers use this to set the results' root
             revision. This should be supplied for deserialising all
@@ -69,10 +78,10 @@ class Serializer(object):
             promises not to mutate the returned inventory entries, but it can
             make some operations significantly faster.
         """
-        raise NotImplementedError(self.read_inventory_from_string)
+        raise NotImplementedError(self.read_inventory_from_lines)
 
     def read_inventory(self, f, revision_id=None):
-        """See read_inventory_from_string."""
+        """See read_inventory_from_lines."""
         raise NotImplementedError(self.read_inventory)
 
     def write_revision(self, rev, f):

@@ -421,6 +421,9 @@ class KnitContentFactory(ContentFactory):
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
+    def iter_bytes_as(self, storage_kind):
+        return iter(self.get_bytes_as(storage_kind))
+
 
 class LazyKnitContentFactory(ContentFactory):
     """A ContentFactory which can either generate full text or a wire form.
@@ -463,6 +466,13 @@ class LazyKnitContentFactory(ContentFactory):
                 return chunks
             else:
                 return b''.join(chunks)
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
+
+    def iter_bytes_as(self, storage_kind):
+        if storage_kind in ('chunked', 'lines'):
+            chunks = self._generator._get_one_work(self.key).text()
+            return iter(chunks)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
@@ -1140,7 +1150,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 store_lines = self._factory.lower_fulltext(content)
                 size, data = self._record_to_data(key, digest, store_lines)
 
-        access_memo = self._access.add_raw_records([(key, size)], data)[0]
+        access_memo = self._access.add_raw_record(key, size, data)
         self._index.add_records(
             ((key, options, access_memo, parents),),
             random_id=random_id)
@@ -1750,8 +1760,8 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 # deprecated format this is tolerable. It can be fixed if
                 # needed by in the kndx index support raising on a duplicate
                 # add with identical parents and options.
-                access_memo = self._access.add_raw_records(
-                    [(record.key, len(bytes))], [bytes])[0]
+                access_memo = self._access.add_raw_record(
+                    record.key, len(bytes), [bytes])
                 index_entry = (record.key, options, access_memo, parents)
                 if b'fulltext' not in options:
                     # Not a fulltext, so we need to make sure the compression
@@ -3252,6 +3262,29 @@ class _KnitKeyAccess(object):
         self._transport = transport
         self._mapper = mapper
 
+    def add_raw_record(self, key, size, raw_data):
+        """Add raw knit bytes to a storage area.
+
+        The data is spooled to the container writer in one bytes-record per
+        raw data item.
+
+        :param key: The key of the raw data segment
+        :param size: The size of the raw data segment
+        :param raw_data: A chunked bytestring containing the data.
+        :return: opaque index memo to retrieve the record later.
+            For _KnitKeyAccess the memo is (key, pos, length), where the key is
+            the record key.
+        """
+        path = self._mapper.map(key)
+        try:
+            base = self._transport.append_bytes(path + '.knit', b''.join(raw_data))
+        except errors.NoSuchFile:
+            self._transport.mkdir(osutils.dirname(path))
+            base = self._transport.append_bytes(path + '.knit', b''.join(raw_data))
+        # if base == 0:
+        # chmod.
+        return (key, base, size)
+
     def add_raw_records(self, key_sizes, raw_data):
         """Add raw knit bytes to a storage area.
 
@@ -3275,18 +3308,9 @@ class _KnitKeyAccess(object):
         # append() is relatively expensive by grouping the writes to each key
         # prefix.
         for key, size in key_sizes:
-            path = self._mapper.map(key)
-            try:
-                base = self._transport.append_bytes(path + '.knit',
-                                                    raw_data[offset:offset + size])
-            except errors.NoSuchFile:
-                self._transport.mkdir(osutils.dirname(path))
-                base = self._transport.append_bytes(path + '.knit',
-                                                    raw_data[offset:offset + size])
-            # if base == 0:
-            # chmod.
+            record_bytes = [raw_data[offset:offset + size]]
+            result.append(self.add_raw_record(key, size, record_bytes))
             offset += size
-            result.append((key, base, size))
         return result
 
     def flush(self):

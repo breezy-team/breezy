@@ -460,6 +460,20 @@ class _LazyGroupCompressFactory(object):
         return '%s(%s, first=%s)' % (self.__class__.__name__,
                                      self.key, self._first)
 
+    def _extract_bytes(self):
+        # Grab and cache the raw bytes for this entry
+        # and break the ref-cycle with _manager since we don't need it
+        # anymore
+        try:
+            self._manager._prepare_for_extract()
+        except zlib.error as value:
+            raise DecompressCorruption("zlib: " + str(value))
+        block = self._manager._block
+        self._bytes = block.extract(self.key, self._start, self._end)
+        # There are code paths that first extract as fulltext, and then
+        # extract as storage_kind (smart fetch). So we don't break the
+        # refcycle here, but instead in manager.get_record_stream()
+
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
             if self._first:
@@ -469,24 +483,23 @@ class _LazyGroupCompressFactory(object):
                 return b''
         if storage_kind in ('fulltext', 'chunked', 'lines'):
             if self._bytes is None:
-                # Grab and cache the raw bytes for this entry
-                # and break the ref-cycle with _manager since we don't need it
-                # anymore
-                try:
-                    self._manager._prepare_for_extract()
-                except zlib.error as value:
-                    raise DecompressCorruption("zlib: " + str(value))
-                block = self._manager._block
-                self._bytes = block.extract(self.key, self._start, self._end)
-                # There are code paths that first extract as fulltext, and then
-                # extract as storage_kind (smart fetch). So we don't break the
-                # refcycle here, but instead in manager.get_record_stream()
+                self._extract_bytes()
             if storage_kind == 'fulltext':
                 return self._bytes
             elif storage_kind == 'chunked':
                 return [self._bytes]
             else:
                 return osutils.split_lines(self._bytes)
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
+
+    def iter_bytes_as(self, storage_kind):
+        if self._bytes is None:
+            self._extract_bytes()
+        if storage_kind == 'chunked':
+            return iter([self._bytes])
+        elif storage_kind == 'lines':
+            return osutils.split_lines(self._bytes)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
@@ -1372,7 +1385,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         if keys is None:
             keys = self.keys()
             for record in self.get_record_stream(keys, 'unordered', True):
-                record.get_bytes_as('chunked')
+                for chunk in record.iter_bytes_as('chunked'):
+                    pass
         else:
             return self.get_record_stream(keys, 'unordered', True)
 
@@ -1674,7 +1688,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             else:
                 if record.storage_kind != 'absent':
                     result[record.key] = osutils.sha_strings(
-                        record.get_bytes_as('chunked'))
+                        record.iter_bytes_as('chunked'))
         return result
 
     def insert_record_stream(self, stream):
@@ -1758,8 +1772,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             #       the fulltext content at this point. Note that sometimes we
             #       will want it later (streaming CHK pages), but most of the
             #       time we won't (everything else)
-            index, start, length = self._access.add_raw_records(
-                [(None, bytes_len)], chunks)[0]
+            index, start, length = self._access.add_raw_record(
+                None, bytes_len, chunks)
             nodes = []
             for key, reads, refs in keys_to_add:
                 nodes.append((key, b"%d %d %s" % (start, length, reads), refs))
@@ -1804,8 +1818,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     # Insert the raw block into the target repo
                     insert_manager = record._manager
                     bytes_len, chunks = record._manager._block.to_chunks()
-                    _, start, length = self._access.add_raw_records(
-                        [(None, bytes_len)], chunks)[0]
+                    _, start, length = self._access.add_raw_record(
+                        None, bytes_len, chunks)
                     block_start = start
                     block_length = length
                 if record.storage_kind in ('groupcompress-block',
@@ -1922,8 +1936,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 pb.update('Walking content', key_idx, total)
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(key, self)
-            lines = record.get_bytes_as('lines')
-            for line in lines:
+            for line in record.iter_bytes_as('lines'):
                 yield line, key
         if pb is not None:
             pb.update('Walking content', total, total)

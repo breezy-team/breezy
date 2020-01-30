@@ -68,6 +68,14 @@ class GitBlobContentFactory(object):
         raise UnavailableRepresentation(self.key, storage_kind,
                                         self.storage_kind)
 
+    def iter_bytes_as(self, storage_kind):
+        if storage_kind == 'lines':
+            return osutils.chunks_to_lines(self.store[self.blob_id].as_raw_chunks())
+        elif storage_kind == 'chunked':
+            return iter(self.store[self.blob_id].as_raw_chunks())
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
+
 
 class GitAbsentContentFactory(object):
     """Absent data content factory.
@@ -91,6 +99,9 @@ class GitAbsentContentFactory(object):
         self.size = None
 
     def get_bytes_as(self, storage_kind):
+        raise ValueError
+
+    def iter_bytes_as(self, storage_kind):
         raise ValueError
 
 
