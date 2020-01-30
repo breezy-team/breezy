@@ -59,6 +59,7 @@ from .http_utils import TestCaseWithWebserver
 from ..transport.memory import MemoryTransport
 from ..bzr import versionedfile as versionedfile
 from ..bzr.versionedfile import (
+    ChunkedContentFactory,
     ConstantMapper,
     HashEscapedPrefixMapper,
     PrefixMapper,
@@ -909,6 +910,7 @@ class TestPlanMergeVersionedFile(TestCaseWithMemoryTransport):
             return next(self.plan_merge_vf.get_record_stream(
                 [(b'root', suffix)], 'unordered', True))
         self.assertEqual(b'a', get_record(b'A').get_bytes_as('fulltext'))
+        self.assertEqual(b'a', b''.join(get_record(b'A').iter_bytes_as('chunked')))
         self.assertEqual(b'c', get_record(b'C').get_bytes_as('fulltext'))
         self.assertEqual(b'e', get_record(b'E:').get_bytes_as('fulltext'))
         self.assertEqual('absent', get_record('F').storage_kind)
@@ -1546,11 +1548,16 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         key1 = self.get_simple_key(b'r1')
         key2 = self.get_simple_key(b'r2')
         keyf = self.get_simple_key(b'foo')
-        f.add_chunks(key0, [], [b'a', b'\nb\n'])
+        def add_chunks(key, parents, chunks):
+            factory = ChunkedContentFactory(
+                key, parents, osutils.sha_strings(chunks), chunks)
+            return f.add_content(factory)
+
+        add_chunks(key0, [], [b'a', b'\nb\n'])
         if self.graph:
-            f.add_chunks(key1, [key0], [b'b', b'\n', b'c\n'])
+            add_chunks(key1, [key0], [b'b', b'\n', b'c\n'])
         else:
-            f.add_chunks(key1, [], [b'b\n', b'c\n'])
+            add_chunks(key1, [], [b'b\n', b'c\n'])
         keys = f.keys()
         self.assertIn(key0, keys)
         self.assertIn(key1, keys)
@@ -1934,6 +1941,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             ft_bytes = factory.get_bytes_as('fulltext')
             self.assertIsInstance(ft_bytes, bytes)
             chunked_bytes = factory.get_bytes_as('chunked')
+            self.assertEqualDiff(ft_bytes, b''.join(chunked_bytes))
+            chunked_bytes = factory.iter_bytes_as('chunked')
             self.assertEqualDiff(ft_bytes, b''.join(chunked_bytes))
 
         self.assertStreamOrder(sort_order, seen, keys)

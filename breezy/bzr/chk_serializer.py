@@ -162,8 +162,8 @@ class CHKSerializer(serializer.Serializer):
                                                    return_from_cache)
         return inv
 
-    def read_inventory_from_string(self, xml_string, revision_id=None,
-                                   entry_cache=None, return_from_cache=False):
+    def read_inventory_from_lines(self, xml_lines, revision_id=None,
+                                  entry_cache=None, return_from_cache=False):
         """Read xml_string into an inventory object.
 
         :param xml_string: The xml to read.
@@ -179,7 +179,7 @@ class CHKSerializer(serializer.Serializer):
         """
         try:
             return self._unpack_inventory(
-                xml_serializer.fromstring(xml_string), revision_id,
+                xml_serializer.fromstringlist(xml_lines), revision_id,
                 entry_cache=entry_cache,
                 return_from_cache=return_from_cache)
         except xml_serializer.ParseError as e:
@@ -200,15 +200,9 @@ class CHKSerializer(serializer.Serializer):
         """Return a list of lines with the encoded inventory."""
         return self.write_inventory(inv, None)
 
-    def write_inventory_to_string(self, inv, working=False):
-        """Just call write_inventory with a BytesIO and return the value.
-
-        :param working: If True skip history data - text_sha1, text_size,
-            reference_revision, symlink_target.
-        """
-        sio = BytesIO()
-        self.write_inventory(inv, sio, working)
-        return sio.getvalue()
+    def write_inventory_to_chunks(self, inv):
+        """Return a list of lines with the encoded inventory."""
+        return self.write_inventory(inv, None)
 
     def write_inventory(self, inv, f, working=False):
         """Write inventory to a file.

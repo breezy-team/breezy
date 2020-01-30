@@ -75,15 +75,18 @@ class TestFilteredInput(TestCase):
         # test an empty stack returns the same result
         external = b''.join(_sample_external)
         f = BytesIO(external)
-        self.assertEqual(external, filtered_input_file(f, None).read())
+        (fileobj, size) = filtered_input_file(f, [])
+        self.assertEqual((external, 12), (fileobj.read(), size))
         # test a single item filter stack
         f = BytesIO(external)
         expected = b''.join(_internal_1)
-        self.assertEqual(expected, filtered_input_file(f, _stack_1).read())
+        (fileobj, size) = filtered_input_file(f, _stack_1)
+        self.assertEqual((expected, 12), (fileobj.read(), size))
         # test a multi item filter stack
         f = BytesIO(external)
         expected = b''.join(_internal_2)
-        self.assertEqual(expected, filtered_input_file(f, _stack_2).read())
+        (fileobj, size) = filtered_input_file(f, _stack_2)
+        self.assertEqual((expected, 17), (fileobj.read(), size))
 
 
 class TestFilteredOutput(TestCase):
@@ -111,8 +114,8 @@ class TestFilteredSha(TestCaseInTempDir):
         expected_len = len(post_filtered_content)
         expected_sha = sha_string(post_filtered_content)
         self.assertEqual((expected_len, expected_sha),
-                         internal_size_sha_file_byname('a',
-                                                       [ContentFilter(_swapcase, _swapcase)]))
+                         internal_size_sha_file_byname(
+                             'a', [ContentFilter(_swapcase, _swapcase)]))
 
 
 class TestFilterStackMaps(TestCase):

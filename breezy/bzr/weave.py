@@ -184,6 +184,12 @@ class WeaveContentFactory(ContentFactory):
         else:
             raise UnavailableRepresentation(self.key, storage_kind, 'fulltext')
 
+    def iter_bytes_as(self, storage_kind):
+        if storage_kind in ('chunked', 'lines'):
+            return iter(self._weave.get_lines(self.key[-1]))
+        else:
+            raise UnavailableRepresentation(self.key, storage_kind, 'fulltext')
+
 
 class Weave(VersionedFile):
     """weave - versioned text file storage.

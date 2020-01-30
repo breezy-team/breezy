@@ -137,6 +137,15 @@ class ChunkedContentFactory(ContentFactory):
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
+    def iter_bytes_as(self, storage_kind):
+        if storage_kind == 'chunked':
+            return iter(self._chunks)
+        elif storage_kind == 'lines':
+            if self._chunks_are_lines:
+                return iter(self._chunks)
+            return osutils.chunks_to_lines(self._chunks)
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
 
 class FulltextContentFactory(ContentFactory):
     """Static data content factory.
@@ -175,25 +184,26 @@ class FulltextContentFactory(ContentFactory):
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
+    def iter_bytes_as(self, storage_kind):
+        if storage_kind == 'chunked':
+            return iter([self._text])
+        elif storage_kind == 'lines':
+            return iter(osutils.split_lines(self._text))
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
+
 
 class FileContentFactory(ContentFactory):
     """File-based content factory.
     """
 
-    def __init__(self, key, parents, fileobj):
+    def __init__(self, key, parents, fileobj, sha1=None, size=None):
         self.key = key
         self.parents = parents
         self.file = fileobj
         self.storage_kind = 'file'
-        self._sha1 = None
-        self._size = None
-
-    @property
-    def sha1(self):
-        if self._sha1 is None:
-            self.file.seek(0)
-            self._size, self._sha1 = osutils.size_sha_file(self.file)
-        return self._sha1
+        self.sha1 = sha1
+        self.size = size
 
     def get_bytes_as(self, storage_kind):
         self.file.seek(0)
@@ -202,7 +212,16 @@ class FileContentFactory(ContentFactory):
         elif storage_kind == 'chunked':
             return list(osutils.file_iterator(self.file))
         elif storage_kind == 'lines':
-            return self.file.readlines()
+            return list(self.file.readlines())
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
+
+    def iter_bytes_as(self, storage_kind):
+        self.file.seek(0)
+        if storage_kind == 'chunked':
+            return osutils.file_iterator(self.file)
+        elif storage_kind == 'lines':
+            return self.file
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
@@ -226,6 +245,12 @@ class AbsentContentFactory(ContentFactory):
         self.parents = None
 
     def get_bytes_as(self, storage_kind):
+        raise ValueError('A request was made for key: %s, but that'
+                         ' content is not available, and the calling'
+                         ' code does not handle if it is missing.'
+                         % (self.key,))
+
+    def iter_bytes_as(self, storage_kind):
         raise ValueError('A request was made for key: %s, but that'
                          ' content is not available, and the calling'
                          ' code does not handle if it is missing.'
@@ -769,6 +794,15 @@ class RecordingVersionedFilesDecorator(object):
         return self._backing_vf.add_lines(key, parents, lines, parent_texts,
                                           left_matching_blocks, nostore_sha, random_id, check_content)
 
+    def add_content(self, factory, parent_texts=None,
+                    left_matching_blocks=None, nostore_sha=None, random_id=False,
+                    check_content=True):
+        self.calls.append(("add_content", factory, parent_texts,
+                           left_matching_blocks, nostore_sha, random_id, check_content))
+        return self._backing_vf.add_content(
+            factory, parent_texts, left_matching_blocks, nostore_sha,
+            random_id, check_content)
+
     def check(self):
         self._backing_vf.check()
 
@@ -1024,9 +1058,9 @@ class VersionedFiles(object):
         """
         raise NotImplementedError(self.add_lines)
 
-    def add_chunks(self, key, parents, chunk_iter, parent_texts=None,
-                   left_matching_blocks=None, nostore_sha=None, random_id=False,
-                   check_content=True):
+    def add_content(self, factory, parent_texts=None,
+                    left_matching_blocks=None, nostore_sha=None, random_id=False,
+                    check_content=True):
         """Add a text to the store from a chunk iterable.
 
         :param key: The key tuple of the text to add. If the last element is
@@ -1054,7 +1088,7 @@ class VersionedFiles(object):
                  representation of the inserted version which can be provided
                  back to future add_lines calls in the parent_texts dictionary.
         """
-        raise NotImplementedError(self.add_chunks)
+        raise NotImplementedError(self.add_content)
 
     def add_mpdiffs(self, records):
         """Add mpdiffs to this VersionedFile.
@@ -1277,14 +1311,16 @@ class ThunkedVersionedFiles(VersionedFiles):
         self._mapper = mapper
         self._is_locked = is_locked
 
-    def add_chunks(self, key, parents, chunk_iter, parent_texts=None,
-                   left_matching_blocks=None, nostore_sha=None,
-                   random_id=False):
-        # For now, just fallback to add_lines.
-        lines = osutils.chunks_to_lines(list(chunk_iter))
+    def add_content(self, factory, parent_texts=None,
+                    left_matching_blocks=None, nostore_sha=None, random_id=False):
+        """See VersionedFiles.add_content()."""
+        lines = factory.get_bytes_as('lines')
         return self.add_lines(
-            key, parents, lines, parent_texts,
-            left_matching_blocks, nostore_sha, random_id,
+            factory.key, factory.parents, lines,
+            parent_texts=parent_texts,
+            left_matching_blocks=left_matching_blocks,
+            nostore_sha=nostore_sha,
+            random_id=random_id,
             check_content=True)
 
     def add_lines(self, key, parents, lines, parent_texts=None,
@@ -1563,6 +1599,10 @@ class _PlanMergeVersionedFile(VersionedFiles):
         old_plan = _PlanLCAMerge(
             ver_a, base, self, (self._file_id,), graph).plan_merge()
         return _PlanLCAMerge._subtract_plans(list(old_plan), list(new_plan))
+
+    def add_content(self, factory):
+        return self.add_lines(
+            factory.key, factory.parents, factory.get_bytes_as('lines'))
 
     def add_lines(self, key, parents, lines):
         """See VersionedFiles.add_lines
