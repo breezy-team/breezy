@@ -1404,7 +1404,7 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
             statvalue = os.fstat(file_obj.fileno())
             if filters:
                 file_obj, size = _mod_filters.filtered_input_file(file_obj, filters)
-                statvalue = FilteredStat(statvalue, size)
+                statvalue = _mod_filters.FilteredStat(statvalue, size)
             sha1 = osutils.size_sha_file(file_obj)[1]
         return statvalue, sha1
 
