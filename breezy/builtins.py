@@ -750,6 +750,13 @@ class cmd_add(Command):
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
             file_ids_from=None):
         import breezy.add
+        tree, file_list = tree_files_for_add(file_list)
+
+        if file_ids_from is not None and not tree.supports_setting_file_ids():
+            warning(
+                gettext('Ignoring --file-ids-from, since the tree does not '
+                        'support setting file ids.'))
+            file_ids_from = None
 
         base_tree = None
         if file_ids_from is not None:
@@ -770,7 +777,6 @@ class cmd_add(Command):
 
         if base_tree:
             self.enter_context(base_tree.lock_read())
-        tree, file_list = tree_files_for_add(file_list)
         added, ignored = tree.smart_add(
             file_list, not no_recurse, action=action, save=not dry_run)
         self.cleanup_now()
