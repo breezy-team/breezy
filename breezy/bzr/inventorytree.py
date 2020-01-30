@@ -302,6 +302,7 @@ class InventoryTree(Tree):
 
     def _get_file_revision(self, path, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
+        from . import versionedfile
         last_revision = tree_revision
         parent_keys = [
             (file_id, t.get_file_revision(path)) for t in
