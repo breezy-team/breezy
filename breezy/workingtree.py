@@ -368,7 +368,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
-            file_obj = _mod_filters.filtered_input_file(file_obj, filters)
+            if filters:
+                file_obj, size = _mod_filters.filtered_input_file(
+                    file_obj, filters)
+                stat_value = _mod_filters.FilteredStat(
+                    stat_value, st_size=size)
         return (file_obj, stat_value)
 
     def get_file_text(self, path, filtered=True):

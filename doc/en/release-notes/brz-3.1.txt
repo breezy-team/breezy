@@ -172,6 +172,10 @@ API Changes
   that determines whether it scans through nested trees.
   (Jelmer Vernooĳ)
 
+* ``VersionedFiles.add_content`` can now be used to add
+  content from ``ContentFactory`` objects.
+  (Jelmer Vernooĳ)
+
 
 Internals
 *********

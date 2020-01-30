@@ -62,7 +62,7 @@ class GitBlobContentFactory(object):
         if storage_kind == 'fulltext':
             return self.store[self.blob_id].as_raw_string()
         elif storage_kind == 'lines':
-            return osutils.chunks_to_lines(self.store[self.blob_id].as_raw_chunks())
+            return list(osutils.chunks_to_lines(self.store[self.blob_id].as_raw_chunks()))
         elif storage_kind == 'chunked':
             return self.store[self.blob_id].as_raw_chunks()
         raise UnavailableRepresentation(self.key, storage_kind,

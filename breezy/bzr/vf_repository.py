@@ -476,12 +476,12 @@ class VersionedFileCommitBuilder(CommitBuilder):
                     carry_over_possible = False
                 # Populate the entry in the delta
                 if kind == 'file':
-                    # XXX: There is still a small race here: If someone reverts the content of a file
-                    # after iter_changes examines and decides it has changed,
-                    # we will unconditionally record a new version even if some
-                    # other process reverts it while commit is running (with
-                    # the revert happening after iter_changes did its
-                    # examination).
+                    # XXX: There is still a small race here: If someone reverts
+                    # the content of a file after iter_changes examines and
+                    # decides it has changed, we will unconditionally record a
+                    # new version even if some other process reverts it while
+                    # commit is running (with the revert happening after
+                    # iter_changes did its examination).
                     if change.executable[1]:
                         entry.executable = True
                     else:
@@ -496,7 +496,8 @@ class VersionedFileCommitBuilder(CommitBuilder):
                     file_obj, stat_value = tree.get_file_with_stat(change.path[1])
                     try:
                         entry.text_sha1, entry.text_size = self._add_file_to_weave(
-                            file_id, file_obj, heads, nostore_sha)
+                            file_id, file_obj, heads, nostore_sha,
+                            size=(stat_value.st_size if stat_value else None))
                         yield change.path[1], (entry.text_sha1, stat_value)
                     except errors.ExistingContent:
                         # No content change against a carry_over parent
@@ -516,7 +517,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         carried_over = True
                     else:
                         self._add_file_to_weave(
-                            change.file_id, BytesIO(), heads, None)
+                            change.file_id, BytesIO(), heads, None, size=0)
                 elif kind == 'directory':
                     if carry_over_possible:
                         carried_over = True
@@ -525,7 +526,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         # XXX: split into the Root and nonRoot versions.
                         if change.path[1] != '' or self.repository.supports_rich_root():
                             self._add_file_to_weave(
-                                change.file_id, BytesIO(), heads, None)
+                                change.file_id, BytesIO(), heads, None, size=0)
                 elif kind == 'tree-reference':
                     if not self.repository._format.supports_tree_reference:
                         # This isn't quite sane as an error, but we shouldn't
@@ -543,7 +544,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                         carried_over = True
                     else:
                         self._add_file_to_weave(
-                            change.file_id, BytesIO(), heads, None)
+                            change.file_id, BytesIO(), heads, None, size=0)
                 else:
                     raise AssertionError('unknown kind %r' % kind)
                 if not carried_over:
@@ -569,11 +570,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
             self._require_root_change(tree)
         self.basis_delta_revision = basis_revision_id
 
-    def _add_file_to_weave(self, file_id, fileobj, parents, nostore_sha):
+    def _add_file_to_weave(self, file_id, fileobj, parents, nostore_sha, size):
         parent_keys = tuple([(file_id, parent) for parent in parents])
-        return self.repository.texts.add_chunks(
-            (file_id, self._new_revision_id), parent_keys,
-            osutils.file_iterator(fileobj),
+        return self.repository.texts.add_content(
+            versionedfile.FileContentFactory(
+                (file_id, self._new_revision_id), parent_keys, fileobj, size=size),
             nostore_sha=nostore_sha, random_id=self.random_revid)[0:2]
 
 

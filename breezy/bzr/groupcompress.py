@@ -1308,19 +1308,18 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         if check_content:
             self._check_lines_not_unicode(lines)
             self._check_lines_are_lines(lines)
-        return self.add_chunks(
-            key, parents, iter(lines), parent_texts, left_matching_blocks,
-            nostore_sha, random_id)
+        return self.add_content(
+            ChunkedContentFactory(
+                key, parents, osutils.sha_strings(lines), lines, chunks_are_lines=True),
+            parent_texts, left_matching_blocks, nostore_sha, random_id)
 
-    def add_chunks(self, key, parents, chunk_iter, parent_texts=None,
-                   left_matching_blocks=None, nostore_sha=None, random_id=False):
+    def add_content(self, factory, parent_texts=None,
+                    left_matching_blocks=None, nostore_sha=None,
+                    random_id=False):
         """Add a text to the store.
 
-        :param key: The key tuple of the text to add.
-        :param parents: The parents key tuples of the text to add.
-        :param chunk_iter: An iterator over chunks. Chunks
-            don't need to be file lines; the only requirement is that they
-            are bytes.
+        :param factory: A ContentFactory that can be used to retrieve the key,
+            parents and contents.
         :param parent_texts: An optional dictionary containing the opaque
             representations of some or all of the parents of version_id to
             allow delta optimisations.  VERY IMPORTANT: the texts must be those
@@ -1341,20 +1340,17 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                  back to future add_lines calls in the parent_texts dictionary.
         """
         self._index._check_write_ok()
-        self._check_add(key, random_id)
+        parents = factory.parents
+        self._check_add(factory.key, random_id)
         if parents is None:
             # The caller might pass None if there is no graph data, but kndx
             # indexes can't directly store that, so we give them
             # an empty tuple instead.
             parents = ()
         # double handling for now. Make it work until then.
-        # TODO(jelmer): problematic for big files: let's not keep the list of
-        # chunks in memory.
-        chunks = list(chunk_iter)
-        record = ChunkedContentFactory(key, parents, None, chunks)
-        sha1, size = list(self._insert_record_stream(
-            [record], random_id=random_id, nostore_sha=nostore_sha))[0]
-        return sha1, size, None
+        sha1, length = list(self._insert_record_stream(
+            [factory], random_id=random_id, nostore_sha=nostore_sha))[0]
+        return sha1, length, None
 
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
@@ -1692,7 +1688,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         # test_insert_record_stream_existing_keys fail for groupcompress and
         # groupcompress-nograph, this needs to be revisited while addressing
         # 'bzr branch' performance issues.
-        for _ in self._insert_record_stream(stream, random_id=False):
+        for _, _ in self._insert_record_stream(stream, random_id=False):
             pass
 
     def _get_compressor_settings(self):
@@ -1732,7 +1728,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         :param reuse_blocks: If the source is streaming from
             groupcompress-blocks, just insert the blocks as-is, rather than
             expanding the texts and inserting again.
-        :return: An iterator over the sha1 of the inserted records.
+        :return: An iterator over (sha1, length) of the inserted records.
         :seealso insert_record_stream:
         :seealso add_lines:
         """
@@ -1838,6 +1834,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             chunks_len = record.size
             if chunks_len is None:
                 chunks_len = sum(map(len, chunks))
+            assert sum(map(len, chunks)) == chunks_len, '%r %r' % (sum(map(len, chunks)), record.size)
             if len(record.key) > 1:
                 prefix = record.key[0]
                 soft = (prefix == last_prefix)

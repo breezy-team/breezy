@@ -1018,18 +1018,22 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                          parent_texts, left_matching_blocks, nostore_sha, random_id,
                          line_bytes=line_bytes)
 
-    def add_chunks(self, key, parents, chunk_iter, parent_texts=None,
-                   left_matching_blocks=None, nostore_sha=None, random_id=False):
-        """See VersionedFiles.add_chunks()."""
+    def add_content(self, content_factory, parent_texts=None,
+                    left_matching_blocks=None, nostore_sha=None,
+                    random_id=False):
+        """See VersionedFiles.add_content()."""
         self._index._check_write_ok()
+        key = content_factory.key
+        parents = content_factory.parents
         self._check_add(key, None, random_id, check_content=False)
         if parents is None:
             # The caller might pass None if there is no graph data, but kndx
             # indexes can't directly store that, so we give them
             # an empty tuple instead.
             parents = ()
-        line_bytes = b''.join(chunk_iter)
-        return self._add(key, None, parents,
+        lines = content_factory.get_bytes_as('lines')
+        line_bytes = content_factory.get_bytes_as('fulltext')
+        return self._add(key, lines, parents,
                          parent_texts, left_matching_blocks, nostore_sha, random_id,
                          line_bytes=line_bytes)
 

@@ -412,9 +412,8 @@ class GCCHKPacker(Packer):
         self.pb.update('repacking %s' % (message,), pb_offset)
         with ui.ui_factory.nested_progress_bar() as child_pb:
             stream = vf_to_stream(source_vf, keys, message, child_pb)
-            for _ in target_vf._insert_record_stream(stream,
-                                                     random_id=True,
-                                                     reuse_blocks=False):
+            for _, _ in target_vf._insert_record_stream(
+                    stream, random_id=True, reuse_blocks=False):
                 pass
 
     def _copy_revision_texts(self):
@@ -467,9 +466,8 @@ class GCCHKPacker(Packer):
         with ui.ui_factory.nested_progress_bar() as child_pb:
             for stream in self._get_chk_streams(source_vf, total_keys,
                                                 pb=child_pb):
-                for _ in target_vf._insert_record_stream(stream,
-                                                         random_id=True,
-                                                         reuse_blocks=False):
+                for _, _ in target_vf._insert_record_stream(
+                        stream, random_id=True, reuse_blocks=False):
                     pass
 
     def _copy_text_texts(self):
