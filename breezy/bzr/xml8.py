@@ -134,15 +134,8 @@ class Serializer_v8(XMLSerializer):
         """Return a list of lines with the encoded inventory."""
         return self.write_inventory(inv, None)
 
-    def write_inventory_to_string(self, inv, working=False):
-        """Just call write_inventory with a BytesIO and return the value.
-
-        :param working: If True skip history data - text_sha1, text_size,
-            reference_revision, symlink_target.
-        """
-        sio = BytesIO()
-        self.write_inventory(inv, sio, working)
-        return sio.getvalue()
+    def write_inventory_to_chunks(self, inv):
+        return self.write_inventory(inv, None)
 
     def write_inventory(self, inv, f, working=False):
         """Write inventory to a file.

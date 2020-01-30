@@ -40,7 +40,7 @@ from ..inventory import (
     InventoryFile,
     InventoryLink,
     )
-from ...osutils import sha_string, pathjoin
+from ...osutils import sha_string, sha_strings, pathjoin
 from ...revision import Revision, NULL_REVISION
 from ...sixish import (
     viewitems,
@@ -286,15 +286,15 @@ class BundleInfo(object):
         so build up an inventory, and make sure the hashes match.
         """
         # Now we should have a complete inventory entry.
-        s = serializer_v5.write_inventory_to_string(inv)
-        sha1 = sha_string(s)
+        cs = serializer_v5.write_inventory_to_chunks(inv)
+        sha1 = sha_strings(cs)
         # Target revision is the last entry in the real_revisions list
         rev = self.get_revision(revision_id)
         if rev.revision_id != revision_id:
             raise AssertionError()
         if sha1 != rev.inventory_sha1:
             with open(',,bogus-inv', 'wb') as f:
-                f.write(s)
+                f.writelines(cs)
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 

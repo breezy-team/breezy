@@ -37,9 +37,11 @@ except ImportError:
     except ImportError:
         from xml.parsers.expat import ExpatError as ParseError
 
-(ElementTree, SubElement, Element, fromstring, tostring) = (
+(ElementTree, SubElement, Element, fromstringlist, tostringlist, tostring,
+        fromstring) = (
     elementtree.ElementTree, elementtree.SubElement, elementtree.Element,
-    elementtree.fromstring, elementtree.tostring)
+    elementtree.fromstringlist, elementtree.tostringlist, elementtree.tostring,
+    elementtree.fromstring)
 
 
 from .. import (
@@ -59,11 +61,11 @@ class XMLSerializer(serializer.Serializer):
 
     squashes_xml_invalid_characters = True
 
-    def read_inventory_from_string(self, xml_string, revision_id=None,
-                                   entry_cache=None, return_from_cache=False):
+    def read_inventory_from_lines(self, lines, revision_id=None,
+                                  entry_cache=None, return_from_cache=False):
         """Read xml_string into an inventory object.
 
-        :param xml_string: The xml to read.
+        :param chunks: The xml to read.
         :param revision_id: If not-None, the expected revision id of the
             inventory. Some serialisers use this to set the results' root
             revision. This should be supplied for deserialising all
@@ -80,7 +82,7 @@ class XMLSerializer(serializer.Serializer):
             make some operations significantly faster.
         """
         try:
-            return self._unpack_inventory(fromstring(xml_string), revision_id,
+            return self._unpack_inventory(fromstringlist(lines), revision_id,
                                           entry_cache=entry_cache,
                                           return_from_cache=return_from_cache)
         except ParseError as e:
