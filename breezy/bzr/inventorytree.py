@@ -302,12 +302,15 @@ class InventoryTree(Tree):
 
     def _get_file_revision(self, path, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
+        from . import versionedfile
         last_revision = tree_revision
         parent_keys = [
             (file_id, t.get_file_revision(path)) for t in
             self._iter_parent_trees()]
-        vf.add_lines((file_id, last_revision), parent_keys,
-                     self.get_file_lines(path))
+        with self.get_file(path) as f:
+            vf.add_content(
+                versionedfile.FileContentFactory(
+                    (file_id, last_revision), parent_keys, f, size=osutils.filesize(f)))
         repo = self.branch.repository
         base_vf = repo.texts
         if base_vf not in vf.fallback_versionedfiles:

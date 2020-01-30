@@ -59,6 +59,7 @@ from .http_utils import TestCaseWithWebserver
 from ..transport.memory import MemoryTransport
 from ..bzr import versionedfile as versionedfile
 from ..bzr.versionedfile import (
+    ChunkedContentFactory,
     ConstantMapper,
     HashEscapedPrefixMapper,
     PrefixMapper,
@@ -1547,11 +1548,16 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         key1 = self.get_simple_key(b'r1')
         key2 = self.get_simple_key(b'r2')
         keyf = self.get_simple_key(b'foo')
-        f.add_chunks(key0, [], [b'a', b'\nb\n'])
+        def add_chunks(key, parents, chunks):
+            factory = ChunkedContentFactory(
+                key, parents, osutils.sha_strings(chunks), chunks)
+            return f.add_content(factory)
+
+        add_chunks(key0, [], [b'a', b'\nb\n'])
         if self.graph:
-            f.add_chunks(key1, [key0], [b'b', b'\n', b'c\n'])
+            add_chunks(key1, [key0], [b'b', b'\n', b'c\n'])
         else:
-            f.add_chunks(key1, [], [b'b\n', b'c\n'])
+            add_chunks(key1, [], [b'b\n', b'c\n'])
         keys = f.keys()
         self.assertIn(key0, keys)
         self.assertIn(key1, keys)
