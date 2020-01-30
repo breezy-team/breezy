@@ -348,7 +348,7 @@ class LocalGitRepository(GitRepository):
             o = self._git.object_store[sha]
             if not isinstance(o, Commit):
                 continue
-            revid = mapping.revision_id_foreign_to_bzr(o)
+            revid = mapping.revision_id_foreign_to_bzr(o.id)
             yield o.id, revid
 
     def all_revision_ids(self):
