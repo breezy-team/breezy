@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
+
 from ...bzr.bzrdir import (
     BzrDir,
     BzrDirFormat,
@@ -311,9 +313,9 @@ class ConvertBzrDir4To5(Converter):
     def _convert_working_inv(self):
         inv = xml4.serializer_v4.read_inventory(
             self.branch._transport.get('inventory'))
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_chunks(
-            inv, working=True)
-        self.branch._transport.put_bytes('inventory', b''.join(new_inv_xml),
+        f = BytesIO()
+        xml5.serializer_v5.write_inventory(inv, f, working=True)
+        self.branch._transport.put_bytes('inventory', f.getvalue(),
                                          mode=self.controldir._get_file_mode())
 
     def _write_all_weaves(self):

@@ -28,7 +28,7 @@ import re
 
 try:
     import xml.etree.cElementTree as elementtree
-    ParseError = getattr(elementtree, "ParseError", SyntaxError)
+    from xml.etree.ElementTree import ParseError
 except ImportError:
     # Fall back to pure python implementation if C extension is unavailable
     import xml.etree.ElementTree as elementtree
@@ -38,7 +38,7 @@ except ImportError:
         from xml.parsers.expat import ExpatError as ParseError
 
 (ElementTree, SubElement, Element, fromstringlist, tostringlist, tostring,
-        fromstring) = (
+ fromstring) = (
     elementtree.ElementTree, elementtree.SubElement, elementtree.Element,
     elementtree.fromstringlist, elementtree.tostringlist, elementtree.tostring,
     elementtree.fromstring)

@@ -474,7 +474,7 @@ class TestSerializer(TestCase):
         self.assertIsInstance(rev.message, text_type)
 
         # ie.revision should either be None or a utf-8 revision id
-        inv = s_v5.read_inventory_from_lines(osutils.split_lines(_inventory_utf8_v5))
+        inv = s_v5.read_inventory_from_lines(breezy.osutils.split_lines(_inventory_utf8_v5))
         rev_id_1 = u'erik@b\xe5gfors-01'.encode('utf8')
         rev_id_2 = u'erik@b\xe5gfors-02'.encode('utf8')
         fid_root = u'TRE\xe9_ROOT'.encode('utf8')
