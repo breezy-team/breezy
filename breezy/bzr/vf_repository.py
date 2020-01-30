@@ -854,7 +854,7 @@ class VersionedFileRepository(Repository):
         if kind == 'inventories':
             rev_id = record.key[0]
             inv = self._deserialise_inventory(
-                rev_id, record.get_bytes_as('fulltext'))
+                rev_id, record.get_bytes_as('lines'))
             if last_object is not None:
                 delta = inv._make_delta(last_object)
                 for old_path, path, file_id, ie in delta:
@@ -1468,11 +1468,11 @@ class VersionedFileRepository(Repository):
     def _iter_inventories(self, revision_ids, ordering):
         """single-document based inventory iteration."""
         inv_xmls = self._iter_inventory_xmls(revision_ids, ordering)
-        for text, revision_id in inv_xmls:
-            if text is None:
+        for lines, revision_id in inv_xmls:
+            if lines is None:
                 yield None, revision_id
             else:
-                yield self._deserialise_inventory(revision_id, text), revision_id
+                yield self._deserialise_inventory(revision_id, lines), revision_id
 
     def _iter_inventory_xmls(self, revision_ids, ordering):
         if ordering is None:
@@ -1487,21 +1487,21 @@ class VersionedFileRepository(Repository):
             key_iter = iter(keys)
             next_key = next(key_iter)
         stream = self.inventories.get_record_stream(keys, ordering, True)
-        text_chunks = {}
+        text_lines = {}
         for record in stream:
             if record.storage_kind != 'absent':
-                chunks = record.get_bytes_as('chunked')
+                lines = record.get_bytes_as('lines')
                 if order_as_requested:
-                    text_chunks[record.key] = chunks
+                    text_lines[record.key] = lines
                 else:
-                    yield b''.join(chunks), record.key[-1]
+                    yield lines, record.key[-1]
             else:
                 yield None, record.key[-1]
             if order_as_requested:
                 # Yield as many results as we can while preserving order.
-                while next_key in text_chunks:
-                    chunks = text_chunks.pop(next_key)
-                    yield b''.join(chunks), next_key[-1]
+                while next_key in text_lines:
+                    lines = text_lines.pop(next_key)
+                    yield lines, next_key[-1]
                     try:
                         next_key = next(key_iter)
                     except StopIteration:
@@ -1516,9 +1516,9 @@ class VersionedFileRepository(Repository):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        result = self._serializer.read_inventory_from_string(xml, revision_id,
-                                                             entry_cache=self._inventory_entry_cache,
-                                                             return_from_cache=self._safe_to_return_from_cache)
+        result = self._serializer.read_inventory_from_lines(
+            xml, revision_id, entry_cache=self._inventory_entry_cache,
+            return_from_cache=self._safe_to_return_from_cache)
         if result.revision_id != revision_id:
             raise AssertionError('revision id mismatch %s != %s' % (
                 result.revision_id, revision_id))
@@ -1531,10 +1531,10 @@ class VersionedFileRepository(Repository):
         """Get serialized inventory as a string."""
         with self.lock_read():
             texts = self._iter_inventory_xmls([revision_id], 'unordered')
-            text, revision_id = next(texts)
-            if text is None:
+            lines, revision_id = next(texts)
+            if lines is None:
                 raise errors.NoSuchRevision(self, revision_id)
-            return text
+            return lines
 
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
@@ -1962,9 +1962,9 @@ class StreamSink(object):
         for record in substream:
             # It's not a delta, so it must be a fulltext in the source
             # serializer's format.
-            bytes = record.get_bytes_as('fulltext')
+            lines = record.get_bytes_as('lines')
             revision_id = record.key[0]
-            inv = serializer.read_inventory_from_string(bytes, revision_id)
+            inv = serializer.read_inventory_from_lines(lines, revision_id)
             parents = [key[0] for key in record.parents]
             self.target_repo.add_inventory(revision_id, inv, parents)
             # No need to keep holding this full inv in memory when the rest of

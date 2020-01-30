@@ -3536,9 +3536,9 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
 
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
-            text = fmt._serializer.write_inventory_to_string(inv)
-            yield versionedfile.FulltextContentFactory(
-                (b'rev1',), (), None, text)
+            chunks = fmt._serializer.write_inventory_to_lines(inv)
+            yield versionedfile.ChunkedContentFactory(
+                (b'rev1',), (), None, chunks, chunks_are_lines=True)
 
         def inventory_delta_substream():
             # An inventory delta.  This can't be streamed via this verb, so it

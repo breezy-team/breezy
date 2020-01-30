@@ -234,9 +234,9 @@ class GCCHKPacker(Packer):
             stream = source_vf.get_record_stream(keys, 'groupcompress', True)
             for idx, record in enumerate(stream):
                 # Inventories should always be with revisions; assume success.
-                bytes = record.get_bytes_as('fulltext')
-                chk_inv = inventory.CHKInventory.deserialise(None, bytes,
-                                                             record.key)
+                lines = record.get_bytes_as('lines')
+                chk_inv = inventory.CHKInventory.deserialise(
+                    None, lines, record.key)
                 if pb is not None:
                     pb.update('inv', idx, total_keys)
                 key = chk_inv.id_to_entry.key()
@@ -664,9 +664,9 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
             search_key_name = None
             for idx, record in enumerate(stream):
                 # Inventories should always be with revisions; assume success.
-                bytes = record.get_bytes_as('fulltext')
+                lines = record.get_bytes_as('lines')
                 chk_inv = inventory.CHKInventory.deserialise(
-                    source_chk_vf, bytes, record.key)
+                    source_chk_vf, lines, record.key)
                 if pb is not None:
                     pb.update('inv', idx, total_keys)
                 chk_inv.id_to_entry._ensure_root()
@@ -979,8 +979,8 @@ class CHKInventoryRepository(PackRepository):
             if basis_tree is not None:
                 basis_tree.unlock()
 
-    def _deserialise_inventory(self, revision_id, bytes):
-        return inventory.CHKInventory.deserialise(self.chk_bytes, bytes,
+    def _deserialise_inventory(self, revision_id, lines):
+        return inventory.CHKInventory.deserialise(self.chk_bytes, lines,
                                                   (revision_id,))
 
     def _iter_inventories(self, revision_ids, ordering):
@@ -992,16 +992,16 @@ class CHKInventoryRepository(PackRepository):
         texts = {}
         for record in stream:
             if record.storage_kind != 'absent':
-                texts[record.key] = record.get_bytes_as('fulltext')
+                texts[record.key] = record.get_bytes_as('lines')
             else:
                 texts[record.key] = None
         for key in keys:
-            bytes = texts[key]
-            if bytes is None:
+            lines = texts[key]
+            if lines is None:
                 yield (None, key[-1])
             else:
                 yield (inventory.CHKInventory.deserialise(
-                    self.chk_bytes, bytes, key), key[-1])
+                    self.chk_bytes, lines, key), key[-1])
 
     def _get_inventory_xml(self, revision_id):
         """Get serialized inventory as a string."""
@@ -1010,7 +1010,7 @@ class CHKInventoryRepository(PackRepository):
         # it allowing _get_inventory_xml to work. Bundles currently use the
         # serializer directly; this also isn't ideal, but there isn't an xml
         # iteration interface offered at all for repositories.
-        return self._serializer.write_inventory_to_string(
+        return self._serializer.write_inventory_to_lines(
             self.get_inventory(revision_id))
 
     def _find_present_inventory_keys(self, revision_keys):
@@ -1187,8 +1187,8 @@ class GroupCHKStreamSource(StreamSource):
                         continue
                     else:
                         raise errors.NoSuchRevision(self, record.key)
-                bytes = record.get_bytes_as('fulltext')
-                chk_inv = inventory.CHKInventory.deserialise(None, bytes,
+                lines = record.get_bytes_as('lines')
+                chk_inv = inventory.CHKInventory.deserialise(None, lines,
                                                              record.key)
                 key = chk_inv.id_to_entry.key()
                 if key not in id_roots_set:
