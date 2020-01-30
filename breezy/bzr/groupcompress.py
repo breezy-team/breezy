@@ -1848,7 +1848,6 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             chunks_len = record.size
             if chunks_len is None:
                 chunks_len = sum(map(len, chunks))
-            assert sum(map(len, chunks)) == chunks_len, '%r %r' % (sum(map(len, chunks)), record.size)
             if len(record.key) > 1:
                 prefix = record.key[0]
                 soft = (prefix == last_prefix)
