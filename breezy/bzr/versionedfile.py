@@ -762,6 +762,15 @@ class RecordingVersionedFilesDecorator(object):
         return self._backing_vf.add_lines(key, parents, lines, parent_texts,
                                           left_matching_blocks, nostore_sha, random_id, check_content)
 
+    def add_content(self, factory, parent_texts=None,
+                    left_matching_blocks=None, nostore_sha=None, random_id=False,
+                    check_content=True):
+        self.calls.append(("add_content", factory, parent_texts,
+                           left_matching_blocks, nostore_sha, random_id, check_content))
+        return self._backing_vf.add_content(
+            factory, parent_texts, left_matching_blocks, nostore_sha,
+            random_id, check_content)
+
     def check(self):
         self._backing_vf.check()
 
