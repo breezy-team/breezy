@@ -1192,9 +1192,8 @@ class VersionedFileRepository(Repository):
         stream = self.inventories.get_record_stream(keys, 'unordered', True)
         for record in stream:
             if record.storage_kind != 'absent':
-                lines = record.get_bytes_as('lines')
                 revid = record.key[-1]
-                for line in lines:
+                for line in record.get_bytes_as('lines'):
                     yield line, revid
 
     def _find_file_ids_from_xml_inventory_lines(self, line_iterator,
