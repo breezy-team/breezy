@@ -421,6 +421,9 @@ class KnitContentFactory(ContentFactory):
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
+    def iter_bytes_as(self, storage_kind):
+        return iter(self.get_bytes_as(storage_kind))
+
 
 class LazyKnitContentFactory(ContentFactory):
     """A ContentFactory which can either generate full text or a wire form.
@@ -463,6 +466,13 @@ class LazyKnitContentFactory(ContentFactory):
                 return chunks
             else:
                 return b''.join(chunks)
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
+
+    def iter_bytes_as(self, storage_kind):
+        if storage_kind in ('chunked', 'lines'):
+            chunks = self._generator._get_one_work(self.key).text()
+            return iter(chunks)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
