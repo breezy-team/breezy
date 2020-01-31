@@ -1,19 +1,21 @@
 # Copyright (C) 2006 Aaron Bentley
 # <aaron@aaronbentley.com>
 #
-#    This program is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation; either version 2 of the License, or
-#    (at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 #
-#    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+from __future__ import absolute_import
 
 import re
 import sys
@@ -48,14 +50,14 @@ class DiffWriter(object):
         self.lp = LineParser()
         self.chunks = []
         self.colors = {
-            'metaline':      'darkyellow',
-            'plain':         'darkwhite',
-            'newtext':       'darkblue',
-            'oldtext':       'darkred',
-            'diffstuff':     'darkgreen',
+            'metaline': 'darkyellow',
+            'plain': 'darkwhite',
+            'newtext': 'darkblue',
+            'oldtext': 'darkred',
+            'diffstuff': 'darkgreen',
             'trailingspace': 'yellow',
-            'leadingtabs':   'magenta',
-            'longline':      'cyan',
+            'leadingtabs': 'magenta',
+            'longline': 'cyan',
         }
         self._read_colordiffrc('/etc/colordiffrc')
         self._read_colordiffrc(expanduser('~/.colordiffrc'))
@@ -97,13 +99,14 @@ class DiffWriter(object):
         if color is not None:
             if self.check_style and bad_ws_match:
                 #highlight were needed
-                item.contents = ''.join(terminal.colorstring(txt, color, bcol)
+                item.contents = ''.join(
+                    terminal.colorstring(txt, color, bcol)
                     for txt, bcol in (
                         (bad_ws_match.group(1).expandtabs(),
-                             self.colors['leadingtabs']),
+                         self.colors['leadingtabs']),
                         (bad_ws_match.group(2)[0:self.max_line_len], None),
                         (bad_ws_match.group(2)[self.max_line_len:],
-                             self.colors['longline']),
+                         self.colors['longline']),
                         (bad_ws_match.group(3), self.colors['trailingspace'])
                     )) + bad_ws_match.group(4)
             if not isinstance(item, bytes):
@@ -141,7 +144,7 @@ class DiffWriter(object):
                 if has_trailing_whitespace:
                     self.added_trailing_whitespace += 1
                 if (len(bad_ws_match.group(2)) > self.max_line_len and
-                    not item.contents.startswith(b'++ ')):
+                        not item.contents.startswith(b'++ ')):
                     self.long_lines += 1
                 line_class = 'newtext'
                 self._new_lines.append(item)
@@ -178,7 +181,8 @@ class DiffWriter(object):
         old = [l.rstrip() for l in old]
         new = [l.rstrip() for l in new]
         no_ws_matched = self._matched_lines(old, new)
-        assert no_ws_matched >= ws_matched
+        if no_ws_matched < ws_matched:
+            raise AssertionError
         if no_ws_matched > ws_matched:
             self.spurious_whitespace += no_ws_matched - ws_matched
             self.target.write('^ Spurious whitespace change above.\n')

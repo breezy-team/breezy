@@ -2318,16 +2318,18 @@ class cmd_diff(Command):
                help='How many lines of context to show.',
                type=int,
                ),
-        RegistryOption.from_kwargs('color',
-            'Color mode to use.',
+        RegistryOption.from_kwargs(
+            'color',
+            help='Color mode to use.',
             title='Color Mode', value_switches=False, enum_switch=True,
             never='Never colorize output.',
             auto='Only colorize output if terminal supports it and STDOUT is a'
             ' TTY.',
             always='Always colorize output (default).'),
-        Option('check-style',
-            help='Warn if trailing whitespace or spurious changes have been'
-                 ' added.')
+        Option(
+            'check-style',
+            help=('Warn if trailing whitespace or spurious changes have been'
+                  '  added.'))
         ]
 
     aliases = ['di', 'dif']
