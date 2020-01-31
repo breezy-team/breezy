@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # Simple script that will output the release where a given bug was fixed
 # searching the NEWS file
