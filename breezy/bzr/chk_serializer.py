@@ -223,14 +223,14 @@ class CHKSerializer(serializer.Serializer):
         output = []
         append = output.append
         if inv.revision_id is not None:
-            revid1 = b' revision_id="'
-            revid2 = xml_serializer.encode_and_escape(inv.revision_id)
+            revid = b''.join(
+                [b' revision_id="',
+                 xml_serializer.encode_and_escape(inv.revision_id), b'"'])
         else:
-            revid1 = b""
-            revid2 = b""
-        append(b'<inventory format="%s"%s%s>\n' % (
-            self.format_num, revid1, revid2))
-        append(b'<directory file_id="%s name="%s revision="%s />\n' % (
+            revid = b""
+        append(b'<inventory format="%s"%s>\n' % (
+            self.format_num, revid))
+        append(b'<directory file_id="%s" name="%s" revision="%s" />\n' % (
             xml_serializer.encode_and_escape(inv.root.file_id),
             xml_serializer.encode_and_escape(inv.root.name),
             xml_serializer.encode_and_escape(inv.root.revision)))

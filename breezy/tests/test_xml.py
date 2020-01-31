@@ -170,6 +170,22 @@ _revision_utf8_v5 = b"""<revision committer="Erik B&#229;gfors &lt;erik@foo.net&
 </revision>
 """
 
+_expected_rev_v8_complex = b"""<revision committer="Erik B&#229;gfors &lt;erik@foo.net&gt;" format="8" inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41" revision_id="erik@b&#229;gfors-02" timestamp="1125907235.212" timezone="36000">
+<message>Include &#181;nicode characters
+</message>
+<parents>
+<revision_ref revision_id="erik@b&#229;gfors-01" />
+<revision_ref revision_id="erik@bagfors-02" />
+</parents>
+<properties><property name="bar" />
+<property name="foo">this has a
+newline in it</property>
+</properties>
+</revision>
+"""
+
+
+
 _inventory_utf8_v5 = b"""<inventory file_id="TRE&#233;_ROOT" format="5"
                                    revision_id="erik@b&#229;gfors-02">
 <file file_id="b&#229;r-01"
@@ -467,6 +483,14 @@ class TestSerializer(TestCase):
             rev)
         self.assertEqualDiff(serialized, _expected_rev_v8)
 
+    def test_revision_text_v8_complex(self):
+        """Pack revision to XML v8"""
+        rev = breezy.bzr.xml8.serializer_v8.read_revision_from_string(
+            _expected_rev_v8_complex)
+        serialized = breezy.bzr.xml8.serializer_v8.write_revision_to_string(
+            rev)
+        self.assertEqualDiff(serialized, _expected_rev_v8_complex)
+
     def test_revision_ids_are_utf8(self):
         """Parsed revision_ids should all be utf-8 strings, not unicode."""
         s_v5 = breezy.bzr.xml5.serializer_v5
@@ -533,24 +557,24 @@ class TestEncodeAndEscape(TestCase):
         # are being used in xml attributes, and by returning it now, we have to
         # do fewer string operations later.
         val = breezy.bzr.xml_serializer.encode_and_escape('foo bar')
-        self.assertEqual(b'foo bar"', val)
+        self.assertEqual(b'foo bar', val)
         # The second time should be cached
         val2 = breezy.bzr.xml_serializer.encode_and_escape('foo bar')
         self.assertIs(val2, val)
 
     def test_ascii_with_xml(self):
-        self.assertEqual(b'&amp;&apos;&quot;&lt;&gt;"',
+        self.assertEqual(b'&amp;&apos;&quot;&lt;&gt;',
                          breezy.bzr.xml_serializer.encode_and_escape('&\'"<>'))
 
     def test_utf8_with_xml(self):
         # u'\xb5\xe5&\u062c'
         utf8_str = b'\xc2\xb5\xc3\xa5&\xd8\xac'
-        self.assertEqual(b'&#181;&#229;&amp;&#1580;"',
+        self.assertEqual(b'&#181;&#229;&amp;&#1580;',
                          breezy.bzr.xml_serializer.encode_and_escape(utf8_str))
 
     def test_unicode(self):
         uni_str = u'\xb5\xe5&\u062c'
-        self.assertEqual(b'&#181;&#229;&amp;&#1580;"',
+        self.assertEqual(b'&#181;&#229;&amp;&#1580;',
                          breezy.bzr.xml_serializer.encode_and_escape(uni_str))
 
 
