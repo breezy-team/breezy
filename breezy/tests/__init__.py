@@ -1336,7 +1336,9 @@ class TestCase(testtools.TestCase):
         if a == b + ('\n' if isinstance(b, text_type) else b'\n'):
             message = 'second string is missing a final newline.\n'
         raise AssertionError(message
-                             + self._ndiff_strings(a, b))
+                             + self._ndiff_strings(
+                                 a if isinstance(a, text_type) else a.decode(),
+                                 b if isinstance(b, text_type) else b.decode()))
 
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,
