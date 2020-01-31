@@ -269,6 +269,27 @@ class TestDiff(DiffBase):
                              "+contents of branch1/file\n"
                              "\n", subst_dates(out))
 
+    def test_diff_color_always(self):
+        from ...terminal import colorstring
+        from ... import colordiff
+        self.overrideAttr(colordiff, 'GLOBAL_COLORDIFFRC', None)
+        self.example_branches()
+        branch2_tree = workingtree.WorkingTree.open_containing('branch2')[0]
+        self.build_tree_contents([('branch2/file', b'even newer content')])
+        branch2_tree.commit(message='update file once more')
+
+        out, err = self.run_bzr('diff --color=always -r revno:2:branch2..revno:1:branch1',
+                                retcode=1)
+        self.assertEqual('', err)
+        self.assertEqualDiff(colorstring("=== modified file 'file'\n", 'darkyellow') +
+                             colorstring("--- old/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n", 'darkred') +
+                             colorstring("+++ new/file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n", 'darkblue') +
+                             colorstring("@@ -1 +1 @@\n", 'darkgreen') +
+                             colorstring("-new content\n", 'darkred') +
+                             colorstring("+contents of branch1/file\n", 'darkblue') +
+                             colorstring("\n", 'darkwhite'),
+                             subst_dates(out))
+
     def example_branch2(self):
         branch1_tree = self.make_branch_and_tree('branch1')
         self.build_tree_contents([('branch1/file1', b'original line\n')])

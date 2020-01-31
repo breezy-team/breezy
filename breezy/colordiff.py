@@ -28,6 +28,8 @@ from .patches import (hunk_from_header, InsertLine, RemoveLine,
                       ContextLine, Hunk, HunkLine)
 
 
+GLOBAL_COLORDIFFRC = '/etc/colordiffrc'
+
 class LineParser(object):
 
     def parse_line(self, line):
@@ -41,6 +43,29 @@ class LineParser(object):
             return ContextLine(line[1:])
         else:
             return line
+
+
+def read_colordiffrc(path):
+    colors = {}
+    with open(path, 'r') as f:
+        for line in f.readlines():
+            try:
+                key, val = line.split('=')
+            except ValueError:
+                continue
+
+            key = key.strip()
+            val = val.strip()
+
+            tmp = val
+            if val.startswith('dark'):
+                tmp = val[4:]
+
+            if tmp not in terminal.colors:
+                continue
+
+            colors[key] = val
+    return colors
 
 
 class DiffWriter(object):
@@ -59,7 +84,8 @@ class DiffWriter(object):
             'leadingtabs': 'magenta',
             'longline': 'cyan',
         }
-        self._read_colordiffrc('/etc/colordiffrc')
+        if GLOBAL_COLORDIFFRC is not None:
+            self._read_colordiffrc(GLOBAL_COLORDIFFRC)
         self._read_colordiffrc(expanduser('~/.colordiffrc'))
         self.added_leading_tabs = 0
         self.added_trailing_whitespace = 0
@@ -72,27 +98,9 @@ class DiffWriter(object):
 
     def _read_colordiffrc(self, path):
         try:
-            f = open(path, 'r')
+            self.colors.update(read_colordiffrc(path))
         except IOError:
-            return
-
-        for line in f.readlines():
-            try:
-                key, val = line.split('=')
-            except ValueError:
-                continue
-
-            key = key.strip()
-            val = val.strip()
-
-            tmp = val
-            if val.startswith('dark'):
-                tmp = val[4:]
-
-            if tmp not in terminal.colors:
-                continue
-
-            self.colors[key] = val
+            pass
 
     def colorstring(self, type, item, bad_ws_match):
         color = self.colors[type]
