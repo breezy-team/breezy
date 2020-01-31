@@ -354,10 +354,10 @@ class ConvertBzrDir4To5(Converter):
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update(gettext('write revision'), i,
                                len(self.converted_revs))
-                text = serializer_v5.write_revision_to_string(
+                lines = serializer_v5.write_revision_to_lines(
                     self.revisions[rev_id])
                 key = (rev_id,)
-                revision_store.add_lines(key, None, osutils.split_lines(text))
+                revision_store.add_lines(key, None, lines)
         finally:
             self.pb.clear()
 

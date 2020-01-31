@@ -798,10 +798,8 @@ _encode = binascii.b2a_base64
 
 
 cdef unsigned long _time_to_unsigned(object t):  # cannot_raise
-    cdef double dt
     if PyFloat_Check(t):
-        dt = PyFloat_AsDouble(t)
-        return <unsigned long>dt
+        t = t.__int__()
     return PyInt_AsUnsignedLongMask(t)
 
 
