@@ -3,6 +3,7 @@ breezy (3.0.2-3) UNRELEASED; urgency=medium
   * Fix support for Python 3.8:
    + Add patch 22_fs_encoding: Disable tests that rely on changing filesystem
      encoding.
+   + Add patch 23_xml_serializing: consistent output for XML serialization.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 30 Jan 2020 11:34:23 +0000
 
