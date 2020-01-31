@@ -869,7 +869,7 @@ class _CommonGroupCompressor(object):
 
         :seealso VersionedFiles.add_lines:
         """
-        if not chunks:  # empty, like a dir entry, etc
+        if length == 0:  # empty, like a dir entry, etc
             if nostore_sha == _null_sha1:
                 raise errors.ExistingContent()
             return _null_sha1, 0, 0, 'fulltext'
