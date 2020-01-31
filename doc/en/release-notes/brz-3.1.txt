@@ -51,6 +51,25 @@ New Features
    bzrtools by Aaron Bentley.
    (Jelmer Vernooĳ, #376594)
 
+ * Information about tree references can now be updated on remote
+   branches. (Jelmer Vernooĳ)
+
+ * Warn the user when they attempt to use Breezy in a Subversion
+   working copy. (Jelmer Vernooĳ)
+
+ * Add a basic Mercurial plugin that mentions that .hg repositories
+   are unsupported when the user attempts to access one.
+   (Jelmer Vernooĳ)
+
+ * The ``2a`` format now officially supports storing tree references.
+   It always partially supported storing tree reference data,
+   and would happily pull in tree reference data from other repository
+   formats. (Jelmer Vernooĳ)
+
+ * A new ``fossil`` plugin has been added that warns users when they
+   attempt to access Fossil repositories.
+   (Jelmer Vernooĳ, #1848821)
+
 Improvements
 ************
 
@@ -78,6 +97,16 @@ Improvements
 
 * The ``brz inventory`` command now accepts a ``--include-root``
   argument to show the tree root. (Jelmer Vernooĳ)
+
+* Fix support for reading Git repositories over HTTP without
+  a smart server. (Jelmer Vernooĳ)
+
+* CVS pserver URLs now indicate that the pserver protocol is not
+  supported. (Jelmer Vernooĳ)
+
+ * Git repositories with submodules can now be imported into 2a
+   branches; submodules are converted to nested trees.
+   (Jelmer Vernooĳ, #402814)
 
 Bug Fixes
 *********
@@ -107,6 +136,12 @@ Bug Fixes
 * Fix passing of directories in specific_files to
   GitWorkingTree.iter_entries_by_dir(). (Jelmer Vernooĳ, #1844054)
 
+* Fix ``brz diff --using`` when {old_path} and {new_path} are not
+  specified in the template. (#1847915, Jelmer Vernooĳ)
+
+* Ignore ghost tags when interacting with remote Git repositories.
+  (Jelmer Vernooĳ)
+
 Documentation
 *************
 
@@ -129,6 +164,23 @@ API Changes
 
 * New ``Tree.get_nested_tree`` method for retrieving a nested tree.
   (Jelmer Vernooĳ)
+
+* The ``ControlDirFormat.register_server_prober`` method has been removed.
+  Instead, probers can now have a ``priority`` method to influence
+  when they are run. (Jelmer Vernooĳ)
+
+* New ``urlutils.strip_segment_parameters`` function for
+  stripping segment parameters from a URL.
+  (Jelmer Vernooĳ)
+
+* ``Tree.id2path`` has a new optional argument ``recurse``,
+  that determines whether it scans through nested trees.
+  (Jelmer Vernooĳ)
+
+* ``VersionedFiles.add_content`` can now be used to add
+  content from ``ContentFactory`` objects.
+  (Jelmer Vernooĳ)
+
 
 Internals
 *********

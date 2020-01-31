@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Breezy Developers
+# Copyright (C) 2018-2019 Breezy Developers
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from ... import (
+from . import (
     errors,
     hooks,
     registry,
@@ -132,6 +132,12 @@ class MergeProposal(object):
         """Return the target branch."""
         raise NotImplementedError(self.get_target_branch_url)
 
+    def get_source_project(self):
+        raise NotImplementedError(self.get_source_project)
+
+    def get_target_project(self):
+        raise NotImplementedError(self.get_target_project)
+
     def close(self):
         """Close the merge proposal (without merging it)."""
         raise NotImplementedError(self.close)
@@ -157,6 +163,16 @@ class MergeProposal(object):
         The answer to this can be no if e.g. it has conflics.
         """
         raise NotImplementedError(self.can_be_merged)
+
+    def get_merged_by(self):
+        """If this proposal was merged, who merged it.
+        """
+        raise NotImplementedError(self.get_merged_by)
+
+    def get_merged_at(self):
+        """If this proposal was merged, when it was merged.
+        """
+        raise NotImplementedError(self.get_merged_at)
 
 
 class MergeProposalBuilder(object):
@@ -185,7 +201,8 @@ class MergeProposalBuilder(object):
         raise NotImplementedError(self.get_infotext)
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None):
+                        prerequisite_branch=None, commit_message=None,
+                        work_in_progress=False):
         """Create a proposal to merge a branch for merging.
 
         :param description: Description for the merge proposal
@@ -193,6 +210,8 @@ class MergeProposalBuilder(object):
         :param labels: Labels to attach to the proposal
         :param prerequisite_branch: Optional prerequisite branch
         :param commit_message: Optional commit message
+        :param work_in_progress:
+            Whether this merge proposal is still a work-in-progress
         :return: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)
@@ -213,6 +232,10 @@ class Hoster(object):
     # The base_url that would be visible to users. I.e. https://github.com/
     # rather than https://api.github.com/
     base_url = None
+
+    # The syntax to use for formatting merge proposal descriptions.
+    # Common values: 'plain', 'markdown'
+    merge_proposal_description_format = None
 
     def publish_derived(self, new_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
@@ -273,7 +296,7 @@ class Hoster(object):
     @classmethod
     def probe_from_branch(cls, branch):
         """Create a Hoster object if this hoster knows about a branch."""
-        url = urlutils.split_segment_parameters(branch.user_url)[0]
+        url = urlutils.strip_segment_parameters(branch.user_url)
         return cls.probe_from_url(
             url, possible_transports=[branch.control_transport])
 
@@ -281,8 +304,6 @@ class Hoster(object):
     def probe_from_url(cls, url, possible_hosters=None):
         """Create a Hoster object if this hoster knows about a URL."""
         raise NotImplementedError(cls.probe_from_url)
-
-    # TODO(jelmer): Some way of cleaning up old branch proposals/branches
 
     def iter_my_proposals(self, status='open'):
         """Iterate over the proposals created by the currently logged in user.
@@ -295,6 +316,18 @@ class Hoster(object):
         """
         raise NotImplementedError(self.iter_my_proposals)
 
+    def iter_my_forks(self):
+        """Iterate over the currently logged in users' forks.
+
+        :return: Iterator over project_name
+        """
+        raise NotImplementedError(self.iter_my_forks)
+
+    def delete_project(self, name):
+        """Delete a project.
+        """
+        raise NotImplementedError(self.delete_project)
+
     @classmethod
     def iter_instances(cls):
         """Iterate instances.
@@ -304,8 +337,19 @@ class Hoster(object):
         raise NotImplementedError(cls.iter_instances)
 
 
+def determine_title(description):
+    """Determine the title for a merge proposal based on full description."""
+    return description.splitlines()[0].split('.')[0]
+
+
 def get_hoster(branch, possible_hosters=None):
-    """Find the hoster for a branch."""
+    """Find the hoster for a branch.
+
+    :param branch: Branch to find hoster for
+    :param possible_hosters: Optional list of hosters to reuse
+    :raise UnsupportedHoster: if there is no hoster that supports `branch`
+    :return: A `Hoster` object
+    """
     if possible_hosters:
         for hoster in possible_hosters:
             if hoster.hosts(branch):
@@ -323,6 +367,12 @@ def get_hoster(branch, possible_hosters=None):
 
 
 def get_proposal_by_url(url):
+    """Get the proposal object associated with a URL.
+
+    :param url: URL of the proposal
+    :raise UnsupportedHoster: if there is no hoster that supports the URL
+    :return: A `MergeProposal` object
+    """
     for name, hoster_cls in hosters.items():
         for instance in hoster_cls.iter_instances():
             try:
@@ -333,12 +383,3 @@ def get_proposal_by_url(url):
 
 
 hosters = registry.Registry()
-hosters.register_lazy(
-    "launchpad", "breezy.plugins.propose.launchpad",
-    "Launchpad")
-hosters.register_lazy(
-    "github", "breezy.plugins.propose.github",
-    "GitHub")
-hosters.register_lazy(
-    "gitlab", "breezy.plugins.propose.gitlabs",
-    "GitLab")

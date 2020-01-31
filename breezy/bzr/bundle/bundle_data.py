@@ -40,14 +40,17 @@ from ..inventory import (
     InventoryFile,
     InventoryLink,
     )
-from ...osutils import sha_string, pathjoin
+from ...osutils import sha_string, sha_strings, pathjoin
 from ...revision import Revision, NULL_REVISION
 from ...sixish import (
     viewitems,
     )
 from ..testament import StrictTestament
 from ...trace import mutter, warning
-from ...tree import Tree
+from ...tree import (
+    Tree,
+    find_previous_path,
+    )
 from ..xml5 import serializer_v5
 
 
@@ -283,15 +286,15 @@ class BundleInfo(object):
         so build up an inventory, and make sure the hashes match.
         """
         # Now we should have a complete inventory entry.
-        s = serializer_v5.write_inventory_to_string(inv)
-        sha1 = sha_string(s)
+        cs = serializer_v5.write_inventory_to_chunks(inv)
+        sha1 = sha_strings(cs)
         # Target revision is the last entry in the real_revisions list
         rev = self.get_revision(revision_id)
         if rev.revision_id != revision_id:
             raise AssertionError()
         if sha1 != rev.inventory_sha1:
             with open(',,bogus-inv', 'wb') as f:
-                f.write(s)
+                f.writelines(cs)
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
@@ -595,12 +598,12 @@ class BundleTree(Tree):
             return None
         return self.base_tree.path2id(old_path)
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         """Return the new path in the target tree of the file with id file_id"""
         path = self._new_id_r.get(file_id)
         if path is not None:
             return path
-        old_path = self.base_tree.id2path(file_id)
+        old_path = self.base_tree.id2path(file_id, recurse)
         if old_path is None:
             raise NoSuchId(file_id, self)
         if old_path in self.deleted:
@@ -618,14 +621,10 @@ class BundleTree(Tree):
                 in the text-store, so that the file contents would
                 then be cached.
         """
-        file_id = self.path2id(path)
-        try:
-            old_path = self.base_tree.id2path(file_id)
-        except NoSuchId:
+        old_path = find_previous_path(self, self.base_tree, path)
+        if old_path is None:
             patch_original = None
         else:
-            if old_path is None:
-                import pdb; pdb.set_trace()
             patch_original = self.base_tree.get_file(old_path)
         file_patch = self.patches.get(path)
         if file_patch is None:
@@ -773,7 +772,7 @@ class BundleTree(Tree):
             paths.append(result)
         for id in self.base_tree.all_file_ids():
             try:
-                path = self.id2path(id)
+                path = self.id2path(id, recurse='none')
             except NoSuchId:
                 continue
             paths.append((path, id))

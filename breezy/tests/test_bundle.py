@@ -147,7 +147,7 @@ class MockTree(object):
     def path2id(self, path):
         return self.ids.get(path)
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         try:
             return self.paths[file_id]
         except KeyError:
@@ -1036,7 +1036,7 @@ class BundleTester(object):
         bundle = read_bundle(self.create_bundle_text(b'null:', b'rev2')[0])
         repo = self.make_repository('repo', format='dirstate-with-subtree')
         bundle.install_revisions(repo)
-        inv_text = repo._get_inventory_xml(b'rev2')
+        inv_text = b''.join(repo._get_inventory_xml(b'rev2'))
         self.assertNotContainsRe(inv_text, b'format="5"')
         self.assertContainsRe(inv_text, b'format="7"')
 
@@ -1063,7 +1063,7 @@ class BundleTester(object):
     def test_inv_hash_across_serializers(self):
         repo = self.make_repo_with_installed_revisions()
         recorded_inv_sha1 = repo.get_revision(b'rev2').inventory_sha1
-        xml = repo._get_inventory_xml(b'rev2')
+        xml = b''.join(repo._get_inventory_xml(b'rev2'))
         self.assertEqual(osutils.sha_string(xml), recorded_inv_sha1)
 
     def test_across_models_incompatible(self):

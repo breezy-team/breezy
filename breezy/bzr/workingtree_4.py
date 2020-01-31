@@ -33,11 +33,11 @@ import errno
 import stat
 
 from breezy import (
+    branch as _mod_branch,
     cache_utf8,
     cleanup,
     controldir,
     debug,
-    errors,
     filters as _mod_filters,
     osutils,
     revision as _mod_revision,
@@ -52,6 +52,9 @@ from breezy.bzr import (
     )
 """)
 
+from .. import (
+    errors,
+    )
 from .inventory import Inventory, ROOT_ID, entry_factory
 from ..lock import LogicalLockResult
 from ..lockable_files import LockableFiles
@@ -74,6 +77,7 @@ from ..osutils import (
 from ..sixish import (
     viewitems,
     )
+from ..transport import get_transport_from_path
 from ..transport.local import LocalTransport
 from ..tree import (
     FileTimestampUnavailable,
@@ -126,6 +130,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
         self.views = self._make_views()
         # --- allow tests to select the dirstate iter_changes implementation
         self._iter_changes = dirstate._process_entry
+        self._repo_supports_tree_reference = getattr(
+            self._branch.repository._format, "supports_tree_reference",
+            False)
 
     def _add(self, files, ids, kinds):
         """See MutableTree._add."""
@@ -372,10 +379,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     # add this entry to the parent map.
                     parent_ies[(dirname + b'/' + name).strip(b'/')] = inv_entry
                 elif kind == 'tree-reference':
-                    if not self._repo_supports_tree_reference:
-                        raise errors.UnsupportedOperation(
-                            self._generate_inventory,
-                            self.branch.repository)
                     inv_entry.reference_revision = link_or_sha1 or None
                 elif kind != 'symlink':
                     raise AssertionError("unknown kind %r" % kind)
@@ -471,12 +474,23 @@ class DirStateWorkingTree(InventoryWorkingTree):
     def get_nested_tree(self, path):
         return WorkingTree.open(self.abspath(path))
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         "Convert a file-id to a path."
         with self.lock_read():
             state = self.current_dirstate()
             entry = self._get_entry(file_id=file_id)
             if entry == (None, None):
+                if recurse == 'down':
+                    if 'evil' in debug.debug_flags:
+                        trace.mutter_callsite(
+                            2, "Tree.id2path scans all nested trees.")
+                    for nested_path in self.iter_references():
+                        nested_tree = self.get_nested_tree(nested_path)
+                        try:
+                            return osutils.pathjoin(
+                                nested_path, nested_tree.id2path(file_id))
+                        except errors.NoSuchId:
+                            pass
                 raise errors.NoSuchId(tree=self, file_id=file_id)
             path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
             return path_utf8.decode('utf8')
@@ -540,20 +554,21 @@ class DirStateWorkingTree(InventoryWorkingTree):
             # When the repo doesn't support references, we will have nothing to
             # return
             return
-        for key, tree_details in self.current_dirstate()._iter_entries():
-            if tree_details[0][0] in (b'a', b'r'):  # absent, relocated
-                # not relevant to the working tree
-                continue
-            if not key[1]:
-                # the root is not a reference.
-                continue
-            relpath = pathjoin(key[0].decode('utf8'), key[1].decode('utf8'))
-            try:
-                if self.kind(relpath) == 'tree-reference':
-                    yield relpath
-            except errors.NoSuchFile:
-                # path is missing on disk.
-                continue
+        with self.lock_read():
+            for key, tree_details in self.current_dirstate()._iter_entries():
+                if tree_details[0][0] in (b'a', b'r'):  # absent, relocated
+                    # not relevant to the working tree
+                    continue
+                if not key[1]:
+                    # the root is not a reference.
+                    continue
+                relpath = pathjoin(key[0].decode('utf8'), key[1].decode('utf8'))
+                try:
+                    if self.kind(relpath) == 'tree-reference':
+                        yield relpath
+                except errors.NoSuchFile:
+                    # path is missing on disk.
+                    continue
 
     def _observed_sha1(self, path, sha_and_stat):
         """See MutableTree._observed_sha1."""
@@ -565,10 +580,11 @@ class DirStateWorkingTree(InventoryWorkingTree):
         abspath = self.abspath(relpath)
         kind = file_kind(abspath)
         if (self._repo_supports_tree_reference and kind == 'directory'):
-            entry = self._get_entry(path=relpath)
-            if entry[1] is not None:
-                if entry[1][0][0] == b't':
-                    kind = 'tree-reference'
+            with self.lock_read():
+                entry = self._get_entry(path=relpath)
+                if entry[1] is not None:
+                    if entry[1][0][0] == b't':
+                        kind = 'tree-reference'
         return kind
 
     def _last_revision(self):
@@ -884,6 +900,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
             path = path.strip('/')
             entry = self._get_entry(path=path)
             if entry == (None, None):
+                nested_tree, subpath = self.get_containing_nested_tree(path)
+                if nested_tree is not None:
+                    return nested_tree.path2id(subpath)
                 return None
             return entry[0][2]
 
@@ -1050,8 +1069,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 raise errors.NoSuchRevisionInTree(self, revision_id)
             if revision_id in dirstate.get_ghosts():
                 raise errors.NoSuchRevisionInTree(self, revision_id)
-            return DirStateRevisionTree(dirstate, revision_id,
-                                        self.branch.repository)
+            return DirStateRevisionTree(
+                dirstate, revision_id, self.branch.repository,
+                get_transport_from_path(self.basedir))
 
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
@@ -1383,7 +1403,8 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
         with open(abspath, 'rb', 65000) as file_obj:
             statvalue = os.fstat(file_obj.fileno())
             if filters:
-                file_obj = _mod_filters.filtered_input_file(file_obj, filters)
+                file_obj, size = _mod_filters.filtered_input_file(file_obj, filters)
+                statvalue = _mod_filters.FilteredStat(statvalue, size)
             sha1 = osutils.size_sha_file(file_obj)[1]
         return statvalue, sha1
 
@@ -1695,13 +1716,14 @@ class DirStateRevisionTree(InventoryTree):
     dirstate for easy access, not the workingtree.
     """
 
-    def __init__(self, dirstate, revision_id, repository):
+    def __init__(self, dirstate, revision_id, repository, nested_tree_transport):
         self._dirstate = dirstate
         self._revision_id = revision_id
         self._repository = repository
         self._inventory = None
         self._locked = 0
         self._dirstate_locked = False
+        self._nested_tree_transport = nested_tree_transport
         self._repo_supports_tree_reference = getattr(
             repository._format, "supports_tree_reference",
             False)
@@ -1726,6 +1748,14 @@ class DirStateRevisionTree(InventoryTree):
         # sensible: the entry might not have come from us?
         return entry.kind, entry.executable, None
 
+    def _get_file_revision(self, path, file_id, vf, tree_revision):
+        """Ensure that file_id, tree_revision is in vf to plan the merge."""
+        last_revision = self.get_file_revision(path)
+        base_vf = self._repository.texts
+        if base_vf not in vf.fallback_versionedfiles:
+            vf.fallback_versionedfiles.append(base_vf)
+        return last_revision
+
     def filter_unversioned_files(self, paths):
         """Filter out paths that are not versioned.
 
@@ -1734,20 +1764,42 @@ class DirStateRevisionTree(InventoryTree):
         pred = self.has_filename
         return set((p for p in paths if not pred(p)))
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         "Convert a file-id to a path."
-        entry = self._get_entry(file_id=file_id)
-        if entry == (None, None):
-            raise errors.NoSuchId(tree=self, file_id=file_id)
-        path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
-        return path_utf8.decode('utf8')
+        with self.lock_read():
+            entry = self._get_entry(file_id=file_id)
+            if entry == (None, None):
+                if recurse == 'down':
+                    if 'evil' in debug.debug_flags:
+                        trace.mutter_callsite(
+                            2, "Tree.id2path scans all nested trees.")
+
+                    for nested_path in self.iter_references():
+                        nested_tree = self.get_nested_tree(nested_path)
+                        try:
+                            return osutils.pathjoin(nested_path, nested_tree.id2path(file_id))
+                        except errors.NoSuchId:
+                            pass
+                raise errors.NoSuchId(tree=self, file_id=file_id)
+            path_utf8 = osutils.pathjoin(entry[0][0], entry[0][1])
+            return path_utf8.decode('utf8')
 
     def get_nested_tree(self, path):
         with self.lock_read():
             nested_revid = self.get_reference_revision(path)
-            # TODO(jelmer): Attempt to open 'path' as a working tree, and see if we can find
-            # the referenced revision id in our memory?
+            return self._get_nested_tree(path, None, nested_revid)
+
+    def _get_nested_tree(self, path, file_id, reference_revision):
+        branch = _mod_branch.Branch.open_from_transport(
+            self._nested_tree_transport.clone(path))
+        try:
+            revtree = branch.repository.revision_tree(reference_revision)
+        except errors.NoSuchRevision:
             raise MissingNestedTree(path)
+        if file_id is not None and revtree.path2id('') != file_id:
+            raise AssertionError('mismatching file id: %r != %r' % (
+                revtree.path2id(''), file_id))
+        return revtree
 
     def iter_references(self):
         if not self._repo_supports_tree_reference:
@@ -2003,23 +2055,37 @@ class DirStateRevisionTree(InventoryTree):
     def is_locked(self):
         return self._locked
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
-        # We use a standard implementation, because DirStateRevisionTree is
-        # dealing with one of the parents of the current state
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
+        # The only files returned by this are those from the version
         if from_dir is None:
-            inv = self.root_inventory
             from_dir_id = None
+            inv = self.root_inventory
         else:
             inv, from_dir_id = self._path2inv_file_id(from_dir)
             if from_dir_id is None:
                 # Directory not versioned
-                return
-        # FIXME: Support nested trees
-        entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
-        if inv.root is not None and not include_root and from_dir is None:
-            next(entries)
-        for path, entry in entries:
-            yield path, 'V', entry.kind, entry
+                return iter([])
+        def iter_entries(inv):
+            entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
+            if inv.root is not None and not include_root and from_dir is None:
+                # skip the root for compatibility with the current apis.
+                next(entries)
+            for path, entry in entries:
+                if entry.kind == 'tree-reference' and recurse_nested:
+                    subtree = self._get_nested_tree(
+                        path, entry.file_id, entry.reference_revision)
+                    for subpath, status, kind, entry in subtree.list_files(
+                            include_root=True, recursive=recursive,
+                            recurse_nested=recurse_nested):
+                        if subpath:
+                            full_subpath = osutils.pathjoin(path, subpath)
+                        else:
+                            full_subpath = path
+                        yield full_subpath, status, kind, entry
+                else:
+                    yield path, 'V', entry.kind, entry
+        return iter_entries(inv)
 
     def lock_read(self):
         """Lock the tree for a set of operations.
@@ -2048,6 +2114,9 @@ class DirStateRevisionTree(InventoryTree):
         with self.lock_read():
             entry = self._get_entry(path=path)
             if entry == (None, None):
+                nested_tree, subpath = self.get_containing_nested_tree(path)
+                if nested_tree is not None:
+                    return nested_tree.path2id(subpath)
                 return None
             return entry[0][2]
 

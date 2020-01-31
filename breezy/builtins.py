@@ -25,6 +25,10 @@ import sys
 import breezy.bzr
 import breezy.git
 
+from . import (
+    errors,
+    )
+
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
 import time
@@ -38,7 +42,6 @@ from breezy import (
     directory_service,
     delta,
     config as _mod_config,
-    errors,
     globbing,
     gpg,
     hooks,
@@ -747,6 +750,13 @@ class cmd_add(Command):
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
             file_ids_from=None):
         import breezy.add
+        tree, file_list = tree_files_for_add(file_list)
+
+        if file_ids_from is not None and not tree.supports_setting_file_ids():
+            warning(
+                gettext('Ignoring --file-ids-from, since the tree does not '
+                        'support setting file ids.'))
+            file_ids_from = None
 
         base_tree = None
         if file_ids_from is not None:
@@ -767,7 +777,6 @@ class cmd_add(Command):
 
         if base_tree:
             self.enter_context(base_tree.lock_read())
-        tree, file_list = tree_files_for_add(file_list)
         added, ignored = tree.smart_add(
             file_list, not no_recurse, action=action, save=not dry_run)
         self.cleanup_now()
@@ -1458,15 +1467,21 @@ class cmd_branch(Command):
                             ' allow branch to proceed.'),
                      Option('bind',
                             help="Bind new branch to from location."),
+                     Option('no-recurse-nested',
+                            help='Do not recursively check out nested trees.'),
                      ]
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
             use_existing_dir=False, switch=False, bind=False,
-            files_from=None):
+            files_from=None, no_recurse_nested=False):
         from breezy import switch as _mod_switch
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
             from_location)
+        if no_recurse_nested:
+            recurse = 'none'
+        else:
+            recurse = 'down'
         if not (hardlink or files_from):
             # accelerator_tree is usually slower because you have to read N
             # files (no readahead, lots of seeks, etc), but allow the user to
@@ -1518,7 +1533,8 @@ class cmd_branch(Command):
                     possible_transports=[to_transport],
                     accelerator_tree=accelerator_tree, hardlink=hardlink,
                     stacked=stacked, force_new_repo=standalone,
-                    create_tree_if_local=not no_tree, source_branch=br_from)
+                    create_tree_if_local=not no_tree, source_branch=br_from,
+                    recurse=recurse)
                 branch = to_dir.open_branch(
                     possible_transports=[
                         br_from.controldir.root_transport, to_transport])
@@ -1533,7 +1549,8 @@ class cmd_branch(Command):
             except errors.NoRepositoryPresent:
                 to_repo = to_dir.create_repository()
             to_repo.fetch(br_from.repository, revision_id=revision_id)
-            branch = br_from.sprout(to_dir, revision_id=revision_id)
+            branch = br_from.sprout(
+                to_dir, revision_id=revision_id)
         br_from.tags.merge_to(branch.tags)
 
         # If the source branch is stacked, the new branch may
@@ -6735,36 +6752,34 @@ class cmd_reference(Command):
 
     takes_args = ['path?', 'location?']
     takes_options = [
+        'directory',
         Option('force-unversioned',
                help='Set reference even if path is not versioned.'),
         ]
 
-    def run(self, path=None, location=None, force_unversioned=False):
-        branchdir = '.'
-        if path is not None:
-            branchdir = path
+    def run(self, path=None, directory='.', location=None, force_unversioned=False):
         tree, branch, relpath = (
-            controldir.ControlDir.open_containing_tree_or_branch(branchdir))
-        if path is not None:
-            path = relpath
+            controldir.ControlDir.open_containing_tree_or_branch(directory))
         if tree is None:
             tree = branch.basis_tree()
         if path is None:
-            info = viewitems(branch._get_all_reference_info())
-            self._display_reference_info(tree, branch, info)
+            with tree.lock_read():
+                info = [
+                    (path, tree.get_reference_info(path, branch))
+                    for path in tree.iter_references()]
+                self._display_reference_info(tree, branch, info)
         else:
             if not tree.is_versioned(path) and not force_unversioned:
                 raise errors.NotVersionedError(path)
             if location is None:
-                info = [(path, branch.get_reference_info(path))]
+                info = [(path, tree.get_reference_info(path, branch))]
                 self._display_reference_info(tree, branch, info)
             else:
-                branch.set_reference_info(
-                    path, location, file_id=tree.path2id(path))
+                tree.set_reference_info(path, location)
 
     def _display_reference_info(self, tree, branch, info):
         ref_list = []
-        for path, (location, file_id) in info:
+        for path, location in info:
             ref_list.append((path, location))
         for path, location in sorted(ref_list):
             self.outf.write('%s %s\n' % (path, location))

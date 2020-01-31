@@ -59,6 +59,7 @@ except ImportError:
     pass
 else:
     CAPABILITIES.append("import")
+    CAPABILITIES.append("refspec *:*")
 
 
 def open_remote_dir(url):

@@ -842,12 +842,11 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport, t)
 
     def test_sprout_recursive(self):
-        tree = self.make_branch_and_tree('tree1',
-                                         format='development-subtree')
-        sub_tree = self.make_branch_and_tree('tree1/subtree',
-                                             format='development-subtree')
+        tree = self.make_branch_and_tree('tree1')
+        sub_tree = self.make_branch_and_tree('tree1/subtree')
         sub_tree.set_root_id(b'subtree-root')
         tree.add_reference(sub_tree)
+        tree.set_reference_info('subtree', sub_tree.branch.user_url)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
@@ -872,12 +871,12 @@ class ChrootedTests(TestCaseWithTransport):
         sub_tree = self.make_branch_and_tree('tree1/subtree',
                                              format='development-subtree')
         tree.add_reference(sub_tree)
+        tree.set_reference_info('subtree', sub_tree.branch.user_url)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
         # The following line force the orhaning to reveal bug #634470
-        tree.branch.get_config_stack().set(
-            'transform.orphan_policy', 'move')
+        tree.branch.get_config_stack().set('transform.orphan_policy', 'move')
         tree.controldir.destroy_workingtree()
         # FIXME: subtree/.bzr is left here which allows the test to pass (or
         # fail :-( ) -- vila 20100909
@@ -892,10 +891,9 @@ class ChrootedTests(TestCaseWithTransport):
         # by bzrdir.BzrDirMeta1.destroy_workingtree when it ignores the
         # [DeletingParent('Not deleting', u'subtree', None)] conflict). See bug
         # #634470.  -- vila 20100909
-        self.assertRaises(errors.NotBranchError,
-                          tree.controldir.sprout, 'repo/tree2')
-#        self.assertPathExists('repo/tree2/subtree')
-#        self.assertPathDoesNotExist('repo/tree2/subtree/file')
+        tree.controldir.sprout('repo/tree2')
+        self.assertPathExists('repo/tree2/subtree')
+        self.assertPathDoesNotExist('repo/tree2/subtree/file')
 
     def make_foo_bar_baz(self):
         foo = bzrdir.BzrDir.create_branch_convenience('foo').controldir

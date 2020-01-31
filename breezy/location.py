@@ -68,6 +68,29 @@ def rcp_location_to_url(location, scheme='ssh'):
     return str(url)
 
 
+def pserver_to_url(location):
+    """Convert a CVS pserver location string to a URL.
+
+    :param location: pserver URL
+    :return: A cvs+pserver URL
+    """
+    parts = location.split(':')
+    if parts[0] or parts[1] != 'pserver':
+        raise ValueError('not a valid pserver location string')
+    try:
+        (username, hostname) = parts[2].split('@', 1)
+    except IndexError:
+        hostname = parts[2]
+        username = None
+    return str(urlutils.URL(
+        scheme='cvs+pserver',
+        quoted_user=urlutils.quote(username) if username else None,
+        quoted_host=urlutils.quote(hostname),
+        quoted_password=None,
+        port=None,
+        quoted_path=urlutils.quote(parts[3])))
+
+
 def location_to_url(location, purpose=None):
     """Determine a fully qualified URL from a location string.
 
@@ -81,6 +104,10 @@ def location_to_url(location, purpose=None):
     """
     if not isinstance(location, string_types):
         raise AssertionError("location not a byte or unicode string")
+
+    if location.startswith(':pserver:'):
+        return pserver_to_url(location)
+
     from .directory_service import directories
     location = directories.dereference(location, purpose)
 

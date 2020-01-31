@@ -1037,14 +1037,15 @@ class HTTPRedirectHandler(urllib_request.HTTPRedirectHandler):
             newurl = headers.get('uri')
         else:
             return
+
+        newurl = urljoin(req.get_full_url(), newurl)
+
         if self._debuglevel >= 1:
             print('Redirected to: %s (followed: %r)' % (newurl,
                                                         req.follow_redirections))
         if req.follow_redirections is False:
             req.redirected_to = newurl
             return fp
-
-        newurl = urljoin(req.get_full_url(), newurl)
 
         # This call succeeds or raise an error. urllib_request returns
         # if redirect_request returns None, but our
@@ -1824,12 +1825,16 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
 
     accepted_errors = [200,  # Ok
                        201,
+                       202,
+                       204,
                        206,  # Partial content
                        400,
                        403,
                        404,  # Not found
+                       405,  # Method not allowed
                        416,
                        422,
+                       501,  # Not implemented
                        ]
     """The error codes the caller will handle.
 
@@ -2015,6 +2020,10 @@ class HttpTransport(ConnectedTransport):
                 return self._actual.code
 
             @property
+            def reason(self):
+                return self._actual.reason
+
+            @property
             def data(self):
                 if self._data is None:
                     self._data = self._actual.read()
@@ -2078,16 +2087,28 @@ class HttpTransport(ConnectedTransport):
             if range_header is not None:
                 bytes = 'bytes=' + range_header
                 headers = {'Range': bytes}
+        else:
+            range_header = None
 
         response = self.request('GET', abspath, headers=headers)
 
         if response.status == 404:  # not found
             raise errors.NoSuchFile(abspath)
-        elif response.status in (400, 416):
+        elif response.status == 416:
             # We don't know which, but one of the ranges we specified was
             # wrong.
             raise errors.InvalidHttpRange(abspath, range_header,
                                           'Server return code %d' % response.status)
+        elif response.status == 400:
+            if range_header:
+                # We don't know which, but one of the ranges we specified was
+                # wrong.
+                raise errors.InvalidHttpRange(
+                    abspath, range_header,
+                    'Server return code %d' % response.status)
+            else:
+                raise errors.InvalidHttpResponse(
+                    abspath, 'Unexpected status %d' % response.status)
         elif response.status not in (200, 206):
             raise errors.InvalidHttpResponse(
                 abspath, 'Unexpected status %d' % response.status)
@@ -2557,6 +2578,17 @@ class HttpTransport(ConnectedTransport):
                                         parsed_target.host, parsed_target.port,
                                         target_path)
             return transport.get_transport_from_url(new_url)
+
+    def _options(self, relpath):
+        abspath = self._remote_path(relpath)
+        resp = self.request('OPTIONS', abspath)
+        if resp.status == 404:
+            raise errors.NoSuchFile(abspath)
+        if resp.status in (403, 405):
+            raise errors.InvalidHttpResponse(
+                abspath,
+                "OPTIONS not supported or forbidden for remote URL")
+        return resp.getheaders()
 
 
 # TODO: May be better located in smart/medium.py with the other

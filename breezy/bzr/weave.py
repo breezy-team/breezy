@@ -179,8 +179,14 @@ class WeaveContentFactory(ContentFactory):
     def get_bytes_as(self, storage_kind):
         if storage_kind == 'fulltext':
             return self._weave.get_text(self.key[-1])
-        elif storage_kind == 'chunked':
+        elif storage_kind in ('chunked', 'lines'):
             return self._weave.get_lines(self.key[-1])
+        else:
+            raise UnavailableRepresentation(self.key, storage_kind, 'fulltext')
+
+    def iter_bytes_as(self, storage_kind):
+        if storage_kind in ('chunked', 'lines'):
+            return iter(self._weave.get_lines(self.key[-1]))
         else:
             raise UnavailableRepresentation(self.key, storage_kind, 'fulltext')
 
@@ -422,20 +428,19 @@ class Weave(VersionedFile):
                 raise RevisionNotPresent([record.key[0]], self)
             # adapt to non-tuple interface
             parents = [parent[0] for parent in record.parents]
-            if (record.storage_kind == 'fulltext' or
-                    record.storage_kind == 'chunked'):
+            if record.storage_kind in ('fulltext', 'chunked', 'lines'):
                 self.add_lines(
                     record.key[0], parents,
-                    osutils.chunks_to_lines(record.get_bytes_as('chunked')))
+                    record.get_bytes_as('lines'))
             else:
-                adapter_key = record.storage_kind, 'fulltext'
+                adapter_key = record.storage_kind, 'lines'
                 try:
                     adapter = adapters[adapter_key]
                 except KeyError:
                     adapter_factory = adapter_registry.get(adapter_key)
                     adapter = adapter_factory(self)
                     adapters[adapter_key] = adapter
-                lines = split_lines(adapter.get_bytes(record))
+                lines = adapter.get_bytes(record, 'lines')
                 try:
                     self.add_lines(record.key[0], parents, lines)
                 except RevisionAlreadyPresent:

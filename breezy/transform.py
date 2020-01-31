@@ -2036,6 +2036,11 @@ class _PreviewTree(inventorytree.InventoryTree):
         self._iter_changes_cache = dict((c.file_id, c) for c in
                                         self._transform.iter_changes())
 
+    def supports_tree_reference(self):
+        # TODO(jelmer): Support tree references in _PreviewTree.
+        # return self._transform._tree.supports_tree_reference()
+        return False
+
     def _content_change(self, file_id):
         """Return True if the content of this file changed"""
         changes = self._iter_changes_cache.get(file_id)
@@ -2150,7 +2155,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             path = osutils.pathjoin(*path)
         return self._transform.final_file_id(self._path2trans_id(path))
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._final_paths._determine_path(trans_id)
@@ -2218,7 +2223,11 @@ class _PreviewTree(inventorytree.InventoryTree):
         for entry, trans_id in self._make_inv_entries(todo):
             yield entry
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
+        if recurse_nested:
+            raise NotImplementedError(
+                'follow tree references not yet supported')
+
         # This may not be a maximally efficient implementation, but it is
         # reasonably straightforward.  An implementation that grafts the
         # TreeTransform changes onto the tree's iter_entries_by_dir results
@@ -2242,8 +2251,13 @@ class _PreviewTree(inventorytree.InventoryTree):
         path_entries.sort()
         return path_entries
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         """See WorkingTree.list_files."""
+        if recurse_nested:
+            raise NotImplementedError(
+                'follow tree references not yet supported')
+
         # XXX This should behave like WorkingTree.list_files, but is really
         # more like RevisionTree.list_files.
         if from_dir == '.':
@@ -2332,6 +2346,15 @@ class _PreviewTree(inventorytree.InventoryTree):
         if kind == 'file':
             with self.get_file(path) as fileobj:
                 return sha_file(fileobj)
+
+    def get_reference_revision(self, path):
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
+        reference_revision = self._transform._new_reference_revision.get(trans_id)
+        if reference_revision is None:
+            return self._transform._tree.get_reference_revision(path)
+        return reference_revision
 
     def is_executable(self, path):
         trans_id = self._path2trans_id(path)

@@ -34,7 +34,8 @@ from ...sixish import PY3
 from ...trace import mutter
 from ...transport import get_transport
 
-from .propose import (
+from ...propose import (
+    determine_title,
     Hoster,
     MergeProposal,
     MergeProposalBuilder,
@@ -46,6 +47,7 @@ from .propose import (
 
 
 _DEFAULT_FILES = ['/etc/python-gitlab.cfg', '~/.python-gitlab.cfg']
+DEFAULT_PAGE_SIZE = 50
 
 
 def mp_status_to_status(status):
@@ -149,7 +151,7 @@ def parse_gitlab_url(url):
 
 
 def parse_gitlab_branch_url(branch):
-    url = urlutils.split_segment_parameters(branch.user_url)[0]
+    url = urlutils.strip_segment_parameters(branch.user_url)
     host, path = parse_gitlab_url(url)
     return host, path, branch.name
 
@@ -188,7 +190,7 @@ class GitLabMergeProposal(MergeProposal):
         return self._mr['description']
 
     def set_description(self, description):
-        self._update(description=description, title=description.splitlines()[0])
+        self._update(description=description, title=determine_title(description))
 
     def get_commit_message(self):
         return self._mr.get('merge_commit_message')
@@ -210,6 +212,16 @@ class GitLabMergeProposal(MergeProposal):
         return self._branch_url_from_project(
             self._mr['target_project_id'], self._mr['target_branch'])
 
+    def _get_project_name(self, project_id):
+        source_project = self.gl._get_project(project_id)
+        return source_project['path_with_namespace']
+
+    def get_source_project(self):
+        return self._get_project_name(self._mr['source_project_id'])
+
+    def get_target_project(self):
+        return self._get_project_name(self._mr['target_project_id'])
+
     def is_merged(self):
         return (self._mr['state'] == 'merged')
 
@@ -217,7 +229,7 @@ class GitLabMergeProposal(MergeProposal):
         return (self._mr['state'] == 'closed')
 
     def reopen(self):
-        return self._update(state_event='open')
+        return self._update(state_event='reopen')
 
     def close(self):
         self._update(state_event='close')
@@ -234,12 +246,24 @@ class GitLabMergeProposal(MergeProposal):
         else:
             raise ValueError(self._mr['merge_status'])
 
+    def get_merged_by(self):
+        user = self._mr.get('merged_by')
+        if user is None:
+            return None
+        return user['username']
+
+    def get_merged_at(self):
+        merged_at = self._mr.get('merged_at')
+        if merged_at is None:
+            return None
+        import iso8601
+        return iso8601.parse_date(merged_at)
+
 
 def gitlab_url_to_bzr_url(url, name):
     if not PY3:
         name = name.encode('utf-8')
-    return urlutils.join_segment_parameters(
-        git_url_to_bzr_url(url), {"branch": name})
+    return git_url_to_bzr_url(url, branch=name)
 
 
 class GitLab(Hoster):
@@ -247,6 +271,7 @@ class GitLab(Hoster):
 
     supports_merge_proposal_labels = True
     supports_merge_proposal_commit_message = False
+    merge_proposal_description_format = 'markdown'
 
     def __repr__(self):
         return "<GitLab(%r)>" % self.base_url
@@ -255,10 +280,10 @@ class GitLab(Hoster):
     def base_url(self):
         return self.transport.base
 
-    def _api_request(self, method, path, fields=None):
+    def _api_request(self, method, path, fields=None, body=None):
         return self.transport.request(
             method, urlutils.join(self.base_url, 'api', 'v4', path),
-            headers=self.headers, fields=fields)
+            headers=self.headers, fields=fields, body=body)
 
     def __init__(self, transport, private_token):
         self.transport = transport
@@ -266,7 +291,7 @@ class GitLab(Hoster):
         self.check()
 
     def _get_user(self, username):
-        path = 'users/%s' % urlutils.quote(str(project_name), '')
+        path = 'users/%s' % urlutils.quote(str(username), '')
         response = self._api_request('GET', path)
         if response.status == 404:
             raise KeyError('no such user %s' % username)
@@ -274,11 +299,11 @@ class GitLab(Hoster):
             return json.loads(response.data)
         raise errors.InvalidHttpResponse(path, response.text)
 
-    def _get_user_by_email(self, username):
-        path = 'users?search=%s' % urlutils.quote(str(project_name), '')
+    def _get_user_by_email(self, email):
+        path = 'users?search=%s' % urlutils.quote(str(email), '')
         response = self._api_request('GET', path)
         if response.status == 404:
-            raise KeyError('no such user %s' % username)
+            raise KeyError('no such user %s' % email)
         if response.status == 200:
             ret = json.loads(response.data)
             if len(ret) != 1:
@@ -316,6 +341,27 @@ class GitLab(Hoster):
     def _get_logged_in_username(self):
         return self._current_user['username']
 
+    def _list_paged(self, path, parameters=None, per_page=None):
+        if parameters is None:
+            parameters = {}
+        else:
+            parameters = dict(parameters.items())
+        if per_page:
+            parameters['per_page'] = str(per_page)
+        page = "1"
+        while page:
+            parameters['page'] = page
+            response = self._api_request(
+                'GET', path + '?' +
+                ';'.join(['%s=%s' % item for item in parameters.items()]))
+            if response.status == 403:
+                raise errors.PermissionDenied(response.text)
+            if response.status != 200:
+                raise errors.InvalidHttpResponse(path, response.text)
+            page = response.getheader("X-Next-Page")
+            for entry in json.loads(response.data):
+                yield entry
+
     def _list_merge_requests(self, owner=None, project=None, state=None):
         if project is not None:
             path = 'projects/%s/merge_requests' % urlutils.quote(str(project), '')
@@ -326,14 +372,12 @@ class GitLab(Hoster):
             parameters['state'] = state
         if owner:
             parameters['owner_id'] = urlutils.quote(owner, '')
-        response = self._api_request(
-            'GET', path + '?' +
-            ';'.join(['%s=%s' % item for item in parameters.items()]))
-        if response.status == 403:
-            raise errors.PermissionDenied(response.text)
-        if response.status == 200:
-            return json.loads(response.data)
-        raise errors.InvalidHttpResponse(path, response.text)
+        return self._list_paged(path, parameters, per_page=DEFAULT_PAGE_SIZE)
+
+    def _list_projects(self, owner):
+        path = 'users/%s/projects' % urlutils.quote(str(owner), '')
+        parameters = {}
+        return self._list_paged(path, parameters, per_page=DEFAULT_PAGE_SIZE)
 
     def _update_merge_request(self, project_id, iid, mr):
         path = 'projects/%s/merge_requests/%s' % (
@@ -482,6 +526,13 @@ class GitLab(Hoster):
                 owner=self._get_logged_in_username(), state=state):
             yield GitLabMergeProposal(self, mp)
 
+    def iter_my_forks(self):
+        for project in self._list_projects(owner=self._get_logged_in_username()):
+            base_project = project.get('forked_from_project')
+            if not base_project:
+                continue
+            yield project['path_with_namespace']
+
     def get_proposal_by_url(self, url):
         try:
             (host, project, merge_id) = parse_gitlab_merge_request_url(url)
@@ -497,6 +548,14 @@ class GitLab(Hoster):
         project = self._get_project(project)
         mr = project.mergerequests.get(merge_id)
         return GitLabMergeProposal(mr)
+
+    def delete_project(self, project):
+        path = 'projects/%s' % urlutils.quote(str(project), '')
+        response = self._api_request('DELETE', path)
+        if response.status == 404:
+            raise NoSuchProject(project)
+        if response.status != 202:
+            raise errors.InvalidHttpResponse(path, response.text)
 
 
 class GitlabMergeProposalBuilder(MergeProposalBuilder):
@@ -528,7 +587,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         return None
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None):
+                        prerequisite_branch=None, commit_message=None,
+                        work_in_progress=False):
         """Perform the submission."""
         # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
@@ -537,7 +597,9 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         source_project = self.gl._get_project(self.source_project_name)
         target_project = self.gl._get_project(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly
-        title = description.splitlines()[0]
+        title = determine_title(description)
+        if work_in_progress:
+            title = 'WIP: %s' % title
         # TODO(jelmer): Allow setting allow_collaboration field
         # TODO(jelmer): Allow setting milestone field
         # TODO(jelmer): Allow setting squash field

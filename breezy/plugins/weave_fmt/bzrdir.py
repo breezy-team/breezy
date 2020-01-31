@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
+
 from ...bzr.bzrdir import (
     BzrDir,
     BzrDirFormat,
@@ -311,9 +313,9 @@ class ConvertBzrDir4To5(Converter):
     def _convert_working_inv(self):
         inv = xml4.serializer_v4.read_inventory(
             self.branch._transport.get('inventory'))
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(
-            inv, working=True)
-        self.branch._transport.put_bytes('inventory', new_inv_xml,
+        f = BytesIO()
+        xml5.serializer_v5.write_inventory(inv, f, working=True)
+        self.branch._transport.put_bytes('inventory', f.getvalue(),
                                          mode=self.controldir._get_file_mode())
 
     def _write_all_weaves(self):
@@ -382,15 +384,14 @@ class ConvertBzrDir4To5(Converter):
 
     def _load_old_inventory(self, rev_id):
         with self.branch.repository.inventory_store.get(rev_id) as f:
-            old_inv_xml = f.read()
-        inv = xml4.serializer_v4.read_inventory_from_string(old_inv_xml)
+            inv = xml4.serializer_v4.read_inventory(f)
         inv.revision_id = rev_id
         rev = self.revisions[rev_id]
         return inv
 
     def _load_updated_inventory(self, rev_id):
-        inv_xml = self.inv_weave.get_text(rev_id)
-        inv = xml5.serializer_v5.read_inventory_from_string(inv_xml, rev_id)
+        inv_xml = self.inv_weave.get_lines(rev_id)
+        inv = xml5.serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
         return inv
 
     def _convert_one_rev(self, rev_id):
@@ -404,11 +405,11 @@ class ConvertBzrDir4To5(Converter):
         self.converted_revs.add(rev_id)
 
     def _store_new_inv(self, rev, inv, present_parents):
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
-        new_inv_sha1 = osutils.sha_string(new_inv_xml)
+        new_inv_xml = xml5.serializer_v5.write_inventory_to_lines(inv)
+        new_inv_sha1 = osutils.sha_strings(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,
-                                 new_inv_xml.splitlines(True))
+                                 new_inv_xml)
         rev.inventory_sha1 = new_inv_sha1
 
     def _convert_revision_contents(self, rev, inv, present_parents):
@@ -887,7 +888,7 @@ class BzrDirPreSplitOut(BzrDir):
                            possible_transports=possible_transports)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               possible_transports=None, accelerator_tree=None,
+               recurse=None, possible_transports=None, accelerator_tree=None,
                hardlink=False, stacked=False, create_tree_if_local=True,
                source_branch=None):
         """See ControlDir.sprout()."""

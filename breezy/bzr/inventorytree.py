@@ -23,13 +23,21 @@ import os
 import re
 
 from .. import (
+    branch as _mod_branch,
+    debug,
     errors,
     lazy_import,
     osutils,
     revision,
     )
+from ..controldir import (
+    ControlDir,
+    )
 from ..mutabletree import (
     MutableTree,
+    )
+from ..repository import (
+    Repository,
     )
 from ..revisiontree import (
     RevisionTree,
@@ -148,10 +156,25 @@ class InventoryTree(Tree):
         :param path: Path to look up
         :return: InventoryEntry
         """
-        ie = self.root_inventory.get_entry_by_path(path)
+        inv, ie = self._path2inv_ie(path)
         if ie is None:
             raise errors.NoSuchFile(path)
         return ie
+
+    def _path2inv_ie(self, path):
+        inv = self.root_inventory
+        if isinstance(path, list):
+            remaining = path
+        else:
+            remaining = osutils.splitpath(path)
+        ie = inv.root
+        while remaining:
+            ie, base, remaining = inv.get_entry_by_path_partial(remaining)
+            if remaining:
+                inv = self._get_nested_tree('/'.join(base), ie.file_id, ie.reference_revision).root_inventory
+        if ie is None:
+            return None, None
+        return inv, ie
 
     def _path2inv_file_id(self, path):
         """Lookup a inventory and inventory file id by path.
@@ -159,18 +182,31 @@ class InventoryTree(Tree):
         :param path: Path to look up
         :return: tuple with inventory and inventory file id
         """
-        # FIXME: Support nested trees
-        inv = self.root_inventory
-        inv_file_id = self.root_inventory.path2id(path)
-        return inv, inv_file_id
+        inv, ie = self._path2inv_ie(path)
+        if ie is None:
+            return None, None
+        return inv, ie.file_id
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         """Return the path for a file id.
 
         :raises NoSuchId:
         """
         inventory, file_id = self._unpack_file_id(file_id)
-        return inventory.id2path(file_id)
+        try:
+            return inventory.id2path(file_id)
+        except errors.NoSuchId:
+            if recurse == 'down':
+                if 'evil' in debug.debug_flags:
+                    trace.mutter_callsite(
+                        2, "id2path with nested trees scales with tree size.")
+                for path in self.iter_references():
+                    subtree = self.get_nested_tree(path)
+                    try:
+                        return osutils.pathjoin(path, subtree.id2path(file_id))
+                    except errors.NoSuchId:
+                        pass
+            raise errors.NoSuchId(self, file_id)
 
     def all_file_ids(self):
         return {entry.file_id for path, entry in self.iter_entries_by_dir()}
@@ -178,7 +214,8 @@ class InventoryTree(Tree):
     def all_versioned_paths(self):
         return {path for path, entry in self.iter_entries_by_dir()}
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None,
+                            recurse_nested=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -191,15 +228,21 @@ class InventoryTree(Tree):
                 inventory_file_ids = []
                 for path in specific_files:
                     inventory, inv_file_id = self._path2inv_file_id(path)
-                    if inventory is not self.root_inventory:  # for now
+                    if inventory and inventory is not self.root_inventory:
                         raise AssertionError("%r != %r" % (
                             inventory, self.root_inventory))
                     inventory_file_ids.append(inv_file_id)
             else:
                 inventory_file_ids = None
-            # FIXME: Handle nested trees
-            return self.root_inventory.iter_entries_by_dir(
-                specific_file_ids=inventory_file_ids)
+            def iter_entries(inv):
+                for p, e in inv.iter_entries_by_dir(specific_file_ids=inventory_file_ids):
+                    if e.kind == 'tree-reference' and recurse_nested:
+                        subinv = self._get_nested_tree(p, e.file_id, e.reference_revision).root_inventory
+                        for subp, e in iter_entries(subinv):
+                            yield (osutils.pathjoin(p, subp) if subp else p), e
+                    else:
+                        yield p, e
+            return iter_entries(self.root_inventory)
 
     def iter_child_entries(self, path):
         with self.lock_read():
@@ -249,20 +292,27 @@ class InventoryTree(Tree):
         return vf.plan_lca_merge(last_revision_a, last_revision_b,
                                  last_revision_base)
 
+    def _iter_parent_trees(self):
+        """Iterate through parent trees, defaulting to Tree.revision_tree."""
+        for revision_id in self.get_parent_ids():
+            try:
+                yield self.revision_tree(revision_id)
+            except errors.NoSuchRevisionInTree:
+                yield self.branch.repository.revision_tree(revision_id)
+
     def _get_file_revision(self, path, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
-        if getattr(self, '_repository', None) is None:
-            last_revision = tree_revision
-            parent_keys = [
-                (file_id, t.get_file_revision(path)) for t in
-                self._iter_parent_trees()]
-            vf.add_lines((file_id, last_revision), parent_keys,
-                         self.get_file_lines(path))
-            repo = self.branch.repository
-            base_vf = repo.texts
-        else:
-            last_revision = self.get_file_revision(path)
-            base_vf = self._repository.texts
+        from . import versionedfile
+        last_revision = tree_revision
+        parent_keys = [
+            (file_id, t.get_file_revision(path)) for t in
+            self._iter_parent_trees()]
+        with self.get_file(path) as f:
+            vf.add_content(
+                versionedfile.FileContentFactory(
+                    (file_id, last_revision), parent_keys, f, size=osutils.filesize(f)))
+        repo = self.branch.repository
+        base_vf = repo.texts
         if base_vf not in vf.fallback_versionedfiles:
             vf.fallback_versionedfiles.append(base_vf)
         return last_revision
@@ -713,6 +763,14 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         RevisionTree.__init__(self, repository, revision_id)
         self._inventory = inv
 
+    def _get_file_revision(self, path, file_id, vf, tree_revision):
+        """Ensure that file_id, tree_revision is in vf to plan the merge."""
+        last_revision = self.get_file_revision(path)
+        base_vf = self._repository.texts
+        if base_vf not in vf.fallback_versionedfiles:
+            vf.fallback_versionedfiles.append(base_vf)
+        return last_revision
+
     def get_file_mtime(self, path):
         ie = self._path2ie(path)
         try:
@@ -742,7 +800,25 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def has_filename(self, filename):
         return bool(self.path2id(filename))
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def reference_parent(self, path, branch=None, possible_transports=None):
+        if branch is not None:
+            file_id = self.path2id(path)
+            parent_url = branch.get_reference_info(file_id)[0]
+        else:
+            subdir = ControlDir.open_from_transport(
+                self._repository.user_transport.clone(path))
+            parent_url = subdir.open_branch().get_parent()
+        if parent_url is None:
+            return None
+        return _mod_branch.Branch.open(
+            parent_url,
+            possible_transports=possible_transports)
+
+    def get_reference_info(self, path, branch=None):
+        return branch.get_reference_info(self.path2id(path))[0]
+
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         # The only files returned by this are those from the version
         if from_dir is None:
             from_dir_id = None
@@ -757,7 +833,19 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             # skip the root for compatibility with the current apis.
             next(entries)
         for path, entry in entries:
-            yield path, 'V', entry.kind, entry
+            if entry.kind == 'tree-reference' and recurse_nested:
+                subtree = self._get_nested_tree(
+                    path, entry.file_id, entry.reference_revision)
+                for subpath, status, kind, entry in subtree.list_files(
+                        include_root=True, recurse_nested=recurse_nested,
+                        recursive=recursive):
+                    if subpath:
+                        full_subpath = osutils.pathjoin(path, subpath)
+                    else:
+                        full_subpath = path
+                    yield full_subpath, status, kind, entry
+            else:
+                yield path, 'V', entry.kind, entry
 
     def get_symlink_target(self, path):
         # Inventories store symlink targets in unicode
@@ -766,9 +854,23 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def get_reference_revision(self, path):
         return self._path2ie(path).reference_revision
 
+    def _get_nested_tree(self, path, file_id, reference_revision):
+        # Just a guess..
+        subdir = ControlDir.open_from_transport(
+            self._repository.user_transport.clone(path))
+        subrepo = subdir.find_repository()
+        try:
+            revtree = subrepo.revision_tree(reference_revision)
+        except errors.NoSuchRevision:
+            raise MissingNestedTree(path)
+        if file_id is not None and file_id != revtree.path2id(''):
+            raise AssertionError('invalid root id: %r != %r' % (
+                file_id, revtree.path2id('')))
+        return revtree
+
     def get_nested_tree(self, path):
         nested_revid = self.get_reference_revision(path)
-        raise MissingNestedTree(path)
+        return self._get_nested_tree(path, None, nested_revid)
 
     def kind(self, path):
         return self._path2ie(path).kind

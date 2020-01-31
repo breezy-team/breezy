@@ -28,10 +28,12 @@ import patiencediff
 
 from breezy import (
     bencode,
-    errors,
     ui,
     )
 """)
+from . import (
+    errors,
+    )
 from .i18n import gettext
 from .sixish import (
     BytesIO,

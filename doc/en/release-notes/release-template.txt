@@ -2,7 +2,7 @@ brz ?.?.?
 #########
 
 :Codename: Nirvana
-:2.x.y: NOT RELEASED YET
+:3.y.z: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************

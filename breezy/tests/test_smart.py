@@ -2720,7 +2720,7 @@ class TestSmartServerRepositoryGetInventories(tests.TestCaseWithTransport):
         base_inv = repository.revision_tree(base_revid).root_inventory
         inv = repository.revision_tree(revid).root_inventory
         inv_delta = inv._make_delta(base_inv)
-        serializer = inventory_delta.InventoryDeltaSerializer(True, False)
+        serializer = inventory_delta.InventoryDeltaSerializer(True, True)
         return b"".join(serializer.delta_to_lines(base_revid, revid, inv_delta))
 
     def test_single(self):
@@ -2818,4 +2818,19 @@ class TestSmartServerRepositoryAnnotateFileRevision(tests.TestCaseWithTransport)
         self.assertEqual(response.args, (b"ok", ))
         self.assertEqual(
             [[b'somerev', b'somecontents\n'], [b'somerev', b'morecontents\n']],
+            bencode.bdecode(response.body))
+
+
+class TestSmartServerBranchRequestGetAllReferenceInfo(TestLockedBranch):
+
+    def test_get_some(self):
+        backing = self.get_transport()
+        request = smart_branch.SmartServerBranchRequestGetAllReferenceInfo(backing)
+        branch = self.make_branch('.')
+        branch.set_reference_info('some/path', 'http://www.example.com/')
+        response = request.execute(b'')
+        self.assertTrue(response.is_successful())
+        self.assertEqual(response.args, (b"ok", ))
+        self.assertEqual(
+            [[b'some/path', b'http://www.example.com/', b'']],
             bencode.bdecode(response.body))

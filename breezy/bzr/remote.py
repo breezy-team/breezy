@@ -2209,7 +2209,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 if_present_ids=if_present_ids, limit=limit)
 
     def fetch(self, source, revision_id=None, find_ghosts=False,
-              fetch_spec=None):
+              fetch_spec=None, lossy=False):
         # No base implementation to use as RemoteRepository is not a subclass
         # of Repository; so this is a copy of Repository.fetch().
         if fetch_spec is not None and revision_id is not None:
@@ -2227,7 +2227,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             if (revision_id is not None
                     and not _mod_revision.is_null(revision_id)):
                 self.get_revision(revision_id)
-            return 0, []
+            return _mod_repository.FetchResult(0)
         # if there is no specific appropriate InterRepository, this will get
         # the InterRepository base class, which raises an
         # IncompatibleRepositories when asked to fetch.
@@ -2237,7 +2237,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise errors.UnsupportedOperation(
                 "fetch_spec not supported for %r" % inter)
         return inter.fetch(revision_id=revision_id,
-                           find_ghosts=find_ghosts, fetch_spec=fetch_spec)
+                           find_ghosts=find_ghosts, fetch_spec=fetch_spec,
+                           lossy=lossy)
 
     def create_bundle(self, target, base, fileobj, format=None):
         self._ensure_real()
@@ -3397,6 +3398,11 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._ensure_real()
         return self._custom_format.supports_set_append_revisions_only()
 
+    @property
+    def supports_reference_locations(self):
+        self._ensure_real()
+        return self._custom_format.supports_reference_locations
+
     def stores_revno(self):
         return True
 
@@ -4176,6 +4182,61 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         with self.lock_write():
             reconciler = BranchReconciler(self, thorough=thorough)
             return reconciler.reconcile()
+
+    def get_reference_info(self, file_id):
+        """Get the tree_path and branch_location for a tree reference."""
+        if not self._format.supports_reference_locations:
+            raise errors.UnsupportedOperation(self.get_reference_info, self)
+        return self._get_all_reference_info().get(file_id, (None, None))
+
+    def set_reference_info(self, file_id, branch_location, tree_path=None):
+        """Set the branch location to use for a tree reference."""
+        if not self._format.supports_reference_locations:
+            raise errors.UnsupportedOperation(self.set_reference_info, self)
+        self._ensure_real()
+        self._real_branch.set_reference_info(
+            file_id, branch_location, tree_path)
+
+    def _set_all_reference_info(self, reference_info):
+        if not self._format.supports_reference_locations:
+            raise errors.UnsupportedOperation(self.set_reference_info, self)
+        self._ensure_real()
+        self._real_branch._set_all_reference_info(reference_info)
+
+    def _get_all_reference_info(self):
+        if not self._format.supports_reference_locations:
+            return {}
+        try:
+            response, handler = self._call_expecting_body(
+                b'Branch.get_all_reference_info', self._remote_path())
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_branch._get_all_reference_info()
+        if len(response) and response[0] != b'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        ret = {}
+        for (f, u, p) in bencode.bdecode(handler.read_body_bytes()):
+            ret[f] = (u.decode('utf-8'), p.decode('utf-8') if p else None)
+        return ret
+
+    def reference_parent(self, file_id, path, possible_transports=None):
+        """Return the parent branch for a tree-reference.
+
+        :param path: The path of the nested tree in the tree
+        :return: A branch associated with the nested tree
+        """
+        branch_location = self.get_reference_info(file_id)[0]
+        if branch_location is None:
+            try:
+                return branch.Branch.open_from_transport(
+                    self.controldir.root_transport.clone(path),
+                    possible_transports=possible_transports)
+            except errors.NotBranchError:
+                return None
+        return branch.Branch.open(
+            urlutils.join(
+                urlutils.strip_segment_parameters(self.user_url), branch_location),
+            possible_transports=possible_transports)
 
 
 class RemoteConfig(object):

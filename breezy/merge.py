@@ -641,7 +641,7 @@ class Merger(object):
                     continue
                 sub_merge = Merger(sub_tree.branch, this_tree=sub_tree)
                 sub_merge.merge_type = self.merge_type
-                other_branch = self.other_branch.reference_parent(relpath)
+                other_branch = self.other_tree.reference_parent(relpath)
                 sub_merge.set_other_revision(other_revision, other_branch)
                 base_tree_path = _mod_tree.find_previous_path(
                     self.this_tree, self.base_tree, relpath)
@@ -2007,8 +2007,7 @@ class _PlanMergeBase(object):
         for record in self.vf.get_record_stream(keys, 'unordered', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self.vf)
-            result[record.key[-1]] = osutils.chunks_to_lines(
-                record.get_bytes_as('chunked'))
+            result[record.key[-1]] = record.get_bytes_as('lines')
         return result
 
     def plan_merge(self):

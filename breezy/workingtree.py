@@ -43,7 +43,6 @@ import stat
 from breezy import (
     cleanup,
     conflicts as _mod_conflicts,
-    errors,
     filters as _mod_filters,
     merge,
     revision as _mod_revision,
@@ -56,6 +55,9 @@ from breezy.bzr import (
     )
 """)
 
+from . import (
+    errors,
+    )
 from .controldir import (
     ControlComponent,
     ControlComponentFormatRegistry,
@@ -366,7 +368,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
-            file_obj = _mod_filters.filtered_input_file(file_obj, filters)
+            if filters:
+                file_obj, size = _mod_filters.filtered_input_file(
+                    file_obj, filters)
+                stat_value = _mod_filters.FilteredStat(
+                    stat_value, st_size=size)
         return (file_obj, stat_value)
 
     def get_file_text(self, path, filtered=True):
@@ -655,7 +661,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             merger.other_rev_id = to_revision
             if _mod_revision.is_null(merger.other_rev_id):
                 raise errors.NoCommits(branch)
-            self.branch.fetch(branch, last_revision=merger.other_rev_id)
+            self.branch.fetch(branch, stop_revision=merger.other_rev_id)
             merger.other_basis = merger.other_rev_id
             merger.other_tree = self.branch.repository.revision_tree(
                 merger.other_rev_id)
@@ -728,7 +734,8 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def kind(self, relpath):
         return osutils.file_kind(self.abspath(relpath))
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         """List all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
@@ -1321,6 +1328,15 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         """
         with self.lock_read():
             return next(self.get_canonical_paths([path]))
+
+    def reference_parent(self, path, branch=None, possible_transports=None):
+        raise errors.UnsupportedOperation(self.reference_parent, self)
+
+    def get_reference_info(self, path, branch=None):
+        raise errors.UnsupportedOperation(self.get_reference_info, self)
+
+    def set_reference_info(self, tree_path, branch_location):
+        raise errors.UnsupportedOperation(self.set_reference_info, self)
 
 
 class WorkingTreeFormatRegistry(ControlComponentFormatRegistry):

@@ -55,6 +55,7 @@ from ..sixish import text_type
 from ..bzr.testament import (
     StrictTestament3,
     )
+from ..tree import find_previous_path
 from ..tsort import (
     topo_sort,
     )
@@ -125,9 +126,8 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     # Check what revision we should store
     parent_keys = []
     for ptree in parent_bzr_trees:
-        try:
-            ppath = ptree.id2path(file_id)
-        except errors.NoSuchId:
+        ppath = find_previous_path(base_bzr_tree, ptree, decoded_path, file_id, recurse='none')
+        if ppath is None:
             continue
         pkind = ptree.kind(ppath)
         if (pkind == ie.kind and
@@ -182,12 +182,13 @@ def import_git_submodule(texts, mapping, path, name, hexshas,
     (base_mode, mode) = modes
     if base_hexsha == hexsha and base_mode == mode:
         return [], {}
+    path = path.decode('utf-8')
     file_id = lookup_file_id(path)
     invdelta = []
     ie = TreeReference(file_id, name.decode("utf-8"), parent_id)
     ie.revision = revision_id
     if base_hexsha is not None:
-        old_path = path.decode("utf-8")  # Renames are not supported yet
+        old_path = path  # Renames are not supported yet
         if stat.S_ISDIR(base_mode):
             invdelta.extend(remove_disappeared_children(
                 base_bzr_tree, old_path, lookup_object(base_hexsha), [],
@@ -378,13 +379,13 @@ def ensure_inventories_in_repo(repo, trees):
 
 
 def import_git_commit(repo, mapping, head, lookup_object,
-                      target_git_object_retriever, trees_cache):
+                      target_git_object_retriever, trees_cache, strict):
     o = lookup_object(head)
     # Note that this uses mapping.revision_id_foreign_to_bzr. If the parents
     # were bzr roundtripped revisions they would be specified in the
     # roundtrip data.
     rev, roundtrip_revid, verifiers = mapping.import_commit(
-        o, mapping.revision_id_foreign_to_bzr)
+        o, mapping.revision_id_foreign_to_bzr, strict)
     if roundtrip_revid is not None:
         original_revid = rev.revision_id
         rev.revision_id = roundtrip_revid
@@ -482,7 +483,7 @@ def import_git_objects(repo, mapping, object_iter,
             continue
         if isinstance(o, Commit):
             rev, roundtrip_revid, verifiers = mapping.import_commit(
-                o, mapping.revision_id_foreign_to_bzr)
+                o, mapping.revision_id_foreign_to_bzr, strict=True)
             if (repo.has_revision(rev.revision_id)
                     or (roundtrip_revid and
                         repo.has_revision(roundtrip_revid))):
@@ -515,7 +516,8 @@ def import_git_objects(repo, mapping, object_iter,
                         pb.update("fetching revisions", offset + i,
                                   len(revision_ids))
                     import_git_commit(repo, mapping, head, lookup_object,
-                                      target_git_object_retriever, trees_cache)
+                                      target_git_object_retriever, trees_cache,
+                                      strict=True)
                     last_imported = head
             except BaseException:
                 repo.abort_write_group()

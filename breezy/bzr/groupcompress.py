@@ -441,6 +441,7 @@ class _LazyGroupCompressFactory(object):
         self.key = key
         self.parents = parents
         self.sha1 = None
+        self.size = None
         # Note: This attribute coupled with Manager._factories creates a
         #       reference cycle. Perhaps we would rather use a weakref(), or
         #       find an appropriate time to release the ref. After the first
@@ -459,6 +460,20 @@ class _LazyGroupCompressFactory(object):
         return '%s(%s, first=%s)' % (self.__class__.__name__,
                                      self.key, self._first)
 
+    def _extract_bytes(self):
+        # Grab and cache the raw bytes for this entry
+        # and break the ref-cycle with _manager since we don't need it
+        # anymore
+        try:
+            self._manager._prepare_for_extract()
+        except zlib.error as value:
+            raise DecompressCorruption("zlib: " + str(value))
+        block = self._manager._block
+        self._bytes = block.extract(self.key, self._start, self._end)
+        # There are code paths that first extract as fulltext, and then
+        # extract as storage_kind (smart fetch). So we don't break the
+        # refcycle here, but instead in manager.get_record_stream()
+
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
             if self._first:
@@ -466,24 +481,25 @@ class _LazyGroupCompressFactory(object):
                 return self._manager._wire_bytes()
             else:
                 return b''
-        if storage_kind in ('fulltext', 'chunked'):
+        if storage_kind in ('fulltext', 'chunked', 'lines'):
             if self._bytes is None:
-                # Grab and cache the raw bytes for this entry
-                # and break the ref-cycle with _manager since we don't need it
-                # anymore
-                try:
-                    self._manager._prepare_for_extract()
-                except zlib.error as value:
-                    raise DecompressCorruption("zlib: " + str(value))
-                block = self._manager._block
-                self._bytes = block.extract(self.key, self._start, self._end)
-                # There are code paths that first extract as fulltext, and then
-                # extract as storage_kind (smart fetch). So we don't break the
-                # refcycle here, but instead in manager.get_record_stream()
+                self._extract_bytes()
             if storage_kind == 'fulltext':
                 return self._bytes
-            else:
+            elif storage_kind == 'chunked':
                 return [self._bytes]
+            else:
+                return osutils.split_lines(self._bytes)
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+                                               self.storage_kind)
+
+    def iter_bytes_as(self, storage_kind):
+        if self._bytes is None:
+            self._extract_bytes()
+        if storage_kind == 'chunked':
+            return iter([self._bytes])
+        elif storage_kind == 'lines':
+            return osutils.split_lines(self._bytes)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
@@ -566,9 +582,13 @@ class _LazyGroupContentManager(object):
         old_length = self._block._content_length
         end_point = 0
         for factory in self._factories:
-            bytes = factory.get_bytes_as('fulltext')
+            chunks = factory.get_bytes_as('chunked')
+            chunks_len = factory.size
+            if chunks_len is None:
+                chunks_len = sum(map(len, chunks))
             (found_sha1, start_point, end_point,
-             type) = compressor.compress(factory.key, bytes, factory.sha1)
+             type) = compressor.compress(
+                 factory.key, chunks, chunks_len, factory.sha1)
             # Now update this factory with the new offsets, etc
             factory.sha1 = found_sha1
             factory._start = start_point
@@ -826,14 +846,16 @@ class _CommonGroupCompressor(object):
         else:
             self._settings = settings
 
-    def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
+    def compress(self, key, chunks, length, expected_sha, nostore_sha=None,
+                 soft=False):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output
             for identification of the text during decompression. If the last
             element is b'None' it is replaced with the sha1 of the text -
             e.g. sha1:xxxxxxx.
-        :param bytes: The bytes to be compressed
+        :param chunks: Chunks of bytes to be compressed
+        :param length: Length of chunks
         :param expected_sha: If non-None, the sha the lines are believed to
             have. During compression the sha is calculated; a mismatch will
             cause an error.
@@ -847,7 +869,7 @@ class _CommonGroupCompressor(object):
 
         :seealso VersionedFiles.add_lines:
         """
-        if not bytes:  # empty, like a dir entry, etc
+        if not chunks:  # empty, like a dir entry, etc
             if nostore_sha == _null_sha1:
                 raise errors.ExistingContent()
             return _null_sha1, 0, 0, 'fulltext'
@@ -855,23 +877,25 @@ class _CommonGroupCompressor(object):
         if expected_sha is not None:
             sha1 = expected_sha
         else:
-            sha1 = osutils.sha_string(bytes)
+            sha1 = osutils.sha_strings(chunks)
         if nostore_sha is not None:
             if sha1 == nostore_sha:
                 raise errors.ExistingContent()
         if key[-1] is None:
             key = key[:-1] + (b'sha1:' + sha1,)
 
-        start, end, type = self._compress(key, bytes, len(bytes) / 2, soft)
+        start, end, type = self._compress(key, chunks, length, length / 2, soft)
         return sha1, start, end, type
 
-    def _compress(self, key, bytes, max_delta_size, soft=False):
+    def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output for identification
             of the text during decompression.
 
-        :param bytes: The bytes to be compressed
+        :param chunks: The chunks of bytes to be compressed
+
+        :param input_len: The length of the chunks
 
         :param max_delta_size: The size above which we issue a fulltext instead
             of a delta.
@@ -956,10 +980,9 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         # The actual content is managed by LinesDeltaIndex
         self.chunks = self._delta_index.lines
 
-    def _compress(self, key, bytes, max_delta_size, soft=False):
+    def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
-        input_len = len(bytes)
-        new_lines = osutils.split_lines(bytes)
+        new_lines = osutils.chunks_to_lines(chunks)
         out_lines, index_lines = self._delta_index.make_delta(
             new_lines, bytes_length=input_len, soft=soft)
         delta_length = sum(map(len, out_lines))
@@ -1011,9 +1034,8 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         max_bytes_to_index = self._settings.get('max_bytes_to_index', 0)
         self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
-    def _compress(self, key, bytes, max_delta_size, soft=False):
+    def _compress(self, key, chunks, input_len, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
-        input_len = len(bytes)
         # By having action/label/sha1/len, we can parse the group if the index
         # was ever destroyed, we have the key in 'label', we know the final
         # bytes are valid from sha1, and we know where to find the end of this
@@ -1027,13 +1049,14 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
             raise AssertionError('_source_offset != endpoint'
                                  ' somehow the DeltaIndex got out of sync with'
                                  ' the output lines')
+        bytes = b''.join(chunks)
         delta = self._delta_index.make_delta(bytes, max_delta_size)
-        if (delta is None):
+        if delta is None:
             type = 'fulltext'
-            enc_length = encode_base128_int(len(bytes))
+            enc_length = encode_base128_int(input_len)
             len_mini_header = 1 + len(enc_length)
             self._delta_index.add_source(bytes, len_mini_header)
-            new_chunks = [b'f', enc_length, bytes]
+            new_chunks = [b'f', enc_length] + chunks
         else:
             type = 'delta'
             enc_length = encode_base128_int(len(delta))
@@ -1298,19 +1321,18 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         if check_content:
             self._check_lines_not_unicode(lines)
             self._check_lines_are_lines(lines)
-        return self.add_chunks(
-            key, parents, iter(lines), parent_texts, left_matching_blocks,
-            nostore_sha, random_id)
+        return self.add_content(
+            ChunkedContentFactory(
+                key, parents, osutils.sha_strings(lines), lines, chunks_are_lines=True),
+            parent_texts, left_matching_blocks, nostore_sha, random_id)
 
-    def add_chunks(self, key, parents, chunk_iter, parent_texts=None,
-                   left_matching_blocks=None, nostore_sha=None, random_id=False):
+    def add_content(self, factory, parent_texts=None,
+                    left_matching_blocks=None, nostore_sha=None,
+                    random_id=False):
         """Add a text to the store.
 
-        :param key: The key tuple of the text to add.
-        :param parents: The parents key tuples of the text to add.
-        :param chunk_iter: An iterator over chunks. Chunks
-            don't need to be file lines; the only requirement is that they
-            are bytes.
+        :param factory: A ContentFactory that can be used to retrieve the key,
+            parents and contents.
         :param parent_texts: An optional dictionary containing the opaque
             representations of some or all of the parents of version_id to
             allow delta optimisations.  VERY IMPORTANT: the texts must be those
@@ -1331,20 +1353,17 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                  back to future add_lines calls in the parent_texts dictionary.
         """
         self._index._check_write_ok()
-        self._check_add(key, random_id)
+        parents = factory.parents
+        self._check_add(factory.key, random_id)
         if parents is None:
             # The caller might pass None if there is no graph data, but kndx
             # indexes can't directly store that, so we give them
             # an empty tuple instead.
             parents = ()
         # double handling for now. Make it work until then.
-        # TODO(jelmer): problematic for big files: let's not keep the list of
-        # chunks in memory.
-        chunks = list(chunk_iter)
-        record = ChunkedContentFactory(key, parents, None, chunks)
-        sha1 = list(self._insert_record_stream(
-            [record], random_id=random_id, nostore_sha=nostore_sha))[0]
-        return sha1, sum(map(len, chunks)), None
+        sha1, length = list(self._insert_record_stream(
+            [factory], random_id=random_id, nostore_sha=nostore_sha))[0]
+        return sha1, length, None
 
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
@@ -1366,7 +1385,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         if keys is None:
             keys = self.keys()
             for record in self.get_record_stream(keys, 'unordered', True):
-                record.get_bytes_as('fulltext')
+                for chunk in record.iter_bytes_as('chunked'):
+                    pass
         else:
             return self.get_record_stream(keys, 'unordered', True)
 
@@ -1667,8 +1687,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 result[record.key] = record.sha1
             else:
                 if record.storage_kind != 'absent':
-                    result[record.key] = osutils.sha_string(
-                        record.get_bytes_as('fulltext'))
+                    result[record.key] = osutils.sha_strings(
+                        record.iter_bytes_as('chunked'))
         return result
 
     def insert_record_stream(self, stream):
@@ -1682,7 +1702,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         # test_insert_record_stream_existing_keys fail for groupcompress and
         # groupcompress-nograph, this needs to be revisited while addressing
         # 'bzr branch' performance issues.
-        for _ in self._insert_record_stream(stream, random_id=False):
+        for _, _ in self._insert_record_stream(stream, random_id=False):
             pass
 
     def _get_compressor_settings(self):
@@ -1722,7 +1742,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         :param reuse_blocks: If the source is streaming from
             groupcompress-blocks, just insert the blocks as-is, rather than
             expanding the texts and inserting again.
-        :return: An iterator over the sha1 of the inserted records.
+        :return: An iterator over (sha1, length) of the inserted records.
         :seealso insert_record_stream:
         :seealso add_lines:
         """
@@ -1748,16 +1768,12 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             # Note: At this point we still have 1 copy of the fulltext (in
             #       record and the var 'bytes'), and this generates 2 copies of
             #       the compressed text (one for bytes, one in chunks)
-            # TODO: Push 'chunks' down into the _access api, so that we don't
-            #       have to double compressed memory here
             # TODO: Figure out how to indicate that we would be happy to free
             #       the fulltext content at this point. Note that sometimes we
             #       will want it later (streaming CHK pages), but most of the
             #       time we won't (everything else)
-            data = b''.join(chunks)
-            del chunks
-            index, start, length = self._access.add_raw_records(
-                [(None, len(data))], data)[0]
+            index, start, length = self._access.add_raw_record(
+                None, bytes_len, chunks)
             nodes = []
             for key, reads, refs in keys_to_add:
                 nodes.append((key, b"%d %d %s" % (start, length, reads), refs))
@@ -1801,10 +1817,9 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 if record.storage_kind == 'groupcompress-block':
                     # Insert the raw block into the target repo
                     insert_manager = record._manager
-                    bytes = record._manager._block.to_bytes()
-                    _, start, length = self._access.add_raw_records(
-                        [(None, len(bytes))], bytes)[0]
-                    del bytes
+                    bytes_len, chunks = record._manager._block.to_chunks()
+                    _, start, length = self._access.add_raw_record(
+                        None, bytes_len, chunks)
                     block_start = start
                     block_length = length
                 if record.storage_kind in ('groupcompress-block',
@@ -1825,25 +1840,28 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                     self._index.add_records(nodes, random_id=random_id)
                     continue
             try:
-                bytes = record.get_bytes_as('fulltext')
+                chunks = record.get_bytes_as('chunked')
             except errors.UnavailableRepresentation:
-                adapter_key = record.storage_kind, 'fulltext'
+                adapter_key = record.storage_kind, 'chunked'
                 adapter = get_adapter(adapter_key)
-                bytes = adapter.get_bytes(record)
+                chunks = adapter.get_bytes(record, 'chunked')
+            chunks_len = record.size
+            if chunks_len is None:
+                chunks_len = sum(map(len, chunks))
             if len(record.key) > 1:
                 prefix = record.key[0]
                 soft = (prefix == last_prefix)
             else:
                 prefix = None
                 soft = False
-            if max_fulltext_len < len(bytes):
-                max_fulltext_len = len(bytes)
+            if max_fulltext_len < chunks_len:
+                max_fulltext_len = chunks_len
                 max_fulltext_prefix = prefix
             (found_sha1, start_point, end_point,
-             type) = self._compressor.compress(record.key,
-                                               bytes, record.sha1, soft=soft,
-                                               nostore_sha=nostore_sha)
-            # delta_ratio = float(len(bytes)) / (end_point - start_point)
+             type) = self._compressor.compress(
+                 record.key, chunks, chunks_len, record.sha1, soft=soft,
+                 nostore_sha=nostore_sha)
+            # delta_ratio = float(chunks_len) / (end_point - start_point)
             # Check if we want to continue to include that text
             if (prefix == max_fulltext_prefix
                     and end_point < 2 * max_fulltext_len):
@@ -1861,16 +1879,16 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             if start_new_block:
                 self._compressor.pop_last()
                 flush()
-                max_fulltext_len = len(bytes)
+                max_fulltext_len = chunks_len
                 (found_sha1, start_point, end_point,
-                 type) = self._compressor.compress(record.key, bytes,
-                                                   record.sha1)
+                 type) = self._compressor.compress(
+                     record.key, chunks, chunks_len, record.sha1)
             if record.key[-1] is None:
                 key = record.key[:-1] + (b'sha1:' + found_sha1,)
             else:
                 key = record.key
             self._unadded_refs[key] = record.parents
-            yield found_sha1
+            yield found_sha1, chunks_len
             as_st = static_tuple.StaticTuple.from_sequence
             if record.parents is not None:
                 parents = as_st([as_st(p) for p in record.parents])
@@ -1917,8 +1935,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 pb.update('Walking content', key_idx, total)
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(key, self)
-            lines = osutils.split_lines(record.get_bytes_as('fulltext'))
-            for line in lines:
+            for line in record.iter_bytes_as('lines'):
                 yield line, key
         if pb is not None:
             pb.update('Walking content', total, total)

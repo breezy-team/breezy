@@ -48,7 +48,7 @@ from ... import (
     )
 from ...transport import http, get_transport
 
-from .lp_api import (
+from .uris import (
     DEFAULT_INSTANCE,
     LAUNCHPAD_DOMAINS,
     LAUNCHPAD_BAZAAR_DOMAINS,

@@ -53,6 +53,7 @@ from .. import lazy_import
 lazy_import.lazy_import(globals(), """
 from breezy import (
     cache_utf8,
+    cleanup,
     conflicts as _mod_conflicts,
     globbing,
     ignores,
@@ -83,6 +84,7 @@ from ..tree import (
     TreeEntry,
     TreeFile,
     TreeLink,
+    TreeReference,
     )
 from ..workingtree import (
     WorkingTree,
@@ -191,8 +193,6 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # when you try to commit it.  It might happen if there is a
         # checkout in a subdirectory.  This can be avoided by not adding
         # it.  mbp 20070306
-
-
 
     def _serialize(self, inventory, out_file):
         xml5.serializer_v5.write_inventory(
@@ -303,7 +303,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _write_basis_inventory(self, xml):
         """Write the basis inventory XML to the basis-inventory file"""
         path = self._basis_inventory_name()
-        sio = BytesIO(xml)
+        sio = BytesIO(b''.join(xml))
         self._transport.put_file(path, sio,
                                  mode=self.controldir._get_file_mode())
 
@@ -499,6 +499,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     note(message)
             self.apply_inventory_delta(inv_delta)
 
+    def get_nested_tree(self, path):
+        return WorkingTree.open(self.abspath(path))
+
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees."""
         parent_ids = [rev for (rev, tree) in parents_list]
@@ -545,14 +548,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # revision_id is set. We must check for this full string, because a
             # root node id can legitimately look like 'revision_id' but cannot
             # contain a '"'.
-            xml = self.branch.repository._get_inventory_xml(new_revision)
-            firstline = xml.split(b'\n', 1)[0]
+            lines = self.branch.repository._get_inventory_xml(new_revision)
+            firstline = lines[0]
             if (b'revision_id="' not in firstline
                     or b'format="7"' not in firstline):
-                inv = self.branch.repository._serializer.read_inventory_from_string(
-                    xml, new_revision)
-                xml = self._create_basis_xml_from_inventory(new_revision, inv)
-            self._write_basis_inventory(xml)
+                inv = self.branch.repository._serializer.read_inventory_from_lines(
+                    lines, new_revision)
+                lines = self._create_basis_xml_from_inventory(new_revision, inv)
+            self._write_basis_inventory(lines)
         except (errors.NoSuchRevision, errors.RevisionNotPresent):
             pass
 
@@ -562,7 +565,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
         inventory.revision_id = revision_id
-        return xml7.serializer_v7.write_inventory_to_string(inventory)
+        return xml7.serializer_v7.write_inventory_to_lines(inventory)
 
     def set_conflicts(self, conflicts):
         with self.lock_tree_write():
@@ -638,7 +641,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def read_basis_inventory(self):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name()
-        return self._transport.get_bytes(path)
+        return osutils.split_lines(self._transport.get_bytes(path))
 
     def read_working_inventory(self):
         """Read the working inventory.
@@ -798,12 +801,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """See WorkingTree.revision_id."""
         if revision_id == self.last_revision():
             try:
-                xml = self.read_basis_inventory()
+                xml_lines = self.read_basis_inventory()
             except errors.NoSuchFile:
                 pass
             else:
                 try:
-                    inv = xml7.serializer_v7.read_inventory_from_string(xml)
+                    inv = xml7.serializer_v7.read_inventory_from_lines(xml_lines)
                     # dont use the repository revision_tree api because we want
                     # to supply the inventory.
                     if inv.revision_id == revision_id:
@@ -1013,7 +1016,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             wt._write_inventory(child_inv)
             return wt
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         """List all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
@@ -1024,7 +1028,8 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         :param from_dir: start from this directory or None for the root
         :param recursive: whether to recurse into subdirectories or not
         """
-        with self.lock_read():
+        with cleanup.ExitStack() as exit_stack:
+            exit_stack.enter_context(self.lock_read())
             if from_dir is None and include_root is True:
                 yield ('', 'V', 'directory', self.root_inventory.root)
             # Convert these into local objects to save lookup times
@@ -1038,29 +1043,30 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             fk_entries = {
                 'directory': TreeDirectory,
                 'file': TreeFile,
-                'symlink': TreeLink
+                'symlink': TreeLink,
+                'tree-reference': TreeReference,
                 }
 
             # directory file_id, relative path, absolute path, reverse sorted
             # children
             if from_dir is not None:
-                inv, from_dir_id = self._path2inv_file_id(from_dir)
+                from_inv, from_dir_id = self._path2inv_file_id(from_dir)
                 if from_dir_id is None:
                     # Directory not versioned
                     return
                 from_dir_abspath = pathjoin(self.basedir, from_dir)
             else:
-                inv = self.root_inventory
-                from_dir_id = inv.root.file_id
+                from_inv = self.root_inventory
+                from_dir_id = from_inv.root.file_id
                 from_dir_abspath = self.basedir
             children = sorted(os.listdir(from_dir_abspath))
             # jam 20060527 The kernel sized tree seems equivalent whether we
             # use a deque and popleft to keep them sorted, or if we use a plain
             # list and just reverse() them.
             children = deque(children)
-            stack = [(from_dir_id, u'', from_dir_abspath, children)]
+            stack = [(from_inv, from_dir_id, u'', from_dir_abspath, children)]
             while stack:
-                (from_dir_id, from_dir_relpath, from_dir_abspath,
+                (inv, from_dir_id, from_dir_relpath, from_dir_abspath,
                  children) = stack[-1]
 
                 while children:
@@ -1115,6 +1121,15 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                                 c = '?'
 
                     fk = osutils.file_kind(fap)
+                    if fk == 'directory' and self._directory_is_tree_reference(f):
+                        if not recurse_nested:
+                            fk = 'tree-reference'
+                        else:
+                            subtree = self.get_nested_tree(f)
+                            exit_stack.enter_context(subtree.lock_read())
+                            inv = subtree.root_inventory
+                            f_ie = inv.get_entry(f_ie.file_id)
+                            fk = 'directory'
 
                     # make a last minute entry
                     if f_ie:
@@ -1133,7 +1148,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     if recursive:
                         new_children = sorted(os.listdir(fap))
                         new_children = deque(new_children)
-                        stack.append((f_ie.file_id, fp, fap, new_children))
+                        stack.append((inv, f_ie.file_id, fp, fap, new_children))
                         # Break out of inner loop,
                         # so that we start outer loop with child
                         break
@@ -1235,7 +1250,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 # restore the inventory on error
                 self._inventory_is_modified = original_modified
                 raise
-            # FIXME: Should potentially also write the from_invs
+            # TODO(jelmer): what about the from_invs?
             self._write_inventory(to_inv)
             return rename_tuples
 
@@ -1270,8 +1285,10 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             if from_id is None:
                 # if file is missing in the inventory maybe it's in the
                 # basis_tree
+                # TODO(jelmer): This is going to break with nested trees.
+                from_inv = self.root_inventory
                 basis_tree = self.branch.basis_tree()
-                from_id = basis_tree.path2id(from_rel)
+                basis_from_inv, from_id = basis_tree._path2inv_file_id(from_rel)
                 if from_id is None:
                     raise errors.BzrRenameFailedError(
                         from_rel, to_rel,
@@ -1280,8 +1297,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     from_entry = from_inv.get_entry(from_id)
                 except errors.NoSuchId:
                     # put entry back in the inventory so we can rename it
-                    from_entry = basis_tree.root_inventory.get_entry(
-                        from_id).copy()
+                    from_entry = basis_from_inv.get_entry(from_id).copy()
                     from_inv.add(from_entry)
             else:
                 from_inv, from_inv_id = self._unpack_file_id(from_id)
@@ -1712,7 +1728,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             self.control_transport.put_bytes(
                 'format', self._format.as_string())
 
-    def _check_for_tree_references(self, iterator):
+    def _check_for_tree_references(self, iterator, recurse_nested, specific_files=None):
         """See if directories have become tree-references."""
         blocked_parent_ids = set()
         for path, ie in iterator:
@@ -1724,12 +1740,25 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 continue
             if (ie.kind == 'directory' and
                     self._directory_is_tree_reference(path)):
+
                 # This InventoryDirectory needs to be a TreeReference
                 ie = inventory.TreeReference(ie.file_id, ie.name, ie.parent_id)
                 blocked_parent_ids.add(ie.file_id)
-            yield path, ie
 
-    def iter_entries_by_dir(self, specific_files=None):
+            if ie.kind == 'tree-reference' and recurse_nested:
+                subtree = self.get_nested_tree(path)
+                for subpath, ie in subtree.iter_entries_by_dir(
+                        recurse_nested=recurse_nested,
+                        specific_files=specific_files):
+                    if subpath:
+                        full_subpath = osutils.pathjoin(path, subpath)
+                    else:
+                        full_subpath = path
+                    yield full_subpath, ie
+            else:
+                yield path, ie
+
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """See Tree.iter_entries_by_dir()"""
         # The only trick here is that if we supports_tree_reference then we
         # need to detect if a directory becomes a tree-reference.
@@ -1738,7 +1767,9 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         if not self.supports_tree_reference():
             return iterator
         else:
-            return self._check_for_tree_references(iterator)
+            return self._check_for_tree_references(
+                iterator, recurse_nested=recurse_nested,
+                specific_files=specific_files)
 
     def get_canonical_paths(self, paths):
         """Look up canonical paths for multiple items.
@@ -1764,6 +1795,23 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     yield path
                 else:
                     yield get_canonical_path(self, path, normalize)
+
+    def get_reference_info(self, path, branch=None):
+        file_id = self.path2id(path)
+        if file_id is None:
+            return None
+        return self.branch.get_reference_info(file_id)[0]
+
+    def set_reference_info(self, tree_path, branch_location):
+        file_id = self.path2id(tree_path)
+        if file_id is None:
+            raise errors.NoSuchFile(tree_path)
+        self.branch.set_reference_info(file_id, branch_location, tree_path)
+
+    def reference_parent(self, path, branch=None, possible_transports=None):
+        return self.branch.reference_parent(
+            self.path2id(path),
+            path, possible_transports=possible_transports)
 
 
 class WorkingTreeFormatMetaDir(bzrdir.BzrFormat, WorkingTreeFormat):

@@ -74,11 +74,13 @@ lazy_import(globals(), """
 from breezy import (
     bedding,
     debug,
-    errors,
     osutils,
     ui,
     )
 """)
+from . import (
+    errors,
+    )
 
 from .sixish import (
     PY3,

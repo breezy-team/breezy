@@ -18,6 +18,10 @@
 
 from __future__ import absolute_import
 
+from .. import (
+    errors,
+    )
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import time
@@ -25,7 +29,6 @@ import time
 from breezy import (
     controldir,
     debug,
-    errors,
     osutils,
     revision as _mod_revision,
     trace,
@@ -1089,8 +1092,8 @@ class KnitReconcilePacker(KnitPacker):
                     raise errors.BzrError('Mismatched key parent %r:%r' %
                                           (key, parent_keys))
                 parents.append(parent_key[1])
-            text_lines = osutils.split_lines(next(repo.texts.get_record_stream(
-                [key], 'unordered', True)).get_bytes_as('fulltext'))
+            text_lines = next(repo.texts.get_record_stream(
+                [key], 'unordered', True)).get_bytes_as('lines')
             output_texts.add_lines(key, parent_keys, text_lines,
                                    random_id=True, check_content=False)
         # 5) check that nothing inserted has a reference outside the keyspace.

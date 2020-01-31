@@ -786,8 +786,8 @@ class TestPackRepository(TestCaseWithTransport):
         same_repo.resume_write_group(wg_tokens)
         self.assertEqual([key], list(same_repo.chk_bytes.keys()))
         self.assertEqual(
-            text, next(same_repo.chk_bytes.get_record_stream([key],
-                                                             'unordered', True)).get_bytes_as('fulltext'))
+            text, next(same_repo.chk_bytes.get_record_stream(
+                [key], 'unordered', True)).get_bytes_as('fulltext'))
         same_repo.abort_write_group()
         self.assertEqual([], list(same_repo.chk_bytes.keys()))
 
@@ -884,7 +884,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             # can only stack on repositories that have compatible internal
             # metadata
             if getattr(repo._format, 'supports_tree_reference', False):
-                matching_format_name = 'pack-0.92-subtree'
+                matching_format_name = '2a'
             else:
                 if repo._format.supports_chks:
                     matching_format_name = '2a'
@@ -915,7 +915,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         if getattr(repo._format, 'supports_tree_reference', False):
             # can only stack on repositories that have compatible internal
             # metadata
-            matching_format_name = 'pack-0.92-subtree'
+            matching_format_name = '2a'
             mismatching_format_name = 'rich-root-pack'
         else:
             if repo.supports_rich_root():

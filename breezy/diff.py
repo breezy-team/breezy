@@ -31,7 +31,6 @@ import tempfile
 from breezy import (
     cleanup,
     controldir,
-    errors,
     osutils,
     textfile,
     timestamp,
@@ -42,6 +41,9 @@ from breezy.workingtree import WorkingTree
 from breezy.i18n import gettext
 """)
 
+from . import (
+    errors,
+    )
 from .registry import (
     Registry,
     )
@@ -795,6 +797,8 @@ class DiffFromTool(DiffPath):
         my_map = {'old_path': old_path, 'new_path': new_path}
         command = [t.format(**my_map) for t in
                    self.command_template]
+        if command == self.command_template:
+            command += [old_path, new_path]
         if sys.platform == 'win32':  # Popen doesn't accept unicode on win32
             command_encoded = []
             for c in command:
