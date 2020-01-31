@@ -336,9 +336,7 @@ class TestSerializer(TestCase):
         """Check that repacking a revision yields the same information"""
         inp = BytesIO(txt)
         rev = breezy.bzr.xml5.serializer_v5.read_revision(inp)
-        outp = BytesIO()
-        breezy.bzr.xml5.serializer_v5.write_revision(rev, outp)
-        outfile_contents = outp.getvalue()
+        outfile_contents = breezy.bzr.xml5.serializer_v5.write_revision_to_string(rev)
         rev2 = breezy.bzr.xml5.serializer_v5.read_revision(
             BytesIO(outfile_contents))
         self.assertEqual(rev, rev2)
@@ -355,13 +353,11 @@ class TestSerializer(TestCase):
         # fixed 20051025, revisions should have final newline
         rev = breezy.bzr.xml5.serializer_v5.read_revision_from_string(
             _revision_v5)
-        outp = BytesIO()
-        breezy.bzr.xml5.serializer_v5.write_revision(rev, outp)
-        outfile_contents = outp.getvalue()
+        outfile_contents = breezy.bzr.xml5.serializer_v5.write_revision_to_string(rev)
         self.assertEqual(outfile_contents[-1:], b'\n')
         self.assertEqualDiff(
             outfile_contents,
-            breezy.bzr.xml5.serializer_v5.write_revision_to_string(rev))
+            b''.join(breezy.bzr.xml5.serializer_v5.write_revision_to_lines(rev)))
         self.assertEqualDiff(outfile_contents, _expected_rev_v5)
 
     def test_empty_property_value(self):
@@ -370,7 +366,7 @@ class TestSerializer(TestCase):
         rev = s_v5.read_revision_from_string(_revision_v5)
         props = {'empty': '', 'one': 'one'}
         rev.properties = props
-        txt = s_v5.write_revision_to_string(rev)
+        txt = b''.join(s_v5.write_revision_to_lines(rev))
         new_rev = s_v5.read_revision_from_string(txt)
         self.assertEqual(props, new_rev.properties)
 
@@ -463,33 +459,33 @@ class TestSerializer(TestCase):
         """Pack revision to XML v6"""
         rev = breezy.bzr.xml6.serializer_v6.read_revision_from_string(
             _expected_rev_v5)
-        serialized = breezy.bzr.xml6.serializer_v6.write_revision_to_string(
+        serialized = breezy.bzr.xml6.serializer_v6.write_revision_to_lines(
             rev)
-        self.assertEqualDiff(serialized, _expected_rev_v5)
+        self.assertEqualDiff(b''.join(serialized), _expected_rev_v5)
 
     def test_revision_text_v7(self):
         """Pack revision to XML v7"""
         rev = breezy.bzr.xml7.serializer_v7.read_revision_from_string(
             _expected_rev_v5)
-        serialized = breezy.bzr.xml7.serializer_v7.write_revision_to_string(
+        serialized = breezy.bzr.xml7.serializer_v7.write_revision_to_lines(
             rev)
-        self.assertEqualDiff(serialized, _expected_rev_v5)
+        self.assertEqualDiff(b''.join(serialized), _expected_rev_v5)
 
     def test_revision_text_v8(self):
         """Pack revision to XML v8"""
         rev = breezy.bzr.xml8.serializer_v8.read_revision_from_string(
             _expected_rev_v8)
-        serialized = breezy.bzr.xml8.serializer_v8.write_revision_to_string(
+        serialized = breezy.bzr.xml8.serializer_v8.write_revision_to_lines(
             rev)
-        self.assertEqualDiff(serialized, _expected_rev_v8)
+        self.assertEqualDiff(b''.join(serialized), _expected_rev_v8)
 
     def test_revision_text_v8_complex(self):
         """Pack revision to XML v8"""
         rev = breezy.bzr.xml8.serializer_v8.read_revision_from_string(
             _expected_rev_v8_complex)
-        serialized = breezy.bzr.xml8.serializer_v8.write_revision_to_string(
+        serialized = breezy.bzr.xml8.serializer_v8.write_revision_to_lines(
             rev)
-        self.assertEqualDiff(serialized, _expected_rev_v8_complex)
+        self.assertEqualDiff(b''.join(serialized), _expected_rev_v8_complex)
 
     def test_revision_ids_are_utf8(self):
         """Parsed revision_ids should all be utf-8 strings, not unicode."""

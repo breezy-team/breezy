@@ -101,8 +101,8 @@ class BEncodeRevisionSerializer1(object):
         ])
         return bencode.bencode(ret)
 
-    def write_revision(self, rev, f):
-        f.write(self.write_revision_to_string(rev))
+    def write_revision_to_lines(self, rev):
+        return self.write_revision_to_string(rev).splitlines(True)
 
     def read_revision_from_string(self, text):
         # TODO: consider writing a Revision decoder, rather than using the

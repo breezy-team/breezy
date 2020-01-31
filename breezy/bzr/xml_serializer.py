@@ -96,9 +96,6 @@ class XMLSerializer(serializer.Serializer):
         except ParseError as e:
             raise errors.UnexpectedInventoryFormat(str(e))
 
-    def write_revision(self, rev, f):
-        f.writelines(self.write_revision_to_lines(rev))
-
     def write_revision_to_string(self, rev):
         return b''.join(self.write_revision_to_lines(rev))
 
