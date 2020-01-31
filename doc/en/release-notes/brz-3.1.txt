@@ -108,6 +108,9 @@ Improvements
    branches; submodules are converted to nested trees.
    (Jelmer Vernooĳ, #402814)
 
+ * Python 3 is now used by default to run scripts, etc. from the makefile.
+   (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
