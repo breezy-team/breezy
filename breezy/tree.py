@@ -713,8 +713,7 @@ class Tree(object):
         :return: None if content filtering is not supported by this tree.
         """
         if self.supports_content_filtering():
-            return lambda path, file_id: \
-                self._content_filter_stack(path)
+            return self._content_filter_stack
         else:
             return None
 
