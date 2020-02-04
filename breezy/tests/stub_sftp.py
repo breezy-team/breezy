@@ -262,7 +262,7 @@ class StubSFTPServer(paramiko.SFTPServerInterface):
 
 # ------------- server test implementation --------------
 
-STUB_SERVER_KEY = """
+STUB_SERVER_KEY = """\
 -----BEGIN RSA PRIVATE KEY-----
 MIICWgIBAAKBgQDTj1bqB4WmayWNPB+8jVSYpZYk80Ujvj680pOTh2bORBjbIAyz
 oWGW+GUjzKxTiiPvVmxFgx5wdsFvF03v34lEVVhMpouqPAYQ15N37K/ir5XY+9m/
