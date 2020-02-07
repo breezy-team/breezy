@@ -20,9 +20,6 @@
 import os
 import sys
 
-from ..sixish import (
-    text_type,
-    )
 from .. import (
     bedding,
     osutils,
@@ -56,7 +53,7 @@ class TestConfigPath(tests.TestCase):
         self.assertEqual(bedding.config_dir(), self.brz_home)
 
     def test_config_dir_is_unicode(self):
-        self.assertIsInstance(bedding.config_dir(), text_type)
+        self.assertIsInstance(bedding.config_dir(), str)
 
     def test_config_path(self):
         self.assertEqual(bedding.config_path(),
@@ -84,7 +81,7 @@ class TestConfigPathFallback(tests.TestCaseInTempDir):
         self.assertEqual(bedding.config_dir(), self.bzr_home)
 
     def test_config_dir_is_unicode(self):
-        self.assertIsInstance(bedding.config_dir(), text_type)
+        self.assertIsInstance(bedding.config_dir(), str)
 
     def test_config_path(self):
         self.assertEqual(bedding.config_path(),

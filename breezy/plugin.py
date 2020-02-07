@@ -63,10 +63,7 @@ from . import (
 
 _MODULE_PREFIX = "breezy.plugins."
 
-if __debug__ or sys.version_info > (3,):
-    COMPILED_EXT = ".pyc"
-else:
-    COMPILED_EXT = ".pyo"
+COMPILED_EXT = ".pyc"
 
 
 def disable_plugins(state=None):

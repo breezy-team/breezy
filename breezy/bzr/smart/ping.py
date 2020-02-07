@@ -20,7 +20,6 @@ from __future__ import absolute_import
 
 from ...commands import Command
 from ...lazy_import import lazy_import
-from ...sixish import viewitems
 
 lazy_import(globals(), """
 from breezy.bzr.smart.client import _SmartClient
@@ -54,5 +53,5 @@ class cmd_ping(Command):
         if getattr(handler, 'headers', None) is not None:
             headers = {
                 k.decode('utf-8'): v.decode('utf-8')
-                for (k, v) in viewitems(handler.headers)}
+                for (k, v) in handler.headers.items()}
             self.outf.write('Headers: %r\n' % (headers,))

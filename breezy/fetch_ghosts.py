@@ -16,7 +16,8 @@
 
 from __future__ import absolute_import
 
-from . import cleanup
+import contextlib
+
 from .branch import Branch
 from .trace import note
 from .errors import NoSuchRevision, BzrCommandError
@@ -43,7 +44,7 @@ class GhostFetcher(object):
 
     def run(self):
         lock_other = self.this_branch.base != self.other_branch.base
-        with cleanup.ExitStack() as exit_stack:
+        with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.this_branch.lock_write())
             if lock_other:
                 exit_stack.enter_context(self.other_branch.lock_read())

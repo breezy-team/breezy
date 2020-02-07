@@ -45,10 +45,6 @@ from . import (
     osutils,
     )
 from .inter import InterObject
-from .sixish import (
-    text_type,
-    viewvalues,
-    )
 
 
 class FileTimestampUnavailable(errors.BzrError):

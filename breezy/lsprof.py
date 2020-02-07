@@ -13,10 +13,7 @@ except ImportError:
 import operator
 import os
 import sys
-try:
-    import _thread
-except ImportError:
-    import thread as _thread
+import _thread
 import threading
 from _lsprof import Profiler, profiler_entry
 

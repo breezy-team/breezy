@@ -26,7 +26,6 @@ from breezy import (
     tests,
     )
 
-from ..sixish import viewitems
 
 
 class TestRegistry(tests.TestCase):
@@ -218,7 +217,7 @@ class TestRegistry(tests.TestCase):
         self.assertEqual({'two': 'one', 'three': 'one'}, a_registry.aliases())
         self.assertEqual(
             {'one': ['three', 'two']},
-            {k: sorted(v) for (k, v) in viewitems(a_registry.alias_map())})
+            {k: sorted(v) for (k, v) in a_registry.alias_map().items()})
 
     def test_registry_alias_exists(self):
         a_registry = registry.Registry()

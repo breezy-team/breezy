@@ -16,6 +16,8 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
+
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
@@ -29,9 +31,6 @@ from breezy.i18n import gettext
 
 from . import (
     errors,
-    )
-from .sixish import (
-    BytesIO,
     )
 from .trace import note
 

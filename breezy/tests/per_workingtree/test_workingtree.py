@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
+from io import StringIO
 import os
 
 from ... import (
@@ -41,9 +42,6 @@ from ...errors import (
 from ...bzr.inventory import Inventory
 from ...mutabletree import MutableTree
 from ...osutils import pathjoin, getcwd, has_symlinks
-from ...sixish import (
-    StringIO,
-    )
 from .. import (
     features,
     TestSkipped,

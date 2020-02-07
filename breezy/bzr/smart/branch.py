@@ -24,7 +24,6 @@ from ... import (
     revision as _mod_revision,
     )
 from ...controldir import ControlDir
-from ...sixish import text_type
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -254,7 +253,7 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
             return self.do_tip_change_with_locked_branch(branch, *args)
         except errors.TipChangeRejected as e:
             msg = e.msg
-            if isinstance(msg, text_type):
+            if isinstance(msg, str):
                 msg = msg.encode('utf-8')
             return FailedSmartServerResponse((b'TipChangeRejected', msg))
 

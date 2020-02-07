@@ -57,6 +57,7 @@ from __future__ import absolute_import
 # that.
 
 import errno
+from io import StringIO
 import logging
 import os
 import sys
@@ -80,12 +81,6 @@ from breezy import (
 """)
 from . import (
     errors,
-    )
-
-from .sixish import (
-    PY3,
-    StringIO,
-    text_type,
     )
 
 
@@ -162,9 +157,6 @@ def mutter(fmt, *args):
         fmt = fmt.decode('ascii', 'replace')
 
     if args:
-        if not PY3:
-            args = tuple(
-                _Bytes(arg) if isinstance(arg, bytes) else arg for arg in args)
         out = fmt % args
     else:
         out = fmt
@@ -306,12 +298,7 @@ def enable_default_logging():
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into brz_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
-    if sys.version_info[0] == 2:
-        stderr_handler = EncodedStreamHandler(
-            sys.stderr, osutils.get_terminal_encoding(), 'replace',
-            level=logging.INFO)
-    else:
-        stderr_handler = logging.StreamHandler(stream=sys.stderr)
+    stderr_handler = logging.StreamHandler(stream=sys.stderr)
     logging.getLogger('brz').addHandler(stderr_handler)
     return memento
 
@@ -615,12 +602,11 @@ class EncodedStreamHandler(logging.Handler):
 
     def emit(self, record):
         try:
-            if not isinstance(record.msg, text_type):
+            if not isinstance(record.msg, str):
                 msg = record.msg.decode("utf-8")
-                if PY3:
-                    record.msg = msg
+                record.msg = msg
             line = self.format(record)
-            if not isinstance(line, text_type):
+            if not isinstance(line, str):
                 line = line.decode("utf-8")
             self.stream.write(line.encode(self.encoding, self.errors) + b"\n")
         except Exception:

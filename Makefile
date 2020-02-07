@@ -22,9 +22,7 @@
 
 SHELL=bash
 PYTHON?=python3
-PYTHON2?=python2
 PYTHON3?=python3
-PYTHON27=python27
 BRZ_TARGET=release
 PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
@@ -81,10 +79,7 @@ check-ci: docs extensions
 	# https://github.com/paramiko/paramiko/issues/713 is not a concern
 	# anymore -- vila 2017-05-24
 	set -o pipefail; \
-	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
-	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
-	  | subunit-filter -s --passthrough --rename "^" "python2."; \
-	  BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::PendingDeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
+	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::PendingDeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
 	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
 	  | subunit-filter -s --passthrough --rename "^" "python3."
 
@@ -266,11 +261,10 @@ installer: exe copy-docs
 	$(PYTHON) tools/win32/run_script.py cog.py -d -o tools/win32/brz.iss tools/win32/brz.iss.cog
 	iscc /Q tools/win32/brz.iss
 
-py-inst-27: docs
-	$(PYTHON27) setup.py bdist_wininst --install-script="brz-win32-bdist-postinstall.py" -d .
+py-inst-37: docs
+	$(PYTHON37) setup.py bdist_wininst --install-script="brz-win32-bdist-postinstall.py" -d .
 
-python-installer: py-inst-27
-
+python-installer: py-inst-37
 
 copy-docs: docs
 	$(PYTHON) tools/win32/ostools.py copytodir README win32_brz.exe/doc

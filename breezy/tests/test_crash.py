@@ -16,6 +16,7 @@
 
 
 import doctest
+from io import StringIO
 import os
 import sys
 
@@ -26,9 +27,6 @@ from .. import (
     osutils,
     plugin,
     tests,
-    )
-from ..sixish import (
-    StringIO,
     )
 from . import features
 

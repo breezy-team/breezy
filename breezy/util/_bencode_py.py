@@ -144,12 +144,8 @@ def encode_dict(x, r):
 encode_func = {}
 encode_func[type(Bencached(0))] = encode_bencached
 encode_func[int] = encode_int
-if sys.version_info < (3,):
-    encode_func[long] = encode_int
-    int_to_bytes = str
-else:
-    def int_to_bytes(n):
-        return b'%d' % n
+def int_to_bytes(n):
+    return b'%d' % n
 encode_func[bytes] = encode_string
 encode_func[list] = encode_list
 encode_func[tuple] = encode_list

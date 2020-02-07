@@ -21,7 +21,6 @@ from .. import (
     tests,
     transport,
     )
-from ..sixish import int2byte
 from ..bzr import (
     index as _mod_index,
     )
@@ -309,7 +308,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
         builder = _mod_index.GraphIndexBuilder()
         for bad_char in bytearray(b'\t\n\x0b\x0c\r\x00 '):
             self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
-                              (b'a%skey' % int2byte(bad_char), ), b'data')
+                              (b'a%skey' % bytes([bad_char]), ), b'data')
         self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
                           (), b'data')
         self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
@@ -324,7 +323,7 @@ class TestGraphIndexBuilder(tests.TestCaseWithMemoryTransport):
         builder = _mod_index.GraphIndexBuilder(key_elements=2)
         for bad_char in bytearray(b'\t\n\x0b\x0c\r\x00 '):
             self.assertRaises(_mod_index.BadIndexKey, builder.add_node,
-                              (b'prefix', b'a%skey' % int2byte(bad_char)), b'data')
+                              (b'prefix', b'a%skey' % bytes([bad_char])), b'data')
 
     def test_add_node_bad_data(self):
         builder = _mod_index.GraphIndexBuilder()

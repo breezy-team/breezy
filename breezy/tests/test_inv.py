@@ -23,7 +23,6 @@ from .. import (
     tests,
     workingtree,
     )
-from ..sixish import text_type
 from ..bzr import (
     chk_map,
     groupcompress,
@@ -36,6 +35,7 @@ from ..bzr.inventory import (
     InventoryFile,
     InventoryDirectory,
     InventoryEntry,
+    InvalidEntryName,
     TreeReference,
     mutable_inventory_from_tree,
     )
@@ -696,7 +696,7 @@ class TestDeltaApplication(TestCaseWithTransport):
 class TestInventoryEntry(TestCase):
 
     def test_file_invalid_entry_name(self):
-        self.assertRaises(errors.InvalidEntryName, inventory.InventoryFile,
+        self.assertRaises(InvalidEntryName, inventory.InventoryFile,
                           b'123', 'a/hello.c', ROOT_ID)
 
     def test_file_backslash(self):
@@ -1234,7 +1234,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          b'file-rev-id\nabcdefgh\n100\nY', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, text_type)
+        self.assertIsInstance(ie2.name, str)
         self.assertEqual((b'filename', b'file-id', b'file-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
@@ -1251,7 +1251,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          b'file-rev-id\n123456\n25\nN', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, text_type)
+        self.assertIsInstance(ie2.name, str)
         self.assertEqual((b'\xce\xa9name', b'file-id', b'file-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
@@ -1263,7 +1263,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(b'dir: dir-id\nparent-id\ndirname\ndir-rev-id', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, text_type)
+        self.assertIsInstance(ie2.name, str)
         self.assertEqual((b'dirname', b'dir-id', b'dir-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
@@ -1277,7 +1277,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          b'dir-rev-id', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, text_type)
+        self.assertIsInstance(ie2.name, str)
         self.assertIs(ie2.parent_id, None)
         self.assertEqual((b'dir\xce\xa9name', b'dir-id', b'dir-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
@@ -1292,8 +1292,8 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          b'link-rev-id\ntarget/path', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, text_type)
-        self.assertIsInstance(ie2.symlink_target, text_type)
+        self.assertIsInstance(ie2.name, str)
+        self.assertIsInstance(ie2.symlink_target, str)
         self.assertEqual((b'linkname', b'link-id', b'link-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
@@ -1308,8 +1308,8 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          b'link-rev-id\ntarget/\xce\xa9path', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, text_type)
-        self.assertIsInstance(ie2.symlink_target, text_type)
+        self.assertIsInstance(ie2.name, str)
+        self.assertIsInstance(ie2.symlink_target, str)
         self.assertEqual((b'link\xce\xa9name', b'link-id', b'link-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
@@ -1324,7 +1324,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
                          b'tree-rev-id\nref-rev-id', bytes)
         ie2 = inv._bytes_to_entry(bytes)
         self.assertEqual(ie, ie2)
-        self.assertIsInstance(ie2.name, text_type)
+        self.assertIsInstance(ie2.name, str)
         self.assertEqual((b'tree\xce\xa9name', b'tree-root-id', b'tree-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 

@@ -37,9 +37,6 @@ from breezy.i18n import (
 from . import (
     errors,
     )
-from .sixish import (
-    text_type,
-    )
 
 # verification results
 SIGNATURE_VALID = 0
@@ -243,7 +240,7 @@ class GPGStrategy(object):
             raise GpgNotInstalled(
                 'Set create_signatures=no to disable creating signatures.')
 
-        if isinstance(content, text_type):
+        if isinstance(content, str):
             raise errors.BzrBadParameterUnicode('content')
 
         plain_text = gpg.Data(content)

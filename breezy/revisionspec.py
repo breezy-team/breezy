@@ -37,9 +37,6 @@ from . import (
     registry,
     trace,
     )
-from .sixish import (
-    text_type,
-    )
 
 
 class RevisionInfo(object):
@@ -160,7 +157,7 @@ class RevisionSpec(object):
         """
         if spec is None:
             return RevisionSpec(None, _internal=True)
-        if not isinstance(spec, (str, text_type)):
+        if not isinstance(spec, str):
             raise TypeError("revision spec needs to be text")
         match = revspec_registry.get_prefix(spec)
         if match is not None:
@@ -471,7 +468,7 @@ class RevisionSpec_revid(RevisionIDSpec):
         # self.spec comes straight from parsing the command line arguments,
         # so we expect it to be a Unicode string. Switch it to the internal
         # representation.
-        if isinstance(self.spec, text_type):
+        if isinstance(self.spec, str):
             return cache_utf8.encode(self.spec)
         return self.spec
 

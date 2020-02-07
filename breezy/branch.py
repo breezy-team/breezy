@@ -18,9 +18,9 @@ from __future__ import absolute_import
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+import contextlib
 import itertools
 from breezy import (
-    cleanup,
     config as _mod_config,
     debug,
     memorytree,
@@ -47,10 +47,6 @@ from . import (
 from .hooks import Hooks
 from .inter import InterObject
 from .lock import LogicalLockResult
-from .sixish import (
-    text_type,
-    viewitems,
-    )
 from .trace import mutter, mutter_callsite, note, is_quiet, warning
 
 
@@ -371,7 +367,7 @@ class Branch(controldir.ControlComponent):
                 raise errors.GhostRevisionsHaveNoRevno(revno[0], e.revision_id)
         revision_id_to_revno = self.get_revision_id_to_revno_map()
         revision_ids = [revision_id for revision_id, this_revno
-                        in viewitems(revision_id_to_revno)
+                        in revision_id_to_revno.items()
                         if revno == this_revno]
         if len(revision_ids) == 1:
             return revision_ids[0]
@@ -779,7 +775,7 @@ class Branch(controldir.ControlComponent):
         # FIXUP this and get_parent in a future branch format bump:
         # read and rewrite the file. RBC 20060125
         if url is not None:
-            if isinstance(url, text_type):
+            if isinstance(url, str):
                 try:
                     url.encode('ascii')
                 except UnicodeEncodeError:
@@ -2213,7 +2209,7 @@ class GenericInterBranch(InterBranch):
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
         """
-        with cleanup.ExitStack() as exit_stack:
+        with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.target.lock_write())
             bound_location = self.target.get_bound_location()
             if local and not bound_location:
@@ -2392,7 +2388,7 @@ class GenericInterBranch(InterBranch):
         old_base = self.source.base
         new_base = self.target.base
         target_reference_dict = self.target._get_all_reference_info()
-        for tree_path, (branch_location, file_id) in viewitems(reference_dict):
+        for tree_path, (branch_location, file_id) in reference_dict.items():
             try:
                 branch_location = urlutils.rebase_url(branch_location,
                                                       old_base, new_base)

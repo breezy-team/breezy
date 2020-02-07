@@ -22,7 +22,6 @@ from breezy import (
 from breezy.bzr import (
     knit,
     )
-from breezy.sixish import int2byte
 from breezy.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
@@ -107,7 +106,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
 
     def test_unordered_fetch_simple_split(self):
         self.make_simple_split()
-        keys = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCDF')]
+        keys = [(b'f-id', bytes([r])) for r in bytearray(b'ABCDF')]
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(
@@ -122,7 +121,7 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
 
     def test_unordered_fetch_complex_split(self):
         self.make_complex_split()
-        keys = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCDEG')]
+        keys = [(b'f-id', bytes([r])) for r in bytearray(b'ABCDEG')]
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(
@@ -144,11 +143,11 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         # or, because E can be returned before B:
         #
         # A C E B D G
-        keys = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCDEG')]
-        alt_1 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACBDEG')]
-        alt_2 = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCEDG')]
-        alt_3 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACBEDG')]
-        alt_4 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACEBDG')]
+        keys = [(b'f-id', bytes([r])) for r in bytearray(b'ABCDEG')]
+        alt_1 = [(b'f-id', bytes([r])) for r in bytearray(b'ACBDEG')]
+        alt_2 = [(b'f-id', bytes([r])) for r in bytearray(b'ABCEDG')]
+        alt_3 = [(b'f-id', bytes([r])) for r in bytearray(b'ACBEDG')]
+        alt_4 = [(b'f-id', bytes([r])) for r in bytearray(b'ACEBDG')]
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(
@@ -168,8 +167,8 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         # Topological ordering allows B & C and D & E to be returned with
         # either one first, so the required ordering is:
         # [A (B C) D F]
-        keys = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCDF')]
-        alt_1 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACBDF')]
+        keys = [(b'f-id', bytes([r])) for r in bytearray(b'ABCDF')]
+        alt_1 = [(b'f-id', bytes([r])) for r in bytearray(b'ACBDF')]
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(
@@ -190,11 +189,11 @@ class TestGetRecordStream(TestCaseWithExternalReferenceRepository):
         # or, because E can be returned before B:
         #
         # A C E B D G
-        keys = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCDEG')]
-        alt_1 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACBDEG')]
-        alt_2 = [(b'f-id', int2byte(r)) for r in bytearray(b'ABCEDG')]
-        alt_3 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACBEDG')]
-        alt_4 = [(b'f-id', int2byte(r)) for r in bytearray(b'ACEBDG')]
+        keys = [(b'f-id', bytes([r])) for r in bytearray(b'ABCDEG')]
+        alt_1 = [(b'f-id', bytes([r])) for r in bytearray(b'ACBDEG')]
+        alt_2 = [(b'f-id', bytes([r])) for r in bytearray(b'ABCEDG')]
+        alt_3 = [(b'f-id', bytes([r])) for r in bytearray(b'ACBEDG')]
+        alt_4 = [(b'f-id', bytes([r])) for r in bytearray(b'ACEBDG')]
         self.stacked_repo.lock_read()
         self.addCleanup(self.stacked_repo.unlock)
         stream = self.stacked_repo.texts.get_record_stream(

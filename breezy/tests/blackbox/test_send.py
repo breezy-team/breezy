@@ -15,6 +15,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import (
+    BytesIO,
+    )
 
 from ... import (
     branch,
@@ -23,9 +26,6 @@ from ... import (
     )
 from ...controldir import ControlDir
 from ...bzr.bundle import serializer
-from ...sixish import (
-    BytesIO,
-    )
 from ...transport import memory
 from .. import (
     scenarios,

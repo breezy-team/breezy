@@ -23,6 +23,7 @@ from __future__ import absolute_import
 
 # TODO: Specific "examples" property on commands for consistent formatting.
 
+import contextlib
 import os
 import sys
 
@@ -38,7 +39,6 @@ import errno
 
 import breezy
 from breezy import (
-    cleanup,
     cmdline,
     debug,
     trace,
@@ -52,9 +52,6 @@ from .i18n import gettext
 from .option import Option
 from .plugin import disable_plugins, load_plugins, plugin_name
 from . import errors, registry
-from .sixish import (
-    string_types,
-    )
 
 
 class BzrOptionError(errors.BzrCommandError):
@@ -716,7 +713,7 @@ class Command(object):
         r = Option.STD_OPTIONS.copy()
         std_names = set(r)
         for o in self.takes_options:
-            if isinstance(o, string_types):
+            if isinstance(o, str):
                 o = option.Option.OPTIONS[o]
             r[o.name] = o
             if o.name in std_names:
@@ -783,7 +780,7 @@ class Command(object):
             for hook in Command.hooks['pre_command']:
                 hook(self)
             try:
-                with cleanup.ExitStack() as self._exit_stack:
+                with contextlib.ExitStack() as self._exit_stack:
                     return class_run(*args, **kwargs)
             finally:
                 for hook in Command.hooks['post_command']:
@@ -1260,11 +1257,8 @@ def _specified_or_unicode_argv(argv):
     try:
         # ensure all arguments are unicode strings
         for a in argv:
-            if not isinstance(a, string_types):
+            if not isinstance(a, str):
                 raise ValueError('not native str or unicode: %r' % (a,))
-            if isinstance(a, bytes):
-                # For Python 2 only allow ascii native strings
-                a = a.decode('ascii')
             new_argv.append(a)
     except (ValueError, UnicodeDecodeError):
         raise errors.BzrError("argv should be list of unicode strings.")

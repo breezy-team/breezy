@@ -129,26 +129,20 @@ def _patch_filesystem_default_encoding(new_enc):
     The use of intern() may defer breakage is but is not enough, the string
     object should be secure against module reloading and during teardown.
     """
-    is_py3 = sys.version_info > (3,)
     try:
         import ctypes
         old_ptr = ctypes.c_void_p.in_dll(ctypes.pythonapi,
                                          "Py_FileSystemDefaultEncoding")
-        if is_py3:
-            has_enc = ctypes.c_int.in_dll(ctypes.pythonapi,
-                                          "Py_HasFileSystemDefaultEncoding")
-            as_utf8 = ctypes.PYFUNCTYPE(
-                ctypes.POINTER(ctypes.c_char), ctypes.py_object)(
-                    ("PyUnicode_AsUTF8", ctypes.pythonapi))
+        has_enc = ctypes.c_int.in_dll(ctypes.pythonapi,
+                                      "Py_HasFileSystemDefaultEncoding")
+        as_utf8 = ctypes.PYFUNCTYPE(
+            ctypes.POINTER(ctypes.c_char), ctypes.py_object)(
+                ("PyUnicode_AsUTF8", ctypes.pythonapi))
     except (ImportError, ValueError):
         return  # No ctypes or not CPython implementation, do nothing
-    if is_py3:
-        new_enc = sys.intern(new_enc)
-        enc_ptr = as_utf8(new_enc)
-        has_enc.value = 1
-    else:
-        new_enc = intern(new_enc)
-        enc_ptr = ctypes.c_char_p(new_enc)
+    new_enc = sys.intern(new_enc)
+    enc_ptr = as_utf8(new_enc)
+    has_enc.value = 1
     old_ptr.value = ctypes.cast(enc_ptr, ctypes.c_void_p).value
     if sys.getfilesystemencoding() != new_enc:
         raise RuntimeError("Failed to change the filesystem default encoding")

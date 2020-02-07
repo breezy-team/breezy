@@ -32,10 +32,6 @@ from . import (
     urlutils,
     registry,
     )
-from .sixish import (
-    PY3,
-    text_type,
-    )
 
 mail_client_registry = registry.Registry()
 
@@ -235,8 +231,6 @@ class BodyExternalMailClient(MailClient):
         :param  u:  possible unicode string.
         :return:    encoded string if u is unicode, u itself otherwise.
         """
-        if not PY3 and isinstance(u, text_type):
-            return u.encode(osutils.get_user_encoding(), 'replace')
         return u
 
     def _encode_path(self, path, kind):
@@ -248,11 +242,6 @@ class BodyExternalMailClient(MailClient):
                         path itself otherwise.
         :raise:         UnableEncodePath.
         """
-        if not PY3 and isinstance(path, text_type):
-            try:
-                return path.encode(osutils.get_user_encoding())
-            except UnicodeEncodeError:
-                raise errors.UnableEncodePath(path, kind)
         return path
 
 

@@ -24,9 +24,6 @@ from . import revision as _mod_revision
 from .commands import Command
 from .errors import BzrCommandError
 from .option import Option
-from .sixish import (
-    text_type,
-    )
 from .trace import note
 
 BISECT_INFO_PATH = "bisect"
@@ -314,7 +311,7 @@ class cmd_bisect(Command):
 
     takes_args = ['subcommand', 'args*']
     takes_options = [Option('output', short_name='o',
-                            help='Write log to this file.', type=text_type),
+                            help='Write log to this file.', type=str),
                      'revision', 'directory']
 
     def _check(self, controldir):

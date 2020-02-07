@@ -22,6 +22,7 @@
 # considered typical and check that it can be detected/corrected.
 
 from gzip import GzipFile
+from io import BytesIO
 import itertools
 
 from .. import (
@@ -44,10 +45,6 @@ from ..bzr.knit import (
     cleanup_pack_knit,
     make_file_factory,
     make_pack_factory,
-    )
-from ..sixish import (
-    BytesIO,
-    zip,
     )
 from . import (
     TestCase,

@@ -16,6 +16,7 @@
 
 from __future__ import absolute_import
 
+import contextlib
 import patiencediff
 import shutil
 import sys
@@ -25,7 +26,6 @@ from io import BytesIO
 
 from . import (
     builtins,
-    cleanup,
     delta,
     diff,
     errors,
@@ -458,7 +458,7 @@ class Unshelver(object):
 
     def run(self):
         """Perform the unshelving operation."""
-        with cleanup.ExitStack() as exit_stack:
+        with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.tree.lock_tree_write())
             if self.read_shelf:
                 trace.note(gettext('Using changes with id "%d".') %

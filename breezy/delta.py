@@ -16,12 +16,11 @@
 
 from __future__ import absolute_import
 
+from io import StringIO
+
 from breezy import (
     osutils,
     trace,
-    )
-from .sixish import (
-    StringIO,
     )
 from .tree import TreeChange
 

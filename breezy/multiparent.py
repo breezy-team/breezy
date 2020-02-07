@@ -17,6 +17,9 @@
 from __future__ import absolute_import
 
 import errno
+from io import (
+    BytesIO,
+    )
 import os
 
 from .lazy_import import lazy_import
@@ -35,10 +38,6 @@ from . import (
     errors,
     )
 from .i18n import gettext
-from .sixish import (
-    BytesIO,
-    range,
-    )
 
 
 def topo_iter_keys(vf, keys=None):

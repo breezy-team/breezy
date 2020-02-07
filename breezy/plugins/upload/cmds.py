@@ -39,9 +39,6 @@ from breezy import (
     )
 """)
 
-from ...sixish import (
-    text_type,
-    )
 
 auto_option = config.Option(
     'upload_auto', default=False, from_unicode=config.bool_from_store,
@@ -483,7 +480,7 @@ class cmd_upload(commands.Command):
                       help='Branch to upload from, '
                       'rather than the one containing the working directory.',
                       short_name='d',
-                      type=text_type,
+                      type=str,
                       ),
         option.Option('auto',
                       'Trigger an upload from this branch whenever the tip '

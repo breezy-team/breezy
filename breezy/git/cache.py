@@ -41,11 +41,6 @@ from ..bzr import (
     index as _mod_index,
     versionedfile,
     )
-from ..sixish import (
-    viewitems,
-    viewkeys,
-    viewvalues,
-    )
 from ..transport import (
     get_transport_from_path,
     )
@@ -336,7 +331,7 @@ class DictGitShaMap(GitShaMap):
     def lookup_git_sha(self, sha):
         if not isinstance(sha, bytes):
             raise TypeError(sha)
-        for entry in viewvalues(self._by_sha[sha]):
+        for entry in self._by_sha[sha].values():
             yield entry
 
     def lookup_tree_id(self, fileid, revision):
@@ -346,13 +341,13 @@ class DictGitShaMap(GitShaMap):
         return self._by_revid[revid]
 
     def revids(self):
-        for key, entries in viewitems(self._by_sha):
-            for (type, type_data) in viewvalues(entries):
+        for key, entries in self._by_sha.items():
+            for (type, type_data) in entries.values():
                 if type == "commit":
                     yield type_data[0]
 
     def sha1s(self):
-        return viewkeys(self._by_sha)
+        return self._by_sha.keys()
 
 
 class SqliteCacheUpdater(CacheUpdater):
@@ -711,10 +706,7 @@ class TdbGitShaMap(GitShaMap):
         return ret
 
     def _keys(self):
-        try:
-            return self.db.keys()
-        except AttributeError:  # python < 3
-            return self.db.iterkeys()
+        return self.db.keys()
 
     def revids(self):
         """List the revision ids known."""

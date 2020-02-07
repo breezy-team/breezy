@@ -25,10 +25,6 @@ from . import (
     revision,
     trace,
     )
-from .sixish import (
-    viewitems,
-    viewvalues,
-    )
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -343,7 +339,7 @@ class Graph(object):
         """
         parent_map = self._parents_provider.get_parent_map(keys)
         parent_child = {}
-        for child, parents in sorted(viewitems(parent_map)):
+        for child, parents in sorted(parent_map.items()):
             for parent in parents:
                 parent_child.setdefault(parent, []).append(child)
         return parent_child
@@ -654,7 +650,7 @@ class Graph(object):
         # TODO: it might be possible to collapse searchers faster when they
         #       only have *some* search tips in common.
         next_unique_searchers = []
-        for searchers in viewvalues(unique_search_tips):
+        for searchers in unique_search_tips.values():
             if len(searchers) == 1:
                 # Searching unique tips, go for it
                 next_unique_searchers.append(searchers[0])
@@ -843,7 +839,7 @@ class Graph(object):
                          for c in candidate_heads)
         active_searchers = dict(searchers)
         # skip over the actual candidate for each searcher
-        for searcher in viewvalues(active_searchers):
+        for searcher in active_searchers.values():
             next(searcher)
         # The common walker finds nodes that are common to two or more of the
         # input keys, so that we don't access all history when a currently
@@ -886,11 +882,11 @@ class Graph(object):
                     # some searcher has encountered our known common nodes:
                     # just stop it
                     ancestor_set = {ancestor}
-                    for searcher in viewvalues(searchers):
+                    for searcher in searchers.values():
                         searcher.stop_searching_any(ancestor_set)
                 else:
                     # or it may have been just reached by all the searchers:
-                    for searcher in viewvalues(searchers):
+                    for searcher in searchers.values():
                         if ancestor not in searcher.seen:
                             break
                     else:
@@ -898,7 +894,7 @@ class Graph(object):
                         # making it be known as a descendant of all candidates,
                         # so we can stop searching it, and any seen ancestors
                         new_common.add(ancestor)
-                        for searcher in viewvalues(searchers):
+                        for searcher in searchers.values():
                             seen_ancestors =\
                                 searcher.find_seen_ancestors([ancestor])
                             searcher.stop_searching_any(seen_ancestors)
@@ -1021,7 +1017,7 @@ class Graph(object):
             processed.update(pending)
             next_map = self.get_parent_map(pending)
             next_pending = set()
-            for item in viewitems(next_map):
+            for item in next_map.items():
                 yield item
                 next_pending.update(p for p in item[1] if p not in processed)
             ghosts = pending.difference(next_map)
@@ -1259,7 +1255,7 @@ class Graph(object):
         # for revision in revisions.intersection(descendants):
         # simple_ancestors.difference_update(descendants[revision])
         # return simple_ancestors
-        for revision, parent_ids in viewitems(parent_map):
+        for revision, parent_ids in parent_map.items():
             if parent_ids is None:
                 continue
             for parent_id in parent_ids:
@@ -1466,7 +1462,7 @@ class _BreadthFirstSearcher(object):
         seen.update(revisions)
         parent_map = self._parents_provider.get_parent_map(revisions)
         found_revisions.update(parent_map)
-        for rev_id, parents in viewitems(parent_map):
+        for rev_id, parents in parent_map.items():
             if parents is None:
                 continue
             new_found_parents = [p for p in parents if p not in seen]
@@ -1509,7 +1505,7 @@ class _BreadthFirstSearcher(object):
             all_parents = []
             # We don't care if it is a ghost, since it can't be seen if it is
             # a ghost
-            for parent_ids in viewvalues(parent_map):
+            for parent_ids in parent_map.values():
                 all_parents.extend(parent_ids)
             next_pending = all_seen.intersection(
                 all_parents).difference(seen_ancestors)
@@ -1555,14 +1551,14 @@ class _BreadthFirstSearcher(object):
                     stop_rev_references[parent_id] += 1
             # if only the stopped revisions reference it, the ref count will be
             # 0 after this loop
-            for parents in viewvalues(self._current_parents):
+            for parents in self._current_parents.values():
                 for parent_id in parents:
                     try:
                         stop_rev_references[parent_id] -= 1
                     except KeyError:
                         pass
             stop_parents = set()
-            for rev_id, refs in viewitems(stop_rev_references):
+            for rev_id, refs in stop_rev_references.items():
                 if refs == 0:
                     stop_parents.add(rev_id)
             self._next_query.difference_update(stop_parents)
@@ -1598,7 +1594,7 @@ class _BreadthFirstSearcher(object):
 def invert_parent_map(parent_map):
     """Given a map from child => parents, create a map of parent=>children"""
     child_map = {}
-    for child, parents in viewitems(parent_map):
+    for child, parents in parent_map.items():
         for p in parents:
             # Any given parent is likely to have only a small handful
             # of children, many will have only one. So we avoid mem overhead of
@@ -1650,7 +1646,7 @@ def collapse_linear_regions(parent_map):
     # Will not have any nodes removed, even though you do have an
     # 'uninteresting' linear D->B and E->C
     children = {}
-    for child, parents in viewitems(parent_map):
+    for child, parents in parent_map.items():
         children.setdefault(child, [])
         for p in parents:
             children.setdefault(p, []).append(child)

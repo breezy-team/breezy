@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import
 
-from ..sixish import StringIO
+from io import StringIO
 import os
 import shutil
 

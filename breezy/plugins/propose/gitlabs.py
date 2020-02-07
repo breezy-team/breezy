@@ -30,7 +30,6 @@ from ... import (
     urlutils,
     )
 from ...git.urls import git_url_to_bzr_url
-from ...sixish import PY3
 from ...trace import mutter
 from ...transport import get_transport
 
@@ -261,8 +260,6 @@ class GitLabMergeProposal(MergeProposal):
 
 
 def gitlab_url_to_bzr_url(url, name):
-    if not PY3:
-        name = name.encode('utf-8')
     return git_url_to_bzr_url(url, branch=name)
 
 

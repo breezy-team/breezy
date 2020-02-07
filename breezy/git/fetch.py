@@ -51,7 +51,6 @@ from ..revision import (
     NULL_REVISION,
     )
 from ..bzr.inventorytree import InventoryRevisionTree
-from ..sixish import text_type
 from ..bzr.testament import (
     StrictTestament3,
     )
@@ -214,7 +213,7 @@ def remove_disappeared_children(base_bzr_tree, path, base_tree,
     :param lookup_object: Lookup a git object by its SHA1
     :return: Inventory delta, as list
     """
-    if not isinstance(path, text_type):
+    if not isinstance(path, str):
         raise TypeError(path)
     ret = []
     for name, mode, hexsha in base_tree.iteritems():

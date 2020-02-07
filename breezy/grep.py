@@ -16,6 +16,7 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
 import re
 
 from .lazy_import import lazy_import
@@ -39,9 +40,6 @@ from .revisionspec import (
     RevisionSpec,
     RevisionSpec_revid,
     RevisionSpec_revno,
-    )
-from .sixish import (
-    BytesIO,
     )
 
 _user_encoding = osutils.get_user_encoding()

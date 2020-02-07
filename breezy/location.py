@@ -25,10 +25,6 @@ from . import (
     urlutils,
     )
 from .hooks import Hooks
-from .sixish import (
-    PY3,
-    string_types,
-    )
 
 
 class LocationHooks(Hooks):
@@ -102,7 +98,7 @@ def location_to_url(location, purpose=None):
     :raise InvalidURL: If the location is already a URL, but not valid.
     :return: Byte string with resulting URL
     """
-    if not isinstance(location, string_types):
+    if not isinstance(location, str):
         raise AssertionError("location not a byte or unicode string")
 
     if location.startswith(':pserver:'):
@@ -120,8 +116,7 @@ def location_to_url(location, purpose=None):
                 path=location, extra='URLs must be properly escaped')
         location = urlutils.local_path_to_url(location)
     else:
-        if PY3:
-            location = location.decode('ascii')
+        location = location.decode('ascii')
 
     if location.startswith("file:") and not location.startswith("file://"):
         return urlutils.join(urlutils.local_path_to_url("."), location[5:])

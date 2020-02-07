@@ -37,7 +37,6 @@ from .. import (
 from ..bzr import (
     remote,
     )
-from ..sixish import PY3
 from ..bzr.smart import client, medium
 
 
@@ -472,13 +471,13 @@ class RemoteTransport(transport.ConnectedTransport):
     def list_dir(self, relpath):
         resp = self._call2(b'list_dir', self._remote_path(relpath))
         if resp[0] == b'names':
-            return [name.decode('utf-8') if PY3 else name for name in resp[1:]]
+            return [name.decode('utf-8') for name in resp[1:]]
         raise errors.UnexpectedSmartServerResponse(resp)
 
     def iter_files_recursive(self):
         resp = self._call2(b'iter_files_recursive', self._remote_path(''))
         if resp[0] == b'names':
-            return [name.decode('utf-8') if PY3 else name for name in resp[1:]]
+            return [name.decode('utf-8') for name in resp[1:]]
         raise errors.UnexpectedSmartServerResponse(resp)
 
 

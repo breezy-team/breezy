@@ -11,8 +11,6 @@ python:
 
 matrix:
   include:
-    - python: 2.7
-      env: SELFTEST_OPTIONS="--coverage"
     - python: 3.7
       dist: xenial
 

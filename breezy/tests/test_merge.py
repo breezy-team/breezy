@@ -14,11 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
 import os
 
 from .. import (
     branch as _mod_branch,
-    cleanup,
     conflicts,
     errors,
     memorytree,
@@ -37,7 +37,6 @@ from ..conflicts import ConflictList, TextConflict
 from ..errors import UnrelatedBranches, NoCommits
 from ..merge import transform_tree, merge_inner, _PlanMerge
 from ..osutils import basename, pathjoin, file_kind
-from ..sixish import int2byte
 from . import (
     features,
     TestCaseWithMemoryTransport,
@@ -565,8 +564,8 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.plan_merge_vf.fallback_versionedfiles.append(self.vf)
 
     def add_version(self, key, parents, text):
-        self.vf.add_lines(key, parents, [int2byte(
-            c) + b'\n' for c in bytearray(text)])
+        self.vf.add_lines(
+            key, parents, [bytes([c]) + b'\n' for c in bytearray(text)])
 
     def add_rev(self, prefix, revision_id, parents, text):
         self.add_version((prefix, revision_id), [(prefix, p) for p in parents],
@@ -574,7 +573,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def add_uncommitted_version(self, key, parents, text):
         self.plan_merge_vf.add_lines(key, parents,
-                                     [int2byte(c) + b'\n' for c in bytearray(text)])
+                                     [bytes([c]) + b'\n' for c in bytearray(text)])
 
     def setup_plan_merge(self):
         self.add_rev(b'root', b'A', [], b'abc')
@@ -3179,7 +3178,7 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
         :param merge_as: the path in a tree to add the new directory as.
         :returns: the conflicts from 'do_merge'.
         """
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             # Open and lock the various tree and branch objects
             wt, subdir_relpath = WorkingTree.open_containing(merge_as)
             stack.enter_context(wt.lock_write())

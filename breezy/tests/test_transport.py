@@ -16,6 +16,7 @@
 
 
 import errno
+from io import BytesIO
 import os
 import subprocess
 import sys
@@ -27,9 +28,6 @@ from .. import (
     tests,
     transport,
     urlutils,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from ..transport import (
     chroot,

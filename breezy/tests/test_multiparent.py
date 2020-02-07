@@ -21,7 +21,6 @@ from .. import (
     multiparent,
     tests,
     )
-from ..sixish import int2byte
 
 
 LINES_1 = b"a\nb\nc\nd\ne\n".splitlines(True)
@@ -184,7 +183,7 @@ class TestVersionedFile(TestCase):
 
     def add_version(self, vf, text, version_id, parent_ids):
         vf.add_version(
-            [(int2byte(t) + b'\n') for t in bytearray(text)],
+            [(bytes([t]) + b'\n') for t in bytearray(text)],
             version_id, parent_ids)
 
     def make_vf(self):

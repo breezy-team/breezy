@@ -66,10 +66,6 @@ from ..revision import (
     CURRENT_REVISION,
     NULL_REVISION,
     )
-from ..sixish import (
-    text_type,
-    viewitems,
-    )
 
 from .mapping import (
     mode_is_executable,
@@ -1266,7 +1262,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     key = (posixpath.dirname(path), path)
                     if key not in ret and self.is_versioned(path):
                         ret[key] = self._get_dir_ie(path, self.path2id(key[0]))
-            return ((path, ie) for ((_, path), ie) in sorted(viewitems(ret)))
+            return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
 
     def iter_references(self):
         if self.supports_tree_reference():
@@ -1281,9 +1277,9 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                                 posixpath.basename(path).strip("/"), parent_id)
 
     def _get_file_ie(self, name, path, value, parent_id):
-        if not isinstance(name, text_type):
+        if not isinstance(name, str):
             raise TypeError(name)
-        if not isinstance(path, text_type):
+        if not isinstance(path, str):
             raise TypeError(path)
         if not isinstance(value, tuple) or len(value) != 10:
             raise TypeError(value)

@@ -50,6 +50,7 @@ all the changes since the previous revision that touched hello.c.
 from __future__ import absolute_import
 
 import codecs
+from io import BytesIO
 import itertools
 import re
 import sys
@@ -83,11 +84,6 @@ from .osutils import (
     get_diff_header_encoding,
     get_terminal_encoding,
     terminal_width,
-    )
-from .sixish import (
-    BytesIO,
-    range,
-    zip,
     )
 from .tree import find_previous_path
 

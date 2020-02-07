@@ -78,7 +78,6 @@ from ..osutils import (
     contains_linebreaks,
     sha_strings,
     )
-from ..sixish import text_type
 from ..tree import Tree
 
 
@@ -163,7 +162,7 @@ class Testament(object):
     def _escape_path(self, path):
         if contains_linebreaks(path):
             raise ValueError(path)
-        if not isinstance(path, text_type):
+        if not isinstance(path, str):
             # TODO(jelmer): Clean this up for pad.lv/1696545
             path = path.decode('ascii')
         return path.replace(u'\\', u'/').replace(u' ', u'\\ ')
@@ -245,7 +244,7 @@ class StrictTestament3(StrictTestament):
     def _escape_path(self, path):
         if contains_linebreaks(path):
             raise ValueError(path)
-        if not isinstance(path, text_type):
+        if not isinstance(path, str):
             # TODO(jelmer): Clean this up for pad.lv/1696545
             path = path.decode('ascii')
         if path == u'':

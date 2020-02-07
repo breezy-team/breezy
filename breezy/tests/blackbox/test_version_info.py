@@ -18,7 +18,6 @@
 
 import os
 
-from breezy.sixish import PY3
 from breezy.tests import TestCaseWithTransport
 from breezy.version_info_formats import VersionInfoBuilder
 

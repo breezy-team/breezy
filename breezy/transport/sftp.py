@@ -49,9 +49,6 @@ from ..errors import (FileExists,
                       ParamikoNotPresent,
                       )
 from ..osutils import fancy_rename
-from ..sixish import (
-    zip,
-    )
 from ..trace import mutter, warning
 from ..transport import (
     FileFileStream,

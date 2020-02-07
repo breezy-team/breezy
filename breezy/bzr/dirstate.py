@@ -221,6 +221,7 @@ desired.
 from __future__ import absolute_import
 
 import bisect
+import contextlib
 import errno
 import operator
 import os
@@ -235,7 +236,6 @@ from . import (
     )
 from .. import (
     cache_utf8,
-    cleanup,
     config,
     debug,
     errors,
@@ -244,12 +244,6 @@ from .. import (
     static_tuple,
     trace,
     urlutils,
-    )
-from ..sixish import (
-    range,
-    text_type,
-    viewitems,
-    viewvalues,
     )
 from ..tree import TreeChange
 
@@ -501,7 +495,7 @@ class DirState(object):
         # you should never have files called . or ..; just add the directory
         # in the parent, or according to the special treatment for the root
         if basename == '.' or basename == '..':
-            raise errors.InvalidEntryName(path)
+            raise inventory.InvalidEntryName(path)
         # now that we've normalised, we need the correct utf8 path and
         # dirname and basename elements. This single encode and split should be
         # faster than three separate encodes.
@@ -999,7 +993,7 @@ class DirState(object):
             # Directories that need to be read
             pending_dirs = set()
             paths_to_search = set()
-            for entry_list in viewvalues(newly_found):
+            for entry_list in newly_found.values():
                 for dir_name_id, trees_info in entry_list:
                     found[dir_name_id] = trees_info
                     found_dir_names.add(dir_name_id[:2])
@@ -1312,7 +1306,7 @@ class DirState(object):
         result = DirState.initialize(dir_state_filename,
                                      sha1_provider=sha1_provider)
         try:
-            with cleanup.ExitStack() as exit_stack:
+            with contextlib.ExitStack() as exit_stack:
                 exit_stack.enter_context(tree.lock_read())
                 parent_ids = tree.get_parent_ids()
                 num_parents = len(parent_ids)
@@ -1423,8 +1417,8 @@ class DirState(object):
                                                fingerprint, new_child_path)
         self._check_delta_ids_absent(new_ids, delta, 0)
         try:
-            self._apply_removals(viewitems(removals))
-            self._apply_insertions(viewvalues(insertions))
+            self._apply_removals(removals.items())
+            self._apply_insertions(insertions.values())
             # Validate parents
             self._after_delta_check_parents(parents, 0)
         except errors.BzrError as e:
@@ -1964,7 +1958,7 @@ class DirState(object):
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
         fs_encoding = osutils._fs_enc
-        if isinstance(abspath, text_type):
+        if isinstance(abspath, str):
             # abspath is defined as the path to pass to lstat. readlink is
             # buggy in python < 2.6 (it doesn't encode unicode path into FS
             # encoding), so we need to encode ourselves knowing that unicode
@@ -2768,7 +2762,7 @@ class DirState(object):
         # --- end generation of full tree mappings
 
         # sort and output all the entries
-        new_entries = self._sort_entries(viewitems(by_path))
+        new_entries = self._sort_entries(by_path.items())
         self._entries_to_current_state(new_entries)
         self._parents = [rev_id for rev_id, tree in trees]
         self._ghosts = list(ghosts)

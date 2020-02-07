@@ -36,8 +36,6 @@ line contains a newline, or ',' if not.
 
 from __future__ import absolute_import
 
-from ..sixish import bytesintern
-
 # TODO: When extracting a single version it'd be enough to just pass
 # an iterator returning the weave lines...  We don't really need to
 # deserialize it into memory.
@@ -164,5 +162,5 @@ def _read_weave_v5(f, w):
         elif l == b'}\n':
             w._weave.append((b'}', None))
         else:
-            w._weave.append((bytesintern(l[0:1]), int(l[2:].decode('ascii'))))
+            w._weave.append((l[0:1], int(l[2:].decode('ascii'))))
     return w

@@ -15,10 +15,7 @@
 
 from __future__ import absolute_import
 
-try:
-    from email.utils import parseaddr
-except ImportError:
-    from email.Utils import parseaddr
+from email.utils import parseaddr
 
 
 class UserMapper(object):

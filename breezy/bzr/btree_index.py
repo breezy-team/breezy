@@ -19,6 +19,8 @@
 
 from __future__ import absolute_import, division
 
+from io import BytesIO
+
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import bisect
@@ -41,13 +43,6 @@ from . import (
     index,
     )
 from .index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
-from ..sixish import (
-    BytesIO,
-    map,
-    range,
-    viewitems,
-    viewvalues,
-    )
 
 
 _BTSIGNATURE = b"B+Tree Graph Index 2\n"
@@ -562,13 +557,13 @@ class BTreeBuilder(index.GraphIndexBuilder):
         if self._nodes_by_key is None:
             nodes_by_key = {}
             if self.reference_lists:
-                for key, (references, value) in viewitems(self._nodes):
+                for key, (references, value) in self._nodes.items():
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
                     key_dict[key[-1]] = key, value, references
             else:
-                for key, (references, value) in viewitems(self._nodes):
+                for key, (references, value) in self._nodes.items():
                     key_dict = nodes_by_key
                     for subkey in key[:-1]:
                         key_dict = key_dict.setdefault(subkey, {})
@@ -970,7 +965,7 @@ class BTreeGraphIndex(object):
     def _cache_leaf_values(self, nodes):
         """Cache directly from key => value, skipping the btree."""
         if self._leaf_value_cache is not None:
-            for node in viewvalues(nodes):
+            for node in nodes.values():
                 for key, value in node.all_items():
                     if key in self._leaf_value_cache:
                         # Don't add the rest of the keys, we've seen this node

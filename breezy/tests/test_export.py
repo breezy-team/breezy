@@ -17,6 +17,7 @@
 """Tests for breezy.export."""
 
 import gzip
+from io import BytesIO
 import os
 import tarfile
 import time
@@ -29,9 +30,6 @@ from .. import (
     )
 from ..export import get_root_name
 from ..archive.tar import tarball_generator
-from ..sixish import (
-    BytesIO,
-    )
 from . import features
 
 

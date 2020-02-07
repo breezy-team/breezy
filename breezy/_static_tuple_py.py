@@ -76,8 +76,6 @@ class StaticTuple(tuple):
 
 
 _valid_types = (bytes, str, StaticTuple, int, float, None.__class__, bool)
-if sys.version_info < (3,):
-    _valid_types += (long, unicode)
 
 
 # Have to set it to None first, so that __new__ can determine whether

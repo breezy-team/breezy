@@ -41,10 +41,6 @@ from . import (
     osutils,
     trace,
     )
-from .sixish import (
-    text_type,
-    viewitems,
-    )
 
 
 FP_MTIME_COLUMN = 1
@@ -97,7 +93,7 @@ class HashCache(object):
             parameters and returns a stack of ContentFilters.
             If None, no content filtering is performed.
         """
-        if not isinstance(root, text_type):
+        if not isinstance(root, str):
             raise ValueError("Base dir for hashcache must be text")
         self.root = root
         self.hit_count = 0
@@ -131,7 +127,7 @@ class HashCache(object):
         # Stat in inode order as optimisation for at least linux.
         def inode_order(path_and_cache):
             return path_and_cache[1][1][3]
-        for path, cache_val in sorted(viewitems(self._cache), key=inode_order):
+        for path, cache_val in sorted(self._cache.items(), key=inode_order):
             abspath = osutils.pathjoin(self.root, path)
             fp = self._fingerprint(abspath)
             self.stat_count += 1
@@ -223,7 +219,7 @@ class HashCache(object):
                                    new_mode=self._mode) as outf:
             outf.write(CACHE_HEADER)
 
-            for path, c in viewitems(self._cache):
+            for path, c in self._cache.items():
                 line_info = [path.encode('utf-8'), b'// ', c[0], b' ']
                 line_info.append(b'%d %d %d %d %d %d' % c[1])
                 line_info.append(b'\n')

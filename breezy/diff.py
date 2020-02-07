@@ -16,6 +16,7 @@
 
 from __future__ import absolute_import
 
+import contextlib
 import difflib
 import os
 import re
@@ -29,7 +30,6 @@ import subprocess
 import tempfile
 
 from breezy import (
-    cleanup,
     controldir,
     osutils,
     textfile,
@@ -47,7 +47,6 @@ from . import (
 from .registry import (
     Registry,
     )
-from .sixish import text_type
 from .trace import mutter, note, warning
 from .tree import FileTimestampUnavailable
 
@@ -519,7 +518,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         context = DEFAULT_CONTEXT_AMOUNT
     if format_cls is None:
         format_cls = DiffTree
-    with cleanup.ExitStack() as exit_stack:
+    with contextlib.ExitStack() as exit_stack:
         exit_stack.enter_context(old_tree.lock_read())
         if extra_trees is not None:
             for tree in extra_trees:
@@ -802,7 +801,7 @@ class DiffFromTool(DiffPath):
         if sys.platform == 'win32':  # Popen doesn't accept unicode on win32
             command_encoded = []
             for c in command:
-                if isinstance(c, text_type):
+                if isinstance(c, str):
                     command_encoded.append(c.encode('mbcs'))
                 else:
                     command_encoded.append(c)
