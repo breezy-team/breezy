@@ -978,7 +978,7 @@ def apply_coveraged(the_callable, *args, **kwargs):
         config_file = cov.config.config_file
     except AttributeError:  # older versions of coverage
         config_file = cov.config_file
-    os.environ['COVERAGE_PROCESS_START'] = cov.config_file
+    os.environ['COVERAGE_PROCESS_START'] = config_file
     cov.start()
     try:
         return exception_to_return_code(the_callable, *args, **kwargs)
