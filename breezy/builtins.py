@@ -750,6 +750,13 @@ class cmd_add(Command):
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
             file_ids_from=None):
         import breezy.add
+        tree, file_list = tree_files_for_add(file_list)
+
+        if file_ids_from is not None and not tree.supports_setting_file_ids():
+            warning(
+                gettext('Ignoring --file-ids-from, since the tree does not '
+                        'support setting file ids.'))
+            file_ids_from = None
 
         base_tree = None
         if file_ids_from is not None:
@@ -770,7 +777,6 @@ class cmd_add(Command):
 
         if base_tree:
             self.enter_context(base_tree.lock_read())
-        tree, file_list = tree_files_for_add(file_list)
         added, ignored = tree.smart_add(
             file_list, not no_recurse, action=action, save=not dry_run)
         self.cleanup_now()
@@ -2329,14 +2335,27 @@ class cmd_diff(Command):
                help='How many lines of context to show.',
                type=int,
                ),
+        RegistryOption.from_kwargs(
+            'color',
+            help='Color mode to use.',
+            title='Color Mode', value_switches=False, enum_switch=True,
+            never='Never colorize output.',
+            auto='Only colorize output if terminal supports it and STDOUT is a'
+            ' TTY.',
+            always='Always colorize output (default).'),
+        Option(
+            'check-style',
+            help=('Warn if trailing whitespace or spurious changes have been'
+                  '  added.'))
         ]
+
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None, format=None,
-            context=None):
+            context=None, color='never'):
         from .diff import (get_trees_and_branches_to_diff_locked,
                            show_diff_trees)
 
@@ -2369,7 +2388,17 @@ class cmd_diff(Command):
             file_list, revision, old, new, self._exit_stack, apply_view=True)
         # GNU diff on Windows uses ANSI encoding for filenames
         path_encoding = osutils.get_diff_header_encoding()
-        return show_diff_trees(old_tree, new_tree, self.outf,
+        outf = self.outf
+        if color == 'auto':
+            from .terminal import has_ansi_colors
+            if has_ansi_colors():
+                color = 'always'
+            else:
+                color = 'never'
+        if 'always' == color:
+            from .colordiff import DiffWriter
+            outf = DiffWriter(outf)
+        return show_diff_trees(old_tree, new_tree, outf,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,

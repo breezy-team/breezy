@@ -49,6 +49,21 @@ class TestGitBlackBox(ExternalBase):
         r1 = builder.commit(b'Joe Foo <joe@foo.com>', u'<The commit message>')
         return repo, builder.finish()[r1]
 
+    def test_add(self):
+        r = GitRepo.init(self.test_dir)
+        dir = ControlDir.open(self.test_dir)
+        dir.create_branch()
+        self.build_tree(['a', 'b'])
+        output, error = self.run_bzr(['add', 'a'])
+        self.assertEqual('adding a\n', output)
+        self.assertEqual('', error)
+        output, error = self.run_bzr(
+            ['add', '--file-ids-from=../othertree', 'b'])
+        self.assertEqual('adding b\n', output)
+        self.assertEqual(
+            'Ignoring --file-ids-from, since the tree does not support '
+            'setting file ids.\n', error)
+
     def test_nick(self):
         r = GitRepo.init(self.test_dir)
         dir = ControlDir.open(self.test_dir)

@@ -62,7 +62,7 @@ class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
         # parents first, and then grab the ordered requests.
         needed_ids = [k[-1] for k in self.present_parents]
         needed_ids.extend([k[-1] for k in self.ordered_keys])
-        inv_to_bytes = self.repo._serializer.write_inventory_to_string
+        inv_to_lines = self.repo._serializer.write_inventory_to_chunks
         for inv in self.repo.iter_inventories(needed_ids):
             revision_id = inv.revision_id
             key = (revision_id,)
@@ -72,12 +72,12 @@ class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
                 parent_ids = None
             else:
                 parent_ids = [k[-1] for k in self.parent_map[key]]
-            as_bytes = inv_to_bytes(inv)
-            self._process_one_record(key, (as_bytes,))
+            as_chunks = inv_to_lines(inv)
+            self._process_one_record(key, as_chunks)
             if parent_ids is None:
                 continue
             diff = self.diffs.pop(key)
-            sha1 = osutils.sha_string(as_bytes)
+            sha1 = osutils.sha_strings(as_chunks)
             yield revision_id, parent_ids, sha1, diff
 
 
@@ -368,7 +368,7 @@ class BundleWriteOperation(object):
         """Generate mpdiffs by serializing inventories.
 
         The current repository only has part of the tree shape information in
-        the 'inventories' vf. So we use serializer.write_inventory_to_string to
+        the 'inventories' vf. So we use serializer.write_inventory_to_lines to
         get a 'full' representation of the tree shape, and then generate
         mpdiffs on that data stream. This stream can then be reconstructed on
         the other side.
@@ -626,10 +626,10 @@ class RevisionInstaller(object):
                     present_parent_ids.append(p_id)
                 else:
                     ghosts.add(p_id)
-            to_string = self._source_serializer.write_inventory_to_string
+            to_lines = self._source_serializer.write_inventory_to_chunks
             for parent_inv in self._repository.iter_inventories(
                     present_parent_ids):
-                p_text = to_string(parent_inv)
+                p_text = b''.join(to_lines(parent_inv))
                 inventory_cache[parent_inv.revision_id] = parent_inv
                 cached_parent_texts[parent_inv.revision_id] = p_text
                 inventory_text_cache[parent_inv.revision_id] = p_text
@@ -670,15 +670,14 @@ class RevisionInstaller(object):
                 # as lines and then cast back to a string.
                 target_lines = multiparent.MultiParent.from_patch(bytes
                                                                   ).to_lines(p_texts)
-                inv_text = b''.join(target_lines)
-                del target_lines
-                sha1 = osutils.sha_string(inv_text)
+                sha1 = osutils.sha_strings(target_lines)
                 if sha1 != metadata[b'sha1']:
                     raise errors.BadBundle("Can't convert to target format")
                 # Add this to the cache so we don't have to extract it again.
-                inventory_text_cache[revision_id] = inv_text
-                target_inv = self._source_serializer.read_inventory_from_string(
-                    inv_text)
+                inventory_text_cache[revision_id] = b''.join(target_lines)
+                target_inv = self._source_serializer.read_inventory_from_lines(
+                    target_lines)
+                del target_lines
                 self._handle_root(target_inv, parent_ids)
                 parent_inv = None
                 if parent_ids:

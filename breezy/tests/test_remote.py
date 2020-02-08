@@ -2861,8 +2861,8 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
         somerev1.timezone = -60
         somerev1.inventory_sha1 = b"691b39be74c67b1212a75fcb19c433aaed903c2b"
         somerev1.message = "Message"
-        body = zlib.compress(chk_bencode_serializer.write_revision_to_string(
-            somerev1))
+        body = zlib.compress(b''.join(chk_bencode_serializer.write_revision_to_lines(
+            somerev1)))
         # Split up body into two bits to make sure the zlib compression object
         # gets data fed twice.
         client.add_success_response_with_body(
@@ -3536,9 +3536,9 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
 
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
-            text = fmt._serializer.write_inventory_to_string(inv)
-            yield versionedfile.FulltextContentFactory(
-                (b'rev1',), (), None, text)
+            chunks = fmt._serializer.write_inventory_to_lines(inv)
+            yield versionedfile.ChunkedContentFactory(
+                (b'rev1',), (), None, chunks, chunks_are_lines=True)
 
         def inventory_delta_substream():
             # An inventory delta.  This can't be streamed via this verb, so it

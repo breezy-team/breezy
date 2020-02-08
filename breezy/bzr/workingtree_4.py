@@ -1403,7 +1403,8 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
         with open(abspath, 'rb', 65000) as file_obj:
             statvalue = os.fstat(file_obj.fileno())
             if filters:
-                file_obj = _mod_filters.filtered_input_file(file_obj, filters)
+                file_obj, size = _mod_filters.filtered_input_file(file_obj, filters)
+                statvalue = _mod_filters.FilteredStat(statvalue, size)
             sha1 = osutils.size_sha_file(file_obj)[1]
         return statvalue, sha1
 
@@ -1746,6 +1747,14 @@ class DirStateRevisionTree(InventoryTree):
         # trust the entry as RevisionTree does, but this may not be
         # sensible: the entry might not have come from us?
         return entry.kind, entry.executable, None
+
+    def _get_file_revision(self, path, file_id, vf, tree_revision):
+        """Ensure that file_id, tree_revision is in vf to plan the merge."""
+        last_revision = self.get_file_revision(path)
+        base_vf = self._repository.texts
+        if base_vf not in vf.fallback_versionedfiles:
+            vf.fallback_versionedfiles.append(base_vf)
+        return last_revision
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are not versioned.

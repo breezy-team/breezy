@@ -575,14 +575,6 @@ class Tree(object):
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def _iter_parent_trees(self):
-        """Iterate through parent trees, defaulting to Tree.revision_tree."""
-        for revision_id in self.get_parent_ids():
-            try:
-                yield self.revision_tree(revision_id)
-            except errors.NoSuchRevisionInTree:
-                yield self.repository.revision_tree(revision_id)
-
     def path2id(self, path):
         """Return the id for path in this tree."""
         raise NotImplementedError(self.path2id)
@@ -721,8 +713,7 @@ class Tree(object):
         :return: None if content filtering is not supported by this tree.
         """
         if self.supports_content_filtering():
-            return lambda path, file_id: \
-                self._content_filter_stack(path)
+            return self._content_filter_stack
         else:
             return None
 

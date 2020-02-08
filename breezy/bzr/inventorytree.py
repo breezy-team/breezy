@@ -292,20 +292,27 @@ class InventoryTree(Tree):
         return vf.plan_lca_merge(last_revision_a, last_revision_b,
                                  last_revision_base)
 
+    def _iter_parent_trees(self):
+        """Iterate through parent trees, defaulting to Tree.revision_tree."""
+        for revision_id in self.get_parent_ids():
+            try:
+                yield self.revision_tree(revision_id)
+            except errors.NoSuchRevisionInTree:
+                yield self.branch.repository.revision_tree(revision_id)
+
     def _get_file_revision(self, path, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
-        if getattr(self, '_repository', None) is None:
-            last_revision = tree_revision
-            parent_keys = [
-                (file_id, t.get_file_revision(path)) for t in
-                self._iter_parent_trees()]
-            vf.add_lines((file_id, last_revision), parent_keys,
-                         self.get_file_lines(path))
-            repo = self.branch.repository
-            base_vf = repo.texts
-        else:
-            last_revision = self.get_file_revision(path)
-            base_vf = self._repository.texts
+        from . import versionedfile
+        last_revision = tree_revision
+        parent_keys = [
+            (file_id, t.get_file_revision(path)) for t in
+            self._iter_parent_trees()]
+        with self.get_file(path) as f:
+            vf.add_content(
+                versionedfile.FileContentFactory(
+                    (file_id, last_revision), parent_keys, f, size=osutils.filesize(f)))
+        repo = self.branch.repository
+        base_vf = repo.texts
         if base_vf not in vf.fallback_versionedfiles:
             vf.fallback_versionedfiles.append(base_vf)
         return last_revision
@@ -755,6 +762,14 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
     def __init__(self, repository, inv, revision_id):
         RevisionTree.__init__(self, repository, revision_id)
         self._inventory = inv
+
+    def _get_file_revision(self, path, file_id, vf, tree_revision):
+        """Ensure that file_id, tree_revision is in vf to plan the merge."""
+        last_revision = self.get_file_revision(path)
+        base_vf = self._repository.texts
+        if base_vf not in vf.fallback_versionedfiles:
+            vf.fallback_versionedfiles.append(base_vf)
+        return last_revision
 
     def get_file_mtime(self, path):
         ie = self._path2ie(path)

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # Simple script that will check which bugs mentioned in NEWS
 # are not yet marked Fix Released in Launchpad
 
