@@ -1,0 +1,13 @@
+=== modified file 'breezy/tests/stub_sftp.py'
+--- old/breezy/tests/stub_sftp.py	2018-11-11 04:08:32 +0000
++++ new/breezy/tests/stub_sftp.py	2020-02-03 22:40:36 +0000
+@@ -262,7 +262,7 @@
+ 
+ # ------------- server test implementation --------------
+ 
+-STUB_SERVER_KEY = """
++STUB_SERVER_KEY = """\
+ -----BEGIN RSA PRIVATE KEY-----
+ MIICWgIBAAKBgQDTj1bqB4WmayWNPB+8jVSYpZYk80Ujvj680pOTh2bORBjbIAyz
+ oWGW+GUjzKxTiiPvVmxFgx5wdsFvF03v34lEVVhMpouqPAYQ15N37K/ir5XY+9m/
+
