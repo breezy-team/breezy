@@ -48,6 +48,7 @@ from ..errors import (
     PermissionDenied,
     UninitializableFormat,
     )
+from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
 from ..sixish import (
     text_type,
@@ -453,7 +454,8 @@ class RemoteGitDir(GitDir):
             pb = None
 
         def get_changed_refs_wrapper(remote_refs):
-            update_refs_container(self._refs, remote_refs)
+            if self._refs is not None:
+                update_refs_container(self._refs, remote_refs)
             return get_changed_refs(remote_refs)
         try:
             return self._client.send_pack(
@@ -471,7 +473,7 @@ class RemoteGitDir(GitDir):
         if refname != b'HEAD' and refname in self.get_refs_container():
             raise AlreadyBranchError(self.user_url)
         ref_chain, unused_sha = self.get_refs_container().follow(
-            self._get_selected_ref(None))
+            self._get_selected_ref(name))
         if ref_chain and ref_chain[0] == b'HEAD':
             refname = ref_chain[1]
         repo = self.open_repository()
@@ -578,7 +580,8 @@ class RemoteGitDir(GitDir):
         source_store = get_object_store(source.repository)
         fetch_tags = source.get_config_stack().get('branch.fetch_tags')
         def get_changed_refs(remote_refs):
-            update_refs_container(self._refs, remote_refs)
+            if self._refs is not None:
+                update_refs_container(self._refs, remote_refs)
             ret = {}
             # TODO(jelmer): Unpeel if necessary
             push_result.new_original_revid = revision_id
@@ -614,14 +617,14 @@ class RemoteGitDir(GitDir):
             new_refs = self.send_pack(get_changed_refs, generate_pack_data)
         push_result.new_revid = repo.lookup_foreign_revision_id(
             new_refs[actual_refname])
-        try:
-            old_remote = self._refs[actual_refname]
-        except KeyError:
-            old_remote = ZERO_SHA
-        push_result.old_revid = repo.lookup_foreign_revision_id(old_remote)
-        update_refs_container(self._refs, new_refs)
+        if old_sha is not None:
+            push_result.old_revid = repo.lookup_foreign_revision_id(old_sha)
+        else:
+            push_result.old_revid = NULL_REVISION
+        if self._refs is not None:
+            update_refs_container(self._refs, new_refs)
         push_result.target_branch = self.open_branch(name)
-        if old_remote != ZERO_SHA:
+        if old_sha is not None:
             push_result.branch_push_result = GitBranchPushResult()
             push_result.branch_push_result.source_branch = source
             push_result.branch_push_result.target_branch = (
