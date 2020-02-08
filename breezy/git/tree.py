@@ -1000,6 +1000,15 @@ class InterGitTrees(_mod_tree.InterTree):
         for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
             if oldpath in paths:
                 ret[oldpath] = newpath
+        for path in paths:
+            if path not in ret:
+                if self.source.has_filename(path):
+                    if self.target.has_filename(path):
+                        ret[path] = path
+                    else:
+                        ret[path] = None
+                else:
+                    raise errors.NoSuchFile(path)
         return ret
 
     def find_source_paths(self, paths, recurse='none'):
@@ -1009,6 +1018,15 @@ class InterGitTrees(_mod_tree.InterTree):
         for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
             if newpath in paths:
                 ret[newpath] = oldpath
+        for path in paths:
+            if path not in ret:
+                if self.target.has_filename(path):
+                    if self.source.has_filename(path):
+                        ret[path] = path
+                    else:
+                        ret[path] = None
+                else:
+                    raise errors.NoSuchFile(path)
         return ret
 
 

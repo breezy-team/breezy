@@ -966,8 +966,7 @@ class InterTree(InterObject):
         from_data = dict(from_entries_by_dir)
         to_entries_by_dir = list(self.target.iter_entries_by_dir(
             specific_files=target_specific_files))
-        path_equivs = find_previous_paths(
-            self.target, self.source, [p for p, e in to_entries_by_dir])
+        path_equivs = self.find_source_paths([p for p, e in to_entries_by_dir])
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
         # the unversioned path lookup only occurs on real trees - where there

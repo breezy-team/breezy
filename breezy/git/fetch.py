@@ -126,7 +126,10 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     # Check what revision we should store
     parent_keys = []
     for ptree in parent_bzr_trees:
-        ppath = find_previous_path(base_bzr_tree, ptree, decoded_path, recurse='none')
+        try:
+            ppath = find_previous_path(base_bzr_tree, ptree, decoded_path, recurse='none')
+        except errors.NoSuchFile:
+            continue
         if ppath is None:
             continue
         pkind = ptree.kind(ppath)
