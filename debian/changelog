@@ -1,10 +1,10 @@
-breezy (3.0.2-4) UNRELEASED; urgency=medium
+breezy (3.0.2-4) unstable; urgency=medium
 
   * Add patch 24_paramiko_compat: support newer versions of paramiko.
   * Add patch 25_line_buffering: disable line buffering when reading binary
     files. Closes: #950909
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 08 Feb 2020 13:01:14 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 08 Feb 2020 13:27:57 +0000
 
 breezy (3.0.2-3) unstable; urgency=medium
 
