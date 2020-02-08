@@ -387,8 +387,9 @@ class PushToRemoteBase(object):
         result.report(BytesIO())
 
         self.assertEqual(
-            {b'HEAD': self.remote_real.refs[b'refs/heads/master'],
-             b'refs/heads/master': self.remote_real.refs[b'refs/heads/master'],
+            {
+                b'HEAD': self.remote_real.refs[b'refs/heads/master'],
+                b'refs/heads/master': self.remote_real.refs[b'refs/heads/master'],
             },
             self.remote_real.get_refs())
 
