@@ -985,6 +985,32 @@ class InterGitTrees(_mod_tree.InterTree):
                           want_unversioned=False):
         raise NotImplementedError(self._iter_git_changes)
 
+    def find_target_path(self, path, recurse='none'):
+        ret = self.find_target_paths([path], recurse=recurse)
+        return ret[path]
+
+    def find_source_path(self, path, recurse='none'):
+        ret = self.find_source_paths([path], recurse=recurse)
+        return ret[path]
+
+    def find_target_paths(self, paths, recurse='none'):
+        paths = set(paths)
+        ret = {}
+        changes = self._iter_git_changes(specific_files=paths)[0]
+        for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+            if oldpath in paths:
+                ret[oldpath] = newpath
+        return ret
+
+    def find_source_paths(self, paths, recurse='none'):
+        paths = set(paths)
+        ret = {}
+        changes = self._iter_git_changes(specific_files=paths)[0]
+        for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+            if newpath in paths:
+                ret[newpath] = oldpath
+        return ret
+
 
 class InterGitRevisionTrees(InterGitTrees):
     """InterTree that works between two git revision trees."""
