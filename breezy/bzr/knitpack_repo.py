@@ -739,7 +739,7 @@ class KnitPacker(Packer):
                     # check the header only
                     df, _ = knit._parse_record_header(key, raw_data)
                     df.close()
-                pos, size = writer.add_bytes_record(raw_data, names)
+                pos, size = writer.add_bytes_record([raw_data], len(raw_data), names)
                 write_index.add_node(key, eol_flag + b"%d %d" %
                                      (pos, size), references)
                 pb.update("Copied record", record_index)

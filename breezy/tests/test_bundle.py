@@ -1796,7 +1796,7 @@ class TestBundleWriterReader(tests.TestCase):
         writer = v4.BundleWriter(fileobj)
         writer.begin()
         writer.add_info_record({b'foo': b'bar'})
-        writer._container.add_bytes_record(b'blah', [(b'two', ), (b'names', )])
+        writer._container.add_bytes_record([b'blah'], len(b'blah'), [(b'two', ), (b'names', )])
         writer.end()
         fileobj.seek(0)
         record_iter = v4.BundleReader(fileobj).iter_records()
