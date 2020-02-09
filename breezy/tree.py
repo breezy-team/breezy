@@ -713,8 +713,7 @@ class Tree(object):
         :return: None if content filtering is not supported by this tree.
         """
         if self.supports_content_filtering():
-            return lambda path, file_id: \
-                self._content_filter_stack(path)
+            return self._content_filter_stack
         else:
             return None
 
@@ -967,8 +966,7 @@ class InterTree(InterObject):
         from_data = dict(from_entries_by_dir)
         to_entries_by_dir = list(self.target.iter_entries_by_dir(
             specific_files=target_specific_files))
-        path_equivs = find_previous_paths(
-            self.target, self.source, [p for p, e in to_entries_by_dir])
+        path_equivs = self.find_source_paths([p for p, e in to_entries_by_dir])
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
         # the unversioned path lookup only occurs on real trees - where there
@@ -1031,7 +1029,7 @@ class InterTree(InterObject):
             if file_id in to_paths:
                 # already returned
                 continue
-            to_path = find_previous_path(self.source, self.target, path)
+            to_path = self.find_target_path(path)
             entry_count += 1
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
@@ -1195,6 +1193,60 @@ class InterTree(InterObject):
                 target_sha1 = target_verifier_data
             return (source_sha1 == target_sha1)
 
+    def find_target_path(self, path, recurse='none'):
+        """Find target tree path.
+
+        :param path: Path to search for (exists in source)
+        :return: path in target, or None if there is no equivalent path.
+        :raise NoSuchFile: If the path doesn't exist in source
+        """
+        file_id = self.source.path2id(path)
+        if file_id is None:
+            raise errors.NoSuchFile(path)
+        try:
+            return self.target.id2path(file_id, recurse=recurse)
+        except errors.NoSuchId:
+            return None
+
+    def find_source_path(self, path, recurse='none'):
+        """Find the source tree path.
+
+        :param path: Path to search for (exists in target)
+        :return: path in source, or None if there is no equivalent path.
+        :raise NoSuchFile: if the path doesn't exist in target
+        """
+        file_id = self.target.path2id(path)
+        if file_id is None:
+            raise errors.NoSuchFile(path)
+        try:
+            return self.source.id2path(file_id, recurse=recurse)
+        except errors.NoSuchId:
+            return None
+
+    def find_target_paths(self, paths, recurse='none'):
+        """Find target tree paths.
+
+        :param paths: Iterable over paths in target to search for
+        :return: Dictionary mapping from source paths to paths in target , or
+            None if there is no equivalent path.
+        """
+        ret = {}
+        for path in paths:
+            ret[path] = self.find_target_path(path, recurse=recurse)
+        return ret
+
+    def find_source_paths(self, paths, recurse='none'):
+        """Find source tree paths.
+
+        :param paths: Iterable over paths in target to search for
+        :return: Dictionary mapping from target paths to paths in source, or
+            None if there is no equivalent path.
+        """
+        ret = {}
+        for path in paths:
+            ret[path] = self.find_source_path(path, recurse=recurse)
+        return ret
+
 
 InterTree.register_optimiser(InterTree)
 
@@ -1208,13 +1260,10 @@ def find_previous_paths(from_tree, to_tree, paths, recurse='none'):
     :return: Dictionary mapping from from_tree paths to paths in to_tree, or
         None if there is no equivalent path.
     """
-    ret = {}
-    for path in paths:
-        ret[path] = find_previous_path(from_tree, to_tree, path, recurse=recurse)
-    return ret
+    return InterTree.get(to_tree, from_tree).find_source_paths(paths, recurse=recurse)
 
 
-def find_previous_path(from_tree, to_tree, path, file_id=None, recurse='none'):
+def find_previous_path(from_tree, to_tree, path, recurse='none'):
     """Find previous tree path.
 
     :param from_tree: From tree
@@ -1223,14 +1272,8 @@ def find_previous_path(from_tree, to_tree, path, file_id=None, recurse='none'):
     :return: path in to_tree, or None if there is no equivalent path.
     :raise NoSuchFile: If the path doesn't exist in from_tree
     """
-    if file_id is None:
-        file_id = from_tree.path2id(path)
-    if file_id is None:
-        raise errors.NoSuchFile(path)
-    try:
-        return to_tree.id2path(file_id, recurse=recurse)
-    except errors.NoSuchId:
-        return None
+    return InterTree.get(to_tree, from_tree).find_source_path(
+        path, recurse=recurse)
 
 
 def get_canonical_path(tree, path, normalize):

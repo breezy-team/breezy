@@ -2002,11 +2002,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def _add_revision(self, rev):
         if self._real_repository is not None:
             return self._real_repository._add_revision(rev)
-        text = self._serializer.write_revision_to_string(rev)
+        lines = self._serializer.write_revision_to_lines(rev)
         key = (rev.revision_id,)
         parents = tuple((parent,) for parent in rev.parent_ids)
         self._write_group_tokens, missing_keys = self._get_sink().insert_stream(
-            [('revisions', [FulltextContentFactory(key, parents, None, text)])],
+            [('revisions', [ChunkedContentFactory(key, parents, None, lines, chunks_are_lines=True)])],
             self._format, self._write_group_tokens)
 
     def get_inventory(self, revision_id):
@@ -2048,7 +2048,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 "Unexpected stream %r received" % substream_kind)
         for record in substream:
             (parent_id, new_id, versioned_root, tree_references, invdelta) = (
-                deserializer.parse_text_bytes(record.get_bytes_as("fulltext")))
+                deserializer.parse_text_bytes(record.get_bytes_as("lines")))
             if parent_id != prev_inv.revision_id:
                 raise AssertionError("invalid base %r != %r" % (parent_id,
                                                                 prev_inv.revision_id))

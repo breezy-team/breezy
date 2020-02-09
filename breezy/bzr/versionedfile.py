@@ -143,7 +143,7 @@ class ChunkedContentFactory(ContentFactory):
         elif storage_kind == 'lines':
             if self._chunks_are_lines:
                 return iter(self._chunks)
-            return osutils.chunks_to_lines(self._chunks)
+            return iter(osutils.chunks_to_lines(self._chunks))
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 

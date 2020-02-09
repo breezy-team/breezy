@@ -995,6 +995,54 @@ class InterGitTrees(_mod_tree.InterTree):
                           want_unversioned=False):
         raise NotImplementedError(self._iter_git_changes)
 
+    def find_target_path(self, path, recurse='none'):
+        ret = self.find_target_paths([path], recurse=recurse)
+        return ret[path]
+
+    def find_source_path(self, path, recurse='none'):
+        ret = self.find_source_paths([path], recurse=recurse)
+        return ret[path]
+
+    def find_target_paths(self, paths, recurse='none'):
+        paths = set(paths)
+        ret = {}
+        changes = self._iter_git_changes(specific_files=paths)[0]
+        for (change_type, old, new) in changes:
+            oldpath = old[0]
+            newpath = new[0]
+            if oldpath in paths:
+                ret[oldpath] = newpath
+        for path in paths:
+            if path not in ret:
+                if self.source.has_filename(path):
+                    if self.target.has_filename(path):
+                        ret[path] = path
+                    else:
+                        ret[path] = None
+                else:
+                    raise errors.NoSuchFile(path)
+        return ret
+
+    def find_source_paths(self, paths, recurse='none'):
+        paths = set(paths)
+        ret = {}
+        changes = self._iter_git_changes(specific_files=paths)[0]
+        for (change_type, old, new) in changes:
+            oldpath = old[0]
+            newpath = new[0]
+            if newpath in paths:
+                ret[newpath] = oldpath
+        for path in paths:
+            if path not in ret:
+                if self.target.has_filename(path):
+                    if self.source.has_filename(path):
+                        ret[path] = path
+                    else:
+                        ret[path] = None
+                else:
+                    raise errors.NoSuchFile(path)
+        return ret
+
 
 class InterGitRevisionTrees(InterGitTrees):
     """InterTree that works between two git revision trees."""
@@ -1661,7 +1709,7 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
             extras.add(np)
     to_tree_sha = commit_tree(
         store, dirified + [(p, s, m) for (p, (s, m)) in blobs.items()])
-    return tree_changes(store,
-        from_tree_sha, to_tree_sha, include_trees=True,
+    return tree_changes(
+        store, from_tree_sha, to_tree_sha, include_trees=True,
         rename_detector=rename_detector,
         want_unchanged=want_unchanged, change_type_same=True), extras

@@ -778,10 +778,10 @@ class VersionedFileRepository(Repository):
         self._add_revision(rev)
 
     def _add_revision(self, revision):
-        text = self._serializer.write_revision_to_string(revision)
+        lines = self._serializer.write_revision_to_lines(revision)
         key = (revision.revision_id,)
         parents = tuple((parent,) for parent in revision.parent_ids)
-        self.revisions.add_lines(key, parents, osutils.split_lines(text))
+        self.revisions.add_lines(key, parents, lines)
 
     def _check_inventories(self, checker):
         """Check the inventories found from the revision scan.
@@ -1937,7 +1937,7 @@ class StreamSink(object):
         target_tree_refs = self.target_repo._format.supports_tree_reference
         for record in substream:
             # Insert the delta directly
-            inventory_delta_bytes = record.get_bytes_as('fulltext')
+            inventory_delta_bytes = record.get_bytes_as('lines')
             deserialiser = inventory_delta.InventoryDeltaDeserializer()
             try:
                 parse_result = deserialiser.parse_text_bytes(

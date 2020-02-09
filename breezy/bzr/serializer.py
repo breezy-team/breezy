@@ -84,11 +84,11 @@ class Serializer(object):
         """See read_inventory_from_lines."""
         raise NotImplementedError(self.read_inventory)
 
-    def write_revision(self, rev, f):
-        raise NotImplementedError(self.write_revision)
-
     def write_revision_to_string(self, rev):
         raise NotImplementedError(self.write_revision_to_string)
+
+    def write_revision_to_lines(self, rev):
+        raise NotImplementedError(self.write_revision_to_lines)
 
     def read_revision(self, f):
         raise NotImplementedError(self.read_revision)

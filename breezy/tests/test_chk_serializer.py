@@ -86,8 +86,8 @@ class TestBEncodeSerializer1(TestCase):
         self.assertEqual(None, rev.timezone)
 
     def assertRoundTrips(self, serializer, orig_rev):
-        text = serializer.write_revision_to_string(orig_rev)
-        new_rev = serializer.read_revision_from_string(text)
+        lines = serializer.write_revision_to_lines(orig_rev)
+        new_rev = serializer.read_revision_from_string(b''.join(lines))
         self.assertEqual(orig_rev, new_rev)
 
     def test_roundtrips_non_ascii(self):

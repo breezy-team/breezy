@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 """Get file version.
 Written by Alexander Belchenko, 2006

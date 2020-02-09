@@ -48,6 +48,7 @@ from ..errors import (
     PermissionDenied,
     UninitializableFormat,
     )
+from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
 from ..sixish import (
     text_type,
@@ -452,10 +453,10 @@ class RemoteGitDir(GitDir):
         else:
             pb = None
 
-        def get_changed_refs_wrapper(refs):
-            # TODO(jelmer): This drops symref information
-            self._refs = remote_refs_dict_to_container(refs)
-            return get_changed_refs(refs)
+        def get_changed_refs_wrapper(remote_refs):
+            if self._refs is not None:
+                update_refs_container(self._refs, remote_refs)
+            return get_changed_refs(remote_refs)
         try:
             return self._client.send_pack(
                 self._client_path, get_changed_refs_wrapper,
@@ -471,11 +472,10 @@ class RemoteGitDir(GitDir):
         refname = self._get_selected_ref(name, ref)
         if refname != b'HEAD' and refname in self.get_refs_container():
             raise AlreadyBranchError(self.user_url)
-        if refname in self.get_refs_container():
-            ref_chain, unused_sha = self.get_refs_container().follow(
-                self._get_selected_ref(None))
-            if ref_chain[0] == b'HEAD':
-                refname = ref_chain[1]
+        ref_chain, unused_sha = self.get_refs_container().follow(
+            self._get_selected_ref(name))
+        if ref_chain and ref_chain[0] == b'HEAD':
+            refname = ref_chain[1]
         repo = self.open_repository()
         return RemoteGitBranch(self, repo, refname)
 
@@ -570,12 +570,18 @@ class RemoteGitDir(GitDir):
         push_result.branch_push_result = None
         repo = self.find_repository()
         refname = self._get_selected_ref(name)
+        ref_chain, old_sha = self.get_refs_container().follow(refname)
+        if ref_chain:
+            actual_refname = ref_chain[-1]
+        else:
+            actual_refname = refname
         if isinstance(source, GitBranch) and lossy:
             raise errors.LossyPushToSameVCS(source.controldir, self)
         source_store = get_object_store(source.repository)
         fetch_tags = source.get_config_stack().get('branch.fetch_tags')
-        def get_changed_refs(refs):
-            self._refs = remote_refs_dict_to_container(refs)
+        def get_changed_refs(remote_refs):
+            if self._refs is not None:
+                update_refs_container(self._refs, remote_refs)
             ret = {}
             # TODO(jelmer): Unpeel if necessary
             push_result.new_original_revid = revision_id
@@ -588,11 +594,10 @@ class RemoteGitDir(GitDir):
                     raise errors.NoRoundtrippingSupport(
                         source, self.open_branch(name=name, nascent_ok=True))
             if not overwrite:
-                if remote_divergence(ret.get(refname), new_sha,
-                                     source_store):
+                if remote_divergence(old_sha, new_sha, source_store):
                     raise DivergedBranches(
                         source, self.open_branch(name, nascent_ok=True))
-            ret[refname] = new_sha
+            ret[actual_refname] = new_sha
             if fetch_tags:
                 for tagname, revid in viewitems(source.tags.get_tag_dict()):
                     if lossy:
@@ -611,15 +616,15 @@ class RemoteGitDir(GitDir):
                 generate_pack_data = source_store.generate_pack_data
             new_refs = self.send_pack(get_changed_refs, generate_pack_data)
         push_result.new_revid = repo.lookup_foreign_revision_id(
-            new_refs[refname])
-        try:
-            old_remote = self._refs[refname]
-        except KeyError:
-            old_remote = ZERO_SHA
-        push_result.old_revid = repo.lookup_foreign_revision_id(old_remote)
-        self._refs = remote_refs_dict_to_container(new_refs)
+            new_refs[actual_refname])
+        if old_sha is not None:
+            push_result.old_revid = repo.lookup_foreign_revision_id(old_sha)
+        else:
+            push_result.old_revid = NULL_REVISION
+        if self._refs is not None:
+            update_refs_container(self._refs, new_refs)
         push_result.target_branch = self.open_branch(name)
-        if old_remote != ZERO_SHA:
+        if old_sha is not None:
             push_result.branch_push_result = GitBranchPushResult()
             push_result.branch_push_result.source_branch = source
             push_result.branch_push_result.target_branch = (
@@ -1029,3 +1034,15 @@ def remote_refs_dict_to_container(refs_dict, symrefs_dict={}):
     ret = DictRefsContainer(base)
     ret._peeled = peeled
     return ret
+
+
+def update_refs_container(container, refs_dict):
+    peeled = {}
+    base = {}
+    for k, v in refs_dict.items():
+        if is_peeled(k):
+            peeled[k[:-3]] = v
+        else:
+            base[k] = v
+    container._peeled = peeled
+    container._refs.update(base)

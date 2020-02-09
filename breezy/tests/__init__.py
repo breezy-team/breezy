@@ -1336,7 +1336,9 @@ class TestCase(testtools.TestCase):
         if a == b + ('\n' if isinstance(b, text_type) else b'\n'):
             message = 'second string is missing a final newline.\n'
         raise AssertionError(message
-                             + self._ndiff_strings(a, b))
+                             + self._ndiff_strings(
+                                 a if isinstance(a, text_type) else a.decode(),
+                                 b if isinstance(b, text_type) else b.decode()))
 
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,
@@ -3612,7 +3614,7 @@ def fork_for_tests(suite):
         pid = os.fork()
         if pid == 0:
             try:
-                stream = os.fdopen(c2pwrite, 'wb', 1)
+                stream = os.fdopen(c2pwrite, 'wb', 0)
                 workaround_zealous_crypto_random()
                 try:
                     import coverage
@@ -3645,7 +3647,7 @@ def fork_for_tests(suite):
             os._exit(0)
         else:
             os.close(c2pwrite)
-            stream = os.fdopen(c2pread, 'rb', 1)
+            stream = os.fdopen(c2pread, 'rb', 0)
             test = TestInOtherProcess(stream, pid)
             result.append(test)
     return result

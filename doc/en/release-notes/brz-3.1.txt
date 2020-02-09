@@ -46,6 +46,11 @@ New Features
    have installed and speeds up import time since psutil brings in
    various other modules. (Jelmer Vernooĳ)
 
+ * ``brz diff`` now has a --color argument that can write
+   color diff output. This is based on the cdiff code in
+   bzrtools by Aaron Bentley.
+   (Jelmer Vernooĳ, #376594)
+
  * Information about tree references can now be updated on remote
    branches. (Jelmer Vernooĳ)
 
@@ -67,6 +72,9 @@ New Features
 
  * Support rename and copy tracking when accessing Git
    repositories. (Jelmer Vernooĳ, #1760740)
+
+ * When pushing to Git repositories, symrefs are now followed.
+   (Jelmer Vernooĳ, #1800393)
 
 Improvements
 ************
@@ -105,6 +113,9 @@ Improvements
  * Git repositories with submodules can now be imported into 2a
    branches; submodules are converted to nested trees.
    (Jelmer Vernooĳ, #402814)
+
+ * Python 3 is now used by default to run scripts, etc. from the makefile.
+   (Jelmer Vernooĳ)
 
 Bug Fixes
 *********
