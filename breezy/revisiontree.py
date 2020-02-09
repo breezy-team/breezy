@@ -18,9 +18,9 @@
 
 from __future__ import absolute_import
 
-from io import BytesIO
 from . import (
     lock,
+    osutils,
     revision,
     tree,
     )
