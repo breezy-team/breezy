@@ -1937,7 +1937,7 @@ class StreamSink(object):
         target_tree_refs = self.target_repo._format.supports_tree_reference
         for record in substream:
             # Insert the delta directly
-            inventory_delta_bytes = record.get_bytes_as('fulltext')
+            inventory_delta_bytes = record.get_bytes_as('lines')
             deserialiser = inventory_delta.InventoryDeltaDeserializer()
             try:
                 parse_result = deserialiser.parse_text_bytes(

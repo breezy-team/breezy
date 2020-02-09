@@ -499,7 +499,7 @@ class _LazyGroupCompressFactory(object):
         if storage_kind == 'chunked':
             return iter([self._bytes])
         elif storage_kind == 'lines':
-            return osutils.split_lines(self._bytes)
+            return iter(osutils.split_lines(self._bytes))
         raise errors.UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
