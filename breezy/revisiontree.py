@@ -20,7 +20,7 @@ from __future__ import absolute_import
 
 from . import (
     lock,
-    osutils,
+    iterablefile,
     revision,
     tree,
     )
@@ -71,7 +71,7 @@ class RevisionTree(tree.Tree):
 
     def get_file(self, path):
         for (identifier, content) in self.iter_files_bytes([(path, None)]):
-            return osutils.IterableFile(content)
+            return iterablefile.IterableFile(content)
 
     def is_locked(self):
         return self._repository.is_locked()
