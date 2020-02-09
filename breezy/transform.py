@@ -71,7 +71,7 @@ from .sixish import (
     viewvalues,
     )
 from .tree import (
-    find_previous_path,
+    InterTree,
     TreeChange,
     )
 
@@ -2961,8 +2961,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         if basis_tree is None:
                             basis_tree = working_tree.basis_tree()
                             basis_tree.lock_read()
-                        basis_path = find_previous_path(
-                            working_tree, basis_tree, wt_path)
+                        basis_inter = InterTree.get(basis_tree, working_tree)
+                        basis_path = basis_inter.find_source_path(wt_path)
                         if basis_path is None:
                             if target_kind is None and not target_versioned:
                                 keep_content = True
@@ -3001,7 +3001,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
                     new_sha1 = target_tree.get_file_sha1(target_path)
-                    basis_path = find_previous_path(target_tree, basis_tree, target_path)
+                    basis_inter = InterTree.get(basis_tree, target_tree)
+                    basis_path = basis_inter.find_source_path(target_path)
                     if (basis_path is not None and
                             new_sha1 == basis_tree.get_file_sha1(basis_path)):
                         # If the new contents of the file match what is in basis,
