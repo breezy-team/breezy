@@ -124,12 +124,12 @@ class TestAllGroupCompressors(TestGroupCompressor):
         sha1_2, _, end_point, _ = compressor.compress(
             ('newlabel',), [text], len(text), None)
         # get the first out
-        self.assertEqual((b'strange\ncommon long line\n'
-                          b'that needs a 16 byte match\n', sha1_1),
+        self.assertEqual(([b'strange\ncommon long line\n'
+                           b'that needs a 16 byte match\n'], sha1_1),
                          compressor.extract(('label',)))
         # and the second
-        self.assertEqual((b'common long line\nthat needs a 16 byte match\n'
-                          b'different\n', sha1_2),
+        self.assertEqual(([b'common long line\nthat needs a 16 byte match\n'
+                           b'different\n'], sha1_2),
                          compressor.extract(('newlabel',)))
 
     def test_pop_last(self):
