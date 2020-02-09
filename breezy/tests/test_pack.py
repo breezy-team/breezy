@@ -119,14 +119,14 @@ class TestContainerWriter(tests.TestCase):
     def test_non_empty_end_does_not_add_a_record_to_records_written(self):
         """The end() method does not count towards the records written."""
         self.writer.begin()
-        self.writer.add_bytes_record(b'foo', names=[])
+        self.writer.add_bytes_record([b'foo'], len(b'foo'), names=[])
         self.writer.end()
         self.assertEqual(1, self.writer.records_written)
 
     def test_add_bytes_record_no_name(self):
         """Add a bytes record with no name."""
         self.writer.begin()
-        offset, length = self.writer.add_bytes_record(b'abc', names=[])
+        offset, length = self.writer.add_bytes_record([b'abc'], len(b'abc'), names=[])
         self.assertEqual((42, 7), (offset, length))
         self.assertOutput(
             b'Bazaar pack format 1 (introduced in 0.18)\nB3\n\nabc')
@@ -136,7 +136,7 @@ class TestContainerWriter(tests.TestCase):
         self.writer.begin()
 
         offset, length = self.writer.add_bytes_record(
-            b'abc', names=[(b'name1', )])
+            [b'abc'], len(b'abc'), names=[(b'name1', )])
         self.assertEqual((42, 13), (offset, length))
         self.assertOutput(
             b'Bazaar pack format 1 (introduced in 0.18)\n'
@@ -157,7 +157,7 @@ class TestContainerWriter(tests.TestCase):
 
         self.writer.begin()
         offset, length = self.writer.add_bytes_record(
-            b'abcabc', names=[(b'name1', )])
+            [b'abcabc'], len(b'abcabc'), names=[(b'name1', )])
         self.assertEqual((42, 16), (offset, length))
         self.assertOutput(
             b'Bazaar pack format 1 (introduced in 0.18)\n'
@@ -173,7 +173,7 @@ class TestContainerWriter(tests.TestCase):
         """Add a bytes record with two names."""
         self.writer.begin()
         offset, length = self.writer.add_bytes_record(
-            b'abc', names=[(b'name1', ), (b'name2', )])
+            [b'abc'], len(b'abc'), names=[(b'name1', ), (b'name2', )])
         self.assertEqual((42, 19), (offset, length))
         self.assertOutput(
             b'Bazaar pack format 1 (introduced in 0.18)\n'
@@ -183,7 +183,7 @@ class TestContainerWriter(tests.TestCase):
         """Add a bytes record with two names."""
         self.writer.begin()
         offset, length = self.writer.add_bytes_record(
-            b'abc', names=[(b'name1', ), (b'name2', )])
+            [b'abc'], len(b'abc'), names=[(b'name1', ), (b'name2', )])
         self.assertEqual((42, 19), (offset, length))
         self.assertOutput(
             b'Bazaar pack format 1 (introduced in 0.18)\n'
@@ -193,7 +193,7 @@ class TestContainerWriter(tests.TestCase):
         """Add a bytes record with a two-element name."""
         self.writer.begin()
         offset, length = self.writer.add_bytes_record(
-            b'abc', names=[(b'name1', b'name2')])
+            [b'abc'], len(b'abc'), names=[(b'name1', b'name2')])
         self.assertEqual((42, 19), (offset, length))
         self.assertOutput(
             b'Bazaar pack format 1 (introduced in 0.18)\n'
@@ -201,8 +201,8 @@ class TestContainerWriter(tests.TestCase):
 
     def test_add_second_bytes_record_gets_higher_offset(self):
         self.writer.begin()
-        self.writer.add_bytes_record(b'abc', names=[])
-        offset, length = self.writer.add_bytes_record(b'abc', names=[])
+        self.writer.add_bytes_record([b'a', b'bc'], len(b'abc'), names=[])
+        offset, length = self.writer.add_bytes_record([b'abc'], len(b'abc'), names=[])
         self.assertEqual((49, 7), (offset, length))
         self.assertOutput(
             b'Bazaar pack format 1 (introduced in 0.18)\n'
@@ -216,14 +216,14 @@ class TestContainerWriter(tests.TestCase):
         self.writer.begin()
         self.assertRaises(
             errors.InvalidRecordError,
-            self.writer.add_bytes_record, b'abc', names=[(b'bad name', )])
+            self.writer.add_bytes_record, [b'abc'], len(b'abc'), names=[(b'bad name', )])
 
     def test_add_bytes_records_add_to_records_written(self):
         """Adding a Bytes record increments the records_written counter."""
         self.writer.begin()
-        self.writer.add_bytes_record(b'foo', names=[])
+        self.writer.add_bytes_record([b'foo'], len(b'foo'), names=[])
         self.assertEqual(1, self.writer.records_written)
-        self.writer.add_bytes_record(b'foo', names=[])
+        self.writer.add_bytes_record([b'foo'], len(b'foo'), names=[])
         self.assertEqual(2, self.writer.records_written)
 
 
@@ -539,10 +539,10 @@ class TestMakeReadvReader(tests.TestCaseWithTransport):
         writer = pack.ContainerWriter(pack_data.write)
         writer.begin()
         memos = []
-        memos.append(writer.add_bytes_record(b'abc', names=[]))
-        memos.append(writer.add_bytes_record(b'def', names=[(b'name1', )]))
-        memos.append(writer.add_bytes_record(b'ghi', names=[(b'name2', )]))
-        memos.append(writer.add_bytes_record(b'jkl', names=[]))
+        memos.append(writer.add_bytes_record([b'abc'], 3, names=[]))
+        memos.append(writer.add_bytes_record([b'def'], 3, names=[(b'name1', )]))
+        memos.append(writer.add_bytes_record([b'ghi'], 3, names=[(b'name2', )]))
+        memos.append(writer.add_bytes_record([b'jkl'], 3, names=[]))
         writer.end()
         transport = self.get_transport()
         transport.put_bytes('mypack', pack_data.getvalue())
