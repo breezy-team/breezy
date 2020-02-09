@@ -2048,7 +2048,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 "Unexpected stream %r received" % substream_kind)
         for record in substream:
             (parent_id, new_id, versioned_root, tree_references, invdelta) = (
-                deserializer.parse_text_bytes(record.get_bytes_as("fulltext")))
+                deserializer.parse_text_bytes(record.get_bytes_as("lines")))
             if parent_id != prev_inv.revision_id:
                 raise AssertionError("invalid base %r != %r" % (parent_id,
                                                                 prev_inv.revision_id))
