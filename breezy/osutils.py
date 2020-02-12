@@ -1753,6 +1753,13 @@ def check_legal_path(path):
 _WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR
 
 
+try:
+    scandir = os.scandir
+except AttributeError:  # Python < 3
+    import scandir
+    scandir = scandir.scandir
+
+
 def walkdirs(top, prefix=""):
     """Yield data about all the directories in a tree.
 
@@ -1788,11 +1795,6 @@ def walkdirs(top, prefix=""):
     # not at a speed cost. RBC 20060731
     _lstat = os.lstat
     _directory = _directory_kind
-    try:
-        _scandir = os.scandir
-    except AttributeError:  # Python < 3
-        import scandir
-        _scandir = scandir.scandir
     _kind_from_mode = file_kind_from_stat_mode
     pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
@@ -1805,7 +1807,7 @@ def walkdirs(top, prefix=""):
         top_slash = top + u'/'
 
         dirblock = []
-        for entry in _scandir(top):
+        for entry in scandir(top):
             name = decode_filename(entry.name)
             statvalue = entry.stat(follow_symlinks=False)
             kind = _kind_from_mode(statvalue.st_mode)
