@@ -1753,32 +1753,6 @@ def check_legal_path(path):
 _WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR
 
 
-def _is_error_enotdir(e):
-    """Check if this exception represents ENOTDIR.
-
-    Unfortunately, python is very inconsistent about the exception
-    here. The cases are:
-      1) Linux, Mac OSX all versions seem to set errno == ENOTDIR
-      2) Windows, Python2.4, uses errno == ERROR_DIRECTORY (267)
-         which is the windows error code.
-      3) Windows, Python2.5 uses errno == EINVAL and
-         winerror == ERROR_DIRECTORY
-
-    :param e: An Exception object (expected to be OSError with an errno
-        attribute, but we should be able to cope with anything)
-    :return: True if this represents an ENOTDIR error. False otherwise.
-    """
-    en = getattr(e, 'errno', None)
-    if (en == errno.ENOTDIR or
-        (sys.platform == 'win32' and
-            (en == _WIN32_ERROR_DIRECTORY or
-             (en == errno.EINVAL
-              and getattr(e, 'winerror', None) == _WIN32_ERROR_DIRECTORY)
-             ))):
-        return True
-    return False
-
-
 def walkdirs(top, prefix=""):
     """Yield data about all the directories in a tree.
 
@@ -1814,7 +1788,11 @@ def walkdirs(top, prefix=""):
     # not at a speed cost. RBC 20060731
     _lstat = os.lstat
     _directory = _directory_kind
-    _listdir = os.listdir
+    try:
+        _scandir = os.scandir
+    except AttributeError:  # Python < 3
+        import scandir
+        _scandir = scandir.scandir
     _kind_from_mode = file_kind_from_stat_mode
     pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
@@ -1827,18 +1805,12 @@ def walkdirs(top, prefix=""):
         top_slash = top + u'/'
 
         dirblock = []
-        append = dirblock.append
-        try:
-            names = sorted(map(decode_filename, _listdir(top)))
-        except OSError as e:
-            if not _is_error_enotdir(e):
-                raise
-        else:
-            for name in names:
-                abspath = top_slash + name
-                statvalue = _lstat(abspath)
-                kind = _kind_from_mode(statvalue.st_mode)
-                append((relprefix + name, name, kind, statvalue, abspath))
+        for entry in _scandir(top):
+            name = decode_filename(entry.name)
+            statvalue = entry.stat(follow_symlinks=False)
+            kind = _kind_from_mode(statvalue.st_mode)
+            dirblock.append((relprefix + name, name, kind, statvalue, entry.path))
+        dirblock.sort()
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock

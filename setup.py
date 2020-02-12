@@ -81,6 +81,9 @@ META_INFO = {
     ],
 }
 
+if sys.version_info[0] == 2:
+    META_INFO['install_requires'].append('scandir')
+
 # The list of packages is automatically generated later. Add other things
 # that are part of BREEZY here.
 BREEZY = {}
