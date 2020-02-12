@@ -1755,8 +1755,35 @@ _WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR
 try:
     scandir = os.scandir
 except AttributeError:  # Python < 3
-    import scandir
-    scandir = scandir.scandir
+    lazy_import(globals(), """\
+from scandir import scandir
+""")
+
+
+def _is_error_enotdir(e):
+    """Check if this exception represents ENOTDIR.
+
+    Unfortunately, python is very inconsistent about the exception
+    here. The cases are:
+      1) Linux, Mac OSX all versions seem to set errno == ENOTDIR
+      2) Windows, Python2.4, uses errno == ERROR_DIRECTORY (267)
+         which is the windows error code.
+      3) Windows, Python2.5 uses errno == EINVAL and
+         winerror == ERROR_DIRECTORY
+
+    :param e: An Exception object (expected to be OSError with an errno
+        attribute, but we should be able to cope with anything)
+    :return: True if this represents an ENOTDIR error. False otherwise.
+    """
+    en = getattr(e, 'errno', None)
+    if (en == errno.ENOTDIR or
+        (sys.platform == 'win32' and
+            (en == _WIN32_ERROR_DIRECTORY or
+             (en == errno.EINVAL
+              and getattr(e, 'winerror', None) == _WIN32_ERROR_DIRECTORY)
+             ))):
+        return True
+    return False
 
 
 def walkdirs(top, prefix=""):
@@ -1804,11 +1831,17 @@ def walkdirs(top, prefix=""):
         top_slash = top + u'/'
 
         dirblock = []
-        for entry in scandir(top):
-            name = decode_filename(entry.name)
-            statvalue = entry.stat(follow_symlinks=False)
-            kind = file_kind_from_stat_mode(statvalue.st_mode)
-            dirblock.append((relprefix + name, name, kind, statvalue, entry.path))
+        try:
+            for entry in scandir(top):
+                name = decode_filename(entry.name)
+                statvalue = entry.stat(follow_symlinks=False)
+                kind = file_kind_from_stat_mode(statvalue.st_mode)
+                dirblock.append((relprefix + name, name, kind, statvalue, entry.path))
+        except OSError as e:
+            if not _is_error_enotdir(e):
+                raise
+        except UnicodeDecodeError as e:
+            raise errors.BadFilenameEncoding(e.object, _fs_enc)
         dirblock.sort()
         yield (relroot, top), dirblock
 
@@ -1934,14 +1967,14 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for entry in scandir(top.encode('utf-8')):
+        for entry in scandir(safe_utf8(top)):
             try:
                 name = _fs_decode(entry.name)
             except UnicodeDecodeError:
                 raise errors.BadFilenameEncoding(
                     relprefix + entry.name, _fs_enc)
-            name_utf8 = _utf8_encode(name)[0]
             abspath = top_slash + name
+            name_utf8 = _utf8_encode(name)[0]
             statvalue = entry.stat(follow_symlinks=False)
             kind = file_kind_from_stat_mode(statvalue.st_mode)
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))

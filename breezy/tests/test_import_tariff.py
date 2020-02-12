@@ -159,7 +159,7 @@ class TestImportTariffs(ImportTariffTestCase):
     def test_simple_local(self):
         # 'st' in a default format working tree shouldn't need many modules
         self.make_branch_and_tree('.')
-        self.run_command_check_imports(['st'], [
+        forbidden_modules = [
             'breezy.annotate',
             'breezy.atomicfile',
             'breezy.bugtracker',
@@ -194,10 +194,13 @@ class TestImportTariffs(ImportTariffTestCase):
             'socket',
             'smtplib',
             'tarfile',
-            'tempfile',
             'termios',
             'tty',
-            ] + old_format_modules)
+            ] + old_format_modules
+        if PY3:
+            # On Python 2, scandir imports ctypes, which imports tempfile.
+            forbidden_modules.append('tempfile')
+        self.run_command_check_imports(['st'], forbidden_modules)
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff
         #
