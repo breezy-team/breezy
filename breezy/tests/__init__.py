@@ -3578,7 +3578,7 @@ def fork_for_tests(suite):
         pid = os.fork()
         if pid == 0:
             try:
-                stream = os.fdopen(c2pwrite, 'wb', 1)
+                stream = os.fdopen(c2pwrite, 'wb', 0)
                 workaround_zealous_crypto_random()
                 try:
                     import coverage
@@ -3611,7 +3611,7 @@ def fork_for_tests(suite):
             os._exit(0)
         else:
             os.close(c2pwrite)
-            stream = os.fdopen(c2pread, 'rb', 1)
+            stream = os.fdopen(c2pread, 'rb', 0)
             test = TestInOtherProcess(stream, pid)
             result.append(test)
     return result

@@ -70,6 +70,9 @@ New Features
    attempt to access Fossil repositories.
    (Jelmer Vernooĳ, #1848821)
 
+ * When pushing to Git repositories, symrefs are now followed.
+   (Jelmer Vernooĳ, #1800393)
+
 Improvements
 ************
 

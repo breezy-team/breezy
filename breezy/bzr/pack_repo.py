@@ -1974,7 +1974,7 @@ class _DirectPackAccess(object):
             object supplied to the PackAccess object.
         """
         p_offset, p_length = self._container_writer.add_bytes_record(
-            b''.join(raw_data), [])
+            raw_data, size, [])
         return (self._write_index, p_offset, p_length)
 
     def add_raw_records(self, key_sizes, raw_data):

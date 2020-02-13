@@ -2044,6 +2044,8 @@ class DirStateRevisionTree(InventoryTree):
 
     def is_executable(self, path):
         inv, inv_file_id = self._path2inv_file_id(path)
+        if inv_file_id is None:
+            raise errors.NoSuchFile(path)
         ie = inv.get_entry(inv_file_id)
         if ie.kind != "file":
             return False

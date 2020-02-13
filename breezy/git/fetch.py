@@ -54,7 +54,7 @@ from ..bzr.inventorytree import InventoryRevisionTree
 from ..bzr.testament import (
     StrictTestament3,
     )
-from ..tree import find_previous_path
+from ..tree import InterTree
 from ..tsort import (
     topo_sort,
     )
@@ -125,7 +125,11 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     # Check what revision we should store
     parent_keys = []
     for ptree in parent_bzr_trees:
-        ppath = find_previous_path(base_bzr_tree, ptree, decoded_path, file_id, recurse='none')
+        intertree = InterTree.get(ptree, base_bzr_tree)
+        try:
+            ppath = intertree.find_source_paths(decoded_path, recurse='none')
+        except errors.NoSuchFile:
+            continue
         if ppath is None:
             continue
         pkind = ptree.kind(ppath)

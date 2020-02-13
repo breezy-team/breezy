@@ -42,11 +42,11 @@ from .. import (
     osutils,
     ui,
     )
-from ..tree import find_previous_path
 from ..lock import LogicalLockResult
 from ..revision import (
     NULL_REVISION,
     )
+from ..tree import InterTree
 from ..bzr.testament import (
     StrictTestament3,
     )
@@ -230,7 +230,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
 
     def find_unchanged_parent_ie(path, kind, other, parent_trees):
         for ptree in parent_trees:
-            ppath = find_previous_path(tree, ptree, path)
+            intertree = InterTree.get(ptree, tree)
+            ppath = intertree.find_source_path(path)
             if ppath is not None:
                 pkind = ptree.kind(ppath)
                 if kind == "file":

@@ -43,7 +43,7 @@ from . import (
     features,
     test_commit,
     )
-from ..tree import find_previous_path
+from ..tree import InterTree
 
 
 def get_text(vf, key):
@@ -562,7 +562,7 @@ class BundleTester(object):
 
         for path, status, kind, entry in base_files:
             # Check that the meta information is the same
-            to_path = find_previous_path(base_tree, to_tree, path)
+            to_path = InterTree.get(base_tree, to_tree).find_target_path(path)
             self.assertEqual(
                 base_tree.get_file_size(path),
                 to_tree.get_file_size(to_path))
@@ -1796,7 +1796,7 @@ class TestBundleWriterReader(tests.TestCase):
         writer = v4.BundleWriter(fileobj)
         writer.begin()
         writer.add_info_record({b'foo': b'bar'})
-        writer._container.add_bytes_record(b'blah', [(b'two', ), (b'names', )])
+        writer._container.add_bytes_record([b'blah'], len(b'blah'), [(b'two', ), (b'names', )])
         writer.end()
         fileobj.seek(0)
         record_iter = v4.BundleReader(fileobj).iter_records()

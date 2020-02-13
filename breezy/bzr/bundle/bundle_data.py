@@ -45,8 +45,8 @@ from ...revision import Revision, NULL_REVISION
 from ..testament import StrictTestament
 from ...trace import mutter, warning
 from ...tree import (
+    InterTree,
     Tree,
-    find_previous_path,
     )
 from ..xml5 import serializer_v5
 
@@ -489,6 +489,7 @@ class BundleTree(Tree):
         self.deleted = []
         self.revision_id = revision_id
         self._inventory = None
+        self._base_inter = InterTree.get(self.base_tree, self)
 
     def __str__(self):
         return pprint.pformat(self.__dict__)
@@ -618,7 +619,7 @@ class BundleTree(Tree):
                 in the text-store, so that the file contents would
                 then be cached.
         """
-        old_path = find_previous_path(self, self.base_tree, path)
+        old_path = self._base_inter.find_source_path(path)
         if old_path is None:
             patch_original = None
         else:
