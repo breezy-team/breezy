@@ -44,6 +44,7 @@ from __future__ import absolute_import
 # to test with apport it's useful to set
 # export APPORT_IGNORE_OBSOLETE_PACKAGES=1
 
+from io import StringIO
 import os
 import platform
 import pprint
@@ -57,9 +58,6 @@ from . import (
     osutils,
     plugin,
     trace,
-    )
-from .sixish import (
-    StringIO,
     )
 
 

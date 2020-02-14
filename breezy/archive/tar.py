@@ -19,6 +19,7 @@
 from __future__ import absolute_import
 
 from contextlib import closing
+from io import BytesIO
 import os
 import sys
 import tarfile
@@ -28,9 +29,6 @@ from .. import (
     osutils,
     )
 from ..export import _export_iter_entries
-from ..sixish import (
-    BytesIO,
-    )
 
 
 def prepare_tarball_item(tree, root, final_path, tree_path, entry, force_mtime=None):
@@ -185,16 +183,12 @@ def tar_lzma_generator(tree, dest, root, subdir, force_mtime=None,
     except ImportError as e:
         raise errors.DependencyNotPresent('lzma', e)
 
-    if sys.version_info[0] == 2:
-        compressor = lzma.LZMACompressor(
-            options={"format": compression_format})
-    else:
-        compressor = lzma.LZMACompressor(
-            format={
-                'xz': lzma.FORMAT_XZ,
-                'raw': lzma.FORMAT_RAW,
-                'alone': lzma.FORMAT_ALONE,
-                }[compression_format])
+    compressor = lzma.LZMACompressor(
+        format={
+            'xz': lzma.FORMAT_XZ,
+            'raw': lzma.FORMAT_RAW,
+            'alone': lzma.FORMAT_ALONE,
+            }[compression_format])
 
     for chunk in tarball_generator(
             tree, root, subdir, force_mtime=force_mtime):

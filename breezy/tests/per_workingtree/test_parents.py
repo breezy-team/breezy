@@ -16,6 +16,7 @@
 
 """Tests of the parent related functions of WorkingTrees."""
 
+from io import BytesIO
 import os
 
 from ... import (
@@ -31,9 +32,6 @@ from ...bzr.inventory import (
 from ...bzr.inventorytree import (
     InventoryRevisionTree,
     InventoryTree,
-    )
-from ...sixish import (
-    BytesIO,
     )
 from ...tests import TestNotApplicable
 from ..per_workingtree import TestCaseWithWorkingTree

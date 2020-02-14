@@ -17,6 +17,7 @@
 """Tests for finding and reading the bzr config file[s]."""
 
 from textwrap import dedent
+from io import BytesIO
 import os
 import sys
 import threading
@@ -42,10 +43,6 @@ from .. import (
     )
 from ..bzr import (
     remote,
-    )
-from ..sixish import (
-    BytesIO,
-    text_type,
     )
 from ..transport import remote as transport_remote
 from . import (

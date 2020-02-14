@@ -24,16 +24,10 @@ from __future__ import absolute_import
 
 
 import re
-try:
-    from urllib.parse import (
-        urlparse,
-        urlunparse,
-        )
-except ImportError:  # python < 3
-    from urlparse import (
-        urlparse,
-        urlunparse,
-        )
+from urllib.parse import (
+    urlparse,
+    urlunparse,
+    )
 
 from ... import (
     branch,

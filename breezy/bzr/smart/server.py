@@ -435,10 +435,7 @@ class BzrServerFactory(object):
         self.transport = transport
 
     def _get_stdin_stdout(self):
-        if sys.version_info[0] < 3:
-            return sys.stdin, sys.stdout
-        else:
-            return sys.stdin.buffer, sys.stdout.buffer
+        return sys.stdin.buffer, sys.stdout.buffer
 
     def _make_smart_server(self, host, port, inet, timeout):
         if timeout is None:

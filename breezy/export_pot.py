@@ -40,7 +40,6 @@ from . import (
     option,
     plugin as _mod_plugin,
     )
-from .sixish import PY3
 from .trace import (
     mutter,
     note,
@@ -159,8 +158,6 @@ class _PotExporter(object):
             "msgstr \"\"\n"
             "\n".format(
                 path=path, lineno=lineno, comment=comment, msg=_normalize(s)))
-        if not PY3:
-            line = line.decode('utf-8')
         self.outf.write(line)
 
     def poentry_in_context(self, context, string, comment=None):

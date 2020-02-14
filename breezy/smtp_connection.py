@@ -18,10 +18,7 @@
 
 from __future__ import absolute_import
 
-try:
-    from email.utils import getaddresses, parseaddr
-except ImportError:  # python < 3
-    from email.Utils import getaddresses, parseaddr
+from email.utils import getaddresses, parseaddr
 
 import errno
 import smtplib

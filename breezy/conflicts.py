@@ -42,7 +42,6 @@ from . import (
     option,
     registry,
     )
-from .sixish import text_type
 
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
@@ -77,7 +76,7 @@ class cmd_conflicts(commands.Command):
                     continue
                 self.outf.write(conflict.path + '\n')
             else:
-                self.outf.write(text_type(conflict) + '\n')
+                self.outf.write(str(conflict) + '\n')
 
 
 resolve_action_registry = registry.Registry()
@@ -154,7 +153,7 @@ class cmd_resolve(commands.Command):
                     before - after)
                 trace.note(gettext('Remaining conflicts:'))
                 for conflict in tree.conflicts():
-                    trace.note(text_type(conflict))
+                    trace.note(str(conflict))
                 return 1
             else:
                 trace.note(gettext('All conflicts resolved.'))
@@ -289,7 +288,7 @@ class ConflictList(object):
     def to_strings(self):
         """Generate strings for the provided conflicts"""
         for conflict in self:
-            yield text_type(conflict)
+            yield str(conflict)
 
     def remove_files(self, tree):
         """Remove the THIS, BASE and OTHER files for listed conflicts"""
@@ -362,7 +361,7 @@ class Conflict(object):
         self.path = path
         # the factory blindly transfers the Stanza values to __init__ and
         # Stanza is purely a Unicode api.
-        if isinstance(file_id, text_type):
+        if isinstance(file_id, str):
             file_id = cache_utf8.encode(file_id)
         self.file_id = osutils.safe_file_id(file_id)
 
@@ -736,7 +735,7 @@ class HandledPathConflict(HandledConflict):
         self.conflict_path = conflict_path
         # the factory blindly transfers the Stanza values to __init__,
         # so they can be unicode.
-        if isinstance(conflict_file_id, text_type):
+        if isinstance(conflict_file_id, str):
             conflict_file_id = cache_utf8.encode(conflict_file_id)
         self.conflict_file_id = osutils.safe_file_id(conflict_file_id)
 

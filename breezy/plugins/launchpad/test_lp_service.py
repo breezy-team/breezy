@@ -17,10 +17,7 @@
 """Tests for selection of the right Launchpad service by environment"""
 
 import os
-try:
-    from xmlrpc.client import Fault
-except ImportError:  # python < 3
-    from xmlrpclib import Fault
+from xmlrpc.client import Fault
 
 from .lp_registration import (
     InvalidURL,

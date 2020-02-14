@@ -36,7 +36,6 @@ from .xml_serializer import (
     unpack_inventory_flat,
     )
 from ..revision import Revision
-from ..sixish import unichr
 from ..errors import BzrError
 
 
@@ -56,7 +55,7 @@ def _unescaper(match, _map=_xml_unescape_map):
     except KeyError:
         if not code.startswith(b'#'):
             raise
-        return unichr(int(code[1:])).encode('utf8')
+        return chr(int(code[1:])).encode('utf8')
 
 
 _unescape_re = lazy_regex.lazy_compile(b'\\&([^;]*);')

@@ -67,6 +67,7 @@ from __future__ import absolute_import
 # FIXME: the conflict markers should be *7* characters
 
 from copy import copy
+from io import BytesIO
 import os
 import patiencediff
 
@@ -85,9 +86,6 @@ from ..errors import (
     )
 from ..osutils import dirname, sha, sha_strings, split_lines
 from ..revision import NULL_REVISION
-from ..sixish import (
-    BytesIO,
-    )
 from ..trace import mutter
 from .versionedfile import (
     AbsentContentFactory,

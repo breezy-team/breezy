@@ -22,12 +22,10 @@ doc/developers/container-format.txt.
 
 from __future__ import absolute_import
 
+from io import BytesIO
 import re
 
 from .. import errors
-from ..sixish import (
-    BytesIO,
-    )
 
 
 FORMAT_ONE = b"Bazaar pack format 1 (introduced in 0.18)"

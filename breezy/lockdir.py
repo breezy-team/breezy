@@ -139,10 +139,6 @@ from .errors import (
     )
 from .i18n import gettext
 from .osutils import format_delta, rand_chars, get_host_name
-from .sixish import (
-    PY3,
-    text_type,
-    )
 from .trace import mutter, note
 
 
@@ -302,7 +298,7 @@ class LockDir(lock.Lock):
                     ui.ui_factory.show_user_warning(
                         'locks_steal_dead',
                         lock_url=urlutils.join(self.transport.base, self.path),
-                        other_holder_info=text_type(other_holder))
+                        other_holder_info=str(other_holder))
                     self.force_break(other_holder)
                     self._trace("stole lock from dead holder")
                     return
@@ -406,7 +402,7 @@ class LockDir(lock.Lock):
             if ui.ui_factory.confirm_action(
                 u"Break %(lock_info)s",
                 'breezy.lockdir.break',
-                    dict(lock_info=text_type(holder_info))):
+                    dict(lock_info=str(holder_info))):
                 result = self.force_break(holder_info)
                 ui.ui_factory.show_message(
                     "Broke lock %s" % result.lock_url)
@@ -730,15 +726,12 @@ class LockHeldInfo(object):
         """Return a debugging representation of this object."""
         return "%s(%r)" % (self.__class__.__name__, self.info_dict)
 
-    def __unicode__(self):
+    def __str__(self):
         """Return a user-oriented description of this object."""
         d = self.to_readable_dict()
         return (gettext(
             u'held by %(user)s on %(hostname)s (process #%(pid)s), '
             u'acquired %(time_ago)s') % d)
-
-    if PY3:
-        __str__ = __unicode__
 
     def to_readable_dict(self):
         """Turn the holder info into a dict of human-readable attributes.

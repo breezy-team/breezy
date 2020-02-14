@@ -29,7 +29,6 @@ import os
 from ..controldir import ControlDir
 from ..errors import NotBranchError, NoRepositoryPresent
 from ..repository import InterRepository
-from ..sixish import viewitems
 from ..transport import get_transport_from_path
 
 from . import (
@@ -121,7 +120,7 @@ class RemoteHelper(object):
         object_store = get_object_store(repo)
         with object_store.lock_read():
             refs = get_refs_container(self.remote_dir, object_store)
-            for ref, git_sha1 in viewitems(refs.as_dict()):
+            for ref, git_sha1 in refs.as_dict().items():
                 ref = ref.replace(b"~", b"_")
                 outf.write(b"%s %s\n" % (git_sha1, ref))
             outf.write(b"\n")

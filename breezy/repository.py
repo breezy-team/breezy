@@ -40,10 +40,6 @@ from . import (
 from .decorators import only_raises
 from .inter import InterObject
 from .lock import _RelockDebugMixin, LogicalLockResult
-from .sixish import (
-    text_type,
-    viewitems,
-    )
 from .trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
@@ -110,7 +106,7 @@ class CommitBuilder(object):
 
         if committer is None:
             self._committer = self._config_stack.get('email')
-        elif not isinstance(committer, text_type):
+        elif not isinstance(committer, str):
             self._committer = committer.decode()  # throw if non-ascii
         else:
             self._committer = committer
@@ -152,10 +148,10 @@ class CommitBuilder(object):
             raise ValueError('Invalid value for %s: %r' % (context, text))
 
     def _validate_revprops(self, revprops):
-        for key, value in viewitems(revprops):
+        for key, value in revprops.items():
             # We know that the XML serializers do not round trip '\r'
             # correctly, so refuse to accept them
-            if not isinstance(value, (text_type, str)):
+            if not isinstance(value, str):
                 raise ValueError('revision property (%s) is not a valid'
                                  ' (unicode) string: %r' % (key, value))
             # TODO(jelmer): Make this repository-format specific
@@ -1052,8 +1048,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
             else:
                 query_keys.append((revision_id,))
         vf = self.revisions.without_fallbacks()
-        for (revision_id,), parent_keys in viewitems(
-                vf.get_parent_map(query_keys)):
+        for (revision_id,), parent_keys in (
+                vf.get_parent_map(query_keys).items()):
             if parent_keys:
                 result[revision_id] = tuple([parent_revid
                                              for (parent_revid,) in parent_keys])
@@ -1184,7 +1180,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         # weave repositories refuse to store revisionids that are non-ascii.
         if revision_id is not None:
             # weaves require ascii revision ids.
-            if isinstance(revision_id, text_type):
+            if isinstance(revision_id, str):
                 try:
                     revision_id.encode('ascii')
                 except UnicodeEncodeError:
@@ -1620,7 +1616,7 @@ def _strip_NULL_ghosts(revision_graph):
     # Filter ghosts, and null:
     if _mod_revision.NULL_REVISION in revision_graph:
         del revision_graph[_mod_revision.NULL_REVISION]
-    for key, parents in viewitems(revision_graph):
+    for key, parents in revision_graph.items():
         revision_graph[key] = tuple(parent for parent in parents if parent
                                     in revision_graph)
     return revision_graph

@@ -25,12 +25,10 @@ try:
 except ImportError:  # python < 3.7
     from collections import deque
 
+from io import BytesIO
 import struct
 import sys
-try:
-    import _thread
-except ImportError:
-    import thread as _thread
+import _thread
 import time
 
 import breezy
@@ -39,12 +37,7 @@ from ... import (
     errors,
     osutils,
     )
-from ...sixish import (
-    BytesIO,
-    reraise,
-)
 from . import message, request
-from ...sixish import text_type
 from ...trace import log_exception_quietly, mutter
 from ...bencode import bdecode_as_tuple, bencode
 
@@ -75,7 +68,7 @@ def _decode_tuple(req_line):
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
     for arg in args:
-        if isinstance(arg, text_type):
+        if isinstance(arg, str):
             raise TypeError(args)
     return b'\x01'.join(args) + b'\n'
 
@@ -1135,7 +1128,7 @@ class _ProtocolThreeEncoder(object):
         self._write_func(b's')
         utf8_args = []
         for arg in args:
-            if isinstance(arg, text_type):
+            if isinstance(arg, str):
                 utf8_args.append(arg.encode('utf8'))
             else:
                 utf8_args.append(arg)
@@ -1393,8 +1386,9 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
                 self._write_structure((b'error',))
                 self._write_end()
                 self._medium_request.finished_writing()
+                (exc_type, exc_val, exc_tb) = exc_info
                 try:
-                    reraise(*exc_info)
+                    raise exc_val
                 finally:
                     del exc_info
             else:

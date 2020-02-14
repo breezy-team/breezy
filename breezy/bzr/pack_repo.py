@@ -21,10 +21,10 @@ import sys
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import contextlib
 import time
 
 from breezy import (
-    cleanup,
     config,
     debug,
     graph,
@@ -59,10 +59,6 @@ from ..repository import (
 from ..bzr.repository import (
     MetaDirRepository,
     RepositoryFormatMetaDir,
-    )
-from ..sixish import (
-    reraise,
-    viewitems,
     )
 from ..bzr.vf_repository import (
     MetaDirVersionedFileRepository,
@@ -1337,7 +1333,7 @@ class RepositoryPackCollection(object):
 
         # do a two-way diff against our original content
         current_nodes = set()
-        for name, sizes in viewitems(self._names):
+        for name, sizes in self._names.items():
             current_nodes.add(
                 (name, b' '.join(b'%d' % size for size in sizes)))
 
@@ -1550,7 +1546,7 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         if self._new_pack is not None:
-            with cleanup.ExitStack() as stack:
+            with contextlib.ExitStack() as stack:
                 stack.callback(setattr, self, '_new_pack', None)
                 # If we aborted while in the middle of finishing the write
                 # group, _remove_pack_indices could fail because the indexes are
@@ -1560,7 +1556,7 @@ class RepositoryPackCollection(object):
                                ignore_missing=True)
                 self._new_pack.abort()
         for resumed_pack in self._resumed_packs:
-            with cleanup.ExitStack() as stack:
+            with contextlib.ExitStack() as stack:
                 # See comment in previous finally block.
                 stack.callback(self._remove_pack_indices, resumed_pack,
                                ignore_missing=True)
@@ -2099,4 +2095,4 @@ class _DirectPackAccess(object):
                 is_error = True
         if is_error:
             # GZ 2017-03-27: No real reason this needs the original traceback.
-            reraise(*retry_exc.exc_info)
+            raise retry_exc.exc_info[1]

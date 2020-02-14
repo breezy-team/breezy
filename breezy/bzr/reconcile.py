@@ -26,7 +26,6 @@ __all__ = [
     ]
 
 from .. import (
-    cleanup,
     errors,
     revision as _mod_revision,
     ui,

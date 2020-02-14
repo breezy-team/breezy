@@ -18,6 +18,7 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
 
 from ... import (
     conflicts as _mod_conflicts,
@@ -32,9 +33,6 @@ from ...bzr import (
     xml5,
     )
 from ...mutabletree import MutableTree
-from ...sixish import (
-    BytesIO,
-    )
 from ...transport.local import LocalTransport
 from ...workingtree import (
     WorkingTreeFormat,

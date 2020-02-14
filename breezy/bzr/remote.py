@@ -59,13 +59,6 @@ from ..i18n import gettext
 from .inventory import Inventory
 from .inventorytree import InventoryRevisionTree
 from ..lockable_files import LockableFiles
-from ..sixish import (
-    get_unbound_function,
-    map,
-    text_type,
-    viewitems,
-    viewvalues,
-    )
 from .smart import client, vfs, repository as smart_repo
 from .smart.client import _SmartClient
 from ..revision import NULL_REVISION
@@ -719,7 +712,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         body = bencode.bdecode(handler.read_body_bytes())
         ret = {}
-        for name, value in viewitems(body):
+        for name, value in body.items():
             name = name.decode('utf-8')
             ret[name] = self._open_branch(name, value[0], value[1],
                                           possible_transports=possible_transports,
@@ -913,12 +906,10 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
     def _path_for_remote_call(self, client):
         """Return the path to be used for this bzrdir in a remote call."""
         remote_path = client.remote_path_from_transport(self.root_transport)
-        if sys.version_info[0] == 3:
-            remote_path = remote_path.decode('utf-8')
+        remote_path = remote_path.decode('utf-8')
         base_url, segment_parameters = urlutils.split_segment_parameters_raw(
             remote_path)
-        if sys.version_info[0] == 3:
-            base_url = base_url.encode('utf-8')
+        base_url = base_url.encode('utf-8')
         return base_url
 
     def get_branch_transport(self, branch_format, name=None):
@@ -2184,7 +2175,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
         result_parents = set()
-        for parents in viewvalues(self.get_graph().get_parent_map(result_set)):
+        for parents in self.get_graph().get_parent_map(result_set).values():
             result_parents.update(parents)
         included_keys = result_set.intersection(result_parents)
         start_keys = result_set.difference(included_keys)
@@ -2316,7 +2307,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 if not absent:
                     break
                 desired_files = [(key[0], key[1], identifier)
-                                 for identifier, key in viewitems(absent)]
+                                 for identifier, key in absent.items()]
                 for (identifier, bytes_iterator) in fallback.iter_files_bytes(desired_files):
                     del absent[identifier]
                     yield identifier, bytes_iterator
@@ -2363,7 +2354,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             # There is one other "bug" which is that ghosts in
             # get_revision_graph() are not returned at all. But we won't worry
             # about that for now.
-            for node_id, parent_ids in viewitems(rg):
+            for node_id, parent_ids in rg.items():
                 if parent_ids == ():
                     rg[node_id] = (NULL_REVISION,)
             rg[NULL_REVISION] = ()
@@ -3415,9 +3406,8 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._ensure_real()
         if isinstance(self._custom_format, bzrbranch.BranchFormatMetadir):
             branch_class = self._custom_format._branch_class()
-            heads_to_fetch_impl = get_unbound_function(
-                branch_class.heads_to_fetch)
-            if heads_to_fetch_impl is get_unbound_function(branch.Branch.heads_to_fetch):
+            heads_to_fetch_impl = branch_class.heads_to_fetch
+            if heads_to_fetch_impl is branch.Branch.heads_to_fetch:
                 return True
         return False
 
@@ -3693,9 +3683,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return self._real_branch.get_stacked_on_url()
         if response[0] != b'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-        if sys.version_info[0] == 3:
-            return response[1].decode('utf-8')
-        return response[1]
+        return response[1].decode('utf-8')
 
     def set_stacked_on_url(self, url):
         branch.Branch.set_stacked_on_url(self, url)
@@ -4009,7 +3997,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return self._vfs_set_parent_location(url)
         try:
             call_url = url or u''
-            if isinstance(call_url, text_type):
+            if isinstance(call_url, str):
                 call_url = call_url.encode('utf-8')
             response = self._call(b'Branch.set_parent_location',
                                   self._remote_path(), self._lock_token, self._repo_lock_token,
@@ -4317,7 +4305,7 @@ class RemoteBranchConfig(RemoteConfig):
     def _set_config_option(self, value, name, section):
         if isinstance(value, (bool, int)):
             value = str(value)
-        elif isinstance(value, (text_type, str)):
+        elif isinstance(value, str):
             pass
         else:
             raise TypeError(value)
@@ -4337,9 +4325,9 @@ class RemoteBranchConfig(RemoteConfig):
     def _serialize_option_dict(self, option_dict):
         utf8_dict = {}
         for key, value in option_dict.items():
-            if isinstance(key, text_type):
+            if isinstance(key, str):
                 key = key.encode('utf8')
-            if isinstance(value, text_type):
+            if isinstance(value, str):
                 value = value.encode('utf8')
             utf8_dict[key] = value
         return bencode.bencode(utf8_dict)

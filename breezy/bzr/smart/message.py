@@ -21,12 +21,13 @@ try:
 except ImportError:  # python < 3.7
     from collections import deque
 
+from io import (
+    BytesIO,
+    )
+
 from ... import (
     debug,
     errors,
-    )
-from ...sixish import (
-    BytesIO,
     )
 from ...trace import mutter
 

@@ -27,9 +27,6 @@ from . import (
     registry as _mod_registry,
     revisionspec,
     )
-from .sixish import (
-    text_type,
-    )
 
 
 class BadOptionValue(errors.BzrError):
@@ -111,7 +108,7 @@ def _parse_change_str(revstr):
     >>> _parse_change_str('123..124')
     Traceback (most recent call last):
       ...
-    RangeInChangeOption: Option --change does not accept revision ranges
+    breezy.errors.RangeInChangeOption: Option --change does not accept revision ranges
     """
     revs = _parse_revision_str(revstr)
     if len(revs) > 1:
@@ -564,9 +561,9 @@ _global_option('change',
                short_name='c',
                param_name='revision',
                help='Select changes introduced by the specified revision. See also "help revisionspec".')
-_global_option('directory', short_name='d', type=text_type,
+_global_option('directory', short_name='d', type=str,
                help='Branch to operate on, instead of working directory.')
-_global_option('file', type=text_type, short_name='F')
+_global_option('file', type=str, short_name='F')
 _global_registry_option('log-format', "Use specified log format.",
                         lazy_registry=('breezy.log', 'log_formatter_registry'),
                         value_switches=True, title='Log format',
@@ -574,7 +571,7 @@ _global_registry_option('log-format', "Use specified log format.",
 _global_registry_option('merge-type', 'Select a particular merge algorithm.',
                         lazy_registry=('breezy.merge', 'merge_type_registry'),
                         value_switches=True, title='Merge algorithm')
-_global_option('message', type=text_type,
+_global_option('message', type=str,
                short_name='m',
                help='Message string.')
 _global_option('null', short_name='0',

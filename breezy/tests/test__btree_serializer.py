@@ -21,9 +21,6 @@ import binascii
 import bisect
 
 from .. import tests
-from ..sixish import (
-    int2byte,
-    )
 
 from .test_btree_index import compiled_btreeparser_feature
 
@@ -60,7 +57,7 @@ class TestHexAndUnhex(TestBtreeSerializer):
         self.assertIs(None, self.module._py_unhexlify(as_hex))
 
     def test_to_hex(self):
-        raw_bytes = b''.join(map(int2byte, range(256)))
+        raw_bytes = bytes(range(256))
         for i in range(0, 240, 20):
             self.assertHexlify(raw_bytes[i:i + 20])
         self.assertHexlify(raw_bytes[240:] + raw_bytes[0:4])
@@ -70,7 +67,7 @@ class TestHexAndUnhex(TestBtreeSerializer):
         self.assertUnhexlify(b'123456789abcdef0123456789abcdef012345678')
         self.assertUnhexlify(b'0123456789ABCDEF0123456789ABCDEF01234567')
         self.assertUnhexlify(b'123456789ABCDEF0123456789ABCDEF012345678')
-        hex_chars = binascii.hexlify(b''.join(map(int2byte, range(256))))
+        hex_chars = binascii.hexlify(bytes(range(256)))
         for i in range(0, 480, 40):
             self.assertUnhexlify(hex_chars[i:i + 40])
         self.assertUnhexlify(hex_chars[480:] + hex_chars[0:8])

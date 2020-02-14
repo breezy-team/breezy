@@ -23,6 +23,7 @@ ghosts.
 from __future__ import absolute_import
 
 import gzip
+from io import BytesIO
 import os
 
 from ...lazy_import import lazy_import
@@ -58,10 +59,6 @@ from ...repository import (
 from ...bzr.repository import (
     RepositoryFormatMetaDir,
     )
-from ...sixish import (
-    BytesIO,
-    text_type,
-    )
 from .store.text import TextStore
 from ...bzr.versionedfile import (
     AbsentContentFactory,
@@ -88,7 +85,7 @@ class AllInOneRepository(VersionedFileRepository):
         return xml5.serializer_v5
 
     def _escape(self, file_or_path):
-        if not isinstance(file_or_path, (str, text_type)):
+        if not isinstance(file_or_path, str):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
             return u''

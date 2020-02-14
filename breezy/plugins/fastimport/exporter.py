@@ -47,10 +47,7 @@ from __future__ import absolute_import
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
-try:
-    from email.utils import parseaddr
-except ImportError:  # python < 3
-    from email.Utils import parseaddr
+from email.utils import parseaddr
 import sys
 import time
 import re
@@ -65,11 +62,6 @@ from ... import (
     osutils,
     progress,
     trace,
-    )
-from ...sixish import (
-    int2byte,
-    PY3,
-    viewitems,
     )
 
 from . import (
@@ -140,13 +132,14 @@ def sanitize_ref_name_for_git(refname):
     :param refname: refname to rewrite
     :return: new refname
     """
+    import struct
     new_refname = re.sub(
         # '/.' in refname or startswith '.'
         br"/\.|^\."
         # '..' in refname
         br"|\.\."
         # ord(c) < 040
-        br"|[" + b"".join([int2byte(x) for x in range(0o40)]) + br"]"
+        br"|[" + b"".join([bytes([x]) for x in range(0o40)]) + br"]"
         # c in '\177 ~^:?*['
         br"|[\177 ~^:?*[]"
         # last char in "/."
@@ -319,10 +312,7 @@ class BzrFastExporter(object):
                   time_required)
 
     def print_cmd(self, cmd):
-        if PY3:
-            self.outf.write(b"%s\n" % cmd)
-        else:
-            self.outf.write(b"%r\n" % cmd)
+        self.outf.write(b"%s\n" % cmd)
 
     def _save_marks(self):
         if self.export_marks_file:
@@ -651,7 +641,7 @@ class BzrFastExporter(object):
         return path
 
     def emit_tags(self):
-        for tag, revid in viewitems(self.branch.tags.get_tag_dict()):
+        for tag, revid in self.branch.tags.get_tag_dict().items():
             try:
                 mark = self.revid_to_mark[revid]
             except KeyError:

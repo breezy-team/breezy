@@ -35,9 +35,6 @@ from ...option import (
     Option,
     ListOption,
     )
-from ...sixish import (
-    text_type,
-    )
 
 
 class cmd_launchpad_open(Command):
@@ -191,13 +188,13 @@ class cmd_lp_propose_merge(Command):
     hidden = True
     takes_options = [Option('staging',
                             help='Propose the merge on staging.'),
-                     Option('message', short_name='m', type=text_type,
+                     Option('message', short_name='m', type=str,
                             help='Commit message.'),
                      Option('approve',
                             help=('Mark the proposal as approved immediately, '
                                   'setting the approved revision to tip.')),
                      Option('fixes', 'The bug this proposal fixes.', str),
-                     ListOption('review', short_name='R', type=text_type,
+                     ListOption('review', short_name='R', type=str,
                                 help='Requested reviewer and optional type.')]
 
     takes_args = ['submit_branch?']

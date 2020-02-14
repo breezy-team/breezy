@@ -57,7 +57,7 @@ from . import (
     ui,
     )
 from .branch import Branch
-from .cleanup import ExitStack
+from contextlib import ExitStack
 import breezy.config
 from .errors import (BzrError,
                      ConflictsInTree,

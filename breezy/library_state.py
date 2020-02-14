@@ -23,11 +23,13 @@ __all__ = [
     ]
 
 
+import contextlib
+
+
 import breezy
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
-    cleanup,
     config,
     osutils,
     symbol_versioning,
@@ -89,7 +91,7 @@ class BzrLibraryState(object):
         # isolation within the same interpreter.  It's not reached on normal
         # in-process run_bzr calls.  If it's broken, we expect that
         # TestRunBzrSubprocess may fail.
-        self.exit_stack = cleanup.ExitStack()
+        self.exit_stack = contextlib.ExitStack()
 
         if breezy.version_info[3] == 'final':
             self.exit_stack.callback(

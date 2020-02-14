@@ -27,7 +27,6 @@ from .. import (
     )
 from ..controldir import ControlDir
 from ..bzr.smart import medium
-from ..sixish import PY3
 from ..transport import remote
 
 from . import (
@@ -104,12 +103,8 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
         bad_modules = []
         for module_name in forbidden_imports:
-            if PY3:
-                if err.find("\nimport '%s' " % module_name) != -1:
-                    bad_modules.append(module_name)
-            else:
-                if err.find("\nimport %s " % module_name) != -1:
-                    bad_modules.append(module_name)
+            if err.find("\nimport '%s' " % module_name) != -1:
+                bad_modules.append(module_name)
 
         if bad_modules:
             self.fail("command loaded forbidden modules %r"

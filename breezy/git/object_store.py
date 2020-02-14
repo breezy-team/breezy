@@ -46,7 +46,6 @@ from ..lock import LogicalLockResult
 from ..revision import (
     NULL_REVISION,
     )
-from ..sixish import viewitems
 from ..tree import InterTree
 from ..bzr.testament import (
     StrictTestament3,
@@ -400,7 +399,7 @@ class PackTupleIterable(object):
 
     def __iter__(self):
         return ((self.store[object_id], path) for (object_id, path) in
-                viewitems(self.objects))
+                self.objects.items())
 
 
 class BazaarObjectStore(BaseObjectStore):

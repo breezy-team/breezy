@@ -24,22 +24,13 @@ try:
 except ImportError:
     from urlparse import urlsplit, urlunsplit  # noqa: F401
 import urllib
-try:
-    from xmlrpc.client import (
-        __version__ as xmlrpc_version,
-        Fault,
-        ProtocolError,
-        ServerProxy,
-        Transport,
-        )
-except ImportError:  # python < 3
-    from xmlrpclib import (
-        __version__ as xmlrpc_version,
-        Fault,
-        ProtocolError,
-        Transport,
-        ServerProxy,
-        )
+from xmlrpc.client import (
+    __version__ as xmlrpc_version,
+    Fault,
+    ProtocolError,
+    ServerProxy,
+    Transport,
+    )
 
 from ... import (
     errors,

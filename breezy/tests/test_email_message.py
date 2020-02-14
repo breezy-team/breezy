@@ -20,7 +20,6 @@ from email.header import decode_header
 from .. import __version__ as _breezy_version
 from ..email_message import EmailMessage
 from ..errors import BzrBadParameterNotUnicode
-from ..sixish import PY3, text_type
 from ..smtp_connection import SMTPConnection
 from .. import tests
 
@@ -68,17 +67,9 @@ body
 ''' % {'version': _breezy_version, 'boundary': BOUNDARY}
 
 
-def final_newline_or_not(msg):
-    if sys.version_info >= (2, 7, 6):
-        # Some internals of python's email module changed in an (minor)
-        # incompatible way: a final newline is appended in 2.7.6...
-        msg += '\n'
-    return msg
-
-
 def simple_multipart_message():
-    msg = _MULTIPART_HEAD + '--%s--' % BOUNDARY
-    return final_newline_or_not(msg)
+    msg = _MULTIPART_HEAD + '--%s--\n' % BOUNDARY
+    return msg
 
 
 def complex_multipart_message(typ):
@@ -95,8 +86,8 @@ c
 d
 e
 
---%(boundary)s--''' % {'boundary': BOUNDARY}
-    msg = final_newline_or_not(msg)
+--%(boundary)s--
+''' % {'boundary': BOUNDARY}
     return msg % (typ,)
 
 
@@ -170,14 +161,8 @@ class TestEmailMessage(tests.TestCase):
     def test_address_to_encoded_header(self):
         def decode(s):
             """Convert a RFC2047-encoded string to a unicode string."""
-            if PY3:
-                return ''.join([chunk.decode(encoding or 'ascii')
-                                for chunk, encoding in decode_header(s)])
-            else:
-                # Cope with python2 stripping whitespace.
-                # https://bugs.python.org/issue1467619
-                return ' '.join([chunk.decode(encoding or 'ascii')
-                                 for chunk, encoding in decode_header(s)])
+            return ''.join([chunk.decode(encoding or 'ascii')
+                            for chunk, encoding in decode_header(s)])
 
         address = 'jrandom@example.com'
         encoded = EmailMessage.address_to_encoded_header(address)

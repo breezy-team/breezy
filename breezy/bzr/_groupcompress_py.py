@@ -23,11 +23,6 @@ useless stuff.
 from __future__ import absolute_import
 
 from .. import osutils
-from ..sixish import (
-    indexbytes,
-    int2byte,
-    range,
-    )
 
 
 class _OutputHandler(object):
@@ -55,7 +50,7 @@ class _OutputHandler(object):
         if self.cur_insert_len > 127:
             raise AssertionError('We cannot insert more than 127 bytes'
                                  ' at a time.')
-        self.out_lines.append(int2byte(self.cur_insert_len))
+        self.out_lines.append(bytes([self.cur_insert_len]))
         self.index_lines.append(False)
         self.out_lines.extend(self.cur_insert_lines)
         if self.cur_insert_len < self.min_len_to_index:
@@ -71,7 +66,7 @@ class _OutputHandler(object):
         line_len = len(line)
         for start_index in range(0, line_len, 127):
             next_len = min(127, line_len - start_index)
-            self.out_lines.append(int2byte(next_len))
+            self.out_lines.append(bytes([next_len]))
             self.index_lines.append(False)
             self.out_lines.append(line[start_index:start_index + next_len])
             # We don't index long lines, because we won't be able to match
@@ -262,7 +257,7 @@ class LinesDeltaIndex(object):
         # Each insert instruction is at most 127 bytes long
         for start_byte in range(0, insert_length, 127):
             insert_count = min(insert_length - start_byte, 127)
-            out_lines.append(int2byte(insert_count))
+            out_lines.append(bytes([insert_count]))
             # Don't index the 'insert' instruction
             index_lines.append(False)
             insert = bytes_to_insert[start_byte:start_byte + insert_count]
@@ -330,12 +325,12 @@ def decode_base128_int(data):
     offset = 0
     val = 0
     shift = 0
-    bval = indexbytes(data, offset)
+    bval = data[offset]
     while bval >= 0x80:
         val |= (bval & 0x7F) << shift
         shift += 7
         offset += 1
-        bval = indexbytes(data, offset)
+        bval = data[offset]
     val |= bval << shift
     offset += 1
     return val, offset
@@ -350,7 +345,7 @@ def encode_copy_instruction(offset, length):
         base_byte = offset & 0xff
         if base_byte:
             copy_command |= copy_bit
-            copy_bytes.append(int2byte(base_byte))
+            copy_bytes.append(bytes([base_byte]))
         offset >>= 8
     if length is None:
         raise ValueError("cannot supply a length of None")
@@ -365,9 +360,9 @@ def encode_copy_instruction(offset, length):
             base_byte = length & 0xff
             if base_byte:
                 copy_command |= copy_bit
-                copy_bytes.append(int2byte(base_byte))
+                copy_bytes.append(bytes([base_byte]))
             length >>= 8
-    copy_bytes[0] = int2byte(copy_command)
+    copy_bytes[0] = bytes([copy_command])
     return b''.join(copy_bytes)
 
 
@@ -390,25 +385,25 @@ def decode_copy_instruction(bytes, cmd, pos):
     offset = 0
     length = 0
     if (cmd & 0x01):
-        offset = indexbytes(bytes, pos)
+        offset = bytes[pos]
         pos += 1
     if (cmd & 0x02):
-        offset = offset | (indexbytes(bytes, pos) << 8)
+        offset = offset | (bytes[pos] << 8)
         pos += 1
     if (cmd & 0x04):
-        offset = offset | (indexbytes(bytes, pos) << 16)
+        offset = offset | (bytes[pos] << 16)
         pos += 1
     if (cmd & 0x08):
-        offset = offset | (indexbytes(bytes, pos) << 24)
+        offset = offset | (bytes[pos] << 24)
         pos += 1
     if (cmd & 0x10):
-        length = indexbytes(bytes, pos)
+        length = bytes[pos]
         pos += 1
     if (cmd & 0x20):
-        length = length | (indexbytes(bytes, pos) << 8)
+        length = length | (bytes[pos] << 8)
         pos += 1
     if (cmd & 0x40):
-        length = length | (indexbytes(bytes, pos) << 16)
+        length = length | (bytes[pos] << 16)
         pos += 1
     if length == 0:
         length = 65536
@@ -437,7 +432,7 @@ def apply_delta(basis, delta):
     lines = []
     len_delta = len(delta)
     while pos < len_delta:
-        cmd = indexbytes(delta, pos)
+        cmd = delta[pos]
         pos += 1
         if cmd & 0x80:
             offset, length, pos = decode_copy_instruction(delta, cmd, pos)

@@ -18,14 +18,8 @@
 
 from __future__ import absolute_import
 
-try:
-    from urllib.parse import urlsplit
-except ImportError:  # python < 3
-    from urlparse import urlsplit
-try:
-    from xmlrpc.client import Fault
-except ImportError:  # Python < 3
-    from xmlrpclib import Fault
+from urllib.parse import urlsplit
+from xmlrpc.client import Fault
 
 from ... import (
     debug,
