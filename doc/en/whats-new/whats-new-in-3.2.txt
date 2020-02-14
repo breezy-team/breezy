@@ -1,0 +1,26 @@
+*************************
+What's New in Breezy x.y?
+*************************
+
+Breezy x.y is still under development, and will be released in Month Year.
+This document accumulates a high level summary of what's changed.  See the
+:doc:`../release-notes/index` for a full list.
+
+<topics of interest here>
+
+Further information
+*******************
+
+For more detailed information on the changes made, see the the
+:doc:`../release-notes/index` for:
+
+* the interim brz `milestones <https://launchpad.net/bzr/x.y>`_
+* the plugins you use.
+
+For a summary of changes made in earlier releases, see:
+
+* :doc:`whats-new-in-2.1`
+* :doc:`whats-new-in-2.2`
+* :doc:`whats-new-in-2.3`
+<intermediate series here>
+* :doc:`whats-new-in-x.(y-1)`

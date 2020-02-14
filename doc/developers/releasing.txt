@@ -53,8 +53,8 @@ different kinds of users:
 Differences in the release process between beta and stable release will be
 mentioned when needed.
 
-When do we relase ?
-===================
+When do we release ?
+====================
 
 As of September 2018, we maintain a single series: 3.0.
 
@@ -105,14 +105,12 @@ To start a new series cycle:
 #. Start a new release-notes file::
 
        cd doc/en/release-notes
-       cp series-template.txt brz-x.y.txt  # e.g. brz-3.1.txt
-       brz add brz-3.1.txt
+       brz cp series-template.txt brz-x.y.txt  # e.g. brz-3.1.txt
 
 #. Start a new whats-new file::
 
        cd doc/en/whats-new
-       cp template.txt brz-x.y.txt  # e.g. brz-3.1.txt
-       brz add brz-x.y.txt
+       brz cp template.txt brz-x.y.txt  # e.g. brz-3.1.txt
 
 #. Update ``doc/en/index.txt`` to point to the new whats-new file.
 
@@ -129,7 +127,7 @@ To start a new release cycle:
 
 #. Make a local branch to prepare the release::
 
-        brz branch lp:brz/x.y x.y-dev
+       brz branch lp:brz/x.y x.y-dev
 
    If you're doing your first beta release, branch from trunk::
 
