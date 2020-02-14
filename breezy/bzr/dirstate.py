@@ -3342,7 +3342,7 @@ class DirState(object):
                 raise AssertionError(
                     "entry %r has no data for any tree." % (entry,))
         if self._id_index is not None:
-            for file_id, entry_keys in viewitems(self._id_index):
+            for file_id, entry_keys in self._id_index.items():
                 for entry_key in entry_keys:
                     # Check that the entry in the map is pointing to the same
                     # file_id
