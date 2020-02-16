@@ -42,7 +42,6 @@ from ... import (
     osutils,
     urlutils,
     )
-from ...sixish import text_type
 from ...trace import (
     mutter,
     warning,
@@ -122,7 +121,7 @@ UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
 
 def safe_decode(s):
     """Decode a string into a Unicode value."""
-    if isinstance(s, text_type):  # Already unicode
+    if isinstance(s, str):  # Already unicode
         mutter('safe_decode() called on an already-decoded string: %r' % (s,))
         return s
     try:

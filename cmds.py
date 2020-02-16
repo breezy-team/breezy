@@ -43,7 +43,6 @@ from ...errors import (
     NoWorkingTree,
     )
 from ...option import Option
-from ...sixish import text_type
 from ...trace import mutter, note
 from ...transport import get_transport
 from ...workingtree import WorkingTree
@@ -95,7 +94,7 @@ native_opt = Option(
 export_upstream_opt = Option(
     'export-upstream',
     help="Create the .orig.tar.gz from specified bzr branch before building.",
-    type=text_type, argname="BRANCH")
+    type=str, argname="BRANCH")
 export_upstream_revision_opt = Option(
     'export-upstream-revision',
     help="Select the upstream revision that will be exported.",
@@ -549,7 +548,7 @@ class cmd_get_orig_source(Command):
     directory_opt = Option(
         'directory',
         help='Directory from which to retrieve the packaging data',
-        short_name='d', type=text_type)
+        short_name='d', type=str)
 
     takes_options = [directory_opt]
     takes_args = ["version?"]
@@ -652,10 +651,10 @@ class cmd_merge_upstream(Command):
         "this release is targetted at.", type=str)
     directory_opt = Option('directory',
                            help='Working tree into which to merge.',
-                           short_name='d', type=text_type)
+                           short_name='d', type=str)
     last_version_opt = Option('last-version',
                               help='The full version of the last time '
-                              'upstream was merged.', type=text_type)
+                              'upstream was merged.', type=str)
     force_opt = Option('force',
                        help=('Force a merge even if the upstream branch '
                              'has not changed.'))
@@ -980,7 +979,7 @@ class cmd_import_dsc(Command):
             if files_list is None:
                 files_list = []
             if file is not None:
-                if isinstance(file, text_type):
+                if isinstance(file, str):
                     file = file.encode('utf-8')
                 sources_file = open_file(file)
                 for line in sources_file:
@@ -1417,7 +1416,7 @@ class cmd_dep3_patch(Command):
 
     directory_opt = Option('directory',
                            help='Packaging tree for which to generate patch.',
-                           short_name='d', type=text_type)
+                           short_name='d', type=str)
 
     no_upstream_check_opt = Option(
         'no-upstream-check',

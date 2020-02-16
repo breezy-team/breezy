@@ -54,9 +54,6 @@ from ....errors import (
     NoSuchFile,
     NotBranchError,
     )
-from ....sixish import (
-    viewitems,
-    )
 from ....trace import (
     mutter,
     note,
@@ -618,7 +615,7 @@ class PristineTarSource(UpstreamSource):
 
     def _components_by_version(self):
         ret = {}
-        for tag_name, tag_revid in viewitems(self.branch.tags.get_tag_dict()):
+        for tag_name, tag_revid in self.branch.tags.get_tag_dict().items():
             if not is_upstream_tag(tag_name):
                 continue
             (component, version) = upstream_tag_version(tag_name)
@@ -631,7 +628,7 @@ class PristineTarSource(UpstreamSource):
         :return: Iterator over (tag_name, version, revid) tuples
         """
         ret = self._components_by_version()
-        return viewitems(ret)
+        return ret.items()
 
 
 def is_upstream_tag(tag):

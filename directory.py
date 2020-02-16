@@ -21,11 +21,11 @@
 from __future__ import absolute_import
 
 import re
+import sys
 
 from ... import urlutils
 from ...directory_service import directories
 from ...errors import DependencyNotPresent
-from ...sixish import PY3
 from ...trace import note, warning
 
 from debian.deb822 import Deb822
@@ -100,7 +100,7 @@ def vcs_git_url_to_bzr_url(url):
     url = git_url_to_bzr_url(url)
     if branch:
         branch = urlutils.quote(branch, '')
-        if not PY3:
+        if sys.version_info < (3, 0):
             branch = branch.encode('utf-8')
         url = urlutils.join_segment_parameters(
             url, {'branch': branch})
@@ -125,7 +125,7 @@ def vcs_hg_url_to_bzr_url(url):
 
     if branch:
         branch = urlutils.quote(branch, '')
-        if not PY3:
+        if sys.version_info < (3, 0):
             branch = branch.encode('utf-8')
         url = urlutils.join_segment_parameters(
             url, {'branch': branch})

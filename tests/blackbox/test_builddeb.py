@@ -20,8 +20,6 @@
 
 from __future__ import absolute_import
 
-from breezy.sixish import text_type
-
 import os
 
 from .. import BuilddebTestCase
@@ -51,14 +49,14 @@ class TestBuilddeb(BuilddebTestCase):
 
   def assertInBuildDir(self, files):
     build_dir = self.build_dir()
-    if isinstance(files, (text_type, bytes)):
+    if not isinstance(files, list):
       files = [files]
     for filename in files:
       self.assertPathExists(os.path.join(build_dir, filename))
 
   def assertNotInBuildDir(self, files):
     build_dir = self.build_dir()
-    if isinstance(files, (bytes, text_type)):
+    if not isinstance(files, list):
       files = [files]
     for filename in files:
       self.assertPathDoesNotExist(os.path.join(build_dir, filename))

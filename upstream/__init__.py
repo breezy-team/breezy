@@ -29,7 +29,6 @@ import tempfile
 from ....errors import BzrError, DependencyNotPresent, NoSuchFile
 from .... import osutils
 from ....export import export
-from ....sixish import PY3
 from ....trace import (
     note,
     warning,
@@ -218,7 +217,7 @@ class UScanSource(UpstreamSource):
             if error.startswith('uscan error '):
                 error = error[len('uscan error '):]
             raise UScanError(error)
-        if PY3:
+        if sys.version_info >= (3, 0):
             sys.stderr.write(stderr.decode())
         else:
             sys.stderr.write(stderr)

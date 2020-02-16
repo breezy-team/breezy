@@ -30,9 +30,6 @@ import os
 import breezy
 from ...commands import plugin_cmds
 from ...hooks import install_lazy_named_hook
-from ...sixish import (
-    viewitems,
-    )
 from ... import trace
 
 from .info import (
@@ -58,7 +55,7 @@ commands = {
         "debrelease": [],
         }
 
-for command, aliases in viewitems(commands):
+for command, aliases in commands.items():
     plugin_cmds.register_lazy(
         'cmd_' + command, aliases, __name__ + ".cmds")
 

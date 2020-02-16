@@ -35,9 +35,6 @@ from ...errors import (
     DependencyNotPresent,
     FileExists,
     )
-from ...sixish import (
-    viewitems,
-    )
 from ...transport import get_transport
 
 from .errors import UnsupportedRepackFormat
@@ -135,7 +132,7 @@ def get_filetype(filename):
         ".tar": "tar",
         ".zip": "zip"
         }
-    for filetype, name in viewitems(types):
+    for filetype, name in types.items():
         if filename.endswith(filetype):
             return name
 

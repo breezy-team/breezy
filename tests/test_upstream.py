@@ -53,7 +53,6 @@ from ..errors import (
     PackageVersionNotPresent,
     )
 
-from ....sixish import text_type
 from . import (
     LzmaFeature,
     XzFeature,
@@ -1120,7 +1119,7 @@ class TarfileSourceTests(TestCaseWithTransport):
         source = TarfileSource(u"foo-1.0.tar.gz")
         latest_version = source.get_latest_version("foo", u"0.9")
         self.assertEquals("1.0", latest_version)
-        self.assertIsInstance(latest_version, text_type)
+        self.assertIsInstance(latest_version, str)
 
     def test_get_latest_version_parses(self):
         source = TarfileSource("foo-1.0.tar.gz")

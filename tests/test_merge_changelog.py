@@ -22,6 +22,7 @@
 from __future__ import absolute_import
 
 import logging
+import sys
 
 from testtools.content_type import ContentType
 from testtools.content import Content
@@ -30,7 +31,6 @@ from .... import (
     merge,
     tests,
     )
-from ....sixish import PY3
 from ... import debian
 from .. import merge_changelog
 from ....tests.features import ExecutableFeature
@@ -348,7 +348,7 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
 
         merger = FakeMerger(tree)
         params_cls = merge.MergeFileHookParams
-        if PY3:
+        if sys.version_info >= (3, 0):
             from inspect import signature
             params_cls_arg_count = len(signature(params_cls).parameters) + 1
         else:

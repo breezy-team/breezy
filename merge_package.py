@@ -155,9 +155,8 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
                     # hence the call to refresh the data in the /target/ repo.
                     tree.branch.repository.refresh_data()
 
-                    tree.branch.fetch(source, last_revision=us_revid)
-                    tree.branch.fetch(
-                        tmp_target_utree.branch, last_revision=new_revid)
+                    tree.branch.fetch(source, us_revid)
+                    tree.branch.fetch(tmp_target_utree.branch, new_revid)
 
                     # Merge shared upstream parent into the target merge
                     # branch. This creates revison L in the digram above.

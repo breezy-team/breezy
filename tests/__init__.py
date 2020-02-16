@@ -22,13 +22,13 @@ from __future__ import absolute_import
 
 import shutil
 import subprocess
+import sys
 import tarfile
 import zipfile
 
 import doctest
 import os
 
-from ....sixish import PY3
 from .... import tests
 
 from debian.changelog import Version, Changelog
@@ -99,7 +99,7 @@ def make_new_upstream_tarball_xz(source, dest):
 
 def make_new_upstream_tarball_lzma(source, dest):
     import lzma
-    if PY3:
+    if sys.version_info > (3, 0):
         f = lzma.LZMAFile(dest, 'w', format=lzma.FORMAT_ALONE)
     else:
         f = lzma.LZMAFile(dest, 'w', options={'format': 'alone'})

@@ -38,7 +38,6 @@ from ....errors import (
 from ....lock import _RelockDebugMixin, LogicalLockResult
 from ....revision import NULL_REVISION
 from ....revisionspec import RevisionSpec
-from ....sixish import text_type
 from ....trace import note
 
 from ..errors import (
@@ -54,7 +53,6 @@ from ....export import (
 
 def upstream_tag_to_version(tag_name, package=None):
     """Take a tag name and return the upstream version, or None."""
-    assert isinstance(tag_name, text_type)
     if (package is not None and (
           tag_name.startswith("%s-" % package) or
           tag_name.startswith("%s_" % package))):

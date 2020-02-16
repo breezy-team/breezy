@@ -53,7 +53,6 @@ from ...errors import (
     UnrelatedBranches,
     )
 from ...revision import NULL_REVISION
-from ...sixish import viewitems
 from ...trace import warning, mutter
 from ...transport import (
     get_transport,
@@ -563,8 +562,7 @@ class DistributionBranch(object):
                 pristine_upstream_revids = branch.pristine_upstream_source\
                     .version_as_revisions(
                         package, version, tarballs=upstream_tarballs)
-                for (component, pristine_upstream_revid) in viewitems(
-                        pristine_upstream_revids):
+                for (component, pristine_upstream_revid) in pristine_upstream_revids.items():
                     if not graph.is_ancestor(
                            up_branch.last_revision(), pristine_upstream_revid):
                         return False
@@ -668,7 +666,7 @@ class DistributionBranch(object):
         assert isinstance(version, str)
         pull_revisions = pull_branch.pristine_upstream_source.version_as_revisions(
             package, version)
-        for (component, pull_revision) in viewitems(pull_revisions):
+        for (component, pull_revision) in pull_revisions.items():
             mutter("Fetching upstream part %s of %s from revision %s",
                    component, version, pull_revision)
             assert self.pristine_upstream_tree is not None, \

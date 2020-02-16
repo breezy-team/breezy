@@ -78,7 +78,7 @@ from ..util import (
     )
 
 from .... import errors as bzr_errors
-from ....sixish import text_type
+from six import text_type
 from ....tests import (
     TestCase,
     )

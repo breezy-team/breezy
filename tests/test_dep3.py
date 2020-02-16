@@ -26,7 +26,7 @@ from io import BytesIO, TextIOWrapper
 from ....revision import (
     NULL_REVISION,
     )
-from ....sixish import StringIO
+from io import StringIO
 
 from ....tests import (
     TestCase,
