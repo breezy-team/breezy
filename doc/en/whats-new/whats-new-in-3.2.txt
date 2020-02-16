@@ -6,7 +6,8 @@ Breezy x.y is still under development, and will be released in Month Year.
 This document accumulates a high level summary of what's changed.  See the
 :doc:`../release-notes/index` for a full list.
 
-<topics of interest here>
+The ``brz lp-propose`` command has been removed in favour of the ``brz propose`` command,
+which also supports Launchpad.
 
 Further information
 *******************
