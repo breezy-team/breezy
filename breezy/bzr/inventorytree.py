@@ -17,8 +17,6 @@
 """Tree classes, representing directory at point in time.
 """
 
-from __future__ import absolute_import
-
 import os
 import re
 

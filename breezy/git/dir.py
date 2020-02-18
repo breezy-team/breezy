@@ -17,8 +17,6 @@
 
 """An adapter between a Git control dir and a Bazaar ControlDir."""
 
-from __future__ import absolute_import
-
 import contextlib
 
 from .. import (

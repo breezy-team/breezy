@@ -16,8 +16,6 @@
 
 """Inter-object utility class."""
 
-from __future__ import absolute_import
-
 from .errors import BzrError
 from .lock import LogicalLockResult
 

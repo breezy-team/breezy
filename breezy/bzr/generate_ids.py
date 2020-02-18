@@ -16,8 +16,6 @@
 
 """Common code for generating file or revision ids."""
 
-from __future__ import absolute_import
-
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
 import time

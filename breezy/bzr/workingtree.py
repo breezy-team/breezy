@@ -30,8 +30,6 @@ WorkingTree.open(dir).
 """
 
 
-from __future__ import absolute_import
-
 from bisect import bisect_left
 import breezy
 try:

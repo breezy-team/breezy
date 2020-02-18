@@ -16,8 +16,6 @@
 
 """Export a tree to a tarball."""
 
-from __future__ import absolute_import
-
 from contextlib import closing
 from io import BytesIO
 import os

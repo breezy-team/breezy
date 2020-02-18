@@ -17,8 +17,6 @@
 # TODO: 'brz resolve' should accept a directory name and work from that
 # point down
 
-from __future__ import absolute_import
-
 import os
 import re
 

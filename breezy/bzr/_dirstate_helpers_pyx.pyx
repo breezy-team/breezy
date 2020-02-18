@@ -19,8 +19,6 @@
 This is the python implementation for DirState functions.
 """
 
-from __future__ import absolute_import
-
 import binascii
 import bisect
 import errno

@@ -16,8 +16,6 @@
 
 """Server-side bzrdir related request implmentations."""
 
-from __future__ import absolute_import
-
 from ... import (
     bencode,
     branch,

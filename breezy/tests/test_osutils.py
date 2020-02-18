@@ -16,8 +16,6 @@
 
 """Tests for the osutils wrapper."""
 
-from __future__ import absolute_import, division
-
 import errno
 from io import BytesIO
 import os

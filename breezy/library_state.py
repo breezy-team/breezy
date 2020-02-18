@@ -16,8 +16,6 @@
 
 """The core state needed to make use of bzr is managed here."""
 
-from __future__ import absolute_import
-
 __all__ = [
     'BzrLibraryState',
     ]

@@ -17,8 +17,6 @@
 """Serializer factory for reading and writing bundles.
 """
 
-from __future__ import absolute_import
-
 from .... import (
     errors,
     ui,

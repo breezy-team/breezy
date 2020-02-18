@@ -17,8 +17,6 @@
 # Author: Martin Pool <mbp@canonical.com>
 #         Aaron Bentley <aaron.bentley@utoronto.ca>
 
-from __future__ import absolute_import
-
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import patiencediff

@@ -21,8 +21,6 @@ to standard HTTP responses, single range responses and multipart range
 responses.
 """
 
-from __future__ import absolute_import
-
 import cgi
 from io import BytesIO
 import os

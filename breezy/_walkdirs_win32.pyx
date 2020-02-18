@@ -16,8 +16,6 @@
 
 """Helper functions for Walkdirs on win32."""
 
-from __future__ import absolute_import
-
 
 cdef extern from "python-compat.h":
     struct _HANDLE:

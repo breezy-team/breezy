@@ -16,8 +16,6 @@
 
 """bisect command implementations."""
 
-from __future__ import absolute_import
-
 import sys
 from .controldir import ControlDir
 from . import revision as _mod_revision

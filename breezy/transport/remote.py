@@ -20,8 +20,6 @@ This module shouldn't be accessed directly.  The classes defined here should be
 imported from breezy.bzr.smart.
 """
 
-from __future__ import absolute_import
-
 __all__ = ['RemoteTransport', 'RemoteTCPTransport', 'RemoteSSHTransport']
 
 from io import BytesIO

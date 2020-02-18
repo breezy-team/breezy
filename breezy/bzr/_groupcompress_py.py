@@ -20,8 +20,6 @@ We separate the implementation from the groupcompress.py to avoid importing
 useless stuff.
 """
 
-from __future__ import absolute_import
-
 from .. import osutils
 
 

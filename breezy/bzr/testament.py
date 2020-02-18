@@ -59,8 +59,6 @@ Testament format 1
 * the testament uses unix line-endings (\n)
 """
 
-from __future__ import absolute_import
-
 # XXX: At the moment, clients trust that the graph described in a weave
 # is accurate, but that's not covered by the testament.  Perhaps the best
 # fix is when verifying a revision to make sure that every file mentioned

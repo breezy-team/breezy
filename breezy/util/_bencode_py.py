@@ -15,8 +15,6 @@
 #
 # Modifications copyright (C) 2008 Canonical Ltd
 
-from __future__ import absolute_import
-
 import sys
 
 

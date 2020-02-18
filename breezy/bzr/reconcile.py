@@ -16,8 +16,6 @@
 
 """Reconcilers are able to fix some potential data errors in a branch."""
 
-from __future__ import absolute_import
-
 __all__ = [
     'BranchReconciler',
     'KnitReconciler',

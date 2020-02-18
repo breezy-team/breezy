@@ -15,8 +15,6 @@
 
 """An object that updates a bunch of branches based on data imported."""
 
-from __future__ import absolute_import
-
 from operator import itemgetter
 
 from ... import errors, osutils, transport

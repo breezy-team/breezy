@@ -20,8 +20,6 @@ See breezy.doc.api for api documentation and in the future breezy.doc.man
 for man page generation.
 """
 
-from __future__ import absolute_import
-
 
 def load_tests(loader, basic_tests, pattern):
     suite = loader.suiteClass()

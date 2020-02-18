@@ -17,8 +17,6 @@
 
 """Functions for deriving user configuration from system environment."""
 
-from __future__ import absolute_import
-
 import os
 import sys
 

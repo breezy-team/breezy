@@ -16,8 +16,6 @@
 
 """Searching in versioned file repositories."""
 
-from __future__ import absolute_import
-
 import itertools
 
 from .. import (

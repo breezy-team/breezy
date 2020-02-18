@@ -218,8 +218,6 @@ desired.
 
 """
 
-from __future__ import absolute_import
-
 import bisect
 import contextlib
 import errno

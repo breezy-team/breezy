@@ -41,8 +41,6 @@
 
 """Core engine for the fast-export command."""
 
-from __future__ import absolute_import
-
 # TODO: if a new_git_branch below gets merged repeatedly, the tip of the branch
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)

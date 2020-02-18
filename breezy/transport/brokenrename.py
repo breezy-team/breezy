@@ -17,8 +17,6 @@
 """Transport implementation that doesn't detect clashing renames.
 """
 
-from __future__ import absolute_import
-
 from .. import (
     errors,
     urlutils,

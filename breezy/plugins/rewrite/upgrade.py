@@ -17,8 +17,6 @@
 
 """Upgrading revisions made with older versions of the mapping."""
 
-from __future__ import absolute_import
-
 from ... import (
     osutils,
     trace,

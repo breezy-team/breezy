@@ -15,8 +15,6 @@
 
 """Test tracking of heads"""
 
-from __future__ import absolute_import
-
 from io import StringIO
 
 from fastimport import (

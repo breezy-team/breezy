@@ -20,8 +20,6 @@ Weave based formats scaled linearly with history size and could not represent
 ghosts.
 """
 
-from __future__ import absolute_import
-
 import gzip
 from io import BytesIO
 import os

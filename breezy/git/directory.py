@@ -17,8 +17,6 @@
 
 """Directory service for gitorious."""
 
-from __future__ import absolute_import
-
 from .. import transport
 
 transport.register_urlparse_netloc_protocol('github')

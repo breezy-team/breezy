@@ -18,8 +18,6 @@
 
 """Tests for ref handling."""
 
-from __future__ import absolute_import
-
 from ... import tests
 
 from ..object_store import BazaarObjectStore

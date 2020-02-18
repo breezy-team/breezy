@@ -26,8 +26,6 @@ The Transport returned has methods to read, write and manipulate files within
 it.
 """
 
-from __future__ import absolute_import
-
 import errno
 from io import BytesIO
 import sys

@@ -16,8 +16,6 @@
 
 """Propose command implementations."""
 
-from __future__ import absolute_import
-
 from io import StringIO
 
 from ... import (

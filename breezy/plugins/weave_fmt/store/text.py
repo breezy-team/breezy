@@ -20,8 +20,6 @@ This store keeps uncompressed versions of the full text. It does not
 do any sort of delta compression.
 """
 
-from __future__ import absolute_import
-
 import gzip
 from io import BytesIO
 import os

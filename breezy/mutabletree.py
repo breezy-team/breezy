@@ -19,8 +19,6 @@
 See MutableTree for more details.
 """
 
-from __future__ import absolute_import
-
 from . import (
     errors,
     hooks,

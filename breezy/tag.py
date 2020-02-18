@@ -22,8 +22,6 @@ when the branch is opened.  Clients should typically do
   Branch.tags.add('name', 'value')
 """
 
-from __future__ import absolute_import
-
 from collections import defaultdict
 import contextlib
 

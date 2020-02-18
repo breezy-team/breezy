@@ -16,8 +16,6 @@
 
 """Branch opening with URL-based restrictions."""
 
-from __future__ import absolute_import
-
 import threading
 
 from . import (

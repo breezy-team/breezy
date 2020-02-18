@@ -17,8 +17,6 @@
 
 """GPG signing and checking logic."""
 
-from __future__ import absolute_import
-
 import os
 
 from breezy.lazy_import import lazy_import

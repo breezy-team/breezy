@@ -21,8 +21,6 @@
 
 """Git-specific subcommands for Bazaar."""
 
-from __future__ import absolute_import
-
 import breezy.bzr  # noqa: F401
 from breezy import controldir
 from ..commands import (

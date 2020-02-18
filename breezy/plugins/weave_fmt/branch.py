@@ -16,8 +16,6 @@
 
 """Weave-era branch implementations."""
 
-from __future__ import absolute_import
-
 from ... import (
     errors,
     lockable_files,

@@ -22,8 +22,6 @@ branch operation we copy history from the source into the destination
 branch.
 """
 
-from __future__ import absolute_import
-
 import operator
 
 from ..lazy_import import lazy_import

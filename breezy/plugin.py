@@ -34,8 +34,6 @@ See the plugin-api developer documentation for information about writing
 plugins.
 """
 
-from __future__ import absolute_import
-
 import os
 import re
 import sys

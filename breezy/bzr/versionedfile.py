@@ -16,8 +16,6 @@
 
 """Versioned text file storage api."""
 
-from __future__ import absolute_import
-
 from copy import copy
 from io import BytesIO
 import itertools

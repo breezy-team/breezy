@@ -17,8 +17,6 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
-from __future__ import absolute_import
-
 import optparse
 import re
 

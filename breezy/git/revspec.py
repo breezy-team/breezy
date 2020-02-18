@@ -16,8 +16,6 @@
 
 """Custom revision specifier for Subversion."""
 
-from __future__ import absolute_import
-
 # Please note that imports are delayed as much as possible here since
 # if DWIM revspecs are supported this module is imported by __init__.py.
 

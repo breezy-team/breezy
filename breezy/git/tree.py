@@ -17,8 +17,6 @@
 
 """Git Trees."""
 
-from __future__ import absolute_import
-
 from collections import deque
 import errno
 from io import BytesIO
