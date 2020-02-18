@@ -29,6 +29,7 @@ from collections import defaultdict
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
 
+from .inter import InterObject
 from .registry import Registry
 from .sixish import text_type
 from .lazy_import import lazy_import
@@ -286,13 +287,61 @@ class BasicTags(_Tags):
             (tagname, source_target, dest_target), or None if no copying was
             done.
         """
+        intertags = InterTags.get(self, to_tags)
+        return intertags.merge(overwrite=overwrite, ignore_master=ignore_master)
+
+    def rename_revisions(self, rename_map):
+        """Rename revisions in this tags dictionary.
+
+        :param rename_map: Dictionary mapping old revids to new revids
+        """
+        reverse_tags = self.get_reverse_tag_dict()
+        for revid, names in reverse_tags.items():
+            if revid in rename_map:
+                for name in names:
+                    self.set_tag(name, rename_map[revid])
+
+
+class InterTags(InterObject):
+    """Operations between sets of tags.
+    """
+
+    _optimisers = []
+    """The available optimised InterTags types."""
+
+    @classmethod
+    def is_compatible(klass, source, target):
+        # This is the default implementation
+        return True
+
+    def merge(self, overwrite=False, ignore_master=False):
+        """Copy tags between repositories if necessary and possible.
+
+        This method has common command-line behaviour about handling
+        error cases.
+
+        All new definitions are copied across, except that tags that already
+        exist keep their existing definitions.
+
+        :param to_tags: Branch to receive these tags
+        :param overwrite: Overwrite conflicting tags in the target branch
+        :param ignore_master: Do not modify the tags in the target's master
+            branch (if any).  Default is false (so the master will be updated).
+
+        :returns: Tuple with tag_updates and tag_conflicts.
+            tag_updates is a dictionary with new tags, None is used for
+            removed tags
+            tag_conflicts is a set of tags that conflicted, each of which is
+            (tagname, source_target, dest_target), or None if no copying was
+            done.
+        """
         with cleanup.ExitStack() as stack:
-            if self.branch == to_tags.branch:
+            if self.source.branch == self.target.branch:
                 return {}, []
-            if not self.branch.supports_tags():
+            if not self.source.branch.supports_tags():
                 # obviously nothing to copy
                 return {}, []
-            source_dict = self.get_tag_dict()
+            source_dict = self.source.get_tag_dict()
             if not source_dict:
                 # no tags in the source, and we don't want to clobber anything
                 # that's in the destination
@@ -309,14 +358,14 @@ class BasicTags(_Tags):
             # Ideally we'd improve this API to report the different conflicts
             # more clearly to the caller, but we don't want to break plugins
             # such as bzr-builddeb that use this API.
-            stack.enter_context(to_tags.branch.lock_write())
+            stack.enter_context(self.target.branch.lock_write())
             if ignore_master:
                 master = None
             else:
-                master = to_tags.branch.get_master_branch()
+                master = self.target.branch.get_master_branch()
             if master is not None:
                 stack.enter_context(master.lock_write())
-            updates, conflicts = self._merge_to(to_tags, source_dict, overwrite)
+            updates, conflicts = self._merge_to(self.target, source_dict, overwrite)
             if master is not None:
                 extra_updates, extra_conflicts = self._merge_to(master.tags,
                                                                 source_dict, overwrite)
@@ -326,24 +375,14 @@ class BasicTags(_Tags):
             # branch.
             return updates, set(conflicts)
 
-    def _merge_to(self, to_tags, source_dict, overwrite):
+    @classmethod
+    def _merge_to(cls, to_tags, source_dict, overwrite):
         dest_dict = to_tags.get_tag_dict()
         result, updates, conflicts = _reconcile_tags(
             source_dict, dest_dict, overwrite)
         if result != dest_dict:
             to_tags._set_tag_dict(result)
         return updates, conflicts
-
-    def rename_revisions(self, rename_map):
-        """Rename revisions in this tags dictionary.
-
-        :param rename_map: Dictionary mapping old revids to new revids
-        """
-        reverse_tags = self.get_reverse_tag_dict()
-        for revid, names in reverse_tags.items():
-            if revid in rename_map:
-                for name in names:
-                    self.set_tag(name, rename_map[revid])
 
 
 class MemoryTags(_Tags):
@@ -444,3 +483,6 @@ tag_sort_methods.register("natural", sort_natural,
 tag_sort_methods.register("alpha", sort_alpha, 'Sort tags lexicographically.')
 tag_sort_methods.register("time", sort_time, 'Sort tags chronologically.')
 tag_sort_methods.default_key = "natural"
+
+
+InterTags.register_optimiser(InterTags)
