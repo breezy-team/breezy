@@ -131,7 +131,7 @@ class InterTagsFromGitToRemoteGit(InterTags):
             return False
         return True
 
-    def merge(self, overwrite=False, ignore_master=False):
+    def merge(self, overwrite=False, ignore_master=False, selector=None):
         if self.source.branch.repository.has_same_location(self.target.branch.repository):
             return {}, []
         updates = {}
@@ -142,6 +142,8 @@ class InterTagsFromGitToRemoteGit(InterTags):
             ret = dict(old_refs)
             for ref_name, tag_name, peeled, unpeeled in (
                     source_tag_refs.iteritems()):
+                if selector and not selector(tag_name):
+                    continue
                 if old_refs.get(ref_name) == unpeeled:
                     pass
                 elif overwrite or ref_name not in old_refs:
@@ -158,7 +160,7 @@ class InterTagsFromGitToRemoteGit(InterTags):
             return ret
         self.target.branch.repository.controldir.send_pack(
             get_changed_refs, lambda have, want: [])
-        return updates, conflicts
+        return updates, set(conflicts)
 
 
 class InterTagsFromGitToLocalGit(InterTags):
@@ -173,7 +175,7 @@ class InterTagsFromGitToLocalGit(InterTags):
             return False
         return True
 
-    def merge(self, overwrite=False, ignore_master=False):
+    def merge(self, overwrite=False, ignore_master=False, selector=None):
         if self.source.branch.repository.has_same_location(self.target.branch.repository):
             return {}, []
 
@@ -184,6 +186,8 @@ class InterTagsFromGitToLocalGit(InterTags):
         target_repo = self.target.branch.repository
 
         for ref_name, tag_name, peeled, unpeeled in source_tag_refs:
+            if selector and not selector(tag_name):
+                continue
             if target_repo._git.refs.get(ref_name) == unpeeled:
                 pass
             elif overwrite or ref_name not in target_repo._git.refs:
@@ -215,7 +219,7 @@ class InterTagsFromGitToLocalGit(InterTags):
                                   tag_name)
                     continue
                 conflicts.append((tag_name, source_revid, target_revid))
-        return updates, conflicts
+        return updates, set(conflicts)
 
 
 class InterTagsFromGitToNonGit(InterTags):
@@ -228,7 +232,7 @@ class InterTagsFromGitToNonGit(InterTags):
             return False
         return True
 
-    def merge(self, overwrite=False, ignore_master=False):
+    def merge(self, overwrite=False, ignore_master=False, selector=None):
         """See Tags.merge_to."""
         source_tag_refs = self.source.branch.get_tag_refs()
         if ignore_master:
@@ -239,22 +243,26 @@ class InterTagsFromGitToNonGit(InterTags):
             if master is not None:
                 es.enter_context(master.lock_write())
             updates, conflicts = self._merge_to(
-                self.target, source_tag_refs, overwrite=overwrite)
+                self.target, source_tag_refs, overwrite=overwrite,
+                selector=selector)
             if master is not None:
                 extra_updates, extra_conflicts = self._merge_to(
                     master.tags, overwrite=overwrite,
                     source_tag_refs=source_tag_refs,
-                    ignore_master=ignore_master)
+                    ignore_master=ignore_master, selector=selector)
                 updates.update(extra_updates)
-                conflicts += extra_conflicts
+                conflicts.update(extra_conflicts)
             return updates, conflicts
 
-    def _merge_to(self, to_tags, source_tag_refs, overwrite=False):
+    def _merge_to(self, to_tags, source_tag_refs, overwrite=False,
+                  selector=None):
         unpeeled_map = defaultdict(set)
         conflicts = []
         updates = {}
         result = dict(to_tags.get_tag_dict())
         for ref_name, tag_name, peeled, unpeeled in source_tag_refs:
+            if selector and not selector(tag_name):
+                continue
             if unpeeled is not None:
                 unpeeled_map[peeled].add(unpeeled)
             try:
@@ -273,7 +281,7 @@ class InterTagsFromGitToNonGit(InterTags):
             map_file = UnpeelMap.from_repository(to_tags.branch.repository)
             map_file.update(unpeeled_map)
             map_file.save_in_repository(to_tags.branch.repository)
-        return updates, conflicts
+        return updates, set(conflicts)
 
 
 InterTags.register_optimiser(InterTagsFromGitToRemoteGit)

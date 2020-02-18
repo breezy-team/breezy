@@ -35,20 +35,13 @@ import sys
 from .inter import InterObject
 from .registry import Registry
 from .sixish import text_type
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-
-from breezy import (
-    cleanup,
-    )
-""")
-
 from . import (
+    cleanup,
     errors,
     )
 
 
-def _reconcile_tags(source_dict, dest_dict, overwrite):
+def _reconcile_tags(source_dict, dest_dict, overwrite, selector):
     """Do a two-way merge of two tag dictionaries.
 
     * only in source => source value
@@ -64,6 +57,8 @@ def _reconcile_tags(source_dict, dest_dict, overwrite):
     updates = {}
     result = dict(dest_dict)  # copy
     for name, target in source_dict.items():
+        if selector and not selector(name):
+            continue
         if result.get(name) == target:
             pass
         elif name not in result or overwrite:
@@ -93,7 +88,7 @@ class Tags(object):
             rev[d[key]].add(key)
         return rev
 
-    def merge_to(self, to_tags, overwrite=False, ignore_master=False):
+    def merge_to(self, to_tags, overwrite=False, ignore_master=False, selector=None):
         """Copy tags between repositories if necessary and possible.
 
         This method has common command-line behaviour about handling
@@ -107,6 +102,9 @@ class Tags(object):
         :param ignore_master: Do not modify the tags in the target's master
             branch (if any).  Default is false (so the master will be updated).
             New in bzr 2.3.
+        :param selector: Callback that determines whether a tag should be
+            copied. It should take a tag name and as argument and return a
+            boolean.
 
         :returns: Tuple with tag_updates and tag_conflicts.
             tag_updates is a dictionary with new tags, None is used for
@@ -116,7 +114,9 @@ class Tags(object):
             done.
         """
         intertags = InterTags.get(self, to_tags)
-        return intertags.merge(overwrite=overwrite, ignore_master=ignore_master)
+        return intertags.merge(
+            overwrite=overwrite, ignore_master=ignore_master,
+            selector=selector)
 
     def set_tag(self, tag_name, revision):
         """Set a tag.
@@ -175,7 +175,7 @@ class DisabledTags(Tags):
     lookup_tag = _not_supported
     delete_tag = _not_supported
 
-    def merge_to(self, to_tags, overwrite=False, ignore_master=False):
+    def merge_to(self, to_tags, overwrite=False, ignore_master=False, selector=None):
         # we never have anything to copy
         return {}, []
 
@@ -200,7 +200,7 @@ class InterTags(InterObject):
         # This is the default implementation
         return True
 
-    def merge(self, overwrite=False, ignore_master=False):
+    def merge(self, overwrite=False, ignore_master=False, selector=None):
         """Copy tags between repositories if necessary and possible.
 
         This method has common command-line behaviour about handling
@@ -213,6 +213,9 @@ class InterTags(InterObject):
         :param overwrite: Overwrite conflicting tags in the target branch
         :param ignore_master: Do not modify the tags in the target's master
             branch (if any).  Default is false (so the master will be updated).
+        :param selector: Callback that determines whether a tag should be
+            copied. It should take a tag name and as argument and return a
+            boolean.
 
         :returns: Tuple with tag_updates and tag_conflicts.
             tag_updates is a dictionary with new tags, None is used for
@@ -251,10 +254,11 @@ class InterTags(InterObject):
                 master = self.target.branch.get_master_branch()
             if master is not None:
                 stack.enter_context(master.lock_write())
-            updates, conflicts = self._merge_to(self.target, source_dict, overwrite)
+            updates, conflicts = self._merge_to(
+                self.target, source_dict, overwrite, selector=selector)
             if master is not None:
-                extra_updates, extra_conflicts = self._merge_to(master.tags,
-                                                                source_dict, overwrite)
+                extra_updates, extra_conflicts = self._merge_to(
+                    master.tags, source_dict, overwrite, selector=selector)
                 updates.update(extra_updates)
                 conflicts += extra_conflicts
             # We use set() to remove any duplicate conflicts from the master
@@ -262,10 +266,10 @@ class InterTags(InterObject):
             return updates, set(conflicts)
 
     @classmethod
-    def _merge_to(cls, to_tags, source_dict, overwrite):
+    def _merge_to(cls, to_tags, source_dict, overwrite, selector):
         dest_dict = to_tags.get_tag_dict()
         result, updates, conflicts = _reconcile_tags(
-            source_dict, dest_dict, overwrite)
+            source_dict, dest_dict, overwrite, selector)
         if result != dest_dict:
             to_tags._set_tag_dict(result)
         return updates, conflicts
@@ -304,11 +308,11 @@ class MemoryTags(Tags):
     def _set_tag_dict(self, result):
         self._tag_dict = dict(result.items())
 
-    def merge_to(self, to_tags, overwrite=False, ignore_master=False):
+    def merge_to(self, to_tags, overwrite=False, ignore_master=False, selector=None):
         source_dict = self.get_tag_dict()
         dest_dict = to_tags.get_tag_dict()
         result, updates, conflicts = _reconcile_tags(
-            source_dict, dest_dict, overwrite)
+            source_dict, dest_dict, overwrite, selector)
         if result != dest_dict:
             to_tags._set_tag_dict(result)
         return updates, conflicts
