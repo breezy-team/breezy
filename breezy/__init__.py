@@ -29,8 +29,6 @@ Some particularly interesting things in breezy are:
 We hope you enjoy this library.
 """
 
-from __future__ import absolute_import
-
 import time
 
 # Keep track of when breezy was first imported, so that we can give rough
@@ -43,7 +41,7 @@ import sys
 
 __copyright__ = (
     "Copyright 2005-2012 Canonical Ltd.\n"
-    "Copyright 2017-2019 Breezy developers"
+    "Copyright 2017-2020 Breezy developers"
 )
 
 # same format as sys.version_info: "A tuple containing the five components of

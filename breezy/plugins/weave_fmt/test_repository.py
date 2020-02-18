@@ -20,8 +20,6 @@ For interface tests see tests/per_repository/*.py.
 
 """
 
-from __future__ import absolute_import
-
 from io import BytesIO
 from stat import S_ISDIR
 import sys

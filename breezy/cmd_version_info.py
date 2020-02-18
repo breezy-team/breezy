@@ -16,8 +16,6 @@
 
 """Commands for generating snapshot information about a brz tree."""
 
-from __future__ import absolute_import
-
 from .lazy_import import lazy_import
 
 lazy_import(globals(), """

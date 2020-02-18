@@ -16,8 +16,6 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
-from __future__ import absolute_import
-
 from dulwich.refs import (
     ANNOTATED_TAG_SUFFIX,
     LOCAL_BRANCH_PREFIX,

@@ -27,8 +27,6 @@ To get a WorkingTree, call controldir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-from __future__ import absolute_import
-
 import contextlib
 import errno
 import os

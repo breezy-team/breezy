@@ -16,7 +16,6 @@
 
 """URL Conversion."""
 
-from __future__ import absolute_import
 
 from .. import urlutils
 from .refs import (

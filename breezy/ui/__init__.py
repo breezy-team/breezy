@@ -41,8 +41,6 @@ breezy.ui.text.TextUIFactory
     back to working through the terminal.
 """
 
-from __future__ import absolute_import
-
 import warnings
 
 from ..lazy_import import lazy_import

@@ -16,8 +16,6 @@
 
 """Testing framework extensions"""
 
-from __future__ import absolute_import
-
 # NOTE: Some classes in here use camelCaseNaming() rather than
 # underscore_naming().  That's for consistency with unittest; it's not the
 # general style of breezy.  Please continue that consistency when adding e.g.

@@ -20,8 +20,6 @@
 doc/developers/container-format.txt.
 """
 
-from __future__ import absolute_import
-
 from io import BytesIO
 import re
 

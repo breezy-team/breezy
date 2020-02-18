@@ -16,8 +16,6 @@
 
 """Remote dirs, repositories and branches."""
 
-from __future__ import absolute_import
-
 import gzip
 from io import BytesIO
 import re

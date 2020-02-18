@@ -17,8 +17,6 @@
 
 """Tests for mapping."""
 
-from __future__ import absolute_import
-
 from ...revision import (
     Revision,
     )

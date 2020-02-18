@@ -16,8 +16,6 @@
 
 """A convenience class around email.Message and email.MIMEMultipart."""
 
-from __future__ import absolute_import
-
 from email.message import Message
 from email.header import Header
 from email.mime.multipart import MIMEMultipart

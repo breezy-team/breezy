@@ -16,8 +16,6 @@
 
 """Weave-era working tree objects."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from ... import (

@@ -17,8 +17,6 @@
 """Implementation of Graph algorithms when we have already loaded everything.
 """
 
-from __future__ import absolute_import
-
 try:
     from collections.abc import deque
 except ImportError:  # python < 3.7

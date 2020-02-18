@@ -16,8 +16,6 @@
 
 """Tests for GitShaMap."""
 
-from __future__ import absolute_import
-
 from dulwich.objects import (
     Blob,
     Commit,

@@ -16,8 +16,6 @@
 
 """Tests for bzr-git's object store."""
 
-from __future__ import absolute_import
-
 import os
 import shutil
 import stat

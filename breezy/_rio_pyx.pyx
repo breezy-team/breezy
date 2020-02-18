@@ -16,8 +16,6 @@
 
 """Pyrex implementation of _read_stanza_*."""
 
-from __future__ import absolute_import
-
 
 cdef extern from "python-compat.h":
     pass

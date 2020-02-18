@@ -16,8 +16,6 @@
 
 """Repository formats built around versioned files."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from ..lazy_import import lazy_import

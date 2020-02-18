@@ -37,8 +37,6 @@ As well as the following deprecated command:
 
 """
 
-from __future__ import absolute_import
-
 # The XMLRPC server address can be overridden by setting the environment
 # variable $BRZ_LP_XMLRPC_URL
 

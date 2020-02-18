@@ -24,8 +24,6 @@ It provides the gio+XXX:// protocols where XXX is any of the protocols
 supported by gio.
 """
 
-from __future__ import absolute_import
-
 from io import BytesIO
 import os
 import random

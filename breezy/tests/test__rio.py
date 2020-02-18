@@ -16,8 +16,6 @@
 
 """Tests for _rio_*."""
 
-from __future__ import absolute_import
-
 from .. import (
     rio,
     tests,

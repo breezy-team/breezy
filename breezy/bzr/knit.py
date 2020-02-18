@@ -51,8 +51,6 @@ in the deltas to provide line annotation
 
 """
 
-from __future__ import absolute_import
-
 import operator
 from io import BytesIO
 import os

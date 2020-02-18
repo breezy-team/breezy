@@ -18,8 +18,6 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
-from __future__ import absolute_import
-
 import base64
 import stat
 

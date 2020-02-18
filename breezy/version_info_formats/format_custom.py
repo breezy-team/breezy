@@ -17,8 +17,6 @@
 """A generator which creates a template-based output from the current
    tree info."""
 
-from __future__ import absolute_import
-
 import codecs
 
 from breezy import errors

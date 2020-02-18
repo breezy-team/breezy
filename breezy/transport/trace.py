@@ -20,8 +20,6 @@ This does not change the transport behaviour at all, merely records every call
 and then delegates it.
 """
 
-from __future__ import absolute_import
-
 from ..transport import decorator
 
 

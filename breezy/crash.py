@@ -36,8 +36,6 @@ To force this off in brz turn set APPORT_DISABLE in the environment or
 -Dno_apport.
 """
 
-from __future__ import absolute_import
-
 # for interactive testing, try the 'brz assert-fail' command
 # or see http://code.launchpad.net/~mbp/bzr/bzr-fail
 #

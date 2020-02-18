@@ -20,8 +20,6 @@ Note that it is generally just implemented as using tuples of tuples of
 strings.
 """
 
-from __future__ import absolute_import
-
 import sys
 
 

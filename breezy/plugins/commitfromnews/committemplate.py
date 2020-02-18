@@ -16,8 +16,6 @@
 
 """Logic to create commit templates."""
 
-from __future__ import absolute_import
-
 import patiencediff
 
 from ... import bugtracker, osutils

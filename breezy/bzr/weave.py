@@ -18,8 +18,6 @@
 
 """Weave - storage of related text file versions"""
 
-from __future__ import absolute_import
-
 # XXX: If we do weaves this way, will a merge still behave the same
 # way if it's done in a different order?  That's a pretty desirable
 # property.

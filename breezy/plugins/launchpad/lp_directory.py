@@ -16,8 +16,6 @@
 
 """Directory lookup that uses Launchpad."""
 
-from __future__ import absolute_import
-
 from urllib.parse import urlsplit
 from xmlrpc.client import Fault
 

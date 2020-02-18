@@ -16,8 +16,6 @@
 
 """Bazaar command-line subcommands."""
 
-from __future__ import absolute_import
-
 from ...commands import (
     Command,
     display_command,

@@ -17,8 +17,6 @@
 
 """B+Tree indices"""
 
-from __future__ import absolute_import, division
-
 from io import BytesIO
 
 from ..lazy_import import lazy_import

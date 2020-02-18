@@ -47,8 +47,6 @@ listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
 
-from __future__ import absolute_import
-
 import codecs
 from io import BytesIO
 import itertools

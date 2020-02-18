@@ -16,8 +16,6 @@
 
 """Command that signs unsigned commits by the current user. """
 
-from __future__ import absolute_import
-
 from . import (
     controldir,
     errors,

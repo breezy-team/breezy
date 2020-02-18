@@ -17,8 +17,6 @@
 """Implementation of Graph algorithms when we have already loaded everything.
 """
 
-from __future__ import absolute_import
-
 cdef extern from "python-compat.h":
     pass
 

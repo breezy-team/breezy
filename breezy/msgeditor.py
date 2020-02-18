@@ -16,8 +16,6 @@
 
 """Commit message editor support."""
 
-from __future__ import absolute_import
-
 import codecs
 from io import (
     BytesIO,

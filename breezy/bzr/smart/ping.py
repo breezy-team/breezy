@@ -16,8 +16,6 @@
 
 """Ping plugin for brz."""
 
-from __future__ import absolute_import
-
 from ...commands import Command
 from ...lazy_import import lazy_import
 

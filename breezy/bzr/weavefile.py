@@ -34,8 +34,6 @@ processing instructions.  Lines of text are prefixed by '.' if the
 line contains a newline, or ',' if not.
 """
 
-from __future__ import absolute_import
-
 # TODO: When extracting a single version it'd be enough to just pass
 # an iterator returning the weave lines...  We don't really need to
 # deserialize it into memory.

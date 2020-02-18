@@ -21,8 +21,6 @@ This should have commands for both generating a changeset,
 and for applying a changeset.
 """
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from ... import (

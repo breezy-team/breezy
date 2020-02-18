@@ -19,8 +19,6 @@
 See MemoryTree for more details.
 """
 
-from __future__ import absolute_import
-
 import os
 import stat
 

@@ -20,8 +20,6 @@
 
 """build_mo command for setup.py"""
 
-from __future__ import absolute_import
-
 from distutils import log
 from distutils.core import Command
 from distutils.dep_util import newer

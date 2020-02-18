@@ -16,8 +16,6 @@
 
 """Core compression logic for compressing streams of related files."""
 
-from __future__ import absolute_import
-
 import time
 import zlib
 
