@@ -160,7 +160,7 @@ class InterTagsFromGitToRemoteGit(InterTags):
             return ret
         self.target.branch.repository.controldir.send_pack(
             get_changed_refs, lambda have, want: [])
-        return updates, set(conflicts)
+        return updates, conflicts
 
 
 class InterTagsFromGitToLocalGit(InterTags):
@@ -219,7 +219,7 @@ class InterTagsFromGitToLocalGit(InterTags):
                                   tag_name)
                     continue
                 conflicts.append((tag_name, source_revid, target_revid))
-        return updates, set(conflicts)
+        return updates, conflicts
 
 
 class InterTagsFromGitToNonGit(InterTags):
@@ -251,7 +251,7 @@ class InterTagsFromGitToNonGit(InterTags):
                     source_tag_refs=source_tag_refs,
                     ignore_master=ignore_master, selector=selector)
                 updates.update(extra_updates)
-                conflicts.update(extra_conflicts)
+                conflicts.extend(extra_conflicts)
             return updates, conflicts
 
     def _merge_to(self, to_tags, source_tag_refs, overwrite=False,
@@ -281,7 +281,7 @@ class InterTagsFromGitToNonGit(InterTags):
             map_file = UnpeelMap.from_repository(to_tags.branch.repository)
             map_file.update(unpeeled_map)
             map_file.save_in_repository(to_tags.branch.repository)
-        return updates, set(conflicts)
+        return updates, conflicts
 
 
 InterTags.register_optimiser(InterTagsFromGitToRemoteGit)

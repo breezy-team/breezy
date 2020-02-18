@@ -747,7 +747,7 @@ class BzrDirPreSplitOut(BzrDir):
         return self._format.__class__()
 
     def clone(self, url, revision_id=None, force_new_repo=False,
-              preserve_stacking=False, tag_selector=tag_selector):
+              preserve_stacking=False, tag_selector=None):
         """See ControlDir.clone().
 
         force_new_repo has no effect, since this family of formats always
