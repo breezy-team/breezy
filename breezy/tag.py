@@ -76,7 +76,7 @@ def _reconcile_tags(source_dict, dest_dict, overwrite):
     return result, updates, conflicts
 
 
-class _Tags(object):
+class Tags(object):
 
     def __init__(self, branch):
         self.branch = branch
@@ -87,21 +87,38 @@ class _Tags(object):
         raise NotImplementedError(self.get_tag_dict)
 
     def get_reverse_tag_dict(self):
-        """Return a dictionary mapping revision ids to list of tags.
-        """
-        raise NotImplementedError(self.get_reverse_tag_dict)
+        """Returns a dict with revisions as keys
+           and a list of tags for that revision as value"""
+        d = self.get_tag_dict()
+        rev = defaultdict(set)
+        for key in d:
+            rev[d[key]].add(key)
+        return rev
 
     def merge_to(self, to_tags, overwrite=False, ignore_master=False):
-        """Merge new tags from this tags container into another.
+        """Copy tags between repositories if necessary and possible.
 
-        :param to_tags: Tags container to merge into
-        :param overwrite: Whether to overwrite existing, divergent, tags.
+        This method has common command-line behaviour about handling
+        error cases.
+
+        All new definitions are copied across, except that tags that already
+        exist keep their existing definitions.
+
+        :param to_tags: Branch to receive these tags
+        :param overwrite: Overwrite conflicting tags in the target branch
         :param ignore_master: Do not modify the tags in the target's master
             branch (if any).  Default is false (so the master will be updated).
             New in bzr 2.3.
-        :return: Tuple with tag updates as dictionary and tag conflicts
+
+        :returns: Tuple with tag_updates and tag_conflicts.
+            tag_updates is a dictionary with new tags, None is used for
+            removed tags
+            tag_conflicts is a set of tags that conflicted, each of which is
+            (tagname, source_target, dest_target), or None if no copying was
+            done.
         """
-        raise NotImplementedError(self.merge_to)
+        intertags = InterTags.get(self, to_tags)
+        return intertags.merge(overwrite=overwrite, ignore_master=ignore_master)
 
     def set_tag(self, tag_name, revision):
         """Set a tag.
@@ -131,18 +148,21 @@ class _Tags(object):
         raise NotImplementedError(self.delete_tag)
 
     def rename_revisions(self, rename_map):
-        """Replace revision ids according to a rename map.
+        """Rename revisions in this tags dictionary.
 
-        :param rename_map: Dictionary mapping old revision ids to
-            new revision ids.
+        :param rename_map: Dictionary mapping old revids to new revids
         """
-        raise NotImplementedError(self.rename_revisions)
+        reverse_tags = self.get_reverse_tag_dict()
+        for revid, names in reverse_tags.items():
+            if revid in rename_map:
+                for name in names:
+                    self.set_tag(name, rename_map[revid])
 
     def has_tag(self, tag_name):
         return tag_name in self.get_tag_dict()
 
 
-class DisabledTags(_Tags):
+class DisabledTags(Tags):
     """Tag storage that refuses to store anything.
 
     This is used by older formats that can't store tags.
@@ -170,7 +190,7 @@ class DisabledTags(_Tags):
         return {}
 
 
-class BasicTags(_Tags):
+class BasicTags(Tags):
     """Tag storage in an unversioned branch control file.
     """
 
@@ -208,15 +228,6 @@ class BasicTags(_Tags):
                               % (self.branch, ))
                 return {}
             return self._deserialize_tag_dict(tag_content)
-
-    def get_reverse_tag_dict(self):
-        """Returns a dict with revisions as keys
-           and a list of tags for that revision as value"""
-        d = self.get_tag_dict()
-        rev = defaultdict(set)
-        for key in d:
-            rev[d[key]].add(key)
-        return rev
 
     def delete_tag(self, tag_name):
         """Delete a tag definition.
@@ -264,42 +275,6 @@ class BasicTags(_Tags):
         except ValueError as e:
             raise ValueError("failed to deserialize tag dictionary %r: %s"
                              % (tag_content, e))
-
-    def merge_to(self, to_tags, overwrite=False, ignore_master=False):
-        """Copy tags between repositories if necessary and possible.
-
-        This method has common command-line behaviour about handling
-        error cases.
-
-        All new definitions are copied across, except that tags that already
-        exist keep their existing definitions.
-
-        :param to_tags: Branch to receive these tags
-        :param overwrite: Overwrite conflicting tags in the target branch
-        :param ignore_master: Do not modify the tags in the target's master
-            branch (if any).  Default is false (so the master will be updated).
-            New in bzr 2.3.
-
-        :returns: Tuple with tag_updates and tag_conflicts.
-            tag_updates is a dictionary with new tags, None is used for
-            removed tags
-            tag_conflicts is a set of tags that conflicted, each of which is
-            (tagname, source_target, dest_target), or None if no copying was
-            done.
-        """
-        intertags = InterTags.get(self, to_tags)
-        return intertags.merge(overwrite=overwrite, ignore_master=ignore_master)
-
-    def rename_revisions(self, rename_map):
-        """Rename revisions in this tags dictionary.
-
-        :param rename_map: Dictionary mapping old revids to new revids
-        """
-        reverse_tags = self.get_reverse_tag_dict()
-        for revid, names in reverse_tags.items():
-            if revid in rename_map:
-                for name in names:
-                    self.set_tag(name, rename_map[revid])
 
 
 class InterTags(InterObject):
@@ -385,7 +360,7 @@ class InterTags(InterObject):
         return updates, conflicts
 
 
-class MemoryTags(_Tags):
+class MemoryTags(Tags):
 
     def __init__(self, tag_dict):
         self._tag_dict = tag_dict
