@@ -223,7 +223,8 @@ class GitDir(ControlDir):
     def clone_on_transport(self, transport, revision_id=None,
                            force_new_repo=False, preserve_stacking=False,
                            stacked_on=None, create_prefix=False,
-                           use_existing_dir=True, no_tree=False):
+                           use_existing_dir=True, no_tree=False,
+                           tag_selector=None):
         """See ControlDir.clone_on_transport."""
         from ..repository import InterRepository
         from .mapping import default_mapping
@@ -245,7 +246,7 @@ class GitDir(ControlDir):
         interrepo = InterRepository.get(source_repo, target_repo)
         if revision_id is not None:
             determine_wants = interrepo.get_determine_wants_revids(
-                [revision_id], include_tags=True)
+                [revision_id], include_tags=True, tag_selector=tag_selector)
         else:
             determine_wants = interrepo.determine_wants_all
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,

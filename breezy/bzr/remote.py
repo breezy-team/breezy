@@ -2144,11 +2144,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         return self._real_repository.get_transaction()
 
-    def clone(self, a_controldir, revision_id=None):
+    def clone(self, a_controldir, revision_id=None, tag_selector=None):
         with self.lock_read():
             dest_repo = self._create_sprouting_repo(
                 a_controldir, shared=self.is_shared())
-            self.copy_content_into(dest_repo, revision_id)
+            self.copy_content_into(dest_repo, revision_id, tag_selector=tag_selector)
             return dest_repo
 
     def make_working_trees(self):
@@ -4033,12 +4033,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 source, overwrite=overwrite, stop_revision=stop_revision,
                 _override_hook_target=self, **kwargs)
 
-    def push(self, target, overwrite=False, stop_revision=None, lossy=False):
+    def push(self, target, overwrite=False, stop_revision=None, lossy=False, tag_selector=None):
         with self.lock_read():
             self._ensure_real()
             return self._real_branch.push(
                 target, overwrite=overwrite, stop_revision=stop_revision, lossy=lossy,
-                _override_hook_source_branch=self)
+                _override_hook_source_branch=self, tag_selector=tag_selector)
 
     def peek_lock_mode(self):
         return self._lock_mode
