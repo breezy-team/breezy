@@ -101,10 +101,6 @@ class Tags(object):
         :param overwrite: Overwrite conflicting tags in the target branch
         :param ignore_master: Do not modify the tags in the target's master
             branch (if any).  Default is false (so the master will be updated).
-            New in bzr 2.3.
-        :param selector: Callback that determines whether a tag should be
-            copied. It should take a tag name and as argument and return a
-            boolean.
 
         :returns: Tuple with tag_updates and tag_conflicts.
             tag_updates is a dictionary with new tags, None is used for
