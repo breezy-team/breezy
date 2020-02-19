@@ -144,7 +144,7 @@ class TestPull(TestCaseWithInterBranch):
         self.assertEqual(p1, result.old_revid)
         self.assertEqual(2, result.new_revno)
         self.assertEqual(m1, result.new_revid)
-        self.assertEqual([], result.tag_conflicts)
+        self.assertEqual([], list(result.tag_conflicts))
 
     def test_pull_overwrite(self):
         tree_a = self.make_from_branch_and_tree('tree_a')
