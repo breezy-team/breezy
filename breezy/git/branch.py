@@ -1278,7 +1278,8 @@ class InterGitLocalGitBranch(InterGitBranch):
         return result.refs, stop_revision
 
     def pull(self, stop_revision=None, overwrite=False,
-             possible_transports=None, run_hooks=True, local=False):
+             possible_transports=None, run_hooks=True, local=False,
+             tag_selector=None):
         # This type of branch can't be bound.
         if local:
             raise errors.LocalRequiresBoundBranch()
@@ -1298,7 +1299,8 @@ class InterGitLocalGitBranch(InterGitBranch):
                 (result.old_revid if ("history" not in overwrite) else None),
                 other_branch=self.source)
             tags_ret = self.source.tags.merge_to(
-                self.target.tags, overwrite=("tags" in overwrite))
+                self.target.tags, overwrite=("tags" in overwrite),
+                selector=tag_selector)
             if isinstance(tags_ret, tuple):
                 (result.tag_updates, result.tag_conflicts) = tags_ret
             else:
