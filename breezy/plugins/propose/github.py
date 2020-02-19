@@ -280,11 +280,12 @@ class GitHub(Hoster):
             return json.loads(response.text)
         raise InvalidHttpResponse(path, response.text)
 
-    def _create_pull(self, path, title, head, base, body=None, labels=None, assignee=None):
+    def _create_pull(self, path, title, head, base, body=None, labels=None, assignee=None, draft=False):
         data = {
             'title': title,
             'head': head,
             'base': base,
+            'draft': draft,
         }
         if labels is not None:
             data['labels'] = labels
