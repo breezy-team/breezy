@@ -318,7 +318,7 @@ class GitDir(ControlDir):
 
     def push_branch(self, source, revision_id=None, overwrite=False,
                     remember=False, create_prefix=False, lossy=False,
-                    name=None):
+                    name=None, tag_selector=None):
         """Push the source branch into this ControlDir."""
         push_result = GitPushResult()
         push_result.workingtree_updated = None
@@ -331,7 +331,7 @@ class GitDir(ControlDir):
         target = self.open_branch(name, nascent_ok=True)
         push_result.branch_push_result = source.push(
             target, overwrite=overwrite, stop_revision=revision_id,
-            lossy=lossy)
+            lossy=lossy, tag_selector=tag_selector)
         push_result.new_revid = push_result.branch_push_result.new_revid
         push_result.old_revid = push_result.branch_push_result.old_revid
         try:

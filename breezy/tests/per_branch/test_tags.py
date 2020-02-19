@@ -153,7 +153,7 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         b1.tags.set_tag('tag2', revid2)
         updates, conflicts = b1.tags.merge_to(b2.tags, selector=lambda x: x == 'tag1')
         self.assertEqual({'tag1': revid}, updates)
-        self.assertEqual(set(), conflicts)
+        self.assertEqual(set(), set(conflicts))
         self.assertEqual(b2.tags.lookup_tag('tag1'), revid)
         self.assertRaises(errors.NoSuchTag, b2.tags.lookup_tag, 'tag2')
 

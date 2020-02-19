@@ -2144,11 +2144,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         self._ensure_real()
         return self._real_repository.get_transaction()
 
-    def clone(self, a_controldir, revision_id=None, tag_selector=None):
+    def clone(self, a_controldir, revision_id=None):
         with self.lock_read():
             dest_repo = self._create_sprouting_repo(
                 a_controldir, shared=self.is_shared())
-            self.copy_content_into(dest_repo, revision_id, tag_selector=tag_selector)
+            self.copy_content_into(dest_repo, revision_id)
             return dest_repo
 
     def make_working_trees(self):
