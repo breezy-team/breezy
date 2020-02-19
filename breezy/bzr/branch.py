@@ -28,6 +28,8 @@ from breezy import (
     lockdir,
     rio,
     shelf,
+    )
+from breezy.bzr import (
     tag as _mod_tag,
     )
 """)

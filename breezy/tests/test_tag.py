@@ -22,9 +22,11 @@ from breezy import (
     errors,
     )
 from breezy.tag import (
-    BasicTags,
     DisabledTags,
     MemoryTags,
+    )
+from breezy.bzr.tag import (
+    BasicTags,
     )
 from breezy.tests import (
     TestCase,
