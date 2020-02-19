@@ -1169,7 +1169,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
         return (isinstance(source, LocalGitBranch) and
                 isinstance(target, RemoteGitBranch))
 
-    def _basic_push(self, overwrite, stop_revision):
+    def _basic_push(self, overwrite, stop_revision, tag_selector=None):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -1194,6 +1194,8 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
             result.new_revid = stop_revision
             for name, sha in viewitems(
                     self.source.repository._git.refs.as_dict(b"refs/tags")):
+                if tag_selector and not tag_selector(name):
+                    continue
                 if sha not in self.source.repository._git:
                     trace.mutter('Ignoring missing SHA: %s', sha)
                     continue
