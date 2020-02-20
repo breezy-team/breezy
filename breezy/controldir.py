@@ -400,7 +400,8 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.sprout)
 
     def push_branch(self, source, revision_id=None, overwrite=False,
-                    remember=False, create_prefix=False, lossy=False):
+                    remember=False, create_prefix=False, lossy=False,
+                    tag_selector=None):
         """Push the source branch into this ControlDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
@@ -424,7 +425,9 @@ class ControlDir(ControlComponent):
                 # revision
                 revision_id = source.last_revision()
             repository_to.fetch(source.repository, revision_id=revision_id)
-            br_to = source.sprout(self, revision_id=revision_id, lossy=lossy)
+            br_to = source.sprout(
+                self, revision_id=revision_id, lossy=lossy,
+                tag_selector=tag_selector)
             if source.get_push_location() is None or remember:
                 # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
@@ -444,17 +447,19 @@ class ControlDir(ControlComponent):
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:
                 push_result.branch_push_result = source.push(
-                    br_to, overwrite, stop_revision=revision_id, lossy=lossy)
+                    br_to, overwrite, stop_revision=revision_id, lossy=lossy,
+                    tag_selector=tag_selector)
                 push_result.workingtree_updated = False
             except errors.NoWorkingTree:
                 push_result.branch_push_result = source.push(
-                    br_to, overwrite, stop_revision=revision_id, lossy=lossy)
+                    br_to, overwrite, stop_revision=revision_id, lossy=lossy,
+                    tag_selector=tag_selector)
                 push_result.workingtree_updated = None  # Not applicable
             else:
                 with tree_to.lock_write():
                     push_result.branch_push_result = source.push(
                         tree_to.branch, overwrite, stop_revision=revision_id,
-                        lossy=lossy)
+                        lossy=lossy, tag_selector=tag_selector)
                     tree_to.update()
                 push_result.workingtree_updated = True
             push_result.old_revno = push_result.branch_push_result.old_revno
@@ -493,7 +498,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.check_conversion_target)
 
     def clone(self, url, revision_id=None, force_new_repo=False,
-              preserve_stacking=False):
+              preserve_stacking=False, tag_selector=None):
         """Clone this controldir and its contents to url verbatim.
 
         :param url: The url create the clone at.  If url's last component does
@@ -509,11 +514,13 @@ class ControlDir(ControlComponent):
         return self.clone_on_transport(_mod_transport.get_transport(url),
                                        revision_id=revision_id,
                                        force_new_repo=force_new_repo,
-                                       preserve_stacking=preserve_stacking)
+                                       preserve_stacking=preserve_stacking,
+                                       tag_selector=tag_selector)
 
     def clone_on_transport(self, transport, revision_id=None,
                            force_new_repo=False, preserve_stacking=False, stacked_on=None,
-                           create_prefix=False, use_existing_dir=True, no_tree=False):
+                           create_prefix=False, use_existing_dir=True, no_tree=False,
+                           tag_selector=None):
         """Clone this controldir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone

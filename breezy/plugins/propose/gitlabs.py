@@ -418,7 +418,7 @@ class GitLab(Hoster):
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True):
+                        allow_lossy=True, tag_selector=None):
         (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = self._get_logged_in_username()
@@ -433,13 +433,13 @@ class GitLab(Hoster):
         try:
             push_result = remote_dir.push_branch(
                 local_branch, revision_id=revision_id, overwrite=overwrite,
-                name=name)
+                name=name, tag_selector=tag_selector)
         except errors.NoRoundtrippingSupport:
             if not allow_lossy:
                 raise
             push_result = remote_dir.push_branch(
                 local_branch, revision_id=revision_id, overwrite=overwrite,
-                name=name, lossy=True)
+                name=name, lossy=True, tag_selector=tag_selector)
         public_url = gitlab_url_to_bzr_url(
             target_project['http_url_to_repo'], name)
         return push_result.target_branch, public_url

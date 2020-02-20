@@ -239,7 +239,7 @@ class Hoster(object):
 
     def publish_derived(self, new_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True):
+                        allow_lossy=True, tag_selector=None):
         """Publish a branch to the site, derived from base_branch.
 
         :param base_branch: branch to derive the new branch from
