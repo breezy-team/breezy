@@ -47,9 +47,8 @@ listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
 
-from __future__ import absolute_import
-
 import codecs
+from io import BytesIO
 import itertools
 import re
 import sys
@@ -84,12 +83,10 @@ from .osutils import (
     get_terminal_encoding,
     terminal_width,
     )
-from .sixish import (
-    BytesIO,
-    range,
-    zip,
+from .tree import (
+    find_previous_path,
+    InterTree,
     )
-from .tree import find_previous_path
 
 
 def find_touching_revisions(repository, last_revision, last_tree, last_path):
@@ -109,7 +106,8 @@ def find_touching_revisions(repository, last_revision, last_tree, last_path):
     revno = len(history)
     for revision_id in history:
         this_tree = repository.revision_tree(revision_id)
-        this_path = find_previous_path(last_tree, this_tree, last_path)
+        this_intertree = InterTree.get(this_tree, last_tree)
+        this_path = this_intertree.find_source_path(last_path)
 
         # now we know how it was last time, and how it is in this revision.
         # are those two states effectively the same or not?

@@ -19,6 +19,10 @@
 See doc/developer/inventory.txt for more information.
 """
 
+from io import (
+    BytesIO,
+    )
+from .. import osutils
 from ..bzr import (
     inventory,
     inventory_delta,
@@ -26,9 +30,6 @@ from ..bzr import (
 from ..bzr.inventory_delta import InventoryDeltaError
 from ..bzr.inventory import Inventory
 from ..revision import NULL_REVISION
-from ..sixish import (
-    BytesIO,
-    )
 from . import TestCase
 
 ### DO NOT REFLOW THESE TEXTS. NEW LINES ARE SIGNIFICANT. ###
@@ -96,28 +97,28 @@ class TestDeserialization(TestCase):
     def test_parse_no_bytes(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         err = self.assertRaises(
-            InventoryDeltaError, deserializer.parse_text_bytes, b'')
-        self.assertContainsRe(str(err), 'last line not empty')
+            InventoryDeltaError, deserializer.parse_text_bytes, [])
+        self.assertContainsRe(str(err), 'inventory delta is empty')
 
     def test_parse_bad_format(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         err = self.assertRaises(InventoryDeltaError,
-                                deserializer.parse_text_bytes, b'format: foo\n')
+                                deserializer.parse_text_bytes, [b'format: foo\n'])
         self.assertContainsRe(str(err), 'unknown format')
 
     def test_parse_no_parent(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         err = self.assertRaises(InventoryDeltaError,
                                 deserializer.parse_text_bytes,
-                                b'format: bzr inventory delta v1 (bzr 1.14)\n')
+                                [b'format: bzr inventory delta v1 (bzr 1.14)\n'])
         self.assertContainsRe(str(err), 'missing parent: marker')
 
     def test_parse_no_version(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         err = self.assertRaises(InventoryDeltaError,
                                 deserializer.parse_text_bytes,
-                                b'format: bzr inventory delta v1 (bzr 1.14)\n'
-                                b'parent: null:\n')
+                                [b'format: bzr inventory delta v1 (bzr 1.14)\n',
+                                 b'parent: null:\n'])
         self.assertContainsRe(str(err), 'missing version: marker')
 
     def test_parse_duplicate_key_errors(self):
@@ -132,12 +133,12 @@ None\x00/\x00an-id\x00\x00a@e\xc3\xa5ample.com--2004\x00dir\x00\x00
 None\x00/\x00an-id\x00\x00a@e\xc3\xa5ample.com--2004\x00dir\x00\x00
 """
         err = self.assertRaises(InventoryDeltaError,
-                                deserializer.parse_text_bytes, double_root_lines)
+                                deserializer.parse_text_bytes, osutils.split_lines(double_root_lines))
         self.assertContainsRe(str(err), 'duplicate file id')
 
     def test_parse_versioned_root_only(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer()
-        parse_result = deserializer.parse_text_bytes(root_only_lines)
+        parse_result = deserializer.parse_text_bytes(osutils.split_lines(root_only_lines))
         expected_entry = inventory.make_entry(
             'directory', u'', None, b'an-id')
         expected_entry.revision = b'a@e\xc3\xa5ample.com--2004'
@@ -155,8 +156,9 @@ versioned_root: false
 tree_references: true
 None\x00/\x00TREE_ROOT\x00\x00null:\x00dir\x00\x00
 """
-        err = self.assertRaises(InventoryDeltaError,
-                                deserializer.parse_text_bytes, root_only_lines)
+        err = self.assertRaises(
+            InventoryDeltaError, deserializer.parse_text_bytes,
+            osutils.split_lines(root_only_lines))
         self.assertContainsRe(str(err), 'special revisionid found')
 
     def test_parse_versioned_root_versioned_disabled(self):
@@ -168,8 +170,9 @@ versioned_root: false
 tree_references: true
 None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir\x00\x00
 """
-        err = self.assertRaises(InventoryDeltaError,
-                                deserializer.parse_text_bytes, root_only_lines)
+        err = self.assertRaises(
+            InventoryDeltaError, deserializer.parse_text_bytes,
+            osutils.split_lines(root_only_lines))
         self.assertContainsRe(str(err), 'Versioned root found')
 
     def test_parse_unique_root_id_root_versioned_disabled(self):
@@ -182,12 +185,13 @@ tree_references: true
 None\x00/\x00an-id\x00\x00parent-id\x00dir\x00\x00
 """
         err = self.assertRaises(InventoryDeltaError,
-                                deserializer.parse_text_bytes, root_only_lines)
+                                deserializer.parse_text_bytes, osutils.split_lines(root_only_lines))
         self.assertContainsRe(str(err), 'Versioned root found')
 
     def test_parse_unversioned_root_versioning_enabled(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer()
-        parse_result = deserializer.parse_text_bytes(root_only_unversioned)
+        parse_result = deserializer.parse_text_bytes(
+            osutils.split_lines(root_only_unversioned))
         expected_entry = inventory.make_entry(
             'directory', u'', None, b'TREE_ROOT')
         expected_entry.revision = b'entry-version'
@@ -200,14 +204,14 @@ None\x00/\x00an-id\x00\x00parent-id\x00dir\x00\x00
         deserializer = inventory_delta.InventoryDeltaDeserializer(
             allow_versioned_root=False)
         err = self.assertRaises(inventory_delta.IncompatibleInventoryDelta,
-                                deserializer.parse_text_bytes, root_only_lines)
+                                deserializer.parse_text_bytes, osutils.split_lines(root_only_lines))
         self.assertEqual("versioned_root not allowed", str(err))
 
     def test_parse_tree_when_disabled(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer(
             allow_tree_references=False)
         err = self.assertRaises(inventory_delta.IncompatibleInventoryDelta,
-                                deserializer.parse_text_bytes, reference_lines)
+                                deserializer.parse_text_bytes, osutils.split_lines(reference_lines))
         self.assertEqual("Tree reference not allowed", str(err))
 
     def test_parse_tree_when_header_disallows(self):
@@ -223,7 +227,7 @@ tree_references: false
 None\x00/foo\x00id\x00TREE_ROOT\x00changed\x00tree\x00subtree-version
 """
         err = self.assertRaises(InventoryDeltaError,
-                                deserializer.parse_text_bytes, lines)
+                                deserializer.parse_text_bytes, osutils.split_lines(lines))
         self.assertContainsRe(str(err), 'Tree reference found')
 
     def test_parse_versioned_root_when_header_disallows(self):
@@ -239,7 +243,7 @@ tree_references: false
 None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
 """
         err = self.assertRaises(InventoryDeltaError,
-                                deserializer.parse_text_bytes, lines)
+                                deserializer.parse_text_bytes, osutils.split_lines(lines))
         self.assertContainsRe(str(err), 'Versioned root found')
 
     def test_parse_last_line_not_empty(self):
@@ -248,7 +252,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         lines = root_only_lines[:-1]
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         err = self.assertRaises(InventoryDeltaError,
-                                deserializer.parse_text_bytes, lines)
+                                deserializer.parse_text_bytes, osutils.split_lines(lines))
         self.assertContainsRe(str(err), 'last line not empty')
 
     def test_parse_invalid_newpath(self):
@@ -257,7 +261,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         lines += b"None\x00bad\x00TREE_ROOT\x00\x00version\x00dir\n"
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         err = self.assertRaises(InventoryDeltaError,
-                                deserializer.parse_text_bytes, lines)
+                                deserializer.parse_text_bytes, osutils.split_lines(lines))
         self.assertContainsRe(str(err), 'newpath invalid')
 
     def test_parse_invalid_oldpath(self):
@@ -266,7 +270,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         lines += b"bad\x00/new\x00file-id\x00\x00version\x00dir\n"
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         err = self.assertRaises(InventoryDeltaError,
-                                deserializer.parse_text_bytes, lines)
+                                deserializer.parse_text_bytes, osutils.split_lines(lines))
         self.assertContainsRe(str(err), 'oldpath invalid')
 
     def test_parse_new_file(self):
@@ -277,7 +281,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
             b"None\x00/new\x00file-id\x00an-id\x00version\x00file\x00123\x00" +
             b"\x00" + fake_sha + b"\n")
         deserializer = inventory_delta.InventoryDeltaDeserializer()
-        parse_result = deserializer.parse_text_bytes(lines)
+        parse_result = deserializer.parse_text_bytes(osutils.split_lines(lines))
         expected_entry = inventory.make_entry(
             'file', u'new', b'an-id', b'file-id')
         expected_entry.revision = b'version'
@@ -292,7 +296,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         lines += (
             b"/old-file\x00None\x00deleted-id\x00\x00null:\x00deleted\x00\x00\n")
         deserializer = inventory_delta.InventoryDeltaDeserializer()
-        parse_result = deserializer.parse_text_bytes(lines)
+        parse_result = deserializer.parse_text_bytes(osutils.split_lines(lines))
         delta = parse_result[4]
         self.assertEqual(
             (u'old-file', None, b'deleted-id', None), delta[-1])
@@ -339,7 +343,7 @@ class TestSerialization(TestCase):
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         self.assertEqual(
             (NULL_REVISION, b'entry-version', False, False, delta),
-            deserializer.parse_text_bytes(b''.join(serialized_lines)))
+            deserializer.parse_text_bytes(serialized_lines))
 
     def test_unversioned_non_root_errors(self):
         old_inv = Inventory(None)

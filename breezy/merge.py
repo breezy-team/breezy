@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
+import contextlib
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -22,7 +22,6 @@ import patiencediff
 
 from breezy import (
     branch as _mod_branch,
-    cleanup,
     conflicts as _mod_conflicts,
     debug,
     graph as _mod_graph,
@@ -48,9 +47,6 @@ from . import (
     errors,
     hooks,
     registry,
-    )
-from .sixish import (
-    viewitems,
     )
 # TODO: Report back as changes are merged in
 
@@ -447,7 +443,7 @@ class Merger(object):
     def _add_parent(self):
         new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
         new_parent_trees = []
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             for revision_id in new_parents:
                 try:
                     tree = self.revision_tree(revision_id)
@@ -654,7 +650,7 @@ class Merger(object):
         return merge
 
     def do_merge(self):
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             stack.enter_context(self.this_tree.lock_tree_write())
             if self.base_tree is not None:
                 stack.enter_context(self.base_tree.lock_read())
@@ -757,7 +753,7 @@ class Merge3Merger(object):
             self.do_merge()
 
     def do_merge(self):
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             stack.enter_context(self.working_tree.lock_tree_write())
             stack.enter_context(self.this_tree.lock_read())
             stack.enter_context(self.base_tree.lock_read())
@@ -2007,8 +2003,7 @@ class _PlanMergeBase(object):
         for record in self.vf.get_record_stream(keys, 'unordered', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self.vf)
-            result[record.key[-1]] = osutils.chunks_to_lines(
-                record.get_bytes_as('chunked'))
+            result[record.key[-1]] = record.get_bytes_as('lines')
         return result
 
     def plan_merge(self):
@@ -2256,7 +2251,7 @@ class _PlanMerge(_PlanMergeBase):
         filtered_parent_map = {}
         child_map = {}
         tails = []
-        for key, parent_keys in viewitems(parent_map):
+        for key, parent_keys in parent_map.items():
             culled_parent_keys = [p for p in parent_keys if p in parent_map]
             if not culled_parent_keys:
                 tails.append(key)

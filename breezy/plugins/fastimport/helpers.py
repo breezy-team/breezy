@@ -15,8 +15,6 @@
 
 """Miscellaneous useful stuff."""
 
-from __future__ import absolute_import
-
 import stat
 
 from ... import (

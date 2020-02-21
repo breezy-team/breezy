@@ -31,7 +31,6 @@ from ... import (
     msgeditor,
     )
 from ...controldir import ControlDir
-from ...sixish import PY3
 from .. import (
     test_foreign,
     features,
@@ -147,7 +146,7 @@ brz: ERROR: No changes to commit.\
         out, err = self.run_bzr(['commit', '-m', file_name])
         reflags = re.MULTILINE | re.DOTALL | re.UNICODE
         te = osutils.get_terminal_encoding()
-        self.assertContainsRe(err if PY3 else err.decode(te),
+        self.assertContainsRe(err,
                               u'The commit message is a file name:',
                               flags=reflags)
 
@@ -166,7 +165,7 @@ brz: ERROR: No changes to commit.\
             out, err = self.run_bzr(['commit', '-m', file_name])
             reflags = re.MULTILINE | re.DOTALL | re.UNICODE
             te = osutils.get_terminal_encoding()
-            self.assertContainsRe(err if PY3 else err.decode(te, 'replace'),
+            self.assertContainsRe(err,
                                   u'The commit message is a file name:',
                                   flags=reflags)
         finally:
@@ -188,11 +187,7 @@ brz: ERROR: No changes to commit.\
         tree.add(["f"])
         out, err = self.run_bzr_raw(["commit", "-m", "Wrong filename", u"\xa7"],
                                     encoding="iso-8859-5", retcode=3)
-        if not PY3:
-            self.expectFailure("Error messages are always written as UTF-8",
-                               self.assertNotContainsString, err, b"\xc2\xa7")
-        else:
-            self.assertNotContainsString(err, b"\xc2\xa7")
+        self.assertNotContainsString(err, b"\xc2\xa7")
         self.assertContainsRe(err, b"(?m)not versioned: \"\xfd\"$")
 
     def test_warn_about_forgotten_commit_message(self):

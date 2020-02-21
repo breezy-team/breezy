@@ -16,8 +16,6 @@
 
 """Support for GitLab."""
 
-from __future__ import absolute_import
-
 import json
 import os
 import time
@@ -30,7 +28,6 @@ from ... import (
     urlutils,
     )
 from ...git.urls import git_url_to_bzr_url
-from ...sixish import PY3
 from ...trace import mutter
 from ...transport import get_transport
 
@@ -261,8 +258,6 @@ class GitLabMergeProposal(MergeProposal):
 
 
 def gitlab_url_to_bzr_url(url, name):
-    if not PY3:
-        name = name.encode('utf-8')
     return git_url_to_bzr_url(url, branch=name)
 
 
@@ -418,7 +413,7 @@ class GitLab(Hoster):
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True):
+                        allow_lossy=True, tag_selector=None):
         (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = self._get_logged_in_username()
@@ -433,13 +428,13 @@ class GitLab(Hoster):
         try:
             push_result = remote_dir.push_branch(
                 local_branch, revision_id=revision_id, overwrite=overwrite,
-                name=name)
+                name=name, tag_selector=tag_selector)
         except errors.NoRoundtrippingSupport:
             if not allow_lossy:
                 raise
             push_result = remote_dir.push_branch(
                 local_branch, revision_id=revision_id, overwrite=overwrite,
-                name=name, lossy=True)
+                name=name, lossy=True, tag_selector=tag_selector)
         public_url = gitlab_url_to_bzr_url(
             target_project['http_url_to_repo'], name)
         return push_result.target_branch, public_url
@@ -587,7 +582,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         return None
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None):
+                        prerequisite_branch=None, commit_message=None,
+                        work_in_progress=False):
         """Perform the submission."""
         # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
@@ -597,6 +593,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         target_project = self.gl._get_project(self.target_project_name)
         # TODO(jelmer): Allow setting title explicitly
         title = determine_title(description)
+        if work_in_progress:
+            title = 'WIP: %s' % title
         # TODO(jelmer): Allow setting allow_collaboration field
         # TODO(jelmer): Allow setting milestone field
         # TODO(jelmer): Allow setting squash field

@@ -17,8 +17,6 @@
 
 """Support for committing in native Git working trees."""
 
-from __future__ import absolute_import
-
 from dulwich.index import (
     commit_tree,
     )
@@ -39,9 +37,6 @@ from ..errors import (
 from ..repository import (
     CommitBuilder,
     )
-from ..sixish import (
-    viewitems,
-    )
 
 from dulwich.objects import (
     Blob,
@@ -57,16 +52,6 @@ from .mapping import (
 from .tree import entry_factory
 
 
-class SettingCustomFileIdsUnsupported(UnsupportedOperation):
-
-    _fmt = ("Unable to store addition of file with custom file ids: "
-            "%(file_ids)r")
-
-    def __init__(self, file_ids):
-        BzrError.__init__(self)
-        self.file_ids = file_ids
-
-
 class GitCommitBuilder(CommitBuilder):
     """Commit builder for Git repositories."""
 
@@ -80,7 +65,6 @@ class GitCommitBuilder(CommitBuilder):
         self._blobs = {}
         self._inv_delta = []
         self._any_changes = False
-        self._override_fileids = {}
         self._mapping = self.repository.get_mapping()
 
     def any_changes(self):
@@ -143,8 +127,6 @@ class GitCommitBuilder(CommitBuilder):
             self._blobs[encoded_new_path] = (mode, sha)
             if st is not None:
                 yield change.path[1], (entry.text_sha1, st)
-            if self._mapping.generate_file_id(encoded_new_path) != change.file_id:
-                self._override_fileids[encoded_new_path] = change.file_id
         if not seen_root and len(self.parents) == 0:
             raise RootMissing()
         if getattr(workingtree, "basis_tree", False):
@@ -160,9 +142,6 @@ class GitCommitBuilder(CommitBuilder):
             if entry.path in self._blobs:
                 continue
             self._blobs[entry.path] = (entry.mode, entry.sha)
-        if not self._lossy:
-            if self._override_fileids:
-                raise SettingCustomFileIdsUnsupported(self._override_fileids)
         self.new_inventory = None
 
     def update_basis(self, tree):
@@ -171,12 +150,11 @@ class GitCommitBuilder(CommitBuilder):
 
     def finish_inventory(self):
         # eliminate blobs that were removed
-        self._blobs = {k: v for (k, v) in viewitems(
-            self._blobs) if v is not None}
+        self._blobs = {k: v for (k, v) in self._blobs.items() if v is not None}
 
     def _iterblobs(self):
         return ((path, sha, mode) for (path, (mode, sha))
-                in viewitems(self._blobs))
+                in self._blobs.items())
 
     def commit(self, message):
         self._validate_unicode_text(message, 'commit message')

@@ -25,15 +25,14 @@ methods. To free any associated resources, simply stop referencing the
 objects returned.
 """
 
-from __future__ import absolute_import
-
 import sys
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import contextlib
+
 from breezy import (
     branch as _mod_branch,
-    cleanup,
     lockable_files,
     lockdir,
     osutils,
@@ -61,7 +60,6 @@ from breezy.transport import (
 from breezy.i18n import gettext
 """)
 
-from ..sixish import viewitems
 from ..trace import (
     mutter,
     note,
@@ -143,7 +141,8 @@ class BzrDir(controldir.ControlDir):
 
     def clone_on_transport(self, transport, revision_id=None,
                            force_new_repo=False, preserve_stacking=False, stacked_on=None,
-                           create_prefix=False, use_existing_dir=True, no_tree=False):
+                           create_prefix=False, use_existing_dir=True, no_tree=False,
+                           tag_selector=None):
         """Clone this bzrdir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -235,7 +234,8 @@ class BzrDir(controldir.ControlDir):
         if local_branch is not None:
             local_branch.clone(
                 result, revision_id=revision_id,
-                repository_policy=repository_policy)
+                repository_policy=repository_policy,
+                tag_selector=tag_selector)
         try:
             # Cheaper to check if the target is not local, than to try making
             # the tree and fail.
@@ -377,7 +377,7 @@ class BzrDir(controldir.ControlDir):
             when working locally.
         :return: The created control directory
         """
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             fetch_spec_factory = fetch.FetchSpecFactory()
             if revision_id is not None:
                 fetch_spec_factory.add_revision_ids([revision_id])
@@ -1151,7 +1151,7 @@ class BzrFormat(object):
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        for name, necessity in viewitems(self.features):
+        for name, necessity in self.features.items():
             if name in self._present_features:
                 continue
             if necessity == b"optional":
@@ -1191,7 +1191,7 @@ class BzrFormat(object):
         """
         lines = [self.get_format_string()]
         lines.extend([(item[1] + b" " + item[0] + b"\n")
-                      for item in sorted(viewitems(self.features))])
+                      for item in sorted(self.features.items())])
         return b"".join(lines)
 
     @classmethod

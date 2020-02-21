@@ -17,8 +17,6 @@
 
 """Git Trees."""
 
-from __future__ import absolute_import
-
 from collections import deque
 import errno
 from io import BytesIO
@@ -65,10 +63,6 @@ from .. import (
 from ..revision import (
     CURRENT_REVISION,
     NULL_REVISION,
-    )
-from ..sixish import (
-    text_type,
-    viewitems,
     )
 
 from .mapping import (
@@ -985,6 +979,50 @@ class InterGitTrees(_mod_tree.InterTree):
                           want_unversioned=False):
         raise NotImplementedError(self._iter_git_changes)
 
+    def find_target_path(self, path, recurse='none'):
+        ret = self.find_target_paths([path], recurse=recurse)
+        return ret[path]
+
+    def find_source_path(self, path, recurse='none'):
+        ret = self.find_source_paths([path], recurse=recurse)
+        return ret[path]
+
+    def find_target_paths(self, paths, recurse='none'):
+        paths = set(paths)
+        ret = {}
+        changes = self._iter_git_changes(specific_files=paths)[0]
+        for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+            if oldpath in paths:
+                ret[oldpath] = newpath
+        for path in paths:
+            if path not in ret:
+                if self.source.has_filename(path):
+                    if self.target.has_filename(path):
+                        ret[path] = path
+                    else:
+                        ret[path] = None
+                else:
+                    raise errors.NoSuchFile(path)
+        return ret
+
+    def find_source_paths(self, paths, recurse='none'):
+        paths = set(paths)
+        ret = {}
+        changes = self._iter_git_changes(specific_files=paths)[0]
+        for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+            if newpath in paths:
+                ret[newpath] = oldpath
+        for path in paths:
+            if path not in ret:
+                if self.target.has_filename(path):
+                    if self.source.has_filename(path):
+                        ret[path] = path
+                    else:
+                        ret[path] = None
+                else:
+                    raise errors.NoSuchFile(path)
+        return ret
+
 
 class InterGitRevisionTrees(InterGitTrees):
     """InterTree that works between two git revision trees."""
@@ -1266,7 +1304,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     key = (posixpath.dirname(path), path)
                     if key not in ret and self.is_versioned(path):
                         ret[key] = self._get_dir_ie(path, self.path2id(key[0]))
-            return ((path, ie) for ((_, path), ie) in sorted(viewitems(ret)))
+            return ((path, ie) for ((_, path), ie) in sorted(ret.items()))
 
     def iter_references(self):
         if self.supports_tree_reference():
@@ -1281,9 +1319,9 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                                 posixpath.basename(path).strip("/"), parent_id)
 
     def _get_file_ie(self, name, path, value, parent_id):
-        if not isinstance(name, text_type):
+        if not isinstance(name, str):
             raise TypeError(name)
-        if not isinstance(path, text_type):
+        if not isinstance(path, str):
             raise TypeError(path)
         if not isinstance(value, tuple) or len(value) != 10:
             raise TypeError(value)

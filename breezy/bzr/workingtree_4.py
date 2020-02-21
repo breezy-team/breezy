@@ -22,20 +22,18 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-from __future__ import absolute_import
-
 from io import BytesIO
 import os
 
 from ..lazy_import import lazy_import
 lazy_import(globals(), """
+import contextlib
 import errno
 import stat
 
 from breezy import (
     branch as _mod_branch,
     cache_utf8,
-    cleanup,
     controldir,
     debug,
     filters as _mod_filters,
@@ -73,9 +71,6 @@ from ..osutils import (
     pathjoin,
     realpath,
     safe_unicode,
-    )
-from ..sixish import (
-    viewitems,
     )
 from ..transport import get_transport_from_path
 from ..transport.local import LocalTransport
@@ -700,7 +695,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
             # GZ 2017-03-28: The rollbacks variable was shadowed in the loop below
             # missing those added here, but there's also no test coverage for this.
-            rollbacks = cleanup.ExitStack()
+            rollbacks = contextlib.ExitStack()
 
             def move_one(old_entry, from_path_utf8, minikind, executable,
                          fingerprint, packed_stat, size,
@@ -1044,7 +1039,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                     raise errors.PathsNotVersionedError(
                         [p.decode('utf-8') for p in paths])
 
-        for dir_name_id, trees_info in viewitems(found):
+        for dir_name_id, trees_info in found.items():
             for index in search_indexes:
                 if trees_info[index][0] not in (b'r', b'a'):
                     found_ids.add(dir_name_id[2])
@@ -1403,7 +1398,8 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
         with open(abspath, 'rb', 65000) as file_obj:
             statvalue = os.fstat(file_obj.fileno())
             if filters:
-                file_obj = _mod_filters.filtered_input_file(file_obj, filters)
+                file_obj, size = _mod_filters.filtered_input_file(file_obj, filters)
+                statvalue = _mod_filters.FilteredStat(statvalue, size)
             sha1 = osutils.size_sha_file(file_obj)[1]
         return statvalue, sha1
 
@@ -1747,6 +1743,14 @@ class DirStateRevisionTree(InventoryTree):
         # sensible: the entry might not have come from us?
         return entry.kind, entry.executable, None
 
+    def _get_file_revision(self, path, file_id, vf, tree_revision):
+        """Ensure that file_id, tree_revision is in vf to plan the merge."""
+        last_revision = self.get_file_revision(path)
+        base_vf = self._repository.texts
+        if base_vf not in vf.fallback_versionedfiles:
+            vf.fallback_versionedfiles.append(base_vf)
+        return last_revision
+
     def filter_unversioned_files(self, paths):
         """Filter out paths that are not versioned.
 
@@ -2038,6 +2042,8 @@ class DirStateRevisionTree(InventoryTree):
 
     def is_executable(self, path):
         inv, inv_file_id = self._path2inv_file_id(path)
+        if inv_file_id is None:
+            raise errors.NoSuchFile(path)
         ie = inv.get_entry(inv_file_id)
         if ie.kind != "file":
             return False

@@ -16,8 +16,6 @@
 
 """Pyrex extensions to knit parsing."""
 
-from __future__ import absolute_import
-
 import sys
 
 from .knit import KnitCorrupt

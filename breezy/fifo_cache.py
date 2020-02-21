@@ -16,8 +16,6 @@
 
 """A simple first-in-first-out (FIFO) cache."""
 
-from __future__ import absolute_import, division
-
 from collections import deque
 
 

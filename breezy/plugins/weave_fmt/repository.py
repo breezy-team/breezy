@@ -20,9 +20,8 @@ Weave based formats scaled linearly with history size and could not represent
 ghosts.
 """
 
-from __future__ import absolute_import
-
 import gzip
+from io import BytesIO
 import os
 
 from ...lazy_import import lazy_import
@@ -58,10 +57,6 @@ from ...repository import (
 from ...bzr.repository import (
     RepositoryFormatMetaDir,
     )
-from ...sixish import (
-    BytesIO,
-    text_type,
-    )
 from .store.text import TextStore
 from ...bzr.versionedfile import (
     AbsentContentFactory,
@@ -88,7 +83,7 @@ class AllInOneRepository(VersionedFileRepository):
         return xml5.serializer_v5
 
     def _escape(self, file_or_path):
-        if not isinstance(file_or_path, (str, text_type)):
+        if not isinstance(file_or_path, str):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
             return u''
@@ -628,19 +623,19 @@ class TextVersionedFiles(VersionedFiles):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent([record.key[0]], self)
             # adapt to non-tuple interface
-            if record.storage_kind == 'fulltext':
+            if record.storage_kind in ('fulltext', 'chunks', 'lines'):
                 self.add_lines(record.key, None,
-                               osutils.split_lines(record.get_bytes_as('fulltext')))
+                               record.get_bytes_as('lines'))
             else:
-                adapter_key = record.storage_kind, 'fulltext'
+                adapter_key = record.storage_kind, 'lines'
                 try:
                     adapter = adapters[adapter_key]
                 except KeyError:
                     adapter_factory = adapter_registry.get(adapter_key)
                     adapter = adapter_factory(self)
                     adapters[adapter_key] = adapter
-                lines = osutils.split_lines(adapter.get_bytes(
-                    record, record.get_bytes_as(record.storage_kind)))
+                lines = adapter.get_bytes(
+                    record, record.get_bytes_as(record.storage_kind))
                 try:
                     self.add_lines(record.key, None, lines)
                 except errors.RevisionAlreadyPresent:

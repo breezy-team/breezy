@@ -16,8 +16,6 @@
 
 """Helper functions for proposing merges."""
 
-from __future__ import absolute_import
-
 from . import (
     errors,
     hooks,
@@ -201,7 +199,8 @@ class MergeProposalBuilder(object):
         raise NotImplementedError(self.get_infotext)
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None):
+                        prerequisite_branch=None, commit_message=None,
+                        work_in_progress=False):
         """Create a proposal to merge a branch for merging.
 
         :param description: Description for the merge proposal
@@ -209,6 +208,8 @@ class MergeProposalBuilder(object):
         :param labels: Labels to attach to the proposal
         :param prerequisite_branch: Optional prerequisite branch
         :param commit_message: Optional commit message
+        :param work_in_progress:
+            Whether this merge proposal is still a work-in-progress
         :return: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)
@@ -236,7 +237,7 @@ class Hoster(object):
 
     def publish_derived(self, new_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True):
+                        allow_lossy=True, tag_selector=None):
         """Publish a branch to the site, derived from base_branch.
 
         :param base_branch: branch to derive the new branch from

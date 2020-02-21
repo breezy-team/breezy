@@ -16,8 +16,6 @@
 
 """Testing framework extensions"""
 
-from __future__ import absolute_import
-
 # NOTE: Some classes in here use camelCaseNaming() rather than
 # underscore_naming().  That's for consistency with unittest; it's not the
 # general style of breezy.  Please continue that consistency when adding e.g.
@@ -94,12 +92,6 @@ try:
 except ImportError:
     # lsprof not available
     pass
-from ..sixish import (
-    int2byte,
-    PY3,
-    string_types,
-    text_type,
-    )
 from ..bzr.smart import client, request
 from ..transport import (
     memory,
@@ -1331,12 +1323,14 @@ class TestCase(testtools.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
-        if a + ('\n' if isinstance(a, text_type) else b'\n') == b:
+        if a + ('\n' if isinstance(a, str) else b'\n') == b:
             message = 'first string is missing a final newline.\n'
-        if a == b + ('\n' if isinstance(b, text_type) else b'\n'):
+        if a == b + ('\n' if isinstance(b, str) else b'\n'):
             message = 'second string is missing a final newline.\n'
         raise AssertionError(message
-                             + self._ndiff_strings(a, b))
+                             + self._ndiff_strings(
+                                 a if isinstance(a, str) else a.decode(),
+                                 b if isinstance(b, str) else b.decode()))
 
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,
@@ -1554,7 +1548,7 @@ class TestCase(testtools.TestCase):
     def assertPathExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
         # TODO(jelmer): Clean this up for pad.lv/1696545
-        if not isinstance(path, (bytes, str, text_type)):
+        if not isinstance(path, (bytes, str)):
             for p in path:
                 self.assertPathExists(p)
         else:
@@ -1563,7 +1557,7 @@ class TestCase(testtools.TestCase):
 
     def assertPathDoesNotExist(self, path):
         """Fail if path or paths, which may be abs or relative, exist."""
-        if not isinstance(path, (str, text_type)):
+        if not isinstance(path, (str, str)):
             for p in path:
                 self.assertPathDoesNotExist(p)
         else:
@@ -1938,12 +1932,8 @@ class TestCase(testtools.TestCase):
 
         self.log('run brz: %r', args)
 
-        if PY3:
-            self._last_cmd_stdout = stdout
-            self._last_cmd_stderr = stderr
-        else:
-            self._last_cmd_stdout = codecs.getwriter(encoding)(stdout)
-            self._last_cmd_stderr = codecs.getwriter(encoding)(stderr)
+        self._last_cmd_stdout = stdout
+        self._last_cmd_stderr = stderr
 
         old_ui_factory = ui.ui_factory
         ui.ui_factory = ui_testing.TestUIFactory(
@@ -2003,26 +1993,17 @@ class TestCase(testtools.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
-        if isinstance(args, string_types):
+        if isinstance(args, str):
             args = shlex.split(args)
 
         if encoding is None:
             encoding = osutils.get_user_encoding()
 
-        if sys.version_info[0] == 2:
-            wrapped_stdout = stdout = ui_testing.BytesIOWithEncoding()
-            wrapped_stderr = stderr = ui_testing.BytesIOWithEncoding()
-            stdout.encoding = stderr.encoding = encoding
-
-            # FIXME: don't call into logging here
-            handler = trace.EncodedStreamHandler(
-                stderr, errors="replace")
-        else:
-            stdout = BytesIO()
-            stderr = BytesIO()
-            wrapped_stdout = TextIOWrapper(stdout, encoding)
-            wrapped_stderr = TextIOWrapper(stderr, encoding)
-            handler = logging.StreamHandler(wrapped_stderr)
+        stdout = BytesIO()
+        stderr = BytesIO()
+        wrapped_stdout = TextIOWrapper(stdout, encoding)
+        wrapped_stderr = TextIOWrapper(stderr, encoding)
+        handler = logging.StreamHandler(wrapped_stderr)
         handler.setLevel(logging.INFO)
 
         logger = logging.getLogger('')
@@ -2035,9 +2016,8 @@ class TestCase(testtools.TestCase):
         finally:
             logger.removeHandler(handler)
 
-        if PY3:
-            wrapped_stdout.flush()
-            wrapped_stderr.flush()
+        wrapped_stdout.flush()
+        wrapped_stderr.flush()
 
         out = stdout.getvalue()
         err = stderr.getvalue()
@@ -2086,24 +2066,16 @@ class TestCase(testtools.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
-        if isinstance(args, string_types):
+        if isinstance(args, str):
             args = shlex.split(args)
 
         if encoding is None:
             encoding = osutils.get_user_encoding()
 
-        if sys.version_info[0] == 2:
-            stdout = ui_testing.BytesIOWithEncoding()
-            stderr = ui_testing.BytesIOWithEncoding()
-            stdout.encoding = stderr.encoding = encoding
-            # FIXME: don't call into logging here
-            handler = trace.EncodedStreamHandler(
-                stderr, errors="replace")
-        else:
-            stdout = ui_testing.StringIOWithEncoding()
-            stderr = ui_testing.StringIOWithEncoding()
-            stdout.encoding = stderr.encoding = encoding
-            handler = logging.StreamHandler(stream=stderr)
+        stdout = ui_testing.StringIOWithEncoding()
+        stderr = ui_testing.StringIOWithEncoding()
+        stdout.encoding = stderr.encoding = encoding
+        handler = logging.StreamHandler(stream=stderr)
         handler.setLevel(logging.INFO)
 
         logger = logging.getLogger('')
@@ -2188,7 +2160,7 @@ class TestCase(testtools.TestCase):
         if len(args) == 1:
             if isinstance(args[0], list):
                 args = args[0]
-            elif isinstance(args[0], (str, text_type)):
+            elif isinstance(args[0], str):
                 args = list(shlex.split(args[0]))
         else:
             raise ValueError("passing varargs to run_bzr_subprocess")
@@ -2393,18 +2365,12 @@ class TestCase(testtools.TestCase):
             if getattr(self, "_log_file", None) is not None:
                 stdout = self._log_file
             else:
-                if sys.version_info[0] == 2:
-                    stdout = BytesIO()
-                else:
-                    stdout = StringIO()
+                stdout = StringIO()
         if stderr is None:
             if getattr(self, "_log_file", None is not None):
                 stderr = self._log_file
             else:
-                if sys.version_info[0] == 2:
-                    stderr = BytesIO()
-                else:
-                    stderr = StringIO()
+                stderr = StringIO()
         real_stdin = sys.stdin
         real_stdout = sys.stdout
         real_stderr = sys.stderr
@@ -2816,8 +2782,6 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def overrideEnvironmentForTesting(self):
         test_home_dir = self.test_home_dir
-        if not PY3 and isinstance(test_home_dir, text_type):
-            test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
         self.overrideEnv('HOME', test_home_dir)
         self.overrideEnv('BRZ_HOME', test_home_dir)
         self.overrideEnv('GNUPGHOME', os.path.join(test_home_dir, '.gnupg'))
@@ -2958,7 +2922,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         if transport is None or transport.is_readonly():
             transport = _mod_transport.get_transport_from_path(".")
         for name in shape:
-            self.assertIsInstance(name, (str, text_type))
+            self.assertIsInstance(name, str)
             if name[-1] == '/':
                 transport.mkdir(urlutils.escape(name[:-1]))
             else:
@@ -2978,7 +2942,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """Assert whether path or paths are in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
-        if not isinstance(path, (str, text_type)):
+        if not isinstance(path, str):
             for p in path:
                 self.assertInWorkingTree(p, tree=tree)
         else:
@@ -2989,7 +2953,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         """Assert whether path or paths are not in the WorkingTree"""
         if tree is None:
             tree = workingtree.WorkingTree.open(root_path)
-        if not isinstance(path, (str, text_type)):
+        if not isinstance(path, str):
             for p in path:
                 self.assertNotInWorkingTree(p, tree=tree)
         else:
@@ -3612,7 +3576,7 @@ def fork_for_tests(suite):
         pid = os.fork()
         if pid == 0:
             try:
-                stream = os.fdopen(c2pwrite, 'wb', 1)
+                stream = os.fdopen(c2pwrite, 'wb', 0)
                 workaround_zealous_crypto_random()
                 try:
                     import coverage
@@ -3635,7 +3599,7 @@ def fork_for_tests(suite):
                 # The traceback is formatted to a string and written in one go
                 # to avoid interleaving lines from multiple failing children.
                 tb = traceback.format_exc()
-                if isinstance(tb, text_type):
+                if isinstance(tb, str):
                     tb = tb.encode('utf-8')
                 try:
                     stream.write(tb)
@@ -3645,7 +3609,7 @@ def fork_for_tests(suite):
             os._exit(0)
         else:
             os.close(c2pwrite)
-            stream = os.fdopen(c2pread, 'rb', 1)
+            stream = os.fdopen(c2pread, 'rb', 0)
             test = TestInOtherProcess(stream, pid)
             result.append(test)
     return result
@@ -4072,7 +4036,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_chk_serializer',
         'breezy.tests.test_chunk_writer',
         'breezy.tests.test_clean_tree',
-        'breezy.tests.test_cleanup',
         'breezy.tests.test_cmdline',
         'breezy.tests.test_commands',
         'breezy.tests.test_commit',
@@ -4308,28 +4271,23 @@ def test_suite(keep_only=None, starting_with=None):
     # modules building their suite with loadTestsFromModuleNames
     suite.addTest(loader.loadTestsFromModuleNames(_test_suite_testmod_names()))
 
-    if not PY3:
-        suite.addTest(loader.loadTestsFromModuleNames(['breezy.doc']))
+    suite.addTest(loader.loadTestsFromModuleNames(['breezy.doc']))
 
-        # It's pretty much impossible to write readable doctests that work on
-        # both Python 2 and Python 3 because of their overreliance on
-        # consistent repr() return values.
-        # For now, just run doctests on Python 2 so we now they haven't broken.
-        for mod in _test_suite_modules_to_doctest():
-            if not interesting_module(mod):
-                # No tests to keep here, move along
-                continue
-            try:
-                # note that this really does mean "report only" -- doctest
-                # still runs the rest of the examples
-                doc_suite = IsolatedDocTestSuite(
-                    mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
-            except ValueError as e:
-                print('**failed to get doctest for: %s\n%s' % (mod, e))
-                raise
-            if len(doc_suite._tests) == 0:
-                raise errors.BzrError("no doctests found in %s" % (mod,))
-            suite.addTest(doc_suite)
+    for mod in _test_suite_modules_to_doctest():
+        if not interesting_module(mod):
+            # No tests to keep here, move along
+            continue
+        try:
+            # note that this really does mean "report only" -- doctest
+            # still runs the rest of the examples
+            doc_suite = IsolatedDocTestSuite(
+                mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
+        except ValueError as e:
+            print('**failed to get doctest for: %s\n%s' % (mod, e))
+            raise
+        if len(doc_suite._tests) == 0:
+            raise errors.BzrError("no doctests found in %s" % (mod,))
+        suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
     for name, plugin in _mod_plugin.plugins().items():
@@ -4491,6 +4449,7 @@ def clone_test(test, new_id):
     return new_test
 
 
+
 def permute_tests_for_extension(standard_tests, loader, py_module_name,
                                 ext_module_name):
     """Helper for permutating tests against an extension module.
@@ -4524,10 +4483,12 @@ def permute_tests_for_extension(standard_tests, loader, py_module_name,
     if feature.available():
         scenarios.append(('C', {'module': feature.module}))
     else:
-        # the compiled module isn't available, so we add a failing test
         class FailWithoutFeature(TestCase):
+            def id(self):
+                return ext_module_name + '.' + super(FailWithoutFeature, self).id()
             def test_fail(self):
                 self.requireFeature(feature)
+        # the compiled module isn't available, so we add a failing test
         suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
     result = multiply_tests(standard_tests, scenarios, suite)
     return result, feature
@@ -4586,7 +4547,7 @@ def probe_bad_non_ascii(encoding):
     for given encoding.
     """
     for i in range(128, 256):
-        char = int2byte(i)
+        char = bytes([i])
         try:
             char.decode(encoding)
         except UnicodeDecodeError:

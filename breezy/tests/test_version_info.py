@@ -16,16 +16,16 @@
 
 """Tests for version_info"""
 
+from io import (
+    BytesIO,
+    StringIO,
+    )
 import os
 
 from .. import (
     registry,
     tests,
     version_info_formats,
-    )
-from ..sixish import (
-    BytesIO,
-    StringIO,
     )
 from . import TestCaseWithTransport
 from ..rio import read_stanzas, read_stanzas_unicode

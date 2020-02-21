@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # vim: expandtab
 
 # Copyright (C) 2011 Jelmer Vernooij <jelmer@apache.org>
@@ -32,8 +32,6 @@ signal.signal(signal.SIGINT, handle_sigint)
 import breezy
 breezy.initialize()
 
-from breezy.sixish import PY3
-
 from breezy.plugin import load_plugins
 load_plugins()
 
@@ -48,7 +46,4 @@ parser = optparse.OptionParser()
 (shortname, url) = args
 
 helper = RemoteHelper(open_local_dir(), shortname, open_remote_dir(url))
-if PY3:
-    helper.process(sys.stdin.buffer, sys.stdout.buffer)
-else:
-    helper.process(sys.stdin, sys.stdout)
+helper.process(sys.stdin.buffer, sys.stdout.buffer)

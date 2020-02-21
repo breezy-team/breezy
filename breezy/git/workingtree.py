@@ -17,8 +17,6 @@
 
 """An adapter between a Git index and a Bazaar Working Tree"""
 
-from __future__ import absolute_import
-
 import itertools
 from collections import defaultdict
 import errno
@@ -73,7 +71,6 @@ from ..mutabletree import (
     BadReferenceTarget,
     MutableTree,
     )
-from ..sixish import text_type
 
 
 from .dir import (
@@ -534,7 +531,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                               recurse_nested=False):
         if from_dir is None:
             from_dir = u""
-        if not isinstance(from_dir, text_type):
+        if not isinstance(from_dir, str):
             raise TypeError(from_dir)
         encoded_from_dir = self.abspath(from_dir).encode(osutils._fs_enc)
         for (dirpath, dirnames, filenames) in os.walk(encoded_from_dir):
@@ -1213,12 +1210,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
-             show_base=False):
+             show_base=False, tag_selector=None):
         with self.lock_write(), source.lock_read():
             old_revision = self.branch.last_revision()
             count = self.branch.pull(source, overwrite, stop_revision,
                                      possible_transports=possible_transports,
-                                     local=local)
+                                     local=local, tag_selector=tag_selector)
             self._update_git_tree(
                 old_revision=old_revision,
                 new_revision=self.branch.last_revision(),

@@ -18,6 +18,7 @@
 """Tests for plugins"""
 
 import importlib
+from io import StringIO
 import logging
 import os
 import sys
@@ -30,10 +31,6 @@ from .. import (
     tests,
     )
 from ..tests.features import pkg_resources_feature
-from ..sixish import (
-    StringIO,
-    viewkeys,
-    )
 
 
 # TODO: Write a test for plugin decoration of commands.
@@ -301,7 +298,7 @@ class TestLoadingPlugins(BaseTestPlugins):
         log = self.load_and_capture(name)
         self.assertNotContainsRe(log,
                                  r"It supports breezy version")
-        self.assertEqual({'wants100'}, viewkeys(self.plugin_warnings))
+        self.assertEqual({'wants100'}, self.plugin_warnings.keys())
         self.assertContainsRe(
             self.plugin_warnings['wants100'][0],
             r"It supports breezy version")
@@ -700,7 +697,7 @@ class TestDisablePlugin(BaseTestPlugins):
         self.create_plugin_package('ugly')
         self.overrideEnv('BRZ_DISABLE_PLUGINS', 'bad:ugly')
         self.load_with_paths(['.'])
-        self.assertEqual({'good'}, viewkeys(self.plugins))
+        self.assertEqual({'good'}, self.plugins.keys())
         self.assertPluginModules({
             'good': self.plugins['good'].module,
             'bad': None,

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from ...bzr.xml_serializer import (
     Element,
     SubElement,
@@ -144,6 +142,13 @@ class _Serializer_v4(XMLSerializer):
                 if i < len(rev.parent_sha1s):
                     p.set('revision_sha1', rev.parent_sha1s[i])
         return root
+
+    def write_revision_to_string(self, rev):
+        return tostring(self._pack_revision(rev)) + b'\n'
+
+    def _write_element(self, elt, f):
+        ElementTree(elt).write(f, 'utf-8')
+        f.write(b'\n')
 
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""

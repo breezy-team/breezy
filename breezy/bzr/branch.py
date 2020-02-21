@@ -15,8 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
+from io import BytesIO
 import sys
 
 from ..lazy_import import lazy_import
@@ -28,6 +27,8 @@ from breezy import (
     lockdir,
     rio,
     shelf,
+    )
+from breezy.bzr import (
     tag as _mod_tag,
     )
 """)
@@ -50,11 +51,6 @@ from ..decorators import (
     only_raises,
     )
 from ..lock import _RelockDebugMixin, LogicalLockResult
-from ..sixish import (
-    BytesIO,
-    text_type,
-    viewitems,
-    )
 from ..trace import (
     mutter,
     )
@@ -283,7 +279,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         if url is None:
             self._transport.delete('parent')
         else:
-            if isinstance(url, text_type):
+            if isinstance(url, str):
                 url = url.encode('utf-8')
             self._transport.put_bytes('parent', url + b'\n',
                                       mode=self.controldir._get_file_mode())
@@ -552,7 +548,7 @@ class BzrBranch8(BzrBranch):
         """
         s = BytesIO()
         writer = rio.RioWriter(s)
-        for file_id, (branch_location, tree_path) in viewitems(info_dict):
+        for file_id, (branch_location, tree_path) in info_dict.items():
             stanza = rio.Stanza(file_id=file_id,
                                 branch_location=branch_location)
             if tree_path is not None:
@@ -653,10 +649,7 @@ class BzrBranch8(BzrBranch):
         if stacked_url is None:
             raise errors.NotStacked(self)
         # TODO(jelmer): Clean this up for pad.lv/1696545
-        if sys.version_info[0] == 2:
-            return stacked_url.encode('utf-8')
-        else:
-            return stacked_url
+        return stacked_url
 
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
@@ -1031,7 +1024,7 @@ class BranchReferenceFormat(BranchFormatMetadir):
     def _make_reference_clone_function(format, a_branch):
         """Create a clone() routine for a branch dynamically."""
         def clone(to_bzrdir, revision_id=None,
-                  repository_policy=None):
+                  repository_policy=None, tag_selector=None):
             """See Branch.clone()."""
             return format.initialize(to_bzrdir, target_branch=a_branch)
             # cannot obey revision_id limits when cloning a reference ...

@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+from io import BytesIO
 import os
 import sys
 from textwrap import dedent
@@ -25,9 +26,6 @@ from .. import (
     revision,
     shelf,
     tests,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from . import script
 from . import (

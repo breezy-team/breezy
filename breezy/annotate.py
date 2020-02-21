@@ -16,8 +16,6 @@
 
 """File annotate based on weave storage"""
 
-from __future__ import absolute_import
-
 # TODO: Choice of more or less verbose formats:
 #
 # interposed: show more details between blocks of modified lines

@@ -26,10 +26,9 @@ extracting those strings, as is done in the bzr Makefile. Sorting the output
 is also left to that stage of the process.
 """
 
-from __future__ import absolute_import
-
 import inspect
 import os
+import sys
 
 import breezy
 from . import (
@@ -39,7 +38,6 @@ from . import (
     option,
     plugin as _mod_plugin,
     )
-from .sixish import PY3
 from .trace import (
     mutter,
     note,
@@ -87,7 +85,7 @@ def _parse_source(source_text, filename='<unknown>'):
             # string terminates on. It's more useful to have the line the
             # string begins on. Unfortunately, counting back newlines is
             # only an approximation as the AST is ignorant of escaping.
-            str_to_lineno[node.s] = node.lineno - node.s.count('\n')
+            str_to_lineno[node.s] = node.lineno - (0 if sys.version_info >= (3, 8) else node.s.count('\n'))
     return cls_to_lineno, str_to_lineno
 
 
@@ -158,8 +156,6 @@ class _PotExporter(object):
             "msgstr \"\"\n"
             "\n".format(
                 path=path, lineno=lineno, comment=comment, msg=_normalize(s)))
-        if not PY3:
-            line = line.decode('utf-8')
         self.outf.write(line)
 
     def poentry_in_context(self, context, string, comment=None):

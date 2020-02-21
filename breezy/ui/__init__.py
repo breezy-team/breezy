@@ -41,8 +41,6 @@ breezy.ui.text.TextUIFactory
     back to working through the terminal.
 """
 
-from __future__ import absolute_import
-
 import warnings
 
 from ..lazy_import import lazy_import
@@ -53,12 +51,6 @@ from breezy import (
     progress,
     )
 """)
-
-from ..sixish import (
-    PY3,
-    string_types,
-    text_type,
-    )
 
 
 _valid_boolean_strings = dict(yes=True, no=False,
@@ -89,7 +81,7 @@ def bool_from_string(s, accepted_values=None):
     if accepted_values is None:
         accepted_values = _valid_boolean_strings
     val = None
-    if isinstance(s, string_types):
+    if isinstance(s, str):
         try:
             val = accepted_values[s.lower()]
         except KeyError:
@@ -319,14 +311,14 @@ class UIFactory(object):
             fail = "brz warning: %r, %r" % (warning_id, message_args)
             warnings.warn("no template for warning: "
                           + fail)   # so tests will fail etc
-            return text_type(fail)
+            return str(fail)
         try:
-            return text_type(template) % message_args
+            return str(template) % message_args
         except ValueError as e:
             fail = "brz unprintable warning: %r, %r, %s" % (
                 warning_id, message_args, e)
             warnings.warn(fail)   # so tests will fail etc
-            return text_type(fail)
+            return str(fail)
 
     def choose(self, msg, choices, default=None):
         """Prompt the user for a list of alternatives.

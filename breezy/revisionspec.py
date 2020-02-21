@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
@@ -36,9 +34,6 @@ from . import (
     lazy_regex,
     registry,
     trace,
-    )
-from .sixish import (
-    text_type,
     )
 
 
@@ -160,7 +155,7 @@ class RevisionSpec(object):
         """
         if spec is None:
             return RevisionSpec(None, _internal=True)
-        if not isinstance(spec, (str, text_type)):
+        if not isinstance(spec, str):
             raise TypeError("revision spec needs to be text")
         match = revspec_registry.get_prefix(spec)
         if match is not None:
@@ -471,7 +466,7 @@ class RevisionSpec_revid(RevisionIDSpec):
         # self.spec comes straight from parsing the command line arguments,
         # so we expect it to be a Unicode string. Switch it to the internal
         # representation.
-        if isinstance(self.spec, text_type):
+        if isinstance(self.spec, str):
             return cache_utf8.encode(self.spec)
         return self.spec
 

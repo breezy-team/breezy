@@ -17,8 +17,6 @@
 
 """Functions for deriving user configuration from system environment."""
 
-from __future__ import absolute_import
-
 import os
 import sys
 
@@ -32,9 +30,6 @@ from breezy import (
 """)
 from . import (
     errors,
-    )
-from .sixish import (
-    PY3,
     )
 
 
@@ -213,13 +208,9 @@ def _get_default_mail_domain(mailname_file='/etc/mailname'):
 def default_email():
     v = os.environ.get('BRZ_EMAIL')
     if v:
-        if not PY3:
-            v = v.decode(osutils.get_user_encoding())
         return v
     v = os.environ.get('EMAIL')
     if v:
-        if not PY3:
-            v = v.decode(osutils.get_user_encoding())
         return v
     name, email = _auto_user_id()
     if name and email:

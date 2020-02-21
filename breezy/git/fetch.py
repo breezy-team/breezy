@@ -16,8 +16,6 @@
 
 """Fetching from git into bzr."""
 
-from __future__ import absolute_import
-
 from dulwich.objects import (
     Commit,
     Tag,
@@ -51,11 +49,10 @@ from ..revision import (
     NULL_REVISION,
     )
 from ..bzr.inventorytree import InventoryRevisionTree
-from ..sixish import text_type
 from ..bzr.testament import (
     StrictTestament3,
     )
-from ..tree import find_previous_path
+from ..tree import InterTree
 from ..tsort import (
     topo_sort,
     )
@@ -126,7 +123,11 @@ def import_git_blob(texts, mapping, path, name, hexshas,
     # Check what revision we should store
     parent_keys = []
     for ptree in parent_bzr_trees:
-        ppath = find_previous_path(base_bzr_tree, ptree, decoded_path, file_id)
+        intertree = InterTree.get(ptree, base_bzr_tree)
+        try:
+            ppath = intertree.find_source_paths(decoded_path, recurse='none')
+        except errors.NoSuchFile:
+            continue
         if ppath is None:
             continue
         pkind = ptree.kind(ppath)
@@ -182,12 +183,13 @@ def import_git_submodule(texts, mapping, path, name, hexshas,
     (base_mode, mode) = modes
     if base_hexsha == hexsha and base_mode == mode:
         return [], {}
+    path = path.decode('utf-8')
     file_id = lookup_file_id(path)
     invdelta = []
     ie = TreeReference(file_id, name.decode("utf-8"), parent_id)
     ie.revision = revision_id
     if base_hexsha is not None:
-        old_path = path.decode("utf-8")  # Renames are not supported yet
+        old_path = path  # Renames are not supported yet
         if stat.S_ISDIR(base_mode):
             invdelta.extend(remove_disappeared_children(
                 base_bzr_tree, old_path, lookup_object(base_hexsha), [],
@@ -213,7 +215,7 @@ def remove_disappeared_children(base_bzr_tree, path, base_tree,
     :param lookup_object: Lookup a git object by its SHA1
     :return: Inventory delta, as list
     """
-    if not isinstance(path, text_type):
+    if not isinstance(path, str):
         raise TypeError(path)
     ret = []
     for name, mode, hexsha in base_tree.iteritems():

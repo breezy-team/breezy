@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from .. import (
@@ -36,7 +34,6 @@ from .xml_serializer import (
     unpack_inventory_flat,
     )
 from ..revision import Revision
-from ..sixish import unichr
 from ..errors import BzrError
 
 
@@ -56,7 +53,7 @@ def _unescaper(match, _map=_xml_unescape_map):
     except KeyError:
         if not code.startswith(b'#'):
             raise
-        return unichr(int(code[1:])).encode('utf8')
+        return chr(int(code[1:])).encode('utf8')
 
 
 _unescape_re = lazy_regex.lazy_compile(b'\\&([^;]*);')
@@ -134,15 +131,8 @@ class Serializer_v8(XMLSerializer):
         """Return a list of lines with the encoded inventory."""
         return self.write_inventory(inv, None)
 
-    def write_inventory_to_string(self, inv, working=False):
-        """Just call write_inventory with a BytesIO and return the value.
-
-        :param working: If True skip history data - text_sha1, text_size,
-            reference_revision, symlink_target.
-        """
-        sio = BytesIO()
-        self.write_inventory(inv, sio, working)
-        return sio.getvalue()
+    def write_inventory_to_chunks(self, inv):
+        return self.write_inventory(inv, None)
 
     def write_inventory(self, inv, f, working=False):
         """Write inventory to a file.
@@ -169,61 +159,58 @@ class Serializer_v8(XMLSerializer):
     def _append_inventory_root(self, append, inv):
         """Append the inventory root to output."""
         if inv.revision_id is not None:
-            revid1 = b' revision_id="'
-            revid2 = encode_and_escape(inv.revision_id)
+            revid1 = b''.join(
+                [b' revision_id="', encode_and_escape(inv.revision_id), b'"'])
         else:
             revid1 = b""
-            revid2 = b""
-        append(b'<inventory format="%s"%s%s>\n' % (
-            self.format_num, revid1, revid2))
-        append(b'<directory file_id="%s name="%s revision="%s />\n' % (
+        append(b'<inventory format="%s"%s>\n' % (
+            self.format_num, revid1))
+        append(b'<directory file_id="%s" name="%s" revision="%s" />\n' % (
             encode_and_escape(inv.root.file_id),
             encode_and_escape(inv.root.name),
             encode_and_escape(inv.root.revision)))
 
-    def _pack_revision(self, rev):
+    def write_revision_to_lines(self, rev):
         """Revision object -> xml tree"""
         # For the XML format, we need to write them as Unicode rather than as
         # utf-8 strings. So that cElementTree can handle properly escaping
         # them.
-        decode_utf8 = cache_utf8.decode
-        revision_id = rev.revision_id
-        format_num = self.format_num
-        if self.revision_format_num is not None:
-            format_num = self.revision_format_num
-        root = Element('revision',
-                       committer=rev.committer,
-                       timestamp='%.3f' % rev.timestamp,
-                       revision_id=decode_utf8(revision_id),
-                       inventory_sha1=rev.inventory_sha1.decode('ascii'),
-                       format=format_num.decode(),
-                       )
+        lines = []
+        el = (b'<revision committer="%s" format="%s" '
+              b'inventory_sha1="%s" revision_id="%s" '
+              b'timestamp="%.3f"' % (
+                  encode_and_escape(rev.committer),
+                  self.revision_format_num or self.format_num,
+                  rev.inventory_sha1,
+                  encode_and_escape(cache_utf8.decode(rev.revision_id)),
+                  rev.timestamp))
         if rev.timezone is not None:
-            root.set('timezone', str(rev.timezone))
-        root.text = '\n'
-        msg = SubElement(root, 'message')
-        msg.text = escape_invalid_chars(rev.message)[0]
-        msg.tail = '\n'
+            el += b' timezone="%s"' % str(rev.timezone).encode('ascii')
+        lines.append(el + b'>\n')
+        message = encode_and_escape(escape_invalid_chars(rev.message)[0])
+        lines.extend((b'<message>' + message + b'</message>\n').splitlines(True))
         if rev.parent_ids:
-            pelts = SubElement(root, 'parents')
-            pelts.tail = pelts.text = '\n'
+            lines.append(b'<parents>\n')
             for parent_id in rev.parent_ids:
                 _mod_revision.check_not_reserved_id(parent_id)
-                p = SubElement(pelts, 'revision_ref')
-                p.tail = '\n'
-                p.set('revision_id', decode_utf8(parent_id))
+                lines.append(
+                    b'<revision_ref revision_id="%s" />\n'
+                    % encode_and_escape(cache_utf8.decode(parent_id)))
+            lines.append(b'</parents>\n')
         if rev.properties:
-            self._pack_revision_properties(rev, root)
-        return root
-
-    def _pack_revision_properties(self, rev, under_element):
-        top_elt = SubElement(under_element, 'properties')
-        for prop_name, prop_value in sorted(rev.properties.items()):
-            prop_elt = SubElement(top_elt, 'property')
-            prop_elt.set('name', prop_name)
-            prop_elt.text = prop_value
-            prop_elt.tail = '\n'
-        top_elt.tail = '\n'
+            preamble = b'<properties>'
+            for prop_name, prop_value in sorted(rev.properties.items()):
+                if prop_value:
+                    proplines = (preamble + b'<property name="%s">%s</property>\n' % (
+                        encode_and_escape(prop_name),
+                        encode_and_escape(escape_invalid_chars(prop_value)[0]))).splitlines(True)
+                else:
+                    proplines = [preamble + b'<property name="%s" />\n' % (encode_and_escape(prop_name), )]
+                preamble = b''
+                lines.extend(proplines)
+            lines.append(b'</properties>\n')
+        lines.append(b'</revision>\n')
+        return lines
 
     def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
         # This is here because it's overridden by xml7

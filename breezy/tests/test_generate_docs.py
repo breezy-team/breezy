@@ -20,11 +20,9 @@ This test checks that generation will be successful
 and produce non-empty output.
 """
 
+from io import StringIO
 
 import breezy.commands
-from ..sixish import (
-    StringIO,
-    )
 from . import TestCase
 
 

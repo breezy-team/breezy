@@ -16,8 +16,6 @@
 
 """Launchpad URIs."""
 
-from __future__ import absolute_import
-
 
 # We use production as the default because edge has been deprecated circa
 # 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)

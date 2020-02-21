@@ -23,7 +23,6 @@ import sys
 from .. import (
     osutils,
     )
-from ..sixish import PY3
 from . import (
     TestCase,
     )
@@ -88,20 +87,11 @@ class TestTerminalEncoding(TestCase):
                              stdin_encoding,
                              user_encoding='user_encoding',
                              enable_fake_encodings=True):
-        if PY3:
-            sys.stdout = StringIOWithEncoding()
-        else:
-            sys.stdout = BytesIOWithEncoding()
+        sys.stdout = StringIOWithEncoding()
         sys.stdout.encoding = stdout_encoding
-        if PY3:
-            sys.stderr = StringIOWithEncoding()
-        else:
-            sys.stderr = BytesIOWithEncoding()
+        sys.stderr = StringIOWithEncoding()
         sys.stderr.encoding = stderr_encoding
-        if PY3:
-            sys.stdin = StringIOWithEncoding()
-        else:
-            sys.stdin = BytesIOWithEncoding()
+        sys.stdin = StringIOWithEncoding()
         sys.stdin.encoding = stdin_encoding
         osutils._cached_user_encoding = user_encoding
         if enable_fake_encodings:
@@ -184,10 +174,7 @@ class TestUserEncoding(TestCase):
         self.overrideAttr(osutils, '_cached_user_encoding', None)
         self.overrideAttr(locale, 'getpreferredencoding', self.get_encoding)
         self.overrideAttr(locale, 'CODESET', None)
-        if PY3:
-            self.overrideAttr(sys, 'stderr', StringIOWithEncoding())
-        else:
-            self.overrideAttr(sys, 'stderr', BytesIOWithEncoding())
+        self.overrideAttr(sys, 'stderr', StringIOWithEncoding())
 
     def get_encoding(self, do_setlocale=True):
         return self._encoding

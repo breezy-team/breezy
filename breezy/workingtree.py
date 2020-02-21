@@ -27,8 +27,7 @@ To get a WorkingTree, call controldir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-from __future__ import absolute_import
-
+import contextlib
 import errno
 import os
 import sys
@@ -41,7 +40,6 @@ import shutil
 import stat
 
 from breezy import (
-    cleanup,
     conflicts as _mod_conflicts,
     filters as _mod_filters,
     merge,
@@ -368,7 +366,11 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
-            file_obj = _mod_filters.filtered_input_file(file_obj, filters)
+            if filters:
+                file_obj, size = _mod_filters.filtered_input_file(
+                    file_obj, filters)
+                stat_value = _mod_filters.FilteredStat(
+                    stat_value, st_size=size)
         return (file_obj, stat_value)
 
     def get_file_text(self, path, filtered=True):
@@ -817,13 +819,13 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
 
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
-             show_base=False):
+             show_base=False, tag_selector=None):
         with self.lock_write(), source.lock_read():
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
                                      possible_transports=possible_transports,
-                                     local=local)
+                                     local=local, tag_selector=tag_selector)
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
                 repository = self.branch.repository
@@ -998,7 +1000,7 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
     def revert(self, filenames=None, old_tree=None, backups=True,
                pb=None, report_changes=False):
         from .conflicts import resolve
-        with cleanup.ExitStack() as exit_stack:
+        with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.lock_tree_write())
             if old_tree is None:
                 basis_tree = self.basis_tree()

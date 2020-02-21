@@ -16,8 +16,6 @@
 
 """Propose command implementations."""
 
-from __future__ import absolute_import
-
 from io import StringIO
 
 from ... import (
@@ -36,7 +34,6 @@ from ...option import (
     Option,
     RegistryOption,
     )
-from ...sixish import text_type
 from ...trace import note
 from ... import (
     propose as _mod_propose,
@@ -139,15 +136,16 @@ class cmd_propose_merge(Command):
             'hoster',
             help='Use the hoster.',
             lazy_registry=('breezy.plugins.propose.propose', 'hosters')),
-        ListOption('reviewers', short_name='R', type=text_type,
+        ListOption('reviewers', short_name='R', type=str,
                    help='Requested reviewers.'),
         Option('name', help='Name of the new remote branch.', type=str),
         Option('description', help='Description of the change.', type=str),
         Option('prerequisite', help='Prerequisite branch.', type=str),
+        Option('wip', help='Mark merge request as work-in-progress'),
         Option(
             'commit-message',
             help='Set commit message for merge, if supported', type=str),
-        ListOption('labels', short_name='l', type=text_type,
+        ListOption('labels', short_name='l', type=str,
                    help='Labels to apply.'),
         Option('no-allow-lossy',
                help='Allow fallback to lossy push, if necessary.'),
@@ -158,7 +156,7 @@ class cmd_propose_merge(Command):
 
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
-            labels=None, prerequisite=None, commit_message=None):
+            labels=None, prerequisite=None, commit_message=None, wip=False):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -197,7 +195,8 @@ class cmd_propose_merge(Command):
             proposal = proposal_builder.create_proposal(
                 description=description, reviewers=reviewers,
                 prerequisite_branch=prerequisite_branch, labels=labels,
-                commit_message=commit_message)
+                commit_message=commit_message,
+                work_in_progress=wip)
         except _mod_propose.MergeProposalExists as e:
             note(gettext('There is already a branch merge proposal: %s'), e.url)
         else:

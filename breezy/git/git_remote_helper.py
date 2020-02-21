@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # vim: expandtab
 
 # Copyright (C) 2011-2018 Jelmer Vernooij <jelmer@jelmer.uk>
@@ -20,8 +20,6 @@
 
 """Remote helper for git for accessing bzr repositories."""
 
-from __future__ import absolute_import
-
 CAPABILITIES = ["fetch", "option", "push"]
 
 import os
@@ -29,7 +27,6 @@ import os
 from ..controldir import ControlDir
 from ..errors import NotBranchError, NoRepositoryPresent
 from ..repository import InterRepository
-from ..sixish import viewitems
 from ..transport import get_transport_from_path
 
 from . import (
@@ -59,6 +56,7 @@ except ImportError:
     pass
 else:
     CAPABILITIES.append("import")
+    CAPABILITIES.append("refspec *:*")
 
 
 def open_remote_dir(url):
@@ -120,7 +118,7 @@ class RemoteHelper(object):
         object_store = get_object_store(repo)
         with object_store.lock_read():
             refs = get_refs_container(self.remote_dir, object_store)
-            for ref, git_sha1 in viewitems(refs.as_dict()):
+            for ref, git_sha1 in refs.as_dict().items():
                 ref = ref.replace(b"~", b"_")
                 outf.write(b"%s %s\n" % (git_sha1, ref))
             outf.write(b"\n")

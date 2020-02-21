@@ -20,8 +20,6 @@ Some of these commands may be good candidates for adding to bzr itself, perhaps
 as hidden commands.
 """
 
-from __future__ import absolute_import
-
 from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
 

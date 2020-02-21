@@ -30,8 +30,6 @@ WorkingTree.open(dir).
 """
 
 
-from __future__ import absolute_import
-
 from bisect import bisect_left
 import breezy
 try:
@@ -39,6 +37,7 @@ try:
 except ImportError:  # python < 3.7
     from collections import deque
 import errno
+from io import BytesIO
 import itertools
 import operator
 import os
@@ -51,9 +50,9 @@ from . import bzrdir
 
 from .. import lazy_import
 lazy_import.lazy_import(globals(), """
+import contextlib
 from breezy import (
     cache_utf8,
-    cleanup,
     conflicts as _mod_conflicts,
     globbing,
     ignores,
@@ -73,10 +72,6 @@ from .. import (
     )
 from ..lock import LogicalLockResult
 from .inventorytree import InventoryRevisionTree, MutableInventoryTree
-from ..sixish import (
-    BytesIO,
-    text_type,
-    )
 from ..trace import mutter, note
 from ..tree import (
     get_canonical_path,
@@ -303,7 +298,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _write_basis_inventory(self, xml):
         """Write the basis inventory XML to the basis-inventory file"""
         path = self._basis_inventory_name()
-        sio = BytesIO(xml)
+        sio = BytesIO(b''.join(xml))
         self._transport.put_file(path, sio,
                                  mode=self.controldir._get_file_mode())
 
@@ -384,7 +379,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         :force: Delete files and directories, even if they are changed and
             even if the directories are not empty.
         """
-        if isinstance(files, (str, text_type)):
+        if isinstance(files, str):
             files = [files]
 
         inv_delta = []
@@ -548,14 +543,14 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
             # revision_id is set. We must check for this full string, because a
             # root node id can legitimately look like 'revision_id' but cannot
             # contain a '"'.
-            xml = self.branch.repository._get_inventory_xml(new_revision)
-            firstline = xml.split(b'\n', 1)[0]
+            lines = self.branch.repository._get_inventory_xml(new_revision)
+            firstline = lines[0]
             if (b'revision_id="' not in firstline
                     or b'format="7"' not in firstline):
-                inv = self.branch.repository._serializer.read_inventory_from_string(
-                    xml, new_revision)
-                xml = self._create_basis_xml_from_inventory(new_revision, inv)
-            self._write_basis_inventory(xml)
+                inv = self.branch.repository._serializer.read_inventory_from_lines(
+                    lines, new_revision)
+                lines = self._create_basis_xml_from_inventory(new_revision, inv)
+            self._write_basis_inventory(lines)
         except (errors.NoSuchRevision, errors.RevisionNotPresent):
             pass
 
@@ -565,7 +560,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
         inventory.revision_id = revision_id
-        return xml7.serializer_v7.write_inventory_to_string(inventory)
+        return xml7.serializer_v7.write_inventory_to_lines(inventory)
 
     def set_conflicts(self, conflicts):
         with self.lock_tree_write():
@@ -641,7 +636,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
     def read_basis_inventory(self):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name()
-        return self._transport.get_bytes(path)
+        return osutils.split_lines(self._transport.get_bytes(path))
 
     def read_working_inventory(self):
         """Read the working inventory.
@@ -801,12 +796,12 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         """See WorkingTree.revision_id."""
         if revision_id == self.last_revision():
             try:
-                xml = self.read_basis_inventory()
+                xml_lines = self.read_basis_inventory()
             except errors.NoSuchFile:
                 pass
             else:
                 try:
-                    inv = xml7.serializer_v7.read_inventory_from_string(xml)
+                    inv = xml7.serializer_v7.read_inventory_from_lines(xml_lines)
                     # dont use the repository revision_tree api because we want
                     # to supply the inventory.
                     if inv.revision_id == revision_id:
@@ -1028,7 +1023,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         :param from_dir: start from this directory or None for the root
         :param recursive: whether to recurse into subdirectories or not
         """
-        with cleanup.ExitStack() as exit_stack:
+        with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(self.lock_read())
             if from_dir is None and include_root is True:
                 yield ('', 'V', 'directory', self.root_inventory.root)
@@ -1197,7 +1192,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         if to_dir is None:
             raise TypeError('You must supply a target directory')
         # check destination directory
-        if isinstance(from_paths, (str, text_type)):
+        if isinstance(from_paths, str):
             raise ValueError()
         with self.lock_tree_write():
             to_abs = self.abspath(to_dir)

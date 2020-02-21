@@ -17,8 +17,6 @@
 
 """Map from Git sha's to Bazaar objects."""
 
-from __future__ import absolute_import
-
 from dulwich.objects import (
     Blob,
     Commit,
@@ -42,12 +40,11 @@ from .. import (
     osutils,
     ui,
     )
-from ..tree import find_previous_path
 from ..lock import LogicalLockResult
 from ..revision import (
     NULL_REVISION,
     )
-from ..sixish import viewitems
+from ..tree import InterTree
 from ..bzr.testament import (
     StrictTestament3,
     )
@@ -231,7 +228,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
 
     def find_unchanged_parent_ie(path, kind, other, parent_trees):
         for ptree in parent_trees:
-            ppath = find_previous_path(tree, ptree, path)
+            intertree = InterTree.get(ptree, tree)
+            ppath = intertree.find_source_path(path)
             if ppath is not None:
                 pkind = ptree.kind(ppath)
                 if kind == "file":
@@ -399,7 +397,7 @@ class PackTupleIterable(object):
 
     def __iter__(self):
         return ((self.store[object_id], path) for (object_id, path) in
-                viewitems(self.objects))
+                self.objects.items())
 
 
 class BazaarObjectStore(BaseObjectStore):

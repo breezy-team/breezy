@@ -16,8 +16,6 @@
 
 """Definition of a class that is similar to Set with some small changes."""
 
-from __future__ import absolute_import
-
 from cpython.object cimport (
     hashfunc,
     Py_EQ,

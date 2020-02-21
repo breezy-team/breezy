@@ -21,8 +21,6 @@ TODO:
   * add command aliases
 """
 
-from __future__ import absolute_import
-
 PLUGINS_TO_DOCUMENT = ["launchpad"]
 
 import textwrap

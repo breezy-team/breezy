@@ -16,8 +16,6 @@
 
 """Support for GitHub."""
 
-from __future__ import absolute_import
-
 import json
 import os
 
@@ -47,7 +45,6 @@ from ...config import AuthenticationConfig, GlobalStack
 from ...errors import InvalidHttpResponse, PermissionDenied
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
-from ...sixish import PY3
 from ...trace import note
 from ...transport import get_transport
 from ...transport.http import default_user_agent
@@ -222,8 +219,6 @@ def parse_github_branch_url(branch):
 
 
 def github_url_to_bzr_url(url, branch_name):
-    if not PY3:
-        branch_name = branch_name.encode('utf-8')
     return git_url_to_bzr_url(url, branch_name)
 
 
@@ -280,11 +275,12 @@ class GitHub(Hoster):
             return json.loads(response.text)
         raise InvalidHttpResponse(path, response.text)
 
-    def _create_pull(self, path, title, head, base, body=None, labels=None, assignee=None):
+    def _create_pull(self, path, title, head, base, body=None, labels=None, assignee=None, draft=False):
         data = {
             'title': title,
             'head': head,
             'base': base,
+            'draft': draft,
         }
         if labels is not None:
             data['labels'] = labels
@@ -378,7 +374,7 @@ class GitHub(Hoster):
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True):
+                        allow_lossy=True, tag_selector=None):
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo(base_owner, base_project)
         if owner is None:
@@ -398,13 +394,14 @@ class GitHub(Hoster):
         try:
             push_result = remote_dir.push_branch(
                 local_branch, revision_id=revision_id, overwrite=overwrite,
-                name=name)
+                name=name, tag_selector=tag_selector)
         except errors.NoRoundtrippingSupport:
             if not allow_lossy:
                 raise
             push_result = remote_dir.push_branch(
                 local_branch, revision_id=revision_id,
-                overwrite=overwrite, name=name, lossy=True)
+                overwrite=overwrite, name=name, lossy=True,
+                tag_selector=tag_selector)
         return push_result.target_branch, github_url_to_bzr_url(
             remote_repo['html_url'], name)
 
@@ -553,7 +550,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
         return None
 
     def create_proposal(self, description, reviewers=None, labels=None,
-                        prerequisite_branch=None, commit_message=None):
+                        prerequisite_branch=None, commit_message=None,
+                        work_in_progress=False):
         """Perform the submission."""
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
@@ -583,7 +581,8 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 title=title, body=description,
                 head="%s:%s" % (self.source_owner, self.source_branch_name),
                 base=self.target_branch_name,
-                labels=labels, assignee=assignees)
+                labels=labels, assignee=assignees,
+                draft=(not work_in_progress))
         except ValidationFailed:
             raise MergeProposalExists(self.source_branch.user_url)
         return GitHubMergeProposal(self.gh, pull_request)

@@ -15,8 +15,6 @@
 
 """Import processor that supports all Bazaar repository formats."""
 
-from __future__ import absolute_import
-
 
 import time
 from .... import (

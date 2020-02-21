@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import errno
 import os
-from breezy.sixish import StringIO
+from io import StringIO
 import sys
 
 try:

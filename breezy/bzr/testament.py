@@ -59,8 +59,6 @@ Testament format 1
 * the testament uses unix line-endings (\n)
 """
 
-from __future__ import absolute_import
-
 # XXX: At the moment, clients trust that the graph described in a weave
 # is accurate, but that's not covered by the testament.  Perhaps the best
 # fix is when verifying a revision to make sure that every file mentioned
@@ -78,7 +76,6 @@ from ..osutils import (
     contains_linebreaks,
     sha_strings,
     )
-from ..sixish import text_type
 from ..tree import Tree
 
 
@@ -163,7 +160,7 @@ class Testament(object):
     def _escape_path(self, path):
         if contains_linebreaks(path):
             raise ValueError(path)
-        if not isinstance(path, text_type):
+        if not isinstance(path, str):
             # TODO(jelmer): Clean this up for pad.lv/1696545
             path = path.decode('ascii')
         return path.replace(u'\\', u'/').replace(u' ', u'\\ ')
@@ -245,7 +242,7 @@ class StrictTestament3(StrictTestament):
     def _escape_path(self, path):
         if contains_linebreaks(path):
             raise ValueError(path)
-        if not isinstance(path, text_type):
+        if not isinstance(path, str):
             # TODO(jelmer): Clean this up for pad.lv/1696545
             path = path.decode('ascii')
         if path == u'':

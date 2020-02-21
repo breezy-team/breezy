@@ -16,8 +16,6 @@
 
 """Pyrex implementation for bencode coder/decoder"""
 
-from __future__ import absolute_import
-
 from cpython.bool cimport (
     PyBool_Check,
     )

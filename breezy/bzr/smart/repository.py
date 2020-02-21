@@ -16,15 +16,10 @@
 
 """Server-side repository related request implementations."""
 
-from __future__ import absolute_import
-
 import bz2
 import itertools
 import os
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+import queue
 import sys
 import tempfile
 import threading
@@ -45,9 +40,6 @@ from .. import (
     vf_search,
     )
 from ..bzrdir import BzrDir
-from ...sixish import (
-    reraise,
-)
 from .request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -919,8 +911,9 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         if self.insert_thread is not None:
             self.insert_thread.join()
         if not self.insert_ok:
+            (exc_type, exc_val, exc_tb) = self.insert_exception
             try:
-                reraise(*self.insert_exception)
+                raise exc_val
             finally:
                 del self.insert_exception
         write_group_tokens, missing_keys = self.insert_result
@@ -1191,7 +1184,7 @@ class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
                     continue
                 yield b"ok\0%d\n" % identifier
                 compressor = zlib.compressobj()
-                for bytes in record.get_bytes_as('chunked'):
+                for bytes in record.iter_bytes_as('chunked'):
                     data = compressor.compress(bytes)
                     if data:
                         yield data
@@ -1270,7 +1263,9 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
                 inv_delta = inv._make_delta(prev_inv)
                 lines = serializer.delta_to_lines(
                     prev_inv.revision_id, inv.revision_id, inv_delta)
-                yield ChunkedContentFactory(inv.revision_id, None, None, lines)
+                yield ChunkedContentFactory(
+                    inv.revision_id, None, None, lines,
+                    chunks_are_lines=True)
                 prev_inv = inv
 
     def body_stream(self, repository, ordering, revids):

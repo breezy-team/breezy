@@ -17,8 +17,6 @@
 
 """Trivial string helpers for use in other cython modules."""
 
-from __future__ import absolute_import
-
 cdef extern from "python-compat.h":
     object PyBytes_FromStringAndSize (char *, Py_ssize_t)
     object PyBytes_InternFromStringAndSize (char *, Py_ssize_t)

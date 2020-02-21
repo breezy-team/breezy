@@ -46,6 +46,11 @@ New Features
    have installed and speeds up import time since psutil brings in
    various other modules. (Jelmer Vernooĳ)
 
+ * ``brz diff`` now has a --color argument that can write
+   color diff output. This is based on the cdiff code in
+   bzrtools by Aaron Bentley.
+   (Jelmer Vernooĳ, #376594)
+
  * Information about tree references can now be updated on remote
    branches. (Jelmer Vernooĳ)
 
@@ -64,6 +69,9 @@ New Features
  * A new ``fossil`` plugin has been added that warns users when they
    attempt to access Fossil repositories.
    (Jelmer Vernooĳ, #1848821)
+
+ * When pushing to Git repositories, symrefs are now followed.
+   (Jelmer Vernooĳ, #1800393)
 
 Improvements
 ************
@@ -98,6 +106,13 @@ Improvements
 
 * CVS pserver URLs now indicate that the pserver protocol is not
   supported. (Jelmer Vernooĳ)
+
+ * Git repositories with submodules can now be imported into 2a
+   branches; submodules are converted to nested trees.
+   (Jelmer Vernooĳ, #402814)
+
+ * Python 3 is now used by default to run scripts, etc. from the makefile.
+   (Jelmer Vernooĳ)
 
 Bug Fixes
 *********
@@ -166,6 +181,10 @@ API Changes
 
 * ``Tree.id2path`` has a new optional argument ``recurse``,
   that determines whether it scans through nested trees.
+  (Jelmer Vernooĳ)
+
+* ``VersionedFiles.add_content`` can now be used to add
+  content from ``ContentFactory`` objects.
   (Jelmer Vernooĳ)
 
 

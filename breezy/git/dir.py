@@ -17,19 +17,14 @@
 
 """An adapter between a Git control dir and a Bazaar ControlDir."""
 
-from __future__ import absolute_import
+import contextlib
 
 from .. import (
     branch as _mod_branch,
-    cleanup,
     errors as brz_errors,
     trace,
     osutils,
     urlutils,
-    )
-from ..sixish import (
-    PY3,
-    viewitems,
     )
 from ..transport import (
     do_catching_redirections,
@@ -192,7 +187,7 @@ class GitDir(ControlDir):
         else:
             wt = None
         if recurse == 'down':
-            with cleanup.ExitStack() as stack:
+            with contextlib.ExitStack() as stack:
                 basis = None
                 if wt is not None:
                     basis = wt.basis_tree()
@@ -223,7 +218,8 @@ class GitDir(ControlDir):
     def clone_on_transport(self, transport, revision_id=None,
                            force_new_repo=False, preserve_stacking=False,
                            stacked_on=None, create_prefix=False,
-                           use_existing_dir=True, no_tree=False):
+                           use_existing_dir=True, no_tree=False,
+                           tag_selector=None):
         """See ControlDir.clone_on_transport."""
         from ..repository import InterRepository
         from .mapping import default_mapping
@@ -245,12 +241,12 @@ class GitDir(ControlDir):
         interrepo = InterRepository.get(source_repo, target_repo)
         if revision_id is not None:
             determine_wants = interrepo.get_determine_wants_revids(
-                [revision_id], include_tags=True)
+                [revision_id], include_tags=True, tag_selector=tag_selector)
         else:
             determine_wants = interrepo.determine_wants_all
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
                                                        mapping=default_mapping)
-        for name, val in viewitems(refs):
+        for name, val in refs.items():
             target_git_repo.refs[name] = val
         result_dir = self.__class__(transport, target_git_repo, format)
         if revision_id is not None:
@@ -317,7 +313,7 @@ class GitDir(ControlDir):
 
     def push_branch(self, source, revision_id=None, overwrite=False,
                     remember=False, create_prefix=False, lossy=False,
-                    name=None):
+                    name=None, tag_selector=None):
         """Push the source branch into this ControlDir."""
         push_result = GitPushResult()
         push_result.workingtree_updated = None
@@ -330,7 +326,7 @@ class GitDir(ControlDir):
         target = self.open_branch(name, nascent_ok=True)
         push_result.branch_push_result = source.push(
             target, overwrite=overwrite, stop_revision=revision_id,
-            lossy=lossy)
+            lossy=lossy, tag_selector=tag_selector)
         push_result.new_revid = push_result.branch_push_result.new_revid
         push_result.old_revid = push_result.branch_push_result.old_revid
         try:
@@ -566,8 +562,6 @@ class LocalGitDir(GitDir):
             else:
                 base_url = urlutils.local_path_to_url(
                     commondir.decode(osutils._fs_enc)).rstrip('/.git/') + '/'
-            if not PY3:
-                params = {k: v.encode('utf-8') for (k, v) in viewitems(params)}
             return urlutils.join_segment_parameters(base_url, params)
         return None
 

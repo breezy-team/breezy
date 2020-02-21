@@ -24,7 +24,6 @@ from .. import (
     osutils,
     tests,
     )
-from ..sixish import text_type
 from . import (
     script,
     scenarios,
@@ -131,7 +130,7 @@ class TestPerConflict(tests.TestCase):
     scenarios = scenarios.multiply_scenarios(vary_by_conflicts())
 
     def test_stringification(self):
-        text = text_type(self.conflict)
+        text = str(self.conflict)
         self.assertContainsString(text, self.conflict.path)
         self.assertContainsString(text.lower(), "conflict")
         self.assertContainsString(repr(self.conflict),
@@ -142,14 +141,14 @@ class TestPerConflict(tests.TestCase):
         o = conflicts.Conflict.factory(**p.as_stanza().as_dict())
         self.assertEqual(o, p)
 
-        self.assertIsInstance(o.path, text_type)
+        self.assertIsInstance(o.path, str)
 
         if o.file_id is not None:
             self.assertIsInstance(o.file_id, bytes)
 
         conflict_path = getattr(o, 'conflict_path', None)
         if conflict_path is not None:
-            self.assertIsInstance(conflict_path, text_type)
+            self.assertIsInstance(conflict_path, str)
 
         conflict_file_id = getattr(o, 'conflict_file_id', None)
         if conflict_file_id is not None:
@@ -176,7 +175,7 @@ class TestConflictList(tests.TestCase):
 
     def test_stringification(self):
         for text, o in zip(example_conflicts.to_strings(), example_conflicts):
-            self.assertEqual(text, text_type(o))
+            self.assertEqual(text, str(o))
 
 
 # FIXME: The shell-like tests should be converted to real whitebox tests... or

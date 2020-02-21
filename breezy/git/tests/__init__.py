@@ -17,8 +17,6 @@
 
 """The basic test suite for bzr-git."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 import time
@@ -95,6 +93,12 @@ class GitBranchBuilder(object):
         mode = b'120000'
         self.commit_info.append(b'M %s :%d %s\n'
                                 % (mode, mark, self._encode_path(path)))
+
+    def set_submodule(self, path, commit_sha):
+        """Create or update submodule at a given path."""
+        mode = b'160000'
+        self.commit_info.append(
+            b'M %s %s %s\n' % (mode, commit_sha, self._encode_path(path)))
 
     def set_file(self, path, content, executable):
         """Create or update content at a given path."""

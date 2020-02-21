@@ -20,6 +20,7 @@ Transport implementations tested here are supplied by
 TransportTestProviderAdapter.
 """
 
+from io import BytesIO
 import os
 import stat
 import sys
@@ -39,10 +40,6 @@ from ..errors import (ConnectionError,
                       TransportNotPossible,
                       )
 from ..osutils import getcwd
-from ..sixish import (
-    BytesIO,
-    zip,
-    )
 from ..bzr.smart import medium
 from . import (
     TestSkipped,

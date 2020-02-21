@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import contextlib
+from io import BytesIO
 import os
 import re
 import subprocess
@@ -21,7 +23,6 @@ import sys
 import tempfile
 
 from .. import (
-    cleanup,
     diff,
     errors,
     osutils,
@@ -29,10 +30,6 @@ from .. import (
     revisionspec,
     revisiontree,
     tests,
-    )
-from ..sixish import (
-    BytesIO,
-    unichr,
     )
 from ..tests import (
     features,
@@ -1031,7 +1028,7 @@ class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
 
     def call_gtabtd(self, path_list, revision_specs, old_url, new_url):
         """Call get_trees_and_branches_to_diff_locked."""
-        exit_stack = cleanup.ExitStack()
+        exit_stack = contextlib.ExitStack()
         self.addCleanup(exit_stack.close)
         return diff.get_trees_and_branches_to_diff_locked(
             path_list, revision_specs, old_url, new_url, exit_stack)

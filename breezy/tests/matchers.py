@@ -45,10 +45,10 @@ lazy_import.lazy_import(globals(),
 from breezy.bzr.smart.request import request_handlers as smart_request_handlers
 from breezy.bzr.smart import vfs
 """)
-from ..sixish import (
-    text_type,
+from ..tree import (
+    find_previous_path,
+    InterTree,
     )
-from ..tree import find_previous_path
 
 from testtools.matchers import Equals, Mismatch, Matcher
 
@@ -157,7 +157,7 @@ class HasLayout(Matcher):
         """
         directories = []
         for entry in entries:
-            if isinstance(entry, (str, text_type)):
+            if isinstance(entry, str):
                 path = entry
             else:
                 path = entry[0]
@@ -177,7 +177,7 @@ class HasLayout(Matcher):
 
     def match(self, tree):
         include_file_ids = self.entries and not isinstance(
-            self.entries[0], (str, text_type))
+            self.entries[0], str)
         actual = list(self.get_tree_layout(
             tree, include_file_ids=include_file_ids))
         if not tree.has_versioned_directories():
@@ -201,11 +201,11 @@ class HasPathRelations(Matcher):
 
     def get_path_map(self, tree):
         """Get the (path, previous_path) pairs for the current tree."""
+        previous_intertree = InterTree.get(self.previous_tree, tree)
         with tree.lock_read(), self.previous_tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
                 if tree.supports_rename_tracking():
-                    previous_path = find_previous_path(
-                        tree, self.previous_tree, path)
+                    previous_path = previous_intertree.find_source_path(path)
                 else:
                     if self.previous_tree.is_versioned(path):
                         previous_path = path
