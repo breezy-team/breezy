@@ -1283,22 +1283,21 @@ def _cicp_canonical_relpath(base, path):
 
     abs_base = abspath(base)
     current = abs_base
-    _listdir = os.listdir
 
     # use an explicit iterator so we can easily consume the rest on early exit.
     bit_iter = iter(rel.split('/'))
     for bit in bit_iter:
         lbit = bit.lower()
         try:
-            next_entries = _listdir(current)
+            next_entries = scandir(current)
         except OSError:  # enoent, eperm, etc
             # We can't find this in the filesystem, so just append the
             # remaining bits.
             current = pathjoin(current, bit, *list(bit_iter))
             break
-        for look in next_entries:
-            if lbit == look.lower():
-                current = pathjoin(current, look)
+        for entry in next_entries:
+            if lbit == entry.name.lower():
+                current = entry.path
                 break
         else:
             # got to the end, nothing matched, so we just return the
@@ -1712,6 +1711,14 @@ def check_legal_path(path):
 _WIN32_ERROR_DIRECTORY = 267  # Similar to errno.ENOTDIR
 
 
+try:
+    scandir = os.scandir
+except AttributeError:  # Python < 3
+    lazy_import(globals(), """\
+from scandir import scandir
+""")
+
+
 def _is_error_enotdir(e):
     """Check if this exception represents ENOTDIR.
 
@@ -1771,10 +1778,7 @@ def walkdirs(top, prefix=""):
     # depending on top and prefix - i.e. ./foo and foo as a pair leads to
     # potentially confusing output. We should make this more robust - but
     # not at a speed cost. RBC 20060731
-    _lstat = os.lstat
     _directory = _directory_kind
-    _listdir = os.listdir
-    _kind_from_mode = file_kind_from_stat_mode
     pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1786,18 +1790,18 @@ def walkdirs(top, prefix=""):
         top_slash = top + u'/'
 
         dirblock = []
-        append = dirblock.append
         try:
-            names = sorted(map(decode_filename, _listdir(top)))
+            for entry in scandir(top):
+                name = decode_filename(entry.name)
+                statvalue = entry.stat(follow_symlinks=False)
+                kind = file_kind_from_stat_mode(statvalue.st_mode)
+                dirblock.append((relprefix + name, name, kind, statvalue, entry.path))
         except OSError as e:
             if not _is_error_enotdir(e):
                 raise
-        else:
-            for name in names:
-                abspath = top_slash + name
-                statvalue = _lstat(abspath)
-                kind = _kind_from_mode(statvalue.st_mode)
-                append((relprefix + name, name, kind, statvalue, abspath))
+        except UnicodeDecodeError as e:
+            raise errors.BadFilenameEncoding(e.object, _fs_enc)
+        dirblock.sort()
         yield (relroot, top), dirblock
 
         # push the user specified dirs from dirblock
@@ -1913,9 +1917,6 @@ class UnicodeDirReader(DirReader):
         def _fs_decode(s): return s.decode(_fs_enc)
 
         def _fs_encode(s): return s.encode(_fs_enc)
-        _lstat = os.lstat
-        _listdir = os.listdir
-        _kind_from_mode = file_kind_from_stat_mode
 
         if prefix:
             relprefix = prefix + b'/'
@@ -1925,16 +1926,16 @@ class UnicodeDirReader(DirReader):
 
         dirblock = []
         append = dirblock.append
-        for name_native in _listdir(top.encode('utf-8')):
+        for entry in scandir(safe_utf8(top)):
             try:
-                name = _fs_decode(name_native)
+                name = _fs_decode(entry.name)
             except UnicodeDecodeError:
                 raise errors.BadFilenameEncoding(
-                    relprefix + name_native, _fs_enc)
-            name_utf8 = _utf8_encode(name)[0]
+                    relprefix + entry.name, _fs_enc)
             abspath = top_slash + name
-            statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode)
+            name_utf8 = _utf8_encode(name)[0]
+            statvalue = entry.stat(follow_symlinks=False)
+            kind = file_kind_from_stat_mode(statvalue.st_mode)
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
         return sorted(dirblock)
 
