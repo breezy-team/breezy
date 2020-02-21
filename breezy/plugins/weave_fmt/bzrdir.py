@@ -745,7 +745,7 @@ class BzrDirPreSplitOut(BzrDir):
         return self._format.__class__()
 
     def clone(self, url, revision_id=None, force_new_repo=False,
-              preserve_stacking=False):
+              preserve_stacking=False, tag_selector=None):
         """See ControlDir.clone().
 
         force_new_repo has no effect, since this family of formats always
@@ -757,7 +757,7 @@ class BzrDirPreSplitOut(BzrDir):
         result = self._format._initialize_for_clone(url)
         self.open_repository().clone(result, revision_id=revision_id)
         from_branch = self.open_branch()
-        from_branch.clone(result, revision_id=revision_id)
+        from_branch.clone(result, revision_id=revision_id, tag_selector=tag_selector)
         try:
             tree = self.open_workingtree()
         except errors.NotLocalUrl:

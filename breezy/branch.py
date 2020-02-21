@@ -1188,7 +1188,8 @@ class Branch(controldir.ControlComponent):
         if revno < 1 or revno > self.revno():
             raise errors.InvalidRevisionNumber(revno)
 
-    def clone(self, to_controldir, revision_id=None, repository_policy=None):
+    def clone(self, to_controldir, revision_id=None, repository_policy=None,
+              tag_selector=None):
         """Clone this branch into to_controldir preserving all semantic values.
 
         Most API users will want 'create_clone_on_transport', which creates a
@@ -1201,11 +1202,12 @@ class Branch(controldir.ControlComponent):
         with self.lock_read(), result.lock_write():
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
-            self.copy_content_into(result, revision_id=revision_id)
+            self.copy_content_into(
+                result, revision_id=revision_id, tag_selector=tag_selector)
         return result
 
     def sprout(self, to_controldir, revision_id=None, repository_policy=None,
-               repository=None, lossy=False):
+               repository=None, lossy=False, tag_selector=None):
         """Create a new line of development from the branch, into to_controldir.
 
         to_controldir controls the branch format.
@@ -1222,7 +1224,8 @@ class Branch(controldir.ControlComponent):
         with self.lock_read(), result.lock_write():
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
-            self.copy_content_into(result, revision_id=revision_id)
+            self.copy_content_into(
+                result, revision_id=revision_id, tag_selector=tag_selector)
             master_url = self.get_bound_location()
             if master_url is None:
                 result.set_parent(self.user_url)
@@ -1255,14 +1258,16 @@ class Branch(controldir.ControlComponent):
                 revno = 1
         destination.set_last_revision_info(revno, revision_id)
 
-    def copy_content_into(self, destination, revision_id=None):
+    def copy_content_into(self, destination, revision_id=None, tag_selector=None):
         """Copy the content of self into destination.
 
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
+        tag_selector: Optional callback that receives a tag name
+            and should return a boolean to indicate whether a tag should be copied
         """
         return InterBranch.get(self, destination).copy_content_into(
-            revision_id=revision_id)
+            revision_id=revision_id, tag_selector=tag_selector)
 
     def update_references(self, target):
         if not self._format.supports_reference_locations:
@@ -1307,7 +1312,8 @@ class Branch(controldir.ControlComponent):
 
     def create_clone_on_transport(self, to_transport, revision_id=None,
                                   stacked_on=None, create_prefix=False,
-                                  use_existing_dir=False, no_tree=None):
+                                  use_existing_dir=False, no_tree=None,
+                                  tag_selector=None):
         """Create a clone of this branch and its bzrdir.
 
         :param to_transport: The transport to clone onto.
@@ -1327,7 +1333,7 @@ class Branch(controldir.ControlComponent):
         dir_to = self.controldir.clone_on_transport(
             to_transport, revision_id=revision_id, stacked_on=stacked_on,
             create_prefix=create_prefix, use_existing_dir=use_existing_dir,
-            no_tree=no_tree)
+            no_tree=no_tree, tag_selector=tag_selector)
         return dir_to.open_branch()
 
     def create_checkout(self, to_location, revision_id=None,
@@ -2054,7 +2060,7 @@ class InterBranch(InterObject):
         raise NotImplementedError(klass._get_branch_formats_to_test)
 
     def pull(self, overwrite=False, stop_revision=None,
-             possible_transports=None, local=False):
+             possible_transports=None, local=False, tag_selector=None):
         """Mirror source into target branch.
 
         The target branch is considered to be 'local', having low latency.
@@ -2064,18 +2070,21 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.pull)
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
-             _override_hook_source_branch=None):
+             _override_hook_source_branch=None, tag_selector=None):
         """Mirror the source branch into the target branch.
 
         The source branch is considered to be 'local', having low latency.
         """
         raise NotImplementedError(self.push)
 
-    def copy_content_into(self, revision_id=None):
+    def copy_content_into(self, revision_id=None, tag_selector=None):
         """Copy the content of source into target
 
-        revision_id: if not None, the revision history in the new branch will
-                     be truncated to end with revision_id.
+        :param revision_id:
+            if not None, the revision history in the new branch will
+            be truncated to end with revision_id.
+        :param tag_selector: Optional callback that can decide
+            to copy or not copy tags.
         """
         raise NotImplementedError(self.copy_content_into)
 
@@ -2122,7 +2131,7 @@ class GenericInterBranch(InterBranch):
             return format._custom_format
         return format
 
-    def copy_content_into(self, revision_id=None):
+    def copy_content_into(self, revision_id=None, tag_selector=None):
         """Copy the content of source into target
 
         revision_id: if not None, the revision history in the new branch will
@@ -2139,7 +2148,7 @@ class GenericInterBranch(InterBranch):
                 if parent:
                     self.target.set_parent(parent)
             if self.source._push_should_merge_tags():
-                self.source.tags.merge_to(self.target.tags)
+                self.source.tags.merge_to(self.target.tags, selector=tag_selector)
 
     def fetch(self, stop_revision=None, limit=None, lossy=False):
         if self.target.base == self.source.base:
@@ -2200,7 +2209,8 @@ class GenericInterBranch(InterBranch):
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, run_hooks=True,
-             _override_hook_target=None, local=False):
+             _override_hook_target=None, local=False,
+             tag_selector=None):
         """Pull from source into self, updating my master if any.
 
         :param run_hooks: Private parameter - if false, this branch
@@ -2231,15 +2241,17 @@ class GenericInterBranch(InterBranch):
             if master_branch:
                 # pull from source into master.
                 master_branch.pull(
-                    self.source, overwrite, stop_revision, run_hooks=False)
+                    self.source, overwrite, stop_revision, run_hooks=False,
+                    tag_selector=tag_selector)
             return self._pull(
                 overwrite, stop_revision, _hook_master=master_branch,
                 run_hooks=run_hooks,
                 _override_hook_target=_override_hook_target,
-                merge_tags_to_master=not source_is_master)
+                merge_tags_to_master=not source_is_master,
+                tag_selector=tag_selector)
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
-             _override_hook_source_branch=None):
+             _override_hook_source_branch=None, tag_selector=None):
         """See InterBranch.push.
 
         This is the basic concrete implementation of push()
@@ -2271,18 +2283,21 @@ class GenericInterBranch(InterBranch):
                 with master_branch.lock_write():
                     # push into the master from the source branch.
                     master_inter = InterBranch.get(self.source, master_branch)
-                    master_inter._basic_push(overwrite, stop_revision)
+                    master_inter._basic_push(
+                        overwrite, stop_revision, tag_selector=tag_selector)
                     # and push into the target branch from the source. Note
                     # that we push from the source branch again, because it's
                     # considered the highest bandwidth repository.
-                    result = self._basic_push(overwrite, stop_revision)
+                    result = self._basic_push(
+                        overwrite, stop_revision, tag_selector=tag_selector)
                     result.master_branch = master_branch
                     result.local_branch = self.target
                     _run_hooks()
             else:
                 master_branch = None
                 # no master branch
-                result = self._basic_push(overwrite, stop_revision)
+                result = self._basic_push(
+                    overwrite, stop_revision, tag_selector=tag_selector)
                 # TODO: Why set master_branch and local_branch if there's no
                 # binding?  Maybe cleaner to just leave them unset? -- mbp
                 # 20070504
@@ -2291,7 +2306,7 @@ class GenericInterBranch(InterBranch):
                 _run_hooks()
             return result
 
-    def _basic_push(self, overwrite, stop_revision):
+    def _basic_push(self, overwrite, stop_revision, tag_selector=None):
         """Basic implementation of push without bound branches or hooks.
 
         Must be called with source read locked and target write locked.
@@ -2310,7 +2325,7 @@ class GenericInterBranch(InterBranch):
         if self.source._push_should_merge_tags():
             result.tag_updates, result.tag_conflicts = (
                 self.source.tags.merge_to(
-                    self.target.tags, "tags" in overwrite))
+                    self.target.tags, "tags" in overwrite, selector=tag_selector))
         self.update_references()
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
@@ -2318,7 +2333,7 @@ class GenericInterBranch(InterBranch):
     def _pull(self, overwrite=False, stop_revision=None,
               possible_transports=None, _hook_master=None, run_hooks=True,
               _override_hook_target=None, local=False,
-              merge_tags_to_master=True):
+              merge_tags_to_master=True, tag_selector=None):
         """See Branch.pull.
 
         This function is the core worker, used by GenericInterBranch.pull to
@@ -2362,7 +2377,8 @@ class GenericInterBranch(InterBranch):
             result.tag_updates, result.tag_conflicts = (
                 self.source.tags.merge_to(
                     self.target.tags, "tags" in overwrite,
-                    ignore_master=not merge_tags_to_master))
+                    ignore_master=not merge_tags_to_master,
+                    selector=tag_selector))
             self.update_references()
             result.new_revno, result.new_revid = (
                 self.target.last_revision_info())
