@@ -18,11 +18,8 @@
 
 import os
 
-try:
-    from xmlrpc.client import Fault
-    from http.client import parse_headers
-except ImportError:  # python < 3
-    from xmlrpclib import Fault
+from xmlrpc.client import Fault
+from http.client import parse_headers
 
 import breezy
 from ... import (
@@ -32,7 +29,6 @@ from ... import (
     )
 from ...branch import Branch
 from ...directory_service import directories
-from ...sixish import PY3
 from ...tests import (
     features,
     ssl_certs,
@@ -428,10 +424,7 @@ class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
     def handle_one_request(self):
         tcs = self.server.test_case_server
         requestline = self.rfile.readline()
-        if PY3:
-            parse_headers(self.rfile)
-        else:
-            self.MessageClass(self.rfile, 0)
+        parse_headers(self.rfile)
         if requestline.startswith(b'POST'):
             # The body should be a single line (or we don't know where it ends
             # and we don't want to issue a blocking read)

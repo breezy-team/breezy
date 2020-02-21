@@ -22,15 +22,13 @@ when the branch is opened.  Clients should typically do
   Branch.tags.add('name', 'value')
 """
 
-from __future__ import absolute_import
-
 from collections import defaultdict
+import contextlib
 
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
 
 from .registry import Registry
-from .sixish import text_type
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
@@ -39,7 +37,6 @@ import sys
 
 from breezy import (
     bencode,
-    cleanup,
     trace,
     )
 """)
@@ -286,7 +283,7 @@ class BasicTags(_Tags):
             (tagname, source_target, dest_target), or None if no copying was
             done.
         """
-        with cleanup.ExitStack() as stack:
+        with contextlib.ExitStack() as stack:
             if self.branch == to_tags.branch:
                 return {}, []
             if not self.branch.supports_tags():
@@ -406,7 +403,7 @@ def sort_natural(branch, tags):
     """
     def natural_sort_key(tag):
         return [f(s) for f, s in
-                zip(itertools.cycle((text_type.lower, int)),
+                zip(itertools.cycle((str.lower, int)),
                     re.split('([0-9]+)', tag[0]))]
     tags.sort(key=natural_sort_key)
 

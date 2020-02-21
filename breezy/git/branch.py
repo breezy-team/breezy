@@ -17,8 +17,8 @@
 
 """An adapter between a Git Branch and a Bazaar Branch"""
 
-from __future__ import absolute_import
 
+import contextlib
 from io import BytesIO
 from collections import defaultdict
 
@@ -35,7 +35,6 @@ from dulwich.repo import check_ref_format
 
 from .. import (
     branch,
-    cleanup,
     config,
     controldir,
     errors,
@@ -50,10 +49,6 @@ from .. import (
 from ..foreign import ForeignBranch
 from ..revision import (
     NULL_REVISION,
-    )
-from ..sixish import (
-    text_type,
-    viewitems,
     )
 from ..trace import (
     is_quiet,
@@ -241,7 +236,7 @@ class GitTags(tag.BasicTags):
                 master = None
             else:
                 master = to_tags.branch.get_master_branch()
-            with cleanup.ExitStack() as es:
+            with contextlib.ExitStack() as es:
                 if master is not None:
                     es.enter_context(master.lock_write())
                 updates, conflicts = self._merge_to_non_git(
@@ -277,7 +272,7 @@ class LocalGitTagDict(GitTags):
 
     def _set_tag_dict(self, to_dict):
         extra = set(self.refs.allkeys())
-        for k, revid in viewitems(to_dict):
+        for k, revid in to_dict.items():
             name = tag_name_to_ref(k)
             if name in extra:
                 extra.remove(name)
@@ -798,7 +793,7 @@ class LocalGitBranch(GitBranch):
         :return: iterator over (ref_name, tag_name, peeled_sha1, unpeeled_sha1)
         """
         refs = self.repository.controldir.get_refs_container()
-        for ref_name, unpeeled in viewitems(refs.as_dict()):
+        for ref_name, unpeeled in refs.as_dict().items():
             try:
                 tag_name = ref_to_tag_name(ref_name)
             except (ValueError, UnicodeDecodeError):
@@ -806,7 +801,7 @@ class LocalGitBranch(GitBranch):
             peeled = refs.get_peeled(ref_name)
             if peeled is None:
                 peeled = unpeeled
-            if not isinstance(tag_name, text_type):
+            if not isinstance(tag_name, str):
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
 
@@ -1049,7 +1044,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         if local and not bound_location:
             raise errors.LocalRequiresBoundBranch()
         source_is_master = False
-        with cleanup.ExitStack() as es:
+        with contextlib.ExitStack() as es:
             es.enter_context(self.source.lock_read())
             if bound_location:
                 # bound_location comes from a config file, some care has to be
@@ -1137,8 +1132,8 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                     raise errors.DivergedBranches(self.source, self.target)
             refs = {self.target.ref: new_ref}
             result.new_revid = stop_revision
-            for name, sha in viewitems(
-                    self.source.repository._git.refs.as_dict(b"refs/tags")):
+            for name, sha in (
+                    self.source.repository._git.refs.as_dict(b"refs/tags").items()):
                 if sha not in self.source.repository._git:
                     trace.mutter('Ignoring missing SHA: %s', sha)
                     continue
@@ -1300,7 +1295,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         if fetch_tags is None:
             c = self.source.get_config_stack()
             fetch_tags = c.get('branch.fetch_tags')
-        for name, revid in viewitems(self.source.tags.get_tag_dict()):
+        for name, revid in self.source.tags.get_tag_dict().items():
             if self.source.repository.has_revision(revid):
                 ref = tag_name_to_ref(name)
                 if not check_ref_format(ref):
@@ -1337,7 +1332,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             # updated that hasn't actually been updated.
             return False
         # FIXME: Check for diverged branches
-        for ref, (git_sha, revid) in viewitems(new_refs):
+        for ref, (git_sha, revid) in new_refs.items():
             if ref_equals(ret, ref, git_sha, revid):
                 # Already up to date
                 if git_sha is None:
@@ -1374,7 +1369,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             stop_revision = self.source.last_revision()
         ret = []
         if fetch_tags:
-            for k, v in viewitems(self.source.tags.get_tag_dict()):
+            for k, v in self.source.tags.get_tag_dict().items():
                 ret.append((None, v))
         ret.append((None, stop_revision))
         try:

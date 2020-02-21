@@ -17,11 +17,6 @@
 """Exceptions for bzr, and reporting of them.
 """
 
-from __future__ import absolute_import
-
-from .sixish import (
-    PY3,
-    )
 
 # TODO: is there any value in providing the .args field used by standard
 # python exceptions?   A list of values with no names seems less useful
@@ -108,13 +103,7 @@ class BzrError(Exception):
                getattr(self, '_fmt', None),
                err)
 
-    if PY3:
-        __str__ = _format
-    else:
-        def __str__(self):
-            return self._format().encode('utf-8')
-
-        __unicode__ = _format
+    __str__ = _format
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, str(self))
@@ -180,15 +169,6 @@ class InProcessTransport(BzrError):
 
     def __init__(self, transport):
         self.transport = transport
-
-
-class InvalidEntryName(InternalBzrError):
-
-    _fmt = "Invalid entry name: %(name)s"
-
-    def __init__(self, name):
-        BzrError.__init__(self)
-        self.name = name
 
 
 class InvalidRevisionNumber(BzrError):

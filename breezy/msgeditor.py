@@ -16,9 +16,11 @@
 
 """Commit message editor support."""
 
-from __future__ import absolute_import
-
 import codecs
+from io import (
+    BytesIO,
+    StringIO,
+    )
 import os
 from subprocess import call
 import sys
@@ -34,10 +36,6 @@ from . import (
     )
 from .errors import BzrError
 from .hooks import Hooks
-from .sixish import (
-    BytesIO,
-    StringIO,
-    )
 
 
 class BadCommitMessageEncoding(BzrError):

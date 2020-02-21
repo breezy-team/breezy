@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from .. import (
@@ -36,7 +34,6 @@ from .xml_serializer import (
     unpack_inventory_flat,
     )
 from ..revision import Revision
-from ..sixish import unichr
 from ..errors import BzrError
 
 
@@ -56,7 +53,7 @@ def _unescaper(match, _map=_xml_unescape_map):
     except KeyError:
         if not code.startswith(b'#'):
             raise
-        return unichr(int(code[1:])).encode('utf8')
+        return chr(int(code[1:])).encode('utf8')
 
 
 _unescape_re = lazy_regex.lazy_compile(b'\\&([^;]*);')

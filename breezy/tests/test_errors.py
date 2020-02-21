@@ -28,10 +28,6 @@ from .. import (
     tests,
     urlutils,
     )
-from ..sixish import (
-    PY3,
-    text_type,
-    )
 
 
 class TestErrors(tests.TestCase):
@@ -49,10 +45,7 @@ class TestErrors(tests.TestCase):
             init = getattr(c, '__init__', None)
             fmt = getattr(c, '_fmt', None)
             if init:
-                if PY3:
-                    args = inspect.getfullargspec(init)[0]
-                else:
-                    args = inspect.getargspec(init)[0]
+                args = inspect.getfullargspec(init)[0]
                 self.assertFalse('message' in args,
                                  ('Argument name "message" not allowed for '
                                   '"errors.%s.__init__"' % c.__name__))
@@ -365,7 +358,7 @@ class TestErrors(tests.TestCase):
         e = errors.DuplicateRecordNameError(b"n\xc3\xa5me")
         self.assertEqual(
             u"Container has multiple records with the same name: n\xe5me",
-            text_type(e))
+            str(e))
 
     def test_check_error(self):
         e = errors.BzrCheckError('example check failure')
@@ -409,7 +402,7 @@ class TestErrors(tests.TestCase):
         err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
         self.assertEqual(
             u'Tip change rejected: Unicode message\N{INTERROBANG}',
-            text_type(err))
+            str(err))
 
     def test_error_from_smart_server(self):
         error_tuple = ('error', 'tuple')
@@ -508,10 +501,7 @@ class TestErrorFormatting(tests.TestCase):
         # Unicode error, because it tries to call str() on the string
         # returned from e.__str__(), and it has non ascii characters
         s = str(e)
-        if PY3:
-            self.assertEqual('Pass through \xb5 and bar', s)
-        else:
-            self.assertEqual('Pass through \xc2\xb5 and bar', s)
+        self.assertEqual('Pass through \xb5 and bar', s)
 
     def test_missing_format_string(self):
         e = ErrorWithNoFormat(param='randomvalue')

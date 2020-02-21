@@ -16,8 +16,6 @@
 
 """Repository formats using CHK inventories and groupcompress compression."""
 
-from __future__ import absolute_import
-
 import time
 
 from .. import (
@@ -58,10 +56,6 @@ from .pack_repo import (
     )
 from ..bzr.vf_repository import (
     StreamSource,
-    )
-from ..sixish import (
-    viewitems,
-    viewvalues,
     )
 from ..static_tuple import StaticTuple
 
@@ -287,7 +281,7 @@ class GCCHKPacker(Packer):
                 next_keys = set()
 
                 def handle_internal_node(node):
-                    for prefix, value in viewitems(node._items):
+                    for prefix, value in node._items.items():
                         # We don't want to request the same key twice, and we
                         # want to order it by the first time it is seen.
                         # Even further, we don't want to request a key which is
@@ -549,7 +543,7 @@ class GCCHKReconcilePacker(GCCHKPacker):
         ancestor_keys = revision_vf.get_parent_map(revision_vf.keys())
         # Strip keys back into revision_ids.
         ancestors = dict((k[0], tuple([p[0] for p in parents]))
-                         for k, parents in viewitems(ancestor_keys))
+                         for k, parents in ancestor_keys.items())
         del ancestor_keys
         # TODO: _generate_text_key_index should be much cheaper to generate from
         #       a chk repository, rather than the current implementation
@@ -671,7 +665,7 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                 if search_key_name is None:
                     # Find the name corresponding to the search_key_func
                     search_key_reg = chk_map.search_key_registry
-                    for search_key_name, func in viewitems(search_key_reg):
+                    for search_key_name, func in search_key_reg.items():
                         if func == chk_inv.id_to_entry._search_key_func:
                             break
                 canonical_inv = inventory.CHKInventory.from_inventory(
@@ -748,7 +742,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         # any present parent inventories, which may be used when calculating
         # deltas for streaming.
         all_inv_keys = set(corresponding_invs)
-        for parent_inv_keys in viewvalues(inv_parent_map):
+        for parent_inv_keys in inv_parent_map.values():
             all_inv_keys.update(parent_inv_keys)
         # Filter out ghost parents.
         all_inv_keys.intersection_update(

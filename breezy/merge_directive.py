@@ -14,16 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import base64
+import contextlib
+from io import BytesIO
 import re
 
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
 from breezy import (
     branch as _mod_branch,
-    cleanup,
     diff,
     email_message,
     gpg,
@@ -43,9 +42,6 @@ from breezy.bzr.bundle import (
 """)
 from . import (
     errors,
-    )
-from .sixish import (
-    BytesIO,
     )
 
 
@@ -599,7 +595,7 @@ class MergeDirective2(BaseMergeDirective):
         If the message is not supplied, the message from revision_id will be
         used for the commit.
         """
-        with cleanup.ExitStack() as exit_stack:
+        with contextlib.ExitStack() as exit_stack:
             exit_stack.enter_context(repository.lock_write())
             t_revision_id = revision_id
             if revision_id == b'null:':

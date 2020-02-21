@@ -16,8 +16,6 @@
 
 """Support for GitHub."""
 
-from __future__ import absolute_import
-
 import json
 import os
 
@@ -47,7 +45,6 @@ from ...config import AuthenticationConfig, GlobalStack
 from ...errors import InvalidHttpResponse, PermissionDenied
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
-from ...sixish import PY3
 from ...trace import note
 from ...transport import get_transport
 from ...transport.http import default_user_agent
@@ -222,8 +219,6 @@ def parse_github_branch_url(branch):
 
 
 def github_url_to_bzr_url(url, branch_name):
-    if not PY3:
-        branch_name = branch_name.encode('utf-8')
     return git_url_to_bzr_url(url, branch_name)
 
 

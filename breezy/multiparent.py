@@ -14,9 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import errno
+from io import (
+    BytesIO,
+    )
 import os
 
 from .lazy_import import lazy_import
@@ -35,10 +36,6 @@ from . import (
     errors,
     )
 from .i18n import gettext
-from .sixish import (
-    BytesIO,
-    range,
-    )
 
 
 def topo_iter_keys(vf, keys=None):

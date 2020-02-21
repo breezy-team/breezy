@@ -64,8 +64,6 @@ like::
   revision_mail_headers=X-Cheese: to the rescue!
 """
 
-from __future__ import absolute_import
-
 from ... import version_info  # noqa: F401
 from ...config import option_registry
 

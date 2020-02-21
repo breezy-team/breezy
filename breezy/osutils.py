@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import errno
 import os
 import re
@@ -52,11 +50,6 @@ from breezy import (
 from breezy.i18n import gettext
 """)
 
-from .sixish import (
-    PY3,
-    text_type,
-    )
-
 from hashlib import (
     md5,
     sha1 as sha,
@@ -91,14 +84,7 @@ class UnsupportedTimezoneFormat(errors.BzrError):
 
 
 def get_unicode_argv():
-    if PY3:
-        return sys.argv[1:]
-    try:
-        user_encoding = get_user_encoding()
-        return [a.decode(user_encoding) for a in sys.argv[1:]]
-    except UnicodeDecodeError:
-        raise errors.BzrError(gettext("Parameter {0!r} encoding is unsupported by {1} "
-                                      "application locale.").format(a, user_encoding))
+    return sys.argv[1:]
 
 
 def make_readonly(filename):
@@ -331,14 +317,7 @@ def _posix_path_from_environ(key):
     Note that posix systems use arbitrary byte strings for filesystem objects,
     so a path that raises BadFilenameEncoding here may still be accessible.
     """
-    val = os.environ.get(key, None)
-    if PY3 or val is None:
-        return val
-    try:
-        return val.decode(_fs_enc)
-    except UnicodeDecodeError:
-        # GZ 2011-12-12:Ideally want to include `key` in the exception message
-        raise errors.BadFilenameEncoding(val, _fs_enc)
+    return os.environ.get(key, None)
 
 
 def _posix_get_home_dir():
@@ -354,15 +333,7 @@ def _posix_get_home_dir():
 
 def _posix_getuser_unicode():
     """Get username from environment or password database as unicode"""
-    name = getpass.getuser()
-    if PY3:
-        return name
-    user_encoding = get_user_encoding()
-    try:
-        return name.decode(user_encoding)
-    except UnicodeDecodeError:
-        raise errors.BzrError("Encoding of username %r is unsupported by %s "
-                              "application locale." % (name, user_encoding))
+    return getpass.getuser()
 
 
 def _win32_fixdrive(path):
@@ -447,10 +418,7 @@ def _rename_wrap_exception(rename_func):
     return _rename_wrapper
 
 
-if sys.version_info > (3,):
-    _getcwd = os.getcwd
-else:
-    _getcwd = os.getcwdu
+_getcwd = os.getcwd
 
 
 # Default rename wraps os.rename()
@@ -738,12 +706,8 @@ def file_iterator(input_file, readsize=32768):
 
 # GZ 2017-09-16: Makes sense in general for hexdigest() result to be text, but
 # used as bytes through most interfaces so encode with this wrapper.
-if PY3:
-    def _hexdigest(hashobj):
-        return hashobj.hexdigest().encode()
-else:
-    def _hexdigest(hashobj):
-        return hashobj.hexdigest()
+def _hexdigest(hashobj):
+    return hashobj.hexdigest().encode()
 
 
 def sha_file(f):
@@ -895,7 +859,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
     (date_fmt, tt, offset_str) = \
         _format_date(t, offset, timezone, date_fmt, show_offset)
     date_str = time.strftime(date_fmt, tt)
-    if not isinstance(date_str, text_type):
+    if not isinstance(date_str, str):
         date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
 
@@ -1012,10 +976,7 @@ def rand_chars(num):
     """
     s = ''
     for raw_byte in rand_bytes(num):
-        if not PY3:
-            s += ALNUM[ord(raw_byte) % 36]
-        else:
-            s += ALNUM[raw_byte % 36]
+        s += ALNUM[raw_byte % 36]
     return s
 
 
@@ -1375,7 +1336,7 @@ def decode_filename(filename):
     Otherwise it is decoded from the the filesystem's encoding. If decoding
     fails, a errors.BadFilenameEncoding exception is raised.
     """
-    if isinstance(filename, text_type):
+    if isinstance(filename, str):
         return filename
     try:
         return filename.decode(_fs_enc)
@@ -1390,7 +1351,7 @@ def safe_unicode(unicode_or_utf8_string):
     Otherwise it is decoded from utf-8. If decoding fails, the exception is
     wrapped in a BzrBadParameterNotUnicode exception.
     """
-    if isinstance(unicode_or_utf8_string, text_type):
+    if isinstance(unicode_or_utf8_string, str):
         return unicode_or_utf8_string
     try:
         return unicode_or_utf8_string.decode('utf8')
@@ -1729,8 +1690,6 @@ def set_or_unset_env(env_variable, value):
         if orig_val is not None:
             del os.environ[env_variable]
     else:
-        if not PY3 and isinstance(value, text_type):
-            value = value.encode(get_user_encoding())
         os.environ[env_variable] = value
     return orig_val
 
@@ -2127,9 +2086,7 @@ def get_host_name():
         return win32utils.get_host_name()
     else:
         import socket
-        if PY3:
-            return socket.gethostname()
-        return socket.gethostname().decode(get_user_encoding())
+        return socket.gethostname()
 
 
 # We must not read/write any more than 64k at a time from/to a socket so we
@@ -2714,7 +2671,4 @@ def get_fs_type(path):
     return _FILESYSTEM_FINDER.find(path)
 
 
-if PY3:
-    perf_counter = time.perf_counter
-else:
-    perf_counter = time.clock
+perf_counter = time.perf_counter

@@ -21,8 +21,6 @@ patches, the user can resolve the conflict and continue the rebase using the
 'rebase-continue' command or abort using the 'rebase-abort' command.
 """
 
-from __future__ import absolute_import
-
 from ... import errors
 from ...commands import plugin_cmds
 

@@ -17,8 +17,6 @@
 """Tree classes, representing directory at point in time.
 """
 
-from __future__ import absolute_import
-
 import os
 import re
 
@@ -53,9 +51,6 @@ from breezy.bzr import (
     inventory as _mod_inventory,
     )
 """)
-from ..sixish import (
-    viewvalues,
-    )
 from ..tree import (
     FileTimestampUnavailable,
     InterTree,
@@ -249,7 +244,7 @@ class InventoryTree(Tree):
             ie = self._path2ie(path)
             if ie.kind != 'directory':
                 raise errors.NotADirectory(path)
-            return iter(viewvalues(ie.children))
+            return ie.children.values()
 
     def _get_plan_merge_data(self, path, other, base):
         from . import versionedfile
@@ -509,7 +504,7 @@ class _SmartAddHelper(object):
     def get_inventory_delta(self):
         # GZ 2016-06-05: Returning view would probably be fine but currently
         # Inventory.apply_delta is documented as requiring a list of changes.
-        return list(viewvalues(self._invdelta))
+        return list(self._invdelta.values())
 
     def _get_ie(self, inv_path):
         """Retrieve the most up to date inventory entry for a path.

@@ -25,6 +25,7 @@ These tests correspond to tests.test_smart, which exercises the server side.
 
 import base64
 import bz2
+from io import BytesIO
 import tarfile
 import zlib
 
@@ -68,11 +69,6 @@ from ..bzr import groupcompress_repo, knitpack_repo
 from ..revision import (
     NULL_REVISION,
     Revision,
-    )
-from ..sixish import (
-    BytesIO,
-    PY3,
-    text_type,
     )
 from ..bzr.smart import medium, request
 from ..bzr.smart.client import _SmartClient
@@ -339,10 +335,7 @@ class TestVfsHas(tests.TestCase):
         client.add_success_response(b'yes',)
         transport = RemoteTransport('bzr://localhost/', _client=client)
         filename = u'/hell\u00d8'
-        if PY3:
-            result = transport.has(filename)
-        else:
-            result = transport.has(filename.encode('utf-8'))
+        result = transport.has(filename)
         self.assertEqual(
             [('call', b'has', (filename.encode('utf-8'),))],
             client._calls)
@@ -1787,7 +1780,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
             branch._set_last_revision, b'rev-id')
         # The UTF-8 message from the response has been decoded into a unicode
         # object.
-        self.assertIsInstance(err.msg, text_type)
+        self.assertIsInstance(err.msg, str)
         self.assertEqual(rejection_msg_unicode, err.msg)
         branch.unlock()
         self.assertFinished(client)

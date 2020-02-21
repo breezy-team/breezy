@@ -22,6 +22,8 @@ For concrete class tests see this file, and for meta-branch tests
 also see this file.
 """
 
+from io import StringIO
+
 from .. import (
     bedding,
     branch as _mod_branch,
@@ -39,9 +41,6 @@ from ..bzr import (
 from ..bzr.fullhistory import (
     BzrBranch5,
     BzrBranchFormat5,
-    )
-from ..sixish import (
-    StringIO,
     )
 
 

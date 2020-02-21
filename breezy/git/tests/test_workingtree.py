@@ -17,8 +17,6 @@
 
 """Tests for Git working trees."""
 
-from __future__ import absolute_import
-
 import os
 import stat
 

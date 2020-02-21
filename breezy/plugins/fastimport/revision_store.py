@@ -15,8 +15,6 @@
 
 """An abstraction of a repository providing just the bits importing needs."""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from ... import (

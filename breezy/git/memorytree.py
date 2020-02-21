@@ -17,8 +17,6 @@
 
 """Git Memory Trees."""
 
-from __future__ import absolute_import
-
 import os
 import posixpath
 import stat

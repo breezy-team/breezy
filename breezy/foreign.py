@@ -16,9 +16,6 @@
 
 """Foreign branch utilities."""
 
-from __future__ import absolute_import
-
-
 from .branch import (
     Branch,
     )

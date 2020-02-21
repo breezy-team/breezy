@@ -30,14 +30,7 @@ The plugin also provides the following commands:
     launchpad-login: Show or set the Launchpad user ID
     launchpad-open: Open a Launchpad branch page in your web browser
 
-As well as the following deprecated command:
-
-    lp-propose-merge: Propose merging a branch on Launchpad
-         (deprecated in favour of the more generic 'brz propose-merge')
-
 """
-
-from __future__ import absolute_import
 
 # The XMLRPC server address can be overridden by setting the environment
 # variable $BRZ_LP_XMLRPC_URL
@@ -62,7 +55,6 @@ for klsname, aliases in [
     ("cmd_launchpad_open", ["lp-open"]),
     ("cmd_launchpad_login", ["lp-login"]),
     ("cmd_launchpad_logout", ["lp-logout"]),
-    ("cmd_lp_propose_merge", ["lp-submit", "lp-propose"]),
         ("cmd_lp_find_proposal", [])]:
     plugin_cmds.register_lazy(klsname, aliases,
                               "breezy.plugins.launchpad.cmds")

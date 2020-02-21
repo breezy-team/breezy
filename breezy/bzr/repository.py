@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 import itertools
 
 from . import (
@@ -31,9 +29,6 @@ from ..repository import (
     format_registry,
     Repository,
     RepositoryFormat,
-    )
-from ..sixish import (
-    viewvalues,
     )
 
 
@@ -94,8 +89,8 @@ class MetaDirRepository(Repository):
         :return: set of revisions that are parents of revision_ids which are
             not part of revision_ids themselves
         """
-        parent_ids = set(itertools.chain.from_iterable(viewvalues(
-            self.get_parent_map(revision_ids))))
+        parent_ids = set(itertools.chain.from_iterable(
+            self.get_parent_map(revision_ids).values()))
         parent_ids.difference_update(revision_ids)
         parent_ids.discard(_mod_revision.NULL_REVISION)
         return parent_ids

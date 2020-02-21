@@ -17,8 +17,6 @@
 
 """File graph access."""
 
-from __future__ import absolute_import
-
 import stat
 
 from dulwich.errors import (

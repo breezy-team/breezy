@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 # \subsection{\emph{rio} - simple text metaformat}
 #
 # \emph{r} stands for `restricted', `reproducible', or `rfc822-like'.
@@ -36,9 +34,6 @@ import re
 
 from . import osutils
 from .iterablefile import IterableFile
-from .sixish import (
-    text_type,
-    )
 
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
 # through a writer object.
@@ -139,7 +134,7 @@ class Stanza(object):
             raise ValueError("invalid tag %r" % (tag,))
         if isinstance(value, bytes):
             value = value.decode('ascii')
-        elif isinstance(value, text_type):
+        elif isinstance(value, str):
             pass
         else:
             raise TypeError("invalid type for rio value: %r of type %s"

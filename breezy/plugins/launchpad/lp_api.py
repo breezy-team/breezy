@@ -16,24 +16,16 @@
 
 """Tools for dealing with the Launchpad API."""
 
-from __future__ import absolute_import
-
 # Importing this module will be expensive, since it imports launchpadlib and
 # its dependencies. However, our plan is to only load this module when it is
 # needed by a command that uses it.
 
 
 import re
-try:
-    from urllib.parse import (
-        urlparse,
-        urlunparse,
-        )
-except ImportError:  # python < 3
-    from urlparse import (
-        urlparse,
-        urlunparse,
-        )
+from urllib.parse import (
+    urlparse,
+    urlunparse,
+    )
 
 from ... import (
     branch,

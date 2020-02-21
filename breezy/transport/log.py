@@ -16,8 +16,6 @@
 
 """Transport decorator that logs transport operations to brz.log."""
 
-from __future__ import absolute_import
-
 # see also the transportstats plugin, which gives you some summary information
 # in a machine-readable dump
 
