@@ -143,7 +143,8 @@ class BzrDir(controldir.ControlDir):
 
     def clone_on_transport(self, transport, revision_id=None,
                            force_new_repo=False, preserve_stacking=False, stacked_on=None,
-                           create_prefix=False, use_existing_dir=True, no_tree=False):
+                           create_prefix=False, use_existing_dir=True, no_tree=False,
+                           tag_selector=None):
         """Clone this bzrdir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -235,7 +236,8 @@ class BzrDir(controldir.ControlDir):
         if local_branch is not None:
             local_branch.clone(
                 result, revision_id=revision_id,
-                repository_policy=repository_policy)
+                repository_policy=repository_policy,
+                tag_selector=tag_selector)
         try:
             # Cheaper to check if the target is not local, than to try making
             # the tree and fail.

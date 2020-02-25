@@ -375,6 +375,26 @@ class TestPush(TestCaseWithInterBranch):
         self.overrideAttr(SmartServerRepositoryGetParentMap,
                           'no_extra_results', True)
 
+    def test_push_tag_selector(self):
+        if not self.branch_format_from.supports_tags():
+            raise tests.TestNotApplicable('from format does not support tags')
+        if not self.branch_format_to.supports_tags():
+            raise tests.TestNotApplicable('to format does not support tags')
+        tree_a = self.make_from_branch_and_tree('tree_a')
+        revid1 = tree_a.commit('message 1')
+        try:
+            tree_b = self.sprout_to(
+                tree_a.controldir, 'tree_b').open_workingtree()
+        except errors.NoRoundtrippingSupport:
+            raise tests.TestNotApplicable(
+                'lossless push between %r and %r not supported' %
+                (self.branch_format_from, self.branch_format_to))
+        tree_b.branch.tags.set_tag('tag1', revid1)
+        tree_b.branch.tags.set_tag('tag2', revid1)
+        tree_b.branch.get_config_stack().set('branch.fetch_tags', True)
+        tree_b.branch.push(tree_a.branch, tag_selector=lambda x: x == 'tag1')
+        self.assertEqual({'tag1': revid1}, tree_a.branch.tags.get_tag_dict())
+
 
 class TestPushHook(TestCaseWithInterBranch):
 

@@ -821,13 +821,13 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
 
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
-             show_base=False):
+             show_base=False, tag_selector=None):
         with self.lock_write(), source.lock_read():
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
                                      possible_transports=possible_transports,
-                                     local=local)
+                                     local=local, tag_selector=tag_selector)
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
                 repository = self.branch.repository
