@@ -281,13 +281,13 @@ class GitHub(Hoster):
         raise InvalidHttpResponse(path, response.text)
 
     def _create_pull(self, path, title, head, base, body=None, labels=None,
-                     assignee=None, draft=False, maintainers_can_modify=False):
+                     assignee=None, draft=False, maintainer_can_modify=False):
         data = {
             'title': title,
             'head': head,
             'base': base,
             'draft': draft,
-            'maintainers_can_modify': maintainers_can_modify,
+            'maintainer_can_modify': maintainer_can_modify,
         }
         if labels is not None:
             data['labels'] = labels
@@ -568,7 +568,6 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
             self.target_repo_name = self.target_repo_name[:-4]
         # TODO(jelmer): Allow setting title explicitly?
         title = determine_title(description)
-        # TODO(jelmer): Set maintainers_can_modify?
         target_repo = self.gh._get_repo(
             self.target_owner, self.target_repo_name)
         assignees = []
