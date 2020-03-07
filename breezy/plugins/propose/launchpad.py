@@ -548,7 +548,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False):
+                        work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported(self)

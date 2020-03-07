@@ -149,6 +149,8 @@ class cmd_propose_merge(Command):
                    help='Labels to apply.'),
         Option('no-allow-lossy',
                help='Allow fallback to lossy push, if necessary.'),
+        Option('allow-collaboration',
+               help='Allow collaboration from target branch maintainer(s)'),
         ]
     takes_args = ['submit_branch?']
 
@@ -156,7 +158,8 @@ class cmd_propose_merge(Command):
 
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
-            labels=None, prerequisite=None, commit_message=None, wip=False):
+            labels=None, prerequisite=None, commit_message=None, wip=False,
+            allow_collaboration=False):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -196,7 +199,7 @@ class cmd_propose_merge(Command):
                 description=description, reviewers=reviewers,
                 prerequisite_branch=prerequisite_branch, labels=labels,
                 commit_message=commit_message,
-                work_in_progress=wip)
+                work_in_progress=wip, allow_collaboration=allow_collaboration)
         except _mod_propose.MergeProposalExists as e:
             note(gettext('There is already a branch merge proposal: %s'), e.url)
         else:

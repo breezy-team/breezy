@@ -545,7 +545,7 @@ class RemoteGitDir(GitDir):
 
     def push_branch(self, source, revision_id=None, overwrite=False,
                     remember=False, create_prefix=False, lossy=False,
-                    name=None):
+                    name=None, tag_selector=None):
         """Push the source branch into this ControlDir."""
         if revision_id is None:
             # No revision supplied by the user, default to the branch
@@ -590,6 +590,8 @@ class RemoteGitDir(GitDir):
             ret[actual_refname] = new_sha
             if fetch_tags:
                 for tagname, revid in source.tags.get_tag_dict().items():
+                    if tag_selector and not tag_selector(tagname):
+                        continue
                     if lossy:
                         try:
                             new_sha = source_store._lookup_revision_sha1(revid)
