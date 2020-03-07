@@ -238,6 +238,9 @@ class Hoster(object):
     # Common values: 'plain', 'markdown'
     merge_proposal_description_format = None
 
+    # Does this hoster support the allow_collaboration flag?
+    supports_allow_collaboration = False
+
     def publish_derived(self, new_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
                         allow_lossy=True, tag_selector=None):

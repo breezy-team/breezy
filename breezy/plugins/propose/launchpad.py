@@ -198,6 +198,8 @@ class Launchpad(Hoster):
 
     supports_merge_proposal_commit_message = True
 
+    supports_allow_collaboration = False
+
     merge_proposal_description_format = 'plain'
 
     def __init__(self, staging=False):

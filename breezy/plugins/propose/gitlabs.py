@@ -266,6 +266,7 @@ class GitLab(Hoster):
 
     supports_merge_proposal_labels = True
     supports_merge_proposal_commit_message = False
+    supports_allow_collaboration = True
     merge_proposal_description_format = 'markdown'
 
     def __repr__(self):
