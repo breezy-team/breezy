@@ -275,12 +275,14 @@ class GitHub(Hoster):
             return json.loads(response.text)
         raise InvalidHttpResponse(path, response.text)
 
-    def _create_pull(self, path, title, head, base, body=None, labels=None, assignee=None, draft=False):
+    def _create_pull(self, path, title, head, base, body=None, labels=None,
+                     assignee=None, draft=False, maintainers_can_modify=False):
         data = {
             'title': title,
             'head': head,
             'base': base,
             'draft': draft,
+            'maintainers_can_modify': maintainers_can_modify,
         }
         if labels is not None:
             data['labels'] = labels
@@ -551,7 +553,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False):
+                        work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
@@ -582,7 +584,9 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 head="%s:%s" % (self.source_owner, self.source_branch_name),
                 base=self.target_branch_name,
                 labels=labels, assignee=assignees,
-                draft=(not work_in_progress))
+                draft=work_in_progress,
+                maintainer_can_modify=allow_collaboration,
+                )
         except ValidationFailed:
             raise MergeProposalExists(self.source_branch.user_url)
         return GitHubMergeProposal(self.gh, pull_request)

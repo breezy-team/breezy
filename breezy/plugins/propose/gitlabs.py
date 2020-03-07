@@ -583,7 +583,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False):
+                        work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
@@ -595,7 +595,6 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         title = determine_title(description)
         if work_in_progress:
             title = 'WIP: %s' % title
-        # TODO(jelmer): Allow setting allow_collaboration field
         # TODO(jelmer): Allow setting milestone field
         # TODO(jelmer): Allow setting squash field
         kwargs = {
@@ -604,7 +603,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             'target_project_id': target_project['id'],
             'source_branch_name': self.source_branch_name,
             'target_branch_name': self.target_branch_name,
-            'description': description}
+            'description': description,
+            'allow_collaboration': allow_collaboration}
         if labels:
             kwargs['labels'] = ','.join(labels)
         if reviewers:
