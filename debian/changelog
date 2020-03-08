@@ -1,3 +1,9 @@
+breezy (3.0.2-5) UNRELEASED; urgency=medium
+
+  * Add patch 26_python3.8: fix python3.8 support.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Mar 2020 02:41:54 +0000
+
 breezy (3.0.2-4) unstable; urgency=medium
 
   * Add patch 24_paramiko_compat: support newer versions of paramiko.
