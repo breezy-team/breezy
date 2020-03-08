@@ -148,6 +148,9 @@ Bug Fixes
 * Ignore ghost tags when interacting with remote Git repositories.
   (Jelmer Vernooĳ)
 
+* Fix ``setup_ui=False`` when initializing Breezy.
+  (Jelmer Vernooĳ, #1852647)
+
 Documentation
 *************
 
