@@ -1,8 +1,8 @@
-breezy (3.0.2-5) UNRELEASED; urgency=medium
+breezy (3.0.2-5) unstable; urgency=medium
 
   * Disable export_pot tests that fail on Python 3.8. Closes: #953940
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Mar 2020 02:42:49 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 15 Mar 2020 10:44:50 +0000
 
 breezy (3.0.2-4) unstable; urgency=medium
 
