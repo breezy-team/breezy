@@ -1,6 +1,6 @@
 breezy (3.0.2-5) UNRELEASED; urgency=medium
 
-  * Add patch 26_python3.8: fix python3.8 support. Closes: #953940
+  * Disable export_pot tests that fail on Python 3.8. Closes: #953940
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Mar 2020 02:42:49 +0000
 

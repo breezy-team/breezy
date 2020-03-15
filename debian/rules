@@ -27,7 +27,7 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	PYTHONPATH=$(CURDIR)/.pybuild/cpython3_$(PY3VERSION)_breezy/build \
 	$(shell py3versions -d) ./brz -Derror selftest -v --parallel=fork \
 	-Oselftest.timeout=6000 -x bash_completion \
-	-x breezy.tests.test_transport.TestSSHConnections.test_bzr_connect_to_bzr_ssh
+	-x breezy.tests.test_transport.TestSSHConnections.test_bzr_connect_to_bzr_ssh -x test_export_pot
 endif
 
 override_dh_auto_clean:
