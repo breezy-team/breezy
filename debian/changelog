@@ -1,8 +1,8 @@
 breezy (3.0.2-5) UNRELEASED; urgency=medium
 
-  * Add patch 26_python3.8: fix python3.8 support.
+  * Add patch 26_python3.8: fix python3.8 support. Closes: #953940
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Mar 2020 02:41:54 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 08 Mar 2020 02:42:49 +0000
 
 breezy (3.0.2-4) unstable; urgency=medium
 
