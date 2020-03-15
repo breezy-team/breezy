@@ -707,7 +707,7 @@ class DistributionBranch(object):
                str(version), pull_revision)
         assert self.tree is not None, "Can't pull branch with no tree"
         self.tree.pull(pull_branch.branch, stop_revision=pull_revision)
-        self.tag_version(version, revid=pull_revision)
+        tag_name = self.tag_version(version, revid=pull_revision)
         if not native and not self.pristine_upstream_source.has_version(
                 package, version.upstream_version):
             if pull_branch.pristine_upstream_source.has_version(
@@ -731,6 +731,7 @@ class DistributionBranch(object):
         else:
             mutter("Not importing the upstream part as it is already "
                    "present in the upstream branch")
+        return tag_name
 
     def get_parents_with_upstream(self, package, version, versions,
                                   tarballs, force_upstream_parent=False):
@@ -1022,14 +1023,19 @@ class DistributionBranch(object):
         if message is None:
             message = 'Import packaging changes for version %s' % \
                         (str(version),)
-        revprops = {"deb-md5": md5}
-        if native:
+        supports_revprops = (
+            self.tree.branch.repository._format.
+            supports_custom_revision_properties)
+        revprops = {}
+        if supports_revprops:
+            revprops["deb-md5"] = md5
+        if native and supports_revprops:
             revprops['deb-native'] = "True"
         if authors:
             revprops['authors'] = "\n".join(authors)
-        if thanks:
+        if thanks and supports_revprops:
             revprops['deb-thanks'] = "\n".join(thanks)
-        if bugs:
+        if bugs and supports_revprops:
             revprops['bugs'] = "\n".join(bugs)
         timezone = None
         if timestamp is not None:
@@ -1038,7 +1044,7 @@ class DistributionBranch(object):
         self._mark_native_config(native)
         revid = self.tree.commit(
             message, revprops=revprops, timestamp=timestamp, timezone=timezone)
-        self.tag_version(version, revid=revid)
+        return self.tag_version(version, revid=revid)
 
     def upstream_parents(self, package, versions, version):
         """Get the parents for importing a new upstream.
@@ -1173,7 +1179,7 @@ class DistributionBranch(object):
                 package, version, versions, upstream_tarballs,
                 force_upstream_parent=imported_upstream)
             # Now we have the list of parents we need to import the .diff.gz
-            self.import_debian(
+            return self.import_debian(
                 debian_part, version, parents, md5, timestamp=timestamp,
                 file_ids_from=file_ids_from)
 
@@ -1204,11 +1210,11 @@ class DistributionBranch(object):
         if pull_debian:
             pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
-            self.pull_version_from_branch(
+            return self.pull_version_from_branch(
                 pull_branch, package, version, native=True)
         else:
             parents = self.get_native_parents(version, versions)
-            self.import_debian(
+            return self.import_debian(
                 debian_part, version, parents, md5, native=True,
                 timestamp=timestamp, file_ids_from=file_ids_from)
 
@@ -1255,7 +1261,7 @@ class DistributionBranch(object):
             # should happen if it isn't.
 
             if extractor.extracted_upstream is not None:
-                self._import_normal_package(
+                return self._import_normal_package(
                     dsc['Source'], version, versions,
                     extractor.extracted_debianised,
                     extractor.unextracted_debian_md5,
@@ -1264,7 +1270,7 @@ class DistributionBranch(object):
                     file_ids_from=file_ids_from, pull_debian=pull_debian,
                     force_pristine_tar=force_pristine_tar)
             else:
-                self._import_native_package(
+                return self._import_native_package(
                     dsc['Source'], version, versions,
                     extractor.extracted_debianised,
                     extractor.unextracted_debian_md5, timestamp=timestamp,
