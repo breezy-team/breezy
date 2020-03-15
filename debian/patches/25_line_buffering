@@ -1,7 +1,9 @@
 === modified file 'breezy/tests/__init__.py'
---- old/breezy/tests/__init__.py	2019-02-07 05:30:07 +0000
-+++ new/breezy/tests/__init__.py	2020-02-08 13:22:15 +0000
-@@ -3612,7 +3612,7 @@
+Index: unstable/breezy/tests/__init__.py
+===================================================================
+--- unstable.orig/breezy/tests/__init__.py
++++ unstable/breezy/tests/__init__.py
+@@ -3614,7 +3614,7 @@ def fork_for_tests(suite):
          pid = os.fork()
          if pid == 0:
              try:
@@ -10,7 +12,7 @@
                  workaround_zealous_crypto_random()
                  try:
                      import coverage
-@@ -3645,7 +3645,7 @@
+@@ -3647,7 +3647,7 @@ def fork_for_tests(suite):
              os._exit(0)
          else:
              os.close(c2pwrite)
@@ -19,7 +21,7 @@
              test = TestInOtherProcess(stream, pid)
              result.append(test)
      return result
-@@ -3687,7 +3687,7 @@
+@@ -3689,7 +3689,7 @@ def reinvoke_for_tests(suite):
              # if we're on windows, we can't execute the bzr script directly
              bzr_path = [sys.executable] + bzr_path
          fd, test_list_file_name = tempfile.mkstemp()
@@ -28,4 +30,3 @@
          for test in process_tests:
              test_list_file.write(test.id() + '\n')
          test_list_file.close()
-
