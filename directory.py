@@ -100,8 +100,6 @@ def vcs_git_url_to_bzr_url(url):
     url = git_url_to_bzr_url(url)
     if branch:
         branch = urlutils.quote(branch, '')
-        if sys.version_info < (3, 0):
-            branch = branch.encode('utf-8')
         url = urlutils.join_segment_parameters(
             url, {'branch': branch})
     if subpath:
@@ -125,8 +123,6 @@ def vcs_hg_url_to_bzr_url(url):
 
     if branch:
         branch = urlutils.quote(branch, '')
-        if sys.version_info < (3, 0):
-            branch = branch.encode('utf-8')
         url = urlutils.join_segment_parameters(
             url, {'branch': branch})
     return url

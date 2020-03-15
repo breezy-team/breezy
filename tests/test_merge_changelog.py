@@ -348,12 +348,8 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
 
         merger = FakeMerger(tree)
         params_cls = merge.MergeFileHookParams
-        if sys.version_info >= (3, 0):
-            from inspect import signature
-            params_cls_arg_count = len(signature(params_cls).parameters) + 1
-        else:
-            from inspect import getargspec
-            params_cls_arg_count = len(getargspec(params_cls.__init__)[0])
+        from inspect import signature
+        params_cls_arg_count = len(signature(params_cls).parameters) + 1
         # Older versions of Breezy required a file_id to be specified.
         if params_cls_arg_count == 7:
             params = params_cls(

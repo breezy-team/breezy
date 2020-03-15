@@ -217,10 +217,7 @@ class UScanSource(UpstreamSource):
             if error.startswith('uscan error '):
                 error = error[len('uscan error '):]
             raise UScanError(error)
-        if sys.version_info >= (3, 0):
-            sys.stderr.write(stderr.decode())
-        else:
-            sys.stderr.write(stderr)
+        sys.stderr.write(stderr.decode())
         return stdout, p.returncode
 
     @staticmethod

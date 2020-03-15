@@ -99,10 +99,7 @@ def make_new_upstream_tarball_xz(source, dest):
 
 def make_new_upstream_tarball_lzma(source, dest):
     import lzma
-    if sys.version_info > (3, 0):
-        f = lzma.LZMAFile(dest, 'w', format=lzma.FORMAT_ALONE)
-    else:
-        f = lzma.LZMAFile(dest, 'w', options={'format': 'alone'})
+    f = lzma.LZMAFile(dest, 'w', format=lzma.FORMAT_ALONE)
     try:
         tar = tarfile.open(None, 'w', f)
         try:
