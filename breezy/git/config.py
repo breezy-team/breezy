@@ -63,6 +63,12 @@ class GitConfigSectionDefault(config.Section):
             except KeyError:
                 return email.decode()
             return '%s <%s>' % (name.decode(), email.decode())
+        if name == 'gpg_signing_key':
+            try:
+                key = self._config.get((b'user', ), b'signingkey')
+            except KeyError:
+                return None
+            return key.decode()
         return None
 
 

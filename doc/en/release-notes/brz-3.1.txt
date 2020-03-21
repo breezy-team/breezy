@@ -115,7 +115,7 @@ Improvements
    (Jelmer Vernooĳ)
 
  * ``.git/config`` is now consulted to determine the users' identity
-   for commits. (Jelmer Vernooĳ)
+   for commits, and the gpg_signing_key. (Jelmer Vernooĳ)
 
 Bug Fixes
 *********
