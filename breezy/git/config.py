@@ -41,12 +41,6 @@ class GitBranchConfig(config.BranchConfig):
             self, name, value, store=config.STORE_LOCATION,
             warn_masked=warn_masked)
 
-    def get_user_option(self, option_name, expand=True):
-        raise ValueError(option_name)
-
-    def username(self):
-        raise ValueError(self)
-
     def _get_user_id(self):
         # TODO: Read from ~/.gitconfig
         return self._get_best_value('_get_user_id')
