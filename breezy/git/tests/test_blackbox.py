@@ -426,6 +426,25 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(out, '')
         self.assertTrue(err.endswith, '3 objects\n')
 
+    def test_local_whoami(self):
+        r = GitRepo.init("gitr", mkdir=True)
+        self.build_tree_contents([('gitr/.git/config', """\
+[user]
+  email = some@example.com
+  name = Test User
+""")])
+        out, err = self.run_bzr(["whoami", "-d", "gitr"])
+        self.assertEqual(out, "Test User <some@example.com>\n")
+        self.assertEqual(err, "")
+
+        self.build_tree_contents([('gitr/.git/config', """\
+[user]
+  email = some@example.com
+""")])
+        out, err = self.run_bzr(["whoami", "-d", "gitr"])
+        self.assertEqual(out, "some@example.com\n")
+        self.assertEqual(err, "")
+
 
 class ShallowTests(ExternalBase):
 

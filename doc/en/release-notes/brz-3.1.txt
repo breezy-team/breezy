@@ -114,6 +114,9 @@ Improvements
  * Python 3 is now used by default to run scripts, etc. from the makefile.
    (Jelmer Vernooĳ)
 
+ * ``.git/config`` is now consulted to determine the users' identity
+   for commits. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 

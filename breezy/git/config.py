@@ -41,9 +41,47 @@ class GitBranchConfig(config.BranchConfig):
             self, name, value, store=config.STORE_LOCATION,
             warn_masked=warn_masked)
 
+    def get_user_option(self, option_name, expand=True):
+        raise ValueError(option_name)
+
+    def username(self):
+        raise ValueError(self)
+
     def _get_user_id(self):
         # TODO: Read from ~/.gitconfig
         return self._get_best_value('_get_user_id')
+
+
+class GitConfigSectionDefault(config.Section):
+    """The "default" config section in git config file"""
+
+    def __init__(self, config):
+        self._config = config
+
+    def get(self, name, default=None, expand=True):
+        if name == 'email':
+            try:
+                email = self._config.get((b'user', ), b'email')
+            except KeyError:
+                return None
+            try:
+                name = self._config.get((b'user', ), b'name')
+            except KeyError:
+                return email.decode()
+            return '%s <%s>' % (name.decode(), email.decode())
+        return None
+
+
+class GitConfigStore(config.Store):
+    """Store that uses gitconfig."""
+
+    def __init__(self, config):
+        self._config = config
+
+    def get_sections(self):
+        return [
+            (self, GitConfigSectionDefault(self._config)),
+            ]
 
 
 class GitBranchStack(config._CompatibleStack):
@@ -54,10 +92,12 @@ class GitBranchStack(config._CompatibleStack):
         loc_matcher = config.LocationMatcher(lstore, branch.base)
         # FIXME: This should also be looking in .git/config for
         # local git branches.
+        cstore = GitConfigStore(branch.repository._git.get_config())
         gstore = config.GlobalStore()
         super(GitBranchStack, self).__init__(
             [self._get_overrides,
              loc_matcher.get_sections,
+             cstore.get_sections,
              gstore.get_sections],
             # All modifications go to the corresponding section in
             # locations.conf
