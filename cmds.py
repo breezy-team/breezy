@@ -1005,8 +1005,8 @@ class cmd_import_dsc(Command):
                 last_version = changelog.version
             except MissingChangelogError:
                 last_version = None
-            tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir, '..'))
-            try:
+            with tempfile.TemporaryDirectory(
+                    dir=os.path.join(tree.basedir, '..')) as tempdir:
                 if last_version is not None:
                     if not db.pristine_upstream_source.has_version(
                             changelog.package, last_version.upstream_version):
@@ -1025,10 +1025,8 @@ class cmd_import_dsc(Command):
                                 last_version.upstream_version)
                     db.extract_upstream_tree(upstream_tips, tempdir)
                 else:
-                    db._create_empty_upstream_tree(tempdir)
+                    db.create_empty_upstream_tree(tempdir)
                 self.import_many(db, files_list, orig_target)
-            finally:
-                shutil.rmtree(tempdir)
 
 
 class cmd_import_upstream(Command):
@@ -1120,7 +1118,7 @@ class cmd_import_upstream(Command):
                 parents[name] = [base_revid]
         else:
             parents = {}
-            db._create_empty_upstream_tree(tempdir)
+            db.create_empty_upstream_tree(tempdir)
         tree = db.branch.basis_tree()
         tree.lock_read()
         dbs = DistributionBranchSet()
