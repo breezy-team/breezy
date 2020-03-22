@@ -4052,12 +4052,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 source, overwrite=overwrite, stop_revision=stop_revision,
                 _override_hook_target=self, **kwargs)
 
-    def push(self, target, overwrite=False, stop_revision=None, lossy=False):
+    def push(self, target, overwrite=False, stop_revision=None, lossy=False, tag_selector=None):
         with self.lock_read():
             self._ensure_real()
             return self._real_branch.push(
                 target, overwrite=overwrite, stop_revision=stop_revision, lossy=lossy,
-                _override_hook_source_branch=self)
+                _override_hook_source_branch=self, tag_selector=tag_selector)
 
     def peek_lock_mode(self):
         return self._lock_mode

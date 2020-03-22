@@ -237,6 +237,7 @@ class GitHub(Hoster):
 
     supports_merge_proposal_labels = True
     supports_merge_proposal_commit_message = False
+    supports_allow_collaboration = True
     merge_proposal_description_format = 'markdown'
 
     def __repr__(self):
@@ -280,12 +281,14 @@ class GitHub(Hoster):
             return json.loads(response.text)
         raise InvalidHttpResponse(path, response.text)
 
-    def _create_pull(self, path, title, head, base, body=None, labels=None, assignee=None, draft=False):
+    def _create_pull(self, path, title, head, base, body=None, labels=None,
+                     assignee=None, draft=False, maintainer_can_modify=False):
         data = {
             'title': title,
             'head': head,
             'base': base,
             'draft': draft,
+            'maintainer_can_modify': maintainer_can_modify,
         }
         if labels is not None:
             data['labels'] = labels
@@ -379,7 +382,7 @@ class GitHub(Hoster):
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True):
+                        allow_lossy=True, tag_selector=None):
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo(base_owner, base_project)
         if owner is None:
@@ -399,13 +402,14 @@ class GitHub(Hoster):
         try:
             push_result = remote_dir.push_branch(
                 local_branch, revision_id=revision_id, overwrite=overwrite,
-                name=name)
+                name=name, tag_selector=tag_selector)
         except errors.NoRoundtrippingSupport:
             if not allow_lossy:
                 raise
             push_result = remote_dir.push_branch(
                 local_branch, revision_id=revision_id,
-                overwrite=overwrite, name=name, lossy=True)
+                overwrite=overwrite, name=name, lossy=True,
+                tag_selector=tag_selector)
         return push_result.target_branch, github_url_to_bzr_url(
             remote_repo['html_url'], name)
 
@@ -555,7 +559,7 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False):
+                        work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         if prerequisite_branch is not None:
             raise PrerequisiteBranchUnsupported(self)
@@ -565,7 +569,6 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
             self.target_repo_name = self.target_repo_name[:-4]
         # TODO(jelmer): Allow setting title explicitly?
         title = determine_title(description)
-        # TODO(jelmer): Set maintainers_can_modify?
         target_repo = self.gh._get_repo(
             self.target_owner, self.target_repo_name)
         assignees = []
@@ -586,7 +589,9 @@ class GitHubMergeProposalBuilder(MergeProposalBuilder):
                 head="%s:%s" % (self.source_owner, self.source_branch_name),
                 base=self.target_branch_name,
                 labels=labels, assignee=assignees,
-                draft=(not work_in_progress))
+                draft=work_in_progress,
+                maintainer_can_modify=allow_collaboration,
+                )
         except ValidationFailed:
             raise MergeProposalExists(self.source_branch.user_url)
         return GitHubMergeProposal(self.gh, pull_request)

@@ -200,6 +200,8 @@ class Launchpad(Hoster):
 
     supports_merge_proposal_commit_message = True
 
+    supports_allow_collaboration = False
+
     merge_proposal_description_format = 'plain'
 
     def __init__(self, staging=False):
@@ -260,7 +262,8 @@ class Launchpad(Hoster):
         return "~%s/%s" % (owner, project)
 
     def _publish_git(self, local_branch, base_path, name, owner, project=None,
-                     revision_id=None, overwrite=False, allow_lossy=True):
+                     revision_id=None, overwrite=False, allow_lossy=True,
+                     tag_selector=None):
         to_path = self._get_derived_git_path(base_path, owner, project)
         to_transport = get_transport("git+ssh://git.launchpad.net/" + to_path)
         try:
@@ -272,21 +275,23 @@ class Launchpad(Hoster):
         if dir_to is None:
             try:
                 br_to = local_branch.create_clone_on_transport(
-                    to_transport, revision_id=revision_id, name=name)
+                    to_transport, revision_id=revision_id, name=name,
+                    tag_selector=tag_selector)
             except errors.NoRoundtrippingSupport:
                 br_to = local_branch.create_clone_on_transport(
                     to_transport, revision_id=revision_id, name=name,
-                    lossy=True)
+                    lossy=True, tag_selector=tag_selector)
         else:
             try:
                 dir_to = dir_to.push_branch(
-                    local_branch, revision_id, overwrite=overwrite, name=name)
+                    local_branch, revision_id, overwrite=overwrite, name=name,
+                    tag_selector=tag_selector)
             except errors.NoRoundtrippingSupport:
                 if not allow_lossy:
                     raise
                 dir_to = dir_to.push_branch(
                     local_branch, revision_id, overwrite=overwrite, name=name,
-                    lossy=True)
+                    lossy=True, tag_selector=tag_selector)
             br_to = dir_to.target_branch
         return br_to, (
             "https://git.launchpad.net/%s/+ref/%s" % (to_path, name))
@@ -312,7 +317,7 @@ class Launchpad(Hoster):
 
     def _publish_bzr(self, local_branch, base_branch, name, owner,
                      project=None, revision_id=None, overwrite=False,
-                     allow_lossy=True):
+                     allow_lossy=True, tag_selector=None):
         to_path = self._get_derived_bzr_path(base_branch, name, owner, project)
         to_transport = get_transport("lp:" + to_path)
         try:
@@ -323,10 +328,11 @@ class Launchpad(Hoster):
 
         if dir_to is None:
             br_to = local_branch.create_clone_on_transport(
-                to_transport, revision_id=revision_id)
+                to_transport, revision_id=revision_id, tag_selector=tag_selector)
         else:
             br_to = dir_to.push_branch(
-                local_branch, revision_id, overwrite=overwrite).target_branch
+                local_branch, revision_id, overwrite=overwrite,
+                tag_selector=tag_selector).target_branch
         return br_to, ("https://code.launchpad.net/" + to_path)
 
     def _split_url(self, url):
@@ -343,7 +349,7 @@ class Launchpad(Hoster):
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True):
+                        allow_lossy=True, tag_selector=None):
         """Publish a branch to the site, derived from base_branch.
 
         :param base_branch: branch to derive the new branch from
@@ -362,12 +368,12 @@ class Launchpad(Hoster):
             return self._publish_bzr(
                 local_branch, base_branch, name, project=project, owner=owner,
                 revision_id=revision_id, overwrite=overwrite,
-                allow_lossy=allow_lossy)
+                allow_lossy=allow_lossy, tag_selector=tag_selector)
         elif base_vcs == 'git':
             return self._publish_git(
                 local_branch, base_path, name, project=project, owner=owner,
                 revision_id=revision_id, overwrite=overwrite,
-                allow_lossy=allow_lossy)
+                allow_lossy=allow_lossy, tag_selector=tag_selector)
         else:
             raise AssertionError('not a valid Launchpad URL')
 
@@ -546,7 +552,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False):
+                        work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported(self)

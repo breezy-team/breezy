@@ -142,6 +142,21 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         self.assertEqual(updates, {})
         self.assertEqual(b2.tags.lookup_tag('conflicts'), revid2)
 
+    def test_merge_tags_selector(self):
+        b1, [revid, revid1] = self.make_branch_with_revision_tuple('b1', 2)
+        w2 = b1.controldir.sprout('b2', revision_id=revid).open_workingtree()
+        revid2 = w2.commit('revision 2')
+        b2 = w2.branch
+        # if there are tags in the source and not the destination, then they
+        # just go across
+        b1.tags.set_tag('tag1', revid)
+        b1.tags.set_tag('tag2', revid2)
+        updates, conflicts = b1.tags.merge_to(b2.tags, selector=lambda x: x == 'tag1')
+        self.assertEqual({'tag1': revid}, updates)
+        self.assertEqual(set(), set(conflicts))
+        self.assertEqual(b2.tags.lookup_tag('tag1'), revid)
+        self.assertRaises(errors.NoSuchTag, b2.tags.lookup_tag, 'tag2')
+
     def test_unicode_tag(self):
         tag_name = u'\u3070'
         b1, [revid] = self.make_branch_with_revision_tuple('b', 1)

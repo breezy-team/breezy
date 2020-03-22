@@ -100,6 +100,10 @@ class GitlabLoginError(errors.BzrError):
         self.error = error
 
 
+class MergeRequestExists(Exception):
+    """Raised when a merge requests already exists."""
+
+
 def default_config_path():
     return os.path.join(bedding.config_dir(), 'gitlab.conf')
 
@@ -271,6 +275,7 @@ class GitLab(Hoster):
 
     supports_merge_proposal_labels = True
     supports_merge_proposal_commit_message = False
+    supports_allow_collaboration = True
     merge_proposal_description_format = 'markdown'
 
     def __repr__(self):
@@ -405,7 +410,7 @@ class GitLab(Hoster):
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
-            raise MergeProposalExists(self.source_branch.user_url)
+            raise MergeRequestExists()
         if response.status != 201:
             raise errors.InvalidHttpResponse(path, response.text)
         return json.loads(response.data)
@@ -418,7 +423,7 @@ class GitLab(Hoster):
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
-                        allow_lossy=True):
+                        allow_lossy=True, tag_selector=None):
         (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
             owner = self._get_logged_in_username()
@@ -433,13 +438,13 @@ class GitLab(Hoster):
         try:
             push_result = remote_dir.push_branch(
                 local_branch, revision_id=revision_id, overwrite=overwrite,
-                name=name)
+                name=name, tag_selector=tag_selector)
         except errors.NoRoundtrippingSupport:
             if not allow_lossy:
                 raise
             push_result = remote_dir.push_branch(
                 local_branch, revision_id=revision_id, overwrite=overwrite,
-                name=name, lossy=True)
+                name=name, lossy=True, tag_selector=tag_selector)
         public_url = gitlab_url_to_bzr_url(
             target_project['http_url_to_repo'], name)
         return push_result.target_branch, public_url
@@ -588,7 +593,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False):
+                        work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
@@ -600,7 +605,6 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         title = determine_title(description)
         if work_in_progress:
             title = 'WIP: %s' % title
-        # TODO(jelmer): Allow setting allow_collaboration field
         # TODO(jelmer): Allow setting milestone field
         # TODO(jelmer): Allow setting squash field
         kwargs = {
@@ -609,7 +613,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             'target_project_id': target_project['id'],
             'source_branch_name': self.source_branch_name,
             'target_branch_name': self.target_branch_name,
-            'description': description}
+            'description': description,
+            'allow_collaboration': allow_collaboration}
         if labels:
             kwargs['labels'] = ','.join(labels)
         if reviewers:
@@ -620,7 +625,10 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
                 else:
                     user = self.gl._get_user(reviewer)
                 kwargs['assignee_ids'].append(user['id'])
-        merge_request = self.gl._create_mergerequest(**kwargs)
+        try:
+            merge_request = self.gl._create_mergerequest(**kwargs)
+        except MergeRequestExists:
+            raise ProposalExists(self.source_branch.user_url)
         return GitLabMergeProposal(self.gl, merge_request)
 
 
