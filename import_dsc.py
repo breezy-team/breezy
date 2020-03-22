@@ -1237,7 +1237,8 @@ class DistributionBranch(object):
         :param use_time_from_changelog: whether to use the current time or
             the one from the last changelog entry.
         """
-        dsc = deb822.Dsc(open(dsc_filename).read())
+        with open(dsc_filename) as f:
+            dsc = deb822.Dsc(f.read())
         version = Version(dsc['Version'])
         with extract(dsc_filename, dsc) as extractor:
             cl = self.get_changelog_from_source(extractor.extracted_debianised)
