@@ -227,6 +227,7 @@ class GitDir(ControlDir):
         """See ControlDir.clone_on_transport."""
         from ..repository import InterRepository
         from .mapping import default_mapping
+        from ..transport.local import LocalTransport
         if stacked_on is not None:
             raise _mod_branch.UnstackableBranchFormat(
                 self._format, self.user_url)
@@ -255,15 +256,9 @@ class GitDir(ControlDir):
         result_dir = LocalGitDir(transport, target_git_repo, format)
         if revision_id is not None:
             result_dir.open_branch().set_last_revision(revision_id)
-        try:
-            # Cheaper to check if the target is not local, than to try making
-            # the tree and fail.
-            result_dir.root_transport.local_abspath('.')
+        if not no_tree and isinstance(result_dir.root_transport, LocalTransport):
             if result_dir.open_repository().make_working_trees():
-                self.open_workingtree().clone(
-                    result_dir, revision_id=revision_id)
-        except (brz_errors.NoWorkingTree, brz_errors.NotLocalUrl):
-            pass
+                result_dir.create_workingtree()
 
         return result_dir
 
