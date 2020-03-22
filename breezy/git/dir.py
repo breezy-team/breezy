@@ -252,7 +252,7 @@ class GitDir(ControlDir):
                                                        mapping=default_mapping)
         for name, val in viewitems(refs):
             target_git_repo.refs[name] = val
-        result_dir = self.__class__(transport, target_git_repo, format)
+        result_dir = LocalGitDir(transport, target_git_repo, format)
         if revision_id is not None:
             result_dir.open_branch().set_last_revision(revision_id)
         try:
