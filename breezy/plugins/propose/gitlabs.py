@@ -97,6 +97,10 @@ class GitlabLoginError(errors.BzrError):
         self.error = error
 
 
+class MergeRequestExists(Exception):
+    """Raised when a merge requests already exists."""
+
+
 def default_config_path():
     return os.path.join(bedding.config_dir(), 'gitlab.conf')
 
@@ -401,7 +405,7 @@ class GitLab(Hoster):
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
-            raise MergeProposalExists(self.source_branch.user_url)
+            raise MergeRequestExists()
         if response.status != 201:
             raise errors.InvalidHttpResponse(path, response.text)
         return json.loads(response.data)
@@ -616,7 +620,10 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
                 else:
                     user = self.gl._get_user(reviewer)
                 kwargs['assignee_ids'].append(user['id'])
-        merge_request = self.gl._create_mergerequest(**kwargs)
+        try:
+            merge_request = self.gl._create_mergerequest(**kwargs)
+        except MergeRequestExists:
+            raise ProposalExists(self.source_branch.user_url)
         return GitLabMergeProposal(self.gl, merge_request)
 
 

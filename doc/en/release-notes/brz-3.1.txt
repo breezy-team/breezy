@@ -114,6 +114,9 @@ Improvements
  * Python 3 is now used by default to run scripts, etc. from the makefile.
    (Jelmer Vernooĳ)
 
+ * ``.git/config`` is now consulted to determine the users' identity
+   for commits, and the gpg_signing_key. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
@@ -147,6 +150,9 @@ Bug Fixes
 
 * Ignore ghost tags when interacting with remote Git repositories.
   (Jelmer Vernooĳ)
+
+* Fix ``setup_ui=False`` when initializing Breezy.
+  (Jelmer Vernooĳ, #1852647)
 
 Documentation
 *************
