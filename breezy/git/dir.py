@@ -261,6 +261,8 @@ class GitDir(ControlDir):
             if result_dir.open_repository().make_working_trees():
                 try:
                     local_wt = self.open_workingtree()
+                except brz_errors.NoWorkingTree:
+                    pass
                 except brz_errors.NotLocalUrl:
                     result_dir.create_workingtree(revision_id=revision_id)
                 else:
