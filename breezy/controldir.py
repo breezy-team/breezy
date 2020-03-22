@@ -129,6 +129,18 @@ class ControlDir(ControlComponent):
         """
         return list(self.get_branches().values())
 
+    def branch_names(self):
+        """List all branch names in this control directory.
+
+        :return: List of branch names
+        """
+        try:
+            self.get_branch_reference()
+        except (errors.NotBranchError, errors.NoRepositoryPresent):
+            return []
+        else:
+            return [""]
+
     def get_branches(self):
         """Get all branches in this control directory, as a dictionary.
 

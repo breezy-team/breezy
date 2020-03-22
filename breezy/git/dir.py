@@ -298,6 +298,20 @@ class GitDir(ControlDir):
         """
         return UseExistingRepository(self.find_repository())
 
+    def branch_names(self):
+        from .refs import ref_to_branch_name
+        ret = []
+        for ref in self.get_refs_container().keys():
+            try:
+                branch_name = ref_to_branch_name(ref)
+            except UnicodeDecodeError:
+                trace.warning("Ignoring branch %r with unicode error ref", ref)
+                continue
+            except ValueError:
+                continue
+            ret.append(branch_name)
+        return ret
+
     def get_branches(self):
         from .refs import ref_to_branch_name
         ret = {}

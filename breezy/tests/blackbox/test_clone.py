@@ -67,4 +67,4 @@ class TestClone(tests.TestCaseWithTransport):
         self.assertEqual('Created new control directory.\n', err)
         self.assertPathExists('a')
         target = controldir.ControlDir.open('a')
-        self.assertEqual(['', 'somecolo'], list(target.get_branches().keys()))
+        self.assertEqual(['', 'somecolo'], target.branch_names())

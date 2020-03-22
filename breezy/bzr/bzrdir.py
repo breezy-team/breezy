@@ -174,14 +174,17 @@ class BzrDir(controldir.ControlDir):
         except errors.NoRepositoryPresent:
             local_repo = None
         local_branches = self.get_branches()
-        if '' in local_branches:
-            local_branch = local_branches['']
+        try:
+            local_active_branch = local_branches['']
+        except KeyError:
+            pass
+        else:
             # enable fallbacks when branch is not a branch reference
-            if local_branch.repository.has_same_location(local_repo):
-                local_repo = local_branch.repository
+            if local_active_branch.repository.has_same_location(local_repo):
+                local_repo = local_active_branch.repository
             if preserve_stacking:
                 try:
-                    stacked_on = local_branch.get_stacked_on_url()
+                    stacked_on = local_active_branch.get_stacked_on_url()
                 except (_mod_branch.UnstackableBranchFormat,
                         errors.UnstackableRepositoryFormat,
                         errors.NotStacked):
@@ -1012,6 +1015,18 @@ class BzrDirMeta1(BzrDir):
         except errors.FileExists:
             pass
         return self.transport.clone('checkout')
+
+    def branch_names(self):
+        """See ControlDir.branch_names."""
+        ret = []
+        try:
+            self.get_branch_reference()
+        except errors.NotBranchError:
+            pass
+        else:
+            ret.append("")
+        ret.extend(self._read_branch_list())
+        return ret
 
     def get_branches(self):
         """See ControlDir.get_branches."""
