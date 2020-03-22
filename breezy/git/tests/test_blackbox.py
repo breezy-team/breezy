@@ -349,7 +349,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         self.assertEqual(set(["abranch", "bbranch"]),
-                         set(ControlDir.open("b").get_branches().keys()))
+                         set(ControlDir.open("b").branch_names()))
 
     def test_git_import_incremental(self):
         r = GitRepo.init("a", mkdir=True)
@@ -361,7 +361,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         b = ControlDir.open("b")
-        self.assertEqual(["abranch"], list(b.get_branches().keys()))
+        self.assertEqual(["abranch"], b.branch_names())
 
     def test_git_import_tags(self):
         r = GitRepo.init("a", mkdir=True)
@@ -373,7 +373,7 @@ class TestGitBlackBox(ExternalBase):
         self.run_bzr(["git-import", "--colocated", "a", "b"])
         self.assertEqual(set([".bzr"]), set(os.listdir("b")))
         b = ControlDir.open("b")
-        self.assertEqual(["abranch"], list(b.get_branches().keys()))
+        self.assertEqual(["abranch"], b.branch_names())
         self.assertEqual(["atag"],
                          list(b.open_branch("abranch").tags.get_tag_dict().keys()))
 

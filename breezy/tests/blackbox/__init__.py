@@ -51,6 +51,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_check',
         'test_checkout',
         'test_clean_tree',
+        'test_clone',
         'test_command_encoding',
         'test_commit',
         'test_config',

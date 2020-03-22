@@ -73,6 +73,13 @@ New Features
  * When pushing to Git repositories, symrefs are now followed.
    (Jelmer Vernooĳ, #1800393)
 
+ * New ``brz clone`` command, which clones everything under
+   a control directory. I.e. all colocated branches, like
+   ``git clone``. (Jelmer Vernooĳ, #831939)
+
+ * ``brz sprout`` is now an alias for ``brz branch``.
+   (Jelmer Vernooĳ)
+
 Improvements
 ************
 

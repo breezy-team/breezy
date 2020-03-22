@@ -228,6 +228,7 @@ class GitDir(ControlDir):
         """See ControlDir.clone_on_transport."""
         from ..repository import InterRepository
         from .mapping import default_mapping
+        from ..transport.local import LocalTransport
         if stacked_on is not None:
             raise _mod_branch.UnstackableBranchFormat(
                 self._format, self.user_url)
@@ -253,18 +254,19 @@ class GitDir(ControlDir):
                                                        mapping=default_mapping)
         for name, val in viewitems(refs):
             target_git_repo.refs[name] = val
-        result_dir = self.__class__(transport, target_git_repo, format)
+        result_dir = LocalGitDir(transport, target_git_repo, format)
         if revision_id is not None:
             result_dir.open_branch().set_last_revision(revision_id)
-        try:
-            # Cheaper to check if the target is not local, than to try making
-            # the tree and fail.
-            result_dir.root_transport.local_abspath('.')
+        if not no_tree and isinstance(result_dir.root_transport, LocalTransport):
             if result_dir.open_repository().make_working_trees():
-                self.open_workingtree().clone(
-                    result_dir, revision_id=revision_id)
-        except (brz_errors.NoWorkingTree, brz_errors.NotLocalUrl):
-            pass
+                try:
+                    local_wt = self.open_workingtree()
+                except brz_errors.NoWorkingTree:
+                    pass
+                except brz_errors.NotLocalUrl:
+                    result_dir.create_workingtree(revision_id=revision_id)
+                else:
+                    local_wt.clone(result_dir, revision_id=revision_id)
 
         return result_dir
 
@@ -298,6 +300,20 @@ class GitDir(ControlDir):
             relative to.
         """
         return UseExistingRepository(self.find_repository())
+
+    def branch_names(self):
+        from .refs import ref_to_branch_name
+        ret = []
+        for ref in self.get_refs_container().keys():
+            try:
+                branch_name = ref_to_branch_name(ref)
+            except UnicodeDecodeError:
+                trace.warning("Ignoring branch %r with unicode error ref", ref)
+                continue
+            except ValueError:
+                continue
+            ret.append(branch_name)
+        return ret
 
     def get_branches(self):
         from .refs import ref_to_branch_name

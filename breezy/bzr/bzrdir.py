@@ -174,17 +174,18 @@ class BzrDir(controldir.ControlDir):
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
             local_repo = None
+        local_branches = self.get_branches()
         try:
-            local_branch = self.open_branch()
-        except errors.NotBranchError:
-            local_branch = None
+            local_active_branch = local_branches['']
+        except KeyError:
+            pass
         else:
             # enable fallbacks when branch is not a branch reference
-            if local_branch.repository.has_same_location(local_repo):
-                local_repo = local_branch.repository
+            if local_active_branch.repository.has_same_location(local_repo):
+                local_repo = local_active_branch.repository
             if preserve_stacking:
                 try:
-                    stacked_on = local_branch.get_stacked_on_url()
+                    stacked_on = local_active_branch.get_stacked_on_url()
                 except (_mod_branch.UnstackableBranchFormat,
                         errors.UnstackableRepositoryFormat,
                         errors.NotStacked):
@@ -233,11 +234,11 @@ class BzrDir(controldir.ControlDir):
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
-        if local_branch is not None:
+        for name, local_branch in local_branches.items():
             local_branch.clone(
-                result, revision_id=revision_id,
+                result, revision_id=(None if name != '' else revision_id),
                 repository_policy=repository_policy,
-                tag_selector=tag_selector)
+                name=name, tag_selector=tag_selector)
         try:
             # Cheaper to check if the target is not local, than to try making
             # the tree and fail.
@@ -1016,6 +1017,18 @@ class BzrDirMeta1(BzrDir):
             pass
         return self.transport.clone('checkout')
 
+    def branch_names(self):
+        """See ControlDir.branch_names."""
+        ret = []
+        try:
+            self.get_branch_reference()
+        except errors.NotBranchError:
+            pass
+        else:
+            ret.append("")
+        ret.extend(self._read_branch_list())
+        return ret
+
     def get_branches(self):
         """See ControlDir.get_branches."""
         ret = {}
@@ -1314,11 +1327,13 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                 remote_dir_format = RemoteBzrDirFormat()
                 remote_dir_format._network_name = self.network_name()
                 self._supply_sub_formats_to(remote_dir_format)
-                return remote_dir_format.initialize_on_transport_ex(transport,
-                                                                    use_existing_dir=use_existing_dir, create_prefix=create_prefix,
-                                                                    force_new_repo=force_new_repo, stacked_on=stacked_on,
-                                                                    stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
-                                                                    make_working_trees=make_working_trees, shared_repo=shared_repo)
+                return remote_dir_format.initialize_on_transport_ex(
+                    transport, use_existing_dir=use_existing_dir,
+                    create_prefix=create_prefix, force_new_repo=force_new_repo,
+                    stacked_on=stacked_on, stack_on_pwd=stack_on_pwd,
+                    repo_format_name=repo_format_name,
+                    make_working_trees=make_working_trees,
+                    shared_repo=shared_repo)
         # XXX: Refactor the create_prefix/no_create_prefix code into a
         #      common helper function
         # The destination may not exist - if so make it according to policy.

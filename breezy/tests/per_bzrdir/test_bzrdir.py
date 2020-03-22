@@ -688,4 +688,4 @@ class TestBzrDir(TestCaseWithBzrDir):
         target_branch = repo.controldir.create_branch(name='foo')
         repo.controldir.set_branch_reference(target_branch)
         self.assertEqual({"", 'foo'},
-                         set(repo.controldir.get_branches().keys()))
+                         set(repo.controldir.branch_names()))
