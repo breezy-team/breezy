@@ -885,7 +885,8 @@ class DistributionBranch(object):
                 package, version, self.pristine_upstream_tree, parents,
                 component, md5, tarball, author=author, timestamp=timestamp,
                 exclude=exclude, force_pristine_tar=force_pristine_tar,
-                committer=committer, files_excluded=files_excluded)
+                committer=committer, files_excluded=files_excluded,
+                reuse_existing=True)
             self.pristine_upstream_branch.generate_revision_history(revid)
             ret.append((component, tag, revid))
             self.branch.fetch(self.pristine_upstream_branch)
@@ -1299,7 +1300,7 @@ class DistributionBranch(object):
         self.pristine_upstream_branch.get_config_stack().set(
             'branch.fetch_tags', True)
 
-    def _create_empty_upstream_tree(self, basedir):
+    def create_empty_upstream_tree(self, basedir):
         to_location = os.path.join(basedir, "upstream")
         to_transport = get_transport(to_location)
         to_transport.ensure_base()
@@ -1370,7 +1371,7 @@ class DistributionBranch(object):
                 self._export_previous_upstream_tree(
                     package, previous_version, tempdir)
             else:
-                self._create_empty_upstream_tree(tempdir)
+                self.create_empty_upstream_tree(tempdir)
             if self.pristine_upstream_source.has_version(package, version):
                 raise UpstreamAlreadyImported(version)
             if upstream_branch is not None:

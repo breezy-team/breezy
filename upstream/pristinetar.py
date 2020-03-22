@@ -76,6 +76,10 @@ class PristineTarDeltaAbsent(PristineTarError):
     _fmt = 'There is not delta present for %(version)s.'
 
 
+class PristineTarDeltaExists(PristineTarError):
+    _fmt = 'An existing pristine tar entry exists for %(filename)s'
+
+
 class GbpTagFormatError(BzrError):
     _fmt = 'Unknown variable %(variable)s in tag %(tag_name)s.'
 
@@ -99,8 +103,7 @@ def git_store_pristine_tar(branch, filename, tree_id, delta, force=False):
                 # Nothing to do.
                 return
             if not force:
-                raise PristineTarError(
-                    "An existing pristine tar entry exists for %s" % filename)
+                raise PristineTarDeltaExists(filename)
         tree.put_file_bytes_non_atomic(id_filename, tree_id + b'\n')
         tree.put_file_bytes_non_atomic(delta_filename, delta)
         tree.add([id_filename, delta_filename], [None, None], ['file', 'file'])
@@ -349,7 +352,7 @@ class PristineTarSource(UpstreamSource):
             component=None, md5=None, tarball=None, author=None,
             timestamp=None, subdir=None, exclude=None,
             force_pristine_tar=False, committer=None,
-            files_excluded=None):
+            files_excluded=None, reuse_existing=True):
         """Import a tarball.
 
         :param package: Package name
@@ -360,6 +363,8 @@ class PristineTarSource(UpstreamSource):
         :param force_pristine_tar: Whether to force creating a pristine-tar
             branch if one does not exist.
         :param committer: Committer identity to use
+        :param reuse_existing: Whether to reuse existing tarballs, or raise
+            an error
         """
         if exclude is None:
             exclude = []
@@ -455,9 +460,15 @@ class PristineTarSource(UpstreamSource):
                          'since there is no pristine-tar branch.')
                     pristine_tar_branch = None
             if pristine_tar_branch:
-                git_store_pristine_tar(
-                    pristine_tar_branch, os.path.basename(tarball), tree_id,
-                    git_delta)
+                try:
+                    git_store_pristine_tar(
+                        pristine_tar_branch, os.path.basename(tarball),
+                        tree_id, git_delta)
+                except PristineTarDeltaExists:
+                    if reuse_existing:
+                        note('Reusing existing tarball, since delta exists.')
+                        return tag_name, revid
+                    raise
         mutter(
             'imported %s version %s component %r as revid %s, tagged %s',
             package, version, component, revid, tag_name)
