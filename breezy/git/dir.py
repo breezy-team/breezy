@@ -259,7 +259,12 @@ class GitDir(ControlDir):
             result_dir.open_branch().set_last_revision(revision_id)
         if not no_tree and isinstance(result_dir.root_transport, LocalTransport):
             if result_dir.open_repository().make_working_trees():
-                result_dir.create_workingtree()
+                try:
+                    local_wt = self.open_workingtree()
+                except brz_errors.NotLocalUrl:
+                    result_dir.create_workingtree(revision_id=revision_id)
+                else:
+                    local_wt.clone(result_dir, revision_id=revision_id)
 
         return result_dir
 

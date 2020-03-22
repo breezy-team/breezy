@@ -567,7 +567,8 @@ class RemoteControlDirTests(TestCaseWithTransport):
         self.assertEqual(
             {'': 'master', 'blah': 'blah', 'master': 'master'},
             {n: b.name for (n, b) in remote.get_branches().items()})
-        self.assertEqual(['', 'blah', 'master'], remote.branch_names())
+        self.assertEqual(
+            set(['', 'blah', 'master']), set(remote.branch_names()))
 
     def test_remove_tag(self):
         c1 = self.remote_real.do_commit(
