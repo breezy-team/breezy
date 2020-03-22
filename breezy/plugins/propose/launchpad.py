@@ -200,6 +200,8 @@ class Launchpad(Hoster):
 
     supports_merge_proposal_commit_message = True
 
+    supports_allow_collaboration = False
+
     merge_proposal_description_format = 'plain'
 
     def __init__(self, staging=False):
@@ -550,7 +552,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False):
+                        work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         if labels:
             raise LabelsUnsupported(self)
