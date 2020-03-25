@@ -395,7 +395,7 @@ class GitLab(Hoster):
     def _create_mergerequest(
             self, title, source_project_id, target_project_id,
             source_branch_name, target_branch_name, description,
-            labels=None):
+            labels=None, allow_collaboration=False):
         path = 'projects/%s/merge_requests' % source_project_id
         fields = {
             'title': title,
@@ -403,6 +403,7 @@ class GitLab(Hoster):
             'target_branch': target_branch_name,
             'target_project_id': target_project_id,
             'description': description,
+            'allow_collaboration': allow_collaboration,
             }
         if labels:
             fields['labels'] = labels
