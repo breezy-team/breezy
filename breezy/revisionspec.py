@@ -519,8 +519,9 @@ class RevisionSpec_last(RevisionSpec):
             raise InvalidRevisionSpec(self.user_spec, context_branch, e)
 
         if offset <= 0:
-            raise InvalidRevisionSpec(self.user_spec, context_branch,
-                                             'you must supply a positive value')
+            raise InvalidRevisionSpec(
+                self.user_spec, context_branch,
+                'you must supply a positive value')
 
         revno = last_revno - offset + 1
         try:
