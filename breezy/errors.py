@@ -956,20 +956,6 @@ class NoSuchRevisionInTree(NoSuchRevision):
         self.revision_id = revision_id
 
 
-class InvalidRevisionSpec(BzrError):
-
-    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
-            " %(branch_url)s%(extra)s")
-
-    def __init__(self, spec, branch, extra=None):
-        BzrError.__init__(self, branch=branch, spec=spec)
-        self.branch_url = getattr(branch, 'user_url', str(branch))
-        if extra:
-            self.extra = '\n' + str(extra)
-        else:
-            self.extra = ''
-
-
 class AppendRevisionsOnlyViolation(BzrError):
 
     _fmt = ('Operation denied because it would change the main history,'
