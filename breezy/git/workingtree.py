@@ -127,7 +127,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             index_path = os.path.join(self.basedir, relpath.decode('utf-8'), '.git', 'index')
         else:
             index_path = self.control_transport.local_abspath(
-                posixpath.join('modules', info[1], 'index'))
+                posixpath.join('modules', info[1].decode('utf-8'), 'index'))
         return Index(index_path)
 
     def lock_read(self):
