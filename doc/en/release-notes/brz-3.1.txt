@@ -161,6 +161,9 @@ Bug Fixes
 * Fix ``setup_ui=False`` when initializing Breezy.
   (Jelmer Vernooĳ, #1852647)
 
+* Fix backwards compatibility with Bazaar by supporting the
+  $BZR_EMAIL variable. (Jelmer Vernooĳ, #1869178)
+
 Documentation
 *************
 
