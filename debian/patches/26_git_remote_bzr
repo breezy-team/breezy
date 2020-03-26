@@ -1,0 +1,115 @@
+From: Dan Streetman <ddstreet@canonical.com>
+Date: Thu, 26 Mar 2020 10:07:18 -0400
+Subject: [PATCH] git-remote-bzr: backport conversion to py3
+
+---
+ breezy/git/git-remote-bzr       | 9 ++-------
+ breezy/git/git_remote_helper.py | 8 +++-----
+ 2 files changed, 5 insertions(+), 12 deletions(-)
+
+--- a/breezy/git/git-remote-bzr
++++ b/breezy/git/git-remote-bzr
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ # vim: expandtab
+ 
+ # Copyright (C) 2011 Jelmer Vernooij <jelmer@apache.org>
+@@ -32,8 +32,6 @@ signal.signal(signal.SIGINT, handle_sigi
+ import breezy
+ breezy.initialize()
+ 
+-from breezy.sixish import PY3
+-
+ from breezy.plugin import load_plugins
+ load_plugins()
+ 
+@@ -48,7 +46,4 @@ parser = optparse.OptionParser()
+ (shortname, url) = args
+ 
+ helper = RemoteHelper(open_local_dir(), shortname, open_remote_dir(url))
+-if PY3:
+-    helper.process(sys.stdin.buffer, sys.stdout.buffer)
+-else:
+-    helper.process(sys.stdin, sys.stdout)
++helper.process(sys.stdin.buffer, sys.stdout.buffer)
+--- a/breezy/git/git_remote_helper.py
++++ b/breezy/git/git_remote_helper.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ # vim: expandtab
+ 
+ # Copyright (C) 2011-2018 Jelmer Vernooij <jelmer@jelmer.uk>
+@@ -20,8 +20,6 @@
+ 
+ """Remote helper for git for accessing bzr repositories."""
+ 
+-from __future__ import absolute_import
+-
+ CAPABILITIES = ["fetch", "option", "push"]
+ 
+ import os
+@@ -29,7 +27,6 @@ import os
+ from ..controldir import ControlDir
+ from ..errors import NotBranchError, NoRepositoryPresent
+ from ..repository import InterRepository
+-from ..sixish import viewitems
+ from ..transport import get_transport_from_path
+ 
+ from . import (
+@@ -59,6 +56,7 @@ except ImportError:
+     pass
+ else:
+     CAPABILITIES.append("import")
++    CAPABILITIES.append("refspec *:*")
+ 
+ 
+ def open_remote_dir(url):
+@@ -120,7 +118,7 @@ class RemoteHelper(object):
+         object_store = get_object_store(repo)
+         with object_store.lock_read():
+             refs = get_refs_container(self.remote_dir, object_store)
+-            for ref, git_sha1 in viewitems(refs.as_dict()):
++            for ref, git_sha1 in refs.as_dict().items():
+                 ref = ref.replace(b"~", b"_")
+                 outf.write(b"%s %s\n" % (git_sha1, ref))
+             outf.write(b"\n")
+--- a/breezy/git/tests/test_git_remote_helper.py
++++ b/breezy/git/tests/test_git_remote_helper.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ # vim: expandtab
+ 
+ # Copyright (C) 2011-2018 Jelmer Vernooij <jelmer@jelmer.uk>
+@@ -19,8 +19,6 @@
+ 
+ """Tests for the git remote helper."""
+ 
+-from __future__ import absolute_import
+-
+ from io import BytesIO
+ import os
+ import subprocess
+@@ -136,7 +134,7 @@ class RemoteHelperTests(TestCaseWithTran
+         self.helper.cmd_capabilities(f, [])
+         capabs = f.getvalue()
+         base = b"fetch\noption\npush\n"
+-        self.assertTrue(capabs in (base + b"\n", base + b"import\n\n"), capabs)
++        self.assertTrue(capabs in (base + b"\n", base + b"import\nrefspec *:*\n\n"), capabs)
+ 
+     def test_option(self):
+         f = BytesIO()
+--- a/breezy/tests/test_source.py
++++ b/breezy/tests/test_source.py
+@@ -457,6 +457,9 @@ class TestSource(TestSourceHelper):
+             if "/tests/" in fname or "test_" in fname:
+                 # We don't really care about tests
+                 continue
++            if "git_remote_helper.py" in fname:
++                # This script was updated and only supports py3
++                continue
+             if "from __future__ import absolute_import" not in text:
+                 missing_absolute_import.append(fname)
+ 
