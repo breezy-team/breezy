@@ -257,7 +257,6 @@ def upstream_branch_version(upstream_branch, upstream_revision, package,
     :return: Upstream version string for `upstream_revision`.
     """
     graph = upstream_branch.repository.get_graph()
-    # TODO(jelmer): Try lookup up previous_version as a tag first
     previous_revision = get_snapshot_revision(previous_version)
     stop_revids = None
     if previous_revision is not None:
