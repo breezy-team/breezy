@@ -54,21 +54,13 @@ override_dh_install:
 		xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
 		"debian/brz-doc/usr/share/doc/brz/txt/{}"
 	rm debian/python3-breezy/usr/man/man1/brz.1 \
-		debian/python3-breezy/usr/man/man1/git-remote-bzr.1 \
 		debian/python3-breezy/usr/bin/bzr-receive-pack \
 		debian/python3-breezy/usr/bin/brz \
-		debian/python3-breezy/usr/bin/bzr-upload-pack \
-		debian/python3-breezy/usr/bin/git-remote-bzr
-	rmdir debian/python3-breezy/usr/man/man1 \
-		  debian/python3-breezy/usr/man
+		debian/python3-breezy/usr/bin/bzr-upload-pack
 	rm debian/python3-breezy-dbg/usr/man/man1/brz.1 \
-		debian/python3-breezy-dbg/usr/man/man1/git-remote-bzr.1 \
 		debian/python3-breezy-dbg/usr/bin/bzr-receive-pack \
 		debian/python3-breezy-dbg/usr/bin/brz \
-		debian/python3-breezy-dbg/usr/bin/bzr-upload-pack \
-		debian/python3-breezy-dbg/usr/bin/git-remote-bzr
-	rmdir debian/python3-breezy-dbg/usr/man/man1 \
-		  debian/python3-breezy-dbg/usr/man
+		debian/python3-breezy-dbg/usr/bin/bzr-upload-pack
 
 override_dh_auto_missing:
 	dh_missing --fail-missing
