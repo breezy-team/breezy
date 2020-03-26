@@ -29,7 +29,6 @@ from ....bzr import branch as bzr_branch
 from ....errors import (
     GhostRevisionsHaveNoRevno,
     InvalidRevisionId,
-    InvalidRevisionSpec,
     NoSuchRevision,
     NoSuchTag,
     RevisionNotPresent,
@@ -38,7 +37,12 @@ from ....errors import (
 from ....lock import _RelockDebugMixin, LogicalLockResult
 from ....revision import NULL_REVISION
 from ....revisionspec import RevisionSpec
-from ....trace import note
+from ....trace import note, mutter
+
+try:
+    from ....revisionspec import InvalidRevisionSpec
+except ImportError:  # Breezy < 3.2
+    from ....errors import InvalidRevisionSpec
 
 from ..errors import (
     MultipleUpstreamTarballsNotSupported,
@@ -243,7 +247,7 @@ def get_snapshot_revision(upstream_version):
 
 
 def upstream_branch_version(upstream_branch, upstream_revision, package,
-        previous_version):
+                            previous_version):
     """Determine the version string for a revision in an upstream branch.
 
     :param upstream_branch: The upstream branch object
@@ -253,15 +257,22 @@ def upstream_branch_version(upstream_branch, upstream_revision, package,
     :return: Upstream version string for `upstream_revision`.
     """
     graph = upstream_branch.repository.get_graph()
+    # TODO(jelmer): Try lookup up previous_version as a tag first
     previous_revision = get_snapshot_revision(previous_version)
+    stop_revids = None
     if previous_revision is not None:
         previous_revspec = RevisionSpec.from_string(previous_revision)
-        previous_revno, previous_revid = previous_revspec.in_history(upstream_branch)
-        # Trim revision history - we don't care about any revisions
-        # before the revision of the previous version
-        stop_revids = [previous_revid]
-    else:
-        stop_revids = None
+        try:
+            previous_revno, previous_revid = previous_revspec.in_history(
+                upstream_branch)
+        except InvalidRevisionSpec as e:
+            # Odd - the revision mentioned in the old version doesn't exist.
+            mutter('Unable to find old upstream version %s (%s): %s',
+                   previous_version, previous_revision, e)
+        else:
+            # Trim revision history - we don't care about any revisions
+            # before the revision of the previous version
+            stop_revids = [previous_revid]
     revhistory = graph.iter_lefthand_ancestry(upstream_revision, stop_revids)
     return _upstream_branch_version(
             revhistory, upstream_revision,
