@@ -17,9 +17,14 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+from itertools import islice
 import re
 
-from ....errors import BzrError
+from ....errors import (
+    BzrError,
+    NotBranchError,
+    )
+from ....trace import note
 
 
 class GbpTagFormatError(BzrError):
@@ -94,6 +99,8 @@ def possible_upstream_tag_names(version, component=None):
             tags.append(manipulated)
         # compatibility with svn-buildpackage
         tags.append("upstream_%s" % version)
+        tags.append("%s" % version)
+        tags.append("v%s" % version)
     else:
         tags.append(upstream_tag_name(version, component))
     return tags
@@ -133,3 +140,50 @@ def upstream_tag_version(tag):
     if component == "":
         component = None
     return (component, version)
+
+
+def _rev_is_upstream_import(revision, package, version):
+    if revision.message.startswith('Import %s_%s' % (package, version)):
+        return True
+    if revision.message.startswith('Imported upstream version %s' % version):
+        return True
+    if revision.message.startswith('Import upstream version %s' % version):
+        return True
+    if revision.message.startswith('New upstream version %s' % version):
+        return True
+    return False
+
+
+def search_for_upstream_version(
+        branch, package, version, component=None, md5=None, scan_depth=None):
+    """Find possible upstream revisions that don't have appropriate tags."""
+    start_revids = []
+    sources = []
+    try:
+        upstream_branch = branch.controldir.open_branch('upstream')
+    except NotBranchError:
+        sources.append('main branch')
+        start_revids.append(branch.last_revision())
+    else:
+        sources.append('branch upstream')
+        start_revids.append(upstream_branch.last_revision())
+    git_tag_start = 'debian/%s-' % mangle_version_for_git(version)
+    bzr_tag_start = 'debian-%s' % version
+    for tag_name, revid in branch.tags.get_tag_dict().items():
+        if (tag_name.startswith(git_tag_start) or
+                tag_name.startswith(bzr_tag_start)):
+            sources.append('tag %s' % tag_name)
+            start_revids.append(revid)
+    note('Searching for revision importing %s version %s on %s.',
+         package, version, ', '.join(sources))
+    todo = []
+    graph = branch.repository.get_graph()
+    for revid, parents in islice(
+            graph.iter_ancestry(start_revids), scan_depth):
+        todo.append(revid)
+    for revid, rev in branch.repository.iter_revisions(todo):
+        if rev is None:
+            continue
+        if _rev_is_upstream_import(rev, package, version):
+            return revid
+    return None

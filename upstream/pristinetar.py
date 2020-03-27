@@ -27,7 +27,6 @@ import configparser
 from debian.copyright import globs_to_re
 import errno
 import os
-import shutil
 import subprocess
 import tempfile
 
@@ -62,9 +61,11 @@ from ....trace import (
 from .tags import (
     GbpTagFormatError,
     gbp_expand_tag_name,
+    mangle_version_for_git,
     upstream_tag_name,
     is_upstream_tag,
     possible_upstream_tag_names,
+    search_for_upstream_version,
     upstream_tag_version,
     )
 
@@ -506,7 +507,15 @@ class PristineTarSource(UpstreamSource):
             else:
                 if self._has_revision(revid, md5=md5):
                     return revid
+        revid = search_for_upstream_version(
+            self.branch, package, version, component, md5)
         tag_name = self.tag_name(version, component=component)
+        if revid is not None:
+            warning(
+                "Upstream import of %s lacks a tag. Set one by running: "
+                "brz tag -rrevid:%s %s", version, revid.decode('utf-8'),
+                tag_name)
+            return revid
         try:
             return self.branch.tags.lookup_tag(tag_name)
         except NoSuchTag:
