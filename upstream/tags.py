@@ -59,7 +59,7 @@ def upstream_tag_name(version, component=None, distro=None, git_style=False):
     if git_style:
         # In git, the convention is to use a slash
         if distro is None:
-            name = "upstream/" + version.replace('~', '_')
+            name = "upstream/" + mangle_version_for_git(version)
         else:
             name = "upstream-%s/%s" % (distro, version.replace('~', '_'))
     else:
@@ -72,14 +72,26 @@ def upstream_tag_name(version, component=None, distro=None, git_style=False):
     return name
 
 
+def mangle_version_for_git(version):
+    # See https://dep-team.pages.debian.net/deps/dep14/
+    manipulated = (
+        version.replace("~", "_").replace(':', '%').replace('..', '.#.'))
+    if manipulated.endswith('.'):
+        manipulated += '#'
+    if manipulated.endswith('.lock'):
+        manipulated = manipulated[:-4] + '#lock'
+    return manipulated
+
+
 def possible_upstream_tag_names(version, component=None):
     tags = []
     if component is None:
         # compatibility with git-buildpackage
         tags.append("upstream/%s" % version)
         tags.append("upstream-%s" % version)
-        if "~" in version:
-            tags.append("upstream/%s" % version.replace("~", "_"))
+        manipulated = 'upstream/%s' % mangle_version_for_git(version)
+        if manipulated not in tags:
+            tags.append(manipulated)
         # compatibility with svn-buildpackage
         tags.append("upstream_%s" % version)
     else:
