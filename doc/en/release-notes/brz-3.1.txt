@@ -164,6 +164,9 @@ Bug Fixes
 * Fix backwards compatibility with Bazaar by supporting the
   $BZR_EMAIL variable. (Jelmer Vernooĳ, #1869178)
 
+* Cope with non-ascii characters in Git signatures.
+  (Jelmer Vernooĳ, #1869533)
+
 Documentation
 *************
 
