@@ -145,6 +145,8 @@ def upstream_tag_version(tag):
 def _rev_is_upstream_import(revision, package, version):
     possible_messages = [
         'Import %s_%s' % (package, version),
+        'import %s_%s' % (package, version),
+        'import %s-%s' % (package.replace('-', '_'), version),
         'Imported upstream version %s' % version,
         'Import upstream version %s' % version,
         'New upstream version %s' % version,
@@ -153,6 +155,12 @@ def _rev_is_upstream_import(revision, package, version):
     for possible_message in possible_messages:
         if revision.message.startswith(possible_message):
             return True
+    return False
+
+
+def _rev_is_upstream_merge(revision, package, version):
+    if revision.message.startswith("Merge tag 'v%s' into debian/" % version):
+        return True
     return False
 
 
@@ -188,4 +196,11 @@ def search_for_upstream_version(
             continue
         if _rev_is_upstream_import(rev, package, version):
             return revid
+
+    # Try again, but this time search for merge revisions
+    for revid, rev in branch.repository.iter_revisions(todo):
+        if rev is None:
+            continue
+        if _rev_is_upstream_merge(rev, package, version):
+            return rev.parent_ids[1]
     return None
