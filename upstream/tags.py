@@ -143,14 +143,16 @@ def upstream_tag_version(tag):
 
 
 def _rev_is_upstream_import(revision, package, version):
-    if revision.message.startswith('Import %s_%s' % (package, version)):
-        return True
-    if revision.message.startswith('Imported upstream version %s' % version):
-        return True
-    if revision.message.startswith('Import upstream version %s' % version):
-        return True
-    if revision.message.startswith('New upstream version %s' % version):
-        return True
+    possible_messages = [
+        'Import %s_%s' % (package, version),
+        'Imported upstream version %s' % version,
+        'Import upstream version %s' % version,
+        'New upstream version %s' % version,
+        'New upstream version v%s' % version
+        ]
+    for possible_message in possible_messages:
+        if revision.message.startswith(possible_message):
+            return True
     return False
 
 
