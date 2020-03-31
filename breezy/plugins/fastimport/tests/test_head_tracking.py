@@ -24,7 +24,7 @@ from fastimport import (
 
 import testtools
 
-from .reftracker import (
+from fastimport.reftracker import (
     RefTracker,
     )
 
