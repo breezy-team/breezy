@@ -1470,15 +1470,17 @@ class cmd_branch(Command):
                             help="Bind new branch to from location."),
                      Option('no-recurse-nested',
                             help='Do not recursively check out nested trees.'),
+                     Option('colocated-branch', short_name='b',
+                            type=str, help='Name of colocated branch to sprout.'),
                      ]
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
             use_existing_dir=False, switch=False, bind=False,
-            files_from=None, no_recurse_nested=False):
+            files_from=None, no_recurse_nested=False, colocated_branch=None):
         from breezy import switch as _mod_switch
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
-            from_location)
+            from_location, name=colocated_branch)
         if no_recurse_nested:
             recurse = 'none'
         else:

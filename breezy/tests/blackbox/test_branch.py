@@ -107,6 +107,17 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertEqual('Branched 0 revisions.\n', err)
         self.assertPathExists('a')
 
+    def test_from_name(self):
+        """Branch from a colocated branch into a regular branch."""
+        os.mkdir('b')
+        tree = self.example_branch('b/a', format='development-colo')
+        tree.controldir.create_branch(name='somecolo')
+        out, err = self.run_bzr('branch -b somecolo %s' %
+                                local_path_to_url('b/a'))
+        self.assertEqual('', out)
+        self.assertEqual('Branched 0 revisions.\n', err)
+        self.assertPathExists('a')
+
     def test_branch_broken_pack(self):
         """branching with a corrupted pack file."""
         self.example_branch('a')
