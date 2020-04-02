@@ -808,7 +808,7 @@ class ControlDir(ControlComponent):
             a_transport = new_t
 
     @classmethod
-    def open_tree_or_branch(klass, location):
+    def open_tree_or_branch(klass, location, name=None):
         """Return the branch and working tree at a location.
 
         If there is no tree at the location, tree will be None.
@@ -817,7 +817,7 @@ class ControlDir(ControlComponent):
         :return: (tree, branch)
         """
         controldir = klass.open(location)
-        return controldir._get_tree_branch()
+        return controldir._get_tree_branch(name=name)
 
     @classmethod
     def open_containing_tree_or_branch(klass, location,

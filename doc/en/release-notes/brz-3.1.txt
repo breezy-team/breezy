@@ -80,6 +80,10 @@ New Features
  * ``brz sprout`` is now an alias for ``brz branch``.
    (Jelmer Vernooĳ)
 
+ * ``brz branch`` now accepts a ``-b`` flag with the
+   name of the colocated branch to sprout.
+   (Jelmer Vernooĳ, #1869977)
+
 Improvements
 ************
 
