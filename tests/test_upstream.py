@@ -1019,8 +1019,9 @@ upstream-tag = blah-%(version%~%-)s
 
     def test_version(self):
         self.assertEquals(
-            ['upstream/3.3', 'upstream-3.3', 'upstream_3.3', '3.3', 'v3.3'],
-            self.source.possible_tag_names("3.3", component=None))
+            ['upstream/3.3', 'upstream-3.3', 'upstream_3.3', '3.3',
+             'v3.3', 'pkg-3.3'],
+            self.source.possible_tag_names("pkg", "3.3", component=None))
 
     def test_version_with_tilde(self):
         self.assertEquals([
@@ -1029,13 +1030,14 @@ upstream-tag = blah-%(version%~%-)s
             'upstream/3.3_brz232',
             'upstream_3.3~brz232',
             '3.3~brz232',
-            'v3.3~brz232'],
-            self.source.possible_tag_names("3.3~brz232", component=None))
+            'v3.3~brz232',
+            'pkg-3.3~brz232'],
+            self.source.possible_tag_names('pkg', "3.3~brz232", component=None))
 
     def test_version_component(self):
         self.assertEquals([
             'upstream-3.3/extlib'],
-            self.source.possible_tag_names("3.3", component="extlib"))
+            self.source.possible_tag_names('pkg', "3.3", component="extlib"))
 
     def test_version_as_revisions_missing(self):
         self.assertRaises(PackageVersionNotPresent,
@@ -1067,7 +1069,7 @@ upstream-tag = blah-%(version%~%-)s
         revid1 = self.tree.commit("msg")
         self.tree.branch.tags.set_tag("upstream-2.1", revid1)
         self.assertRaises(PackageVersionNotPresent,
-                self.source.version_as_revisions, None, "2.1", [
+                self.source.version_as_revisions, 'pkg', "2.1", [
             ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
             ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")])
 

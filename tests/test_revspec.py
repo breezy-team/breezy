@@ -22,7 +22,10 @@ from __future__ import absolute_import
 
 import os
 
-from ....errors import InvalidRevisionSpec
+try:
+    from ....revisionspec import InvalidRevisionSpec
+except ImportError:   # brz < 3.2
+    from ....errors import InvalidRevisionSpec
 from ....revisionspec import RevisionSpec
 
 from ....tests.test_revisionspec import TestRevisionSpec

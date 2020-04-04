@@ -2,6 +2,7 @@ breezy-debian (2.8.34) UNRELEASED; urgency=medium
 
   * If there is no explicit tag set for an imported upstream revision,
     scan the revision history for it.
+  * Try more possible tag options for possible upstream releases.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 27 Mar 2020 15:33:13 +0000
 

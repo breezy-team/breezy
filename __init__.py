@@ -191,11 +191,14 @@ def debian_tag_name(branch, revid):
         DistributionBranch, DistributionBranchSet)
     from .util import (
         debuild_config, find_changelog, MissingChangelogError)
+    import pdb; pdb.set_trace()
     t = branch.repository.revision_tree(revid)
-    config = debuild_config(t)
+    subpath = ''
+    config = debuild_config(t, subpath=subpath)
     try:
         (changelog, top_level) = find_changelog(
-            t, config.build_type == BUILD_TYPE_MERGE)
+            t, subpath=subpath,
+            merge=(config.build_type == BUILD_TYPE_MERGE))
     except MissingChangelogError:
         # Not a debian package
         return None

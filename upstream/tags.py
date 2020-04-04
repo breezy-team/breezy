@@ -88,7 +88,7 @@ def mangle_version_for_git(version):
     return manipulated
 
 
-def possible_upstream_tag_names(version, component=None):
+def possible_upstream_tag_names(package, version, component=None):
     tags = []
     if component is None:
         # compatibility with git-buildpackage
@@ -101,6 +101,7 @@ def possible_upstream_tag_names(version, component=None):
         tags.append("upstream_%s" % version)
         tags.append("%s" % version)
         tags.append("v%s" % version)
+        tags.append("%s-%s" % (package, version))
     else:
         tags.append(upstream_tag_name(version, component))
     return tags
@@ -177,11 +178,14 @@ def search_for_upstream_version(
     else:
         sources.append('branch upstream')
         start_revids.append(upstream_branch.last_revision())
-    git_tag_start = 'debian/%s-' % mangle_version_for_git(version)
-    bzr_tag_start = 'debian-%s' % version
+    candidate_tag_start = [
+        'debian/%s-' % mangle_version_for_git(version),
+        'debian-%s' % version,
+        'debian-%s-%s' % (package, version),
+        ]
     for tag_name, revid in branch.tags.get_tag_dict().items():
-        if (tag_name.startswith(git_tag_start) or
-                tag_name.startswith(bzr_tag_start)):
+        if any([tag_name.startswith(tag_start)
+                for tag_start in candidate_tag_start]):
             sources.append('tag %s' % tag_name)
             start_revids.append(revid)
     note('Searching for revision importing %s version %s on %s.',

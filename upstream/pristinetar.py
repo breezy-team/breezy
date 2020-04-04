@@ -499,27 +499,28 @@ class PristineTarSource(UpstreamSource):
 
     def version_component_as_revision(self, package, version, component,
                                       md5=None):
-        for tag_name in self.possible_tag_names(version, component=component):
+        with self.branch.lock_read():
+            for tag_name in self.possible_tag_names(package, version, component=component):
+                try:
+                    revid = self.branch.tags.lookup_tag(tag_name)
+                except NoSuchTag:
+                    continue
+                else:
+                    if self._has_revision(revid, md5=md5):
+                        return revid
+            revid = search_for_upstream_version(
+                self.branch, package, version, component, md5)
+            tag_name = self.tag_name(version, component=component)
+            if revid is not None:
+                warning(
+                    "Upstream import of %s lacks a tag. Set one by running: "
+                    "brz tag -rrevid:%s %s", version, revid.decode('utf-8'),
+                    tag_name)
+                return revid
             try:
-                revid = self.branch.tags.lookup_tag(tag_name)
+                return self.branch.tags.lookup_tag(tag_name)
             except NoSuchTag:
-                continue
-            else:
-                if self._has_revision(revid, md5=md5):
-                    return revid
-        revid = search_for_upstream_version(
-            self.branch, package, version, component, md5)
-        tag_name = self.tag_name(version, component=component)
-        if revid is not None:
-            warning(
-                "Upstream import of %s lacks a tag. Set one by running: "
-                "brz tag -rrevid:%s %s", version, revid.decode('utf-8'),
-                tag_name)
-            return revid
-        try:
-            return self.branch.tags.lookup_tag(tag_name)
-        except NoSuchTag:
-            raise PackageVersionNotPresent(package, version, self)
+                raise PackageVersionNotPresent(package, version, self)
 
     def has_version(self, package, version, tarballs=None):
         if tarballs is None:
@@ -532,7 +533,7 @@ class PristineTarSource(UpstreamSource):
             return True
 
     def has_version_component(self, package, version, component, md5=None):
-        for tag_name in self.possible_tag_names(version, component=component):
+        for tag_name in self.possible_tag_names(package, version, component=component):
             try:
                 revid = self.branch.tags.lookup_tag(tag_name)
             except NoSuchTag:
@@ -542,12 +543,12 @@ class PristineTarSource(UpstreamSource):
                     return True
         return False
 
-    def possible_tag_names(self, version, component):
+    def possible_tag_names(self, package, version, component):
         tags = []
         if self.gbp_tag_format:
             tags.append(gbp_expand_tag_name(self.gbp_tag_format, version))
 
-        tags.extend(possible_upstream_tag_names(version, component))
+        tags.extend(possible_upstream_tag_names(package, version, component))
 
         return tags
 
