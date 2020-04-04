@@ -59,11 +59,11 @@ class DarcsDirFormat(controldir.ControlDirFormat):
 
     def open(self, transport, _found=False):
         """Open this directory."""
-        raise DarcsUnsupportedError(self)
+        raise DarcsUnsupportedError()
 
     def check_support_status(self, allow_unsupported, recommend_upgrade=True,
                              basedir=None):
-        raise DarcsUnsupportedError(self)
+        raise DarcsUnsupportedError()
 
     def open(self, transport):
         # Raise NotBranchError if there is nothing there
@@ -79,7 +79,7 @@ class DarcsProber(controldir.Prober):
 
     @classmethod
     def probe_transport(klass, transport):
-        if transport.has('_darcs'):
+        if transport.has('_darcs/format'):
             return DarcsDirFormat()
         raise errors.NotBranchError(path=transport.base)
 
