@@ -75,6 +75,8 @@ class DarcsProber(controldir.Prober):
 
     @classmethod
     def priority(klass, transport):
+        if 'darcs' in transport.base:
+            return 90
         return 100
 
     @classmethod
