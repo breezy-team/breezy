@@ -173,11 +173,12 @@ def search_for_upstream_version(
     try:
         upstream_branch = branch.controldir.open_branch('upstream')
     except NotBranchError:
-        sources.append('main branch')
-        start_revids.append(branch.last_revision())
+        pass
     else:
         sources.append('branch upstream')
         start_revids.append(upstream_branch.last_revision())
+    sources.append('main branch')
+    start_revids.append(branch.last_revision())
     candidate_tag_start = [
         'debian/%s-' % mangle_version_for_git(version),
         'debian-%s' % version,
