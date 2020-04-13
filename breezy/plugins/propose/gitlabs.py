@@ -291,6 +291,10 @@ class GitLab(Hoster):
     def base_url(self):
         return self.transport.base
 
+    @property
+    def base_hostname(self):
+        return urlutils.parse_url(self.base_url)[3]
+
     def _api_request(self, method, path, fields=None, body=None):
         return self.transport.request(
             method, urlutils.join(self.base_url, 'api', 'v4', path),
@@ -384,6 +388,15 @@ class GitLab(Hoster):
         if owner:
             parameters['owner_id'] = urlutils.quote(owner, '')
         return self._list_paged(path, parameters, per_page=DEFAULT_PAGE_SIZE)
+
+    def _get_merge_request(self, project, merge_id):
+        path = 'projects/%s/merge_requests/%d' % (urlutils.quote(str(project), ''), merge_id)
+        response = self._api_request('GET', path)
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
+        if response.status != 200:
+            raise errors.InvalidHttpResponse(path, response.text)
+        return json.loads(response.data)
 
     def _list_projects(self, owner):
         path = 'users/%s/projects' % urlutils.quote(str(owner), '')
@@ -496,7 +509,7 @@ class GitLab(Hoster):
             (host, project, branch_name) = parse_gitlab_branch_url(branch)
         except NotGitLabUrl:
             return False
-        return (self.base_url == ('https://%s' % host))
+        return self.base_hostname == host
 
     def check(self):
         response = self._api_request('GET', 'user')
@@ -551,15 +564,15 @@ class GitLab(Hoster):
         except NotGitLabUrl:
             raise UnsupportedHoster(url)
         except NotMergeRequestUrl as e:
-            if self.base_url == ('https://%s' % e.host):
+            if self.base_hostname == e.host:
                 raise
             else:
                 raise UnsupportedHoster(url)
-        if self.base_url != ('https://%s' % host):
+        if self.base_hostname != host:
             raise UnsupportedHoster(url)
         project = self._get_project(project)
-        mr = project.mergerequests.get(merge_id)
-        return GitLabMergeProposal(mr)
+        mr = self._get_merge_request(project['path_with_namespace'], merge_id)
+        return GitLabMergeProposal(self, mr)
 
     def delete_project(self, project):
         path = 'projects/%s' % urlutils.quote(str(project), '')
