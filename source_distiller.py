@@ -161,18 +161,9 @@ class MergeModeDistiller(SourceDistiller):
             os.makedirs(parent_dir)
         if not self.use_existing:
             tarballs = self.upstream_provider.provide(parent_dir)
-            # Extract it to the right place
-            tempdir = tempfile.mkdtemp(prefix='builddeb-merge-')
-            try:
-                extract_orig_tarballs(tarballs, tempdir)
-                # If everything is in a single dir then move everything up one
-                # level.
-                if os.path.isdir(target):
-                    shutil.rmtree(target)
-                shutil.move(tempdir, target)
-            finally:
-                if os.path.exists(tempdir):
-                    shutil.rmtree(tempdir)
+            if not os.path.exists(target):
+                os.mkdir(target)
+            extract_orig_tarballs(tarballs, target)
         # Now export the tree to provide the debian dir
         basetempdir = tempfile.mkdtemp(prefix='builddeb-merge-debian-')
         try:
