@@ -191,7 +191,6 @@ def debian_tag_name(branch, revid):
         DistributionBranch, DistributionBranchSet)
     from .util import (
         debuild_config, find_changelog, MissingChangelogError)
-    import pdb; pdb.set_trace()
     t = branch.repository.revision_tree(revid)
     subpath = ''
     config = debuild_config(t, subpath=subpath)
