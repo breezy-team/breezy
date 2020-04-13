@@ -38,13 +38,6 @@ class MissingUpstreamTarball(BzrError):
         BzrError.__init__(self, package=package, version=version)
 
 
-class TarFailed(BzrError):
-    _fmt = "There was an error executing tar to %(operation)s %(tarball)s."
-
-    def __init__(self, operation, tarball):
-        BzrError.__init__(self, operation=operation, tarball=tarball)
-
-
 class UnparseableChangelog(BzrError):
     _fmt = "There was an error parsing the changelog: %(error)s"
 

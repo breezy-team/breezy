@@ -68,7 +68,6 @@ from .errors import (
     AddChangelogError,
     InconsistentSourceFormatError,
     NoPreviousUpload,
-    TarFailed,
     UnableToFindPreviousUpload,
     UnparseableChangelog,
     )
@@ -774,6 +773,13 @@ def component_from_orig_tarball(tarball_filename, package, version):
         raise ValueError(
                 "Invalid extra characters in tarball filename %s" %
                 tarball_filename)
+
+
+class TarFailed(BzrError):
+    _fmt = "There was an error executing tar to %(operation)s %(tarball)s."
+
+    def __init__(self, operation, tarball):
+        BzrError.__init__(self, operation=operation, tarball=tarball)
 
 
 def extract_orig_tarball(tarball_filename, component, target,
