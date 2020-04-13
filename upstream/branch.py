@@ -18,7 +18,10 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+import os
 import re
+import subprocess
+import tempfile
 
 from .... import osutils
 from ....branch import (
@@ -393,9 +396,10 @@ class UpstreamBranchSource(UpstreamSource):
     """
 
     def __init__(self, upstream_branch, upstream_revision_map=None,
-                 config=None, actual_branch=None):
+                 config=None, actual_branch=None, dist_command=None):
         self.upstream_branch = upstream_branch
         self._actual_branch = actual_branch or upstream_branch
+        self.dist_command = dist_command
         self.config = config
         if upstream_revision_map is None:
             self.upstream_revision_map = {}
@@ -404,7 +408,7 @@ class UpstreamBranchSource(UpstreamSource):
 
     @classmethod
     def from_branch(cls, upstream_branch, upstream_revision_map=None,
-                    config=None, local_dir=None):
+                    config=None, local_dir=None, dist_command=None):
         """Create a new upstream branch source from a branch.
 
         This will optionally fetch into a local directory.
@@ -427,7 +431,7 @@ class UpstreamBranchSource(UpstreamSource):
         return cls(
             upstream_branch=upstream_branch,
             upstream_revision_map=upstream_revision_map, config=config,
-            actual_branch=actual_branch)
+            actual_branch=actual_branch, dist_command=dist_command)
 
     def version_as_revision(self, package, version, tarballs=None):
         if version in self.upstream_revision_map:
@@ -506,16 +510,21 @@ class UpstreamBranchSource(UpstreamSource):
                     raise PackageVersionNotPresent(package, version, self)
             target_filename = self._tarball_path(
                 package, version, None, target_dir)
-            tarball_base = "%s-%s" % (package, version)
             rev_tree = self.upstream_branch.repository.revision_tree(revid)
-            try:
-                export(rev_tree, target_filename, 'tgz', tarball_base)
-            except UnsupportedOperation as e:
-                note('Not exporting revision from upstream branch: %s', e)
-                raise PackageVersionNotPresent(package, version, self)
+            if self.dist_command is not None:
+                run_dist_command(
+                    rev_tree, package, version, target_filename,
+                    self.dist_command)
             else:
-                note("Exporting upstream branch revision %s to create "
-                     "the tarball", revid)
+                tarball_base = "%s-%s" % (package, version)
+                try:
+                    export(rev_tree, target_filename, 'tgz', tarball_base)
+                except UnsupportedOperation as e:
+                    note('Not exporting revision from upstream branch: %s', e)
+                    raise PackageVersionNotPresent(package, version, self)
+                else:
+                    note("Exporting upstream branch revision %s to create "
+                         "the tarball", revid)
         return [target_filename]
 
     def __repr__(self):
@@ -566,3 +575,44 @@ class LocalUpstreamBranchSource(UpstreamBranchSource):
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.local_branch)
+
+
+def run_dist_command(rev_tree, package, version, target_filename,
+                     dist_command):
+    from ..repack_tarball import get_filetype, repack_tarball
+    with tempfile.TemporaryDirectory() as td:
+        package_dir = os.path.join(td, package)
+        export(rev_tree, package_dir, 'dir')
+        existing_files = os.listdir(package_dir)
+        env = dict(os.environ.items())
+        env['PACKAGE'] = package
+        env['VERSION'] = version
+        env['OUTPUT'] = target_filename
+        note('Running dist command: %s', dist_command)
+        subprocess.check_call(
+            dist_command, env=env, cwd=package_dir, shell=True)
+        if os.path.exists(target_filename):
+            note('dist command created tarball.')
+            return
+        new_files = os.listdir(package_dir)
+        diff = [n for n in (set(new_files) - set(existing_files))
+                if get_filetype(n) is not None]
+        if len(diff) == 1:
+            note('Found tarball %s in package directory.', diff[0])
+            repack_tarball(
+                os.path.join(package_dir, diff[0]),
+                os.path.basename(target_filename),
+                os.path.dirname(target_filename))
+            return
+        diff = set(os.listdir(td)) - set([package])
+        if len(diff) == 1:
+            fn = diff.pop(0)
+            note('Found tarball %s in parent directory.', fn)
+            repack_tarball(
+                os.path.join(td, fn),
+                os.path.basename(target_filename),
+                os.path.dirname(target_filename))
+            return
+    raise Exception(
+        'dist command %r did not create \$OUTPUT filename'
+        % dist_command)

@@ -671,11 +671,17 @@ class cmd_merge_upstream(Command):
             'Force the use of pristine-tar, even if no '
             'pristine-tar branch exists'))
 
+    dist_command_opt = Option(
+        'dist-command', type=str,
+        help='Command to run for creating an upstream tarball from a '
+        'VCS snapshot.')
+
     takes_options = [
         package_opt, version_opt,
         distribution_opt, directory_opt, last_version_opt,
         force_opt, 'revision', 'merge-type',
-        snapshot_opt, launchpad_opt, force_pristine_tar_opt]
+        snapshot_opt, launchpad_opt, force_pristine_tar_opt,
+        dist_command_opt]
 
     def _add_changelog_entry(self, tree, subpath, package, version,
                              distribution_name, changelog):
@@ -698,7 +704,7 @@ class cmd_merge_upstream(Command):
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
             last_version=None, force=None, snapshot=False, launchpad=False,
-            force_pristine_tar=False):
+            force_pristine_tar=False, dist_command=None):
         from debian.changelog import Version
 
         from .errors import PackageVersionNotPresent
@@ -780,7 +786,8 @@ class cmd_merge_upstream(Command):
 
             if upstream_branch is not None:
                 upstream_branch_source = UpstreamBranchSource.from_branch(
-                    upstream_branch, config=config, local_dir=tree.controldir)
+                    upstream_branch, config=config, local_dir=tree.controldir,
+                    dist_command=dist_command)
             else:
                 upstream_branch_source = None
 
@@ -788,7 +795,8 @@ class cmd_merge_upstream(Command):
                 try:
                     primary_upstream_source = UpstreamBranchSource.from_branch(
                         Branch.open(location), config=config,
-                        local_dir=tree.controldir)
+                        local_dir=tree.controldir,
+                        dist_command=dist_command)
                 except NotBranchError:
                     primary_upstream_source = TarfileSource(location, version)
             else:
