@@ -579,7 +579,7 @@ class LocalUpstreamBranchSource(UpstreamBranchSource):
 
 def run_dist_command(rev_tree, package, version, target_filename,
                      dist_command):
-    from ..repack_tarball import get_filetype, repack_tarball
+    from ..repack_tarball import get_filetype
     with tempfile.TemporaryDirectory() as td:
         package_dir = os.path.join(td, package)
         export(rev_tree, package_dir, 'dir')
@@ -599,19 +599,17 @@ def run_dist_command(rev_tree, package, version, target_filename,
                 if get_filetype(n) is not None]
         if len(diff) == 1:
             note('Found tarball %s in package directory.', diff[0])
-            repack_tarball(
+            os.rename(
                 os.path.join(package_dir, diff[0]),
-                os.path.basename(target_filename),
-                os.path.dirname(target_filename))
+                target_filename)
             return
         diff = set(os.listdir(td)) - set([package])
         if len(diff) == 1:
             fn = diff.pop(0)
             note('Found tarball %s in parent directory.', fn)
-            repack_tarball(
+            os.rename(
                 os.path.join(td, fn),
-                os.path.basename(target_filename),
-                os.path.dirname(target_filename))
+                target_filename)
             return
     raise Exception(
         'dist command %r did not create \$OUTPUT filename'
