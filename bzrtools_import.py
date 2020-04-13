@@ -22,6 +22,12 @@ try:
     from ...bzr import generate_ids
 except ImportError:  # brz < 3.0.0
     from ... import generate_ids
+
+try:
+    from contextlib import ExitStack
+except ImportError:  # python < 3
+    from breezy.cleanup import ExitStack
+
 from ... import urlutils
 from ...controldir import ControlDir
 from ...errors import NoSuchFile, BzrCommandError, NotBranchError
@@ -94,15 +100,12 @@ def import_archive(tree, archive_file, file_ids_from=None, target_tree=None,
                    exclude=None):
     if file_ids_from is None:
         file_ids_from = []
-    for other_tree in file_ids_from:
-        other_tree.lock_read()
-    try:
+    with ExitStack() as es:
+        for other_tree in file_ids_from:
+            es.enter_context(other_tree.lock_read())
         return _import_archive(
             tree, archive_file, file_ids_from, target_tree=target_tree,
             exclude=exclude)
-    finally:
-        for other_tree in file_ids_from:
-            other_tree.unlock()
 
 
 def _get_paths_to_process(archive_file, prefix, implied_parents, exclude=None):
@@ -131,8 +134,7 @@ def _get_paths_to_process(archive_file, prefix, implied_parents, exclude=None):
 def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
                     exclude=None):
     prefix = common_directory(names_of_files(archive_file))
-    tt = TreeTransform(tree)
-    try:
+    with TreeTransform(tree) as tt:
         removed = set()
         for path, entry in tree.iter_entries_by_dir():
             if entry.parent_id is None:
@@ -256,8 +258,6 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
         for conflict in cook_conflicts(resolve_conflicts(tt), tt):
             warning('%s', conflict)
         tt.apply()
-    finally:
-        tt.finalize()
 
 
 def do_import(source, tree_directory=None):
