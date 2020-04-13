@@ -776,10 +776,10 @@ def component_from_orig_tarball(tarball_filename, package, version):
 
 
 class TarFailed(BzrError):
-    _fmt = "There was an error executing tar to %(operation)s %(tarball)s."
+    _fmt = "There was an error executing tar to %(operation)s %(tarball)s: %(error)s."
 
-    def __init__(self, operation, tarball):
-        BzrError.__init__(self, operation=operation, tarball=tarball)
+    def __init__(self, operation, tarball, error):
+        BzrError.__init__(self, operation=operation, tarball=tarball, error=error)
 
 
 def extract_orig_tarball(tarball_filename, component, target,
@@ -807,10 +807,11 @@ def extract_orig_tarball(tarball_filename, component, target,
     tar_args.extend([tarball_filename, "-C", target_path])
     if strip_components is not None:
         tar_args.extend(["--strip-components", str(strip_components)])
-    proc = subprocess.Popen(tar_args, preexec_fn=subprocess_setup)
-    proc.communicate()
+    proc = subprocess.Popen(tar_args, preexec_fn=subprocess_setup,
+                            stderr=subprocess.PIPE)
+    (stdout, stderr) = proc.communicate()
     if proc.returncode != 0:
-        raise TarFailed("extract", tarball_filename)
+        raise TarFailed("extract", tarball_filename, error=stderr)
 
 
 def extract_orig_tarballs(tarballs, target, strip_components=None):
@@ -821,8 +822,7 @@ def extract_orig_tarballs(tarballs, target, strip_components=None):
     """
     for tarball_filename, component in tarballs:
         extract_orig_tarball(
-            tarball_filename, component, target,
-            strip_components=strip_components)
+            tarball_filename, component, target, strip_components=strip_components)
 
 
 def dput_changes(path):
