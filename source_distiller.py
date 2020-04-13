@@ -165,7 +165,7 @@ class MergeModeDistiller(SourceDistiller):
             # Extract it to the right place
             tempdir = tempfile.mkdtemp(prefix='builddeb-merge-')
             try:
-                extract_orig_tarballs(tarballs, tempdir)
+                extract_orig_tarballs(tarballs, tempdir, strip_components=0)
                 files = glob.glob(tempdir+'/*')
                 # If everything is in a single dir then move everything up one
                 # level.
