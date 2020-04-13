@@ -1425,7 +1425,7 @@ def _extract_tarballs_to_tempdir(tarballs):
     try:
         extract_orig_tarballs(
             [(fn, component) for (fn, component, md5) in tarballs],
-            tempdir, strip_components=1)
+            tempdir)
         yield tempdir
     finally:
         shutil.rmtree(tempdir)

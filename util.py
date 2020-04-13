@@ -776,10 +776,19 @@ def component_from_orig_tarball(tarball_filename, package, version):
 
 
 class TarFailed(BzrError):
-    _fmt = "There was an error executing tar to %(operation)s %(tarball)s: %(error)s."
+    _fmt = ("There was an error executing tar to %(operation)s %(tarball)s: "
+            "%(error)s.")
 
     def __init__(self, operation, tarball, error):
-        BzrError.__init__(self, operation=operation, tarball=tarball, error=error)
+        BzrError.__init__(
+            self, operation=operation, tarball=tarball, error=error)
+
+
+def needs_strip_components(tf):
+    top_level_directories = set()
+    for name in tf.getnames():
+        top_level_directories.add(name.split('/')[0])
+    return len(top_level_directories) == 1
 
 
 def extract_orig_tarball(tarball_filename, component, target,
@@ -789,16 +798,30 @@ def extract_orig_tarball(tarball_filename, component, target,
     :param tarball: Path to the tarball
     :param component: Component name (or None for top-level)
     :param target: Target path
-    :param strip_components: Optional number of components to strip
     """
+    from tarfile import TarFile
     tar_args = ["tar"]
     if tarball_filename.endswith(".tar.bz2"):
         tar_args.append('xjf')
+        tf = TarFile.bz2open(tarball_filename)
     elif (tarball_filename.endswith(".tar.lzma") or
           tarball_filename.endswith(".tar.xz")):
         tar_args.append('xJf')
+        tf = TarFile.xzopen(tarball_filename)
+    elif tarball_filename.endswith(".tar"):
+        tar_args.append('xf')
+        tf = TarFile.open(tarball_filename)
     else:
+        tf = TarFile.gzopen(tarball_filename)
         tar_args.append('xzf')
+    try:
+        if strip_components is None:
+            if needs_strip_components(tf):
+                strip_components = 1
+            else:
+                strip_components = 0
+    finally:
+        tf.close()
     if component is not None:
         target_path = os.path.join(target, component)
         os.mkdir(target_path)

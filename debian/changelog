@@ -4,6 +4,8 @@ breezy-debian (2.8.34) UNRELEASED; urgency=medium
     scan the revision history for it.
   * Try more possible tag options for possible upstream releases.
   * Add a --dist-command option to 'bzr merge-upstream'.
+  * Support falling back to strip-components=0 when the orig tarball
+    requires it.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 27 Mar 2020 15:33:13 +0000
 
