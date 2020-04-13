@@ -806,7 +806,7 @@ def extract_orig_tarball(tarball_filename, component, target,
         target_path = target
     tar_args.extend([tarball_filename, "-C", target_path])
     if strip_components is not None:
-        tar_args.extend(["--strip-components", "1"])
+        tar_args.extend(["--strip-components", str(strip_components)])
     proc = subprocess.Popen(tar_args, preexec_fn=subprocess_setup)
     proc.communicate()
     if proc.returncode != 0:
