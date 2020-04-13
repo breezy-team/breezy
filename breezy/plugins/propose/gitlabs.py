@@ -169,9 +169,15 @@ def parse_gitlab_merge_request_url(url):
         raise NotGitLabUrl(url)
     path = path.strip('/')
     parts = path.split('/')
+    if len(parts) < 2:
+        raise NotMergeRequestUrl(host, url)
     if parts[-2] != 'merge_requests':
         raise NotMergeRequestUrl(host, url)
-    return host, '/'.join(parts[:-2]), int(parts[-1])
+    if parts[-3] == '-':
+        project_name = '/'.join(parts[:-3])
+    else:
+        project_name = '/'.join(parts[:-2])
+    return host, project_name, int(parts[-1])
 
 
 class GitLabMergeProposal(MergeProposal):
