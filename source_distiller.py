@@ -19,7 +19,6 @@
 
 from __future__ import absolute_import
 
-import glob
 import os
 import shutil
 import tempfile
@@ -165,16 +164,12 @@ class MergeModeDistiller(SourceDistiller):
             # Extract it to the right place
             tempdir = tempfile.mkdtemp(prefix='builddeb-merge-')
             try:
-                extract_orig_tarballs(tarballs, tempdir, strip_components=0)
-                files = glob.glob(tempdir+'/*')
+                extract_orig_tarballs(tarballs, tempdir)
                 # If everything is in a single dir then move everything up one
                 # level.
                 if os.path.isdir(target):
                     shutil.rmtree(target)
-                if len(files) == 1:
-                    shutil.move(files[0], target)
-                else:
-                    shutil.move(tempdir, target)
+                shutil.move(tempdir, target)
             finally:
                 if os.path.exists(tempdir):
                     shutil.rmtree(tempdir)
