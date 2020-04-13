@@ -609,14 +609,21 @@ def run_dist_command(rev_tree, package, version, target_filename,
             note('dist command created tarball.')
             return True
         new_files = os.listdir(package_dir)
-        diff = [n for n in (set(new_files) - set(existing_files))
-                if get_filetype(n) is not None]
+        diff_files = set(new_files) - set(existing_files)
+        diff = [n for n in diff_files if get_filetype(n) is not None]
         if len(diff) == 1:
             note('Found tarball %s in package directory.', diff[0])
             os.rename(
                 os.path.join(package_dir, diff[0]),
                 target_filename)
             return True
+        if 'dist' in diff_files:
+            for entry in os.scandir(os.path.join(package_dir, 'dist')):
+                if get_filetype(entry.name) is not None:
+                    note('Found tarball %s in dist directory.', entry.name)
+                    os.rename(entry.path, target_filename)
+                    return True
+            note('No tarballs found in dist directory.')
         diff = set(os.listdir(td)) - set([package])
         if len(diff) == 1:
             fn = diff.pop(0)
