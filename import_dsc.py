@@ -1351,7 +1351,8 @@ class DistributionBranch(object):
     def merge_upstream(self, tarball_filenames, package, version,
                        previous_version, upstream_branch=None,
                        upstream_revisions=None, merge_type=None, force=False,
-                       force_pristine_tar=False, committer=None, files_excluded=None):
+                       force_pristine_tar=False, committer=None,
+                       files_excluded=None):
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
             if previous_version is not None:
@@ -1390,7 +1391,8 @@ class DistributionBranch(object):
                 if self.branch.last_revision() != NULL_REVISION:
                     try:
                         conflicts = self.tree.merge_from_branch(
-                                self.pristine_upstream_branch, merge_type=merge_type)
+                                self.pristine_upstream_branch,
+                                merge_type=merge_type)
                     except UnrelatedBranches:
                         # Bug lp:515367 where the first upstream tarball is
                         # missing a proper history link and a criss-cross merge
@@ -1401,8 +1403,8 @@ class DistributionBranch(object):
                         else:
                             from_revision = parents[None][0]
                         conflicts = self.tree.merge_from_branch(
-                                self.pristine_upstream_branch, merge_type=merge_type,
-                                from_revision=from_revision)
+                            self.pristine_upstream_branch,
+                            merge_type=merge_type, from_revision=from_revision)
                 else:
                     # Pull so that merge-upstream allows you to start a branch
                     # from upstream tarball.
