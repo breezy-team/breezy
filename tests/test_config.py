@@ -137,11 +137,10 @@ else:
             cfg = DebBuildConfig([], tree=branch.basis_tree())
             self.assertEquals(False, cfg.merge)
 
-            dc = self.get_commit_editor(branch.base)
-            d = dc.add_dir("debian")
-            f = d.add_file("debian/svn-layout")
-            f.modify("origDir = someorigdir\n")
-            dc.close()
+            with self.get_commit_editor(branch.base) as dc:
+                d = dc.add_dir("debian")
+                f = d.add_file("debian/svn-layout")
+                f.modify(b"origDir = someorigdir\n")
 
             cfg = DebBuildConfig([], tree=branch.basis_tree())
             self.assertEquals("someorigdir", cfg.orig_dir)
