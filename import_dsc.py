@@ -28,6 +28,7 @@
 from __future__ import absolute_import
 
 import calendar
+from contextlib import contextmanager
 import os
 import shutil
 import stat
@@ -909,15 +910,12 @@ class DistributionBranch(object):
         :param md5sum: hex digest of the md5sum of the tarball, if known.
         :return: list with (component, tag, revid) tuples
         """
-        tarball_dir = self._extract_tarballs_to_tempdir(tarballs)
-        try:
+        with _extract_tarballs_to_tempdir(tarballs) as tarball_dir:
             return self.import_upstream(
                 tarball_dir, package, version, parents, tarballs,
                 upstream_branch=upstream_branch,
                 upstream_revisions=upstream_revisions,
                 force_pristine_tar=force_pristine_tar)
-        finally:
-            shutil.rmtree(tarball_dir)
 
     def _mark_native_config(self, native):
         poss_native_tree = self.branch.basis_tree()
@@ -1332,17 +1330,6 @@ class DistributionBranch(object):
         if root_id and self.pristine_upstream_tree.supports_setting_file_ids():
             self.pristine_upstream_tree.set_root_id(root_id)
 
-    def _extract_tarballs_to_tempdir(self, tarballs):
-        tempdir = tempfile.mkdtemp()
-        try:
-            extract_orig_tarballs(
-                [(fn, component) for (fn, component, md5) in tarballs],
-                tempdir, strip_components=1)
-            return tempdir
-        except BaseException:
-            shutil.rmtree(tempdir)
-            raise
-
     def _export_previous_upstream_tree(
             self, package, previous_version, tempdir):
         try:
@@ -1387,8 +1374,7 @@ class DistributionBranch(object):
                     (os.path.abspath(fn), component, md5sum_filename(fn)) for
                     (fn, component) in
                     tarball_filenames]
-                tarball_dir = self._extract_tarballs_to_tempdir(upstream_tarballs)
-                try:
+                with _extract_tarballs_to_tempdir(upstream_tarballs) as tarball_dir:
                     # FIXME: should use upstream_parents()?
                     parents = {None: []}
                     if self.pristine_upstream_branch.last_revision() != NULL_REVISION:
@@ -1401,8 +1387,6 @@ class DistributionBranch(object):
                         force_pristine_tar=force_pristine_tar,
                         committer=committer, files_excluded=files_excluded)
                     self._fetch_upstream_to_branch(imported_revids)
-                finally:
-                    shutil.rmtree(tarball_dir)
                 if self.branch.last_revision() != NULL_REVISION:
                     try:
                         conflicts = self.tree.merge_from_branch(
@@ -1432,3 +1416,14 @@ class DistributionBranch(object):
         finally:
             shutil.rmtree(tempdir)
 
+
+@contextmanager
+def _extract_tarballs_to_tempdir(tarballs):
+    tempdir = tempfile.mkdtemp()
+    try:
+        extract_orig_tarballs(
+            [(fn, component) for (fn, component, md5) in tarballs],
+            tempdir, strip_components=1)
+        yield tempdir
+    finally:
+        shutil.rmtree(tempdir)

@@ -537,10 +537,11 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
     """
 
     def __init__(self, upstream_branch_url, upstream_revision_map=None,
-                 config=None):
+                 config=None, dist_command=None):
         self.upstream_branch_url = upstream_branch_url
         self._upstream_branch = None
         self.config = config
+        self.dist_command = dist_command
         if upstream_revision_map is None:
             self.upstream_revision_map = {}
         else:
@@ -560,9 +561,10 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
 class LocalUpstreamBranchSource(UpstreamBranchSource):
     """Upstream branch source in a local branch."""
 
-    def __init__(self, local_branch):
+    def __init__(self, local_branch, dist_command=None):
         self.local_branch = local_branch
         self.upstream_revision_map = {}
+        self.dist_command = dist_command
         self.config = None
 
     @classmethod
