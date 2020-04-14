@@ -42,3 +42,11 @@ hosters.register_lazy(
 hosters.register_lazy(
     "gitlab", "breezy.plugins.propose.gitlabs",
     "GitLab")
+
+
+def test_suite():
+    from unittest import TestSuite
+    from .tests import test_suite
+    result = TestSuite()
+    result.addTest(test_suite())
+    return result
