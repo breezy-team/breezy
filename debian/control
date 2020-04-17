@@ -8,7 +8,7 @@ Build-Depends-Indep: brz (>= 3.0.0~bzr7290), python3-docutils, python3-debian, p
 Vcs-Bzr: https://code.breezy-vcs.org/breezy-debian/unstable
 Vcs-Browser: https://code.breezy-vcs.org/breezy-debian/unstable
 Rules-Requires-Root: no
-Standards-Version: 4.4.1
+Standards-Version: 4.5.0
 
 Package: brz-debian
 Architecture: all

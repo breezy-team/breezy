@@ -2,6 +2,7 @@ breezy-debian (2.8.35) UNRELEASED; urgency=medium
 
   * Wrap long lines in changelog entries: 2.8.0, 2.5.1, 2.1~0ubuntu1,
     0.14ubuntu1.
+  * Update standards version to 4.5.0, no changes needed.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 17 Apr 2020 23:55:58 +0000
 
