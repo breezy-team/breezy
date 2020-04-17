@@ -1,4 +1,4 @@
-breezy-debian (2.8.34) UNRELEASED; urgency=medium
+breezy-debian (2.8.34) unstable; urgency=medium
 
   * If there is no explicit tag set for an imported upstream revision,
     scan the revision history for it.
@@ -7,7 +7,7 @@ breezy-debian (2.8.34) UNRELEASED; urgency=medium
   * Support falling back to strip-components=0 when the orig tarball
     requires it.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 27 Mar 2020 15:33:13 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 17 Apr 2020 23:44:17 +0000
 
 breezy-debian (2.8.33) unstable; urgency=medium
 
