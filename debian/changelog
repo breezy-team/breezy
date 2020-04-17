@@ -1,3 +1,10 @@
+breezy-debian (2.8.35) UNRELEASED; urgency=medium
+
+  * Wrap long lines in changelog entries: 2.8.0, 2.5.1, 2.1~0ubuntu1,
+    0.14ubuntu1.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 17 Apr 2020 23:55:58 +0000
+
 breezy-debian (2.8.34) unstable; urgency=medium
 
   * If there is no explicit tag set for an imported upstream revision,
@@ -374,8 +381,8 @@ bzr-builddeb (2.8.0) unstable; urgency=low
   * Support svn-buildpackage tag names to find upstream versions.
     LP: #874263
   * Support --revision argument to merge-package. LP: #888590
-  * By default, don't override the commit message from debian/changelog
-    unless 'commit-message-from-changelog' is explicitly set to True. LP: #812749
+  * By default, don't override the commit message from debian/changelog unless
+    'commit-message-from-changelog' is explicitly set to True. LP: #812749
   * Support running dep3-patch against remote repositories, and with
     open-ended revision ranges. LP: #893608
   * Fix finding orig tarballs in directories also containing filenames
@@ -620,7 +627,8 @@ bzr-builddeb (2.5.1) unstable; urgency=low
   * Don't crash when doing merge-upstream with a branch that does a rename
     and then ships another file with the old path in the tarball that isn't
     in the branch.
-  * Accept None as a valid previous_version value in merge_upstream(). LP: #680945
+  * Accept None as a valid previous_version value in merge_upstream().
+    LP: #680945
 
   [ Jelmer Vernooij ]
 
@@ -890,7 +898,8 @@ bzr-builddeb (2.1) experimental; urgency=low
 bzr-builddeb (2.1~0ubuntu1) jaunty; urgency=low
 
   [ Jelmer Vernooij ]
-  * Add simple deb: directory service for Bazaar that uses the dpkg Vcs-* fields.
+  * Add simple deb: directory service for Bazaar that uses the dpkg Vcs-*
+    fields.
   * Fix mark-uploaded when used in merge mode. (Closes: #500851)
   * Support merging upstream from a Bazaar branch. (Closes: #493386)
    + Also support merging from upstream Subversion branches. (LP: #295275)
@@ -1278,7 +1287,8 @@ bzr-builddeb (0.14ubuntu2) feisty; urgency=low
 
 bzr-builddeb (0.14ubuntu1) feisty; urgency=low
 
-  * revert the smart options patch so that the package gets usable with bzr 0.13 again.
+  * revert the smart options patch so that the package gets usable with bzr 0.13
+    again.
 
  -- Reinhard Tartler <siretart@tauware.de>  Tue, 16 Jan 2007 23:16:44 +0100
 
