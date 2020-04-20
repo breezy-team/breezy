@@ -141,19 +141,31 @@ vcs_field_to_bzr_url_converters = [
 ]
 
 
+def source_package_vcs(control):
+    """Extract the Vcs URL from a source package.
+
+    Args:
+      control: A source control paragraph
+    Returns:
+      Tuple with Vcs type and Vcs URL
+    Raises:
+      KeyError: When no Vcs header was found
+    """
+    for prefix in ['Vcs-', 'XS-Vcs-', 'X-Vcs']:
+        for field, value in control.items():
+            if field.startswith(prefix):
+                vcs_type = field[len(prefix):]
+                if vcs_type == 'Browser':
+                    continue
+                return vcs_type, value
+    raise KeyError
+
+
 def source_package_vcs_url(control):
     """Extract a Breezy-compatible URL from a source package.
     """
-    for vcs, converter in vcs_field_to_bzr_url_converters:
-        for prefix in ("Vcs-", "X-Vcs-", "XS-Vcs-"):
-            try:
-                vcs_url = control[prefix + vcs]
-            except KeyError:
-                pass
-            else:
-                return (vcs, converter(vcs_url))
-    else:
-        raise KeyError
+    (vcs_type, vcs_url) = source_package_vcs(control)
+    return vcs_type, vcs_field_to_bzr_url_converters[vcs_type](vcs_url)
 
 
 class AptDirectory(object):
