@@ -1479,7 +1479,7 @@ class cmd_dep3_patch(Command):
         origin = describe_origin(branch, revision_id)
         if packaging_tree is None:
             packaging_tree = packaging_branch.basis_tree()
-        builddeb_config = debuild_config(packaging_tree, directory)
+        builddeb_config = debuild_config(packaging_tree, '')
         if not no_upstream_check and builddeb_config.upstream_branch:
             upstream_branch = Branch.open(builddeb_config.upstream_branch)
             applied_upstream = determine_applied_upstream(

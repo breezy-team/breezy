@@ -594,28 +594,35 @@ def debuild_config(tree, subpath):
     """
     config_files = []
     user_config = None
-    if tree.has_filename(NEW_LOCAL_CONF):
-        if not tree.is_versioned(NEW_LOCAL_CONF):
+    if subpath in ('.', None):
+        subpath = ''
+    new_local_conf = osutils.pathjoin(subpath, NEW_LOCAL_CONF)
+    local_conf = osutils.pathjoin(subpath, LOCAL_CONF)
+    new_conf = osutils.pathjoin(subpath, NEW_CONF)
+    default_conf = osutils.pathjoin(subpath, DEFAULT_CONF)
+
+    if tree.has_filename(new_local_conf):
+        if not tree.is_versioned(new_local_conf):
             config_files.append(
-                (tree.get_file(NEW_LOCAL_CONF), True, "local.conf"))
+                (tree.get_file(new_local_conf), True, "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.',
-                    NEW_LOCAL_CONF)
-    if tree.has_filename(LOCAL_CONF):
-        if not tree.is_versioned(LOCAL_CONF):
+                    new_local_conf)
+    if tree.has_filename(local_conf):
+        if not tree.is_versioned(local_conf):
             config_files.append(
-                (tree.get_file(LOCAL_CONF), True, "local.conf"))
+                (tree.get_file(local_conf), True, "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.',
-                    LOCAL_CONF)
+                    local_conf)
     config_files.append((global_conf(), True))
     user_config = global_conf()
-    if tree.is_versioned(NEW_CONF):
+    if tree.is_versioned(new_conf):
         config_files.append(
-            (tree.get_file(NEW_CONF), False, "bzr-builddeb.conf"))
-    if tree.is_versioned(DEFAULT_CONF):
+            (tree.get_file(new_conf), False, "bzr-builddeb.conf"))
+    if tree.is_versioned(default_conf):
         config_files.append(
-            (tree.get_file(DEFAULT_CONF), False, "default.conf"))
+            (tree.get_file(default_conf), False, "default.conf"))
     config = DebBuildConfig(config_files, tree=tree)
     config.set_user_config(user_config)
     return config
