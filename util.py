@@ -51,11 +51,7 @@ from ...transport import (
     get_transport,
     )
 from . import (
-    default_conf,
-    local_conf,
     global_conf,
-    new_conf,
-    new_local_conf,
     )
 from .config import (
     DebBuildConfig,
@@ -71,6 +67,13 @@ from .errors import (
     UnableToFindPreviousUpload,
     UnparseableChangelog,
     )
+
+BUILDDEB_DIR = '.bzr-builddeb'
+
+NEW_LOCAL_CONF = 'debian/local.conf.local'
+NEW_CONF = 'debian/bzr-builddeb.conf'
+DEFAULT_CONF = os.path.join(BUILDDEB_DIR, 'default.conf')
+LOCAL_CONF = os.path.join(BUILDDEB_DIR, 'local.conf')
 
 
 class MissingChangelogError(BzrError):
@@ -591,28 +594,28 @@ def debuild_config(tree, subpath):
     """
     config_files = []
     user_config = None
-    if tree.has_filename(new_local_conf):
-        if not tree.is_versioned(new_local_conf):
+    if tree.has_filename(NEW_LOCAL_CONF):
+        if not tree.is_versioned(NEW_LOCAL_CONF):
             config_files.append(
-                (tree.get_file(new_local_conf), True, "local.conf"))
+                (tree.get_file(NEW_LOCAL_CONF), True, "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.',
-                    new_local_conf)
-    if tree.has_filename(local_conf):
-        if not tree.is_versioned(local_conf):
+                    NEW_LOCAL_CONF)
+    if tree.has_filename(LOCAL_CONF):
+        if not tree.is_versioned(LOCAL_CONF):
             config_files.append(
-                (tree.get_file(local_conf), True, "local.conf"))
+                (tree.get_file(LOCAL_CONF), True, "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.',
-                    local_conf)
+                    LOCAL_CONF)
     config_files.append((global_conf(), True))
     user_config = global_conf()
-    if tree.is_versioned(new_conf):
+    if tree.is_versioned(NEW_CONF):
         config_files.append(
-            (tree.get_file(new_conf), False, "bzr-builddeb.conf"))
-    if tree.is_versioned(default_conf):
+            (tree.get_file(NEW_CONF), False, "bzr-builddeb.conf"))
+    if tree.is_versioned(DEFAULT_CONF):
         config_files.append(
-            (tree.get_file(default_conf), False, "default.conf"))
+            (tree.get_file(DEFAULT_CONF), False, "default.conf"))
     config = DebBuildConfig(config_files, tree=tree)
     config.set_user_config(user_config)
     return config

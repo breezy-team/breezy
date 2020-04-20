@@ -59,9 +59,6 @@ for command, aliases in commands.items():
     plugin_cmds.register_lazy(
         'cmd_' + command, aliases, __name__ + ".cmds")
 
-builddeb_dir = '.bzr-builddeb'
-default_conf = os.path.join(builddeb_dir, 'default.conf')
-
 
 def global_conf():
     try:
@@ -70,10 +67,6 @@ def global_conf():
         from ...config import config_dir
     return os.path.join(config_dir(), 'builddeb.conf')
 
-
-local_conf = os.path.join(builddeb_dir, 'local.conf')
-new_local_conf = 'debian/local.conf.local'
-new_conf = 'debian/bzr-builddeb.conf'
 
 default_build_dir = '../build-area'
 default_orig_dir = '..'
