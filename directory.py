@@ -165,7 +165,7 @@ def source_package_vcs_url(control):
     """Extract a Breezy-compatible URL from a source package.
     """
     (vcs_type, vcs_url) = source_package_vcs(control)
-    return vcs_type, vcs_field_to_bzr_url_converters[vcs_type](vcs_url)
+    return vcs_type, dict(vcs_field_to_bzr_url_converters)[vcs_type](vcs_url)
 
 
 class AptDirectory(object):
