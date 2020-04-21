@@ -99,8 +99,12 @@ def possible_upstream_tag_names(package, version, component=None):
             tags.append(manipulated)
         # compatibility with svn-buildpackage
         tags.append("upstream_%s" % version)
+
+        # common upstream names
         tags.append("%s" % version)
         tags.append("v%s" % version)
+        tags.append("release-%s" % version)
+        tags.append("v%s-release" % version)
         tags.append("%s-%s" % (package, version))
     else:
         tags.append(upstream_tag_name(version, component))
