@@ -751,9 +751,17 @@ class TestUpstreamTagToVersion(TestCase):
         self.assertEquals("42.0", upstream_tag_to_version(u"bla-42.0", "bla"))
 
     def test_unicode(self):
-        self.assertEquals(
-                u"42.0\xa9",
+        self.assertIs(
+                None,
                 upstream_tag_to_version(u"bla-42.0\xa9", "bla"))
+
+    def test_popt(self):
+        self.assertEquals("1.4", upstream_tag_to_version("popt-1_4", "popt"))
+        self.assertEquals(
+            "1.4", upstream_tag_to_version("popt-1_4-release", "popt"))
+
+    def test_perl(self):
+        self.assertEquals("0.006019", upstream_tag_to_version("v0.006_019"))
 
 
 class TestUpstreamVersionAddRevision(TestCaseWithTransport):
@@ -1020,7 +1028,7 @@ upstream-tag = blah-%(version%~%-)s
     def test_version(self):
         self.assertEquals(
             ['upstream/3.3', 'upstream-3.3', 'upstream_3.3', '3.3',
-             'v3.3', 'pkg-3.3'],
+             'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3'],
             self.source.possible_tag_names("pkg", "3.3", component=None))
 
     def test_version_with_tilde(self):

@@ -61,14 +61,22 @@ from ....export import (
 
 def upstream_tag_to_version(tag_name, package=None):
     """Take a tag name and return the upstream version, or None."""
+    if tag_name.endswith('-release'):
+        tag_name = tag_name[:-len('-release')]
+    if tag_name.startswith("release-"):
+        tag_name = tag_name[len("release-"):]
+    if tag_name[0] == "v" and tag_name[1].isdigit():
+        tag_name = tag_name[1:]
     if (package is not None and (
           tag_name.startswith("%s-" % package) or
           tag_name.startswith("%s_" % package))):
-        return tag_name[len(package)+1:]
-    if tag_name.startswith("release-"):
-        return tag_name[len("release-"):]
-    if tag_name[0] == "v" and tag_name[1].isdigit():
-        return tag_name[1:]
+        tag_name = tag_name[len(package)+1:]
+    if '_' in tag_name and '.' not in tag_name:
+        tag_name = tag_name.replace('_', '.')
+    if tag_name.count('_') == 1 and tag_name.startswith('0.'):
+        # This is a style commonly used for perl packages.
+        # Most debian packages seem to just drop the underscore.
+        tag_name = tag_name.replace('_', '')
     if all([c.isdigit() or c in (".", "~") for c in tag_name]):
         return tag_name
     return None

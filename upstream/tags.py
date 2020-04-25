@@ -103,8 +103,9 @@ def possible_upstream_tag_names(package, version, component=None):
         # common upstream names
         tags.append("%s" % version)
         tags.append("v%s" % version)
-        tags.append("release-%s" % version)
-        tags.append("v%s-release" % version)
+        if '~' not in str(version) and '+' not in str(version):
+            tags.append("release-%s" % version)
+            tags.append("v%s-release" % version)
         tags.append("%s-%s" % (package, version))
     else:
         tags.append(upstream_tag_name(version, component))
@@ -187,6 +188,9 @@ def search_for_upstream_version(
         'debian/%s-' % mangle_version_for_git(version),
         'debian-%s' % version,
         'debian-%s-%s' % (package, version),
+        # Epochs are sometimes replaced by underscores, rather than by %,
+        # as DEP-14 suggests.
+        'debian/%s-' % mangle_version_for_git(version.replace(':', '_')),
         ]
     for tag_name, revid in branch.tags.get_tag_dict().items():
         if any([tag_name.startswith(tag_start)
