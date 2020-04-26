@@ -156,16 +156,21 @@ def _rev_is_upstream_import(revision, package, version):
         'Imported upstream version %s' % version,
         'Import upstream version %s' % version,
         'New upstream version %s' % version,
-        'New upstream version v%s' % version
+        'New upstream version v%s' % version,
+        '%s-%s' % (package, version),
         ]
     for possible_message in possible_messages:
-        if revision.message.startswith(possible_message):
+        if revision.message.lower().startswith(possible_message.lower()):
             return True
     return False
 
 
 def _rev_is_upstream_merge(revision, package, version):
-    if revision.message.startswith("Merge tag 'v%s' into debian/" % version):
+    if revision.message.lower().startswith(
+            ("Merge tag 'v%s' into debian/" % version).lower()):
+        return True
+    if revision.message.lower().startswith(
+            ("Merge tag '%s-%s' into " % (package, version)).lower()):
         return True
     return False
 
