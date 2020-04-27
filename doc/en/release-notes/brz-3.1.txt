@@ -128,6 +128,10 @@ Improvements
  * ``.git/config`` is now consulted to determine the users' identity
    for commits, and the gpg_signing_key. (Jelmer Vernooĳ)
 
+ * Ignore special files (fifos, block/character devices, sockets)
+   when finding changes in Git working trees. (Jelmer Vernooĳ, #1857244)
+
+
 Bug Fixes
 *********
 
