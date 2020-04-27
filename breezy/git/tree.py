@@ -1676,9 +1676,11 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                     e, osutils._fs_enc)
             if stat.S_ISDIR(st.st_mode):
                 blob = Tree()
-            else:
+            elif stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode):
                 blob = blob_from_path_and_stat(
                     target.abspath(e).encode(osutils._fs_enc), st)
+            else:
+                continue
             store.add_object(blob)
             np = np.encode('utf-8')
             blobs[np] = (blob.id, cleanup_mode(st.st_mode))
