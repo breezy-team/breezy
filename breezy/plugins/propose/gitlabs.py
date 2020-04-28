@@ -648,7 +648,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         try:
             merge_request = self.gl._create_mergerequest(**kwargs)
         except MergeRequestExists:
-            raise ProposalExists(self.source_branch.user_url)
+            raise MergeProposalExists(self.source_branch.user_url)
         return GitLabMergeProposal(self.gl, merge_request)
 
 
