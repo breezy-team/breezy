@@ -84,6 +84,9 @@ New Features
    name of the colocated branch to sprout.
    (Jelmer Vernooĳ, #1869977)
 
+ * Add a ``breezy.__main__`` module so that
+   ``python3 -m breezy`` works. (Jelmer Vernooĳ)
+
 Improvements
 ************
 

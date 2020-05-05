@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 # Copyright (C) 2005-2013, 2016, 2017 Canonical Ltd
+# Copyright (C) 2018-2020 Breezy Developers
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,16 +24,6 @@ from __future__ import absolute_import
 import os
 import sys
 import warnings
-
-# update this on each release
-_script_version = (3, 1, 0)
-
-NEED_VERS = (2, 7)
-
-if sys.version_info < NEED_VERS:
-    sys.stderr.write("brz: error: cannot find a suitable python interpreter\n")
-    sys.stderr.write("  (need %d.%d or later)\n" % NEED_VERS)
-    sys.exit(1)
 
 
 profiling = False
@@ -59,29 +50,30 @@ if os.name == "posix":
     sys._brz_default_fs_enc = "utf8"
 
 
-try:
-    import breezy
-except ImportError as e:
-    sys.stderr.write(
-        "brz: ERROR: "
-        "Couldn't import breezy and dependencies.\n"
-        "Please check the directory containing breezy is on your PYTHONPATH.\n"
-        "\n")
-    raise
+def main():
+    import breezy.breakin
+    breezy.breakin.hook_debugger_to_signal()
 
-if breezy.version_info[:3] != _script_version:
-    sys.stderr.write(
-        "brz: WARNING: breezy version doesn't match the brz program.\n"
-        "This may indicate an installation problem.\n"
-        "breezy is version %s from %s\n"
-        "brz is version %s from %s\n" % (
-            breezy._format_version_tuple(breezy.version_info),
-            breezy.__path__[0],
-            breezy._format_version_tuple(_script_version),
-            __file__))
+    import breezy.commands
+    import breezy.trace
+
+    with breezy.initialize():
+        exit_val = breezy.commands.main()
+        if profiling:
+            profile_imports.log_stack_info(sys.stderr)
+
+    # By this point we really have completed everything we want to do, and
+    # there's no point doing any additional cleanup.  Abruptly exiting here
+    # stops any background threads getting into trouble as code is unloaded,
+    # and it may also be slightly faster, through avoiding gc of objects that
+    # are just about to be discarded anyhow.  This does mean that atexit hooks
+    # won't run but we don't use them.  Also file buffers won't be flushed,
+    # but our policy is to always close files from a finally block. -- mbp 20070215
+    exitfunc = getattr(sys, "exitfunc", None)
+    if exitfunc is not None:
+        exitfunc()
+    os._exit(exit_val)
+
 
 if __name__ == '__main__':
-    from breezy.__main__ import main
     main()
-else:
-    raise ImportError("The brz script cannot be imported.")
