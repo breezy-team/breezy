@@ -1198,7 +1198,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
             return refs
         self.target.repository.send_pack(
             get_changed_refs,
-            self.source.repository._git.object_store.generate_pack_data)
+            self.source.repository._git.generate_pack_data)
         return result
 
 

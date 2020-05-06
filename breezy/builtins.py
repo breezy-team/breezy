@@ -1434,6 +1434,7 @@ class cmd_branch(Command):
     parameter, as in "branch foo/bar -r 5".
     """
 
+    aliase = ['sprout']
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision',
@@ -1461,15 +1462,17 @@ class cmd_branch(Command):
                             help="Bind new branch to from location."),
                      Option('no-recurse-nested',
                             help='Do not recursively check out nested trees.'),
+                     Option('colocated-branch', short_name='b',
+                            type=str, help='Name of colocated branch to sprout.'),
                      ]
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
             use_existing_dir=False, switch=False, bind=False,
-            files_from=None, no_recurse_nested=False):
+            files_from=None, no_recurse_nested=False, colocated_branch=None):
         from breezy import switch as _mod_switch
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
-            from_location)
+            from_location, name=colocated_branch)
         if no_recurse_nested:
             recurse = 'none'
         else:
@@ -1693,6 +1696,38 @@ class cmd_checkout(Command):
                 return
         source.create_checkout(to_location, revision_id, lightweight,
                                accelerator_tree, hardlink)
+
+
+class cmd_clone(Command):
+    __doc__ = """Clone a control directory.
+    """
+
+    takes_args = ['from_location', 'to_location?']
+    takes_options = ['revision',
+                     Option('no-recurse-nested',
+                            help='Do not recursively check out nested trees.'),
+                     ]
+
+    def run(self, from_location, to_location=None, revision=None, no_recurse_nested=False):
+        accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
+            from_location)
+        if no_recurse_nested:
+            recurse = 'none'
+        else:
+            recurse = 'down'
+        revision = _get_one_revision('branch', revision)
+        self.enter_context(br_from.lock_read())
+        if revision is not None:
+            revision_id = revision.as_revision_id(br_from)
+        else:
+            # FIXME - wt.last_revision, fallback to branch, fall back to
+            # None or perhaps NULL_REVISION to mean copy nothing
+            # RBC 20060209
+            revision_id = br_from.last_revision()
+        if to_location is None:
+            to_location = urlutils.derive_to_location(from_location)
+        target_controldir = br_from.controldir.clone(to_location, revision_id=revision_id)
+        note(gettext('Created new control directory.'))
 
 
 class cmd_renames(Command):

@@ -90,12 +90,19 @@ class BzrBackendRepo(BackendRepo):
             have = self.object_store.find_common_revisions(graph_walker)
             if wants is None:
                 return
+            shallows = getattr(graph_walker, 'shallow', frozenset())
             if isinstance(self.object_store, BazaarObjectStore):
                 return self.object_store.generate_pack_contents(
-                    have, wants, progress, get_tagged=get_tagged, lossy=True)
+                    have, wants, shallow=shallows,
+                    progress=progress, get_tagged=get_tagged, lossy=True)
             else:
-                return self.object_store.generate_pack_contents(
-                    have, wants, progress)
+                if shallows:
+                    return self.object_store.generate_pack_contents(
+                        have, wants, shallow=shallows, progress=progress)
+                else:
+                    return self.object_store.generate_pack_contents(
+                        have, wants, progress=progress)
+
 
 
 class BzrTCPGitServer(TCPGitServer):
