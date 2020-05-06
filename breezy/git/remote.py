@@ -545,7 +545,7 @@ class RemoteGitDir(GitDir):
 
     def push_branch(self, source, revision_id=None, overwrite=False,
                     remember=False, create_prefix=False, lossy=False,
-                    name=None):
+                    name=None, tag_selector=None):
         """Push the source branch into this ControlDir."""
         if revision_id is None:
             # No revision supplied by the user, default to the branch
@@ -590,6 +590,8 @@ class RemoteGitDir(GitDir):
             ret[actual_refname] = new_sha
             if fetch_tags:
                 for tagname, revid in source.tags.get_tag_dict().items():
+                    if tag_selector and not tag_selector(tagname):
+                        continue
                     if lossy:
                         try:
                             new_sha = source_store._lookup_revision_sha1(revid)
@@ -604,10 +606,24 @@ class RemoteGitDir(GitDir):
                     ret[tag_name_to_ref(tagname)] = new_sha
             return ret
         with source_store.lock_read():
-            if lossy:
-                generate_pack_data = source_store.generate_lossy_pack_data
-            else:
-                generate_pack_data = source_store.generate_pack_data
+            def generate_pack_data(have, want, progress=None,
+                                   ofs_delta=True):
+                git_repo = getattr(source.repository, '_git', None)
+                if git_repo:
+                    shallow = git_repo.get_shallow()
+                else:
+                    shallow = None
+                if lossy:
+                    return source_store.generate_lossy_pack_data(
+                        have, want, shallow=shallow,
+                        progress=progress, ofs_delta=ofs_delta)
+                elif shallow:
+                    return source_store.generate_pack_data(
+                        have, want, shallow=shallow,
+                        progress=progress, ofs_delta=ofs_delta)
+                else:
+                    return source_store.generate_pack_data(
+                        have, want, progress=progress, ofs_delta=ofs_delta)
             new_refs = self.send_pack(get_changed_refs, generate_pack_data)
         push_result.new_revid = repo.lookup_foreign_revision_id(
             new_refs[actual_refname])
@@ -710,7 +726,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             raise NotGitRepository()
         elif response.status != 200:
             raise GitProtocolError("unexpected http resp %d for %s" %
-                                   (response.code, url))
+                                   (response.status, url))
 
         # TODO: Optimization available by adding `preload_content=False` to the
         # request and just passing the `read` method on instead of going via

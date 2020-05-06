@@ -840,7 +840,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
-        if name is not None:
+        if name:
             raise errors.NoColocatedBranchSupport(self)
         if branch_format is None:
             return self.transport

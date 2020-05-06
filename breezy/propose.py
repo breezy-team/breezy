@@ -200,7 +200,7 @@ class MergeProposalBuilder(object):
 
     def create_proposal(self, description, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False):
+                        work_in_progress=False, allow_collaboration=False):
         """Create a proposal to merge a branch for merging.
 
         :param description: Description for the merge proposal
@@ -210,6 +210,9 @@ class MergeProposalBuilder(object):
         :param commit_message: Optional commit message
         :param work_in_progress:
             Whether this merge proposal is still a work-in-progress
+        :param allow_collaboration:
+            Whether to allow changes to the branch from the target branch
+            maintainer(s)
         :return: A `MergeProposal` object
         """
         raise NotImplementedError(self.create_proposal)
@@ -234,6 +237,9 @@ class Hoster(object):
     # The syntax to use for formatting merge proposal descriptions.
     # Common values: 'plain', 'markdown'
     merge_proposal_description_format = None
+
+    # Does this hoster support the allow_collaboration flag?
+    supports_allow_collaboration = False
 
     def publish_derived(self, new_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,

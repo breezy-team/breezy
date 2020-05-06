@@ -21,12 +21,12 @@
 
 from ..errors import (
     InvalidRevisionId,
-    InvalidRevisionSpec,
     )
 from ..revision import (
     NULL_REVISION,
 )
 from ..revisionspec import (
+    InvalidRevisionSpec,
     RevisionInfo,
     RevisionSpec,
     )

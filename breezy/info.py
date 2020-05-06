@@ -455,7 +455,7 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
         extra = []
         if repository.make_working_trees():
             extra.append('trees')
-        if len(control.get_branches()) > 0:
+        if len(control.branch_names()) > 0:
             extra.append('colocated branches')
         if extra:
             phrase += ' with ' + " and ".join(extra)

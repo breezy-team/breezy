@@ -207,7 +207,7 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         stderr = stderr or sys.stderr
         ui_factory = breezy.ui.make_ui_for_terminal(stdin, stdout, stderr)
     else:
-        ui_factory = None
+        from breezy.ui import ui_factory
     tracer = trace.DefaultConfig()
     state = library_state.BzrLibraryState(ui=ui_factory, trace=tracer)
     # Start automatically in case people don't realize this returns a context.

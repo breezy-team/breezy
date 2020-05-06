@@ -485,6 +485,19 @@ class TestSmartServerBzrDirRequestGetBranches(
             (b"success", ), local_result)
         self.assertEqual(expected, request.execute(b''))
 
+    def test_ref(self):
+        backing = self.get_transport()
+        dir = self.make_controldir('foo')
+        b = self.make_branch('bar')
+        dir.set_branch_reference(b)
+        request_class = smart_dir.SmartServerBzrDirRequestGetBranches
+        request = request_class(backing)
+        local_result = bencode.bencode(
+            {b"": (b"ref", b'../bar/')})
+        expected = smart_req.SuccessfulSmartServerResponse(
+            (b"success", ), local_result)
+        self.assertEqual(expected, request.execute(b'foo'))
+
     def test_empty(self):
         backing = self.get_transport()
         self.make_controldir('.')

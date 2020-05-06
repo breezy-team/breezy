@@ -73,6 +73,20 @@ New Features
  * When pushing to Git repositories, symrefs are now followed.
    (Jelmer Vernooĳ, #1800393)
 
+ * New ``brz clone`` command, which clones everything under
+   a control directory. I.e. all colocated branches, like
+   ``git clone``. (Jelmer Vernooĳ, #831939)
+
+ * ``brz sprout`` is now an alias for ``brz branch``.
+   (Jelmer Vernooĳ)
+
+ * ``brz branch`` now accepts a ``-b`` flag with the
+   name of the colocated branch to sprout.
+   (Jelmer Vernooĳ, #1869977)
+
+ * Add a ``breezy.__main__`` module so that
+   ``python3 -m breezy`` works. (Jelmer Vernooĳ)
+
 Improvements
 ************
 
@@ -114,6 +128,13 @@ Improvements
  * Python 3 is now used by default to run scripts, etc. from the makefile.
    (Jelmer Vernooĳ)
 
+ * ``.git/config`` is now consulted to determine the users' identity
+   for commits, and the gpg_signing_key. (Jelmer Vernooĳ)
+
+ * Ignore special files (fifos, block/character devices, sockets)
+   when finding changes in Git working trees. (Jelmer Vernooĳ, #1857244)
+
+
 Bug Fixes
 *********
 
@@ -147,6 +168,15 @@ Bug Fixes
 
 * Ignore ghost tags when interacting with remote Git repositories.
   (Jelmer Vernooĳ)
+
+* Fix ``setup_ui=False`` when initializing Breezy.
+  (Jelmer Vernooĳ, #1852647)
+
+* Fix backwards compatibility with Bazaar by supporting the
+  $BZR_EMAIL variable. (Jelmer Vernooĳ, #1869178)
+
+* Cope with non-ascii characters in Git signatures.
+  (Jelmer Vernooĳ, #1869533)
 
 Documentation
 *************

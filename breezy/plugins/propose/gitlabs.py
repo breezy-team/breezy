@@ -97,6 +97,10 @@ class GitlabLoginError(errors.BzrError):
         self.error = error
 
 
+class MergeRequestExists(Exception):
+    """Raised when a merge requests already exists."""
+
+
 def default_config_path():
     return os.path.join(bedding.config_dir(), 'gitlab.conf')
 
@@ -162,9 +166,15 @@ def parse_gitlab_merge_request_url(url):
         raise NotGitLabUrl(url)
     path = path.strip('/')
     parts = path.split('/')
+    if len(parts) < 2:
+        raise NotMergeRequestUrl(host, url)
     if parts[-2] != 'merge_requests':
         raise NotMergeRequestUrl(host, url)
-    return host, '/'.join(parts[:-2]), int(parts[-1])
+    if parts[-3] == '-':
+        project_name = '/'.join(parts[:-3])
+    else:
+        project_name = '/'.join(parts[:-2])
+    return host, project_name, int(parts[-1])
 
 
 class GitLabMergeProposal(MergeProposal):
@@ -266,6 +276,7 @@ class GitLab(Hoster):
 
     supports_merge_proposal_labels = True
     supports_merge_proposal_commit_message = False
+    supports_allow_collaboration = True
     merge_proposal_description_format = 'markdown'
 
     def __repr__(self):
@@ -274,6 +285,10 @@ class GitLab(Hoster):
     @property
     def base_url(self):
         return self.transport.base
+
+    @property
+    def base_hostname(self):
+        return urlutils.parse_url(self.base_url)[3]
 
     def _api_request(self, method, path, fields=None, body=None):
         return self.transport.request(
@@ -369,6 +384,15 @@ class GitLab(Hoster):
             parameters['owner_id'] = urlutils.quote(owner, '')
         return self._list_paged(path, parameters, per_page=DEFAULT_PAGE_SIZE)
 
+    def _get_merge_request(self, project, merge_id):
+        path = 'projects/%s/merge_requests/%d' % (urlutils.quote(str(project), ''), merge_id)
+        response = self._api_request('GET', path)
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
+        if response.status != 200:
+            raise errors.InvalidHttpResponse(path, response.text)
+        return json.loads(response.data)
+
     def _list_projects(self, owner):
         path = 'users/%s/projects' % urlutils.quote(str(owner), '')
         parameters = {}
@@ -385,7 +409,7 @@ class GitLab(Hoster):
     def _create_mergerequest(
             self, title, source_project_id, target_project_id,
             source_branch_name, target_branch_name, description,
-            labels=None):
+            labels=None, allow_collaboration=False):
         path = 'projects/%s/merge_requests' % source_project_id
         fields = {
             'title': title,
@@ -393,6 +417,7 @@ class GitLab(Hoster):
             'target_branch': target_branch_name,
             'target_project_id': target_project_id,
             'description': description,
+            'allow_collaboration': allow_collaboration,
             }
         if labels:
             fields['labels'] = labels
@@ -400,7 +425,7 @@ class GitLab(Hoster):
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
-            raise MergeProposalExists(self.source_branch.user_url)
+            raise MergeRequestExists()
         if response.status != 201:
             raise errors.InvalidHttpResponse(path, response.text)
         return json.loads(response.data)
@@ -479,7 +504,7 @@ class GitLab(Hoster):
             (host, project, branch_name) = parse_gitlab_branch_url(branch)
         except NotGitLabUrl:
             return False
-        return (self.base_url == ('https://%s' % host))
+        return self.base_hostname == host
 
     def check(self):
         response = self._api_request('GET', 'user')
@@ -534,15 +559,15 @@ class GitLab(Hoster):
         except NotGitLabUrl:
             raise UnsupportedHoster(url)
         except NotMergeRequestUrl as e:
-            if self.base_url == ('https://%s' % e.host):
+            if self.base_hostname == e.host:
                 raise
             else:
                 raise UnsupportedHoster(url)
-        if self.base_url != ('https://%s' % host):
+        if self.base_hostname != host:
             raise UnsupportedHoster(url)
         project = self._get_project(project)
-        mr = project.mergerequests.get(merge_id)
-        return GitLabMergeProposal(mr)
+        mr = self._get_merge_request(project['path_with_namespace'], merge_id)
+        return GitLabMergeProposal(self, mr)
 
     def delete_project(self, project):
         path = 'projects/%s' % urlutils.quote(str(project), '')
@@ -583,7 +608,7 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
 
     def create_proposal(self, description, reviewers=None, labels=None,
                         prerequisite_branch=None, commit_message=None,
-                        work_in_progress=False):
+                        work_in_progress=False, allow_collaboration=False):
         """Perform the submission."""
         # https://docs.gitlab.com/ee/api/merge_requests.html#create-mr
         if prerequisite_branch is not None:
@@ -595,7 +620,6 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
         title = determine_title(description)
         if work_in_progress:
             title = 'WIP: %s' % title
-        # TODO(jelmer): Allow setting allow_collaboration field
         # TODO(jelmer): Allow setting milestone field
         # TODO(jelmer): Allow setting squash field
         kwargs = {
@@ -604,7 +628,8 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             'target_project_id': target_project['id'],
             'source_branch_name': self.source_branch_name,
             'target_branch_name': self.target_branch_name,
-            'description': description}
+            'description': description,
+            'allow_collaboration': allow_collaboration}
         if labels:
             kwargs['labels'] = ','.join(labels)
         if reviewers:
@@ -615,7 +640,10 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
                 else:
                     user = self.gl._get_user(reviewer)
                 kwargs['assignee_ids'].append(user['id'])
-        merge_request = self.gl._create_mergerequest(**kwargs)
+        try:
+            merge_request = self.gl._create_mergerequest(**kwargs)
+        except MergeRequestExists:
+            raise MergeProposalExists(self.source_branch.user_url)
         return GitLabMergeProposal(self.gl, merge_request)
 
 
