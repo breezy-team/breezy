@@ -526,7 +526,7 @@ class TransportRepo(BaseRepo):
           ofs_delta: Whether OFS deltas can be included
           progress: Optional progress reporting method
         """
-        shallow = shallow=self.get_shallow()
+        shallow = self.get_shallow()
         if shallow:
             return self.object_store.generate_pack_data(
                 have, want, shallow=shallow,
