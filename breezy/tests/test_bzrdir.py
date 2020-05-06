@@ -821,6 +821,20 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('topdir/foo'),
                          self.local_branch_path(branch))
 
+    def test_open_tree_or_branch_named(self):
+        tree = self.make_branch_and_tree('topdir')
+        self.assertRaises(
+            NotBranchError,
+            bzrdir.BzrDir.open_tree_or_branch, 'topdir', name='missing')
+        tree.branch.controldir.create_branch('named')
+        tree, branch = bzrdir.BzrDir.open_tree_or_branch('topdir', name='named')
+        self.assertEqual(os.path.realpath('topdir'),
+                         os.path.realpath(tree.basedir))
+        self.assertEqual(os.path.realpath('topdir'),
+                         self.local_branch_path(branch))
+        self.assertEqual(branch.name, 'named')
+        self.assertIs(tree.controldir, branch.controldir)
+
     def test_open_from_transport(self):
         # transport pointing at bzrdir should give a bzrdir with root transport
         # set to the given transport

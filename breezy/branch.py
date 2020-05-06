@@ -1188,8 +1188,8 @@ class Branch(controldir.ControlComponent):
         if revno < 1 or revno > self.revno():
             raise errors.InvalidRevisionNumber(revno)
 
-    def clone(self, to_controldir, revision_id=None, repository_policy=None,
-              tag_selector=None):
+    def clone(self, to_controldir, revision_id=None, name=None,
+              repository_policy=None, tag_selector=None):
         """Clone this branch into to_controldir preserving all semantic values.
 
         Most API users will want 'create_clone_on_transport', which creates a
@@ -1198,7 +1198,7 @@ class Branch(controldir.ControlComponent):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        result = to_controldir.create_branch()
+        result = to_controldir.create_branch(name=name)
         with self.lock_read(), result.lock_write():
             if repository_policy is not None:
                 repository_policy.configure_branch(result)

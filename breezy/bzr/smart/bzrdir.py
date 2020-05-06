@@ -440,12 +440,19 @@ class SmartServerBzrDirRequestGetBranches(SmartServerRequestBzrDir):
         The body is a bencoded dictionary, with values similar to the return
         value of the open branch request.
         """
-        branches = self._bzrdir.get_branches()
+        branch_names = self._bzrdir.branch_names()
         ret = {}
-        for name, b in branches.items():
+        for name in branch_names:
             if name is None:
                 name = b""
-            ret[name.encode('utf-8')] = (b"branch", b._format.network_name())
+            branch_ref = self._bzrdir.get_branch_reference(name=name)
+            if branch_ref is not None:
+                branch_ref = urlutils.relative_url(self._bzrdir.user_url, branch_ref)
+                value = (b"ref", branch_ref.encode('utf-8'))
+            else:
+                b = self._bzrdir.open_branch(name=name, ignore_fallbacks=True)
+                value = (b"branch", b._format.network_name())
+            ret[name.encode('utf-8')] = value
         return SuccessfulSmartServerResponse(
             (b"success", ), bencode.bencode(ret))
 

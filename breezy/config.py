@@ -530,12 +530,12 @@ class Config(object):
 
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
-        $BRZ_EMAIL can be set to override this, then
+        $BRZ_EMAIL or $BZR_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If no username can be found, NoWhoami exception is raised.
         """
-        v = os.environ.get('BRZ_EMAIL')
+        v = os.environ.get('BRZ_EMAIL') or os.environ.get('BZR_EMAIL')
         if v:
             return v
         v = self._get_user_id()
@@ -2514,7 +2514,7 @@ option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
-    Option('email', override_from_env=['BRZ_EMAIL'],
+    Option('email', override_from_env=['BRZ_EMAIL', 'BZR_EMAIL'],
            default=bedding.default_email, help='The users identity'))
 option_registry.register(
     Option('gpg_signing_key',

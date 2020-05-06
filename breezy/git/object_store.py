@@ -132,7 +132,7 @@ class LRUTreeCache(object):
         self._cache[tree.get_revision_id()] = tree
 
 
-def _find_missing_bzr_revids(graph, want, have):
+def _find_missing_bzr_revids(graph, want, have, shallow=None):
     """Find the revisions that have to be pushed.
 
     :param get_parent_map: Function that returns the parents for a sequence
@@ -142,13 +142,17 @@ def _find_missing_bzr_revids(graph, want, have):
     :return: Set of revisions to fetch
     """
     handled = set(have)
+    if shallow:
+        # Shallows themselves still need to be fetched, but let's exclude their
+        # parents.
+        for ps in graph.get_parent_map(shallow).values():
+            handled.update(ps)
+    handled.add(NULL_REVISION)
     todo = set()
     for rev in want:
         extra_todo = graph.find_unique_ancestors(rev, handled)
         todo.update(extra_todo)
         handled.update(extra_todo)
-    if NULL_REVISION in todo:
-        todo.remove(NULL_REVISION)
     return todo
 
 
@@ -755,13 +759,15 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise KeyError(sha)
 
-    def generate_lossy_pack_data(self, have, want, progress=None,
+    def generate_lossy_pack_data(self, have, want, shallow=None,
+                                 progress=None,
                                  get_tagged=None, ofs_delta=False):
         return pack_objects_to_data(
-            self.generate_pack_contents(have, want, progress, get_tagged,
+            self.generate_pack_contents(have, want, progress=progress,
+                                        shallow=shallow, get_tagged=get_tagged,
                                         lossy=True))
 
-    def generate_pack_contents(self, have, want, progress=None,
+    def generate_pack_contents(self, have, want, shallow=None, progress=None,
                                ofs_delta=False, get_tagged=None, lossy=False):
         """Iterate over the contents of a pack file.
 
@@ -790,9 +796,18 @@ class BazaarObjectStore(BaseObjectStore):
                     pending.add(type_data[0])
             except KeyError:
                 pass
+        shallows = set()
+        for commit_sha in shallow or set():
+            try:
+                for (type, type_data) in ret[commit_sha]:
+                    if type != "commit":
+                        raise AssertionError("Type was %s, not commit" % type)
+                    shallows.add(type_data[0])
+            except KeyError:
+                pass
 
         graph = self.repository.get_graph()
-        todo = _find_missing_bzr_revids(graph, pending, processed)
+        todo = _find_missing_bzr_revids(graph, pending, processed, shallow)
         ret = PackTupleIterable(self)
         with ui.ui_factory.nested_progress_bar() as pb:
             for i, revid in enumerate(graph.iter_topo_order(todo)):
