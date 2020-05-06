@@ -710,7 +710,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         body = bencode.bdecode(handler.read_body_bytes())
         ret = []
-        for name, value in viewitems(body):
+        for name, value in body.items():
             name = name.decode('utf-8')
             ret.append(name)
         return ret
