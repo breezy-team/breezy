@@ -817,7 +817,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     ie = self._get_file_ie(name, path, value, dir_ids[parent])
                     yield (posixpath.relpath(path, from_dir), "V", ie.kind, ie)
                 else:
-                    ie = fk_entries[kind]()
+                    try:
+                        ie = fk_entries[kind]()
+                    except KeyError:
+                        # unsupported kind
+                        continue
                     yield (posixpath.relpath(path, from_dir),
                            ("I" if self.is_ignored(path) else "?"), kind, ie)
 
