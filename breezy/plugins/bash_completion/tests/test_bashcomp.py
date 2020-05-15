@@ -85,7 +85,7 @@ class BashCompletionMixin(object):
         surplus = set(words) & self.completion_result
         if surplus:
             raise AssertionError('Completion should omit %r but it has %r'
-                                 % (surplus, res, self.completion_result))
+                                 % (surplus, self.completion_result))
 
     def get_script(self):
         commands.install_bzr_command_hooks()
