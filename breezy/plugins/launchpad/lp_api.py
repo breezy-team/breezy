@@ -37,7 +37,7 @@ except ImportError:  # python < 3
 
 from ... import (
     branch,
-    config,
+    bedding,
     errors,
     osutils,
     trace,
@@ -71,7 +71,7 @@ MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 3)
 
 def get_cache_directory():
     """Return the directory to cache launchpadlib objects in."""
-    return osutils.pathjoin(config.config_dir(), 'launchpad')
+    return osutils.pathjoin(bedding.cache_dir(), 'launchpad')
 
 
 def parse_launchpadlib_version(version_number):
@@ -115,7 +115,10 @@ def connect_launchpad(base_url, timeout=None, proxy_info=None,
     if proxy_info is None:
         import httplib2
         proxy_info = httplib2.proxy_info_from_environment('https')
-    cache_directory = get_cache_directory()
+    try:
+        cache_directory = get_cache_directory()
+    except EnvironmentError:
+        cache_directory = None
     return Launchpad.login_with(
         'breezy', base_url, cache_directory, timeout=timeout,
         proxy_info=proxy_info, version=version)

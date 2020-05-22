@@ -1024,24 +1024,32 @@ def rand_chars(num):
 
 def splitpath(p):
     """Turn string into list of parts."""
+    use_bytes = isinstance(p, bytes)
     if os.path.sep == '\\':
         # split on either delimiter because people might use either on
         # Windows
-        if isinstance(p, bytes):
+        if use_bytes:
             ps = re.split(b'[\\\\/]', p)
         else:
             ps = re.split(r'[\\/]', p)
     else:
-        if isinstance(p, bytes):
+        if use_bytes:
             ps = p.split(b'/')
         else:
             ps = p.split('/')
 
+    if use_bytes:
+        parent_dir = b'..'
+        current_empty_dir = (b'.', b'')
+    else:
+        parent_dir = '..'
+        current_empty_dir = ('.', '')
+
     rps = []
     for f in ps:
-        if f in ('..', b'..'):
+        if f == parent_dir:
             raise errors.BzrError(gettext("sorry, %r not allowed in path") % f)
-        elif f in ('.', '', b'.', b''):
+        elif f in current_empty_dir:
             pass
         else:
             rps.append(f)
@@ -1660,8 +1668,40 @@ else:
     _terminal_size = _ioctl_terminal_size
 
 
-def supports_executable():
-    return sys.platform != "win32"
+def supports_executable(path):
+    """Return if filesystem at path supports executable bit.
+
+    :param path: Path for which to check the file system
+    :return: boolean indicating whether executable bit can be stored/relied upon
+    """
+    if sys.platform == 'win32':
+        return False
+    try:
+        fs_type = get_fs_type(path)
+    except errors.DependencyNotPresent as e:
+        trace.mutter('Unable to get fs type for %r: %s', path, e)
+    else:
+        if fs_type in ('vfat', 'ntfs'):
+            # filesystems known to not support executable bit
+            return False
+    return True
+
+
+def supports_symlinks(path):
+    """Return if the filesystem at path supports the creation of symbolic links.
+
+    """
+    if not has_symlinks():
+        return False
+    try:
+        fs_type = get_fs_type(path)
+    except errors.DependencyNotPresent as e:
+        trace.mutter('Unable to get fs type for %r: %s', path, e)
+    else:
+        if fs_type in ('vfat', 'ntfs'):
+            # filesystems known to not support symlinks
+            return False
+    return True
 
 
 def supports_posix_readonly():
@@ -2598,6 +2638,79 @@ def is_environment_error(evalue):
     if sys.platform == "win32" and win32utils._is_pywintypes_error(evalue):
         return True
     return False
+
+
+def read_mtab(path):
+    """Read an fstab-style file and extract mountpoint+filesystem information.
+
+    :param path: Path to read from
+    :yield: Tuples with mountpoints (as bytestrings) and filesystem names
+    """
+    with open(path, 'rb') as f:
+        for line in f:
+            if line.startswith(b'#'):
+                continue
+            cols = line.split()
+            if len(cols) < 3:
+                continue
+            yield cols[1], cols[2].decode('ascii', 'replace')
+
+
+MTAB_PATH = '/etc/mtab'
+
+class FilesystemFinder(object):
+    """Find the filesystem for a particular path."""
+
+    def __init__(self, mountpoints):
+        def key(x):
+            return len(x[0])
+        self._mountpoints = sorted(mountpoints, key=key, reverse=True)
+
+    @classmethod
+    def from_mtab(cls):
+        """Create a FilesystemFinder from an mtab-style file.
+
+        Note that this will silenty ignore mtab if it doesn't exist or can not
+        be opened.
+        """
+        # TODO(jelmer): Use inotify to be notified when /etc/mtab changes and
+        # we need to re-read it.
+        try:
+            return cls(read_mtab(MTAB_PATH))
+        except EnvironmentError as e:
+            trace.mutter('Unable to read mtab: %s', e)
+            return cls([])
+
+    def find(self, path):
+        """Find the filesystem used by a particular path.
+
+        :param path: Path to find (bytestring or text type)
+        :return: Filesystem name (as text type) or None, if the filesystem is
+            unknown.
+        """
+        for mountpoint, filesystem in self._mountpoints:
+            if is_inside(mountpoint, path):
+                return filesystem
+        return None
+
+
+_FILESYSTEM_FINDER = None
+
+
+def get_fs_type(path):
+    """Return the filesystem type for the partition a path is in.
+
+    :param path: Path to search filesystem type for
+    :return: A FS type, as string. E.g. "ext2"
+    """
+    global _FILESYSTEM_FINDER
+    if _FILESYSTEM_FINDER is None:
+        _FILESYSTEM_FINDER = FilesystemFinder.from_mtab()
+
+    if not isinstance(path, bytes):
+        path = path.encode(_fs_enc)
+
+    return _FILESYSTEM_FINDER.find(path)
 
 
 if PY3:

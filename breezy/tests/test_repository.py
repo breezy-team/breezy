@@ -329,7 +329,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         repo = self.make_repository(
             '.', format=controldir.format_registry.get('knit')())
         inv_xml = b'<inventory format="5">\n</inventory>\n'
-        inv = repo._deserialise_inventory(b'test-rev-id', inv_xml)
+        inv = repo._deserialise_inventory(b'test-rev-id', [inv_xml])
         self.assertEqual(b'test-rev-id', inv.root.revision)
 
     def test_deserialise_uses_global_revision_id(self):
@@ -342,8 +342,8 @@ class TestFormatKnit1(TestCaseWithTransport):
         # raise an error, rather than silently using one revision_id over the
         # other.
         self.assertRaises(AssertionError, repo._deserialise_inventory,
-                          b'test-rev-id', inv_xml)
-        inv = repo._deserialise_inventory(b'other-rev-id', inv_xml)
+                          b'test-rev-id', [inv_xml])
+        inv = repo._deserialise_inventory(b'other-rev-id', [inv_xml])
         self.assertEqual(b'other-rev-id', inv.root.revision)
 
     def test_supports_external_lookups(self):

@@ -190,7 +190,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
         repo = self.git_repo
         tree = repo.revision_tree(revision.NULL_REVISION)
         self.assertEqual(tree.get_revision_id(), revision.NULL_REVISION)
-        self.assertIs(None, tree.get_root_id())
+        self.assertIs(None, tree.path2id(''))
 
     def test_get_parent_map_null(self):
         self.assertEqual({revision.NULL_REVISION: ()},

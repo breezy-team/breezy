@@ -1,8 +1,9 @@
-breezy (3.0.2-6) UNRELEASED; urgency=medium
+breezy (3.1~alpha1-1) UNRELEASED; urgency=medium
 
   * Update standards version to 4.5.0, no changes needed.
+  * New upstream release.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 22 May 2020 12:21:37 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 22 May 2020 12:24:17 +0000
 
 breezy (3.0.2-5) unstable; urgency=medium
 

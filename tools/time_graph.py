@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import random
 import os
 import time
@@ -74,13 +74,13 @@ def combi_graph(graph_klass, comb):
     graph._counters[1] = 0
     graph._counters[2] = 0
 
-    begin = time.clock()
+    begin = osutils.perf_counter()
     g = graph_klass(parent_map)
     if opts.lsprof is not None:
         heads = commands.apply_lsprofiled(opts.lsprof, all_heads_comp, g, comb)
     else:
         heads = all_heads_comp(g, comb)
-    end = time.clock()
+    end = osutils.perf_counter()
     return dict(elapsed=(end - begin), graph=g, heads=heads)
 
 def report(name, g):

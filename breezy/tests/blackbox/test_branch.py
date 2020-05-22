@@ -107,6 +107,17 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertEqual('Branched 0 revisions.\n', err)
         self.assertPathExists('a')
 
+    def test_from_name(self):
+        """Branch from a colocated branch into a regular branch."""
+        os.mkdir('b')
+        tree = self.example_branch('b/a', format='development-colo')
+        tree.controldir.create_branch(name='somecolo')
+        out, err = self.run_bzr('branch -b somecolo %s' %
+                                local_path_to_url('b/a'))
+        self.assertEqual('', out)
+        self.assertEqual('Branched 0 revisions.\n', err)
+        self.assertPathExists('a')
+
     def test_branch_broken_pack(self):
         """branching with a corrupted pack file."""
         self.example_branch('a')
@@ -360,6 +371,54 @@ class TestBranch(tests.TestCaseWithTransport):
         self.assertEqual(rev2, new_branch.tags.lookup_tag('tag-a'))
         new_branch.repository.get_revision(rev2)
 
+    def test_branch_with_nested_trees(self):
+        orig = self.make_branch_and_tree('source', format='development-subtree')
+        subtree = self.make_branch_and_tree('source/subtree')
+        self.build_tree(['source/subtree/a'])
+        subtree.add(['a'])
+        subtree.commit('add subtree contents')
+        orig.add_reference(subtree)
+        orig.set_reference_info('subtree', subtree.branch.user_url)
+        orig.commit('add subtree')
+
+        self.run_bzr('branch source target')
+
+        target = WorkingTree.open('target')
+        target_subtree = WorkingTree.open('target/subtree')
+        self.assertTreesEqual(orig, target)
+        self.assertTreesEqual(subtree, target_subtree)
+
+    def test_branch_with_nested_trees_reference_unset(self):
+        orig = self.make_branch_and_tree('source', format='development-subtree')
+        subtree = self.make_branch_and_tree('source/subtree')
+        self.build_tree(['source/subtree/a'])
+        subtree.add(['a'])
+        subtree.commit('add subtree contents')
+        orig.add_reference(subtree)
+        orig.commit('add subtree')
+
+        self.run_bzr('branch source target')
+
+        target = WorkingTree.open('target')
+        self.assertRaises(errors.NotBranchError, WorkingTree.open, 'target/subtree')
+
+    def test_branch_with_nested_trees_no_recurse(self):
+        orig = self.make_branch_and_tree('source', format='development-subtree')
+        subtree = self.make_branch_and_tree('source/subtree')
+        self.build_tree(['source/subtree/a'])
+        subtree.add(['a'])
+        subtree.commit('add subtree contents')
+        orig.add_reference(subtree)
+        orig.commit('add subtree')
+
+        self.run_bzr('branch --no-recurse-nested source target')
+
+        target = WorkingTree.open('target')
+        self.addCleanup(subtree.lock_read().unlock)
+        basis = subtree.basis_tree()
+        self.addCleanup(basis.lock_read().unlock)
+        self.assertRaises(errors.NotBranchError, WorkingTree.open, 'target/subtree')
+
 
 class TestBranchStacked(tests.TestCaseWithTransport):
     """Tests for branch --stacked"""
@@ -509,9 +568,10 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(2, self.hpss_connections)
-        self.assertLength(33, self.hpss_calls)
-        self.expectFailure("branching to the same branch requires VFS access",
-                           self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
+        self.assertLength(34, self.hpss_calls)
+        self.expectFailure(
+            "branching to the same branch requires VFS access",
+            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -527,7 +587,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
-        self.assertLength(10, self.hpss_calls)
+        self.assertLength(11, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
 
     def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
@@ -549,7 +609,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(15, self.hpss_calls)
+        self.assertLength(16, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
 
@@ -569,7 +629,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(10, self.hpss_calls)
+        self.assertLength(11, self.hpss_calls)
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
         self.assertLength(1, self.hpss_connections)
 
@@ -611,7 +671,7 @@ class TestSmartServerBranching(tests.TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
-        self.assertLength(11, self.hpss_calls)
+        self.assertLength(12, self.hpss_calls)
         self.assertLength(1, self.hpss_connections)
 
 

@@ -19,21 +19,19 @@ from __future__ import absolute_import
 import difflib
 import os
 import re
-import string
 import sys
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
+import patiencediff
 import subprocess
 import tempfile
 
 from breezy import (
-    cmdline,
+    cleanup,
     controldir,
-    errors,
     osutils,
-    patiencediff,
     textfile,
     timestamp,
     views,
@@ -43,6 +41,9 @@ from breezy.workingtree import WorkingTree
 from breezy.i18n import gettext
 """)
 
+from . import (
+    errors,
+    )
 from .registry import (
     Registry,
     )
@@ -52,12 +53,6 @@ from .tree import FileTimestampUnavailable
 
 
 DEFAULT_CONTEXT_AMOUNT = 3
-
-
-class AtTemplate(string.Template):
-    """Templating class that uses @ instead of $."""
-
-    delimiter = '@'
 
 
 # TODO: Rather than building a changeset object, we should probably
@@ -93,12 +88,11 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file,
 
     if sequence_matcher is None:
         sequence_matcher = patiencediff.PatienceSequenceMatcher
-    ud = patiencediff.unified_diff_bytes(oldlines, newlines,
-                                         fromfile=old_label.encode(
-                                             path_encoding, 'replace'),
-                                         tofile=new_label.encode(
-                                             path_encoding, 'replace'),
-                                         n=context_lines, sequencematcher=sequence_matcher)
+    ud = unified_diff_bytes(
+        oldlines, newlines,
+        fromfile=old_label.encode(path_encoding, 'replace'),
+        tofile=new_label.encode(path_encoding, 'replace'),
+        n=context_lines, sequencematcher=sequence_matcher)
 
     ud = list(ud)
     if len(ud) == 0:  # Identical contents, nothing to do
@@ -115,6 +109,75 @@ def internal_diff(old_label, oldlines, new_label, newlines, to_file,
         if not line.endswith(b'\n'):
             to_file.write(b"\n\\ No newline at end of file\n")
     to_file.write(b'\n')
+
+
+def unified_diff_bytes(a, b, fromfile=b'', tofile=b'', fromfiledate=b'',
+                       tofiledate=b'', n=3, lineterm=b'\n', sequencematcher=None):
+    r"""
+    Compare two sequences of lines; generate the delta as a unified diff.
+
+    Unified diffs are a compact way of showing line changes and a few
+    lines of context.  The number of context lines is set by 'n' which
+    defaults to three.
+
+    By default, the diff control lines (those with ---, +++, or @@) are
+    created with a trailing newline.  This is helpful so that inputs
+    created from file.readlines() result in diffs that are suitable for
+    file.writelines() since both the inputs and outputs have trailing
+    newlines.
+
+    For inputs that do not have trailing newlines, set the lineterm
+    argument to "" so that the output will be uniformly newline free.
+
+    The unidiff format normally has a header for filenames and modification
+    times.  Any or all of these may be specified using strings for
+    'fromfile', 'tofile', 'fromfiledate', and 'tofiledate'.  The modification
+    times are normally expressed in the format returned by time.ctime().
+
+    Example:
+
+    >>> for line in bytes_unified_diff(b'one two three four'.split(),
+    ...             b'zero one tree four'.split(), b'Original', b'Current',
+    ...             b'Sat Jan 26 23:30:50 1991', b'Fri Jun 06 10:20:52 2003',
+    ...             lineterm=b''):
+    ...     print line
+    --- Original Sat Jan 26 23:30:50 1991
+    +++ Current Fri Jun 06 10:20:52 2003
+    @@ -1,4 +1,4 @@
+    +zero
+     one
+    -two
+    -three
+    +tree
+     four
+    """
+    if sequencematcher is None:
+        sequencematcher = difflib.SequenceMatcher
+
+    if fromfiledate:
+        fromfiledate = b'\t' + bytes(fromfiledate)
+    if tofiledate:
+        tofiledate = b'\t' + bytes(tofiledate)
+
+    started = False
+    for group in sequencematcher(None, a, b).get_grouped_opcodes(n):
+        if not started:
+            yield b'--- %s%s%s' % (fromfile, fromfiledate, lineterm)
+            yield b'+++ %s%s%s' % (tofile, tofiledate, lineterm)
+            started = True
+        i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
+        yield b"@@ -%d,%d +%d,%d @@%s" % (i1 + 1, i2 - i1, j1 + 1, j2 - j1, lineterm)
+        for tag, i1, i2, j1, j2 in group:
+            if tag == 'equal':
+                for line in a[i1:i2]:
+                    yield b' ' + line
+                continue
+            if tag == 'replace' or tag == 'delete':
+                for line in a[i1:i2]:
+                    yield b'-' + line
+            if tag == 'replace' or tag == 'insert':
+                for line in b[j1:j2]:
+                    yield b'+' + line
 
 
 def _spawn_external_diff(diffcmd, capture_errors=True):
@@ -302,7 +365,7 @@ def external_diff(old_label, oldlines, new_label, newlines, to_file,
 
 
 def get_trees_and_branches_to_diff_locked(
-        path_list, revision_specs, old_url, new_url, add_cleanup, apply_view=True):
+        path_list, revision_specs, old_url, new_url, exit_stack, apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
 
     This method works out the trees to be diff'ed and the files of
@@ -319,8 +382,8 @@ def get_trees_and_branches_to_diff_locked(
     :param new_url:
         The url of the new branch or tree. If None, the tree to use is
         taken from the first path, if any, or the current working tree.
-    :param add_cleanup:
-        a callable like Command.add_cleanup.  get_trees_and_branches_to_diff
+    :param exit_stack:
+        an ExitStack object. get_trees_and_branches_to_diff
         will register cleanups that must be run to unlock the trees, etc.
     :param apply_view:
         if True and a view is set, apply the view or check that the paths
@@ -329,7 +392,7 @@ def get_trees_and_branches_to_diff_locked(
         a tuple of (old_tree, new_tree, old_branch, new_branch,
         specific_files, extra_trees) where extra_trees is a sequence of
         additional trees to search in for file-ids.  The trees and branches
-        will be read-locked until the cleanups registered via the add_cleanup
+        will be read-locked until the cleanups registered via the exit_stack
         param are run.
     """
     # Get the old and new revision specs
@@ -361,11 +424,9 @@ def get_trees_and_branches_to_diff_locked(
 
     def lock_tree_or_branch(wt, br):
         if wt is not None:
-            wt.lock_read()
-            add_cleanup(wt.unlock)
+            exit_stack.enter_context(wt.lock_read())
         elif br is not None:
-            br.lock_read()
-            add_cleanup(br.unlock)
+            exit_stack.enter_context(br.lock_read())
 
     # Get the old location
     specific_files = []
@@ -458,23 +519,18 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         context = DEFAULT_CONTEXT_AMOUNT
     if format_cls is None:
         format_cls = DiffTree
-    with old_tree.lock_read():
+    with cleanup.ExitStack() as exit_stack:
+        exit_stack.enter_context(old_tree.lock_read())
         if extra_trees is not None:
             for tree in extra_trees:
-                tree.lock_read()
-        new_tree.lock_read()
-        try:
-            differ = format_cls.from_trees_options(old_tree, new_tree, to_file,
-                                                   path_encoding,
-                                                   external_diff_options,
-                                                   old_label, new_label, using,
-                                                   context_lines=context)
-            return differ.show_diff(specific_files, extra_trees)
-        finally:
-            new_tree.unlock()
-            if extra_trees is not None:
-                for tree in extra_trees:
-                    tree.unlock()
+                exit_stack.enter_context(tree.lock_read())
+        exit_stack.enter_context(new_tree.lock_read())
+        differ = format_cls.from_trees_options(old_tree, new_tree, to_file,
+                                               path_encoding,
+                                               external_diff_options,
+                                               old_label, new_label, using,
+                                               context_lines=context)
+        return differ.show_diff(specific_files, extra_trees)
 
 
 def _patch_header_date(tree, path):
@@ -568,6 +624,21 @@ class DiffKindChange(object):
             return result
         return DiffPath._diff_many(
             self.differs, old_path, new_path, None, new_kind)
+
+
+class DiffTreeReference(DiffPath):
+
+    def diff(self, old_path, new_path, old_kind, new_kind):
+        """Perform comparison between two tree references.  (dummy)
+
+        """
+        if 'tree-reference' not in (old_kind, new_kind):
+            return self.CANNOT_DIFF
+        if old_kind not in ('tree-reference', None):
+            return self.CANNOT_DIFF
+        if new_kind not in ('tree-reference', None):
+            return self.CANNOT_DIFF
+        return self.CHANGED
 
 
 class DiffDirectory(DiffPath):
@@ -693,8 +764,8 @@ class DiffText(DiffPath):
                              context_lines=self.context_lines)
         except errors.BinaryFile:
             self.to_file.write(
-                ("Binary files %s and %s differ\n" %
-                 (from_label, to_label)).encode(self.path_encoding, 'replace'))
+                ("Binary files %s%s and %s%s differ\n" %
+                 (self.old_label, from_path, self.new_label, to_path)).encode(self.path_encoding, 'replace'))
         return self.CHANGED
 
 
@@ -707,11 +778,8 @@ class DiffFromTool(DiffPath):
         self._root = osutils.mkdtemp(prefix='brz-diff-')
 
     @classmethod
-    def from_string(klass, command_string, old_tree, new_tree, to_file,
+    def from_string(klass, command_template, old_tree, new_tree, to_file,
                     path_encoding='utf-8'):
-        command_template = cmdline.split(command_string)
-        if '@' not in command_string:
-            command_template.extend(['@old_path', '@new_path'])
         return klass(command_template, old_tree, new_tree, to_file,
                      path_encoding)
 
@@ -727,8 +795,10 @@ class DiffFromTool(DiffPath):
 
     def _get_command(self, old_path, new_path):
         my_map = {'old_path': old_path, 'new_path': new_path}
-        command = [AtTemplate(t).substitute(my_map) for t in
+        command = [t.format(**my_map) for t in
                    self.command_template]
+        if command == self.command_template:
+            command += [old_path, new_path]
         if sys.platform == 'win32':  # Popen doesn't accept unicode on win32
             command_encoded = []
             for c in command:
@@ -809,12 +879,9 @@ class DiffFromTool(DiffPath):
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
-        source = tree.get_file(relpath)
-        try:
-            with open(full_path, 'wb') as target:
-                osutils.pumpfile(source, target)
-        finally:
-            source.close()
+        with tree.get_file(relpath) as source, \
+                open(full_path, 'wb') as target:
+            osutils.pumpfile(source, target)
         try:
             mtime = tree.get_file_mtime(relpath)
         except FileTimestampUnavailable:
@@ -880,7 +947,8 @@ class DiffTree(object):
     # list of factories that can provide instances of DiffPath objects
     # may be extended by plugins.
     diff_factories = [DiffSymlink.from_diff_tree,
-                      DiffDirectory.from_diff_tree]
+                      DiffDirectory.from_diff_tree,
+                      DiffTreeReference.from_diff_tree]
 
     def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
                  diff_text=None, extra_factories=None):
@@ -967,7 +1035,7 @@ class DiffTree(object):
         has_changes = 0
 
         def changes_key(change):
-            old_path, new_path = change[1]
+            old_path, new_path = change.path
             path = new_path
             if path is None:
                 path = old_path
@@ -976,18 +1044,24 @@ class DiffTree(object):
         def get_encoded_path(path):
             if path is not None:
                 return path.encode(self.path_encoding, "replace")
-        for (file_id, paths, changed_content, versioned, parent, name, kind,
-             executable) in sorted(iterator, key=changes_key):
+        for change in sorted(iterator, key=changes_key):
             # The root does not get diffed, and items with no known kind (that
             # is, missing) in both trees are skipped as well.
-            if parent == (None, None) or kind == (None, None):
+            if change.parent_id == (None, None) or change.kind == (None, None):
                 continue
-            oldpath, newpath = paths
-            oldpath_encoded = get_encoded_path(paths[0])
-            newpath_encoded = get_encoded_path(paths[1])
-            old_present = (kind[0] is not None and versioned[0])
-            new_present = (kind[1] is not None and versioned[1])
-            renamed = (parent[0], name[0]) != (parent[1], name[1])
+            if change.kind[0] == 'symlink' and not self.new_tree.supports_symlinks():
+                warning(
+                    'Ignoring "%s" as symlinks are not '
+                    'supported on this filesystem.' % (change.path[0],))
+                continue
+            oldpath, newpath = change.path
+            oldpath_encoded = get_encoded_path(change.path[0])
+            newpath_encoded = get_encoded_path(change.path[1])
+            old_present = (change.kind[0] is not None and change.versioned[0])
+            new_present = (change.kind[1] is not None and change.versioned[1])
+            executable = change.executable
+            kind = change.kind
+            renamed = (change.parent_id[0], change.name[0]) != (change.parent_id[1], change.name[1])
 
             properties_changed = []
             properties_changed.extend(
@@ -1015,7 +1089,7 @@ class DiffTree(object):
                 # modified *somehow*, either content or execute bit.
                 self.to_file.write(b"=== modified %s '%s'%s\n" % (kind[0].encode('ascii'),
                                                                   newpath_encoded, prop_str))
-            if changed_content:
+            if change.changed_content:
                 self._diff(oldpath, newpath, kind[0], kind[1])
                 has_changes = 1
             if renamed:

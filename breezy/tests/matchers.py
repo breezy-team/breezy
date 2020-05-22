@@ -48,7 +48,7 @@ from breezy.bzr.smart import vfs
 from ..sixish import (
     text_type,
     )
-from ..tree import find_previous_path
+from ..tree import InterTree
 
 from testtools.matchers import Equals, Mismatch, Matcher
 
@@ -201,11 +201,11 @@ class HasPathRelations(Matcher):
 
     def get_path_map(self, tree):
         """Get the (path, previous_path) pairs for the current tree."""
+        previous_intertree = InterTree.get(self.previous_tree, tree)
         with tree.lock_read(), self.previous_tree.lock_read():
             for path, ie in tree.iter_entries_by_dir():
                 if tree.supports_rename_tracking():
-                    previous_path = find_previous_path(
-                        tree, self.previous_tree, path)
+                    previous_path = previous_intertree.find_source_path(path)
                 else:
                     if self.previous_tree.is_versioned(path):
                         previous_path = path

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 """Cross-platform os tools: files/directories manipulations
 Usage:

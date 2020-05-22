@@ -155,9 +155,9 @@ isolated_environ = {
     'BZREMAIL': None,  # may still be present in the environment
     'EMAIL': 'jrandom@example.com',  # set EMAIL as brz does not guess
     'BRZ_PROGRESS_BAR': None,
-    # This should trap leaks to ~/.brz.log. This occurs when tests use TestCase
-    # as a base class instead of TestCaseInTempDir. Tests inheriting from
-    # TestCase should not use disk resources, BRZ_LOG is one.
+    # Trap leaks to $XDG_CACHE_HOME/breezy/brz.log. This occurs when tests use
+    # TestCase as a base class instead of TestCaseInTempDir. Tests inheriting
+    # from TestCase should not use disk resources, BRZ_LOG is one.
     'BRZ_LOG': '/you-should-use-TestCaseInTempDir-if-you-need-a-log-file',
     'BRZ_PLUGIN_PATH': '-site',
     'BRZ_DISABLE_PLUGINS': None,
@@ -1336,7 +1336,9 @@ class TestCase(testtools.TestCase):
         if a == b + ('\n' if isinstance(b, text_type) else b'\n'):
             message = 'second string is missing a final newline.\n'
         raise AssertionError(message
-                             + self._ndiff_strings(a, b))
+                             + self._ndiff_strings(
+                                 a if isinstance(a, text_type) else a.decode(),
+                                 b if isinstance(b, text_type) else b.decode()))
 
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,
@@ -2684,7 +2686,7 @@ class TestCaseWithMemoryTransport(TestCase):
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
         try:
-            # Make sure we get a readable and accessible home for .brz.log
+            # Make sure we get a readable and accessible home for brz.log
             # and/or config files, and not fallback to weird defaults (see
             # http://pad.lv/825027).
             self.assertIs(None, os.environ.get('BRZ_HOME', None))
@@ -3612,7 +3614,7 @@ def fork_for_tests(suite):
         pid = os.fork()
         if pid == 0:
             try:
-                stream = os.fdopen(c2pwrite, 'wb', 1)
+                stream = os.fdopen(c2pwrite, 'wb', 0)
                 workaround_zealous_crypto_random()
                 try:
                     import coverage
@@ -3645,7 +3647,7 @@ def fork_for_tests(suite):
             os._exit(0)
         else:
             os.close(c2pwrite)
-            stream = os.fdopen(c2pread, 'rb', 1)
+            stream = os.fdopen(c2pread, 'rb', 0)
             test = TestInOtherProcess(stream, pid)
             result.append(test)
     return result
@@ -3990,6 +3992,7 @@ test_prefix_alias_registry.register('breezy', 'breezy')
 test_prefix_alias_registry.register('bd', 'breezy.doc')
 test_prefix_alias_registry.register('bu', 'breezy.utils')
 test_prefix_alias_registry.register('bt', 'breezy.tests')
+test_prefix_alias_registry.register('bgt', 'breezy.git.tests')
 test_prefix_alias_registry.register('bb', 'breezy.tests.blackbox')
 test_prefix_alias_registry.register('bp', 'breezy.plugins')
 
@@ -4077,6 +4080,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_commit',
         'breezy.tests.test_commit_merge',
         'breezy.tests.test_config',
+        'breezy.tests.test_bedding',
         'breezy.tests.test_conflicts',
         'breezy.tests.test_controldir',
         'breezy.tests.test_counted_lock',
@@ -4140,12 +4144,14 @@ def _test_suite_testmod_names():
         'breezy.tests.test_memorytree',
         'breezy.tests.test_merge',
         'breezy.tests.test_merge3',
+        'breezy.tests.test_mergeable',
         'breezy.tests.test_merge_core',
         'breezy.tests.test_merge_directive',
         'breezy.tests.test_mergetools',
         'breezy.tests.test_missing',
         'breezy.tests.test_msgeditor',
         'breezy.tests.test_multiparent',
+        'breezy.tests.test_multiwalker',
         'breezy.tests.test_mutabletree',
         'breezy.tests.test_nonascii',
         'breezy.tests.test_options',
@@ -4157,6 +4163,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_permissions',
         'breezy.tests.test_plugins',
         'breezy.tests.test_progress',
+        'breezy.tests.test_propose',
         'breezy.tests.test_pyutils',
         'breezy.tests.test_read_bundle',
         'breezy.tests.test_reconcile',

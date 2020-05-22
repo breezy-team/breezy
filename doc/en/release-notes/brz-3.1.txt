@@ -1,0 +1,236 @@
+####################
+Breezy Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+brz 3.1.0
+#########
+
+:Codename: Nirvana
+:3.1.0: 2020-05-21
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+* The ``brz init-repo`` command has been renamed to
+  ``brz init-shared-repo`` to emphasize that it creates
+  shared repositories rather than just any kind of repository.
+  (Jelmer Vernooĳ)
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+* A new ``brz land`` command can merge merge proposals on Launchpad,
+  GitHub and GitLab sites. (Jelmer Vernooĳ, #1816213)
+
+* The 'patch' command is now bundled with brz.
+  Imported from bzrtools by Aaron Bentley. (Jelmer Vernooĳ)
+
+* The 'quilt' plugin, extracted from brz-debian, is now
+  bundled. (Jelmer Vernooĳ)
+
+* A new ``calculate_revnos`` configuration option (defaults to enabled)
+  can be used to disable revno display for branch formats that
+  do not natively store revnos. This speeds up ``brz log`` on
+  the Samba git branch by 33%.
+  (Jelmer Vernooĳ)
+
+* Directly read mtab rather than using psutil when trying to figure out
+  filesystem types. This removes a dependency that not all users may
+  have installed and speeds up import time since psutil brings in
+  various other modules. (Jelmer Vernooĳ)
+
+* ``brz diff`` now has a --color argument that can write
+  color diff output. This is based on the cdiff code in
+  bzrtools by Aaron Bentley.
+  (Jelmer Vernooĳ, #376594)
+
+* Information about tree references can now be updated on remote
+  branches. (Jelmer Vernooĳ)
+
+* Warn the user when they attempt to use Breezy in a Subversion
+  working copy. (Jelmer Vernooĳ)
+
+* Add a basic Mercurial plugin that mentions that .hg repositories
+  are unsupported when the user attempts to access one.
+  (Jelmer Vernooĳ)
+
+* The ``2a`` format now officially supports storing tree references.
+  It always partially supported storing tree reference data,
+  and would happily pull in tree reference data from other repository
+  formats. (Jelmer Vernooĳ)
+
+* A new ``fossil`` plugin has been added that warns users when they
+  attempt to access Fossil repositories.
+  (Jelmer Vernooĳ, #1848821)
+
+* When pushing to Git repositories, symrefs are now followed.
+  (Jelmer Vernooĳ, #1800393)
+
+* New ``brz clone`` command, which clones everything under
+  a control directory. I.e. all colocated branches, like
+  ``git clone``. (Jelmer Vernooĳ, #831939)
+
+* ``brz sprout`` is now an alias for ``brz branch``.
+  (Jelmer Vernooĳ)
+
+* ``brz branch`` now accepts a ``-b`` flag with the
+  name of the colocated branch to sprout.
+  (Jelmer Vernooĳ, #1869977)
+
+* Add a ``breezy.__main__`` module so that
+  ``python3 -m breezy`` works. (Jelmer Vernooĳ)
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance
+   or memory usage, or better results.
+
+* A new ``--commit-message`` option has been added to
+  ``brz propose``, for hosting sites that support it.
+  (Jelmer Vernooĳ)
+
+* Automatically upgrade to branch format 8 when setting branch references.
+  (Jelmer Vernooĳ)
+
+* The ``ssh`` configuration variable can be used to set the default
+  SSH implementation. (Jelmer Vernooĳ, #650757)
+
+* ``locks.steal_dead`` is now enabled by default.
+  (Jelmer Vernooĳ, #220464)
+
+* The substitution variables for the ``change_editor`` configuration
+  option are now "{old_path}" and "{new_path}" rather than "@old_path" and
+  "@new_path". The former is more consistent with the way substitutions
+  work in other configuration options. The old syntax is still supported.
+  (Jelmer Vernooĳ, #708718)
+
+* The ``brz inventory`` command now accepts a ``--include-root``
+  argument to show the tree root. (Jelmer Vernooĳ)
+
+* Fix support for reading Git repositories over HTTP without
+  a smart server. (Jelmer Vernooĳ)
+
+* CVS pserver URLs now indicate that the pserver protocol is not
+  supported. (Jelmer Vernooĳ)
+
+* Git repositories with submodules can now be imported into 2a
+  branches; submodules are converted to nested trees.
+  (Jelmer Vernooĳ, #402814)
+
+* Python 3 is now used by default to run scripts, etc. from the makefile.
+  (Jelmer Vernooĳ)
+
+* ``.git/config`` is now consulted to determine the users' identity
+  for commits, and the gpg_signing_key. (Jelmer Vernooĳ)
+
+* Ignore special files (fifos, block/character devices, sockets)
+  when finding changes in Git working trees. (Jelmer Vernooĳ, #1857244)
+
+
+Bug Fixes
+*********
+
+.. Fixes for situations where brz would previously crash or give incorrect
+   or undesirable results.
+
+* Print a sensible error message when conversion for an option fails
+  (i.e. when a non-int is specified as the value for an integer
+  parameter) (#237844, Jelmer Vernooĳ)
+
+* Don't include timestamps in filenames when reporting on binary
+  files in diff. (Jelmer Vernooĳ, #71307)
+
+* Ignore UnknownFormatErrors when scanning for control directories.
+  (Jelmer Vernooĳ, #468332)
+
+* Fix fetching from remote git repositories in ``brz git-import``.
+  (Jelmer Vernooĳ, #1836238)
+
+* A new ``TreeEntry.is_unmodified`` method has added, which allows
+  merge to check for unmodified files without relying
+  on the .revision attribute that is not available for Git trees.
+  This fixes LCA merges for Git repositories.
+  (Jelmer Vernooĳ, #1826663)
+
+* Fix passing of directories in specific_files to
+  GitWorkingTree.iter_entries_by_dir(). (Jelmer Vernooĳ, #1844054)
+
+* Fix ``brz diff --using`` when {old_path} and {new_path} are not
+  specified in the template. (#1847915, Jelmer Vernooĳ)
+
+* Ignore ghost tags when interacting with remote Git repositories.
+  (Jelmer Vernooĳ)
+
+* Fix ``setup_ui=False`` when initializing Breezy.
+  (Jelmer Vernooĳ, #1852647)
+
+* Fix backwards compatibility with Bazaar by supporting the
+  $BZR_EMAIL variable. (Jelmer Vernooĳ, #1869178)
+
+* Cope with non-ascii characters in Git signatures.
+  (Jelmer Vernooĳ, #1869533)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   breezy.
+
+* New ``Tree.get_transform`` method for getting a ``TreeTransform``
+  object. (Jelmer Vernooij)
+
+* The ``Tree.get_root_id`` method has been removed. Use
+  ``Tree.path2id('')`` instead. (Jelmer Vernooĳ)
+
+* ``Repository.find_branches`` now returns an iterator rather than a
+  list. (Jelmer Vernooĳ, #413970)
+
+* New ``Tree.get_nested_tree`` method for retrieving a nested tree.
+  (Jelmer Vernooĳ)
+
+* The ``ControlDirFormat.register_server_prober`` method has been removed.
+  Instead, probers can now have a ``priority`` method to influence
+  when they are run. (Jelmer Vernooĳ)
+
+* New ``urlutils.strip_segment_parameters`` function for
+  stripping segment parameters from a URL.
+  (Jelmer Vernooĳ)
+
+* ``Tree.id2path`` has a new optional argument ``recurse``,
+  that determines whether it scans through nested trees.
+  (Jelmer Vernooĳ)
+
+* ``VersionedFiles.add_content`` can now be used to add
+  content from ``ContentFactory`` objects.
+  (Jelmer Vernooĳ)
+
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for brz developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to brz's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+..
+   vim: tw=74 ft=rst ff=unix

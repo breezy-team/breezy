@@ -23,6 +23,7 @@ import tempfile
 import gzip
 
 from .... import tests
+from ....tests import features
 from ....tests.blackbox import ExternalBase
 
 from ..cmds import (
@@ -151,6 +152,16 @@ class TestFastExport(ExternalBase):
     def test_file(self):
         tree = self.make_branch_and_tree("br")
         tree.commit("pointless")
+        data = self.run_bzr("fast-export br br.fi")[0]
+        self.assertEquals("", data)
+        self.assertPathExists("br.fi")
+
+    def test_symlink(self):
+        tree = self.make_branch_and_tree("br")
+        self.requireFeature(features.SymlinkFeature)
+        os.symlink('symlink-target', 'br/symlink')
+        tree.add('symlink')
+        tree.commit("add a symlink")
         data = self.run_bzr("fast-export br br.fi")[0]
         self.assertEquals("", data)
         self.assertPathExists("br.fi")

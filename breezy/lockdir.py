@@ -868,5 +868,5 @@ def get_username_for_lock_info():
     """
     try:
         return config.GlobalStack().get('email')
-    except config.NoWhoami:
+    except errors.NoWhoami:
         return osutils.getuser_unicode()

@@ -18,6 +18,8 @@
 
 from __future__ import absolute_import
 
+from io import BytesIO
+
 from ...bzr.bzrdir import (
     BzrDir,
     BzrDirFormat,
@@ -311,9 +313,9 @@ class ConvertBzrDir4To5(Converter):
     def _convert_working_inv(self):
         inv = xml4.serializer_v4.read_inventory(
             self.branch._transport.get('inventory'))
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(
-            inv, working=True)
-        self.branch._transport.put_bytes('inventory', new_inv_xml,
+        f = BytesIO()
+        xml5.serializer_v5.write_inventory(inv, f, working=True)
+        self.branch._transport.put_bytes('inventory', f.getvalue(),
                                          mode=self.controldir._get_file_mode())
 
     def _write_all_weaves(self):
@@ -352,10 +354,10 @@ class ConvertBzrDir4To5(Converter):
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update(gettext('write revision'), i,
                                len(self.converted_revs))
-                text = serializer_v5.write_revision_to_string(
+                lines = serializer_v5.write_revision_to_lines(
                     self.revisions[rev_id])
                 key = (rev_id,)
-                revision_store.add_lines(key, None, osutils.split_lines(text))
+                revision_store.add_lines(key, None, lines)
         finally:
             self.pb.clear()
 
@@ -381,19 +383,15 @@ class ConvertBzrDir4To5(Converter):
             self.revisions[rev_id] = rev
 
     def _load_old_inventory(self, rev_id):
-        f = self.branch.repository.inventory_store.get(rev_id)
-        try:
-            old_inv_xml = f.read()
-        finally:
-            f.close()
-        inv = xml4.serializer_v4.read_inventory_from_string(old_inv_xml)
+        with self.branch.repository.inventory_store.get(rev_id) as f:
+            inv = xml4.serializer_v4.read_inventory(f)
         inv.revision_id = rev_id
         rev = self.revisions[rev_id]
         return inv
 
     def _load_updated_inventory(self, rev_id):
-        inv_xml = self.inv_weave.get_text(rev_id)
-        inv = xml5.serializer_v5.read_inventory_from_string(inv_xml, rev_id)
+        inv_xml = self.inv_weave.get_lines(rev_id)
+        inv = xml5.serializer_v5.read_inventory_from_lines(inv_xml, rev_id)
         return inv
 
     def _convert_one_rev(self, rev_id):
@@ -407,11 +405,11 @@ class ConvertBzrDir4To5(Converter):
         self.converted_revs.add(rev_id)
 
     def _store_new_inv(self, rev, inv, present_parents):
-        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
-        new_inv_sha1 = osutils.sha_string(new_inv_xml)
+        new_inv_xml = xml5.serializer_v5.write_inventory_to_lines(inv)
+        new_inv_sha1 = osutils.sha_strings(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,
-                                 new_inv_xml.splitlines(True))
+                                 new_inv_xml)
         rev.inventory_sha1 = new_inv_sha1
 
     def _convert_revision_contents(self, rev, inv, present_parents):
@@ -467,11 +465,8 @@ class ConvertBzrDir4To5(Converter):
                 ie.revision = previous_ie.revision
                 return
         if ie.has_text():
-            f = self.branch.repository._text_store.get(ie.text_id)
-            try:
+            with self.branch.repository._text_store.get(ie.text_id) as f:
                 file_lines = f.readlines()
-            finally:
-                f.close()
             w.add_lines(rev_id, previous_revisions, file_lines)
             self.text_count += 1
         else:
@@ -752,7 +747,7 @@ class BzrDirPreSplitOut(BzrDir):
         return self._format.__class__()
 
     def clone(self, url, revision_id=None, force_new_repo=False,
-              preserve_stacking=False):
+              preserve_stacking=False, tag_selector=None):
         """See ControlDir.clone().
 
         force_new_repo has no effect, since this family of formats always
@@ -764,7 +759,7 @@ class BzrDirPreSplitOut(BzrDir):
         result = self._format._initialize_for_clone(url)
         self.open_repository().clone(result, revision_id=revision_id)
         from_branch = self.open_branch()
-        from_branch.clone(result, revision_id=revision_id)
+        from_branch.clone(result, revision_id=revision_id, tag_selector=tag_selector)
         try:
             tree = self.open_workingtree()
         except errors.NotLocalUrl:
@@ -847,7 +842,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
-        if name is not None:
+        if name:
             raise errors.NoColocatedBranchSupport(self)
         if branch_format is None:
             return self.transport
@@ -893,7 +888,7 @@ class BzrDirPreSplitOut(BzrDir):
                            possible_transports=possible_transports)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
-               possible_transports=None, accelerator_tree=None,
+               recurse=None, possible_transports=None, accelerator_tree=None,
                hardlink=False, stacked=False, create_tree_if_local=True,
                source_branch=None):
         """See ControlDir.sprout()."""

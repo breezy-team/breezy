@@ -114,6 +114,8 @@ class OptionTests(TestCase):
                           ['--number'])
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--no-number'])
+        self.assertRaises(errors.BzrCommandError, self.parse, options,
+                          ['--number', 'a'])
 
     def test_is_hidden(self):
         self.assertTrue(option.Option('foo', hidden=True).is_hidden('foo'))

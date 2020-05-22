@@ -5,6 +5,69 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.0.3
+#########
+
+:3.0.3: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where brz would previously crash or give incorrect
+   or undesirable results.
+
+ * Don't throw an error attempting to read the parent of a ref.
+   (Jelmer Vernooĳ)
+
+ * Fix fast-exporting of symlinks on Python 3. (Jelmer Vernooĳ, #1851478)
+
+ * Don't rely on private transport attribute in fast-import.
+   (Jelmer Vernooĳ, #1854607)
+
+ * Fix conversion of time_t to int on certain platforms (arm64, armhf,
+   ppc64el). (Jelmer Vernooĳ)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   breezy.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for brz developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to brz's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
 brz 3.0.2
 #########
 
@@ -279,6 +342,10 @@ New Features
  * Plugins can now be registered using the 'entrypoints' mechanism in
    setuptools. (Jelmer Vernooĳ, #1802647)
 
+ * The Breezy UI now handles RCP-style URLs and suggests the
+   user specify either ``git+ssh`` or ``bzr+ssh``.
+   (Jelmer Vernooĳ)
+
 Improvements
 ************
 
@@ -295,6 +362,11 @@ Improvements
  * HPSS calls for ``RevisionTree.archive`` and
    ``RevisionTree.annotate_iter`` have been added. (Jelmer Vernooĳ,
    #897781)
+
+ * Branches with symlinks are now supported on Windows. Symlinks are
+   ignored by operations like branch, diff etc. with a warning as Symlinks
+   are not created on Windows.
+   (Parth Malwankar, #81689)
 
  * New ``lp+bzr://`` URL scheme for Bazaar-only branches on Launchpad.
    (Jelmer Vernooĳ)

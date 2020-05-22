@@ -169,10 +169,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     push_result.report(to_file)
     if verbose:
         br_to = push_result.target_branch
-        br_to.lock_read()
-        try:
+        with br_to.lock_read():
             from .log import show_branch_change
             show_branch_change(br_to, to_file, push_result.old_revno,
                                push_result.old_revid)
-        finally:
-            br_to.unlock()

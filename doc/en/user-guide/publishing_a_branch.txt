@@ -16,7 +16,7 @@ Note that central shared branches typically only want to
 store history, not working copies of files, so their enclosing
 repository is usually creating using the ``no-trees`` option, e.g.::
 
-  brz init-repo --no-trees bzr+ssh://centralhost/srv/brz/PROJECT
+  brz init-shared-repo --no-trees bzr+ssh://centralhost/srv/brz/PROJECT
 
 You can think of this step as similar to setting up a new cvsroot or
 Subversion repository. However, Breezy gives you more flexibility
@@ -36,7 +36,7 @@ content:
 
 Here is an example of the first way::
 
-  brz init-repo PROJECT  (prepare local repository)
+  brz init-shared-repo PROJECT  (prepare local repository)
   brz init PROJECT/trunk
   cd PROJECT/trunk
 			 (copy development files)
@@ -48,7 +48,7 @@ Here is an example of the first way::
 
 Here is an example of the second way::
 
-  brz init-repo PROJECT  (prepare local repository)
+  brz init-shared-repo PROJECT  (prepare local repository)
   cd PROJECT
   brz init bzr+ssh://centralhost/srv/brz/PROJECT/trunk
   brz checkout bzr+ssh://centralhost/srv/brz/PROJECT/trunk

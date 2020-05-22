@@ -539,6 +539,33 @@ class TestUrlToPath(TestCase):
         self.assertEqual(('path/..', 'foo'), split('path/../foo'))
         self.assertEqual(('../path', 'foo'), split('../path/foo'))
 
+    def test_strip_segment_parameters(self):
+        strip_segment_parameters = urlutils.strip_segment_parameters
+        # Check relative references with absolute paths
+        self.assertEqual("/some/path",
+                         strip_segment_parameters("/some/path"))
+        self.assertEqual("/some/path",
+                         strip_segment_parameters("/some/path,tip"))
+        self.assertEqual("/some,dir/path",
+                         strip_segment_parameters("/some,dir/path,tip"))
+        self.assertEqual(
+            "/somedir/path",
+            strip_segment_parameters("/somedir/path,heads%2Ftip"))
+        self.assertEqual(
+            "/somedir/path",
+            strip_segment_parameters("/somedir/path,heads%2Ftip,bar"))
+        # Check relative references with relative paths
+        self.assertEqual("", strip_segment_parameters(",key1=val1"))
+        self.assertEqual("foo/", strip_segment_parameters("foo/,key1=val1"))
+        self.assertEqual("foo", strip_segment_parameters("foo,key1=val1"))
+        self.assertEqual(
+            "foo/base,la=bla/other/elements",
+            strip_segment_parameters("foo/base,la=bla/other/elements"))
+        self.assertEqual(
+            "foo/base,la=bla/other/elements",
+            strip_segment_parameters("foo/base,la=bla/other/elements,a=b"))
+        # TODO: Check full URLs as well as relative references
+
     def test_split_segment_parameters_raw(self):
         split_segment_parameters_raw = urlutils.split_segment_parameters_raw
         # Check relative references with absolute paths

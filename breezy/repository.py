@@ -29,7 +29,6 @@ from breezy import (
     revision as _mod_revision,
     gpg,
     )
-from breezy.bundle import serializer
 from breezy.i18n import gettext
 """)
 
@@ -64,6 +63,18 @@ class IsInWriteGroupError(errors.InternalBzrError):
 class CannotSetRevisionId(errors.BzrError):
 
     _fmt = "Repository format does not support setting revision ids."
+
+
+class FetchResult(object):
+    """Result of a fetch operation.
+
+    :ivar revidmap: For lossy fetches, map from source revid to target revid.
+    :ivar total_fetched: Number of revisions fetched
+    """
+
+    def __init__(self, total_fetched=None, revidmap=None):
+        self.total_fetched = total_fetched
+        self.revidmap = revidmap
 
 
 class CommitBuilder(object):
@@ -234,6 +245,28 @@ class RepositoryWriteLockResult(LogicalLockResult):
     def __repr__(self):
         return "RepositoryWriteLockResult(%s, %s)" % (self.repository_token,
                                                       self.unlock)
+
+
+class WriteGroup(object):
+    """Context manager that manages a write group.
+
+    Raising an exception will result in the write group being aborted.
+    """
+
+    def __init__(self, repository, suppress_errors=False):
+        self.repository = repository
+        self._suppress_errors = suppress_errors
+
+    def __enter__(self):
+        self.repository.start_write_group()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.repository.abort_write_group(self._suppress_errors)
+            return False
+        else:
+            self.repository.commit_write_group()
 
 
 ######################################################################
@@ -542,7 +575,9 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         :param using: If True, list only branches using this repository.
         """
         if using and not self.is_shared():
-            return self.controldir.list_branches()
+            for branch in self.controldir.list_branches():
+                yield branch
+            return
 
         class Evaluator(object):
 
@@ -563,14 +598,14 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 value = (controldir.list_branches(), None)
                 return True, value
 
-        ret = []
         for branches, repository in controldir.ControlDir.find_controldirs(
                 self.user_transport, evaluate=Evaluator()):
             if branches is not None:
-                ret.extend(branches)
+                for branch in branches:
+                    yield branch
             if not using and repository is not None:
-                ret.extend(repository.find_branches())
-        return ret
+                for branch in repository.find_branches():
+                    yield branch
 
     def search_missing_revision_ids(self, other,
                                     find_ghosts=True, revision_ids=None, if_present_ids=None,
@@ -663,7 +698,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
     def _resume_write_group(self, tokens):
         raise errors.UnsuspendableWriteGroup(self)
 
-    def fetch(self, source, revision_id=None, find_ghosts=False):
+    def fetch(self, source, revision_id=None, find_ghosts=False, lossy=False):
         """Fetch the content required to construct revision_id from source.
 
         If revision_id is None, then all content is copied.
@@ -678,6 +713,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         :param revision_id: If specified, all the content needed for this
             revision ID will be copied to the target.  Fetch will determine for
             itself which content needs to be copied.
+        :return: A FetchResult object
         """
         if self.is_in_write_group():
             raise errors.InternalBzrError(
@@ -694,10 +730,8 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
                 self.get_revision(revision_id)
             return 0, []
         inter = InterRepository.get(source, self)
-        return inter.fetch(revision_id=revision_id, find_ghosts=find_ghosts)
-
-    def create_bundle(self, target, base, fileobj, format=None):
-        return serializer.write_bundle(self, target, base, fileobj, format)
+        return inter.fetch(
+            revision_id=revision_id, find_ghosts=find_ghosts, lossy=lossy)
 
     def get_commit_builder(self, branch, parents, config_stack, timestamp=None,
                            timezone=None, committer=None, revprops=None,
@@ -869,20 +903,15 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         raise NotImplementedError(self.get_deltas_for_revisions)
 
-    def get_revision_delta(self, revision_id, specific_fileids=None):
+    def get_revision_delta(self, revision_id):
         """Return the delta for one revision.
 
         The delta is relative to the left-hand predecessor of the
         revision.
-
-        :param specific_fileids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
         """
         with self.lock_read():
             r = self.get_revision(revision_id)
-            return list(self.get_deltas_for_revisions(
-                [r], specific_fileids=specific_fileids))[0]
+            return list(self.get_deltas_for_revisions([r]))[0]
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError(self.store_revision_signature)
@@ -1485,14 +1514,14 @@ class InterRepository(InterObject):
                 pass
             self.target.fetch(self.source, revision_id=revision_id)
 
-    def fetch(self, revision_id=None, find_ghosts=False):
+    def fetch(self, revision_id=None, find_ghosts=False, lossy=False):
         """Fetch the content required to construct revision_id.
 
         The content is copied from self.source to self.target.
 
         :param revision_id: if None all content is copied, if NULL_REVISION no
                             content is copied.
-        :return: None.
+        :return: FetchResult
         """
         raise NotImplementedError(self.fetch)
 
@@ -1578,12 +1607,9 @@ class CopyConverter(object):
             pb.update(gettext('Creating new repository'))
             converted = self.target_format.initialize(self.repo_dir,
                                                       self.source_repo.is_shared())
-            converted.lock_write()
-            try:
+            with converted.lock_write():
                 pb.update(gettext('Copying content'))
                 self.source_repo.copy_content_into(converted)
-            finally:
-                converted.unlock()
             pb.update(gettext('Deleting old repository content'))
             self.repo_dir.transport.delete_tree('repository.backup')
             ui.ui_factory.note(gettext('repository converted'))

@@ -410,15 +410,12 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
     def test_reconcile_wrong_order(self):
         # a wrong order in primary parents is optionally correctable
         repo = self.first_tree.branch.repository
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             g = repo.get_graph()
             if g.get_parent_map([b'wrong-first-parent'])[b'wrong-first-parent'] \
                     == (b'1', b'2'):
                 raise TestSkipped(
                     'wrong-first-parent is not setup for testing')
-        finally:
-            repo.unlock()
         self.checkUnreconciled(repo.controldir, repo.reconcile())
         # nothing should have been altered yet : inventories without
         # revisions are not data loss incurring for current format

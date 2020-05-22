@@ -1,7 +1,8 @@
 configobj
-six>=1.9.0
+dulwich>=0.19.12
 fastimport>=0.9.8
-dulwich>=0.19.11
+patiencediff
+six>=1.9.0
 
 [fastimport]
 

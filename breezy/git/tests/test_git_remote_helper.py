@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # vim: expandtab
 
 # Copyright (C) 2011-2018 Jelmer Vernooij <jelmer@jelmer.uk>
@@ -136,7 +136,7 @@ class RemoteHelperTests(TestCaseWithTransport):
         self.helper.cmd_capabilities(f, [])
         capabs = f.getvalue()
         base = b"fetch\noption\npush\n"
-        self.assertTrue(capabs in (base + b"\n", base + b"import\n\n"), capabs)
+        self.assertTrue(capabs in (base + b"\n", base + b"import\nrefspec *:*\n\n"), capabs)
 
     def test_option(self):
         f = BytesIO()

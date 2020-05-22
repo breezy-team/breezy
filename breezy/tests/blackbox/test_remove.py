@@ -40,14 +40,11 @@ class TestRemove(TestCaseWithTransport):
 
     def _make_tree_and_add(self, paths):
         tree = self.make_branch_and_tree('.')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             self.build_tree(paths)
             for path in paths:
                 file_id = path.replace('/', '_').encode('utf-8') + _id
                 tree.add(path, file_id)
-        finally:
-            tree.unlock()
         return tree
 
     def assertFilesDeleted(self, files):

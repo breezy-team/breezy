@@ -177,24 +177,24 @@ class RenameMap(object):
         with ui_factory.nested_progress_bar() as task:
             iterator = self.tree.iter_changes(basis, want_unversioned=True,
                                               pb=task)
-            for (file_id, paths, changed_content, versioned, parent, name,
-                 kind, executable) in iterator:
-                if kind[1] is None and versioned[1]:
-                    if not self.tree.has_filename(self.tree.id2path(parent[0])):
+            for change in iterator:
+                if change.kind[1] is None and change.versioned[1]:
+                    if not self.tree.has_filename(
+                            self.tree.id2path(change.parent_id[0])):
                         missing_parents.setdefault(
-                            parent[0], set()).add(file_id)
-                    if kind[0] == 'file':
-                        missing_files.add(file_id)
+                            change.parent_id[0], set()).add(change.file_id)
+                    if change.kind[0] == 'file':
+                        missing_files.add(change.file_id)
                     else:
                         # other kinds are not handled
                         pass
-                if versioned == (False, False):
-                    if self.tree.is_ignored(paths[1]):
+                if change.versioned == (False, False):
+                    if self.tree.is_ignored(change.path[1]):
                         continue
-                    if kind[1] == 'file':
-                        candidate_files.add(paths[1])
-                    if kind[1] == 'directory':
-                        for _dir, children in self.tree.walkdirs(paths[1]):
+                    if change.kind[1] == 'file':
+                        candidate_files.add(change.path[1])
+                    if change.kind[1] == 'directory':
+                        for _dir, children in self.tree.walkdirs(change.path[1]):
                             for child in children:
                                 if child[2] == 'file':
                                     candidate_files.add(child[0])
