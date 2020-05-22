@@ -1,3 +1,9 @@
+breezy (3.0.2-6) UNRELEASED; urgency=medium
+
+  * Update standards version to 4.5.0, no changes needed.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 22 May 2020 12:21:37 +0000
+
 breezy (3.0.2-5) unstable; urgency=medium
 
   * Disable export_pot tests that fail on Python 3.8. Closes: #953940
