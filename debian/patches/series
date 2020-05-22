@@ -1,12 +1,4 @@
 01_selftest_package
 03_spurious_test_failure
 08_disable_sphinx_epytext
-12_diff_tree_reference
 16_generate_ids
-19_probe_url
-20_python3
-21_fix_ancient_time
-22_fs_encoding
-23_xml_serializing
-24_paramiko_compat
-25_line_buffering

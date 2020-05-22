@@ -2,6 +2,9 @@ breezy (3.1~alpha1-1) UNRELEASED; urgency=medium
 
   * Update standards version to 4.5.0, no changes needed.
   * New upstream release.
+   +  Drop patches applied upstream: 12_diff_tree_reference, 19_probe_url,
+      20_python3, 21_fix_ancient_time, 22_fs_encoding, 23_xml_serializing
+      24_paramiko_compat, 25_line_buffering.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 22 May 2020 12:24:17 +0000
 
