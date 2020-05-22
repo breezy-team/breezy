@@ -30,6 +30,7 @@ from binascii import hexlify
 
 from .. import (
     config,
+    bedding,
     errors,
     osutils,
     trace,
@@ -79,16 +80,9 @@ class SSHVendorManager(object):
         """Clear previously cached lookup result."""
         self._cached_ssh_vendor = None
 
-    def _get_vendor_by_environment(self, environment=None):
-        """Return the vendor or None based on BRZ_SSH environment variable.
-
-        :raises UnknownSSH: if the BRZ_SSH environment variable contains
-                            unknown vendor name
-        """
-        if environment is None:
-            environment = os.environ
-        if 'BRZ_SSH' in environment:
-            vendor_name = environment['BRZ_SSH']
+    def _get_vendor_by_config(self):
+        vendor_name = config.GlobalStack().get('ssh')
+        if vendor_name is not None:
             try:
                 vendor = self._ssh_vendors[vendor_name]
             except KeyError:
@@ -150,7 +144,7 @@ class SSHVendorManager(object):
         return self._get_vendor_by_version_string(version,
                                                   os.path.splitext(os.path.basename(path))[0])
 
-    def get_vendor(self, environment=None):
+    def get_vendor(self):
         """Find out what version of SSH is on the system.
 
         :raises SSHVendorNotFound: if no any SSH vendor is found
@@ -158,7 +152,7 @@ class SSHVendorManager(object):
                             unknown vendor name
         """
         if self._cached_ssh_vendor is None:
-            vendor = self._get_vendor_by_environment(environment)
+            vendor = self._get_vendor_by_config()
             if vendor is None:
                 vendor = self._get_vendor_by_inspection()
                 if vendor is None:
@@ -312,7 +306,7 @@ class ParamikoVendor(SSHVendor):
             save_host_keys()
         if server_key != our_server_key:
             filename1 = os.path.expanduser('~/.ssh/known_hosts')
-            filename2 = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
+            filename2 = _ssh_host_keys_config_dir()
             raise errors.TransportError(
                 'Host keys for %s do not match!  %s != %s' %
                 (host, our_server_key_hex, server_key_hex),
@@ -610,6 +604,10 @@ def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
     return False
 
 
+def _ssh_host_keys_config_dir():
+    return osutils.pathjoin(bedding.config_dir(), 'ssh_host_keys')
+
+
 def load_host_keys():
     """
     Load system host keys (probably doesn't work on windows) and any
@@ -621,7 +619,7 @@ def load_host_keys():
             os.path.expanduser('~/.ssh/known_hosts'))
     except IOError as e:
         trace.mutter('failed to load system host keys: ' + str(e))
-    brz_hostkey_path = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
+    brz_hostkey_path = _ssh_host_keys_config_dir()
     try:
         BRZ_HOSTKEYS = paramiko.util.load_host_keys(brz_hostkey_path)
     except IOError as e:
@@ -634,8 +632,8 @@ def save_host_keys():
     Save "discovered" host keys in $(config)/ssh_host_keys/.
     """
     global SYSTEM_HOSTKEYS, BRZ_HOSTKEYS
-    bzr_hostkey_path = osutils.pathjoin(config.config_dir(), 'ssh_host_keys')
-    config.ensure_config_dir_exists()
+    bzr_hostkey_path = _ssh_host_keys_config_dir()
+    bedding.ensure_config_dir_exists()
 
     try:
         with open(bzr_hostkey_path, 'w') as f:

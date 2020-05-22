@@ -54,7 +54,7 @@ The preferred method for SVN seems to be to give each project a top level direct
 
 This also works with Breezy.
 However, with Breezy repositories are cheap to create
-(a simple ``brz init-repo`` away), and their primary benefit is when the
+(a simple ``brz init-shared-repo`` away), and their primary benefit is when the
 branches share a common ancestry.
 
 So the preferred way for Breezy would be::

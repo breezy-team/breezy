@@ -51,6 +51,12 @@ class MemoryTree(MutableInventoryTree):
         self._locks = 0
         self._lock_mode = None
 
+    def supports_symlinks(self):
+        return True
+
+    def supports_tree_reference(self):
+        return False
+
     def get_config_stack(self):
         return self.branch.get_config_stack()
 
@@ -102,9 +108,6 @@ class MemoryTree(MutableInventoryTree):
         """See Tree.get_file_sha1()."""
         stream = self._file_transport.get(path)
         return sha_file(stream)
-
-    def get_root_id(self):
-        return self.path2id('')
 
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""

@@ -24,6 +24,7 @@ from subprocess import call
 import sys
 
 from . import (
+    bedding,
     cmdline,
     config,
     osutils,
@@ -54,7 +55,7 @@ def _get_editor():
 
     e = config.GlobalStack().get('editor')
     if e is not None:
-        yield e, config.config_filename()
+        yield e, bedding.config_path()
 
     for varname in 'VISUAL', 'EDITOR':
         if varname in os.environ:
@@ -93,7 +94,7 @@ def _run_editor(filename):
     raise BzrError("Could not start any editor.\nPlease specify one with:\n"
                    " - $BRZ_EDITOR\n - editor=/some/path in %s\n"
                    " - $VISUAL\n - $EDITOR" %
-                   config.config_filename())
+                   bedding.config_path())
 
 
 DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \

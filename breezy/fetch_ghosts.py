@@ -16,6 +16,7 @@
 
 from __future__ import absolute_import
 
+from . import cleanup
 from .branch import Branch
 from .trace import note
 from .errors import NoSuchRevision, BzrCommandError
@@ -42,14 +43,11 @@ class GhostFetcher(object):
 
     def run(self):
         lock_other = self.this_branch.base != self.other_branch.base
-        with self.this_branch.lock_write():
+        with cleanup.ExitStack() as exit_stack:
+            exit_stack.enter_context(self.this_branch.lock_write())
             if lock_other:
-                self.other_branch.lock_read()
-            try:
-                return self._run_locked()
-            finally:
-                if lock_other:
-                    self.other_branch.unlock()
+                exit_stack.enter_context(self.other_branch.lock_read())
+            return self._run_locked()
 
     def iter_ghosts(self):
         """Find all ancestors that aren't stored in this branch."""

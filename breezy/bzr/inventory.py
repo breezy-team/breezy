@@ -322,6 +322,12 @@ class InventoryEntry(object):
                    self.parent_id,
                    self.revision))
 
+    def is_unmodified(self, other):
+        other_revision = getattr(other, 'revision', None)
+        if other_revision is None:
+            return False
+        return self.revision == other.revision
+
     def __eq__(self, other):
         if other is self:
             # For the case when objects are cached
@@ -492,10 +498,10 @@ class InventoryFile(InventoryEntry):
 
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
-        self.text_sha1 = work_tree.get_file_sha1(path, self.file_id)
+        self.text_sha1 = work_tree.get_file_sha1(path)
         # FIXME: 20050930 probe for the text size when getting sha1
         # in _read_tree_state
-        self.executable = work_tree.is_executable(path, self.file_id)
+        self.executable = work_tree.is_executable(path)
 
     def __repr__(self):
         return ("%s(%r, %r, parent_id=%r, sha1=%r, len=%s, revision=%s)"
@@ -852,6 +858,39 @@ class CommonInventory(object):
         if self.root is not None:
             descend(self.root, u'')
         return accum
+
+    def get_entry_by_path_partial(self, relpath):
+        """Like get_entry_by_path, but return TreeReference objects.
+
+        :param relpath: Path to resolve, either as string with / as separators,
+            or as list of elements.
+        :return: tuple with ie, resolved elements and elements left to resolve
+        """
+        if isinstance(relpath, (str, text_type)):
+            names = osutils.splitpath(relpath)
+        else:
+            names = relpath
+
+        try:
+            parent = self.root
+        except errors.NoSuchId:
+            # root doesn't exist yet so nothing else can
+            return None, None, None
+        if parent is None:
+            return None, None, None
+        for i, f in enumerate(names):
+            try:
+                children = getattr(parent, 'children', None)
+                if children is None:
+                    return None, None, None
+                cie = children[f]
+                if cie.kind == 'tree-reference':
+                    return cie, names[:i + 1], names[i + 1:]
+                parent = cie
+            except KeyError:
+                # or raise an error?
+                return None, None, None
+        return parent, names, []
 
     def get_entry_by_path(self, relpath):
         """Return an inventory entry by path.
@@ -1790,7 +1829,7 @@ class CHKInventory(CommonInventory):
         return result
 
     @classmethod
-    def deserialise(klass, chk_store, bytes, expected_revision_id):
+    def deserialise(klass, chk_store, lines, expected_revision_id):
         """Deserialise a CHKInventory.
 
         :param chk_store: A CHK capable VersionedFiles instance.
@@ -1799,18 +1838,16 @@ class CHKInventory(CommonInventory):
             for.
         :return: A CHKInventory
         """
-        lines = bytes.split(b'\n')
-        if lines[-1] != b'':
-            raise AssertionError('bytes to deserialize must end with an eol')
-        lines.pop()
-        if lines[0] != b'chkinventory:':
+        if not lines[-1].endswith(b'\n'):
+            raise ValueError("last line should have trailing eol\n")
+        if lines[0] != b'chkinventory:\n':
             raise ValueError("not a serialised CHKInventory: %r" % bytes)
         info = {}
         allowed_keys = frozenset((b'root_id', b'revision_id',
                                   b'parent_id_basename_to_file_id',
                                   b'search_key_name', b'id_to_entry'))
         for line in lines[1:]:
-            key, value = line.split(b': ', 1)
+            key, value = line.rstrip(b'\n').split(b': ', 1)
             if key not in allowed_keys:
                 raise errors.BzrError('Unknown key in inventory: %r\n%r'
                                       % (key, bytes))
@@ -2104,8 +2141,9 @@ class CHKInventory(CommonInventory):
                 # Could happen when only the revision changed for a directory
                 # for instance.
                 continue
-            yield (file_id, (path_in_source, path_in_target), changed_content,
-                   versioned, parent, name, kind, executable)
+            yield (
+                file_id, (path_in_source, path_in_target), changed_content,
+                versioned, parent, name, kind, executable)
 
     def __len__(self):
         """Return the number of entries in the inventory."""

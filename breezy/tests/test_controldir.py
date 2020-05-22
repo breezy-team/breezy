@@ -104,6 +104,10 @@ class TestProber(tests.TestCaseWithTransport):
         super(TestProber, self).setUp()
         self.prober = self.prober_cls()
 
+    def test_priority(self):
+        transport = self.get_transport(".")
+        self.assertIsInstance(self.prober.priority(transport), int)
+
     def test_probe_transport_empty(self):
         transport = self.get_transport(".")
         self.assertRaises(errors.NotBranchError,
@@ -241,7 +245,7 @@ class IsControlFilenameTest(tests.TestCase):
 
     def test_is_bzrdir(self):
         self.assertTrue(controldir.is_control_filename('.bzr'))
+        self.assertTrue(controldir.is_control_filename('.git'))
 
     def test_is_not_bzrdir(self):
-        self.assertFalse(controldir.is_control_filename('.git'))
         self.assertFalse(controldir.is_control_filename('bla'))

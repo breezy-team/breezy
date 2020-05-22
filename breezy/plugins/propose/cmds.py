@@ -38,7 +38,7 @@ from ...option import (
     )
 from ...sixish import text_type
 from ...trace import note
-from . import (
+from ... import (
     propose as _mod_propose,
     )
 
@@ -91,6 +91,7 @@ class cmd_publish_derived(Command):
             overwrite=overwrite)
         local_branch.set_push_location(remote_branch.user_url)
         local_branch.set_public_branch(public_url)
+        local_branch.set_submit_branch(submit_branch.user_url)
         note(gettext("Pushed to %s") % public_url)
 
 
@@ -143,10 +144,16 @@ class cmd_propose_merge(Command):
         Option('name', help='Name of the new remote branch.', type=str),
         Option('description', help='Description of the change.', type=str),
         Option('prerequisite', help='Prerequisite branch.', type=str),
+        Option('wip', help='Mark merge request as work-in-progress'),
+        Option(
+            'commit-message',
+            help='Set commit message for merge, if supported', type=str),
         ListOption('labels', short_name='l', type=text_type,
                    help='Labels to apply.'),
         Option('no-allow-lossy',
                help='Allow fallback to lossy push, if necessary.'),
+        Option('allow-collaboration',
+               help='Allow collaboration from target branch maintainer(s)'),
         ]
     takes_args = ['submit_branch?']
 
@@ -154,7 +161,8 @@ class cmd_propose_merge(Command):
 
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
-            labels=None, prerequisite=None):
+            labels=None, prerequisite=None, commit_message=None, wip=False,
+            allow_collaboration=False):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -175,6 +183,7 @@ class cmd_propose_merge(Command):
         remote_branch, public_branch_url = hoster.publish_derived(
             branch, target, name=name, allow_lossy=not no_allow_lossy)
         branch.set_push_location(remote_branch.user_url)
+        branch.set_submit_branch(target.user_url)
         note(gettext('Published branch to %s') % public_branch_url)
         if prerequisite is not None:
             prerequisite_branch = _mod_branch.Branch.open(prerequisite)
@@ -191,11 +200,13 @@ class cmd_propose_merge(Command):
         try:
             proposal = proposal_builder.create_proposal(
                 description=description, reviewers=reviewers,
-                prerequisite_branch=prerequisite_branch, labels=labels)
+                prerequisite_branch=prerequisite_branch, labels=labels,
+                commit_message=commit_message,
+                work_in_progress=wip, allow_collaboration=allow_collaboration)
         except _mod_propose.MergeProposalExists as e:
-            raise errors.BzrCommandError(gettext(
-                'There is already a branch merge proposal: %s') % e.url)
-        note(gettext('Merge proposal created: %s') % proposal.url)
+            note(gettext('There is already a branch merge proposal: %s'), e.url)
+        else:
+            note(gettext('Merge proposal created: %s') % proposal.url)
 
 
 class cmd_find_merge_proposal(Command):
@@ -305,9 +316,9 @@ class cmd_gitlab_login(Command):
                  urlutils.join(url, "profile/personal_access_tokens"))
             private_token = ui.ui_factory.get_password(u'Private token')
         if not no_check:
-            from gitlab import Gitlab
-            gl = Gitlab(url=url, private_token=private_token)
-            gl.auth()
+            from breezy.transport import get_transport
+            from .gitlabs import GitLab
+            GitLab(get_transport(url), private_token=private_token)
         store_gitlab_token(name=name, url=url, private_token=private_token)
 
 
@@ -319,6 +330,7 @@ class cmd_my_merge_proposals(Command):
     hidden = True
 
     takes_options = [
+        'verbose',
         RegistryOption.from_kwargs(
             'status',
             title='Proposal Status',
@@ -330,9 +342,31 @@ class cmd_my_merge_proposals(Command):
             merged='Merged merge proposals',
             closed='Closed merge proposals')]
 
-    def run(self, status='open'):
-        from .propose import hosters
-        for name, hoster_cls in hosters.items():
+    def run(self, status='open', verbose=False):
+        for name, hoster_cls in _mod_propose.hosters.items():
             for instance in hoster_cls.iter_instances():
                 for mp in instance.iter_my_proposals(status=status):
                     self.outf.write('%s\n' % mp.url)
+                    if verbose:
+                        self.outf.write(
+                            '(Merging %s into %s)\n' %
+                            (mp.get_source_branch_url(),
+                             mp.get_target_branch_url()))
+                        description = mp.get_description()
+                        if description:
+                            self.outf.writelines(
+                                ['\t%s\n' % l
+                                 for l in description.splitlines()])
+                        self.outf.write('\n')
+
+
+class cmd_land_merge_proposal(Command):
+    __doc__ = """Land a merge proposal."""
+
+    takes_args = ['url']
+    takes_options = [
+        Option('message', help='Commit message to use.', type=str)]
+
+    def run(self, url, message=None):
+        proposal = _mod_propose.get_proposal_by_url(url)
+        proposal.merge(commit_message=message)

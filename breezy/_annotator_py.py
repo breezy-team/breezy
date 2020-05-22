@@ -20,10 +20,12 @@ from __future__ import absolute_import
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
+
+import patiencediff
+
 from breezy import (
     annotate, # Must be lazy to avoid circular importing
     graph as _mod_graph,
-    patiencediff,
     )
 """)
 from . import (
@@ -125,7 +127,7 @@ class Annotator(object):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self._vf)
             this_key = record.key
-            lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
+            lines = record.get_bytes_as('lines')
             num_lines = len(lines)
             self._text_cache[this_key] = lines
             yield this_key, lines, num_lines

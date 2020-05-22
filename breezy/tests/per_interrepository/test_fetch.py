@@ -32,6 +32,7 @@ from breezy.errors import (
 from breezy.bzr.vf_search import (
     SearchResult,
     )
+from breezy.repository import WriteGroup
 from breezy.revision import (
     NULL_REVISION,
     Revision,
@@ -110,8 +111,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         source = tree.branch.repository
         source.lock_write()
         self.addCleanup(source.unlock)
-        source.start_write_group()
-        try:
+        with WriteGroup(source):
             # We need two revisions: OLD and NEW. NEW will claim to need a file
             # 'FOO' changed in 'OLD'. OLD will not have that file at all.
             source.texts.insert_record_stream([
@@ -133,11 +133,6 @@ class TestInterRepository(TestCaseWithInterRepository):
                            revision_id=b'new',
                            parent_ids=[revid])
             source.add_revision(rev.revision_id, rev)
-        except:
-            source.abort_write_group()
-            raise
-        else:
-            source.commit_write_group()
         to_repo.fetch(source, b'new')
         to_repo.lock_read()
         self.addCleanup(to_repo.unlock)
@@ -448,17 +443,12 @@ class TestInterRepository(TestCaseWithInterRepository):
         # We build a broken revision so that we can test the fetch code dies
         # properly. So copy the inventory and revision, but not the text.
         with to_repo.lock_write():
-            to_repo.start_write_group()
-            try:
+            with WriteGroup(to_repo, suppress_errors=True):
                 inv = tree.branch.repository.get_inventory(rev1)
                 to_repo.add_inventory(rev1, inv, [])
                 rev = tree.branch.repository.get_revision(rev1)
                 to_repo.add_revision(rev1, rev, inv=inv)
                 self.disable_commit_write_group_paranoia(to_repo)
-                to_repo.commit_write_group()
-            except:
-                to_repo.abort_write_group(suppress_errors=True)
-                raise
 
         # Implementations can either ensure that the target of the delta is
         # reconstructable, or raise an exception (which stream based copies

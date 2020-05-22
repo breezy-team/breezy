@@ -65,6 +65,7 @@ from ..sixish import viewitems
 from ..trace import (
     mutter,
     note,
+    warning,
     )
 
 from .. import (
@@ -142,7 +143,8 @@ class BzrDir(controldir.ControlDir):
 
     def clone_on_transport(self, transport, revision_id=None,
                            force_new_repo=False, preserve_stacking=False, stacked_on=None,
-                           create_prefix=False, use_existing_dir=True, no_tree=False):
+                           create_prefix=False, use_existing_dir=True, no_tree=False,
+                           tag_selector=None):
         """Clone this bzrdir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -172,17 +174,18 @@ class BzrDir(controldir.ControlDir):
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
             local_repo = None
+        local_branches = self.get_branches()
         try:
-            local_branch = self.open_branch()
-        except errors.NotBranchError:
-            local_branch = None
+            local_active_branch = local_branches['']
+        except KeyError:
+            pass
         else:
             # enable fallbacks when branch is not a branch reference
-            if local_branch.repository.has_same_location(local_repo):
-                local_repo = local_branch.repository
+            if local_active_branch.repository.has_same_location(local_repo):
+                local_repo = local_active_branch.repository
             if preserve_stacking:
                 try:
-                    stacked_on = local_branch.get_stacked_on_url()
+                    stacked_on = local_active_branch.get_stacked_on_url()
                 except (_mod_branch.UnstackableBranchFormat,
                         errors.UnstackableRepositoryFormat,
                         errors.NotStacked):
@@ -231,10 +234,11 @@ class BzrDir(controldir.ControlDir):
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
-        if local_branch is not None:
+        for name, local_branch in local_branches.items():
             local_branch.clone(
-                result, revision_id=revision_id,
-                repository_policy=repository_policy)
+                result, revision_id=(None if name != '' else revision_id),
+                repository_policy=repository_policy,
+                name=name, tag_selector=tag_selector)
         try:
             # Cheaper to check if the target is not local, than to try making
             # the tree and fail.
@@ -319,17 +323,17 @@ class BzrDir(controldir.ControlDir):
         policy = self.determine_repository_policy(force_new_repo)
         return policy.acquire_repository()[0]
 
-    def _find_source_repo(self, add_cleanup, source_branch):
+    def _find_source_repo(self, exit_stack, source_branch):
         """Find the source branch and repo for a sprout operation.
 
         This is helper intended for use by _sprout.
 
         :returns: (source_branch, source_repository).  Either or both may be
             None.  If not None, they will be read-locked (and their unlock(s)
-            scheduled via the add_cleanup param).
+            scheduled via the exit_stack param).
         """
         if source_branch is not None:
-            add_cleanup(source_branch.lock_read().unlock)
+            exit_stack.enter_context(source_branch.lock_read())
             return source_branch, source_branch.repository
         try:
             source_branch = self.open_branch()
@@ -341,9 +345,9 @@ class BzrDir(controldir.ControlDir):
             except errors.NoRepositoryPresent:
                 source_repository = None
             else:
-                add_cleanup(source_repository.lock_read().unlock)
+                exit_stack.enter_context(source_repository.lock_read())
         else:
-            add_cleanup(source_branch.lock_read().unlock)
+            exit_stack.enter_context(source_branch.lock_read())
         return source_branch, source_repository
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
@@ -376,115 +380,112 @@ class BzrDir(controldir.ControlDir):
             when working locally.
         :return: The created control directory
         """
-        operation = cleanup.OperationWithCleanups(self._sprout)
-        return operation.run(
-            url, revision_id=revision_id, force_new_repo=force_new_repo,
-            recurse=recurse, possible_transports=possible_transports,
-            accelerator_tree=accelerator_tree, hardlink=hardlink,
-            stacked=stacked, source_branch=source_branch,
-            create_tree_if_local=create_tree_if_local)
-
-    def _sprout(self, op, url, revision_id=None, force_new_repo=False,
-                recurse='down', possible_transports=None,
-                accelerator_tree=None, hardlink=False, stacked=False,
-                source_branch=None, create_tree_if_local=True, lossy=False):
-        add_cleanup = op.add_cleanup
-        fetch_spec_factory = fetch.FetchSpecFactory()
-        if revision_id is not None:
-            fetch_spec_factory.add_revision_ids([revision_id])
-            fetch_spec_factory.source_branch_stop_revision_id = revision_id
-        if possible_transports is None:
-            possible_transports = []
-        else:
-            possible_transports = list(possible_transports) + [
-                self.root_transport]
-        target_transport = _mod_transport.get_transport(url,
-                                                        possible_transports)
-        target_transport.ensure_base()
-        cloning_format = self.cloning_metadir(stacked)
-        # Create/update the result branch
-        try:
-            result = controldir.ControlDir.open_from_transport(
-                target_transport)
-        except errors.NotBranchError:
-            result = cloning_format.initialize_on_transport(target_transport)
-        source_branch, source_repository = self._find_source_repo(
-            add_cleanup, source_branch)
-        fetch_spec_factory.source_branch = source_branch
-        # if a stacked branch wasn't requested, we don't create one
-        # even if the origin was stacked
-        if stacked and source_branch is not None:
-            stacked_branch_url = self.root_transport.base
-        else:
-            stacked_branch_url = None
-        repository_policy = result.determine_repository_policy(
-            force_new_repo, stacked_branch_url, require_stacking=stacked)
-        result_repo, is_new_repo = repository_policy.acquire_repository(
-            possible_transports=possible_transports)
-        add_cleanup(result_repo.lock_write().unlock)
-        fetch_spec_factory.source_repo = source_repository
-        fetch_spec_factory.target_repo = result_repo
-        if stacked or (len(result_repo._fallback_repositories) != 0):
-            target_repo_kind = fetch.TargetRepoKinds.STACKED
-        elif is_new_repo:
-            target_repo_kind = fetch.TargetRepoKinds.EMPTY
-        else:
-            target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
-        fetch_spec_factory.target_repo_kind = target_repo_kind
-        if source_repository is not None:
-            fetch_spec = fetch_spec_factory.make_fetch_spec()
-            result_repo.fetch(source_repository, fetch_spec=fetch_spec)
-
-        if source_branch is None:
-            # this is for sprouting a controldir without a branch; is that
-            # actually useful?
-            # Not especially, but it's part of the contract.
-            result_branch = result.create_branch()
-        else:
-            result_branch = source_branch.sprout(
-                result, revision_id=revision_id,
-                repository_policy=repository_policy, repository=result_repo)
-        mutter("created new branch %r" % (result_branch,))
-
-        # Create/update the result working tree
-        if (create_tree_if_local and not result.has_workingtree()
-                and isinstance(target_transport, local.LocalTransport)
-                and (result_repo is None or result_repo.make_working_trees())
-                and result.open_branch(
-                    name="",
-                    possible_transports=possible_transports).name == result_branch.name):
-            wt = result.create_workingtree(
-                accelerator_tree=accelerator_tree, hardlink=hardlink,
-                from_branch=result_branch)
-            with wt.lock_write():
-                if not wt.is_versioned(''):
-                    try:
-                        wt.set_root_id(self.open_workingtree.get_root_id())
-                    except errors.NoWorkingTree:
-                        pass
-        else:
-            wt = None
-        if recurse == 'down':
-            basis = None
-            if wt is not None:
-                basis = wt.basis_tree()
-            elif result_branch is not None:
-                basis = result_branch.basis_tree()
-            elif source_branch is not None:
-                basis = source_branch.basis_tree()
-            if basis is not None:
-                add_cleanup(basis.lock_read().unlock)
-                subtrees = basis.iter_references()
+        with cleanup.ExitStack() as stack:
+            fetch_spec_factory = fetch.FetchSpecFactory()
+            if revision_id is not None:
+                fetch_spec_factory.add_revision_ids([revision_id])
+                fetch_spec_factory.source_branch_stop_revision_id = revision_id
+            if possible_transports is None:
+                possible_transports = []
             else:
-                subtrees = []
-            for path, file_id in subtrees:
-                target = urlutils.join(url, urlutils.escape(path))
-                sublocation = source_branch.reference_parent(path, file_id)
-                sublocation.controldir.sprout(
-                    target, basis.get_reference_revision(path),
-                    force_new_repo=force_new_repo, recurse=recurse,
-                    stacked=stacked)
-        return result
+                possible_transports = list(possible_transports) + [
+                    self.root_transport]
+            target_transport = _mod_transport.get_transport(url,
+                                                            possible_transports)
+            target_transport.ensure_base()
+            cloning_format = self.cloning_metadir(stacked)
+            # Create/update the result branch
+            try:
+                result = controldir.ControlDir.open_from_transport(
+                    target_transport)
+            except errors.NotBranchError:
+                result = cloning_format.initialize_on_transport(target_transport)
+            source_branch, source_repository = self._find_source_repo(
+                stack, source_branch)
+            fetch_spec_factory.source_branch = source_branch
+            # if a stacked branch wasn't requested, we don't create one
+            # even if the origin was stacked
+            if stacked and source_branch is not None:
+                stacked_branch_url = self.root_transport.base
+            else:
+                stacked_branch_url = None
+            repository_policy = result.determine_repository_policy(
+                force_new_repo, stacked_branch_url, require_stacking=stacked)
+            result_repo, is_new_repo = repository_policy.acquire_repository(
+                possible_transports=possible_transports)
+            stack.enter_context(result_repo.lock_write())
+            fetch_spec_factory.source_repo = source_repository
+            fetch_spec_factory.target_repo = result_repo
+            if stacked or (len(result_repo._fallback_repositories) != 0):
+                target_repo_kind = fetch.TargetRepoKinds.STACKED
+            elif is_new_repo:
+                target_repo_kind = fetch.TargetRepoKinds.EMPTY
+            else:
+                target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+            fetch_spec_factory.target_repo_kind = target_repo_kind
+            if source_repository is not None:
+                fetch_spec = fetch_spec_factory.make_fetch_spec()
+                result_repo.fetch(source_repository, fetch_spec=fetch_spec)
+
+            if source_branch is None:
+                # this is for sprouting a controldir without a branch; is that
+                # actually useful?
+                # Not especially, but it's part of the contract.
+                result_branch = result.create_branch()
+            else:
+                result_branch = source_branch.sprout(
+                    result, revision_id=revision_id,
+                    repository_policy=repository_policy, repository=result_repo)
+            mutter("created new branch %r" % (result_branch,))
+
+            # Create/update the result working tree
+            if (create_tree_if_local and not result.has_workingtree()
+                    and isinstance(target_transport, local.LocalTransport)
+                    and (result_repo is None or result_repo.make_working_trees())
+                    and result.open_branch(
+                        name="",
+                        possible_transports=possible_transports).name == result_branch.name):
+                wt = result.create_workingtree(
+                    accelerator_tree=accelerator_tree, hardlink=hardlink,
+                    from_branch=result_branch)
+                with wt.lock_write():
+                    if not wt.is_versioned(''):
+                        try:
+                            wt.set_root_id(self.open_workingtree.path2id(''))
+                        except errors.NoWorkingTree:
+                            pass
+            else:
+                wt = None
+            if recurse == 'down':
+                tree = None
+                if wt is not None:
+                    tree = wt
+                    basis = tree.basis_tree()
+                    stack.enter_context(basis.lock_read())
+                elif result_branch is not None:
+                    basis = tree = result_branch.basis_tree()
+                elif source_branch is not None:
+                    basis = tree = source_branch.basis_tree()
+                if tree is not None:
+                    stack.enter_context(tree.lock_read())
+                    subtrees = tree.iter_references()
+                else:
+                    subtrees = []
+                for path in subtrees:
+                    target = urlutils.join(url, urlutils.escape(path))
+                    sublocation = tree.reference_parent(
+                        path, branch=result_branch,
+                        possible_transports=possible_transports)
+                    if sublocation is None:
+                        warning(
+                            'Ignoring nested tree %s, parent location unknown.',
+                            path)
+                        continue
+                    sublocation.controldir.sprout(
+                        target, basis.get_reference_revision(path),
+                        force_new_repo=force_new_repo, recurse=recurse,
+                        stacked=stacked)
+            return result
 
     def _available_backup_name(self, base):
         """Find a non-existing backup file name based on base.
@@ -664,23 +665,6 @@ class BzrDir(controldir.ControlDir):
     @property
     def control_transport(self):
         return self.transport
-
-    def is_control_filename(self, filename):
-        """True if filename is the name of a path which is reserved for bzrdir's.
-
-        :param filename: A filename within the root transport of this bzrdir.
-
-        This is true IF and ONLY IF the filename is part of the namespace
-        reserved for bzr control dirs. Currently this is the '.bzr' directory
-        in the root of the root_transport.
-        """
-        # this might be better on the BzrDirFormat class because it refers to
-        # all the possible bzrdir disk formats.
-        # This method is tested via the workingtree is_control_filename tests-
-        # it was extracted from WorkingTree.is_control_filename. If the
-        # method's contract is extended beyond the current trivial
-        # implementation, please add new tests for it to the appropriate place.
-        return filename == '.bzr' or filename.startswith('.bzr/')
 
     def _cloning_metadir(self):
         """Produce a metadir suitable for cloning with.
@@ -1033,6 +1017,18 @@ class BzrDirMeta1(BzrDir):
             pass
         return self.transport.clone('checkout')
 
+    def branch_names(self):
+        """See ControlDir.branch_names."""
+        ret = []
+        try:
+            self.get_branch_reference()
+        except errors.NotBranchError:
+            pass
+        else:
+            ret.append("")
+        ret.extend(self._read_branch_list())
+        return ret
+
     def get_branches(self):
         """See ControlDir.get_branches."""
         ret = {}
@@ -1331,11 +1327,13 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                 remote_dir_format = RemoteBzrDirFormat()
                 remote_dir_format._network_name = self.network_name()
                 self._supply_sub_formats_to(remote_dir_format)
-                return remote_dir_format.initialize_on_transport_ex(transport,
-                                                                    use_existing_dir=use_existing_dir, create_prefix=create_prefix,
-                                                                    force_new_repo=force_new_repo, stacked_on=stacked_on,
-                                                                    stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
-                                                                    make_working_trees=make_working_trees, shared_repo=shared_repo)
+                return remote_dir_format.initialize_on_transport_ex(
+                    transport, use_existing_dir=use_existing_dir,
+                    create_prefix=create_prefix, force_new_repo=force_new_repo,
+                    stacked_on=stacked_on, stack_on_pwd=stack_on_pwd,
+                    repo_format_name=repo_format_name,
+                    make_working_trees=make_working_trees,
+                    shared_repo=shared_repo)
         # XXX: Refactor the create_prefix/no_create_prefix code into a
         #      common helper function
         # The destination may not exist - if so make it according to policy.
@@ -1476,6 +1474,24 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
                                                          basedir=basedir)
         BzrFormat.check_support_status(self, allow_unsupported=allow_unsupported,
                                        recommend_upgrade=recommend_upgrade, basedir=basedir)
+
+    @classmethod
+    def is_control_filename(klass, filename):
+        """True if filename is the name of a path which is reserved for bzrdir's.
+
+        :param filename: A filename within the root transport of this bzrdir.
+
+        This is true IF and ONLY IF the filename is part of the namespace
+        reserved for bzr control dirs. Currently this is the '.bzr' directory
+        in the root of the root_transport.
+        """
+        # this might be better on the BzrDirFormat class because it refers to
+        # all the possible bzrdir disk formats.
+        # This method is tested via the workingtree is_control_filename tests-
+        # it was extracted from WorkingTree.is_control_filename. If the
+        # method's contract is extended beyond the current trivial
+        # implementation, please add new tests for it to the appropriate place.
+        return filename == '.bzr' or filename.startswith('.bzr/')
 
 
 class BzrDirMetaFormat1(BzrDirFormat):
@@ -1741,73 +1757,72 @@ class ConvertMetaToMeta(controldir.Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.controldir = to_convert
-        self.pb = ui.ui_factory.nested_progress_bar()
-        self.count = 0
-        self.total = 1
-        self.step('checking repository format')
-        try:
-            repo = self.controldir.open_repository()
-        except errors.NoRepositoryPresent:
-            pass
-        else:
-            repo_fmt = self.target_format.repository_format
-            if not isinstance(repo._format, repo_fmt.__class__):
-                from ..repository import CopyConverter
-                ui.ui_factory.note(gettext('starting repository conversion'))
-                if not repo_fmt.supports_overriding_transport:
-                    raise AssertionError(
-                        "Repository in metadir does not support "
-                        "overriding transport")
-                converter = CopyConverter(self.target_format.repository_format)
-                converter.convert(repo, pb)
-        for branch in self.controldir.list_branches():
-            # TODO: conversions of Branch and Tree should be done by
-            # InterXFormat lookups/some sort of registry.
-            # Avoid circular imports
-            old = branch._format.__class__
-            new = self.target_format.get_branch_format().__class__
-            while old != new:
-                if (old == fullhistorybranch.BzrBranchFormat5
-                    and new in (_mod_bzrbranch.BzrBranchFormat6,
-                                _mod_bzrbranch.BzrBranchFormat7,
-                                _mod_bzrbranch.BzrBranchFormat8)):
-                    branch_converter = _mod_bzrbranch.Converter5to6()
-                elif (old == _mod_bzrbranch.BzrBranchFormat6
-                      and new in (_mod_bzrbranch.BzrBranchFormat7,
-                                  _mod_bzrbranch.BzrBranchFormat8)):
-                    branch_converter = _mod_bzrbranch.Converter6to7()
-                elif (old == _mod_bzrbranch.BzrBranchFormat7
-                      and new is _mod_bzrbranch.BzrBranchFormat8):
-                    branch_converter = _mod_bzrbranch.Converter7to8()
-                else:
-                    raise errors.BadConversionTarget("No converter", new,
-                                                     branch._format)
-                branch_converter.convert(branch)
-                branch = self.controldir.open_branch()
+        with ui.ui_factory.nested_progress_bar() as self.pb:
+            self.count = 0
+            self.total = 1
+            self.step('checking repository format')
+            try:
+                repo = self.controldir.open_repository()
+            except errors.NoRepositoryPresent:
+                pass
+            else:
+                repo_fmt = self.target_format.repository_format
+                if not isinstance(repo._format, repo_fmt.__class__):
+                    from ..repository import CopyConverter
+                    ui.ui_factory.note(gettext('starting repository conversion'))
+                    if not repo_fmt.supports_overriding_transport:
+                        raise AssertionError(
+                            "Repository in metadir does not support "
+                            "overriding transport")
+                    converter = CopyConverter(self.target_format.repository_format)
+                    converter.convert(repo, pb)
+            for branch in self.controldir.list_branches():
+                # TODO: conversions of Branch and Tree should be done by
+                # InterXFormat lookups/some sort of registry.
+                # Avoid circular imports
                 old = branch._format.__class__
-        try:
-            tree = self.controldir.open_workingtree(recommend_upgrade=False)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            pass
-        else:
-            # TODO: conversions of Branch and Tree should be done by
-            # InterXFormat lookups
-            if (isinstance(tree, workingtree_3.WorkingTree3)
-                and not isinstance(tree, workingtree_4.DirStateWorkingTree)
-                and isinstance(self.target_format.workingtree_format,
-                               workingtree_4.DirStateWorkingTreeFormat)):
-                workingtree_4.Converter3to4().convert(tree)
-            if (isinstance(tree, workingtree_4.DirStateWorkingTree)
-                and not isinstance(tree, workingtree_4.WorkingTree5)
-                and isinstance(self.target_format.workingtree_format,
-                               workingtree_4.WorkingTreeFormat5)):
-                workingtree_4.Converter4to5().convert(tree)
-            if (isinstance(tree, workingtree_4.DirStateWorkingTree)
-                and not isinstance(tree, workingtree_4.WorkingTree6)
-                and isinstance(self.target_format.workingtree_format,
-                               workingtree_4.WorkingTreeFormat6)):
-                workingtree_4.Converter4or5to6().convert(tree)
-        self.pb.finished()
+                new = self.target_format.get_branch_format().__class__
+                while old != new:
+                    if (old == fullhistorybranch.BzrBranchFormat5
+                        and new in (_mod_bzrbranch.BzrBranchFormat6,
+                                    _mod_bzrbranch.BzrBranchFormat7,
+                                    _mod_bzrbranch.BzrBranchFormat8)):
+                        branch_converter = _mod_bzrbranch.Converter5to6()
+                    elif (old == _mod_bzrbranch.BzrBranchFormat6
+                          and new in (_mod_bzrbranch.BzrBranchFormat7,
+                                      _mod_bzrbranch.BzrBranchFormat8)):
+                        branch_converter = _mod_bzrbranch.Converter6to7()
+                    elif (old == _mod_bzrbranch.BzrBranchFormat7
+                          and new is _mod_bzrbranch.BzrBranchFormat8):
+                        branch_converter = _mod_bzrbranch.Converter7to8()
+                    else:
+                        raise errors.BadConversionTarget("No converter", new,
+                                                         branch._format)
+                    branch_converter.convert(branch)
+                    branch = self.controldir.open_branch()
+                    old = branch._format.__class__
+            try:
+                tree = self.controldir.open_workingtree(recommend_upgrade=False)
+            except (errors.NoWorkingTree, errors.NotLocalUrl):
+                pass
+            else:
+                # TODO: conversions of Branch and Tree should be done by
+                # InterXFormat lookups
+                if (isinstance(tree, workingtree_3.WorkingTree3)
+                    and not isinstance(tree, workingtree_4.DirStateWorkingTree)
+                    and isinstance(self.target_format.workingtree_format,
+                                   workingtree_4.DirStateWorkingTreeFormat)):
+                    workingtree_4.Converter3to4().convert(tree)
+                if (isinstance(tree, workingtree_4.DirStateWorkingTree)
+                    and not isinstance(tree, workingtree_4.WorkingTree5)
+                    and isinstance(self.target_format.workingtree_format,
+                                   workingtree_4.WorkingTreeFormat5)):
+                    workingtree_4.Converter4to5().convert(tree)
+                if (isinstance(tree, workingtree_4.DirStateWorkingTree)
+                    and not isinstance(tree, workingtree_4.WorkingTree6)
+                    and isinstance(self.target_format.workingtree_format,
+                                   workingtree_4.WorkingTreeFormat6)):
+                    workingtree_4.Converter4or5to6().convert(tree)
         return to_convert
 
 

@@ -36,13 +36,7 @@ from . import (
 
 
 Win32RegistryFeature = features.ModuleAvailableFeature('_winreg')
-CtypesFeature = features.ModuleAvailableFeature('ctypes')
-Win32comShellFeature = features.ModuleAvailableFeature('win32com.shell')
-Win32ApiFeature = features.ModuleAvailableFeature('win32api')
 
-
-# Tests
-# -----
 
 class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
@@ -187,9 +181,9 @@ class TestAppPaths(TestCase):
         self.assertEqual('not-existing', p)
 
 
-class TestLocationsCtypes(TestCase):
+class TestLocations(TestCase):
 
-    _test_needs_features = [CtypesFeature, features.win32_feature]
+    _test_needs_features = [features.win32_feature]
 
     def assertPathsEqual(self, p1, p2):
         # TODO: The env var values in particular might return the "short"
@@ -233,19 +227,9 @@ class TestLocationsCtypes(TestCase):
             self.assertPathsEqual(lad, env.decode(encoding))
 
 
-class TestLocationsPywin32(TestLocationsCtypes):
-
-    _test_needs_features = [Win32comShellFeature]
-
-    def setUp(self):
-        super(TestLocationsPywin32, self).setUp()
-        # We perform the exact same tests after disabling the use of ctypes.
-        # This causes the implementation to fall back to pywin32.
-        self.overrideAttr(win32utils, 'has_ctypes', False)
-        # FIXME: this should be done by parametrization -- vila 100123
-
-
 class TestSetHidden(TestCaseInTempDir):
+
+    _test_needs_features = [features.win32_feature]
 
     def test_unicode_dir(self):
         # we should handle unicode paths without errors
@@ -335,7 +319,7 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
 class TestGetEnvironUnicode(tests.TestCase):
     """Tests for accessing the environment via the windows wide api"""
 
-    _test_needs_features = [CtypesFeature, features.win32_feature]
+    _test_needs_features = [features.win32_feature]
 
     def setUp(self):
         super(TestGetEnvironUnicode, self).setUp()

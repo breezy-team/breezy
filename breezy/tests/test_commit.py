@@ -16,12 +16,14 @@
 
 
 import os
+from io import BytesIO
 
 import breezy
 from .. import (
     config,
     controldir,
     errors,
+    trace,
     )
 from ..branch import Branch
 from ..bzr.bzrdir import BzrDirMetaFormat1
@@ -36,6 +38,7 @@ from ..errors import (
     BzrError,
     LockContention,
     )
+from ..tree import TreeChange
 from . import (
     TestCase,
     TestCaseWithTransport,
@@ -170,7 +173,7 @@ class TestCommit(TestCaseWithTransport):
             reporter.calls)
 
         tree = b.repository.revision_tree(b'rev2')
-        self.assertFalse(tree.has_id(b'hello-id'))
+        self.assertFalse(tree.has_filename('hello'))
 
     def test_partial_commit_move(self):
         """Test a partial commit where a file was renamed but not committed.
@@ -358,7 +361,7 @@ class TestCommit(TestCaseWithTransport):
         wt.commit('removed hello', rev_id=b'rev2')
 
         tree = b.repository.revision_tree(b'rev2')
-        self.assertFalse(tree.has_id(b'hello-id'))
+        self.assertFalse(tree.has_filename('hello'))
 
     def test_committed_ancestry(self):
         """Test commit appends revisions to ancestry."""
@@ -676,6 +679,35 @@ create_signatures=always
         finally:
             basis.unlock()
 
+    def test_unsupported_symlink_commit(self):
+        self.requireFeature(SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['hello'])
+        tree.add('hello')
+        tree.commit('added hello', rev_id=b'hello_id')
+        os.symlink('hello', 'foo')
+        tree.add('foo')
+        tree.commit('added foo', rev_id=b'foo_id')
+        log = BytesIO()
+        trace.push_log_file(log)
+        os_symlink = getattr(os, 'symlink', None)
+        os.symlink = None
+        try:
+            # At this point as bzr thinks symlinks are not supported
+            # we should get a warning about symlink foo and bzr should
+            # not think its removed.
+            os.unlink('foo')
+            self.build_tree(['world'])
+            tree.add('world')
+            tree.commit('added world', rev_id=b'world_id')
+        finally:
+            if os_symlink:
+                os.symlink = os_symlink
+        self.assertContainsRe(
+            log.getvalue(),
+            b'Ignoring "foo" as symlinks are not '
+            b'supported on this filesystem\\.')
+
     def test_commit_kind_changes(self):
         self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
@@ -863,30 +895,34 @@ class FilterExcludedTests(TestCase):
 
     def test_add_file_not_excluded(self):
         changes = [
-            ('fid', (None, 'newpath'),
-             0, (False, False), ('pid', 'pid'), ('newpath', 'newpath'),
-             ('file', 'file'), (True, True))]
+            TreeChange(
+                'fid', (None, 'newpath'),
+                0, (False, False), ('pid', 'pid'), ('newpath', 'newpath'),
+                ('file', 'file'), (True, True))]
         self.assertEqual(changes, list(
             filter_excluded(changes, ['otherpath'])))
 
     def test_add_file_excluded(self):
         changes = [
-            ('fid', (None, 'newpath'),
-             0, (False, False), ('pid', 'pid'), ('newpath', 'newpath'),
-             ('file', 'file'), (True, True))]
+            TreeChange(
+                'fid', (None, 'newpath'),
+                0, (False, False), ('pid', 'pid'), ('newpath', 'newpath'),
+                ('file', 'file'), (True, True))]
         self.assertEqual([], list(filter_excluded(changes, ['newpath'])))
 
     def test_delete_file_excluded(self):
         changes = [
-            ('fid', ('somepath', None),
-             0, (False, None), ('pid', None), ('newpath', None),
-             ('file', None), (True, None))]
+            TreeChange(
+                'fid', ('somepath', None),
+                0, (False, None), ('pid', None), ('newpath', None),
+                ('file', None), (True, None))]
         self.assertEqual([], list(filter_excluded(changes, ['somepath'])))
 
     def test_move_from_or_to_excluded(self):
         changes = [
-            ('fid', ('oldpath', 'newpath'),
-             0, (False, False), ('pid', 'pid'), ('oldpath', 'newpath'),
-             ('file', 'file'), (True, True))]
+            TreeChange(
+                'fid', ('oldpath', 'newpath'),
+                0, (False, False), ('pid', 'pid'), ('oldpath', 'newpath'),
+                ('file', 'file'), (True, True))]
         self.assertEqual([], list(filter_excluded(changes, ['oldpath'])))
         self.assertEqual([], list(filter_excluded(changes, ['newpath'])))

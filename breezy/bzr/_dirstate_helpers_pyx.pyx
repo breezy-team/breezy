@@ -31,6 +31,7 @@ import sys
 from .. import cache_utf8, errors, osutils
 from .dirstate import DirState, DirstateCorrupt
 from ..osutils import parent_directories, pathjoin, splitpath, is_inside_any, is_inside
+from ..tree import TreeChange
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -399,7 +400,7 @@ def _bisect_path_left(paths, path):
     path_size = PyBytes_Size(path)
 
     while _lo < _hi:
-        _mid = (_lo + _hi) / 2
+        _mid = (_lo + _hi) // 2
         cur = PyList_GetItem_object_void(paths, _mid)
         cur_cstr = PyBytes_AS_STRING_void(cur)
         cur_size = PyBytes_GET_SIZE_void(cur)
@@ -452,7 +453,7 @@ def _bisect_path_right(paths, path):
     path_size = PyBytes_Size(path)
 
     while _lo < _hi:
-        _mid = (_lo + _hi) / 2
+        _mid = (_lo + _hi) // 2
         cur = PyList_GetItem_object_void(paths, _mid)
         cur_cstr = PyBytes_AS_STRING_void(cur)
         cur_size = PyBytes_GET_SIZE_void(cur)
@@ -499,7 +500,7 @@ def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
     dirname_size = PyBytes_Size(dirname)
 
     while _lo < _hi:
-        _mid = (_lo + _hi) / 2
+        _mid = (_lo + _hi) // 2
         # Grab the dirname for the current dirblock
         # cur = dirblocks[_mid][0]
         cur = PyTuple_GetItem_void_void(
@@ -797,10 +798,8 @@ _encode = binascii.b2a_base64
 
 
 cdef unsigned long _time_to_unsigned(object t):  # cannot_raise
-    cdef double dt
     if PyFloat_Check(t):
-        dt = PyFloat_AsDouble(t)
-        return <unsigned long>dt
+        t = t.__int__()
     return PyInt_AsUnsignedLongMask(t)
 
 
@@ -1304,7 +1303,7 @@ cdef class ProcessEntryC:
                     else:
                         path_u = self.utf8_decode(path)[0]
                 source_kind = _minikind_to_kind(source_minikind)
-                return (entry[0][2],
+                return TreeChange(entry[0][2],
                        (old_path_u, path_u),
                        content_change,
                        (True, True),
@@ -1337,7 +1336,7 @@ cdef class ProcessEntryC:
                         and S_IXUSR & path_info[3].st_mode)
                 else:
                     target_exec = target_details[3]
-                return (entry[0][2],
+                return TreeChange(entry[0][2],
                        (None, self.utf8_decode(path)[0]),
                        True,
                        (False, True),
@@ -1347,7 +1346,7 @@ cdef class ProcessEntryC:
                        (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
-                return (entry[0][2],
+                return TreeChange(entry[0][2],
                        (None, self.utf8_decode(path)[0]),
                        False,
                        (False, True),
@@ -1365,7 +1364,8 @@ cdef class ProcessEntryC:
             parent_id = self.state._get_entry(self.source_index, path_utf8=entry[0][0])[0][2]
             if parent_id == entry[0][2]:
                 parent_id = None
-            return (entry[0][2],
+            return TreeChange(
+                   entry[0][2],
                    (self.utf8_decode(old_path)[0], None),
                    True,
                    (True, False),
@@ -1411,10 +1411,10 @@ cdef class ProcessEntryC:
 
         :param result: A result tuple.
         """
-        if not self.partial or not result[0]:
+        if not self.partial or not result.file_id:
             return 0
-        self.seen_ids.add(result[0])
-        new_path = result[1][1]
+        self.seen_ids.add(result.file_id)
+        new_path = result.path[1]
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
             self.search_specific_file_parents.update(
@@ -1562,7 +1562,8 @@ cdef class ProcessEntryC:
                 new_executable = bool(
                     stat.S_ISREG(self.root_dir_info[3].st_mode)
                     and stat.S_IEXEC & self.root_dir_info[3].st_mode)
-                return (None,
+                return TreeChange(
+                       None,
                        (None, self.current_root_unicode),
                        True,
                        (False, False),
@@ -1673,7 +1674,8 @@ cdef class ProcessEntryC:
                             new_executable = bool(
                                 stat.S_ISREG(current_path_info[3].st_mode)
                                 and stat.S_IEXEC & current_path_info[3].st_mode)
-                            return (None,
+                            return TreeChange(
+                                None,
                                 (None, self.utf8_decode(current_path_info[0])[0]),
                                 True,
                                 (False, False),
@@ -1842,7 +1844,8 @@ cdef class ProcessEntryC:
                             if changed is not None:
                                 raise AssertionError(
                                     "result is not None: %r" % result)
-                            result = (None,
+                            result = TreeChange(
+                                None,
                                 (None, relpath_unicode),
                                 True,
                                 (False, False),
@@ -1946,8 +1949,8 @@ cdef class ProcessEntryC:
                 # expansion.
                 if changed:
                     self._gather_result_for_consistency(result)
-                    if (result[6][0] == 'directory' and
-                        result[6][1] != 'directory'):
+                    if (result.kind[0] == 'directory' and
+                        result.kind[1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
                         if entry[1][self.source_index][0] == b'r':

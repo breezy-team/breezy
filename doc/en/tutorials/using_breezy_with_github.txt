@@ -39,19 +39,25 @@ place by making your code available to others. As explained earlier,
 GitHub is a code hosting service so you can push your
 branch to it and others can access your code from there.
 
-In the GitHub web UI, you can create a "fork" of an upstream repository. For
-example, if user "jelmer" forked the inkscape repository at
-https://github.com/inkscape/inkscape then the fork would be at
-https://github.com/jelmer/inkscape.
+The first time you use GitHub, you will need to log into to your GitHub account
+with Breezy. This can be done by running ``brz github-login``. This will prompt
+you for your password, and store the authentication token in ~/.config/breezy.
 
-You can then push your changes to a branch like this::
+You can now use either ``brz publish`` to upload the changes back to
+GitHub, or ``brz propose`` to upload to the changes to GitHub and
+create merge proposal.
 
-  brz push git+ssh://github.com/jelmer/inkscape,branch=my-branch
+Both ``brz publish`` and ``brz propose`` will create a fork of the upstream
+repository and then push your local changes to the active branch
+(or another branch specify with the --name argument).
 
-Others can then download your code like this::
+For example, running ``brz publish --name=my-branch`` in your local inkscape
+clone will create https://github.com/jelmer/inkscape if your GitHub username is
+"jelmer", and it will open your editor to allow you to enter the merge proposal
+description.
 
-  brz branch git://github.com/jelmer/inkscape,branch=my-branch
-
+Subsequent use of ``brz publish`` in the local branch (e.g. to push more
+commits) will update the previously created branch.
 
 Associating branches with GitHub issues
 ---------------------------------------

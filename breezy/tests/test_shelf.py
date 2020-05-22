@@ -381,8 +381,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         return creator, tree
 
     def check_shelve_deletion(self, tree):
-        self.assertTrue(tree.has_id(b'foo-id'))
-        self.assertTrue(tree.has_id(b'bar-id'))
+        self.assertEqual(tree.id2path(b'foo-id'), 'foo')
+        self.assertEqual(tree.id2path(b'bar-id'), 'foo/bar')
         self.assertFileEqual(b'baz', 'tree/foo/bar')
 
     def test_shelve_deletion(self):
@@ -611,15 +611,15 @@ class TestUnshelver(tests.TestCaseWithTransport):
             creator.transform()
             creator.finalize()
         # validate the test setup
-        self.assertTrue(tree.has_id(b'foo-id'))
-        self.assertTrue(tree.has_id(b'bar-id'))
+        self.assertEqual(tree.id2path(b'foo-id'), 'foo')
+        self.assertEqual(tree.id2path(b'bar-id'), 'foo/bar')
         self.assertFileEqual(b'baz', 'tree/foo/bar')
         with open('shelf', 'r+b') as shelf_file:
             unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
             self.addCleanup(unshelver.finalize)
             unshelver.make_merger().do_merge()
-        self.assertFalse(tree.has_id(b'foo-id'))
-        self.assertFalse(tree.has_id(b'bar-id'))
+        self.assertRaises(errors.NoSuchId, tree.id2path, b'foo-id')
+        self.assertRaises(errors.NoSuchId, tree.id2path, b'bar-id')
 
     def test_unshelve_base(self):
         tree = self.make_branch_and_tree('tree')

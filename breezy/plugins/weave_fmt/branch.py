@@ -215,3 +215,5 @@ class BzrBranchFormat4(BranchFormat):
 
     def supports_leaving_lock(self):
         return False
+
+    supports_reference_locations = False

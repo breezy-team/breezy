@@ -48,11 +48,14 @@ from ..lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     config,
-    errors,
     osutils,
     registry,
     )
 """)
+
+from .. import (
+    errors,
+    )
 
 
 class ContentFilter(object):
@@ -120,16 +123,14 @@ def filtered_input_file(f, filters):
 
     :param f: the original input file
     :param filters: the stack of filters to apply
-    :return: a file-like object
+    :return: a file-like object, size
     """
-    if filters:
-        chunks = [f.read()]
-        for filter in filters:
-            if filter.reader is not None:
-                chunks = filter.reader(chunks)
-        return BytesIO(b''.join(chunks))
-    else:
-        return f
+    chunks = [f.read()]
+    for filter in filters:
+        if filter.reader is not None:
+            chunks = filter.reader(chunks)
+    text = b''.join(chunks)
+    return BytesIO(text), len(text)
 
 
 def filtered_output_bytes(chunks, filters, context=None):
@@ -156,8 +157,17 @@ def internal_size_sha_file_byname(name, filters):
     """
     with open(name, 'rb', 65000) as f:
         if filters:
-            f = filtered_input_file(f, filters)
+            f, size = filtered_input_file(f, filters)
         return osutils.size_sha_file(f)
+
+
+class FilteredStat(object):
+
+    def __init__(self, base, st_size=None):
+        self.st_mode = base.st_mode
+        self.st_size = st_size or base.st_size
+        self.st_mtime = base.st_mtime
+        self.st_ctime = base.st_ctime
 
 
 # The registry of filter stacks indexed by name.

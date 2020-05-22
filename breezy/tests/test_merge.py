@@ -137,7 +137,7 @@ class TestMerge(TestCaseWithTransport):
         with merger.make_preview_transform() as tt:
             self.assertEqual([], tt.find_conflicts())
             preview = tt.get_preview_tree()
-            self.assertEqual(wt.get_root_id(), preview.get_root_id())
+            self.assertEqual(wt.path2id(''), preview.path2id(''))
 
     def test_merge_unrelated_retains_root(self):
         wt = self.make_branch_and_tree('tree')
@@ -149,7 +149,7 @@ class TestMerge(TestCaseWithTransport):
         with transform.TransformPreview(wt) as merger.tt:
             merger._compute_transform()
             new_root_id = merger.tt.final_file_id(merger.tt.root)
-            self.assertEqual(wt.get_root_id(), new_root_id)
+            self.assertEqual(wt.path2id(''), new_root_id)
 
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
@@ -477,13 +477,12 @@ class TestMerge(TestCaseWithTransport):
             this_tree, b'rev2b', other_branch=other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
-        tt = tree_merger.make_preview_transform()
-        self.addCleanup(tt.finalize)
-        preview_tree = tt.get_preview_tree()
-        with this_tree.get_file('file') as tree_file:
-            self.assertEqual(b'1\n2a\n', tree_file.read())
-        with preview_tree.get_file('file') as preview_file:
-            self.assertEqual(b'2b\n1\n2a\n', preview_file.read())
+        with tree_merger.make_preview_transform() as tt:
+            preview_tree = tt.get_preview_tree()
+            with this_tree.get_file('file') as tree_file:
+                self.assertEqual(b'1\n2a\n', tree_file.read())
+            with preview_tree.get_file('file') as preview_file:
+                self.assertEqual(b'2b\n1\n2a\n', preview_file.read())
 
     def test_do_merge(self):
         this_tree = self.make_branch_and_tree('this')
@@ -512,7 +511,7 @@ class TestMerge(TestCaseWithTransport):
         self.build_tree(['a'])
         tree.add('a')
         first_rev = tree.commit("added a")
-        old_root_id = tree.get_root_id()
+        old_root_id = tree.path2id('')
         merger = _mod_merge.Merger.from_revision_ids(tree,
                                                      _mod_revision.NULL_REVISION,
                                                      first_rev)
@@ -2261,13 +2260,9 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
         # Have to use a real WT, because BranchBuilder doesn't support exec bit
         wt = self.get_wt_from_builder(builder)
-        tt = transform.TreeTransform(wt)
-        try:
+        with wt.get_transform() as tt:
             tt.set_executability(True, tt.trans_id_tree_path('foo'))
             tt.apply()
-        except:
-            tt.finalize()
-            raise
         self.assertTrue(wt.is_executable('foo'))
         wt.commit('F-id', rev_id=b'F-id')
         # Reset to D, so that we can merge F
@@ -3108,8 +3103,8 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
 
     def test_uses_this_branch(self):
         builder = self.make_text_conflict()
-        tt = builder.make_preview_transform()
-        self.addCleanup(tt.finalize)
+        with builder.make_preview_transform() as tt:
+            pass
 
     def test_affected_files_cached(self):
         """Ensures that the config variable is cached"""
@@ -3184,26 +3179,23 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
         :param merge_as: the path in a tree to add the new directory as.
         :returns: the conflicts from 'do_merge'.
         """
-        operation = cleanup.OperationWithCleanups(self._merge_into)
-        return operation.run(location, merge_as)
-
-    def _merge_into(self, op, location, merge_as):
-        # Open and lock the various tree and branch objects
-        wt, subdir_relpath = WorkingTree.open_containing(merge_as)
-        op.add_cleanup(wt.lock_write().unlock)
-        branch_to_merge, subdir_to_merge = _mod_branch.Branch.open_containing(
-            location)
-        op.add_cleanup(branch_to_merge.lock_read().unlock)
-        other_tree = branch_to_merge.basis_tree()
-        op.add_cleanup(other_tree.lock_read().unlock)
-        # Perform the merge
-        merger = _mod_merge.MergeIntoMerger(
-            this_tree=wt, other_tree=other_tree, other_branch=branch_to_merge,
-            target_subdir=subdir_relpath, source_subpath=subdir_to_merge)
-        merger.set_base_revision(_mod_revision.NULL_REVISION, branch_to_merge)
-        conflicts = merger.do_merge()
-        merger.set_pending()
-        return conflicts
+        with cleanup.ExitStack() as stack:
+            # Open and lock the various tree and branch objects
+            wt, subdir_relpath = WorkingTree.open_containing(merge_as)
+            stack.enter_context(wt.lock_write())
+            branch_to_merge, subdir_to_merge = _mod_branch.Branch.open_containing(
+                location)
+            stack.enter_context(branch_to_merge.lock_read())
+            other_tree = branch_to_merge.basis_tree()
+            stack.enter_context(other_tree.lock_read())
+            # Perform the merge
+            merger = _mod_merge.MergeIntoMerger(
+                this_tree=wt, other_tree=other_tree, other_branch=branch_to_merge,
+                target_subdir=subdir_relpath, source_subpath=subdir_to_merge)
+            merger.set_base_revision(_mod_revision.NULL_REVISION, branch_to_merge)
+            conflicts = merger.do_merge()
+            merger.set_pending()
+            return conflicts
 
     def assertTreeEntriesEqual(self, expected_entries, tree):
         """Assert that 'tree' contains the expected inventory entries.

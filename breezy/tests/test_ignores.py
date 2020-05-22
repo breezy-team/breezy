@@ -19,7 +19,7 @@
 import os
 
 from .. import (
-    config,
+    bedding,
     ignores,
     )
 from ..sixish import (
@@ -78,7 +78,7 @@ class TestUserIgnores(TestCaseInTempDir):
 
     def test_create_if_missing(self):
         # $HOME should be set to '.'
-        ignore_path = config.user_ignore_config_filename()
+        ignore_path = bedding.user_ignore_config_path()
         self.assertPathDoesNotExist(ignore_path)
         user_ignores = ignores.get_user_ignores()
         self.assertEqual(set(ignores.USER_DEFAULTS), user_ignores)
@@ -90,7 +90,7 @@ class TestUserIgnores(TestCaseInTempDir):
 
     def test_create_with_intermediate_missing(self):
         # $HOME should be set to '.'
-        ignore_path = config.user_ignore_config_filename()
+        ignore_path = bedding.user_ignore_config_path()
         self.assertPathDoesNotExist(ignore_path)
         os.mkdir('empty-home')
 
@@ -101,7 +101,7 @@ class TestUserIgnores(TestCaseInTempDir):
         user_ignores = ignores.get_user_ignores()
         self.assertEqual(set(ignores.USER_DEFAULTS), user_ignores)
 
-        ignore_path = config.user_ignore_config_filename()
+        ignore_path = bedding.user_ignore_config_path()
         self.assertPathDoesNotExist(ignore_path)
 
     def test_use_existing(self):
@@ -113,7 +113,7 @@ class TestUserIgnores(TestCaseInTempDir):
 
     def test_use_empty(self):
         ignores._set_user_ignores([])
-        ignore_path = config.user_ignore_config_filename()
+        ignore_path = bedding.user_ignore_config_path()
         self.check_file_contents(ignore_path, b'')
 
         self.assertEqual(set([]), ignores.get_user_ignores())

@@ -66,11 +66,8 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         if not repo._format.revision_graph_can_have_wrong_parents:
             raise TestNotApplicable(
                 '%r cannot have corrupt revision index.' % repo)
-        repo.lock_read()
-        try:
+        with repo.lock_read():
             repo._check_for_inconsistent_revision_parents()  # nothing happens
-        finally:
-            repo.unlock()
 
     def test_check_reports_bad_ancestor(self):
         repo = self.make_repo_with_extra_ghost_index()

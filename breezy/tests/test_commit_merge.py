@@ -76,7 +76,7 @@ class TestCommitMerge(TestCaseWithTransport):
         bx = wtx.branch
         wtx.commit('establish root id')
         wty = wtx.controldir.sprout('y').open_workingtree()
-        self.assertEqual(wtx.get_root_id(), wty.get_root_id())
+        self.assertEqual(wtx.path2id(''), wty.path2id(''))
         by = wty.branch
 
         self.build_tree(['x/ecks', 'y/why'])

@@ -46,19 +46,62 @@ class GitBranchConfig(config.BranchConfig):
         return self._get_best_value('_get_user_id')
 
 
+class GitConfigSectionDefault(config.Section):
+    """The "default" config section in git config file"""
+
+    def __init__(self, config):
+        self._config = config
+
+    def get(self, name, default=None, expand=True):
+        if name == 'email':
+            try:
+                email = self._config.get((b'user', ), b'email')
+            except KeyError:
+                return None
+            try:
+                name = self._config.get((b'user', ), b'name')
+            except KeyError:
+                return email.decode()
+            return '%s <%s>' % (name.decode(), email.decode())
+        if name == 'gpg_signing_key':
+            try:
+                key = self._config.get((b'user', ), b'signingkey')
+            except KeyError:
+                return None
+            return key.decode()
+        return None
+
+
+class GitConfigStore(config.Store):
+    """Store that uses gitconfig."""
+
+    def __init__(self, config):
+        self._config = config
+
+    def get_sections(self):
+        return [
+            (self, GitConfigSectionDefault(self._config)),
+            ]
+
+
 class GitBranchStack(config._CompatibleStack):
     """GitBranch stack."""
 
     def __init__(self, branch):
+        section_getters = [self._get_overrides]
         lstore = config.LocationStore()
         loc_matcher = config.LocationMatcher(lstore, branch.base)
+        section_getters.append(loc_matcher.get_sections)
         # FIXME: This should also be looking in .git/config for
         # local git branches.
+        git = getattr(branch.repository, '_git', None)
+        if git:
+            cstore = GitConfigStore(git.get_config())
+            section_getters.append(cstore.get_sections)
         gstore = config.GlobalStore()
+        section_getters.append(gstore.get_sections)
         super(GitBranchStack, self).__init__(
-            [self._get_overrides,
-             loc_matcher.get_sections,
-             gstore.get_sections],
+            section_getters,
             # All modifications go to the corresponding section in
             # locations.conf
             lstore, branch.base)

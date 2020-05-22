@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 """Installation script for brz.
 Run it with
@@ -65,10 +65,11 @@ META_INFO = {
     'install_requires': [
         'configobj',
         'six>=1.9.0',
+        'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
         'fastimport>=0.9.8',
-        'dulwich>=0.19.11',
+        'dulwich>=0.19.12',
         ],
     'extras_require': {
         'fastimport': [],
@@ -326,8 +327,6 @@ else:
     add_cython_extension('breezy.bzr._dirstate_helpers_pyx')
     add_cython_extension('breezy._readdir_pyx')
 add_cython_extension('breezy.bzr._chk_map_pyx')
-ext_modules.append(Extension('breezy._patiencediff_c',
-                             ['breezy/_patiencediff_c.c']))
 add_cython_extension('breezy.bzr._btree_serializer_pyx')
 
 

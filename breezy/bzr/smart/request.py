@@ -53,7 +53,7 @@ from ...sixish import text_type
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.bzr import bzrdir
-from breezy.bundle import serializer
+from breezy.bzr.bundle import serializer
 
 import tempfile
 """)
@@ -608,6 +608,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     b'Branch.revision_id_to_revno', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestRevisionIdToRevno', info='read')
+request_handlers.register_lazy(
+    b'Branch.get_all_reference_info', 'breezy.bzr.smart.branch',
+    'SmartServerBranchRequestGetAllReferenceInfo', info='read')
 request_handlers.register_lazy(
     b'BzrDir.checkout_metadir', 'breezy.bzr.smart.bzrdir',
     'SmartServerBzrDirRequestCheckoutMetaDir', info='read')

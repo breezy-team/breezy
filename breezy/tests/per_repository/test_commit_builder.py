@@ -26,6 +26,7 @@ from breezy import (
     revision as _mod_revision,
     tests,
     )
+from breezy.tree import TreeChange
 from breezy.bzr import (
     inventorytree,
     )
@@ -33,6 +34,8 @@ from breezy.tests import per_repository
 from breezy.tests import (
     features,
     )
+
+from ..test_bedding import override_whoami
 
 
 class TestCommitBuilder(per_repository.TestCaseWithRepository):
@@ -173,7 +176,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             builder.finish_inventory()
             builder.commit('rev')
             builder_tree = builder.revision_tree()
-            new_root_id = builder_tree.get_root_id()
+            new_root_id = builder_tree.path2id('')
             new_root_revision = builder_tree.get_file_revision(u'')
             if tree.branch.repository.supports_rich_root():
                 # We should not have seen a new root revision
@@ -193,10 +196,11 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         with tree.lock_write():
             builder = tree.branch.get_commit_builder([rev_id])
             try:
-                delete_change = (foo_id, ('foo', None), True, (True, False),
-                                 (tree.path2id(''), None), ('foo',
-                                                            None), ('file', None),
-                                 (False, None))
+                delete_change = TreeChange(
+                    foo_id, ('foo', None), True, (True, False),
+                    (tree.path2id(''), None),
+                    ('foo', None), ('file', None),
+                    (False, None))
                 list(builder.record_iter_changes(tree, rev_id,
                                                  [delete_change]))
                 self.assertEqual(("foo", None, foo_id, None),
@@ -328,7 +332,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         try:
             tree.add_reference(subtree)
             self._commit_check_unchanged(tree, 'reference',
-                                         subtree.get_root_id())
+                                         subtree.path2id(''))
         except errors.UnsupportedOperation:
             return
 
@@ -847,15 +851,11 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_committer_no_username(self):
         # Ensure that when no username is available but a committer is
         # supplied, commit works.
-        self.overrideEnv('EMAIL', None)
-        self.overrideEnv('BRZ_EMAIL', None)
-        # Also, make sure that it's not inferred from mailname.
-        self.overrideAttr(config, '_auto_user_id',
-                          lambda: (None, None))
+        override_whoami(self)
         tree = self.make_branch_and_tree(".")
         with tree.lock_write():
             # Make sure no username is available.
-            self.assertRaises(config.NoWhoami, tree.branch.get_commit_builder,
+            self.assertRaises(errors.NoWhoami, tree.branch.get_commit_builder,
                               [])
             builder = tree.branch.get_commit_builder(
                 [], committer='me@example.com')

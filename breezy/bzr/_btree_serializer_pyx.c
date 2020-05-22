@@ -5844,7 +5844,7 @@ static __pyx_t_6breezy_3bzr_21_btree_serializer_pyx_gc_chk_sha1_record *__pyx_f_
  *             hi = self.num_records
  *         local_n_cmp = 0             # <<<<<<<<<<<<<<
  *         while lo < hi:
- *             mid = (lo + hi) / 2
+ *             mid = (lo + hi) // 2
  */
   __pyx_v_local_n_cmp = 0;
 
@@ -5852,7 +5852,7 @@ static __pyx_t_6breezy_3bzr_21_btree_serializer_pyx_gc_chk_sha1_record *__pyx_f_
  *             hi = self.num_records
  *         local_n_cmp = 0
  *         while lo < hi:             # <<<<<<<<<<<<<<
- *             mid = (lo + hi) / 2
+ *             mid = (lo + hi) // 2
  *             the_cmp = memcmp(self.records[mid].sha1, sha1, 20)
  */
   while (1) {
@@ -5862,7 +5862,7 @@ static __pyx_t_6breezy_3bzr_21_btree_serializer_pyx_gc_chk_sha1_record *__pyx_f_
     /* "breezy/bzr/_btree_serializer_pyx.pyx":586
  *         local_n_cmp = 0
  *         while lo < hi:
- *             mid = (lo + hi) / 2             # <<<<<<<<<<<<<<
+ *             mid = (lo + hi) // 2             # <<<<<<<<<<<<<<
  *             the_cmp = memcmp(self.records[mid].sha1, sha1, 20)
  *             if the_cmp == 0:
  */
@@ -5870,7 +5870,7 @@ static __pyx_t_6breezy_3bzr_21_btree_serializer_pyx_gc_chk_sha1_record *__pyx_f_
 
     /* "breezy/bzr/_btree_serializer_pyx.pyx":587
  *         while lo < hi:
- *             mid = (lo + hi) / 2
+ *             mid = (lo + hi) // 2
  *             the_cmp = memcmp(self.records[mid].sha1, sha1, 20)             # <<<<<<<<<<<<<<
  *             if the_cmp == 0:
  *                 return &self.records[mid]
@@ -5878,7 +5878,7 @@ static __pyx_t_6breezy_3bzr_21_btree_serializer_pyx_gc_chk_sha1_record *__pyx_f_
     __pyx_v_the_cmp = memcmp((__pyx_v_self->records[__pyx_v_mid]).sha1, __pyx_v_sha1, 20);
 
     /* "breezy/bzr/_btree_serializer_pyx.pyx":588
- *             mid = (lo + hi) / 2
+ *             mid = (lo + hi) // 2
  *             the_cmp = memcmp(self.records[mid].sha1, sha1, 20)
  *             if the_cmp == 0:             # <<<<<<<<<<<<<<
  *                 return &self.records[mid]
@@ -5898,7 +5898,7 @@ static __pyx_t_6breezy_3bzr_21_btree_serializer_pyx_gc_chk_sha1_record *__pyx_f_
       goto __pyx_L0;
 
       /* "breezy/bzr/_btree_serializer_pyx.pyx":588
- *             mid = (lo + hi) / 2
+ *             mid = (lo + hi) // 2
  *             the_cmp = memcmp(self.records[mid].sha1, sha1, 20)
  *             if the_cmp == 0:             # <<<<<<<<<<<<<<
  *                 return &self.records[mid]

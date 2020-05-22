@@ -74,14 +74,11 @@ class RepoFetcher(object):
         self._last_revision = last_revision
         self._fetch_spec = fetch_spec
         self.find_ghosts = find_ghosts
-        self.from_repository.lock_read()
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               str(self.from_repository), str(self.from_repository._format),
-               str(self.to_repository), str(self.to_repository._format))
-        try:
+        with self.from_repository.lock_read():
+            mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+                   str(self.from_repository), str(self.from_repository._format),
+                   str(self.to_repository), str(self.to_repository._format))
             self.__fetch()
-        finally:
-            self.from_repository.unlock()
 
     def __fetch(self):
         """Primary worker function.
@@ -211,7 +208,7 @@ class Inter1and2Helper(object):
     def _find_root_ids(self, revs, parent_map, graph):
         revision_root = {}
         for tree in self.iter_rev_trees(revs):
-            root_id = tree.get_root_id()
+            root_id = tree.path2id('')
             revision_id = tree.get_file_revision(u'')
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
@@ -221,7 +218,7 @@ class Inter1and2Helper(object):
         # Limit to revisions present in the versionedfile
         parents = graph.get_parent_map(parents)
         for tree in self.iter_rev_trees(parents):
-            root_id = tree.get_root_id()
+            root_id = tree.path2id('')
             revision_root[tree.get_revision_id()] = root_id
         return revision_root
 
@@ -268,8 +265,8 @@ def _new_root_data_stream(
         root_id, rev_id = root_key
         parent_keys = _parent_keys_for_root_version(
             root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph)
-        yield versionedfile.FulltextContentFactory(
-            root_key, parent_keys, None, b'')
+        yield versionedfile.ChunkedContentFactory(
+            root_key, parent_keys, None, [])
 
 
 def _parent_keys_for_root_version(
@@ -296,7 +293,7 @@ def _parent_keys_for_root_version(
                 # But set parent_root_id to None since we don't really know
                 parent_root_id = None
             else:
-                parent_root_id = tree.get_root_id()
+                parent_root_id = tree.path2id('')
             rev_id_to_root_id_map[parent_id] = None
             # XXX: why not:
             #   rev_id_to_root_id_map[parent_id] = parent_root_id
@@ -319,7 +316,8 @@ def _parent_keys_for_root_version(
             else:
                 try:
                     parent_ids.append(
-                        tree.get_file_revision(tree.id2path(root_id)))
+                        tree.get_file_revision(
+                            tree.id2path(root_id, recurse='none')))
                 except errors.NoSuchId:
                     # not in the tree
                     pass

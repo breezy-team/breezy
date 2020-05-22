@@ -74,8 +74,8 @@ class TestFetch(TestFetchBase):
         self.assertEqual(b'C-id', final_b.last_revision())
         text_keys = [(b'a-id', b'A-id'), (b'a-id', b'B-id'),
                      (b'a-id', b'C-id')]
-        stream = final_b.repository.texts.get_record_stream(text_keys,
-                                                            'unordered', True)
+        stream = final_b.repository.texts.get_record_stream(
+            text_keys, 'unordered', True)
         records = sorted([(r.key, r.get_bytes_as('fulltext')) for r in stream])
         self.assertEqual([
             ((b'a-id', b'A-id'), b''.join(content[:-2])),

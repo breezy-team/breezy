@@ -2317,7 +2317,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
   PyObject *__pyx_t_9 = NULL;
   __Pyx_RefNannySetupContext("_deserialise_leaf_node", 0);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":192
+  /* "breezy/bzr/_chk_map_pyx.pyx":200
  *     cdef StaticTuple entry_bits
  * 
  *     if _LeafNode is None:             # <<<<<<<<<<<<<<
@@ -2328,18 +2328,18 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
   __pyx_t_2 = (__pyx_t_1 != 0);
   if (__pyx_t_2) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":193
+    /* "breezy/bzr/_chk_map_pyx.pyx":201
  * 
  *     if _LeafNode is None:
  *         _import_globals()             # <<<<<<<<<<<<<<
  * 
  *     result = _LeafNode(search_key_func=search_key_func)
  */
-    __pyx_t_3 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__import_globals(); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 193, __pyx_L1_error)
+    __pyx_t_3 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__import_globals(); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 201, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":192
+    /* "breezy/bzr/_chk_map_pyx.pyx":200
  *     cdef StaticTuple entry_bits
  * 
  *     if _LeafNode is None:             # <<<<<<<<<<<<<<
@@ -2348,23 +2348,23 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":195
+  /* "breezy/bzr/_chk_map_pyx.pyx":203
  *         _import_globals()
  * 
  *     result = _LeafNode(search_key_func=search_key_func)             # <<<<<<<<<<<<<<
  *     # Splitlines can split on '\r' so don't use it, split('\n') adds an
  *     # extra '' if the bytes ends in a final newline.
  */
-  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 195, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 203, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_search_key_func, __pyx_v_search_key_func) < 0) __PYX_ERR(0, 195, __pyx_L1_error)
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_v_6breezy_3bzr_12_chk_map_pyx__LeafNode, __pyx_empty_tuple, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 195, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_search_key_func, __pyx_v_search_key_func) < 0) __PYX_ERR(0, 203, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_v_6breezy_3bzr_12_chk_map_pyx__LeafNode, __pyx_empty_tuple, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 203, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_v_result = __pyx_t_4;
   __pyx_t_4 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":198
+  /* "breezy/bzr/_chk_map_pyx.pyx":206
  *     # Splitlines can split on '\r' so don't use it, split('\n') adds an
  *     # extra '' if the bytes ends in a final newline.
  *     if not PyBytes_CheckExact(data):             # <<<<<<<<<<<<<<
@@ -2374,29 +2374,29 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
   __pyx_t_2 = ((!(PyBytes_CheckExact(__pyx_v_data) != 0)) != 0);
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":199
+    /* "breezy/bzr/_chk_map_pyx.pyx":207
  *     # extra '' if the bytes ends in a final newline.
  *     if not PyBytes_CheckExact(data):
  *         raise TypeError('expected bytes not %s' % (type(data),))             # <<<<<<<<<<<<<<
  * 
  *     c_bytes = PyBytes_AS_STRING(data)
  */
-    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 199, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 207, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_INCREF(((PyObject *)Py_TYPE(__pyx_v_data)));
     __Pyx_GIVEREF(((PyObject *)Py_TYPE(__pyx_v_data)));
     PyTuple_SET_ITEM(__pyx_t_4, 0, ((PyObject *)Py_TYPE(__pyx_v_data)));
-    __pyx_t_3 = __Pyx_PyString_Format(__pyx_kp_s_expected_bytes_not_s, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 199, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyString_Format(__pyx_kp_s_expected_bytes_not_s, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 207, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_TypeError, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 199, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_TypeError, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 207, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_Raise(__pyx_t_4, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __PYX_ERR(0, 199, __pyx_L1_error)
+    __PYX_ERR(0, 207, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":198
+    /* "breezy/bzr/_chk_map_pyx.pyx":206
  *     # Splitlines can split on '\r' so don't use it, split('\n') adds an
  *     # extra '' if the bytes ends in a final newline.
  *     if not PyBytes_CheckExact(data):             # <<<<<<<<<<<<<<
@@ -2405,7 +2405,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":201
+  /* "breezy/bzr/_chk_map_pyx.pyx":209
  *         raise TypeError('expected bytes not %s' % (type(data),))
  * 
  *     c_bytes = PyBytes_AS_STRING(data)             # <<<<<<<<<<<<<<
@@ -2414,19 +2414,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_c_bytes = PyBytes_AS_STRING(__pyx_v_data);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":202
+  /* "breezy/bzr/_chk_map_pyx.pyx":210
  * 
  *     c_bytes = PyBytes_AS_STRING(data)
  *     c_bytes_len = PyBytes_GET_SIZE(data)             # <<<<<<<<<<<<<<
  * 
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chkleaf:\n", 9) != 0:
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chkleaf:\n", 9) != 0:
  */
   __pyx_v_c_bytes_len = PyBytes_GET_SIZE(__pyx_v_data);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":204
+  /* "breezy/bzr/_chk_map_pyx.pyx":212
  *     c_bytes_len = PyBytes_GET_SIZE(data)
  * 
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chkleaf:\n", 9) != 0:             # <<<<<<<<<<<<<<
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chkleaf:\n", 9) != 0:             # <<<<<<<<<<<<<<
  *         raise ValueError("not a serialised leaf node: %r" % data)
  *     if c_bytes[c_bytes_len - 1] != c'\n':
  */
@@ -2441,33 +2441,33 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
   __pyx_L6_bool_binop_done:;
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":205
+    /* "breezy/bzr/_chk_map_pyx.pyx":213
  * 
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chkleaf:\n", 9) != 0:
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chkleaf:\n", 9) != 0:
  *         raise ValueError("not a serialised leaf node: %r" % data)             # <<<<<<<<<<<<<<
  *     if c_bytes[c_bytes_len - 1] != c'\n':
  *         raise ValueError("bytes does not end in a newline")
  */
-    __pyx_t_4 = __Pyx_PyString_FormatSafe(__pyx_kp_s_not_a_serialised_leaf_node_r, __pyx_v_data); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 205, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyString_FormatSafe(__pyx_kp_s_not_a_serialised_leaf_node_r, __pyx_v_data); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 213, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_builtin_ValueError, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 205, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_builtin_ValueError, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 213, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 205, __pyx_L1_error)
+    __PYX_ERR(0, 213, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":204
+    /* "breezy/bzr/_chk_map_pyx.pyx":212
  *     c_bytes_len = PyBytes_GET_SIZE(data)
  * 
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chkleaf:\n", 9) != 0:             # <<<<<<<<<<<<<<
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chkleaf:\n", 9) != 0:             # <<<<<<<<<<<<<<
  *         raise ValueError("not a serialised leaf node: %r" % data)
  *     if c_bytes[c_bytes_len - 1] != c'\n':
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":206
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chkleaf:\n", 9) != 0:
+  /* "breezy/bzr/_chk_map_pyx.pyx":214
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chkleaf:\n", 9) != 0:
  *         raise ValueError("not a serialised leaf node: %r" % data)
  *     if c_bytes[c_bytes_len - 1] != c'\n':             # <<<<<<<<<<<<<<
  *         raise ValueError("bytes does not end in a newline")
@@ -2476,21 +2476,21 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
   __pyx_t_2 = (((__pyx_v_c_bytes[(__pyx_v_c_bytes_len - 1)]) != '\n') != 0);
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":207
+    /* "breezy/bzr/_chk_map_pyx.pyx":215
  *         raise ValueError("not a serialised leaf node: %r" % data)
  *     if c_bytes[c_bytes_len - 1] != c'\n':
  *         raise ValueError("bytes does not end in a newline")             # <<<<<<<<<<<<<<
  * 
  *     end = c_bytes + c_bytes_len
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 207, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 215, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 207, __pyx_L1_error)
+    __PYX_ERR(0, 215, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":206
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chkleaf:\n", 9) != 0:
+    /* "breezy/bzr/_chk_map_pyx.pyx":214
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chkleaf:\n", 9) != 0:
  *         raise ValueError("not a serialised leaf node: %r" % data)
  *     if c_bytes[c_bytes_len - 1] != c'\n':             # <<<<<<<<<<<<<<
  *         raise ValueError("bytes does not end in a newline")
@@ -2498,7 +2498,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":209
+  /* "breezy/bzr/_chk_map_pyx.pyx":217
  *         raise ValueError("bytes does not end in a newline")
  * 
  *     end = c_bytes + c_bytes_len             # <<<<<<<<<<<<<<
@@ -2507,7 +2507,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_end = (__pyx_v_c_bytes + __pyx_v_c_bytes_len);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":210
+  /* "breezy/bzr/_chk_map_pyx.pyx":218
  * 
  *     end = c_bytes + c_bytes_len
  *     cur = c_bytes + 9             # <<<<<<<<<<<<<<
@@ -2516,37 +2516,37 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_cur = (__pyx_v_c_bytes + 9);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":211
+  /* "breezy/bzr/_chk_map_pyx.pyx":219
  *     end = c_bytes + c_bytes_len
  *     cur = c_bytes + 9
  *     maximum_size = _get_int_from_line(&cur, end, "maximum_size")             # <<<<<<<<<<<<<<
  *     width = _get_int_from_line(&cur, end, "width")
  *     length = _get_int_from_line(&cur, end, "length")
  */
-  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"maximum_size")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 211, __pyx_L1_error)
+  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"maximum_size")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 219, __pyx_L1_error)
   __pyx_v_maximum_size = __pyx_t_5;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":212
+  /* "breezy/bzr/_chk_map_pyx.pyx":220
  *     cur = c_bytes + 9
  *     maximum_size = _get_int_from_line(&cur, end, "maximum_size")
  *     width = _get_int_from_line(&cur, end, "width")             # <<<<<<<<<<<<<<
  *     length = _get_int_from_line(&cur, end, "length")
  * 
  */
-  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"width")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 212, __pyx_L1_error)
+  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"width")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 220, __pyx_L1_error)
   __pyx_v_width = __pyx_t_5;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":213
+  /* "breezy/bzr/_chk_map_pyx.pyx":221
  *     maximum_size = _get_int_from_line(&cur, end, "maximum_size")
  *     width = _get_int_from_line(&cur, end, "width")
  *     length = _get_int_from_line(&cur, end, "length")             # <<<<<<<<<<<<<<
  * 
  *     next_line = <char *>memchr(cur, c'\n', end - cur)
  */
-  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"length")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 213, __pyx_L1_error)
+  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"length")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 221, __pyx_L1_error)
   __pyx_v_length = __pyx_t_5;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":215
+  /* "breezy/bzr/_chk_map_pyx.pyx":223
  *     length = _get_int_from_line(&cur, end, "length")
  * 
  *     next_line = <char *>memchr(cur, c'\n', end - cur)             # <<<<<<<<<<<<<<
@@ -2555,7 +2555,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_next_line = ((char *)memchr(__pyx_v_cur, '\n', (__pyx_v_end - __pyx_v_cur)));
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":216
+  /* "breezy/bzr/_chk_map_pyx.pyx":224
  * 
  *     next_line = <char *>memchr(cur, c'\n', end - cur)
  *     if next_line == NULL:             # <<<<<<<<<<<<<<
@@ -2565,20 +2565,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
   __pyx_t_2 = ((__pyx_v_next_line == NULL) != 0);
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":217
+    /* "breezy/bzr/_chk_map_pyx.pyx":225
  *     next_line = <char *>memchr(cur, c'\n', end - cur)
  *     if next_line == NULL:
  *         raise ValueError('Missing the prefix line\n')             # <<<<<<<<<<<<<<
  *     prefix = cur
  *     prefix_length = next_line - cur
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__3, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 217, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__3, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 225, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 217, __pyx_L1_error)
+    __PYX_ERR(0, 225, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":216
+    /* "breezy/bzr/_chk_map_pyx.pyx":224
  * 
  *     next_line = <char *>memchr(cur, c'\n', end - cur)
  *     if next_line == NULL:             # <<<<<<<<<<<<<<
@@ -2587,7 +2587,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":218
+  /* "breezy/bzr/_chk_map_pyx.pyx":226
  *     if next_line == NULL:
  *         raise ValueError('Missing the prefix line\n')
  *     prefix = cur             # <<<<<<<<<<<<<<
@@ -2596,7 +2596,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_prefix = __pyx_v_cur;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":219
+  /* "breezy/bzr/_chk_map_pyx.pyx":227
  *         raise ValueError('Missing the prefix line\n')
  *     prefix = cur
  *     prefix_length = next_line - cur             # <<<<<<<<<<<<<<
@@ -2605,7 +2605,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_prefix_length = (__pyx_v_next_line - __pyx_v_cur);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":220
+  /* "breezy/bzr/_chk_map_pyx.pyx":228
  *     prefix = cur
  *     prefix_length = next_line - cur
  *     cur = next_line + 1             # <<<<<<<<<<<<<<
@@ -2614,19 +2614,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_cur = (__pyx_v_next_line + 1);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":222
+  /* "breezy/bzr/_chk_map_pyx.pyx":230
  *     cur = next_line + 1
  * 
  *     prefix_bits = []             # <<<<<<<<<<<<<<
  *     prefix_tail = prefix
  *     num_prefix_bits = 0
  */
-  __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 222, __pyx_L1_error)
+  __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 230, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_v_prefix_bits = ((PyObject*)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":223
+  /* "breezy/bzr/_chk_map_pyx.pyx":231
  * 
  *     prefix_bits = []
  *     prefix_tail = prefix             # <<<<<<<<<<<<<<
@@ -2635,7 +2635,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_prefix_tail = __pyx_v_prefix;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":224
+  /* "breezy/bzr/_chk_map_pyx.pyx":232
  *     prefix_bits = []
  *     prefix_tail = prefix
  *     num_prefix_bits = 0             # <<<<<<<<<<<<<<
@@ -2644,7 +2644,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_num_prefix_bits = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":225
+  /* "breezy/bzr/_chk_map_pyx.pyx":233
  *     prefix_tail = prefix
  *     num_prefix_bits = 0
  *     next_null = <char *>memchr(prefix, c'\0', prefix_length)             # <<<<<<<<<<<<<<
@@ -2653,7 +2653,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_next_null = ((char *)memchr(__pyx_v_prefix, '\x00', __pyx_v_prefix_length));
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":226
+  /* "breezy/bzr/_chk_map_pyx.pyx":234
  *     num_prefix_bits = 0
  *     next_null = <char *>memchr(prefix, c'\0', prefix_length)
  *     while next_null != NULL:             # <<<<<<<<<<<<<<
@@ -2664,7 +2664,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __pyx_t_2 = ((__pyx_v_next_null != NULL) != 0);
     if (!__pyx_t_2) break;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":227
+    /* "breezy/bzr/_chk_map_pyx.pyx":235
  *     next_null = <char *>memchr(prefix, c'\0', prefix_length)
  *     while next_null != NULL:
  *         num_prefix_bits = num_prefix_bits + 1             # <<<<<<<<<<<<<<
@@ -2673,27 +2673,27 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_num_prefix_bits = (__pyx_v_num_prefix_bits + 1);
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":229
+    /* "breezy/bzr/_chk_map_pyx.pyx":237
  *         num_prefix_bits = num_prefix_bits + 1
  *         prefix_bits.append(
  *             PyBytes_FromStringAndSize(prefix_tail, next_null - prefix_tail))             # <<<<<<<<<<<<<<
  *         prefix_tail = next_null + 1
  *         next_null = <char *>memchr(prefix_tail, c'\0', next_line - prefix_tail)
  */
-    __pyx_t_3 = PyBytes_FromStringAndSize(__pyx_v_prefix_tail, (__pyx_v_next_null - __pyx_v_prefix_tail)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 229, __pyx_L1_error)
+    __pyx_t_3 = PyBytes_FromStringAndSize(__pyx_v_prefix_tail, (__pyx_v_next_null - __pyx_v_prefix_tail)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 237, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":228
+    /* "breezy/bzr/_chk_map_pyx.pyx":236
  *     while next_null != NULL:
  *         num_prefix_bits = num_prefix_bits + 1
  *         prefix_bits.append(             # <<<<<<<<<<<<<<
  *             PyBytes_FromStringAndSize(prefix_tail, next_null - prefix_tail))
  *         prefix_tail = next_null + 1
  */
-    __pyx_t_6 = __Pyx_PyList_Append(__pyx_v_prefix_bits, __pyx_t_3); if (unlikely(__pyx_t_6 == ((int)-1))) __PYX_ERR(0, 228, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyList_Append(__pyx_v_prefix_bits, __pyx_t_3); if (unlikely(__pyx_t_6 == ((int)-1))) __PYX_ERR(0, 236, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":230
+    /* "breezy/bzr/_chk_map_pyx.pyx":238
  *         prefix_bits.append(
  *             PyBytes_FromStringAndSize(prefix_tail, next_null - prefix_tail))
  *         prefix_tail = next_null + 1             # <<<<<<<<<<<<<<
@@ -2702,7 +2702,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_prefix_tail = (__pyx_v_next_null + 1);
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":231
+    /* "breezy/bzr/_chk_map_pyx.pyx":239
  *             PyBytes_FromStringAndSize(prefix_tail, next_null - prefix_tail))
  *         prefix_tail = next_null + 1
  *         next_null = <char *>memchr(prefix_tail, c'\0', next_line - prefix_tail)             # <<<<<<<<<<<<<<
@@ -2712,7 +2712,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __pyx_v_next_null = ((char *)memchr(__pyx_v_prefix_tail, '\x00', (__pyx_v_next_line - __pyx_v_prefix_tail)));
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":232
+  /* "breezy/bzr/_chk_map_pyx.pyx":240
  *         prefix_tail = next_null + 1
  *         next_null = <char *>memchr(prefix_tail, c'\0', next_line - prefix_tail)
  *     prefix_tail_len = next_line - prefix_tail             # <<<<<<<<<<<<<<
@@ -2721,7 +2721,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_prefix_tail_len = (__pyx_v_next_line - __pyx_v_prefix_tail);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":234
+  /* "breezy/bzr/_chk_map_pyx.pyx":242
  *     prefix_tail_len = next_line - prefix_tail
  * 
  *     if num_prefix_bits >= width:             # <<<<<<<<<<<<<<
@@ -2731,20 +2731,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
   __pyx_t_2 = ((__pyx_v_num_prefix_bits >= __pyx_v_width) != 0);
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":235
+    /* "breezy/bzr/_chk_map_pyx.pyx":243
  * 
  *     if num_prefix_bits >= width:
  *         raise ValueError('Prefix has too many nulls versus width')             # <<<<<<<<<<<<<<
  * 
  *     items_length = end - cur
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__4, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 235, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__4, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 243, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 235, __pyx_L1_error)
+    __PYX_ERR(0, 243, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":234
+    /* "breezy/bzr/_chk_map_pyx.pyx":242
  *     prefix_tail_len = next_line - prefix_tail
  * 
  *     if num_prefix_bits >= width:             # <<<<<<<<<<<<<<
@@ -2753,7 +2753,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":237
+  /* "breezy/bzr/_chk_map_pyx.pyx":245
  *         raise ValueError('Prefix has too many nulls versus width')
  * 
  *     items_length = end - cur             # <<<<<<<<<<<<<<
@@ -2762,19 +2762,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   __pyx_v_items_length = (__pyx_v_end - __pyx_v_cur);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":238
+  /* "breezy/bzr/_chk_map_pyx.pyx":246
  * 
  *     items_length = end - cur
  *     items = {}             # <<<<<<<<<<<<<<
  *     while cur < end:
  *         line_start = cur
  */
-  __pyx_t_3 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 238, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 246, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_v_items = ((PyObject*)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":239
+  /* "breezy/bzr/_chk_map_pyx.pyx":247
  *     items_length = end - cur
  *     items = {}
  *     while cur < end:             # <<<<<<<<<<<<<<
@@ -2785,7 +2785,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __pyx_t_2 = ((__pyx_v_cur < __pyx_v_end) != 0);
     if (!__pyx_t_2) break;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":240
+    /* "breezy/bzr/_chk_map_pyx.pyx":248
  *     items = {}
  *     while cur < end:
  *         line_start = cur             # <<<<<<<<<<<<<<
@@ -2794,7 +2794,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_line_start = __pyx_v_cur;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":241
+    /* "breezy/bzr/_chk_map_pyx.pyx":249
  *     while cur < end:
  *         line_start = cur
  *         next_line = <char *>memchr(cur, c'\n', end - cur)             # <<<<<<<<<<<<<<
@@ -2803,7 +2803,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_next_line = ((char *)memchr(__pyx_v_cur, '\n', (__pyx_v_end - __pyx_v_cur)));
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":242
+    /* "breezy/bzr/_chk_map_pyx.pyx":250
  *         line_start = cur
  *         next_line = <char *>memchr(cur, c'\n', end - cur)
  *         if next_line == NULL:             # <<<<<<<<<<<<<<
@@ -2813,20 +2813,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __pyx_t_2 = ((__pyx_v_next_line == NULL) != 0);
     if (unlikely(__pyx_t_2)) {
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":243
+      /* "breezy/bzr/_chk_map_pyx.pyx":251
  *         next_line = <char *>memchr(cur, c'\n', end - cur)
  *         if next_line == NULL:
  *             raise ValueError('null line\n')             # <<<<<<<<<<<<<<
  *         last_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
  *         if last_null == NULL:
  */
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__5, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 243, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__5, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 251, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_Raise(__pyx_t_3, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-      __PYX_ERR(0, 243, __pyx_L1_error)
+      __PYX_ERR(0, 251, __pyx_L1_error)
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":242
+      /* "breezy/bzr/_chk_map_pyx.pyx":250
  *         line_start = cur
  *         next_line = <char *>memchr(cur, c'\n', end - cur)
  *         if next_line == NULL:             # <<<<<<<<<<<<<<
@@ -2835,7 +2835,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":244
+    /* "breezy/bzr/_chk_map_pyx.pyx":252
  *         if next_line == NULL:
  *             raise ValueError('null line\n')
  *         last_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)             # <<<<<<<<<<<<<<
@@ -2844,7 +2844,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_last_null = ((char *)__pyx_f_6breezy_3bzr_12_str_helpers__my_memrchr(__pyx_v_cur, '\x00', (__pyx_v_next_line - __pyx_v_cur)));
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":245
+    /* "breezy/bzr/_chk_map_pyx.pyx":253
  *             raise ValueError('null line\n')
  *         last_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
  *         if last_null == NULL:             # <<<<<<<<<<<<<<
@@ -2854,20 +2854,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __pyx_t_2 = ((__pyx_v_last_null == NULL) != 0);
     if (unlikely(__pyx_t_2)) {
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":246
+      /* "breezy/bzr/_chk_map_pyx.pyx":254
  *         last_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
  *         if last_null == NULL:
  *             raise ValueError('fail to find the num value lines null')             # <<<<<<<<<<<<<<
  *         next_null = last_null + 1 # move past NULL
  *         num_value_lines = _get_int_from_line(&next_null, next_line + 1,
  */
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 246, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__6, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 254, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_Raise(__pyx_t_3, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-      __PYX_ERR(0, 246, __pyx_L1_error)
+      __PYX_ERR(0, 254, __pyx_L1_error)
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":245
+      /* "breezy/bzr/_chk_map_pyx.pyx":253
  *             raise ValueError('null line\n')
  *         last_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
  *         if last_null == NULL:             # <<<<<<<<<<<<<<
@@ -2876,7 +2876,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":247
+    /* "breezy/bzr/_chk_map_pyx.pyx":255
  *         if last_null == NULL:
  *             raise ValueError('fail to find the num value lines null')
  *         next_null = last_null + 1 # move past NULL             # <<<<<<<<<<<<<<
@@ -2885,17 +2885,17 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_next_null = (__pyx_v_last_null + 1);
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":248
+    /* "breezy/bzr/_chk_map_pyx.pyx":256
  *             raise ValueError('fail to find the num value lines null')
  *         next_null = last_null + 1 # move past NULL
  *         num_value_lines = _get_int_from_line(&next_null, next_line + 1,             # <<<<<<<<<<<<<<
  *                                              "num value lines")
  *         cur = next_line + 1
  */
-    __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_next_null), (__pyx_v_next_line + 1), ((char *)"num value lines")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 248, __pyx_L1_error)
+    __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_next_null), (__pyx_v_next_line + 1), ((char *)"num value lines")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 256, __pyx_L1_error)
     __pyx_v_num_value_lines = __pyx_t_5;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":250
+    /* "breezy/bzr/_chk_map_pyx.pyx":258
  *         num_value_lines = _get_int_from_line(&next_null, next_line + 1,
  *                                              "num value lines")
  *         cur = next_line + 1             # <<<<<<<<<<<<<<
@@ -2904,7 +2904,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_cur = (__pyx_v_next_line + 1);
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":251
+    /* "breezy/bzr/_chk_map_pyx.pyx":259
  *                                              "num value lines")
  *         cur = next_line + 1
  *         value_start = cur             # <<<<<<<<<<<<<<
@@ -2913,7 +2913,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_value_start = __pyx_v_cur;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":253
+    /* "breezy/bzr/_chk_map_pyx.pyx":261
  *         value_start = cur
  *         # Walk num_value_lines forward
  *         for i from 0 <= i < num_value_lines:             # <<<<<<<<<<<<<<
@@ -2923,7 +2923,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __pyx_t_5 = __pyx_v_num_value_lines;
     for (__pyx_v_i = 0; __pyx_v_i < __pyx_t_5; __pyx_v_i++) {
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":254
+      /* "breezy/bzr/_chk_map_pyx.pyx":262
  *         # Walk num_value_lines forward
  *         for i from 0 <= i < num_value_lines:
  *             next_line = <char *>memchr(cur, c'\n', end - cur)             # <<<<<<<<<<<<<<
@@ -2932,7 +2932,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
       __pyx_v_next_line = ((char *)memchr(__pyx_v_cur, '\n', (__pyx_v_end - __pyx_v_cur)));
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":255
+      /* "breezy/bzr/_chk_map_pyx.pyx":263
  *         for i from 0 <= i < num_value_lines:
  *             next_line = <char *>memchr(cur, c'\n', end - cur)
  *             if next_line == NULL:             # <<<<<<<<<<<<<<
@@ -2942,20 +2942,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
       __pyx_t_2 = ((__pyx_v_next_line == NULL) != 0);
       if (unlikely(__pyx_t_2)) {
 
-        /* "breezy/bzr/_chk_map_pyx.pyx":256
+        /* "breezy/bzr/_chk_map_pyx.pyx":264
  *             next_line = <char *>memchr(cur, c'\n', end - cur)
  *             if next_line == NULL:
  *                 raise ValueError('missing trailing newline')             # <<<<<<<<<<<<<<
  *             cur = next_line + 1
  *         entry_bits = StaticTuple_New(width)
  */
-        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 256, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 264, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_Raise(__pyx_t_3, 0, 0, 0);
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-        __PYX_ERR(0, 256, __pyx_L1_error)
+        __PYX_ERR(0, 264, __pyx_L1_error)
 
-        /* "breezy/bzr/_chk_map_pyx.pyx":255
+        /* "breezy/bzr/_chk_map_pyx.pyx":263
  *         for i from 0 <= i < num_value_lines:
  *             next_line = <char *>memchr(cur, c'\n', end - cur)
  *             if next_line == NULL:             # <<<<<<<<<<<<<<
@@ -2964,7 +2964,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
       }
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":257
+      /* "breezy/bzr/_chk_map_pyx.pyx":265
  *             if next_line == NULL:
  *                 raise ValueError('missing trailing newline')
  *             cur = next_line + 1             # <<<<<<<<<<<<<<
@@ -2974,19 +2974,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
       __pyx_v_cur = (__pyx_v_next_line + 1);
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":258
+    /* "breezy/bzr/_chk_map_pyx.pyx":266
  *                 raise ValueError('missing trailing newline')
  *             cur = next_line + 1
  *         entry_bits = StaticTuple_New(width)             # <<<<<<<<<<<<<<
  *         for i from 0 <= i < num_prefix_bits:
  *             # TODO: Use PyList_GetItem, or turn prefix_bits into a
  */
-    __pyx_t_3 = ((PyObject *)StaticTuple_New(__pyx_v_width)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 258, __pyx_L1_error)
+    __pyx_t_3 = ((PyObject *)StaticTuple_New(__pyx_v_width)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 266, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_XDECREF_SET(__pyx_v_entry_bits, ((StaticTuple *)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":259
+    /* "breezy/bzr/_chk_map_pyx.pyx":267
  *             cur = next_line + 1
  *         entry_bits = StaticTuple_New(width)
  *         for i from 0 <= i < num_prefix_bits:             # <<<<<<<<<<<<<<
@@ -2996,19 +2996,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __pyx_t_5 = __pyx_v_num_prefix_bits;
     for (__pyx_v_i = 0; __pyx_v_i < __pyx_t_5; __pyx_v_i++) {
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":262
+      /* "breezy/bzr/_chk_map_pyx.pyx":270
  *             # TODO: Use PyList_GetItem, or turn prefix_bits into a
  *             #       tuple/StaticTuple
  *             entry = prefix_bits[i]             # <<<<<<<<<<<<<<
  *             # SET_ITEM 'steals' a reference
  *             Py_INCREF(entry)
  */
-      __pyx_t_3 = __Pyx_GetItemInt_List(__pyx_v_prefix_bits, __pyx_v_i, int, 1, __Pyx_PyInt_From_int, 1, 1, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 262, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_GetItemInt_List(__pyx_v_prefix_bits, __pyx_v_i, int, 1, __Pyx_PyInt_From_int, 1, 1, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 270, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_XDECREF_SET(__pyx_v_entry, __pyx_t_3);
       __pyx_t_3 = 0;
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":264
+      /* "breezy/bzr/_chk_map_pyx.pyx":272
  *             entry = prefix_bits[i]
  *             # SET_ITEM 'steals' a reference
  *             Py_INCREF(entry)             # <<<<<<<<<<<<<<
@@ -3017,7 +3017,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
       Py_INCREF(__pyx_v_entry);
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":265
+      /* "breezy/bzr/_chk_map_pyx.pyx":273
  *             # SET_ITEM 'steals' a reference
  *             Py_INCREF(entry)
  *             StaticTuple_SET_ITEM(entry_bits, i, entry)             # <<<<<<<<<<<<<<
@@ -3027,19 +3027,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
       StaticTuple_SET_ITEM(__pyx_v_entry_bits, __pyx_v_i, __pyx_v_entry);
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":266
+    /* "breezy/bzr/_chk_map_pyx.pyx":274
  *             Py_INCREF(entry)
  *             StaticTuple_SET_ITEM(entry_bits, i, entry)
  *         value = PyBytes_FromStringAndSize(value_start, next_line - value_start)             # <<<<<<<<<<<<<<
  *         # The next entry bit needs the 'tail' from the prefix, and first part
  *         # of the line
  */
-    __pyx_t_3 = PyBytes_FromStringAndSize(__pyx_v_value_start, (__pyx_v_next_line - __pyx_v_value_start)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 266, __pyx_L1_error)
+    __pyx_t_3 = PyBytes_FromStringAndSize(__pyx_v_value_start, (__pyx_v_next_line - __pyx_v_value_start)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 274, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_XDECREF_SET(__pyx_v_value, ((PyObject*)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":269
+    /* "breezy/bzr/_chk_map_pyx.pyx":277
  *         # The next entry bit needs the 'tail' from the prefix, and first part
  *         # of the line
  *         entry_start = line_start             # <<<<<<<<<<<<<<
@@ -3048,7 +3048,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_entry_start = __pyx_v_line_start;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":270
+    /* "breezy/bzr/_chk_map_pyx.pyx":278
  *         # of the line
  *         entry_start = line_start
  *         next_null = <char *>memchr(entry_start, c'\0',             # <<<<<<<<<<<<<<
@@ -3057,7 +3057,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_next_null = ((char *)memchr(__pyx_v_entry_start, '\x00', ((__pyx_v_last_null - __pyx_v_entry_start) + 1)));
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":272
+    /* "breezy/bzr/_chk_map_pyx.pyx":280
  *         next_null = <char *>memchr(entry_start, c'\0',
  *                                    last_null - entry_start + 1)
  *         if next_null == NULL:             # <<<<<<<<<<<<<<
@@ -3067,20 +3067,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __pyx_t_2 = ((__pyx_v_next_null == NULL) != 0);
     if (unlikely(__pyx_t_2)) {
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":273
+      /* "breezy/bzr/_chk_map_pyx.pyx":281
  *                                    last_null - entry_start + 1)
  *         if next_null == NULL:
  *             raise ValueError('bad no null, bad')             # <<<<<<<<<<<<<<
  *         entry = PyBytes_FromStringAndSize(
  *             NULL, prefix_tail_len + next_null - line_start)
  */
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__8, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 273, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__8, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 281, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_Raise(__pyx_t_3, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-      __PYX_ERR(0, 273, __pyx_L1_error)
+      __PYX_ERR(0, 281, __pyx_L1_error)
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":272
+      /* "breezy/bzr/_chk_map_pyx.pyx":280
  *         next_null = <char *>memchr(entry_start, c'\0',
  *                                    last_null - entry_start + 1)
  *         if next_null == NULL:             # <<<<<<<<<<<<<<
@@ -3089,19 +3089,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":274
+    /* "breezy/bzr/_chk_map_pyx.pyx":282
  *         if next_null == NULL:
  *             raise ValueError('bad no null, bad')
  *         entry = PyBytes_FromStringAndSize(             # <<<<<<<<<<<<<<
  *             NULL, prefix_tail_len + next_null - line_start)
  *         c_entry = PyBytes_AS_STRING(entry)
  */
-    __pyx_t_3 = PyBytes_FromStringAndSize(NULL, ((__pyx_v_prefix_tail_len + __pyx_v_next_null) - __pyx_v_line_start)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 274, __pyx_L1_error)
+    __pyx_t_3 = PyBytes_FromStringAndSize(NULL, ((__pyx_v_prefix_tail_len + __pyx_v_next_null) - __pyx_v_line_start)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 282, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_XDECREF_SET(__pyx_v_entry, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":276
+    /* "breezy/bzr/_chk_map_pyx.pyx":284
  *         entry = PyBytes_FromStringAndSize(
  *             NULL, prefix_tail_len + next_null - line_start)
  *         c_entry = PyBytes_AS_STRING(entry)             # <<<<<<<<<<<<<<
@@ -3110,7 +3110,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_c_entry = PyBytes_AS_STRING(__pyx_v_entry);
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":277
+    /* "breezy/bzr/_chk_map_pyx.pyx":285
  *             NULL, prefix_tail_len + next_null - line_start)
  *         c_entry = PyBytes_AS_STRING(entry)
  *         if prefix_tail_len > 0:             # <<<<<<<<<<<<<<
@@ -3120,7 +3120,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __pyx_t_2 = ((__pyx_v_prefix_tail_len > 0) != 0);
     if (__pyx_t_2) {
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":278
+      /* "breezy/bzr/_chk_map_pyx.pyx":286
  *         c_entry = PyBytes_AS_STRING(entry)
  *         if prefix_tail_len > 0:
  *             memcpy(c_entry, prefix_tail, prefix_tail_len)             # <<<<<<<<<<<<<<
@@ -3129,7 +3129,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
       (void)(memcpy(__pyx_v_c_entry, __pyx_v_prefix_tail, __pyx_v_prefix_tail_len));
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":277
+      /* "breezy/bzr/_chk_map_pyx.pyx":285
  *             NULL, prefix_tail_len + next_null - line_start)
  *         c_entry = PyBytes_AS_STRING(entry)
  *         if prefix_tail_len > 0:             # <<<<<<<<<<<<<<
@@ -3138,7 +3138,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":279
+    /* "breezy/bzr/_chk_map_pyx.pyx":287
  *         if prefix_tail_len > 0:
  *             memcpy(c_entry, prefix_tail, prefix_tail_len)
  *         if next_null - line_start > 0:             # <<<<<<<<<<<<<<
@@ -3148,7 +3148,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __pyx_t_2 = (((__pyx_v_next_null - __pyx_v_line_start) > 0) != 0);
     if (__pyx_t_2) {
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":280
+      /* "breezy/bzr/_chk_map_pyx.pyx":288
  *             memcpy(c_entry, prefix_tail, prefix_tail_len)
  *         if next_null - line_start > 0:
  *             memcpy(c_entry + prefix_tail_len, line_start, next_null - line_start)             # <<<<<<<<<<<<<<
@@ -3157,7 +3157,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
       (void)(memcpy((__pyx_v_c_entry + __pyx_v_prefix_tail_len), __pyx_v_line_start, (__pyx_v_next_null - __pyx_v_line_start)));
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":279
+      /* "breezy/bzr/_chk_map_pyx.pyx":287
  *         if prefix_tail_len > 0:
  *             memcpy(c_entry, prefix_tail, prefix_tail_len)
  *         if next_null - line_start > 0:             # <<<<<<<<<<<<<<
@@ -3166,7 +3166,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":281
+    /* "breezy/bzr/_chk_map_pyx.pyx":289
  *         if next_null - line_start > 0:
  *             memcpy(c_entry + prefix_tail_len, line_start, next_null - line_start)
  *         Py_INCREF(entry)             # <<<<<<<<<<<<<<
@@ -3175,7 +3175,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     Py_INCREF(__pyx_v_entry);
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":282
+    /* "breezy/bzr/_chk_map_pyx.pyx":290
  *             memcpy(c_entry + prefix_tail_len, line_start, next_null - line_start)
  *         Py_INCREF(entry)
  *         i = num_prefix_bits             # <<<<<<<<<<<<<<
@@ -3184,7 +3184,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     __pyx_v_i = __pyx_v_num_prefix_bits;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":283
+    /* "breezy/bzr/_chk_map_pyx.pyx":291
  *         Py_INCREF(entry)
  *         i = num_prefix_bits
  *         StaticTuple_SET_ITEM(entry_bits, i, entry)             # <<<<<<<<<<<<<<
@@ -3193,7 +3193,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     StaticTuple_SET_ITEM(__pyx_v_entry_bits, __pyx_v_i, __pyx_v_entry);
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":284
+    /* "breezy/bzr/_chk_map_pyx.pyx":292
  *         i = num_prefix_bits
  *         StaticTuple_SET_ITEM(entry_bits, i, entry)
  *         while next_null != last_null: # We have remaining bits             # <<<<<<<<<<<<<<
@@ -3204,7 +3204,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
       __pyx_t_2 = ((__pyx_v_next_null != __pyx_v_last_null) != 0);
       if (!__pyx_t_2) break;
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":285
+      /* "breezy/bzr/_chk_map_pyx.pyx":293
  *         StaticTuple_SET_ITEM(entry_bits, i, entry)
  *         while next_null != last_null: # We have remaining bits
  *             i = i + 1             # <<<<<<<<<<<<<<
@@ -3213,7 +3213,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
       __pyx_v_i = (__pyx_v_i + 1);
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":286
+      /* "breezy/bzr/_chk_map_pyx.pyx":294
  *         while next_null != last_null: # We have remaining bits
  *             i = i + 1
  *             if i > width:             # <<<<<<<<<<<<<<
@@ -3223,20 +3223,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
       __pyx_t_2 = ((__pyx_v_i > __pyx_v_width) != 0);
       if (unlikely(__pyx_t_2)) {
 
-        /* "breezy/bzr/_chk_map_pyx.pyx":287
+        /* "breezy/bzr/_chk_map_pyx.pyx":295
  *             i = i + 1
  *             if i > width:
  *                 raise ValueError("Too many bits for entry")             # <<<<<<<<<<<<<<
  *             entry_start = next_null + 1
  *             next_null = <char *>memchr(entry_start, c'\0',
  */
-        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__9, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 287, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__9, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 295, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_Raise(__pyx_t_3, 0, 0, 0);
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-        __PYX_ERR(0, 287, __pyx_L1_error)
+        __PYX_ERR(0, 295, __pyx_L1_error)
 
-        /* "breezy/bzr/_chk_map_pyx.pyx":286
+        /* "breezy/bzr/_chk_map_pyx.pyx":294
  *         while next_null != last_null: # We have remaining bits
  *             i = i + 1
  *             if i > width:             # <<<<<<<<<<<<<<
@@ -3245,7 +3245,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
       }
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":288
+      /* "breezy/bzr/_chk_map_pyx.pyx":296
  *             if i > width:
  *                 raise ValueError("Too many bits for entry")
  *             entry_start = next_null + 1             # <<<<<<<<<<<<<<
@@ -3254,7 +3254,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
       __pyx_v_entry_start = (__pyx_v_next_null + 1);
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":289
+      /* "breezy/bzr/_chk_map_pyx.pyx":297
  *                 raise ValueError("Too many bits for entry")
  *             entry_start = next_null + 1
  *             next_null = <char *>memchr(entry_start, c'\0',             # <<<<<<<<<<<<<<
@@ -3263,7 +3263,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
       __pyx_v_next_null = ((char *)memchr(__pyx_v_entry_start, '\x00', ((__pyx_v_last_null - __pyx_v_entry_start) + 1)));
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":291
+      /* "breezy/bzr/_chk_map_pyx.pyx":299
  *             next_null = <char *>memchr(entry_start, c'\0',
  *                                        last_null - entry_start + 1)
  *             if next_null == NULL:             # <<<<<<<<<<<<<<
@@ -3273,20 +3273,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
       __pyx_t_2 = ((__pyx_v_next_null == NULL) != 0);
       if (unlikely(__pyx_t_2)) {
 
-        /* "breezy/bzr/_chk_map_pyx.pyx":292
+        /* "breezy/bzr/_chk_map_pyx.pyx":300
  *                                        last_null - entry_start + 1)
  *             if next_null == NULL:
  *                 raise ValueError('bad no null')             # <<<<<<<<<<<<<<
  *             entry = PyBytes_FromStringAndSize(
  *                 entry_start, next_null - entry_start)
  */
-        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__10, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 292, __pyx_L1_error)
+        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__10, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 300, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_Raise(__pyx_t_3, 0, 0, 0);
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-        __PYX_ERR(0, 292, __pyx_L1_error)
+        __PYX_ERR(0, 300, __pyx_L1_error)
 
-        /* "breezy/bzr/_chk_map_pyx.pyx":291
+        /* "breezy/bzr/_chk_map_pyx.pyx":299
  *             next_null = <char *>memchr(entry_start, c'\0',
  *                                        last_null - entry_start + 1)
  *             if next_null == NULL:             # <<<<<<<<<<<<<<
@@ -3295,19 +3295,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
       }
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":293
+      /* "breezy/bzr/_chk_map_pyx.pyx":301
  *             if next_null == NULL:
  *                 raise ValueError('bad no null')
  *             entry = PyBytes_FromStringAndSize(             # <<<<<<<<<<<<<<
  *                 entry_start, next_null - entry_start)
  *             Py_INCREF(entry)
  */
-      __pyx_t_3 = PyBytes_FromStringAndSize(__pyx_v_entry_start, (__pyx_v_next_null - __pyx_v_entry_start)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 293, __pyx_L1_error)
+      __pyx_t_3 = PyBytes_FromStringAndSize(__pyx_v_entry_start, (__pyx_v_next_null - __pyx_v_entry_start)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 301, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_DECREF_SET(__pyx_v_entry, __pyx_t_3);
       __pyx_t_3 = 0;
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":295
+      /* "breezy/bzr/_chk_map_pyx.pyx":303
  *             entry = PyBytes_FromStringAndSize(
  *                 entry_start, next_null - entry_start)
  *             Py_INCREF(entry)             # <<<<<<<<<<<<<<
@@ -3316,7 +3316,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
       Py_INCREF(__pyx_v_entry);
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":296
+      /* "breezy/bzr/_chk_map_pyx.pyx":304
  *                 entry_start, next_null - entry_start)
  *             Py_INCREF(entry)
  *             StaticTuple_SET_ITEM(entry_bits, i, entry)             # <<<<<<<<<<<<<<
@@ -3326,7 +3326,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
       StaticTuple_SET_ITEM(__pyx_v_entry_bits, __pyx_v_i, __pyx_v_entry);
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":297
+    /* "breezy/bzr/_chk_map_pyx.pyx":305
  *             Py_INCREF(entry)
  *             StaticTuple_SET_ITEM(entry_bits, i, entry)
  *         if StaticTuple_GET_SIZE(entry_bits) != width:             # <<<<<<<<<<<<<<
@@ -3336,19 +3336,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __pyx_t_2 = ((StaticTuple_GET_SIZE(__pyx_v_entry_bits) != __pyx_v_width) != 0);
     if (unlikely(__pyx_t_2)) {
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":300
+      /* "breezy/bzr/_chk_map_pyx.pyx":308
  *             raise AssertionError(
  *                 'Incorrect number of elements (%d vs %d)'
  *                 % (len(entry_bits)+1, width + 1))             # <<<<<<<<<<<<<<
  *         entry_bits = StaticTuple_Intern(entry_bits)
  *         PyDict_SetItem(items, entry_bits, value)
  */
-      __pyx_t_7 = PyObject_Length(((PyObject *)__pyx_v_entry_bits)); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 300, __pyx_L1_error)
-      __pyx_t_3 = PyInt_FromSsize_t((__pyx_t_7 + 1)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 300, __pyx_L1_error)
+      __pyx_t_7 = PyObject_Length(((PyObject *)__pyx_v_entry_bits)); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 308, __pyx_L1_error)
+      __pyx_t_3 = PyInt_FromSsize_t((__pyx_t_7 + 1)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 308, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
-      __pyx_t_4 = __Pyx_PyInt_From_long((__pyx_v_width + 1)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 300, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_PyInt_From_long((__pyx_v_width + 1)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 308, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
-      __pyx_t_8 = PyTuple_New(2); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 300, __pyx_L1_error)
+      __pyx_t_8 = PyTuple_New(2); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 308, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_GIVEREF(__pyx_t_3);
       PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_3);
@@ -3356,25 +3356,25 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
       PyTuple_SET_ITEM(__pyx_t_8, 1, __pyx_t_4);
       __pyx_t_3 = 0;
       __pyx_t_4 = 0;
-      __pyx_t_4 = __Pyx_PyString_Format(__pyx_kp_s_Incorrect_number_of_elements_d_v, __pyx_t_8); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 300, __pyx_L1_error)
+      __pyx_t_4 = __Pyx_PyString_Format(__pyx_kp_s_Incorrect_number_of_elements_d_v, __pyx_t_8); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 308, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":298
+      /* "breezy/bzr/_chk_map_pyx.pyx":306
  *             StaticTuple_SET_ITEM(entry_bits, i, entry)
  *         if StaticTuple_GET_SIZE(entry_bits) != width:
  *             raise AssertionError(             # <<<<<<<<<<<<<<
  *                 'Incorrect number of elements (%d vs %d)'
  *                 % (len(entry_bits)+1, width + 1))
  */
-      __pyx_t_8 = __Pyx_PyObject_CallOneArg(__pyx_builtin_AssertionError, __pyx_t_4); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 298, __pyx_L1_error)
+      __pyx_t_8 = __Pyx_PyObject_CallOneArg(__pyx_builtin_AssertionError, __pyx_t_4); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 306, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       __Pyx_Raise(__pyx_t_8, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      __PYX_ERR(0, 298, __pyx_L1_error)
+      __PYX_ERR(0, 306, __pyx_L1_error)
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":297
+      /* "breezy/bzr/_chk_map_pyx.pyx":305
  *             Py_INCREF(entry)
  *             StaticTuple_SET_ITEM(entry_bits, i, entry)
  *         if StaticTuple_GET_SIZE(entry_bits) != width:             # <<<<<<<<<<<<<<
@@ -3383,50 +3383,50 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":301
+    /* "breezy/bzr/_chk_map_pyx.pyx":309
  *                 'Incorrect number of elements (%d vs %d)'
  *                 % (len(entry_bits)+1, width + 1))
  *         entry_bits = StaticTuple_Intern(entry_bits)             # <<<<<<<<<<<<<<
  *         PyDict_SetItem(items, entry_bits, value)
  *     if len(items) != length:
  */
-    __pyx_t_8 = ((PyObject *)StaticTuple_Intern(__pyx_v_entry_bits)); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 301, __pyx_L1_error)
+    __pyx_t_8 = ((PyObject *)StaticTuple_Intern(__pyx_v_entry_bits)); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 309, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
     __Pyx_DECREF_SET(__pyx_v_entry_bits, ((StaticTuple *)__pyx_t_8));
     __pyx_t_8 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":302
+    /* "breezy/bzr/_chk_map_pyx.pyx":310
  *                 % (len(entry_bits)+1, width + 1))
  *         entry_bits = StaticTuple_Intern(entry_bits)
  *         PyDict_SetItem(items, entry_bits, value)             # <<<<<<<<<<<<<<
  *     if len(items) != length:
  *         raise ValueError("item count (%d) mismatch for key %s,"
  */
-    __pyx_t_5 = PyDict_SetItem(__pyx_v_items, ((PyObject *)__pyx_v_entry_bits), __pyx_v_value); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 302, __pyx_L1_error)
+    __pyx_t_5 = PyDict_SetItem(__pyx_v_items, ((PyObject *)__pyx_v_entry_bits), __pyx_v_value); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 310, __pyx_L1_error)
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":303
+  /* "breezy/bzr/_chk_map_pyx.pyx":311
  *         entry_bits = StaticTuple_Intern(entry_bits)
  *         PyDict_SetItem(items, entry_bits, value)
  *     if len(items) != length:             # <<<<<<<<<<<<<<
  *         raise ValueError("item count (%d) mismatch for key %s,"
  *                          " bytes %r" % (length, entry_bits, bytes))
  */
-  __pyx_t_7 = PyDict_Size(__pyx_v_items); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 303, __pyx_L1_error)
+  __pyx_t_7 = PyDict_Size(__pyx_v_items); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 311, __pyx_L1_error)
   __pyx_t_2 = ((__pyx_t_7 != __pyx_v_length) != 0);
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":305
+    /* "breezy/bzr/_chk_map_pyx.pyx":313
  *     if len(items) != length:
  *         raise ValueError("item count (%d) mismatch for key %s,"
  *                          " bytes %r" % (length, entry_bits, bytes))             # <<<<<<<<<<<<<<
  *     result._items = items
  *     result._len = length
  */
-    __pyx_t_8 = __Pyx_PyInt_From_int(__pyx_v_length); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 305, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_PyInt_From_int(__pyx_v_length); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 313, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
-    if (unlikely(!__pyx_v_entry_bits)) { __Pyx_RaiseUnboundLocalError("entry_bits"); __PYX_ERR(0, 305, __pyx_L1_error) }
-    __pyx_t_4 = PyTuple_New(3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 305, __pyx_L1_error)
+    if (unlikely(!__pyx_v_entry_bits)) { __Pyx_RaiseUnboundLocalError("entry_bits"); __PYX_ERR(0, 313, __pyx_L1_error) }
+    __pyx_t_4 = PyTuple_New(3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 313, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_GIVEREF(__pyx_t_8);
     PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_8);
@@ -3437,25 +3437,25 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     __Pyx_GIVEREF(((PyObject *)(&PyBytes_Type)));
     PyTuple_SET_ITEM(__pyx_t_4, 2, ((PyObject *)(&PyBytes_Type)));
     __pyx_t_8 = 0;
-    __pyx_t_8 = __Pyx_PyString_Format(__pyx_kp_s_item_count_d_mismatch_for_key_s, __pyx_t_4); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 305, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_PyString_Format(__pyx_kp_s_item_count_d_mismatch_for_key_s, __pyx_t_4); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 313, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":304
+    /* "breezy/bzr/_chk_map_pyx.pyx":312
  *         PyDict_SetItem(items, entry_bits, value)
  *     if len(items) != length:
  *         raise ValueError("item count (%d) mismatch for key %s,"             # <<<<<<<<<<<<<<
  *                          " bytes %r" % (length, entry_bits, bytes))
  *     result._items = items
  */
-    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_ValueError, __pyx_t_8); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 304, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_ValueError, __pyx_t_8); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 312, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
     __Pyx_Raise(__pyx_t_4, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __PYX_ERR(0, 304, __pyx_L1_error)
+    __PYX_ERR(0, 312, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":303
+    /* "breezy/bzr/_chk_map_pyx.pyx":311
  *         entry_bits = StaticTuple_Intern(entry_bits)
  *         PyDict_SetItem(items, entry_bits, value)
  *     if len(items) != length:             # <<<<<<<<<<<<<<
@@ -3464,73 +3464,73 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":306
+  /* "breezy/bzr/_chk_map_pyx.pyx":314
  *         raise ValueError("item count (%d) mismatch for key %s,"
  *                          " bytes %r" % (length, entry_bits, bytes))
  *     result._items = items             # <<<<<<<<<<<<<<
  *     result._len = length
  *     result._maximum_size = maximum_size
  */
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_items, __pyx_v_items) < 0) __PYX_ERR(0, 306, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_items, __pyx_v_items) < 0) __PYX_ERR(0, 314, __pyx_L1_error)
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":307
+  /* "breezy/bzr/_chk_map_pyx.pyx":315
  *                          " bytes %r" % (length, entry_bits, bytes))
  *     result._items = items
  *     result._len = length             # <<<<<<<<<<<<<<
  *     result._maximum_size = maximum_size
  *     result._key = key
  */
-  __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_length); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 307, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_length); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 315, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_len, __pyx_t_4) < 0) __PYX_ERR(0, 307, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_len, __pyx_t_4) < 0) __PYX_ERR(0, 315, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":308
+  /* "breezy/bzr/_chk_map_pyx.pyx":316
  *     result._items = items
  *     result._len = length
  *     result._maximum_size = maximum_size             # <<<<<<<<<<<<<<
  *     result._key = key
  *     result._key_width = width
  */
-  __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_maximum_size); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 308, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_maximum_size); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 316, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_maximum_size, __pyx_t_4) < 0) __PYX_ERR(0, 308, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_maximum_size, __pyx_t_4) < 0) __PYX_ERR(0, 316, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":309
+  /* "breezy/bzr/_chk_map_pyx.pyx":317
  *     result._len = length
  *     result._maximum_size = maximum_size
  *     result._key = key             # <<<<<<<<<<<<<<
  *     result._key_width = width
  *     result._raw_size = items_length + length * prefix_length
  */
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_key_2, __pyx_v_key) < 0) __PYX_ERR(0, 309, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_key_2, __pyx_v_key) < 0) __PYX_ERR(0, 317, __pyx_L1_error)
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":310
+  /* "breezy/bzr/_chk_map_pyx.pyx":318
  *     result._maximum_size = maximum_size
  *     result._key = key
  *     result._key_width = width             # <<<<<<<<<<<<<<
  *     result._raw_size = items_length + length * prefix_length
  *     if length == 0:
  */
-  __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_width); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 310, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_width); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 318, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_key_width, __pyx_t_4) < 0) __PYX_ERR(0, 310, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_key_width, __pyx_t_4) < 0) __PYX_ERR(0, 318, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":311
+  /* "breezy/bzr/_chk_map_pyx.pyx":319
  *     result._key = key
  *     result._key_width = width
  *     result._raw_size = items_length + length * prefix_length             # <<<<<<<<<<<<<<
  *     if length == 0:
  *         result._search_prefix = None
  */
-  __pyx_t_4 = PyInt_FromSsize_t((__pyx_v_items_length + (__pyx_v_length * __pyx_v_prefix_length))); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 311, __pyx_L1_error)
+  __pyx_t_4 = PyInt_FromSsize_t((__pyx_v_items_length + (__pyx_v_length * __pyx_v_prefix_length))); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 319, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_raw_size, __pyx_t_4) < 0) __PYX_ERR(0, 311, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_raw_size, __pyx_t_4) < 0) __PYX_ERR(0, 319, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":312
+  /* "breezy/bzr/_chk_map_pyx.pyx":320
  *     result._key_width = width
  *     result._raw_size = items_length + length * prefix_length
  *     if length == 0:             # <<<<<<<<<<<<<<
@@ -3540,25 +3540,25 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
   __pyx_t_2 = ((__pyx_v_length == 0) != 0);
   if (__pyx_t_2) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":313
+    /* "breezy/bzr/_chk_map_pyx.pyx":321
  *     result._raw_size = items_length + length * prefix_length
  *     if length == 0:
  *         result._search_prefix = None             # <<<<<<<<<<<<<<
  *         result._common_serialised_prefix = None
  *     else:
  */
-    if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_search_prefix, Py_None) < 0) __PYX_ERR(0, 313, __pyx_L1_error)
+    if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_search_prefix, Py_None) < 0) __PYX_ERR(0, 321, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":314
+    /* "breezy/bzr/_chk_map_pyx.pyx":322
  *     if length == 0:
  *         result._search_prefix = None
  *         result._common_serialised_prefix = None             # <<<<<<<<<<<<<<
  *     else:
  *         result._search_prefix = _unknown
  */
-    if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_common_serialised_prefix, Py_None) < 0) __PYX_ERR(0, 314, __pyx_L1_error)
+    if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_common_serialised_prefix, Py_None) < 0) __PYX_ERR(0, 322, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":312
+    /* "breezy/bzr/_chk_map_pyx.pyx":320
  *     result._key_width = width
  *     result._raw_size = items_length + length * prefix_length
  *     if length == 0:             # <<<<<<<<<<<<<<
@@ -3568,7 +3568,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     goto __pyx_L31;
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":316
+  /* "breezy/bzr/_chk_map_pyx.pyx":324
  *         result._common_serialised_prefix = None
  *     else:
  *         result._search_prefix = _unknown             # <<<<<<<<<<<<<<
@@ -3576,32 +3576,32 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  *             prefix, prefix_length)
  */
   /*else*/ {
-    if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_search_prefix, __pyx_v_6breezy_3bzr_12_chk_map_pyx__unknown) < 0) __PYX_ERR(0, 316, __pyx_L1_error)
+    if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_search_prefix, __pyx_v_6breezy_3bzr_12_chk_map_pyx__unknown) < 0) __PYX_ERR(0, 324, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":317
+    /* "breezy/bzr/_chk_map_pyx.pyx":325
  *     else:
  *         result._search_prefix = _unknown
  *         result._common_serialised_prefix = PyBytes_FromStringAndSize(             # <<<<<<<<<<<<<<
  *             prefix, prefix_length)
  *     if c_bytes_len != result._current_size():
  */
-    __pyx_t_4 = PyBytes_FromStringAndSize(__pyx_v_prefix, __pyx_v_prefix_length); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 317, __pyx_L1_error)
+    __pyx_t_4 = PyBytes_FromStringAndSize(__pyx_v_prefix, __pyx_v_prefix_length); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 325, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_common_serialised_prefix, __pyx_t_4) < 0) __PYX_ERR(0, 317, __pyx_L1_error)
+    if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_common_serialised_prefix, __pyx_t_4) < 0) __PYX_ERR(0, 325, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   }
   __pyx_L31:;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":319
+  /* "breezy/bzr/_chk_map_pyx.pyx":327
  *         result._common_serialised_prefix = PyBytes_FromStringAndSize(
  *             prefix, prefix_length)
  *     if c_bytes_len != result._current_size():             # <<<<<<<<<<<<<<
  *         raise AssertionError('_current_size computed incorrectly %d != %d',
  *             c_bytes_len, result._current_size())
  */
-  __pyx_t_4 = PyInt_FromSsize_t(__pyx_v_c_bytes_len); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 319, __pyx_L1_error)
+  __pyx_t_4 = PyInt_FromSsize_t(__pyx_v_c_bytes_len); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 327, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_result, __pyx_n_s_current_size); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 319, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_result, __pyx_n_s_current_size); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 327, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_t_9 = NULL;
   if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_3))) {
@@ -3615,26 +3615,26 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
   }
   __pyx_t_8 = (__pyx_t_9) ? __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_9) : __Pyx_PyObject_CallNoArg(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
-  if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 319, __pyx_L1_error)
+  if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 327, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = PyObject_RichCompare(__pyx_t_4, __pyx_t_8, Py_NE); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 319, __pyx_L1_error)
+  __pyx_t_3 = PyObject_RichCompare(__pyx_t_4, __pyx_t_8, Py_NE); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 327, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 319, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_2 < 0)) __PYX_ERR(0, 327, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":321
+    /* "breezy/bzr/_chk_map_pyx.pyx":329
  *     if c_bytes_len != result._current_size():
  *         raise AssertionError('_current_size computed incorrectly %d != %d',
  *             c_bytes_len, result._current_size())             # <<<<<<<<<<<<<<
  *     return result
  * 
  */
-    __pyx_t_3 = PyInt_FromSsize_t(__pyx_v_c_bytes_len); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 321, __pyx_L1_error)
+    __pyx_t_3 = PyInt_FromSsize_t(__pyx_v_c_bytes_len); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 329, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_result, __pyx_n_s_current_size); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 321, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_result, __pyx_n_s_current_size); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 329, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __pyx_t_9 = NULL;
     if (CYTHON_UNPACK_METHODS && likely(PyMethod_Check(__pyx_t_4))) {
@@ -3648,18 +3648,18 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     }
     __pyx_t_8 = (__pyx_t_9) ? __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_9) : __Pyx_PyObject_CallNoArg(__pyx_t_4);
     __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
-    if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 321, __pyx_L1_error)
+    if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 329, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":320
+    /* "breezy/bzr/_chk_map_pyx.pyx":328
  *             prefix, prefix_length)
  *     if c_bytes_len != result._current_size():
  *         raise AssertionError('_current_size computed incorrectly %d != %d',             # <<<<<<<<<<<<<<
  *             c_bytes_len, result._current_size())
  *     return result
  */
-    __pyx_t_4 = PyTuple_New(3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 320, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 328, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_INCREF(__pyx_kp_s_current_size_computed_incorrect);
     __Pyx_GIVEREF(__pyx_kp_s_current_size_computed_incorrect);
@@ -3670,14 +3670,14 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
     PyTuple_SET_ITEM(__pyx_t_4, 2, __pyx_t_8);
     __pyx_t_3 = 0;
     __pyx_t_8 = 0;
-    __pyx_t_8 = __Pyx_PyObject_Call(__pyx_builtin_AssertionError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 320, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_PyObject_Call(__pyx_builtin_AssertionError, __pyx_t_4, NULL); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 328, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_Raise(__pyx_t_8, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-    __PYX_ERR(0, 320, __pyx_L1_error)
+    __PYX_ERR(0, 328, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":319
+    /* "breezy/bzr/_chk_map_pyx.pyx":327
  *         result._common_serialised_prefix = PyBytes_FromStringAndSize(
  *             prefix, prefix_length)
  *     if c_bytes_len != result._current_size():             # <<<<<<<<<<<<<<
@@ -3686,7 +3686,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":322
+  /* "breezy/bzr/_chk_map_pyx.pyx":330
  *         raise AssertionError('_current_size computed incorrectly %d != %d',
  *             c_bytes_len, result._current_size())
  *     return result             # <<<<<<<<<<<<<<
@@ -3726,12 +3726,12 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_4_deserialise_leaf_node(CY
   return __pyx_r;
 }
 
-/* "breezy/bzr/_chk_map_pyx.pyx":325
+/* "breezy/bzr/_chk_map_pyx.pyx":333
  * 
  * 
  * def _deserialise_internal_node(data, key, search_key_func=None):             # <<<<<<<<<<<<<<
- *     cdef char *c_bytes, *cur, *end
- *     cdef char *next_line
+ *     cdef char *c_bytes
+ *     cdef char *cur
  */
 
 /* Python wrapper */
@@ -3770,7 +3770,7 @@ static PyObject *__pyx_pw_6breezy_3bzr_12_chk_map_pyx_7_deserialise_internal_nod
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_key)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("_deserialise_internal_node", 0, 2, 3, 1); __PYX_ERR(0, 325, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("_deserialise_internal_node", 0, 2, 3, 1); __PYX_ERR(0, 333, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
@@ -3780,7 +3780,7 @@ static PyObject *__pyx_pw_6breezy_3bzr_12_chk_map_pyx_7_deserialise_internal_nod
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "_deserialise_internal_node") < 0)) __PYX_ERR(0, 325, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "_deserialise_internal_node") < 0)) __PYX_ERR(0, 333, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -3798,7 +3798,7 @@ static PyObject *__pyx_pw_6breezy_3bzr_12_chk_map_pyx_7_deserialise_internal_nod
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("_deserialise_internal_node", 0, 2, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 325, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("_deserialise_internal_node", 0, 2, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 333, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("breezy.bzr._chk_map_pyx._deserialise_internal_node", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -3839,8 +3839,8 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
   Py_ssize_t __pyx_t_7;
   __Pyx_RefNannySetupContext("_deserialise_internal_node", 0);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":332
- *     cdef char *prefix, *line_prefix, *next_null, *c_item_prefix
+  /* "breezy/bzr/_chk_map_pyx.pyx":345
+ *     cdef char *c_item_prefix
  * 
  *     if _InternalNode is None:             # <<<<<<<<<<<<<<
  *         _import_globals()
@@ -3850,19 +3850,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
   __pyx_t_2 = (__pyx_t_1 != 0);
   if (__pyx_t_2) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":333
+    /* "breezy/bzr/_chk_map_pyx.pyx":346
  * 
  *     if _InternalNode is None:
  *         _import_globals()             # <<<<<<<<<<<<<<
  *     result = _InternalNode(search_key_func=search_key_func)
  * 
  */
-    __pyx_t_3 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__import_globals(); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 333, __pyx_L1_error)
+    __pyx_t_3 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__import_globals(); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 346, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":332
- *     cdef char *prefix, *line_prefix, *next_null, *c_item_prefix
+    /* "breezy/bzr/_chk_map_pyx.pyx":345
+ *     cdef char *c_item_prefix
  * 
  *     if _InternalNode is None:             # <<<<<<<<<<<<<<
  *         _import_globals()
@@ -3870,23 +3870,23 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":334
+  /* "breezy/bzr/_chk_map_pyx.pyx":347
  *     if _InternalNode is None:
  *         _import_globals()
  *     result = _InternalNode(search_key_func=search_key_func)             # <<<<<<<<<<<<<<
  * 
  *     if not StaticTuple_CheckExact(key):
  */
-  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 334, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 347, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_search_key_func, __pyx_v_search_key_func) < 0) __PYX_ERR(0, 334, __pyx_L1_error)
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_v_6breezy_3bzr_12_chk_map_pyx__InternalNode, __pyx_empty_tuple, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 334, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_search_key_func, __pyx_v_search_key_func) < 0) __PYX_ERR(0, 347, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_v_6breezy_3bzr_12_chk_map_pyx__InternalNode, __pyx_empty_tuple, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 347, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_v_result = __pyx_t_4;
   __pyx_t_4 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":336
+  /* "breezy/bzr/_chk_map_pyx.pyx":349
  *     result = _InternalNode(search_key_func=search_key_func)
  * 
  *     if not StaticTuple_CheckExact(key):             # <<<<<<<<<<<<<<
@@ -3896,29 +3896,29 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
   __pyx_t_2 = ((!(StaticTuple_CheckExact(__pyx_v_key) != 0)) != 0);
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":337
+    /* "breezy/bzr/_chk_map_pyx.pyx":350
  * 
  *     if not StaticTuple_CheckExact(key):
  *         raise TypeError('key %r is not a StaticTuple' % (key,))             # <<<<<<<<<<<<<<
  *     if not PyBytes_CheckExact(data):
  *         raise TypeError('expected bytes not %s' % (type(data),))
  */
-    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 337, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 350, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_INCREF(__pyx_v_key);
     __Pyx_GIVEREF(__pyx_v_key);
     PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_v_key);
-    __pyx_t_3 = __Pyx_PyString_Format(__pyx_kp_s_key_r_is_not_a_StaticTuple, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 337, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyString_Format(__pyx_kp_s_key_r_is_not_a_StaticTuple, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 350, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_TypeError, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 337, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_TypeError, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 350, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_Raise(__pyx_t_4, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __PYX_ERR(0, 337, __pyx_L1_error)
+    __PYX_ERR(0, 350, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":336
+    /* "breezy/bzr/_chk_map_pyx.pyx":349
  *     result = _InternalNode(search_key_func=search_key_func)
  * 
  *     if not StaticTuple_CheckExact(key):             # <<<<<<<<<<<<<<
@@ -3927,7 +3927,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":338
+  /* "breezy/bzr/_chk_map_pyx.pyx":351
  *     if not StaticTuple_CheckExact(key):
  *         raise TypeError('key %r is not a StaticTuple' % (key,))
  *     if not PyBytes_CheckExact(data):             # <<<<<<<<<<<<<<
@@ -3937,29 +3937,29 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
   __pyx_t_2 = ((!(PyBytes_CheckExact(__pyx_v_data) != 0)) != 0);
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":339
+    /* "breezy/bzr/_chk_map_pyx.pyx":352
  *         raise TypeError('key %r is not a StaticTuple' % (key,))
  *     if not PyBytes_CheckExact(data):
  *         raise TypeError('expected bytes not %s' % (type(data),))             # <<<<<<<<<<<<<<
  * 
  *     c_bytes = PyBytes_AS_STRING(data)
  */
-    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 339, __pyx_L1_error)
+    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 352, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_INCREF(((PyObject *)Py_TYPE(__pyx_v_data)));
     __Pyx_GIVEREF(((PyObject *)Py_TYPE(__pyx_v_data)));
     PyTuple_SET_ITEM(__pyx_t_4, 0, ((PyObject *)Py_TYPE(__pyx_v_data)));
-    __pyx_t_3 = __Pyx_PyString_Format(__pyx_kp_s_expected_bytes_not_s, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 339, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyString_Format(__pyx_kp_s_expected_bytes_not_s, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 352, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_TypeError, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 339, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_builtin_TypeError, __pyx_t_3); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 352, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_Raise(__pyx_t_4, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-    __PYX_ERR(0, 339, __pyx_L1_error)
+    __PYX_ERR(0, 352, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":338
+    /* "breezy/bzr/_chk_map_pyx.pyx":351
  *     if not StaticTuple_CheckExact(key):
  *         raise TypeError('key %r is not a StaticTuple' % (key,))
  *     if not PyBytes_CheckExact(data):             # <<<<<<<<<<<<<<
@@ -3968,7 +3968,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":341
+  /* "breezy/bzr/_chk_map_pyx.pyx":354
  *         raise TypeError('expected bytes not %s' % (type(data),))
  * 
  *     c_bytes = PyBytes_AS_STRING(data)             # <<<<<<<<<<<<<<
@@ -3977,19 +3977,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   __pyx_v_c_bytes = PyBytes_AS_STRING(__pyx_v_data);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":342
+  /* "breezy/bzr/_chk_map_pyx.pyx":355
  * 
  *     c_bytes = PyBytes_AS_STRING(data)
  *     c_bytes_len = PyBytes_GET_SIZE(data)             # <<<<<<<<<<<<<<
  * 
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chknode:\n", 9) != 0:
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chknode:\n", 9) != 0:
  */
   __pyx_v_c_bytes_len = PyBytes_GET_SIZE(__pyx_v_data);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":344
+  /* "breezy/bzr/_chk_map_pyx.pyx":357
  *     c_bytes_len = PyBytes_GET_SIZE(data)
  * 
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chknode:\n", 9) != 0:             # <<<<<<<<<<<<<<
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chknode:\n", 9) != 0:             # <<<<<<<<<<<<<<
  *         raise ValueError("not a serialised internal node: %r" % data)
  *     if c_bytes[c_bytes_len - 1] != c'\n':
  */
@@ -4004,33 +4004,33 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
   __pyx_L7_bool_binop_done:;
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":345
+    /* "breezy/bzr/_chk_map_pyx.pyx":358
  * 
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chknode:\n", 9) != 0:
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chknode:\n", 9) != 0:
  *         raise ValueError("not a serialised internal node: %r" % data)             # <<<<<<<<<<<<<<
  *     if c_bytes[c_bytes_len - 1] != c'\n':
  *         raise ValueError("bytes does not end in a newline")
  */
-    __pyx_t_4 = __Pyx_PyString_FormatSafe(__pyx_kp_s_not_a_serialised_internal_node_r, __pyx_v_data); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 345, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyString_FormatSafe(__pyx_kp_s_not_a_serialised_internal_node_r, __pyx_v_data); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 358, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_builtin_ValueError, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 345, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_builtin_ValueError, __pyx_t_4); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 358, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 345, __pyx_L1_error)
+    __PYX_ERR(0, 358, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":344
+    /* "breezy/bzr/_chk_map_pyx.pyx":357
  *     c_bytes_len = PyBytes_GET_SIZE(data)
  * 
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chknode:\n", 9) != 0:             # <<<<<<<<<<<<<<
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chknode:\n", 9) != 0:             # <<<<<<<<<<<<<<
  *         raise ValueError("not a serialised internal node: %r" % data)
  *     if c_bytes[c_bytes_len - 1] != c'\n':
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":346
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chknode:\n", 9) != 0:
+  /* "breezy/bzr/_chk_map_pyx.pyx":359
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chknode:\n", 9) != 0:
  *         raise ValueError("not a serialised internal node: %r" % data)
  *     if c_bytes[c_bytes_len - 1] != c'\n':             # <<<<<<<<<<<<<<
  *         raise ValueError("bytes does not end in a newline")
@@ -4039,21 +4039,21 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
   __pyx_t_2 = (((__pyx_v_c_bytes[(__pyx_v_c_bytes_len - 1)]) != '\n') != 0);
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":347
+    /* "breezy/bzr/_chk_map_pyx.pyx":360
  *         raise ValueError("not a serialised internal node: %r" % data)
  *     if c_bytes[c_bytes_len - 1] != c'\n':
  *         raise ValueError("bytes does not end in a newline")             # <<<<<<<<<<<<<<
  * 
  *     items = {}
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 347, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__2, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 360, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 347, __pyx_L1_error)
+    __PYX_ERR(0, 360, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":346
- *     if c_bytes_len < 9 or memcmp(c_bytes, "chknode:\n", 9) != 0:
+    /* "breezy/bzr/_chk_map_pyx.pyx":359
+ *     if c_bytes_len < 9 or memcmp(c_bytes, b"chknode:\n", 9) != 0:
  *         raise ValueError("not a serialised internal node: %r" % data)
  *     if c_bytes[c_bytes_len - 1] != c'\n':             # <<<<<<<<<<<<<<
  *         raise ValueError("bytes does not end in a newline")
@@ -4061,19 +4061,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":349
+  /* "breezy/bzr/_chk_map_pyx.pyx":362
  *         raise ValueError("bytes does not end in a newline")
  * 
  *     items = {}             # <<<<<<<<<<<<<<
  *     cur = c_bytes + 9
  *     end = c_bytes + c_bytes_len
  */
-  __pyx_t_3 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 349, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 362, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_v_items = ((PyObject*)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":350
+  /* "breezy/bzr/_chk_map_pyx.pyx":363
  * 
  *     items = {}
  *     cur = c_bytes + 9             # <<<<<<<<<<<<<<
@@ -4082,7 +4082,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   __pyx_v_cur = (__pyx_v_c_bytes + 9);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":351
+  /* "breezy/bzr/_chk_map_pyx.pyx":364
  *     items = {}
  *     cur = c_bytes + 9
  *     end = c_bytes + c_bytes_len             # <<<<<<<<<<<<<<
@@ -4091,37 +4091,37 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   __pyx_v_end = (__pyx_v_c_bytes + __pyx_v_c_bytes_len);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":352
+  /* "breezy/bzr/_chk_map_pyx.pyx":365
  *     cur = c_bytes + 9
  *     end = c_bytes + c_bytes_len
  *     maximum_size = _get_int_from_line(&cur, end, "maximum_size")             # <<<<<<<<<<<<<<
  *     width = _get_int_from_line(&cur, end, "width")
  *     length = _get_int_from_line(&cur, end, "length")
  */
-  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"maximum_size")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 352, __pyx_L1_error)
+  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"maximum_size")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 365, __pyx_L1_error)
   __pyx_v_maximum_size = __pyx_t_5;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":353
+  /* "breezy/bzr/_chk_map_pyx.pyx":366
  *     end = c_bytes + c_bytes_len
  *     maximum_size = _get_int_from_line(&cur, end, "maximum_size")
  *     width = _get_int_from_line(&cur, end, "width")             # <<<<<<<<<<<<<<
  *     length = _get_int_from_line(&cur, end, "length")
  * 
  */
-  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"width")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 353, __pyx_L1_error)
+  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"width")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 366, __pyx_L1_error)
   __pyx_v_width = __pyx_t_5;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":354
+  /* "breezy/bzr/_chk_map_pyx.pyx":367
  *     maximum_size = _get_int_from_line(&cur, end, "maximum_size")
  *     width = _get_int_from_line(&cur, end, "width")
  *     length = _get_int_from_line(&cur, end, "length")             # <<<<<<<<<<<<<<
  * 
  *     next_line = <char *>memchr(cur, c'\n', end - cur)
  */
-  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"length")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 354, __pyx_L1_error)
+  __pyx_t_5 = __pyx_f_6breezy_3bzr_12_chk_map_pyx__get_int_from_line((&__pyx_v_cur), __pyx_v_end, ((char *)"length")); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 367, __pyx_L1_error)
   __pyx_v_length = __pyx_t_5;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":356
+  /* "breezy/bzr/_chk_map_pyx.pyx":369
  *     length = _get_int_from_line(&cur, end, "length")
  * 
  *     next_line = <char *>memchr(cur, c'\n', end - cur)             # <<<<<<<<<<<<<<
@@ -4130,7 +4130,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   __pyx_v_next_line = ((char *)memchr(__pyx_v_cur, '\n', (__pyx_v_end - __pyx_v_cur)));
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":357
+  /* "breezy/bzr/_chk_map_pyx.pyx":370
  * 
  *     next_line = <char *>memchr(cur, c'\n', end - cur)
  *     if next_line == NULL:             # <<<<<<<<<<<<<<
@@ -4140,20 +4140,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
   __pyx_t_2 = ((__pyx_v_next_line == NULL) != 0);
   if (unlikely(__pyx_t_2)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":358
+    /* "breezy/bzr/_chk_map_pyx.pyx":371
  *     next_line = <char *>memchr(cur, c'\n', end - cur)
  *     if next_line == NULL:
  *         raise ValueError('Missing the prefix line\n')             # <<<<<<<<<<<<<<
  *     prefix = cur
  *     prefix_length = next_line - cur
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__3, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 358, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__3, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 371, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 358, __pyx_L1_error)
+    __PYX_ERR(0, 371, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":357
+    /* "breezy/bzr/_chk_map_pyx.pyx":370
  * 
  *     next_line = <char *>memchr(cur, c'\n', end - cur)
  *     if next_line == NULL:             # <<<<<<<<<<<<<<
@@ -4162,7 +4162,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":359
+  /* "breezy/bzr/_chk_map_pyx.pyx":372
  *     if next_line == NULL:
  *         raise ValueError('Missing the prefix line\n')
  *     prefix = cur             # <<<<<<<<<<<<<<
@@ -4171,7 +4171,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   __pyx_v_prefix = __pyx_v_cur;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":360
+  /* "breezy/bzr/_chk_map_pyx.pyx":373
  *         raise ValueError('Missing the prefix line\n')
  *     prefix = cur
  *     prefix_length = next_line - cur             # <<<<<<<<<<<<<<
@@ -4180,7 +4180,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   __pyx_v_prefix_length = (__pyx_v_next_line - __pyx_v_cur);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":361
+  /* "breezy/bzr/_chk_map_pyx.pyx":374
  *     prefix = cur
  *     prefix_length = next_line - cur
  *     cur = next_line + 1             # <<<<<<<<<<<<<<
@@ -4189,7 +4189,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   __pyx_v_cur = (__pyx_v_next_line + 1);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":363
+  /* "breezy/bzr/_chk_map_pyx.pyx":376
  *     cur = next_line + 1
  * 
  *     while cur < end:             # <<<<<<<<<<<<<<
@@ -4200,7 +4200,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
     __pyx_t_2 = ((__pyx_v_cur < __pyx_v_end) != 0);
     if (!__pyx_t_2) break;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":365
+    /* "breezy/bzr/_chk_map_pyx.pyx":378
  *     while cur < end:
  *         # Find the null separator
  *         next_line = <char *>memchr(cur, c'\n', end - cur)             # <<<<<<<<<<<<<<
@@ -4209,7 +4209,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
     __pyx_v_next_line = ((char *)memchr(__pyx_v_cur, '\n', (__pyx_v_end - __pyx_v_cur)));
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":366
+    /* "breezy/bzr/_chk_map_pyx.pyx":379
  *         # Find the null separator
  *         next_line = <char *>memchr(cur, c'\n', end - cur)
  *         if next_line == NULL:             # <<<<<<<<<<<<<<
@@ -4219,20 +4219,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
     __pyx_t_2 = ((__pyx_v_next_line == NULL) != 0);
     if (unlikely(__pyx_t_2)) {
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":367
+      /* "breezy/bzr/_chk_map_pyx.pyx":380
  *         next_line = <char *>memchr(cur, c'\n', end - cur)
  *         if next_line == NULL:
  *             raise ValueError('missing trailing newline')             # <<<<<<<<<<<<<<
  *         next_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
  *         if next_null == NULL:
  */
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 367, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__7, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 380, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_Raise(__pyx_t_3, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-      __PYX_ERR(0, 367, __pyx_L1_error)
+      __PYX_ERR(0, 380, __pyx_L1_error)
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":366
+      /* "breezy/bzr/_chk_map_pyx.pyx":379
  *         # Find the null separator
  *         next_line = <char *>memchr(cur, c'\n', end - cur)
  *         if next_line == NULL:             # <<<<<<<<<<<<<<
@@ -4241,7 +4241,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":368
+    /* "breezy/bzr/_chk_map_pyx.pyx":381
  *         if next_line == NULL:
  *             raise ValueError('missing trailing newline')
  *         next_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)             # <<<<<<<<<<<<<<
@@ -4250,7 +4250,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
     __pyx_v_next_null = ((char *)__pyx_f_6breezy_3bzr_12_str_helpers__my_memrchr(__pyx_v_cur, '\x00', (__pyx_v_next_line - __pyx_v_cur)));
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":369
+    /* "breezy/bzr/_chk_map_pyx.pyx":382
  *             raise ValueError('missing trailing newline')
  *         next_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
  *         if next_null == NULL:             # <<<<<<<<<<<<<<
@@ -4260,20 +4260,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
     __pyx_t_2 = ((__pyx_v_next_null == NULL) != 0);
     if (unlikely(__pyx_t_2)) {
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":370
+      /* "breezy/bzr/_chk_map_pyx.pyx":383
  *         next_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
  *         if next_null == NULL:
  *             raise ValueError('bad no null')             # <<<<<<<<<<<<<<
  *         item_prefix = PyBytes_FromStringAndSize(
  *             NULL, prefix_length + next_null - cur)
  */
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__10, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 370, __pyx_L1_error)
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__10, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 383, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_Raise(__pyx_t_3, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-      __PYX_ERR(0, 370, __pyx_L1_error)
+      __PYX_ERR(0, 383, __pyx_L1_error)
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":369
+      /* "breezy/bzr/_chk_map_pyx.pyx":382
  *             raise ValueError('missing trailing newline')
  *         next_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
  *         if next_null == NULL:             # <<<<<<<<<<<<<<
@@ -4282,19 +4282,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":371
+    /* "breezy/bzr/_chk_map_pyx.pyx":384
  *         if next_null == NULL:
  *             raise ValueError('bad no null')
  *         item_prefix = PyBytes_FromStringAndSize(             # <<<<<<<<<<<<<<
  *             NULL, prefix_length + next_null - cur)
  *         c_item_prefix = PyBytes_AS_STRING(item_prefix)
  */
-    __pyx_t_3 = PyBytes_FromStringAndSize(NULL, ((__pyx_v_prefix_length + __pyx_v_next_null) - __pyx_v_cur)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 371, __pyx_L1_error)
+    __pyx_t_3 = PyBytes_FromStringAndSize(NULL, ((__pyx_v_prefix_length + __pyx_v_next_null) - __pyx_v_cur)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 384, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_XDECREF_SET(__pyx_v_item_prefix, ((PyObject*)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":373
+    /* "breezy/bzr/_chk_map_pyx.pyx":386
  *         item_prefix = PyBytes_FromStringAndSize(
  *             NULL, prefix_length + next_null - cur)
  *         c_item_prefix = PyBytes_AS_STRING(item_prefix)             # <<<<<<<<<<<<<<
@@ -4303,7 +4303,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
     __pyx_v_c_item_prefix = PyBytes_AS_STRING(__pyx_v_item_prefix);
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":374
+    /* "breezy/bzr/_chk_map_pyx.pyx":387
  *             NULL, prefix_length + next_null - cur)
  *         c_item_prefix = PyBytes_AS_STRING(item_prefix)
  *         if prefix_length:             # <<<<<<<<<<<<<<
@@ -4313,7 +4313,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
     __pyx_t_2 = (__pyx_v_prefix_length != 0);
     if (__pyx_t_2) {
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":375
+      /* "breezy/bzr/_chk_map_pyx.pyx":388
  *         c_item_prefix = PyBytes_AS_STRING(item_prefix)
  *         if prefix_length:
  *             memcpy(c_item_prefix, prefix, prefix_length)             # <<<<<<<<<<<<<<
@@ -4322,7 +4322,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
       (void)(memcpy(__pyx_v_c_item_prefix, __pyx_v_prefix, __pyx_v_prefix_length));
 
-      /* "breezy/bzr/_chk_map_pyx.pyx":374
+      /* "breezy/bzr/_chk_map_pyx.pyx":387
  *             NULL, prefix_length + next_null - cur)
  *         c_item_prefix = PyBytes_AS_STRING(item_prefix)
  *         if prefix_length:             # <<<<<<<<<<<<<<
@@ -4331,7 +4331,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
     }
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":376
+    /* "breezy/bzr/_chk_map_pyx.pyx":389
  *         if prefix_length:
  *             memcpy(c_item_prefix, prefix, prefix_length)
  *         memcpy(c_item_prefix + prefix_length, cur, next_null - cur)             # <<<<<<<<<<<<<<
@@ -4340,28 +4340,28 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
     (void)(memcpy((__pyx_v_c_item_prefix + __pyx_v_prefix_length), __pyx_v_cur, (__pyx_v_next_null - __pyx_v_cur)));
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":377
+    /* "breezy/bzr/_chk_map_pyx.pyx":390
  *             memcpy(c_item_prefix, prefix, prefix_length)
  *         memcpy(c_item_prefix + prefix_length, cur, next_null - cur)
  *         flat_key = PyBytes_FromStringAndSize(             # <<<<<<<<<<<<<<
  *             next_null + 1, next_line - next_null - 1)
  *         flat_key = StaticTuple(flat_key).intern()
  */
-    __pyx_t_3 = PyBytes_FromStringAndSize((__pyx_v_next_null + 1), ((__pyx_v_next_line - __pyx_v_next_null) - 1)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 377, __pyx_L1_error)
+    __pyx_t_3 = PyBytes_FromStringAndSize((__pyx_v_next_null + 1), ((__pyx_v_next_line - __pyx_v_next_null) - 1)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 390, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_XDECREF_SET(__pyx_v_flat_key, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":379
+    /* "breezy/bzr/_chk_map_pyx.pyx":392
  *         flat_key = PyBytes_FromStringAndSize(
  *             next_null + 1, next_line - next_null - 1)
  *         flat_key = StaticTuple(flat_key).intern()             # <<<<<<<<<<<<<<
  *         PyDict_SetItem(items, item_prefix, flat_key)
  *         cur = next_line + 1
  */
-    __pyx_t_4 = __Pyx_PyObject_CallOneArg(((PyObject *)__pyx_ptype_6breezy_15_static_tuple_c_StaticTuple), __pyx_v_flat_key); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 379, __pyx_L1_error)
+    __pyx_t_4 = __Pyx_PyObject_CallOneArg(((PyObject *)__pyx_ptype_6breezy_15_static_tuple_c_StaticTuple), __pyx_v_flat_key); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 392, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_intern); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 379, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_intern); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 392, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __pyx_t_4 = NULL;
@@ -4376,22 +4376,22 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
     }
     __pyx_t_3 = (__pyx_t_4) ? __Pyx_PyObject_CallOneArg(__pyx_t_6, __pyx_t_4) : __Pyx_PyObject_CallNoArg(__pyx_t_6);
     __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 379, __pyx_L1_error)
+    if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 392, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __Pyx_DECREF_SET(__pyx_v_flat_key, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":380
+    /* "breezy/bzr/_chk_map_pyx.pyx":393
  *             next_null + 1, next_line - next_null - 1)
  *         flat_key = StaticTuple(flat_key).intern()
  *         PyDict_SetItem(items, item_prefix, flat_key)             # <<<<<<<<<<<<<<
  *         cur = next_line + 1
  *     assert len(items) > 0
  */
-    __pyx_t_5 = PyDict_SetItem(__pyx_v_items, __pyx_v_item_prefix, __pyx_v_flat_key); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 380, __pyx_L1_error)
+    __pyx_t_5 = PyDict_SetItem(__pyx_v_items, __pyx_v_item_prefix, __pyx_v_flat_key); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(0, 393, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":381
+    /* "breezy/bzr/_chk_map_pyx.pyx":394
  *         flat_key = StaticTuple(flat_key).intern()
  *         PyDict_SetItem(items, item_prefix, flat_key)
  *         cur = next_line + 1             # <<<<<<<<<<<<<<
@@ -4401,7 +4401,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
     __pyx_v_cur = (__pyx_v_next_line + 1);
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":382
+  /* "breezy/bzr/_chk_map_pyx.pyx":395
  *         PyDict_SetItem(items, item_prefix, flat_key)
  *         cur = next_line + 1
  *     assert len(items) > 0             # <<<<<<<<<<<<<<
@@ -4410,108 +4410,108 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
  */
   #ifndef CYTHON_WITHOUT_ASSERTIONS
   if (unlikely(!Py_OptimizeFlag)) {
-    __pyx_t_7 = PyDict_Size(__pyx_v_items); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 382, __pyx_L1_error)
+    __pyx_t_7 = PyDict_Size(__pyx_v_items); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 395, __pyx_L1_error)
     if (unlikely(!((__pyx_t_7 > 0) != 0))) {
       PyErr_SetNone(PyExc_AssertionError);
-      __PYX_ERR(0, 382, __pyx_L1_error)
+      __PYX_ERR(0, 395, __pyx_L1_error)
     }
   }
   #endif
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":383
+  /* "breezy/bzr/_chk_map_pyx.pyx":396
  *         cur = next_line + 1
  *     assert len(items) > 0
  *     result._items = items             # <<<<<<<<<<<<<<
  *     result._len = length
  *     result._maximum_size = maximum_size
  */
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_items, __pyx_v_items) < 0) __PYX_ERR(0, 383, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_items, __pyx_v_items) < 0) __PYX_ERR(0, 396, __pyx_L1_error)
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":384
+  /* "breezy/bzr/_chk_map_pyx.pyx":397
  *     assert len(items) > 0
  *     result._items = items
  *     result._len = length             # <<<<<<<<<<<<<<
  *     result._maximum_size = maximum_size
  *     result._key = key
  */
-  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_length); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 384, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_length); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 397, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_len, __pyx_t_3) < 0) __PYX_ERR(0, 384, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_len, __pyx_t_3) < 0) __PYX_ERR(0, 397, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":385
+  /* "breezy/bzr/_chk_map_pyx.pyx":398
  *     result._items = items
  *     result._len = length
  *     result._maximum_size = maximum_size             # <<<<<<<<<<<<<<
  *     result._key = key
  *     result._key_width = width
  */
-  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_maximum_size); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 385, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_maximum_size); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 398, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_maximum_size, __pyx_t_3) < 0) __PYX_ERR(0, 385, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_maximum_size, __pyx_t_3) < 0) __PYX_ERR(0, 398, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":386
+  /* "breezy/bzr/_chk_map_pyx.pyx":399
  *     result._len = length
  *     result._maximum_size = maximum_size
  *     result._key = key             # <<<<<<<<<<<<<<
  *     result._key_width = width
  *     # XXX: InternalNodes don't really care about their size, and this will
  */
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_key_2, __pyx_v_key) < 0) __PYX_ERR(0, 386, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_key_2, __pyx_v_key) < 0) __PYX_ERR(0, 399, __pyx_L1_error)
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":387
+  /* "breezy/bzr/_chk_map_pyx.pyx":400
  *     result._maximum_size = maximum_size
  *     result._key = key
  *     result._key_width = width             # <<<<<<<<<<<<<<
  *     # XXX: InternalNodes don't really care about their size, and this will
  *     #      change if we add prefix compression
  */
-  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_width); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 387, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_width); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 400, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_key_width, __pyx_t_3) < 0) __PYX_ERR(0, 387, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_key_width, __pyx_t_3) < 0) __PYX_ERR(0, 400, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":390
+  /* "breezy/bzr/_chk_map_pyx.pyx":403
  *     # XXX: InternalNodes don't really care about their size, and this will
  *     #      change if we add prefix compression
  *     result._raw_size = None             # <<<<<<<<<<<<<<
  *     result._node_width = len(item_prefix)
  *     result._search_prefix = PyBytes_FromStringAndSize(prefix, prefix_length)
  */
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_raw_size, Py_None) < 0) __PYX_ERR(0, 390, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_raw_size, Py_None) < 0) __PYX_ERR(0, 403, __pyx_L1_error)
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":391
+  /* "breezy/bzr/_chk_map_pyx.pyx":404
  *     #      change if we add prefix compression
  *     result._raw_size = None
  *     result._node_width = len(item_prefix)             # <<<<<<<<<<<<<<
  *     result._search_prefix = PyBytes_FromStringAndSize(prefix, prefix_length)
  *     return result
  */
-  if (unlikely(!__pyx_v_item_prefix)) { __Pyx_RaiseUnboundLocalError("item_prefix"); __PYX_ERR(0, 391, __pyx_L1_error) }
+  if (unlikely(!__pyx_v_item_prefix)) { __Pyx_RaiseUnboundLocalError("item_prefix"); __PYX_ERR(0, 404, __pyx_L1_error) }
   if (unlikely(__pyx_v_item_prefix == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
-    __PYX_ERR(0, 391, __pyx_L1_error)
+    __PYX_ERR(0, 404, __pyx_L1_error)
   }
-  __pyx_t_7 = PyBytes_GET_SIZE(__pyx_v_item_prefix); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 391, __pyx_L1_error)
-  __pyx_t_3 = PyInt_FromSsize_t(__pyx_t_7); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 391, __pyx_L1_error)
+  __pyx_t_7 = PyBytes_GET_SIZE(__pyx_v_item_prefix); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 404, __pyx_L1_error)
+  __pyx_t_3 = PyInt_FromSsize_t(__pyx_t_7); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 404, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_node_width, __pyx_t_3) < 0) __PYX_ERR(0, 391, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_node_width, __pyx_t_3) < 0) __PYX_ERR(0, 404, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":392
+  /* "breezy/bzr/_chk_map_pyx.pyx":405
  *     result._raw_size = None
  *     result._node_width = len(item_prefix)
  *     result._search_prefix = PyBytes_FromStringAndSize(prefix, prefix_length)             # <<<<<<<<<<<<<<
  *     return result
  * 
  */
-  __pyx_t_3 = PyBytes_FromStringAndSize(__pyx_v_prefix, __pyx_v_prefix_length); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 392, __pyx_L1_error)
+  __pyx_t_3 = PyBytes_FromStringAndSize(__pyx_v_prefix, __pyx_v_prefix_length); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 405, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_search_prefix, __pyx_t_3) < 0) __PYX_ERR(0, 392, __pyx_L1_error)
+  if (__Pyx_PyObject_SetAttrStr(__pyx_v_result, __pyx_n_s_search_prefix, __pyx_t_3) < 0) __PYX_ERR(0, 405, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":393
+  /* "breezy/bzr/_chk_map_pyx.pyx":406
  *     result._node_width = len(item_prefix)
  *     result._search_prefix = PyBytes_FromStringAndSize(prefix, prefix_length)
  *     return result             # <<<<<<<<<<<<<<
@@ -4523,12 +4523,12 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
   __pyx_r = __pyx_v_result;
   goto __pyx_L0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":325
+  /* "breezy/bzr/_chk_map_pyx.pyx":333
  * 
  * 
  * def _deserialise_internal_node(data, key, search_key_func=None):             # <<<<<<<<<<<<<<
- *     cdef char *c_bytes, *cur, *end
- *     cdef char *next_line
+ *     cdef char *c_bytes
+ *     cdef char *cur
  */
 
   /* function exit code */
@@ -4548,7 +4548,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_6_deserialise_internal_nod
   return __pyx_r;
 }
 
-/* "breezy/bzr/_chk_map_pyx.pyx":396
+/* "breezy/bzr/_chk_map_pyx.pyx":409
  * 
  * 
  * def _bytes_to_text_key(data):             # <<<<<<<<<<<<<<
@@ -4588,7 +4588,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
   PyObject *__pyx_t_3 = NULL;
   __Pyx_RefNannySetupContext("_bytes_to_text_key", 0);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":403
+  /* "breezy/bzr/_chk_map_pyx.pyx":419
  *     cdef Py_ssize_t byte_size, pos, file_id_len
  * 
  *     if not PyBytes_CheckExact(data):             # <<<<<<<<<<<<<<
@@ -4598,29 +4598,29 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
   __pyx_t_1 = ((!(PyBytes_CheckExact(__pyx_v_data) != 0)) != 0);
   if (unlikely(__pyx_t_1)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":404
+    /* "breezy/bzr/_chk_map_pyx.pyx":420
  * 
  *     if not PyBytes_CheckExact(data):
  *         raise TypeError('expected bytes not %s' % (type(data),))             # <<<<<<<<<<<<<<
  *     byte_str = PyBytes_AS_STRING(data)
  *     byte_size = PyBytes_GET_SIZE(data)
  */
-    __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 404, __pyx_L1_error)
+    __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 420, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_INCREF(((PyObject *)Py_TYPE(__pyx_v_data)));
     __Pyx_GIVEREF(((PyObject *)Py_TYPE(__pyx_v_data)));
     PyTuple_SET_ITEM(__pyx_t_2, 0, ((PyObject *)Py_TYPE(__pyx_v_data)));
-    __pyx_t_3 = __Pyx_PyString_Format(__pyx_kp_s_expected_bytes_not_s, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 404, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyString_Format(__pyx_kp_s_expected_bytes_not_s, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 420, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_builtin_TypeError, __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 404, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_builtin_TypeError, __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 420, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_Raise(__pyx_t_2, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __PYX_ERR(0, 404, __pyx_L1_error)
+    __PYX_ERR(0, 420, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":403
+    /* "breezy/bzr/_chk_map_pyx.pyx":419
  *     cdef Py_ssize_t byte_size, pos, file_id_len
  * 
  *     if not PyBytes_CheckExact(data):             # <<<<<<<<<<<<<<
@@ -4629,7 +4629,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":405
+  /* "breezy/bzr/_chk_map_pyx.pyx":421
  *     if not PyBytes_CheckExact(data):
  *         raise TypeError('expected bytes not %s' % (type(data),))
  *     byte_str = PyBytes_AS_STRING(data)             # <<<<<<<<<<<<<<
@@ -4638,7 +4638,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   __pyx_v_byte_str = PyBytes_AS_STRING(__pyx_v_data);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":406
+  /* "breezy/bzr/_chk_map_pyx.pyx":422
  *         raise TypeError('expected bytes not %s' % (type(data),))
  *     byte_str = PyBytes_AS_STRING(data)
  *     byte_size = PyBytes_GET_SIZE(data)             # <<<<<<<<<<<<<<
@@ -4647,7 +4647,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   __pyx_v_byte_size = PyBytes_GET_SIZE(__pyx_v_data);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":407
+  /* "breezy/bzr/_chk_map_pyx.pyx":423
  *     byte_str = PyBytes_AS_STRING(data)
  *     byte_size = PyBytes_GET_SIZE(data)
  *     byte_end = byte_str + byte_size             # <<<<<<<<<<<<<<
@@ -4656,7 +4656,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   __pyx_v_byte_end = (__pyx_v_byte_str + __pyx_v_byte_size);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":408
+  /* "breezy/bzr/_chk_map_pyx.pyx":424
  *     byte_size = PyBytes_GET_SIZE(data)
  *     byte_end = byte_str + byte_size
  *     cur_end = <char*>memchr(byte_str, c':', byte_size)             # <<<<<<<<<<<<<<
@@ -4665,7 +4665,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   __pyx_v_cur_end = ((char *)memchr(__pyx_v_byte_str, ':', __pyx_v_byte_size));
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":409
+  /* "breezy/bzr/_chk_map_pyx.pyx":425
  *     byte_end = byte_str + byte_size
  *     cur_end = <char*>memchr(byte_str, c':', byte_size)
  *     if cur_end == NULL:             # <<<<<<<<<<<<<<
@@ -4675,20 +4675,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
   __pyx_t_1 = ((__pyx_v_cur_end == NULL) != 0);
   if (unlikely(__pyx_t_1)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":410
+    /* "breezy/bzr/_chk_map_pyx.pyx":426
  *     cur_end = <char*>memchr(byte_str, c':', byte_size)
  *     if cur_end == NULL:
  *         raise ValueError('No kind section found.')             # <<<<<<<<<<<<<<
  *     if cur_end[1] != c' ':
  *         raise ValueError(
  */
-    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__11, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 410, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__11, NULL); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 426, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_Raise(__pyx_t_2, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __PYX_ERR(0, 410, __pyx_L1_error)
+    __PYX_ERR(0, 426, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":409
+    /* "breezy/bzr/_chk_map_pyx.pyx":425
  *     byte_end = byte_str + byte_size
  *     cur_end = <char*>memchr(byte_str, c':', byte_size)
  *     if cur_end == NULL:             # <<<<<<<<<<<<<<
@@ -4697,7 +4697,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":411
+  /* "breezy/bzr/_chk_map_pyx.pyx":427
  *     if cur_end == NULL:
  *         raise ValueError('No kind section found.')
  *     if cur_end[1] != c' ':             # <<<<<<<<<<<<<<
@@ -4707,37 +4707,37 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
   __pyx_t_1 = (((__pyx_v_cur_end[1]) != ' ') != 0);
   if (unlikely(__pyx_t_1)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":413
+    /* "breezy/bzr/_chk_map_pyx.pyx":429
  *     if cur_end[1] != c' ':
  *         raise ValueError(
  *             'Kind section should end with ": ", got %r' % str(cur_end[:2],))             # <<<<<<<<<<<<<<
  *     file_id_str = cur_end + 2
  *     # file_id is now the data up until the next newline
  */
-    __pyx_t_2 = __Pyx_PyBytes_FromStringAndSize(__pyx_v_cur_end + 0, 2 - 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 413, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyBytes_FromStringAndSize(__pyx_v_cur_end + 0, 2 - 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 429, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_3 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyString_Type)), __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 413, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_CallOneArg(((PyObject *)(&PyString_Type)), __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 429, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __pyx_t_2 = __Pyx_PyString_FormatSafe(__pyx_kp_s_Kind_section_should_end_with_got, __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 413, __pyx_L1_error)
+    __pyx_t_2 = __Pyx_PyString_FormatSafe(__pyx_kp_s_Kind_section_should_end_with_got, __pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 429, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":412
+    /* "breezy/bzr/_chk_map_pyx.pyx":428
  *         raise ValueError('No kind section found.')
  *     if cur_end[1] != c' ':
  *         raise ValueError(             # <<<<<<<<<<<<<<
  *             'Kind section should end with ": ", got %r' % str(cur_end[:2],))
  *     file_id_str = cur_end + 2
  */
-    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_builtin_ValueError, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 412, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_builtin_ValueError, __pyx_t_2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 428, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 412, __pyx_L1_error)
+    __PYX_ERR(0, 428, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":411
+    /* "breezy/bzr/_chk_map_pyx.pyx":427
  *     if cur_end == NULL:
  *         raise ValueError('No kind section found.')
  *     if cur_end[1] != c' ':             # <<<<<<<<<<<<<<
@@ -4746,7 +4746,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":414
+  /* "breezy/bzr/_chk_map_pyx.pyx":430
  *         raise ValueError(
  *             'Kind section should end with ": ", got %r' % str(cur_end[:2],))
  *     file_id_str = cur_end + 2             # <<<<<<<<<<<<<<
@@ -4755,7 +4755,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   __pyx_v_file_id_str = (__pyx_v_cur_end + 2);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":416
+  /* "breezy/bzr/_chk_map_pyx.pyx":432
  *     file_id_str = cur_end + 2
  *     # file_id is now the data up until the next newline
  *     cur_end = <char*>memchr(file_id_str, c'\n', byte_end - file_id_str)             # <<<<<<<<<<<<<<
@@ -4764,7 +4764,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   __pyx_v_cur_end = ((char *)memchr(__pyx_v_file_id_str, '\n', (__pyx_v_byte_end - __pyx_v_file_id_str)));
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":417
+  /* "breezy/bzr/_chk_map_pyx.pyx":433
  *     # file_id is now the data up until the next newline
  *     cur_end = <char*>memchr(file_id_str, c'\n', byte_end - file_id_str)
  *     if cur_end == NULL:             # <<<<<<<<<<<<<<
@@ -4774,20 +4774,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
   __pyx_t_1 = ((__pyx_v_cur_end == NULL) != 0);
   if (unlikely(__pyx_t_1)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":418
+    /* "breezy/bzr/_chk_map_pyx.pyx":434
  *     cur_end = <char*>memchr(file_id_str, c'\n', byte_end - file_id_str)
  *     if cur_end == NULL:
  *         raise ValueError('no newline after file-id')             # <<<<<<<<<<<<<<
  *     file_id = safe_interned_string_from_size(file_id_str,
  *                                              cur_end - file_id_str)
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__12, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 418, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__12, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 434, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 418, __pyx_L1_error)
+    __PYX_ERR(0, 434, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":417
+    /* "breezy/bzr/_chk_map_pyx.pyx":433
  *     # file_id is now the data up until the next newline
  *     cur_end = <char*>memchr(file_id_str, c'\n', byte_end - file_id_str)
  *     if cur_end == NULL:             # <<<<<<<<<<<<<<
@@ -4796,19 +4796,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":419
+  /* "breezy/bzr/_chk_map_pyx.pyx":435
  *     if cur_end == NULL:
  *         raise ValueError('no newline after file-id')
  *     file_id = safe_interned_string_from_size(file_id_str,             # <<<<<<<<<<<<<<
  *                                              cur_end - file_id_str)
  *     # this is the end of the parent_str
  */
-  __pyx_t_3 = __pyx_f_6breezy_3bzr_12_str_helpers_safe_interned_string_from_size(__pyx_v_file_id_str, (__pyx_v_cur_end - __pyx_v_file_id_str)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 419, __pyx_L1_error)
+  __pyx_t_3 = __pyx_f_6breezy_3bzr_12_str_helpers_safe_interned_string_from_size(__pyx_v_file_id_str, (__pyx_v_cur_end - __pyx_v_file_id_str)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 435, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_v_file_id = __pyx_t_3;
   __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":422
+  /* "breezy/bzr/_chk_map_pyx.pyx":438
  *                                              cur_end - file_id_str)
  *     # this is the end of the parent_str
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)             # <<<<<<<<<<<<<<
@@ -4817,7 +4817,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   __pyx_v_cur_end = ((char *)memchr((__pyx_v_cur_end + 1), '\n', ((__pyx_v_byte_end - __pyx_v_cur_end) - 1)));
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":423
+  /* "breezy/bzr/_chk_map_pyx.pyx":439
  *     # this is the end of the parent_str
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  *     if cur_end == NULL:             # <<<<<<<<<<<<<<
@@ -4827,20 +4827,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
   __pyx_t_1 = ((__pyx_v_cur_end == NULL) != 0);
   if (unlikely(__pyx_t_1)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":424
+    /* "breezy/bzr/_chk_map_pyx.pyx":440
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  *     if cur_end == NULL:
  *         raise ValueError('no newline after parent_str')             # <<<<<<<<<<<<<<
  *     # end of the name str
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__13, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 424, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__13, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 440, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 424, __pyx_L1_error)
+    __PYX_ERR(0, 440, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":423
+    /* "breezy/bzr/_chk_map_pyx.pyx":439
  *     # this is the end of the parent_str
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  *     if cur_end == NULL:             # <<<<<<<<<<<<<<
@@ -4849,7 +4849,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":426
+  /* "breezy/bzr/_chk_map_pyx.pyx":442
  *         raise ValueError('no newline after parent_str')
  *     # end of the name str
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)             # <<<<<<<<<<<<<<
@@ -4858,7 +4858,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   __pyx_v_cur_end = ((char *)memchr((__pyx_v_cur_end + 1), '\n', ((__pyx_v_byte_end - __pyx_v_cur_end) - 1)));
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":427
+  /* "breezy/bzr/_chk_map_pyx.pyx":443
  *     # end of the name str
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  *     if cur_end == NULL:             # <<<<<<<<<<<<<<
@@ -4868,20 +4868,20 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
   __pyx_t_1 = ((__pyx_v_cur_end == NULL) != 0);
   if (unlikely(__pyx_t_1)) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":428
+    /* "breezy/bzr/_chk_map_pyx.pyx":444
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  *     if cur_end == NULL:
  *         raise ValueError('no newline after name str')             # <<<<<<<<<<<<<<
  *     # the next section is the revision info
  *     revision_str = cur_end + 1
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__14, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 428, __pyx_L1_error)
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__14, NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 444, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __PYX_ERR(0, 428, __pyx_L1_error)
+    __PYX_ERR(0, 444, __pyx_L1_error)
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":427
+    /* "breezy/bzr/_chk_map_pyx.pyx":443
  *     # end of the name str
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  *     if cur_end == NULL:             # <<<<<<<<<<<<<<
@@ -4890,7 +4890,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":430
+  /* "breezy/bzr/_chk_map_pyx.pyx":446
  *         raise ValueError('no newline after name str')
  *     # the next section is the revision info
  *     revision_str = cur_end + 1             # <<<<<<<<<<<<<<
@@ -4899,7 +4899,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   __pyx_v_revision_str = (__pyx_v_cur_end + 1);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":431
+  /* "breezy/bzr/_chk_map_pyx.pyx":447
  *     # the next section is the revision info
  *     revision_str = cur_end + 1
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)             # <<<<<<<<<<<<<<
@@ -4908,7 +4908,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   __pyx_v_cur_end = ((char *)memchr((__pyx_v_cur_end + 1), '\n', ((__pyx_v_byte_end - __pyx_v_cur_end) - 1)));
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":432
+  /* "breezy/bzr/_chk_map_pyx.pyx":448
  *     revision_str = cur_end + 1
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  *     if cur_end == NULL:             # <<<<<<<<<<<<<<
@@ -4918,7 +4918,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
   __pyx_t_1 = ((__pyx_v_cur_end == NULL) != 0);
   if (__pyx_t_1) {
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":434
+    /* "breezy/bzr/_chk_map_pyx.pyx":450
  *     if cur_end == NULL:
  *         # This is probably a dir: entry, which has revision as the last item
  *         cur_end = byte_end             # <<<<<<<<<<<<<<
@@ -4927,7 +4927,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
     __pyx_v_cur_end = __pyx_v_byte_end;
 
-    /* "breezy/bzr/_chk_map_pyx.pyx":432
+    /* "breezy/bzr/_chk_map_pyx.pyx":448
  *     revision_str = cur_end + 1
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  *     if cur_end == NULL:             # <<<<<<<<<<<<<<
@@ -4936,31 +4936,31 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   }
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":435
+  /* "breezy/bzr/_chk_map_pyx.pyx":451
  *         # This is probably a dir: entry, which has revision as the last item
  *         cur_end = byte_end
  *     revision = safe_interned_string_from_size(revision_str,             # <<<<<<<<<<<<<<
  *         cur_end - revision_str)
  *     key = StaticTuple_New(2)
  */
-  __pyx_t_3 = __pyx_f_6breezy_3bzr_12_str_helpers_safe_interned_string_from_size(__pyx_v_revision_str, (__pyx_v_cur_end - __pyx_v_revision_str)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 435, __pyx_L1_error)
+  __pyx_t_3 = __pyx_f_6breezy_3bzr_12_str_helpers_safe_interned_string_from_size(__pyx_v_revision_str, (__pyx_v_cur_end - __pyx_v_revision_str)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 451, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_v_revision = __pyx_t_3;
   __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":437
+  /* "breezy/bzr/_chk_map_pyx.pyx":453
  *     revision = safe_interned_string_from_size(revision_str,
  *         cur_end - revision_str)
  *     key = StaticTuple_New(2)             # <<<<<<<<<<<<<<
  *     Py_INCREF(file_id)
  *     StaticTuple_SET_ITEM(key, 0, file_id)
  */
-  __pyx_t_3 = ((PyObject *)StaticTuple_New(2)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 437, __pyx_L1_error)
+  __pyx_t_3 = ((PyObject *)StaticTuple_New(2)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 453, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_v_key = ((StaticTuple *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":438
+  /* "breezy/bzr/_chk_map_pyx.pyx":454
  *         cur_end - revision_str)
  *     key = StaticTuple_New(2)
  *     Py_INCREF(file_id)             # <<<<<<<<<<<<<<
@@ -4969,7 +4969,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   Py_INCREF(__pyx_v_file_id);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":439
+  /* "breezy/bzr/_chk_map_pyx.pyx":455
  *     key = StaticTuple_New(2)
  *     Py_INCREF(file_id)
  *     StaticTuple_SET_ITEM(key, 0, file_id)             # <<<<<<<<<<<<<<
@@ -4978,7 +4978,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   StaticTuple_SET_ITEM(__pyx_v_key, 0, __pyx_v_file_id);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":440
+  /* "breezy/bzr/_chk_map_pyx.pyx":456
  *     Py_INCREF(file_id)
  *     StaticTuple_SET_ITEM(key, 0, file_id)
  *     Py_INCREF(revision)             # <<<<<<<<<<<<<<
@@ -4987,7 +4987,7 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   Py_INCREF(__pyx_v_revision);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":441
+  /* "breezy/bzr/_chk_map_pyx.pyx":457
  *     StaticTuple_SET_ITEM(key, 0, file_id)
  *     Py_INCREF(revision)
  *     StaticTuple_SET_ITEM(key, 1, revision)             # <<<<<<<<<<<<<<
@@ -4995,19 +4995,19 @@ static PyObject *__pyx_pf_6breezy_3bzr_12_chk_map_pyx_8_bytes_to_text_key(CYTHON
  */
   StaticTuple_SET_ITEM(__pyx_v_key, 1, __pyx_v_revision);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":442
+  /* "breezy/bzr/_chk_map_pyx.pyx":458
  *     Py_INCREF(revision)
  *     StaticTuple_SET_ITEM(key, 1, revision)
  *     return StaticTuple_Intern(key)             # <<<<<<<<<<<<<<
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = ((PyObject *)StaticTuple_Intern(__pyx_v_key)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 442, __pyx_L1_error)
+  __pyx_t_3 = ((PyObject *)StaticTuple_Intern(__pyx_v_key)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 458, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_r = __pyx_t_3;
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":396
+  /* "breezy/bzr/_chk_map_pyx.pyx":409
  * 
  * 
  * def _bytes_to_text_key(data):             # <<<<<<<<<<<<<<
@@ -5487,8 +5487,8 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
 };
 static CYTHON_SMALL_CODE int __Pyx_InitCachedBuiltins(void) {
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(0, 157, __pyx_L1_error)
-  __pyx_builtin_TypeError = __Pyx_GetBuiltinName(__pyx_n_s_TypeError); if (!__pyx_builtin_TypeError) __PYX_ERR(0, 199, __pyx_L1_error)
-  __pyx_builtin_AssertionError = __Pyx_GetBuiltinName(__pyx_n_s_AssertionError); if (!__pyx_builtin_AssertionError) __PYX_ERR(0, 298, __pyx_L1_error)
+  __pyx_builtin_TypeError = __Pyx_GetBuiltinName(__pyx_n_s_TypeError); if (!__pyx_builtin_TypeError) __PYX_ERR(0, 207, __pyx_L1_error)
+  __pyx_builtin_AssertionError = __Pyx_GetBuiltinName(__pyx_n_s_AssertionError); if (!__pyx_builtin_AssertionError) __PYX_ERR(0, 306, __pyx_L1_error)
   return 0;
   __pyx_L1_error:;
   return -1;
@@ -5498,146 +5498,146 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":207
+  /* "breezy/bzr/_chk_map_pyx.pyx":215
  *         raise ValueError("not a serialised leaf node: %r" % data)
  *     if c_bytes[c_bytes_len - 1] != c'\n':
  *         raise ValueError("bytes does not end in a newline")             # <<<<<<<<<<<<<<
  * 
  *     end = c_bytes + c_bytes_len
  */
-  __pyx_tuple__2 = PyTuple_Pack(1, __pyx_kp_s_bytes_does_not_end_in_a_newline); if (unlikely(!__pyx_tuple__2)) __PYX_ERR(0, 207, __pyx_L1_error)
+  __pyx_tuple__2 = PyTuple_Pack(1, __pyx_kp_s_bytes_does_not_end_in_a_newline); if (unlikely(!__pyx_tuple__2)) __PYX_ERR(0, 215, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__2);
   __Pyx_GIVEREF(__pyx_tuple__2);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":217
+  /* "breezy/bzr/_chk_map_pyx.pyx":225
  *     next_line = <char *>memchr(cur, c'\n', end - cur)
  *     if next_line == NULL:
  *         raise ValueError('Missing the prefix line\n')             # <<<<<<<<<<<<<<
  *     prefix = cur
  *     prefix_length = next_line - cur
  */
-  __pyx_tuple__3 = PyTuple_Pack(1, __pyx_kp_s_Missing_the_prefix_line); if (unlikely(!__pyx_tuple__3)) __PYX_ERR(0, 217, __pyx_L1_error)
+  __pyx_tuple__3 = PyTuple_Pack(1, __pyx_kp_s_Missing_the_prefix_line); if (unlikely(!__pyx_tuple__3)) __PYX_ERR(0, 225, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__3);
   __Pyx_GIVEREF(__pyx_tuple__3);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":235
+  /* "breezy/bzr/_chk_map_pyx.pyx":243
  * 
  *     if num_prefix_bits >= width:
  *         raise ValueError('Prefix has too many nulls versus width')             # <<<<<<<<<<<<<<
  * 
  *     items_length = end - cur
  */
-  __pyx_tuple__4 = PyTuple_Pack(1, __pyx_kp_s_Prefix_has_too_many_nulls_versus); if (unlikely(!__pyx_tuple__4)) __PYX_ERR(0, 235, __pyx_L1_error)
+  __pyx_tuple__4 = PyTuple_Pack(1, __pyx_kp_s_Prefix_has_too_many_nulls_versus); if (unlikely(!__pyx_tuple__4)) __PYX_ERR(0, 243, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__4);
   __Pyx_GIVEREF(__pyx_tuple__4);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":243
+  /* "breezy/bzr/_chk_map_pyx.pyx":251
  *         next_line = <char *>memchr(cur, c'\n', end - cur)
  *         if next_line == NULL:
  *             raise ValueError('null line\n')             # <<<<<<<<<<<<<<
  *         last_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
  *         if last_null == NULL:
  */
-  __pyx_tuple__5 = PyTuple_Pack(1, __pyx_kp_s_null_line); if (unlikely(!__pyx_tuple__5)) __PYX_ERR(0, 243, __pyx_L1_error)
+  __pyx_tuple__5 = PyTuple_Pack(1, __pyx_kp_s_null_line); if (unlikely(!__pyx_tuple__5)) __PYX_ERR(0, 251, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__5);
   __Pyx_GIVEREF(__pyx_tuple__5);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":246
+  /* "breezy/bzr/_chk_map_pyx.pyx":254
  *         last_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
  *         if last_null == NULL:
  *             raise ValueError('fail to find the num value lines null')             # <<<<<<<<<<<<<<
  *         next_null = last_null + 1 # move past NULL
  *         num_value_lines = _get_int_from_line(&next_null, next_line + 1,
  */
-  __pyx_tuple__6 = PyTuple_Pack(1, __pyx_kp_s_fail_to_find_the_num_value_lines); if (unlikely(!__pyx_tuple__6)) __PYX_ERR(0, 246, __pyx_L1_error)
+  __pyx_tuple__6 = PyTuple_Pack(1, __pyx_kp_s_fail_to_find_the_num_value_lines); if (unlikely(!__pyx_tuple__6)) __PYX_ERR(0, 254, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__6);
   __Pyx_GIVEREF(__pyx_tuple__6);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":256
+  /* "breezy/bzr/_chk_map_pyx.pyx":264
  *             next_line = <char *>memchr(cur, c'\n', end - cur)
  *             if next_line == NULL:
  *                 raise ValueError('missing trailing newline')             # <<<<<<<<<<<<<<
  *             cur = next_line + 1
  *         entry_bits = StaticTuple_New(width)
  */
-  __pyx_tuple__7 = PyTuple_Pack(1, __pyx_kp_s_missing_trailing_newline); if (unlikely(!__pyx_tuple__7)) __PYX_ERR(0, 256, __pyx_L1_error)
+  __pyx_tuple__7 = PyTuple_Pack(1, __pyx_kp_s_missing_trailing_newline); if (unlikely(!__pyx_tuple__7)) __PYX_ERR(0, 264, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__7);
   __Pyx_GIVEREF(__pyx_tuple__7);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":273
+  /* "breezy/bzr/_chk_map_pyx.pyx":281
  *                                    last_null - entry_start + 1)
  *         if next_null == NULL:
  *             raise ValueError('bad no null, bad')             # <<<<<<<<<<<<<<
  *         entry = PyBytes_FromStringAndSize(
  *             NULL, prefix_tail_len + next_null - line_start)
  */
-  __pyx_tuple__8 = PyTuple_Pack(1, __pyx_kp_s_bad_no_null_bad); if (unlikely(!__pyx_tuple__8)) __PYX_ERR(0, 273, __pyx_L1_error)
+  __pyx_tuple__8 = PyTuple_Pack(1, __pyx_kp_s_bad_no_null_bad); if (unlikely(!__pyx_tuple__8)) __PYX_ERR(0, 281, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__8);
   __Pyx_GIVEREF(__pyx_tuple__8);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":287
+  /* "breezy/bzr/_chk_map_pyx.pyx":295
  *             i = i + 1
  *             if i > width:
  *                 raise ValueError("Too many bits for entry")             # <<<<<<<<<<<<<<
  *             entry_start = next_null + 1
  *             next_null = <char *>memchr(entry_start, c'\0',
  */
-  __pyx_tuple__9 = PyTuple_Pack(1, __pyx_kp_s_Too_many_bits_for_entry); if (unlikely(!__pyx_tuple__9)) __PYX_ERR(0, 287, __pyx_L1_error)
+  __pyx_tuple__9 = PyTuple_Pack(1, __pyx_kp_s_Too_many_bits_for_entry); if (unlikely(!__pyx_tuple__9)) __PYX_ERR(0, 295, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__9);
   __Pyx_GIVEREF(__pyx_tuple__9);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":292
+  /* "breezy/bzr/_chk_map_pyx.pyx":300
  *                                        last_null - entry_start + 1)
  *             if next_null == NULL:
  *                 raise ValueError('bad no null')             # <<<<<<<<<<<<<<
  *             entry = PyBytes_FromStringAndSize(
  *                 entry_start, next_null - entry_start)
  */
-  __pyx_tuple__10 = PyTuple_Pack(1, __pyx_kp_s_bad_no_null); if (unlikely(!__pyx_tuple__10)) __PYX_ERR(0, 292, __pyx_L1_error)
+  __pyx_tuple__10 = PyTuple_Pack(1, __pyx_kp_s_bad_no_null); if (unlikely(!__pyx_tuple__10)) __PYX_ERR(0, 300, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__10);
   __Pyx_GIVEREF(__pyx_tuple__10);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":410
+  /* "breezy/bzr/_chk_map_pyx.pyx":426
  *     cur_end = <char*>memchr(byte_str, c':', byte_size)
  *     if cur_end == NULL:
  *         raise ValueError('No kind section found.')             # <<<<<<<<<<<<<<
  *     if cur_end[1] != c' ':
  *         raise ValueError(
  */
-  __pyx_tuple__11 = PyTuple_Pack(1, __pyx_kp_s_No_kind_section_found); if (unlikely(!__pyx_tuple__11)) __PYX_ERR(0, 410, __pyx_L1_error)
+  __pyx_tuple__11 = PyTuple_Pack(1, __pyx_kp_s_No_kind_section_found); if (unlikely(!__pyx_tuple__11)) __PYX_ERR(0, 426, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__11);
   __Pyx_GIVEREF(__pyx_tuple__11);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":418
+  /* "breezy/bzr/_chk_map_pyx.pyx":434
  *     cur_end = <char*>memchr(file_id_str, c'\n', byte_end - file_id_str)
  *     if cur_end == NULL:
  *         raise ValueError('no newline after file-id')             # <<<<<<<<<<<<<<
  *     file_id = safe_interned_string_from_size(file_id_str,
  *                                              cur_end - file_id_str)
  */
-  __pyx_tuple__12 = PyTuple_Pack(1, __pyx_kp_s_no_newline_after_file_id); if (unlikely(!__pyx_tuple__12)) __PYX_ERR(0, 418, __pyx_L1_error)
+  __pyx_tuple__12 = PyTuple_Pack(1, __pyx_kp_s_no_newline_after_file_id); if (unlikely(!__pyx_tuple__12)) __PYX_ERR(0, 434, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__12);
   __Pyx_GIVEREF(__pyx_tuple__12);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":424
+  /* "breezy/bzr/_chk_map_pyx.pyx":440
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  *     if cur_end == NULL:
  *         raise ValueError('no newline after parent_str')             # <<<<<<<<<<<<<<
  *     # end of the name str
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  */
-  __pyx_tuple__13 = PyTuple_Pack(1, __pyx_kp_s_no_newline_after_parent_str); if (unlikely(!__pyx_tuple__13)) __PYX_ERR(0, 424, __pyx_L1_error)
+  __pyx_tuple__13 = PyTuple_Pack(1, __pyx_kp_s_no_newline_after_parent_str); if (unlikely(!__pyx_tuple__13)) __PYX_ERR(0, 440, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__13);
   __Pyx_GIVEREF(__pyx_tuple__13);
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":428
+  /* "breezy/bzr/_chk_map_pyx.pyx":444
  *     cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
  *     if cur_end == NULL:
  *         raise ValueError('no newline after name str')             # <<<<<<<<<<<<<<
  *     # the next section is the revision info
  *     revision_str = cur_end + 1
  */
-  __pyx_tuple__14 = PyTuple_Pack(1, __pyx_kp_s_no_newline_after_name_str); if (unlikely(!__pyx_tuple__14)) __PYX_ERR(0, 428, __pyx_L1_error)
+  __pyx_tuple__14 = PyTuple_Pack(1, __pyx_kp_s_no_newline_after_name_str); if (unlikely(!__pyx_tuple__14)) __PYX_ERR(0, 444, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__14);
   __Pyx_GIVEREF(__pyx_tuple__14);
 
@@ -5677,29 +5677,29 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GIVEREF(__pyx_tuple__19);
   __pyx_codeobj__20 = (PyObject*)__Pyx_PyCode_New(3, 0, 32, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__19, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_breezy_bzr__chk_map_pyx_pyx, __pyx_n_s_deserialise_leaf_node, 176, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__20)) __PYX_ERR(0, 176, __pyx_L1_error)
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":325
+  /* "breezy/bzr/_chk_map_pyx.pyx":333
  * 
  * 
  * def _deserialise_internal_node(data, key, search_key_func=None):             # <<<<<<<<<<<<<<
- *     cdef char *c_bytes, *cur, *end
- *     cdef char *next_line
+ *     cdef char *c_bytes
+ *     cdef char *cur
  */
-  __pyx_tuple__21 = PyTuple_Pack(22, __pyx_n_s_data, __pyx_n_s_key, __pyx_n_s_search_key_func, __pyx_n_s_c_bytes, __pyx_n_s_cur, __pyx_n_s_end, __pyx_n_s_next_line, __pyx_n_s_c_bytes_len, __pyx_n_s_prefix_length, __pyx_n_s_maximum_size_2, __pyx_n_s_width, __pyx_n_s_length, __pyx_n_s_i, __pyx_n_s_prefix_tail_len, __pyx_n_s_prefix, __pyx_n_s_line_prefix, __pyx_n_s_next_null, __pyx_n_s_c_item_prefix, __pyx_n_s_result, __pyx_n_s_items_2, __pyx_n_s_item_prefix, __pyx_n_s_flat_key); if (unlikely(!__pyx_tuple__21)) __PYX_ERR(0, 325, __pyx_L1_error)
+  __pyx_tuple__21 = PyTuple_Pack(22, __pyx_n_s_data, __pyx_n_s_key, __pyx_n_s_search_key_func, __pyx_n_s_c_bytes, __pyx_n_s_cur, __pyx_n_s_end, __pyx_n_s_next_line, __pyx_n_s_c_bytes_len, __pyx_n_s_prefix_length, __pyx_n_s_maximum_size_2, __pyx_n_s_width, __pyx_n_s_length, __pyx_n_s_i, __pyx_n_s_prefix_tail_len, __pyx_n_s_prefix, __pyx_n_s_line_prefix, __pyx_n_s_next_null, __pyx_n_s_c_item_prefix, __pyx_n_s_result, __pyx_n_s_items_2, __pyx_n_s_item_prefix, __pyx_n_s_flat_key); if (unlikely(!__pyx_tuple__21)) __PYX_ERR(0, 333, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__21);
   __Pyx_GIVEREF(__pyx_tuple__21);
-  __pyx_codeobj__22 = (PyObject*)__Pyx_PyCode_New(3, 0, 22, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__21, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_breezy_bzr__chk_map_pyx_pyx, __pyx_n_s_deserialise_internal_node, 325, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__22)) __PYX_ERR(0, 325, __pyx_L1_error)
+  __pyx_codeobj__22 = (PyObject*)__Pyx_PyCode_New(3, 0, 22, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__21, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_breezy_bzr__chk_map_pyx_pyx, __pyx_n_s_deserialise_internal_node, 333, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__22)) __PYX_ERR(0, 333, __pyx_L1_error)
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":396
+  /* "breezy/bzr/_chk_map_pyx.pyx":409
  * 
  * 
  * def _bytes_to_text_key(data):             # <<<<<<<<<<<<<<
  *     """Take a CHKInventory value string and return a (file_id, rev_id) tuple"""
  *     cdef StaticTuple key
  */
-  __pyx_tuple__23 = PyTuple_Pack(12, __pyx_n_s_data, __pyx_n_s_key, __pyx_n_s_byte_str, __pyx_n_s_cur_end, __pyx_n_s_file_id_str, __pyx_n_s_byte_end, __pyx_n_s_revision_str, __pyx_n_s_byte_size, __pyx_n_s_pos, __pyx_n_s_file_id_len, __pyx_n_s_file_id, __pyx_n_s_revision); if (unlikely(!__pyx_tuple__23)) __PYX_ERR(0, 396, __pyx_L1_error)
+  __pyx_tuple__23 = PyTuple_Pack(12, __pyx_n_s_data, __pyx_n_s_key, __pyx_n_s_byte_str, __pyx_n_s_cur_end, __pyx_n_s_file_id_str, __pyx_n_s_byte_end, __pyx_n_s_revision_str, __pyx_n_s_byte_size, __pyx_n_s_pos, __pyx_n_s_file_id_len, __pyx_n_s_file_id, __pyx_n_s_revision); if (unlikely(!__pyx_tuple__23)) __PYX_ERR(0, 409, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__23);
   __Pyx_GIVEREF(__pyx_tuple__23);
-  __pyx_codeobj__24 = (PyObject*)__Pyx_PyCode_New(1, 0, 12, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__23, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_breezy_bzr__chk_map_pyx_pyx, __pyx_n_s_bytes_to_text_key, 396, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__24)) __PYX_ERR(0, 396, __pyx_L1_error)
+  __pyx_codeobj__24 = (PyObject*)__Pyx_PyCode_New(1, 0, 12, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__23, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_breezy_bzr__chk_map_pyx_pyx, __pyx_n_s_bytes_to_text_key, 409, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__24)) __PYX_ERR(0, 409, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -6107,28 +6107,28 @@ if (!__Pyx_RefNanny) {
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_deserialise_leaf_node, __pyx_t_3) < 0) __PYX_ERR(0, 176, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":325
+  /* "breezy/bzr/_chk_map_pyx.pyx":333
  * 
  * 
  * def _deserialise_internal_node(data, key, search_key_func=None):             # <<<<<<<<<<<<<<
- *     cdef char *c_bytes, *cur, *end
- *     cdef char *next_line
+ *     cdef char *c_bytes
+ *     cdef char *cur
  */
-  __pyx_t_3 = PyCFunction_NewEx(&__pyx_mdef_6breezy_3bzr_12_chk_map_pyx_7_deserialise_internal_node, NULL, __pyx_n_s_breezy_bzr__chk_map_pyx); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 325, __pyx_L1_error)
+  __pyx_t_3 = PyCFunction_NewEx(&__pyx_mdef_6breezy_3bzr_12_chk_map_pyx_7_deserialise_internal_node, NULL, __pyx_n_s_breezy_bzr__chk_map_pyx); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 333, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_deserialise_internal_node, __pyx_t_3) < 0) __PYX_ERR(0, 325, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_deserialise_internal_node, __pyx_t_3) < 0) __PYX_ERR(0, 333, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "breezy/bzr/_chk_map_pyx.pyx":396
+  /* "breezy/bzr/_chk_map_pyx.pyx":409
  * 
  * 
  * def _bytes_to_text_key(data):             # <<<<<<<<<<<<<<
  *     """Take a CHKInventory value string and return a (file_id, rev_id) tuple"""
  *     cdef StaticTuple key
  */
-  __pyx_t_3 = PyCFunction_NewEx(&__pyx_mdef_6breezy_3bzr_12_chk_map_pyx_9_bytes_to_text_key, NULL, __pyx_n_s_breezy_bzr__chk_map_pyx); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 396, __pyx_L1_error)
+  __pyx_t_3 = PyCFunction_NewEx(&__pyx_mdef_6breezy_3bzr_12_chk_map_pyx_9_bytes_to_text_key, NULL, __pyx_n_s_breezy_bzr__chk_map_pyx); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 409, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_bytes_to_text_key, __pyx_t_3) < 0) __PYX_ERR(0, 396, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_bytes_to_text_key, __pyx_t_3) < 0) __PYX_ERR(0, 409, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
   /* "breezy/bzr/_chk_map_pyx.pyx":1
