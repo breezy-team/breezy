@@ -2569,19 +2569,6 @@ def ensure_empty_directory_exists(path, exception_class):
             raise exception_class(path)
 
 
-def is_environment_error(evalue):
-    """True if exception instance is due to a process environment issue
-
-    This includes OSError and IOError, but also other errors that come from
-    the operating system or core libraries but are not subclasses of those.
-    """
-    if isinstance(evalue, (EnvironmentError, select.error)):
-        return True
-    if sys.platform == "win32" and win32utils._is_pywintypes_error(evalue):
-        return True
-    return False
-
-
 def read_mtab(path):
     """Read an fstab-style file and extract mountpoint+filesystem information.
 

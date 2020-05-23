@@ -509,7 +509,7 @@ def report_exception(exc_info, err_file):
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
-    elif osutils.is_environment_error(exc_object):
+    elif isinstance(exc_object, EnvironmentError):
         if getattr(exc_object, 'errno', None) == errno.EPIPE:
             err_file.write("brz: broken pipe\n")
             return errors.EXIT_ERROR
