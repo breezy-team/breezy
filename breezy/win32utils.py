@@ -354,6 +354,7 @@ def get_app_path(appname):
 def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
     from ctypes.wintypes import BOOL, DWORD, LPCWSTR
+    import ctypes
     _kernel32 = ctypes.windll.kernel32
     # <https://docs.microsoft.com/windows/desktop/api/fileapi/nf-fileapi-setfileattributesw>
     _SetFileAttributesW = ctypes.WINFUNCTYPE(BOOL, LPCWSTR, DWORD)(
