@@ -29,13 +29,6 @@ from breezy import (
     )
 from breezy.i18n import gettext
 
-has_ctypes_win32 = False
-if sys.platform == 'win32':
-    try:
-        import ctypes
-    except ImportError:
-        has_ctypes_win32 = False
-
 
 # Special Win32 API constants
 # Handles of std streams
@@ -62,44 +55,39 @@ REG_EXPAND_SZ = 2
 def debug_memory_win32api(message='', short=True):
     """Use trace.note() to dump the running memory info."""
     from breezy import trace
-    if has_ctypes_win32:
-        class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
-            """Used by GetProcessMemoryInfo"""
-            _fields_ = [('cb', ctypes.c_ulong),
-                        ('PageFaultCount', ctypes.c_ulong),
-                        ('PeakWorkingSetSize', ctypes.c_size_t),
-                        ('WorkingSetSize', ctypes.c_size_t),
-                        ('QuotaPeakPagedPoolUsage', ctypes.c_size_t),
-                        ('QuotaPagedPoolUsage', ctypes.c_size_t),
-                        ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
-                        ('QuotaNonPagedPoolUsage', ctypes.c_size_t),
-                        ('PagefileUsage', ctypes.c_size_t),
-                        ('PeakPagefileUsage', ctypes.c_size_t),
-                        ('PrivateUsage', ctypes.c_size_t),
-                        ]
-        cur_process = ctypes.windll.kernel32.GetCurrentProcess()
-        mem_struct = PROCESS_MEMORY_COUNTERS_EX()
-        ret = ctypes.windll.psapi.GetProcessMemoryInfo(
-            cur_process, ctypes.byref(mem_struct), ctypes.sizeof(mem_struct))
-        if not ret:
-            trace.note(gettext('Failed to GetProcessMemoryInfo()'))
-            return
-        info = {'PageFaultCount': mem_struct.PageFaultCount,
-                'PeakWorkingSetSize': mem_struct.PeakWorkingSetSize,
-                'WorkingSetSize': mem_struct.WorkingSetSize,
-                'QuotaPeakPagedPoolUsage': mem_struct.QuotaPeakPagedPoolUsage,
-                'QuotaPagedPoolUsage': mem_struct.QuotaPagedPoolUsage,
-                'QuotaPeakNonPagedPoolUsage':
-                    mem_struct.QuotaPeakNonPagedPoolUsage,
-                'QuotaNonPagedPoolUsage': mem_struct.QuotaNonPagedPoolUsage,
-                'PagefileUsage': mem_struct.PagefileUsage,
-                'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
-                'PrivateUsage': mem_struct.PrivateUsage,
-                }
-    else:
-        trace.note(gettext('Cannot debug memory on win32 without ctypes'
-                           ' or win32process'))
+    class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
+        """Used by GetProcessMemoryInfo"""
+        _fields_ = [('cb', ctypes.c_ulong),
+                    ('PageFaultCount', ctypes.c_ulong),
+                    ('PeakWorkingSetSize', ctypes.c_size_t),
+                    ('WorkingSetSize', ctypes.c_size_t),
+                    ('QuotaPeakPagedPoolUsage', ctypes.c_size_t),
+                    ('QuotaPagedPoolUsage', ctypes.c_size_t),
+                    ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
+                    ('QuotaNonPagedPoolUsage', ctypes.c_size_t),
+                    ('PagefileUsage', ctypes.c_size_t),
+                    ('PeakPagefileUsage', ctypes.c_size_t),
+                    ('PrivateUsage', ctypes.c_size_t),
+                    ]
+    cur_process = ctypes.windll.kernel32.GetCurrentProcess()
+    mem_struct = PROCESS_MEMORY_COUNTERS_EX()
+    ret = ctypes.windll.psapi.GetProcessMemoryInfo(
+        cur_process, ctypes.byref(mem_struct), ctypes.sizeof(mem_struct))
+    if not ret:
+        trace.note(gettext('Failed to GetProcessMemoryInfo()'))
         return
+    info = {'PageFaultCount': mem_struct.PageFaultCount,
+            'PeakWorkingSetSize': mem_struct.PeakWorkingSetSize,
+            'WorkingSetSize': mem_struct.WorkingSetSize,
+            'QuotaPeakPagedPoolUsage': mem_struct.QuotaPeakPagedPoolUsage,
+            'QuotaPagedPoolUsage': mem_struct.QuotaPagedPoolUsage,
+            'QuotaPeakNonPagedPoolUsage':
+                mem_struct.QuotaPeakNonPagedPoolUsage,
+            'QuotaNonPagedPoolUsage': mem_struct.QuotaNonPagedPoolUsage,
+            'PagefileUsage': mem_struct.PagefileUsage,
+            'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
+            'PrivateUsage': mem_struct.PrivateUsage,
+            }
     if short:
         # using base-2 units (see HACKING.txt).
         trace.note(gettext('WorkingSize {0:>7}KiB'
@@ -130,10 +118,6 @@ def get_console_size(defaultx=80, defaulty=25):
     console window and return tuple (sizex, sizey) if success,
     or default size (defaultx, defaulty) otherwise.
     """
-    if not has_ctypes_win32:
-        # no ctypes is found
-        return (defaultx, defaulty)
-
     # To avoid problem with redirecting output via pipe
     # we need to use stderr instead of stdout
     h = ctypes.windll.kernel32.GetStdHandle(WIN32_STDERR_HANDLE)
@@ -156,17 +140,15 @@ def _get_sh_special_folder_path(csidl):
 
     Result is always unicode (or None).
     """
-    if has_ctypes_win32:
-        try:
-            SHGetSpecialFolderPath = \
-                ctypes.windll.shell32.SHGetSpecialFolderPathW
-        except AttributeError:
-            pass
-        else:
-            buf = ctypes.create_unicode_buffer(MAX_PATH)
-            if SHGetSpecialFolderPath(None, buf, csidl, 0):
-                return buf.value
-    return None
+    try:
+        SHGetSpecialFolderPath = \
+            ctypes.windll.shell32.SHGetSpecialFolderPathW
+    except AttributeError:
+        pass
+    else:
+        buf = ctypes.create_unicode_buffer(MAX_PATH)
+        if SHGetSpecialFolderPath(None, buf, csidl, 0):
+            return buf.value
 
 
 def get_appdata_location():
@@ -232,17 +214,16 @@ def get_user_name():
     """Return user name as login name.
     If name cannot be obtained return None.
     """
-    if has_ctypes_win32:
-        try:
-            advapi32 = ctypes.windll.advapi32
-            GetUserName = getattr(advapi32, 'GetUserNameW')
-        except AttributeError:
-            pass
-        else:
-            buf = ctypes.create_unicode_buffer(UNLEN + 1)
-            n = ctypes.c_int(UNLEN + 1)
-            if GetUserName(buf, ctypes.byref(n)):
-                return buf.value
+    try:
+        advapi32 = ctypes.windll.advapi32
+        GetUserName = getattr(advapi32, 'GetUserNameW')
+    except AttributeError:
+        pass
+    else:
+        buf = ctypes.create_unicode_buffer(UNLEN + 1)
+        n = ctypes.c_int(UNLEN + 1)
+        if GetUserName(buf, ctypes.byref(n)):
+            return buf.value
     # otherwise try env variables
     return get_environ_unicode('USERNAME')
 
@@ -258,21 +239,20 @@ def get_host_name():
 
     :return: A unicode string representing the host name.
     """
-    if has_ctypes_win32:
-        try:
-            kernel32 = ctypes.windll.kernel32
-        except AttributeError:
-            pass  # Missing the module we need
-        else:
-            buf = ctypes.create_unicode_buffer(MAX_COMPUTERNAME_LENGTH + 1)
-            n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH + 1)
+    try:
+        kernel32 = ctypes.windll.kernel32
+    except AttributeError:
+        pass  # Missing the module we need
+    else:
+        buf = ctypes.create_unicode_buffer(MAX_COMPUTERNAME_LENGTH + 1)
+        n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH + 1)
 
-            # Try GetComputerNameEx which gives a proper Unicode hostname
-            GetComputerNameEx = getattr(kernel32, 'GetComputerNameExW', None)
-            if (GetComputerNameEx is not None
-                and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
-                                      buf, ctypes.byref(n))):
-                return buf.value
+        # Try GetComputerNameEx which gives a proper Unicode hostname
+        GetComputerNameEx = getattr(kernel32, 'GetComputerNameExW', None)
+        if (GetComputerNameEx is not None
+            and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
+                                  buf, ctypes.byref(n))):
+            return buf.value
     return get_environ_unicode('COMPUTERNAME')
 
 
@@ -373,8 +353,6 @@ def get_app_path(appname):
 
 def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
-    if not has_ctypes_win32:
-        return
     from ctypes.wintypes import BOOL, DWORD, LPCWSTR
     _kernel32 = ctypes.windll.kernel32
     # <https://docs.microsoft.com/windows/desktop/api/fileapi/nf-fileapi-setfileattributesw>
@@ -429,69 +407,67 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     return args
 
 
-if has_ctypes_win32:
-    def get_unicode_argv():
-        prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p)
-        GetCommandLineW = prototype(("GetCommandLineW",
-                                     ctypes.windll.kernel32))
-        command_line = GetCommandLineW()
-        if command_line is None:
-            raise ctypes.WinError()
-        # Skip the first argument, since we only care about parameters
-        argv = _command_line_to_argv(command_line, sys.argv)[1:]
-        return argv
+def get_unicode_argv():
+    prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p)
+    GetCommandLineW = prototype(("GetCommandLineW",
+                                 ctypes.windll.kernel32))
+    command_line = GetCommandLineW()
+    if command_line is None:
+        raise ctypes.WinError()
+    # Skip the first argument, since we only care about parameters
+    argv = _command_line_to_argv(command_line, sys.argv)[1:]
+    return argv
 
-    def get_environ_unicode(key, default=None):
-        """Get `key` from environment as unicode or `default` if unset
+def get_environ_unicode(key, default=None):
+    """Get `key` from environment as unicode or `default` if unset
 
-        The environment is natively unicode on modern windows versions but
-        Python 2 only accesses it through the legacy bytestring api.
+    The environment is natively unicode on modern windows versions but
+    Python 2 only accesses it through the legacy bytestring api.
 
-        Environmental variable names are case insenstive on Windows.
+    Environmental variable names are case insenstive on Windows.
 
-        A large enough buffer will be allocated to retrieve the value, though
-        it may take two calls to the underlying library function.
-        """
-        cfunc = getattr(get_environ_unicode, "_c_function", None)
-        if cfunc is None:
-            from ctypes.wintypes import DWORD, LPCWSTR, LPWSTR
-            cfunc = ctypes.WINFUNCTYPE(DWORD, LPCWSTR, LPWSTR, DWORD)(
-                ("GetEnvironmentVariableW", ctypes.windll.kernel32))
-            get_environ_unicode._c_function = cfunc
-        buffer_size = 256  # heuristic, 256 characters often enough
-        while True:
-            buf = ctypes.create_unicode_buffer(buffer_size)
-            length = cfunc(key, buf, buffer_size)
-            if not length:
-                code = ctypes.GetLastError()
-                if code == 203:  # ERROR_ENVVAR_NOT_FOUND
-                    return default
-                raise ctypes.WinError(code)
-            if buffer_size > length:
-                return buf[:length]
-            buffer_size = length
+    A large enough buffer will be allocated to retrieve the value, though
+    it may take two calls to the underlying library function.
+    """
+    cfunc = getattr(get_environ_unicode, "_c_function", None)
+    if cfunc is None:
+        from ctypes.wintypes import DWORD, LPCWSTR, LPWSTR
+        cfunc = ctypes.WINFUNCTYPE(DWORD, LPCWSTR, LPWSTR, DWORD)(
+            ("GetEnvironmentVariableW", ctypes.windll.kernel32))
+        get_environ_unicode._c_function = cfunc
+    buffer_size = 256  # heuristic, 256 characters often enough
+    while True:
+        buf = ctypes.create_unicode_buffer(buffer_size)
+        length = cfunc(key, buf, buffer_size)
+        if not length:
+            code = ctypes.GetLastError()
+            if code == 203:  # ERROR_ENVVAR_NOT_FOUND
+                return default
+            raise ctypes.WinError(code)
+        if buffer_size > length:
+            return buf[:length]
+        buffer_size = length
 
 
-if has_ctypes_win32:
-    from ctypes.wintypes import BOOL, DWORD, HANDLE
-    _kernel32 = ctypes.windll.kernel32
-    _CloseHandle = ctypes.WINFUNCTYPE(BOOL, HANDLE)(
-        ("CloseHandle", _kernel32))
-    _OpenProcess = ctypes.WINFUNCTYPE(HANDLE, DWORD, BOOL, DWORD)(
-        ("OpenProcess", _kernel32))
+from ctypes.wintypes import BOOL, DWORD, HANDLE
+_kernel32 = ctypes.windll.kernel32
+_CloseHandle = ctypes.WINFUNCTYPE(BOOL, HANDLE)(
+    ("CloseHandle", _kernel32))
+_OpenProcess = ctypes.WINFUNCTYPE(HANDLE, DWORD, BOOL, DWORD)(
+    ("OpenProcess", _kernel32))
 
-    def _ctypes_is_local_pid_dead(pid):
-        """True if pid doesn't correspond to live process on this machine"""
-        handle = _OpenProcess(1, False, pid)  # PROCESS_TERMINATE
-        if not handle:
-            errorcode = ctypes.GetLastError()
-            if errorcode == 5:  # ERROR_ACCESS_DENIED
-                # Probably something alive we're not allowed to kill
-                return False
-            elif errorcode == 87:  # ERROR_INVALID_PARAMETER
-                return True
-            raise ctypes.WinError(errorcode)
-        _CloseHandle(handle)
-        return False
+def _ctypes_is_local_pid_dead(pid):
+    """True if pid doesn't correspond to live process on this machine"""
+    handle = _OpenProcess(1, False, pid)  # PROCESS_TERMINATE
+    if not handle:
+        errorcode = ctypes.GetLastError()
+        if errorcode == 5:  # ERROR_ACCESS_DENIED
+            # Probably something alive we're not allowed to kill
+            return False
+        elif errorcode == 87:  # ERROR_INVALID_PARAMETER
+            return True
+        raise ctypes.WinError(errorcode)
+    _CloseHandle(handle)
+    return False
 
-    is_local_pid_dead = _ctypes_is_local_pid_dead
+is_local_pid_dead = _ctypes_is_local_pid_dead
