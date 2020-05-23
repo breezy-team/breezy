@@ -1,0 +1,34 @@
+name: Python package
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: [3.6, 3.7, 3.8, pypy3]
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        sudo apt install python3-all-dev subunit quilt
+        python -m pip install --upgrade pip
+        pip install -U pip setuptools
+        pip install -U pip coverage codecov flake8 testtools paramiko fastimport configobj cython testscenarios six docutils python-subunit $TEST_REQUIRE sphinx sphinx_epytext launchpadlib patiencediff git+https://github.com/dulwich/dulwich
+    - name: Build
+      run: |
+        make docs extensions PYTHON=python
+    - name: Test suite run
+      run: |
+        BRZ_PLUGIN_PATH=-site:-user python -Werror -Wignore::ImportWarning -Wignore::PendingDeprecationWarning -Wignore::DeprecationWarning -Wignore::ResourceWarning -Wignore::UserWarning ./brz selftest --parallel=fork $SELFTEST_OPTIONS
+      env:
+        PYTHONHASHSEED: random
