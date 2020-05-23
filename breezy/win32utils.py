@@ -54,6 +54,7 @@ REG_EXPAND_SZ = 2
 
 def debug_memory_win32api(message='', short=True):
     """Use trace.note() to dump the running memory info."""
+    import ctypes
     from breezy import trace
     class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
         """Used by GetProcessMemoryInfo"""
@@ -118,6 +119,7 @@ def get_console_size(defaultx=80, defaulty=25):
     console window and return tuple (sizex, sizey) if success,
     or default size (defaultx, defaulty) otherwise.
     """
+    import ctypes
     # To avoid problem with redirecting output via pipe
     # we need to use stderr instead of stdout
     h = ctypes.windll.kernel32.GetStdHandle(WIN32_STDERR_HANDLE)
@@ -240,12 +242,13 @@ def get_host_name():
 
     :return: A unicode string representing the host name.
     """
-    from ctypes.windll import kernel32
+    import ctypes
     buf = ctypes.create_unicode_buffer(MAX_COMPUTERNAME_LENGTH + 1)
     n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH + 1)
 
     # Try GetComputerNameEx which gives a proper Unicode hostname
-    GetComputerNameEx = getattr(kernel32, 'GetComputerNameExW', None)
+    GetComputerNameEx = getattr(
+        ctypes.windll.kernel32, 'GetComputerNameExW', None)
     if (GetComputerNameEx is not None
         and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
                               buf, ctypes.byref(n))):
@@ -405,7 +408,8 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
 
 
 def _ctypes_is_local_pid_dead(pid):
-    from ctypes.wintypes.windll import kernel32
+    import ctypes
+    kernel32 = .wintypes.windll.kernel32
     """True if pid doesn't correspond to live process on this machine"""
     handle = kernel32.OpenProcess(1, False, pid)
     if not handle:
