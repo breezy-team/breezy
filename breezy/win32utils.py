@@ -140,6 +140,7 @@ def _get_sh_special_folder_path(csidl):
 
     Result is always unicode (or None).
     """
+    import ctypes
     try:
         SHGetSpecialFolderPath = \
             ctypes.windll.shell32.SHGetSpecialFolderPathW
@@ -239,20 +240,16 @@ def get_host_name():
 
     :return: A unicode string representing the host name.
     """
-    try:
-        kernel32 = ctypes.windll.kernel32
-    except AttributeError:
-        pass  # Missing the module we need
-    else:
-        buf = ctypes.create_unicode_buffer(MAX_COMPUTERNAME_LENGTH + 1)
-        n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH + 1)
+    from ctypes.windll import kernel32
+    buf = ctypes.create_unicode_buffer(MAX_COMPUTERNAME_LENGTH + 1)
+    n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH + 1)
 
-        # Try GetComputerNameEx which gives a proper Unicode hostname
-        GetComputerNameEx = getattr(kernel32, 'GetComputerNameExW', None)
-        if (GetComputerNameEx is not None
-            and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
-                                  buf, ctypes.byref(n))):
-            return buf.value
+    # Try GetComputerNameEx which gives a proper Unicode hostname
+    GetComputerNameEx = getattr(kernel32, 'GetComputerNameExW', None)
+    if (GetComputerNameEx is not None
+        and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
+                              buf, ctypes.byref(n))):
+        return buf.value
     return os.environ.get('COMPUTERNAME')
 
 
