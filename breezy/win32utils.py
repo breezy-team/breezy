@@ -164,7 +164,7 @@ def get_appdata_location():
     if appdata:
         return appdata
     # Use APPDATA if defined, will return None if not
-    return get_environ_unicode('APPDATA')
+    return os.environ.get('APPDATA')
 
 
 def get_local_appdata_location():
@@ -181,7 +181,7 @@ def get_local_appdata_location():
     if local:
         return local
     # Vista supplies LOCALAPPDATA, but XP and earlier do not.
-    local = get_environ_unicode('LOCALAPPDATA')
+    local = os.environ.get('LOCALAPPDATA')
     if local:
         return local
     return get_appdata_location()
@@ -196,14 +196,14 @@ def get_home_location():
     home = _get_sh_special_folder_path(CSIDL_PERSONAL)
     if home:
         return home
-    home = get_environ_unicode('HOME')
+    home = os.environ.get('HOME')
     if home is not None:
         return home
-    homepath = get_environ_unicode('HOMEPATH')
+    homepath = os.environ.get('HOMEPATH')
     if homepath is not None:
-        return os.path.join(get_environ_unicode('HOMEDIR', ''), home)
+        return os.path.join(os.environ.get('HOMEDIR', ''), home)
     # at least return windows root directory
-    windir = get_environ_unicode('WINDIR')
+    windir = os.environ.get('WINDIR')
     if windir:
         return os.path.splitdrive(windir)[0] + '/'
     # otherwise C:\ is good enough for 98% users
@@ -225,7 +225,7 @@ def get_user_name():
         if GetUserName(buf, ctypes.byref(n)):
             return buf.value
     # otherwise try env variables
-    return get_environ_unicode('USERNAME')
+    return os.environ.get('USERNAME')
 
 
 # 1 == ComputerNameDnsHostname, which returns "The DNS host name of the local
@@ -253,7 +253,7 @@ def get_host_name():
             and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
                                   buf, ctypes.byref(n))):
             return buf.value
-    return get_environ_unicode('COMPUTERNAME')
+    return os.environ.get('COMPUTERNAME')
 
 
 def _ensure_with_dir(path):
@@ -418,47 +418,10 @@ def get_unicode_argv():
     argv = _command_line_to_argv(command_line, sys.argv)[1:]
     return argv
 
-def get_environ_unicode(key, default=None):
-    """Get `key` from environment as unicode or `default` if unset
-
-    The environment is natively unicode on modern windows versions but
-    Python 2 only accesses it through the legacy bytestring api.
-
-    Environmental variable names are case insenstive on Windows.
-
-    A large enough buffer will be allocated to retrieve the value, though
-    it may take two calls to the underlying library function.
-    """
-    cfunc = getattr(get_environ_unicode, "_c_function", None)
-    if cfunc is None:
-        from ctypes.wintypes import DWORD, LPCWSTR, LPWSTR
-        cfunc = ctypes.WINFUNCTYPE(DWORD, LPCWSTR, LPWSTR, DWORD)(
-            ("GetEnvironmentVariableW", ctypes.windll.kernel32))
-        get_environ_unicode._c_function = cfunc
-    buffer_size = 256  # heuristic, 256 characters often enough
-    while True:
-        buf = ctypes.create_unicode_buffer(buffer_size)
-        length = cfunc(key, buf, buffer_size)
-        if not length:
-            code = ctypes.GetLastError()
-            if code == 203:  # ERROR_ENVVAR_NOT_FOUND
-                return default
-            raise ctypes.WinError(code)
-        if buffer_size > length:
-            return buf[:length]
-        buffer_size = length
-
-
-from ctypes.wintypes import BOOL, DWORD, HANDLE
-_kernel32 = ctypes.windll.kernel32
-_CloseHandle = ctypes.WINFUNCTYPE(BOOL, HANDLE)(
-    ("CloseHandle", _kernel32))
-_OpenProcess = ctypes.WINFUNCTYPE(HANDLE, DWORD, BOOL, DWORD)(
-    ("OpenProcess", _kernel32))
-
 def _ctypes_is_local_pid_dead(pid):
+    from ctypes.wintypes.windll import kernel32
     """True if pid doesn't correspond to live process on this machine"""
-    handle = _OpenProcess(1, False, pid)  # PROCESS_TERMINATE
+    handle = kernel32.OpenProcess(1, False, pid)
     if not handle:
         errorcode = ctypes.GetLastError()
         if errorcode == 5:  # ERROR_ACCESS_DENIED
@@ -467,7 +430,7 @@ def _ctypes_is_local_pid_dead(pid):
         elif errorcode == 87:  # ERROR_INVALID_PARAMETER
             return True
         raise ctypes.WinError(errorcode)
-    _CloseHandle(handle)
+    Kernel32.CloseHandle(handle)
     return False
 
 is_local_pid_dead = _ctypes_is_local_pid_dead
