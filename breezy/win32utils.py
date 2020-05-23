@@ -409,7 +409,7 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
 
 def _ctypes_is_local_pid_dead(pid):
     import ctypes
-    kernel32 = .wintypes.windll.kernel32
+    kernel32 = ctypes.wintypes.windll.kernel32
     """True if pid doesn't correspond to live process on this machine"""
     handle = kernel32.OpenProcess(1, False, pid)
     if not handle:
