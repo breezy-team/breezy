@@ -2137,32 +2137,6 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEqual(self.gid, s.st_gid)
 
 
-class TestPathFromEnviron(tests.TestCase):
-
-    def test_is_unicode(self):
-        self.overrideEnv('BRZ_TEST_PATH', './anywhere at all/')
-        path = osutils.path_from_environ('BRZ_TEST_PATH')
-        self.assertIsInstance(path, str)
-        self.assertEqual(u'./anywhere at all/', path)
-
-    def test_posix_path_env_ascii(self):
-        self.overrideEnv('BRZ_TEST_PATH', '/tmp')
-        home = osutils._posix_path_from_environ('BRZ_TEST_PATH')
-        self.assertIsInstance(home, str)
-        self.assertEqual(u'/tmp', home)
-
-    def test_posix_path_env_unicode(self):
-        self.requireFeature(features.ByteStringNamedFilesystem)
-        self.overrideEnv('BRZ_TEST_PATH', '/home/\xa7test')
-        self.overrideAttr(osutils, "_fs_enc", "iso8859-1")
-        self.assertEqual(u'/home/\xa7test',
-                         osutils._posix_path_from_environ('BRZ_TEST_PATH'))
-        osutils._fs_enc = "iso8859-5"
-        # In Python 3, os.environ returns unicode.
-        self.assertEqual(u'/home/\xa7test',
-                         osutils._posix_path_from_environ('BRZ_TEST_PATH'))
-
-
 class TestGetHomeDir(tests.TestCase):
 
     def test_is_unicode(self):

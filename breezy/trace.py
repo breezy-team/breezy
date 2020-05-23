@@ -201,7 +201,7 @@ def _get_brz_log_filename():
     :return: A path to the log file
     :raise EnvironmentError: If the cache directory could not be created
     """
-    brz_log = osutils.path_from_environ('BRZ_LOG')
+    brz_log = os.environ.get('BRZ_LOG')
     if brz_log:
         return brz_log
     return os.path.join(bedding.cache_dir(), 'brz.log')
