@@ -1252,9 +1252,9 @@ def install_bzr_command_hooks():
 
 def _specified_or_unicode_argv(argv):
     # For internal or testing use, argv can be passed.  Otherwise, get it from
-    # the process arguments in a unicode-safe way.
+    # the process arguments.
     if argv is None:
-        return osutils.get_unicode_argv()
+        return sys.argv[1:]
     new_argv = []
     try:
         # ensure all arguments are unicode strings

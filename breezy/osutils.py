@@ -83,10 +83,6 @@ class UnsupportedTimezoneFormat(errors.BzrError):
         self.timezone = timezone
 
 
-def get_unicode_argv():
-    return sys.argv[1:]
-
-
 def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.lstat(filename).st_mode
@@ -478,7 +474,6 @@ if sys.platform == 'win32':
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
 
-    get_unicode_argv = getattr(win32utils, 'get_unicode_argv', get_unicode_argv)
     _get_home_dir = win32utils.get_home_location
     getuser_unicode = win32utils.get_user_name
 

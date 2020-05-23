@@ -404,17 +404,6 @@ def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     return args
 
 
-def get_unicode_argv():
-    prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p)
-    GetCommandLineW = prototype(("GetCommandLineW",
-                                 ctypes.windll.kernel32))
-    command_line = GetCommandLineW()
-    if command_line is None:
-        raise ctypes.WinError()
-    # Skip the first argument, since we only care about parameters
-    argv = _command_line_to_argv(command_line, sys.argv)[1:]
-    return argv
-
 def _ctypes_is_local_pid_dead(pid):
     from ctypes.wintypes.windll import kernel32
     """True if pid doesn't correspond to live process on this machine"""
