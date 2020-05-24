@@ -253,6 +253,8 @@ class GitLabMergeProposal(MergeProposal):
             return False
         elif self._mr['merge_status'] == 'can_be_merged':
             return True
+        elif self._mr['merge_status'] == 'unchecked':
+            return None
         else:
             raise ValueError(self._mr['merge_status'])
 
