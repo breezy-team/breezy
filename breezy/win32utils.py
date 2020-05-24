@@ -343,22 +343,17 @@ def get_app_path(appname):
 
     if type_id == REG_SZ:
         return path
-    if type_id == REG_EXPAND_SZ and has_win32api:
-        fullpath = win32api.ExpandEnvironmentStrings(path)
-        if len(fullpath) > 1 and fullpath[0] == '"' and fullpath[-1] == '"':
-            fullpath = fullpath[1:-1]   # remove quotes around value
-        return fullpath
     return appname
 
 
 def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
-    from ctypes.wintypes import BOOL, DWORD, LPCWSTR
+    from ctypes.wintypes import BOOL, DWORD, LPWSTR
     import ctypes
-    _kernel32 = ctypes.windll.kernel32
     # <https://docs.microsoft.com/windows/desktop/api/fileapi/nf-fileapi-setfileattributesw>
-    _SetFileAttributesW = ctypes.WINFUNCTYPE(BOOL, LPCWSTR, DWORD)(
-        ("SetFileAttributesW", _kernel32))
+    SetFileAttributes = ctypes.windll.kernel32.SetFileAttributesW
+    SetFileAttributes.argtypes = LPWSTR, DWORD
+    SetFileAttributes.restype = BOOL
     FILE_ATTRIBUTE_HIDDEN = 2
     if not SetFileAttributes(path, FILE_ATTRIBUTE_HIDDEN):
         e = ctypes.WinError()
