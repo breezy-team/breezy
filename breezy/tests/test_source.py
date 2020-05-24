@@ -352,8 +352,8 @@ class TestSource(TestSourceHelper):
             def handle(self, error):
                 self.errors.append(error)
 
-        app.formatter = Formatter()
         app.initialize([])
+        app.formatter = Formatter()
         app.run_checks()
         app.report()
         self.assertEqual(app.formatter.errors, [])

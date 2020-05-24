@@ -63,7 +63,7 @@ def bazaar_config_dir():
 
     TODO: Global option --config-dir to override this.
     """
-    base = osutils.path_from_environ('BZR_HOME')
+    base = os.environ.get('BZR_HOME')
     if sys.platform == 'win32':
         if base is None:
             base = win32utils.get_appdata_location()
@@ -71,7 +71,7 @@ def bazaar_config_dir():
             base = win32utils.get_home_location()
         return osutils.pathjoin(base, 'bazaar', '2.0')
     if base is None:
-        xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
+        xdg_dir = os.environ.get('XDG_CONFIG_HOME')
         if xdg_dir is None:
             xdg_dir = osutils.pathjoin(osutils._get_home_dir(), ".config")
         xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
@@ -91,14 +91,14 @@ def _config_dir():
     the bazaar one (see bazaar_config_dir()) does, use that instead.
     """
     # TODO: Global option --config-dir to override this.
-    base = osutils.path_from_environ('BRZ_HOME')
+    base = os.environ.get('BRZ_HOME')
     if sys.platform == 'win32':
         if base is None:
             base = win32utils.get_appdata_location()
         if base is None:
             base = win32utils.get_home_location()
     if base is None:
-        base = osutils.path_from_environ('XDG_CONFIG_HOME')
+        base = os.environ.get('XDG_CONFIG_HOME')
         if base is None:
             base = osutils.pathjoin(osutils._get_home_dir(), ".config")
     breezy_dir = osutils.pathjoin(base, 'breezy')
@@ -166,14 +166,14 @@ def crash_dir():
 
 def cache_dir():
     """Return the cache directory to use."""
-    base = osutils.path_from_environ('BRZ_HOME')
+    base = os.environ.get('BRZ_HOME')
     if sys.platform in "win32":
         if base is None:
             base = win32utils.get_local_appdata_location()
         if base is None:
             base = win32utils.get_home_location()
     else:
-        base = osutils.path_from_environ('XDG_CACHE_HOME')
+        base = os.environ.get('XDG_CACHE_HOME')
         if base is None:
             base = osutils.pathjoin(osutils._get_home_dir(), ".cache")
 
