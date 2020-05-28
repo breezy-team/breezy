@@ -58,7 +58,6 @@ from ...trace import warning, mutter
 from ...transport import (
     get_transport,
     )
-from ...workingtree import SettingFileIdUnsupported
 
 from .bzrtools_import import import_dir
 from .errors import (
@@ -932,10 +931,10 @@ class DistributionBranch(object):
             current_config.write()
             dirname = osutils.dirname(config_relpath)
             dir_id = poss_native_tree.path2id(dirname)
-            try:
+            if self.tree.supports_setting_file_ids():
                 self.tree.add([dirname, config_relpath],
                               ids=[dir_id, config_fileid])
-            except SettingFileIdUnsupported:
+            else:
                 self.tree.add([dirname, config_relpath])
         if native != current_native:
             if current_config is None:
