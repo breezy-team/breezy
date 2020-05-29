@@ -332,6 +332,7 @@ class TestSource(TestSourceHelper):
         new_path.insert(
             0, os.path.join(os.path.dirname(__file__), '..', '..', 'tools'))
         self.overrideAttr(sys, 'path', new_path)
+        import argparse
         from flake8.main.application import Application
         from flake8.formatting.base import BaseFormatter
         app = Application()
@@ -352,7 +353,10 @@ class TestSource(TestSourceHelper):
             def handle(self, error):
                 self.errors.append(error)
 
-        app.initialize([])
+        try:
+            app.initialize([])
+        except argparse.ArgumentError as e:
+            self.skipTest('broken flake8: %r' % e)
         app.formatter = Formatter()
         app.run_checks()
         app.report()
