@@ -83,10 +83,6 @@ class UnsupportedTimezoneFormat(errors.BzrError):
         self.timezone = timezone
 
 
-def get_unicode_argv():
-    return sys.argv[1:]
-
-
 def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.lstat(filename).st_mode
@@ -311,15 +307,6 @@ def _posix_normpath(path):
     return path
 
 
-def _posix_path_from_environ(key):
-    """Get unicode path from `key` in environment or None if not present
-
-    Note that posix systems use arbitrary byte strings for filesystem objects,
-    so a path that raises BadFilenameEncoding here may still be accessible.
-    """
-    return os.environ.get(key, None)
-
-
 def _posix_get_home_dir():
     """Get the home directory of the current user as a unicode path"""
     path = posixpath.expanduser("~")
@@ -430,7 +417,6 @@ abspath = _posix_abspath
 realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = _posix_normpath
-path_from_environ = _posix_path_from_environ
 _get_home_dir = _posix_get_home_dir
 getuser_unicode = _posix_getuser_unicode
 getcwd = _getcwd
@@ -488,8 +474,6 @@ if sys.platform == 'win32':
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
 
-    get_unicode_argv = getattr(win32utils, 'get_unicode_argv', get_unicode_argv)
-    path_from_environ = win32utils.get_environ_unicode
     _get_home_dir = win32utils.get_home_location
     getuser_unicode = win32utils.get_user_name
 
@@ -2583,19 +2567,6 @@ def ensure_empty_directory_exists(path, exception_class):
             raise
         if os.listdir(path) != []:
             raise exception_class(path)
-
-
-def is_environment_error(evalue):
-    """True if exception instance is due to a process environment issue
-
-    This includes OSError and IOError, but also other errors that come from
-    the operating system or core libraries but are not subclasses of those.
-    """
-    if isinstance(evalue, (EnvironmentError, select.error)):
-        return True
-    if sys.platform == "win32" and win32utils._is_pywintypes_error(evalue):
-        return True
-    return False
 
 
 def read_mtab(path):

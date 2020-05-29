@@ -189,7 +189,7 @@ def _expect_identifier(name, env_key, env_value):
 def _env_disable_plugins(key='BRZ_DISABLE_PLUGINS'):
     """Gives list of names for plugins to disable from environ key."""
     disabled_names = []
-    env = osutils.path_from_environ(key)
+    env = os.environ.get(key)
     if env:
         for name in env.split(os.pathsep):
             name = _expect_identifier(name, key, env)
@@ -201,7 +201,7 @@ def _env_disable_plugins(key='BRZ_DISABLE_PLUGINS'):
 def _env_plugins_at(key='BRZ_PLUGINS_AT'):
     """Gives list of names and paths of specific plugins from environ key."""
     plugin_details = []
-    env = osutils.path_from_environ(key)
+    env = os.environ.get(key)
     if env:
         for pair in env.split(os.pathsep):
             if '@' in pair:
@@ -222,7 +222,7 @@ def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
     'path', or None and one of the values 'user', 'core', 'entrypoints', 'site'.
     """
     path_details = []
-    env = osutils.path_from_environ(key)
+    env = os.environ.get(key)
     defaults = {
         "user": not env,
         "core": True,

@@ -201,7 +201,7 @@ def _get_brz_log_filename():
     :return: A path to the log file
     :raise EnvironmentError: If the cache directory could not be created
     """
-    brz_log = osutils.path_from_environ('BRZ_LOG')
+    brz_log = os.environ.get('BRZ_LOG')
     if brz_log:
         return brz_log
     return os.path.join(bedding.cache_dir(), 'brz.log')
@@ -509,7 +509,7 @@ def report_exception(exc_info, err_file):
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
-    elif osutils.is_environment_error(exc_object):
+    elif isinstance(exc_object, EnvironmentError):
         if getattr(exc_object, 'errno', None) == errno.EPIPE:
             err_file.write("brz: broken pipe\n")
             return errors.EXIT_ERROR
