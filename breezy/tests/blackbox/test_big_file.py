@@ -24,6 +24,7 @@ memory.
 import errno
 import os
 import resource
+import sys
 
 from breezy import (
     osutils,
@@ -39,6 +40,9 @@ BIG_FILE_CHUNK_SIZE = 1024
 
 RESOURCE = resource.RLIMIT_AS
 LIMIT = 1024 * 1024 * 100
+
+if sys.version_info[0] == 2:
+    range = xrange
 
 
 def make_big_file(path):
