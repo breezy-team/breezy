@@ -36,6 +36,7 @@ if __name__ == '__main__':
           author_email="breezy-core@googlegroups.com",
           license="GNU GPL v2",
           url="https://code.breezy-vcs.org/breezy-debian",
+          install_requires=['yaml'],
           packages=['breezy.plugins.debian',
                     'breezy.plugins.debian.quilt',
                     'breezy.plugins.debian.tests',
