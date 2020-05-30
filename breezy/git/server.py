@@ -94,9 +94,14 @@ class BzrBackendRepo(BackendRepo):
                 return
             shallows = getattr(graph_walker, 'shallow', frozenset())
             if isinstance(self.object_store, BazaarObjectStore):
-                return self.object_store.generate_pack_contents(
-                    have, wants, shallow=shallows,
-                    progress=progress, get_tagged=get_tagged, lossy=True)
+                if shallows:
+                    return self.object_store.generate_pack_contents(
+                        have, wants, shallow=shallows,
+                        progress=progress, get_tagged=get_tagged, lossy=True)
+                else:
+                    return self.object_store.generate_pack_contents(
+                        have, wants, progress=progress,
+                        get_tagged=get_tagged, lossy=True)
             else:
                 if shallows:
                     return self.object_store.generate_pack_contents(
