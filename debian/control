@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Jelmer Vernooĳ <jelmer@debian.org>
 Build-Depends: python3-all (>= 2.6.6-3), xz-utils, dh-python, debhelper-compat (= 13)
-Build-Depends-Indep: brz (>= 3.1.0~), python3-docutils, python3-debian, python3-apt, patchutils, python3-testtools, pristine-tar, devscripts (>= 2.10.59), python3-subunit, python3-breezy.tests (>= 3.1~), libalgorithm-merge-perl, python3-distro-info, quilt, python3-dulwich (>= 0.19.9), python3-yaml
+Build-Depends-Indep: brz (>= 3.1~), python3-docutils, python3-debian, python3-apt, patchutils, python3-testtools, pristine-tar, devscripts (>= 2.10.59), python3-subunit, python3-breezy.tests (>= 3.1~), libalgorithm-merge-perl, python3-distro-info, quilt, python3-dulwich (>= 0.19.9), python3-yaml
 Vcs-Bzr: https://code.breezy-vcs.org/breezy-debian/unstable
 Vcs-Browser: https://code.breezy-vcs.org/breezy-debian/unstable
 Rules-Requires-Root: no

@@ -1,10 +1,10 @@
-breezy-debian (2.8.36) UNRELEASED; urgency=medium
+breezy-debian (2.8.36) unstable; urgency=medium
 
   * Don't use file ids if the underlying tree does not support them.
   * Bump required version of Breezy to 3.1.
   * Bump debhelper from old 12 to 13.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 28 May 2020 23:09:02 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 30 May 2020 14:40:41 +0000
 
 breezy-debian (2.8.35) unstable; urgency=medium
 
