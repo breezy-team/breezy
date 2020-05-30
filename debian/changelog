@@ -1,3 +1,9 @@
+breezy-debian (2.8.37) UNRELEASED; urgency=medium
+
+  * Fix dh-make.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 30 May 2020 19:28:07 +0000
+
 breezy-debian (2.8.36) unstable; urgency=medium
 
   * Don't use file ids if the underlying tree does not support them.

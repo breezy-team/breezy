@@ -1388,7 +1388,7 @@ class cmd_dh_make(Command):
             use_pristine_tar=True):
         from . import dh_make
         tree = dh_make.import_upstream(
-            tarball, package_name, version.encode("utf-8"),
+            tarball, package_name, version,
             use_pristine_tar=use_pristine_tar)
         if not bzr_only:
             with tree.lock_write():
