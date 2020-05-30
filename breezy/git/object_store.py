@@ -791,13 +791,15 @@ class BazaarObjectStore(BaseObjectStore):
             self.generate_pack_contents(have, want, progress, get_tagged,
                                         lossy=True))
 
-    def generate_pack_contents(self, have, want, progress=None,
+    def generate_pack_contents(self, have, want, shallow=None, progress=None,
                                ofs_delta=False, get_tagged=None, lossy=False):
         """Iterate over the contents of a pack file.
 
         :param have: List of SHA1s of objects that should not be sent
         :param want: List of SHA1s of objects that should be sent
         """
+        if shallow is not None:
+            raise NotImplementedError('shallow is currently not supported')
         processed = set()
         ret = self.lookup_git_shas(have + want)
         for commit_sha in have:
