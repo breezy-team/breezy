@@ -777,6 +777,8 @@ class BazaarObjectStore(BaseObjectStore):
         :param have: List of SHA1s of objects that should not be sent
         :param want: List of SHA1s of objects that should be sent
         """
+        if shallow is not None:
+            raise NotImplementedError('shallow is currently not supported')
         processed = set()
         ret = self.lookup_git_shas(have + want)
         for commit_sha in have:
