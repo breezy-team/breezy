@@ -12,6 +12,10 @@ jobs:
         os: [ubuntu-latest]
         python-version: [3.7, 3.8, 3.9, "3.10"]
         experimental: [false]
+        include:
+          - os: windows-latest
+            python-version: 3.7
+            experimental: true
 # See https://github.com/actions/toolkit/issues/399
 #        include:
 #          - os: ubuntu-latest
