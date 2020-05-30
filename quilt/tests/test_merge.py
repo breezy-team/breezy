@@ -29,10 +29,7 @@ from ..... import (
     errors,
     trace,
     )
-try:
-    from .....bedding import ensure_config_dir_exists
-except ImportError:
-    from .....config import ensure_config_dir_exists
+from .....bedding import ensure_config_dir_exists
 from .....merge import Merger
 from .....mutabletree import MutableTree
 

@@ -21,10 +21,7 @@
 from __future__ import absolute_import
 
 import errno
-try:
-    import hashlib as md5
-except ImportError:
-    import md5
+import hashlib
 import signal
 import shutil
 import subprocess
@@ -312,7 +309,7 @@ def md5sum_filename(filename):
     :param filename: Path of the file to checksum
     :return: MD5 Checksum as hex digest
     """
-    m = md5.md5()
+    m = hashlib.md5()
     f = open(filename, 'rb')
     try:
         for line in f:
@@ -346,7 +343,7 @@ def write_if_different(contents, target):
     :param contents: The contents to write, as a string
     :param target: Path of the target file
     """
-    md5sum = md5.md5()
+    md5sum = hashlib.md5()
     md5sum.update(contents)
     fd, temp_path = tempfile.mkstemp("builddeb-rename-")
     fobj = os.fdopen(fd, "wb")

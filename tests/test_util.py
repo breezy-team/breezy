@@ -22,10 +22,7 @@ from __future__ import absolute_import
 
 import bz2
 import gzip
-try:
-    import hashlib as md5
-except ImportError:
-    import md5
+import hashlib
 import os
 import shutil
 import tarfile
@@ -371,7 +368,7 @@ class MoveFileTests(TestCaseInTempDir):
 
     def test_move_file_same_md5(self):
         self.build_tree(['a'])
-        md5sum = md5.md5()
+        md5sum = hashlib.md5()
         with open('a', 'rb') as f:
             md5sum.update(f.read())
         shutil.copy('a', 'b')
@@ -381,11 +378,11 @@ class MoveFileTests(TestCaseInTempDir):
 
     def test_move_file_diff_md5(self):
         self.build_tree(['a', 'b'])
-        md5sum = md5.md5()
+        md5sum = hashlib.md5()
         with open('a', 'rb') as f:
             md5sum.update(f.read())
         a_hexdigest = md5sum.hexdigest()
-        md5sum = md5.md5()
+        md5sum = hashlib.md5()
         with open('b', 'rb') as f:
             md5sum.update(f.read())
         b_hexdigest = md5sum.hexdigest()
@@ -393,7 +390,7 @@ class MoveFileTests(TestCaseInTempDir):
         move_file_if_different('a', 'b', a_hexdigest)
         self.assertPathDoesNotExist('a')
         self.assertPathExists('b')
-        md5sum = md5.md5()
+        md5sum = hashlib.md5()
         with open('b', 'rb') as f:
             md5sum.update(f.read())
         self.assertEqual(md5sum.hexdigest(), a_hexdigest)

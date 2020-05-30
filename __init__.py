@@ -61,10 +61,7 @@ for command, aliases in commands.items():
 
 
 def global_conf():
-    try:
-        from ...bedding import config_dir
-    except ImportError:
-        from ...config import config_dir
+    from ...bedding import config_dir
     return os.path.join(config_dir(), 'builddeb.conf')
 
 

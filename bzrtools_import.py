@@ -18,15 +18,9 @@ from ...upstream_import import (
     DirWrapper,
     ZipFileWrapper,
     )
-try:
-    from ...bzr import generate_ids
-except ImportError:  # brz < 3.0.0
-    from ... import generate_ids
+from ...bzr import generate_ids
 
-try:
-    from contextlib import ExitStack
-except ImportError:  # python < 3
-    from breezy.cleanup import ExitStack
+from contextlib import ExitStack
 
 from ... import urlutils
 from ...controldir import ControlDir

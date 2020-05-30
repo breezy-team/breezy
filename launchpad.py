@@ -20,10 +20,7 @@
 
 from __future__ import absolute_import
 
-try:
-    from ...bedding import config_dir
-except ImportError:
-    from ...config import config_dir
+from ...bedding import config_dir
 from ...trace import (
     mutter,
     note,
