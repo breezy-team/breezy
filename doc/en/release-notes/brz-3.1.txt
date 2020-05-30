@@ -178,6 +178,9 @@ Bug Fixes
 * Cope with non-ascii characters in Git signatures.
   (Jelmer Vernooĳ, #1869533)
 
+* Fix use of ``proxy_bypass`` on Python 3.
+  (Jelmer Vernooĳ, #1878698)
+
 Documentation
 *************
 
