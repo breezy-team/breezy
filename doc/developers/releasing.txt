@@ -53,10 +53,10 @@ different kinds of users:
 Differences in the release process between beta and stable release will be
 mentioned when needed.
 
-When do we relase ?
-===================
+When do we release ?
+====================
 
-As of September 2018, we maintain a single series: 3.0.
+As of May 2020, we maintain a two series: 3.1 and trunk (3.2).
 
 #. as much as possible releases should not disturb development, and
    ongoing development should not disturb releases,
