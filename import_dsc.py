@@ -295,13 +295,16 @@ class DistributionBranch(object):
         """
         return self.get_lesser_branches() + self.get_greater_branches()
 
-    def tag_name(self, version):
+    def tag_name(self, version, vendor=None):
         """Gets the name of the tag that is used for the version.
 
         :param version: the Version object that the tag should refer to.
         :return: a String with the name of the tag.
         """
-        return str(version)
+        if vendor is not None:
+            return '%s/%s' % (vendor, version)
+        else:
+            return str(version)
 
     def _has_version(self, branch, tag_name, md5=None):
         if not branch.tags.has_tag(tag_name):
@@ -323,7 +326,7 @@ class DistributionBranch(object):
                 "associated 'deb-md5' property" % tag_name)
             return False
 
-    def has_version(self, version, md5=None):
+    def has_version(self, version, md5=None, vendor=None):
         """Whether this branch contains the package version specified.
 
         The version must be judged present by having the appropriate tag
@@ -337,14 +340,13 @@ class DistributionBranch(object):
         :return: True if this branch contains the specified version of the
             package. False otherwise.
         """
-        tag_name = self.tag_name(version)
-        if self._has_version(self.branch, tag_name, md5=md5):
+        if self._has_version(self.branch, str(version), md5=md5):
             return True
         # TODO(jelmer): There is some overlap here with revid_of_version
-        for debian_tag_name in ["debian-" + tag_name, "debian/" + tag_name]:
+        for debian_tag_name in ["debian-%s" % version, "debian/%s" % version]:
             if self._has_version(self.branch, debian_tag_name, md5=md5):
                 return True
-        for ubuntu_tag_name in ["ubuntu-" + tag_name, "ubuntu/" + tag_name]:
+        for ubuntu_tag_name in ["ubuntu-%s" % version, "ubuntu/%s" % version]:
             if self._has_version(self.branch, ubuntu_tag_name, md5=md5):
                 return True
         return False
@@ -424,18 +426,17 @@ class DistributionBranch(object):
             revision id of. The Version must be present in the branch.
         :return: the revision id corresponding to that version
         """
-        tag_name = self.tag_name(version)
-        if self._has_version(self.branch, tag_name):
-            return self.branch.tags.lookup_tag(tag_name)
-        for debian_tag_name in ["debian-" + tag_name, "debian/" + tag_name]:
+        if self._has_version(self.branch, str(version)):
+            return self.branch.tags.lookup_tag(str(version))
+        for debian_tag_name in ["debian-%s" % version, "debian/%s" % version]:
             if self._has_version(self.branch, debian_tag_name):
                 return self.branch.tags.lookup_tag(debian_tag_name)
-        for ubuntu_tag_name in ["ubuntu-" + tag_name, "ubuntu/" + tag_name]:
+        for ubuntu_tag_name in ["ubuntu-%s" % version, "ubuntu/%s" % version]:
             if self._has_version(self.branch, ubuntu_tag_name):
                 return self.branch.tags.lookup_tag(ubuntu_tag_name)
-        return self.branch.tags.lookup_tag(tag_name)
+        return self.branch.tags.lookup_tag(str(version))
 
-    def tag_version(self, version, revid=None):
+    def tag_version(self, version, revid=None, vendor=None):
         """Tags the branch's last revision with the given version.
 
         Sets a tag on the last revision of the branch with a tag that refers
@@ -446,7 +447,7 @@ class DistributionBranch(object):
             tip of self.branch.
         :return: Name of the tag set
         """
-        tag_name = self.tag_name(version)
+        tag_name = self.tag_name(version, vendor)
         if revid is None:
             revid = self.branch.last_revision()
         self.branch.tags.set_tag(tag_name, revid)
