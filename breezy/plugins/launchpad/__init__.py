@@ -122,3 +122,7 @@ For more information see http://help.launchpad.net/
 topic_registry.register('launchpad',
                         _launchpad_help,
                         'Using Bazaar with Launchpad.net')
+
+
+from ...propose import hosters
+hosters.register_lazy("launchpad", __name__ + '.hoster', "Launchpad")

@@ -28,13 +28,6 @@ plugin_cmds.register_lazy(
     __name__ + ".cmds")
 
 
-from ...propose import hosters
-hosters.register_lazy(
-    "launchpad", "breezy.plugins.propose.launchpad",
-    "Launchpad")
-hosters.register_lazy(
-
-
 def test_suite():
     from unittest import TestSuite
     from .tests import test_suite
