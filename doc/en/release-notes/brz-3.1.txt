@@ -134,6 +134,9 @@ Improvements
 * Ignore special files (fifos, block/character devices, sockets)
   when finding changes in Git working trees. (Jelmer Vernooĳ, #1857244)
 
+* Parse error messages from stderr when a remote Git server
+  hangs up. (Jelmer Vernooĳ)
+
 
 Bug Fixes
 *********

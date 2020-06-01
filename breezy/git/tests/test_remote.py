@@ -39,6 +39,7 @@ from ..mapping import default_mapping
 from ..remote import (
     split_git_url,
     parse_git_error,
+    parse_git_hangup,
     HeadUpdateFailed,
     RemoteGitError,
     RemoteGitBranchFormat,
@@ -46,6 +47,7 @@ from ..remote import (
     )
 
 from dulwich import porcelain
+from dulwich.errors import HangupException
 from dulwich.repo import Repo as GitRepo
 
 
@@ -140,6 +142,45 @@ class ParseGitErrorTests(TestCase):
 Email support@github.com for help
 """)
         self.assertIsInstance(e, NotBranchError)
+
+
+class ParseHangupTests(TestCase):
+
+    def setUp(self):
+        super(ParseHangupTests, self).setUp()
+        try:
+            HangupException(['foo'])
+        except TypeError:
+            self.skipTest('dulwich version too old')
+
+    def test_not_set(self):
+        self.assertIsInstance(
+            parse_git_hangup('http://', HangupException()), HangupException)
+
+    def test_single_line(self):
+        self.assertEqual(
+            RemoteGitError('foo bar'),
+            parse_git_hangup('http://', HangupException(['foo bar'])))
+
+    def test_multi_lines(self):
+        self.assertEqual(
+            RemoteGitError('foo bar\nbla bla'),
+            parse_git_hangup(
+                'http://', HangupException(['foo bar', 'bla bla'])))
+
+    def test_filter_boring(self):
+        self.assertEqual(
+            RemoteGitError('foo bar'), parse_git_hangup('http://', HangupException(
+                ['=======', 'foo bar', '======'])))
+
+    def test_permission_denied(self):
+        self.assertEqual(
+            PermissionDenied('http://', 'You are not allowed to push code to this project.'),
+            parse_git_hangup(
+                'http://',
+                HangupException(
+                    ['=======',
+                     'You are not allowed to push code to this project.', '', '======'])))
 
 
 class TestRemoteGitBranchFormat(TestCase):
