@@ -129,6 +129,18 @@ class ControlDir(ControlComponent):
         """
         return list(self.get_branches().values())
 
+    def branch_names(self):
+        """List all branch names in this control directory.
+
+        :return: List of branch names
+        """
+        try:
+            self.get_branch_reference()
+        except (errors.NotBranchError, errors.NoRepositoryPresent):
+            return []
+        else:
+            return [""]
+
     def get_branches(self):
         """Get all branches in this control directory, as a dictionary.
 
@@ -400,7 +412,8 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.sprout)
 
     def push_branch(self, source, revision_id=None, overwrite=False,
-                    remember=False, create_prefix=False, lossy=False):
+                    remember=False, create_prefix=False, lossy=False,
+                    tag_selector=None):
         """Push the source branch into this ControlDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
@@ -424,7 +437,9 @@ class ControlDir(ControlComponent):
                 # revision
                 revision_id = source.last_revision()
             repository_to.fetch(source.repository, revision_id=revision_id)
-            br_to = source.sprout(self, revision_id=revision_id, lossy=lossy)
+            br_to = source.sprout(
+                self, revision_id=revision_id, lossy=lossy,
+                tag_selector=tag_selector)
             if source.get_push_location() is None or remember:
                 # FIXME: Should be done only if we succeed ? -- vila 2012-01-18
                 source.set_push_location(br_to.base)
@@ -444,17 +459,19 @@ class ControlDir(ControlComponent):
                 tree_to = self.open_workingtree()
             except errors.NotLocalUrl:
                 push_result.branch_push_result = source.push(
-                    br_to, overwrite, stop_revision=revision_id, lossy=lossy)
+                    br_to, overwrite, stop_revision=revision_id, lossy=lossy,
+                    tag_selector=tag_selector)
                 push_result.workingtree_updated = False
             except errors.NoWorkingTree:
                 push_result.branch_push_result = source.push(
-                    br_to, overwrite, stop_revision=revision_id, lossy=lossy)
+                    br_to, overwrite, stop_revision=revision_id, lossy=lossy,
+                    tag_selector=tag_selector)
                 push_result.workingtree_updated = None  # Not applicable
             else:
                 with tree_to.lock_write():
                     push_result.branch_push_result = source.push(
                         tree_to.branch, overwrite, stop_revision=revision_id,
-                        lossy=lossy)
+                        lossy=lossy, tag_selector=tag_selector)
                     tree_to.update()
                 push_result.workingtree_updated = True
             push_result.old_revno = push_result.branch_push_result.old_revno
@@ -493,7 +510,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.check_conversion_target)
 
     def clone(self, url, revision_id=None, force_new_repo=False,
-              preserve_stacking=False):
+              preserve_stacking=False, tag_selector=None):
         """Clone this controldir and its contents to url verbatim.
 
         :param url: The url create the clone at.  If url's last component does
@@ -509,11 +526,13 @@ class ControlDir(ControlComponent):
         return self.clone_on_transport(_mod_transport.get_transport(url),
                                        revision_id=revision_id,
                                        force_new_repo=force_new_repo,
-                                       preserve_stacking=preserve_stacking)
+                                       preserve_stacking=preserve_stacking,
+                                       tag_selector=tag_selector)
 
     def clone_on_transport(self, transport, revision_id=None,
                            force_new_repo=False, preserve_stacking=False, stacked_on=None,
-                           create_prefix=False, use_existing_dir=True, no_tree=False):
+                           create_prefix=False, use_existing_dir=True, no_tree=False,
+                           tag_selector=None):
         """Clone this controldir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -789,7 +808,7 @@ class ControlDir(ControlComponent):
             a_transport = new_t
 
     @classmethod
-    def open_tree_or_branch(klass, location):
+    def open_tree_or_branch(klass, location, name=None):
         """Return the branch and working tree at a location.
 
         If there is no tree at the location, tree will be None.
@@ -798,7 +817,7 @@ class ControlDir(ControlComponent):
         :return: (tree, branch)
         """
         controldir = klass.open(location)
-        return controldir._get_tree_branch()
+        return controldir._get_tree_branch(name=name)
 
     @classmethod
     def open_containing_tree_or_branch(klass, location,
@@ -1028,12 +1047,6 @@ class ControlDirFormat(object):
     _default_format = None
     """The default format used for new control directories."""
 
-    _server_probers = []
-    """The registered server format probers, e.g. RemoteBzrProber.
-
-    This is a list of Prober-derived classes.
-    """
-
     _probers = []
     """The registered format probers, e.g. BzrProber.
 
@@ -1124,24 +1137,13 @@ class ControlDirFormat(object):
         """
         klass._probers.remove(prober)
 
-    @classmethod
-    def register_server_prober(klass, prober):
-        """Register a control format prober for client-server environments.
-
-        These probers will be used before ones registered with
-        register_prober.  This gives implementations that decide to the
-        chance to grab it before anything looks at the contents of the format
-        file.
-        """
-        klass._server_probers.append(prober)
-
     def __str__(self):
         # Trim the newline
         return self.get_format_description().rstrip()
 
     @classmethod
     def all_probers(klass):
-        return klass._server_probers + klass._probers
+        return klass._probers
 
     @classmethod
     def known_formats(klass):
@@ -1156,7 +1158,9 @@ class ControlDirFormat(object):
     def find_format(klass, transport, probers=None):
         """Return the format present at transport."""
         if probers is None:
-            probers = klass.all_probers()
+            probers = sorted(
+                klass.all_probers(),
+                key=lambda prober: prober.priority(transport))
         for prober_kls in probers:
             prober = prober_kls()
             try:
@@ -1276,8 +1280,8 @@ class Prober(object):
     probers that detect .bzr/ directories and Bazaar smart servers,
     respectively.
 
-    Probers should be registered using the register_server_prober or
-    register_prober methods on ControlDirFormat.
+    Probers should be registered using the register_prober methods on
+    ControlDirFormat.
     """
 
     def probe_transport(self, transport):
@@ -1300,6 +1304,21 @@ class Prober(object):
         :return: A set of known formats.
         """
         raise NotImplementedError(klass.known_formats)
+
+    @classmethod
+    def priority(klass, transport):
+        """Priority of this prober.
+
+        A lower value means the prober gets checked first.
+
+        Other conventions:
+
+        -10: This is a "server" prober
+        0: No priority set
+        10: This is a regular file-based prober
+        100: This is a prober for an unsupported format
+        """
+        return 0
 
 
 class ControlDirFormatInfo(object):

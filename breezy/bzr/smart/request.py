@@ -609,6 +609,9 @@ request_handlers.register_lazy(
     b'Branch.revision_id_to_revno', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestRevisionIdToRevno', info='read')
 request_handlers.register_lazy(
+    b'Branch.get_all_reference_info', 'breezy.bzr.smart.branch',
+    'SmartServerBranchRequestGetAllReferenceInfo', info='read')
+request_handlers.register_lazy(
     b'BzrDir.checkout_metadir', 'breezy.bzr.smart.bzrdir',
     'SmartServerBzrDirRequestCheckoutMetaDir', info='read')
 request_handlers.register_lazy(

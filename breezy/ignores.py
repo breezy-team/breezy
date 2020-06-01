@@ -27,11 +27,13 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     atomicfile,
-    bedding,
     globbing,
     trace,
     )
 """)
+from . import (
+    bedding,
+    )
 
 # ~/.config/breezy/ignore will be filled out using
 # this ignore list, if it does not exist
@@ -101,8 +103,8 @@ def get_user_ignores():
         # since get_* should be a safe operation
         try:
             _set_user_ignores(USER_DEFAULTS)
-        except (IOError, OSError) as e:
-            if e.errno not in (errno.EPERM,):
+        except EnvironmentError as e:
+            if e.errno not in (errno.EPERM, errno.ENOENT):
                 raise
         return patterns
 

@@ -20,13 +20,15 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     counted_lock,
-    errors,
     lock,
     transactions,
     urlutils,
     )
 """)
 
+from . import (
+    errors,
+    )
 from .decorators import (
     only_raises,
     )

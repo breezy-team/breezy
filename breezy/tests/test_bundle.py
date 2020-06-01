@@ -43,7 +43,7 @@ from . import (
     features,
     test_commit,
     )
-from ..tree import find_previous_path
+from ..tree import InterTree
 
 
 def get_text(vf, key):
@@ -147,11 +147,11 @@ class MockTree(object):
     def path2id(self, path):
         return self.ids.get(path)
 
-    def id2path(self, file_id):
-        return self.paths.get(file_id)
-
-    def has_id(self, file_id):
-        return self.id2path(file_id) is not None
+    def id2path(self, file_id, recurse='down'):
+        try:
+            return self.paths[file_id]
+        except KeyError:
+            raise errors.NoSuchId(file_id, self)
 
     def get_file(self, path):
         result = BytesIO()
@@ -270,7 +270,7 @@ class BTreeTester(tests.TestCase):
         btree = self.make_tree_1()[0]
         btree.note_rename("grandparent/parent/file",
                           "grandparent/alt_parent/file")
-        self.assertTrue(btree.id2path(b"e") is None)
+        self.assertRaises(errors.NoSuchId, btree.id2path, b"e")
         self.assertFalse(btree.is_versioned("grandparent/parent/file"))
         btree.note_id(b"e", "grandparent/parent/file")
         return btree
@@ -291,16 +291,6 @@ class BTreeTester(tests.TestCase):
             self.assertEqual(f.read(), b"Extra cheese\n")
         self.assertEqual(
             btree.get_symlink_target('grandparent/parent/symlink'), 'venus')
-
-    def test_adds2(self):
-        """File/inventory adds, with patch-compatibile renames"""
-        btree = self.make_tree_2()
-        btree.contents_by_id = False
-        add_patch = self.unified_diff([b"Hello\n"], [b"Extra cheese\n"])
-        btree.note_patch("grandparent/parent/file", add_patch)
-        btree.note_id(b'f', 'grandparent/parent/symlink', kind='symlink')
-        btree.note_target('grandparent/parent/symlink', 'venus')
-        self.adds_test(btree)
 
     def make_tree_3(self):
         btree, mtree = self.make_tree_1()
@@ -324,23 +314,13 @@ class BTreeTester(tests.TestCase):
         btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
         self.get_file_test(btree)
 
-    def test_get_file2(self):
-        """Get file contents, with patch-compatible renames"""
-        btree = self.make_tree_3()
-        btree.contents_by_id = False
-        mod_patch = self.unified_diff([], [b"Lemon\n"])
-        btree.note_patch("grandparent/alt_parent/stopping", mod_patch)
-        mod_patch = self.unified_diff([], [b"Hello\n"])
-        btree.note_patch("grandparent/alt_parent/file", mod_patch)
-        self.get_file_test(btree)
-
     def test_delete(self):
         "Deletion by bundle"
         btree = self.make_tree_1()[0]
         with btree.get_file(btree.id2path(b"c")) as f:
             self.assertEqual(f.read(), b"Hello\n")
         btree.note_deletion("grandparent/parent/file")
-        self.assertTrue(btree.id2path(b"c") is None)
+        self.assertRaises(errors.NoSuchId, btree.id2path, b"c")
         self.assertFalse(btree.is_versioned("grandparent/parent/file"))
 
     def sorted_ids(self, tree):
@@ -582,7 +562,7 @@ class BundleTester(object):
 
         for path, status, kind, entry in base_files:
             # Check that the meta information is the same
-            to_path = find_previous_path(base_tree, to_tree, path)
+            to_path = InterTree.get(base_tree, to_tree).find_target_path(path)
             self.assertEqual(
                 base_tree.get_file_size(path),
                 to_tree.get_file_size(to_path))
@@ -1056,7 +1036,7 @@ class BundleTester(object):
         bundle = read_bundle(self.create_bundle_text(b'null:', b'rev2')[0])
         repo = self.make_repository('repo', format='dirstate-with-subtree')
         bundle.install_revisions(repo)
-        inv_text = repo._get_inventory_xml(b'rev2')
+        inv_text = b''.join(repo._get_inventory_xml(b'rev2'))
         self.assertNotContainsRe(inv_text, b'format="5"')
         self.assertContainsRe(inv_text, b'format="7"')
 
@@ -1083,7 +1063,7 @@ class BundleTester(object):
     def test_inv_hash_across_serializers(self):
         repo = self.make_repo_with_installed_revisions()
         recorded_inv_sha1 = repo.get_revision(b'rev2').inventory_sha1
-        xml = repo._get_inventory_xml(b'rev2')
+        xml = b''.join(repo._get_inventory_xml(b'rev2'))
         self.assertEqual(osutils.sha_string(xml), recorded_inv_sha1)
 
     def test_across_models_incompatible(self):
@@ -1816,7 +1796,7 @@ class TestBundleWriterReader(tests.TestCase):
         writer = v4.BundleWriter(fileobj)
         writer.begin()
         writer.add_info_record({b'foo': b'bar'})
-        writer._container.add_bytes_record(b'blah', [(b'two', ), (b'names', )])
+        writer._container.add_bytes_record([b'blah'], len(b'blah'), [(b'two', ), (b'names', )])
         writer.end()
         fileobj.seek(0)
         record_iter = v4.BundleReader(fileobj).iter_records()

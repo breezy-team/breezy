@@ -179,14 +179,22 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
     :param bytes: The bytes of the node.
     :param key: The key that the serialised node has.
     """
-    cdef char *c_bytes, *cur, *next, *end
+    cdef char *c_bytes
+    cdef char *cur
+    cdef char *next
+    cdef char *end
     cdef char *next_line
     cdef Py_ssize_t c_bytes_len, prefix_length, items_length
     cdef int maximum_size, width, length, i, prefix_tail_len
     cdef int num_value_lines, num_prefix_bits
-    cdef char *prefix, *value_start, *prefix_tail
-    cdef char *next_null, *last_null, *line_start
-    cdef char *c_entry, *entry_start
+    cdef char *prefix
+    cdef char *value_start
+    cdef char *prefix_tail
+    cdef char *next_null
+    cdef char *last_null
+    cdef char *line_start
+    cdef char *c_entry
+    cdef char *entry_start
     cdef StaticTuple entry_bits
 
     if _LeafNode is None:
@@ -201,7 +209,7 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
     c_bytes = PyBytes_AS_STRING(data)
     c_bytes_len = PyBytes_GET_SIZE(data)
 
-    if c_bytes_len < 9 or memcmp(c_bytes, "chkleaf:\n", 9) != 0:
+    if c_bytes_len < 9 or memcmp(c_bytes, b"chkleaf:\n", 9) != 0:
         raise ValueError("not a serialised leaf node: %r" % data)
     if c_bytes[c_bytes_len - 1] != c'\n':
         raise ValueError("bytes does not end in a newline")
@@ -323,11 +331,16 @@ def _deserialise_leaf_node(data, key, search_key_func=None):
 
 
 def _deserialise_internal_node(data, key, search_key_func=None):
-    cdef char *c_bytes, *cur, *end
+    cdef char *c_bytes
+    cdef char *cur
+    cdef char *end
     cdef char *next_line
     cdef Py_ssize_t c_bytes_len, prefix_length
     cdef int maximum_size, width, length, i, prefix_tail_len
-    cdef char *prefix, *line_prefix, *next_null, *c_item_prefix
+    cdef char *prefix
+    cdef char *line_prefix
+    cdef char *next_null
+    cdef char *c_item_prefix
 
     if _InternalNode is None:
         _import_globals()
@@ -341,7 +354,7 @@ def _deserialise_internal_node(data, key, search_key_func=None):
     c_bytes = PyBytes_AS_STRING(data)
     c_bytes_len = PyBytes_GET_SIZE(data)
 
-    if c_bytes_len < 9 or memcmp(c_bytes, "chknode:\n", 9) != 0:
+    if c_bytes_len < 9 or memcmp(c_bytes, b"chknode:\n", 9) != 0:
         raise ValueError("not a serialised internal node: %r" % data)
     if c_bytes[c_bytes_len - 1] != c'\n':
         raise ValueError("bytes does not end in a newline")
@@ -396,7 +409,10 @@ def _deserialise_internal_node(data, key, search_key_func=None):
 def _bytes_to_text_key(data):
     """Take a CHKInventory value string and return a (file_id, rev_id) tuple"""
     cdef StaticTuple key
-    cdef char *byte_str, *cur_end, *file_id_str, *byte_end
+    cdef char *byte_str
+    cdef char *cur_end
+    cdef char *file_id_str
+    cdef char *byte_end
     cdef char *revision_str
     cdef Py_ssize_t byte_size, pos, file_id_len
 

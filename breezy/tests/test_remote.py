@@ -133,8 +133,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)
-        self.assertTrue(RemoteBzrProber
-                        in controldir.ControlDirFormat._server_probers)
+        self.assertIn(RemoteBzrProber, controldir.ControlDirFormat._probers)
         self.assertIsInstance(fmt, RemoteBzrDirFormat)
 
     def test_open_detected_smart_format(self):
@@ -2862,8 +2861,8 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
         somerev1.timezone = -60
         somerev1.inventory_sha1 = b"691b39be74c67b1212a75fcb19c433aaed903c2b"
         somerev1.message = "Message"
-        body = zlib.compress(chk_bencode_serializer.write_revision_to_string(
-            somerev1))
+        body = zlib.compress(b''.join(chk_bencode_serializer.write_revision_to_lines(
+            somerev1)))
         # Split up body into two bits to make sure the zlib compression object
         # gets data fed twice.
         client.add_success_response_with_body(
@@ -3537,9 +3536,9 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
 
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
-            text = fmt._serializer.write_inventory_to_string(inv)
-            yield versionedfile.FulltextContentFactory(
-                (b'rev1',), (), None, text)
+            chunks = fmt._serializer.write_inventory_to_lines(inv)
+            yield versionedfile.ChunkedContentFactory(
+                (b'rev1',), (), None, chunks, chunks_are_lines=True)
 
         def inventory_delta_substream():
             # An inventory delta.  This can't be streamed via this verb, so it
@@ -4530,3 +4529,23 @@ class TestRepositoryAnnotate(TestRemoteRepository):
             (b'baserevid', b'line 1\n'),
             (b'somerevid', b'line2\n')],
             list(tree.annotate_iter('filename')))
+
+
+class TestBranchGetAllReferenceInfo(RemoteBranchTestCase):
+
+    def test_get_all_reference_info(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            b'Branch.get_stacked_on_url', (b'quack/',),
+            b'error', (b'NotStacked',))
+        client.add_expected_call(
+            b'Branch.get_all_reference_info', (b'quack/',),
+            b'success', (b'ok',), bencode.bencode([
+                (b'file-id', b'https://www.example.com/', b'')]))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch._get_all_reference_info()
+        self.assertFinished(client)
+        self.assertEqual({b'file-id': ('https://www.example.com/', None)}, result)

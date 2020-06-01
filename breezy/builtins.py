@@ -25,6 +25,10 @@ import sys
 import breezy.bzr
 import breezy.git
 
+from . import (
+    errors,
+    )
+
 from . import lazy_import
 lazy_import.lazy_import(globals(), """
 import time
@@ -38,7 +42,6 @@ from breezy import (
     directory_service,
     delta,
     config as _mod_config,
-    errors,
     globbing,
     gpg,
     hooks,
@@ -747,6 +750,13 @@ class cmd_add(Command):
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
             file_ids_from=None):
         import breezy.add
+        tree, file_list = tree_files_for_add(file_list)
+
+        if file_ids_from is not None and not tree.supports_setting_file_ids():
+            warning(
+                gettext('Ignoring --file-ids-from, since the tree does not '
+                        'support setting file ids.'))
+            file_ids_from = None
 
         base_tree = None
         if file_ids_from is not None:
@@ -767,7 +777,6 @@ class cmd_add(Command):
 
         if base_tree:
             self.enter_context(base_tree.lock_read())
-        tree, file_list = tree_files_for_add(file_list)
         added, ignored = tree.smart_add(
             file_list, not no_recurse, action=action, save=not dry_run)
         self.cleanup_now()
@@ -1433,6 +1442,7 @@ class cmd_branch(Command):
     parameter, as in "branch foo/bar -r 5".
     """
 
+    aliase = ['sprout']
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision',
@@ -1458,15 +1468,23 @@ class cmd_branch(Command):
                             ' allow branch to proceed.'),
                      Option('bind',
                             help="Bind new branch to from location."),
+                     Option('no-recurse-nested',
+                            help='Do not recursively check out nested trees.'),
+                     Option('colocated-branch', short_name='b',
+                            type=str, help='Name of colocated branch to sprout.'),
                      ]
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
             use_existing_dir=False, switch=False, bind=False,
-            files_from=None):
+            files_from=None, no_recurse_nested=False, colocated_branch=None):
         from breezy import switch as _mod_switch
         accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
-            from_location)
+            from_location, name=colocated_branch)
+        if no_recurse_nested:
+            recurse = 'none'
+        else:
+            recurse = 'down'
         if not (hardlink or files_from):
             # accelerator_tree is usually slower because you have to read N
             # files (no readahead, lots of seeks, etc), but allow the user to
@@ -1518,7 +1536,8 @@ class cmd_branch(Command):
                     possible_transports=[to_transport],
                     accelerator_tree=accelerator_tree, hardlink=hardlink,
                     stacked=stacked, force_new_repo=standalone,
-                    create_tree_if_local=not no_tree, source_branch=br_from)
+                    create_tree_if_local=not no_tree, source_branch=br_from,
+                    recurse=recurse)
                 branch = to_dir.open_branch(
                     possible_transports=[
                         br_from.controldir.root_transport, to_transport])
@@ -1533,7 +1552,8 @@ class cmd_branch(Command):
             except errors.NoRepositoryPresent:
                 to_repo = to_dir.create_repository()
             to_repo.fetch(br_from.repository, revision_id=revision_id)
-            branch = br_from.sprout(to_dir, revision_id=revision_id)
+            branch = br_from.sprout(
+                to_dir, revision_id=revision_id)
         br_from.tags.merge_to(branch.tags)
 
         # If the source branch is stacked, the new branch may
@@ -1685,6 +1705,38 @@ class cmd_checkout(Command):
                 return
         source.create_checkout(to_location, revision_id, lightweight,
                                accelerator_tree, hardlink)
+
+
+class cmd_clone(Command):
+    __doc__ = """Clone a control directory.
+    """
+
+    takes_args = ['from_location', 'to_location?']
+    takes_options = ['revision',
+                     Option('no-recurse-nested',
+                            help='Do not recursively check out nested trees.'),
+                     ]
+
+    def run(self, from_location, to_location=None, revision=None, no_recurse_nested=False):
+        accelerator_tree, br_from = controldir.ControlDir.open_tree_or_branch(
+            from_location)
+        if no_recurse_nested:
+            recurse = 'none'
+        else:
+            recurse = 'down'
+        revision = _get_one_revision('branch', revision)
+        self.enter_context(br_from.lock_read())
+        if revision is not None:
+            revision_id = revision.as_revision_id(br_from)
+        else:
+            # FIXME - wt.last_revision, fallback to branch, fall back to
+            # None or perhaps NULL_REVISION to mean copy nothing
+            # RBC 20060209
+            revision_id = br_from.last_revision()
+        if to_location is None:
+            to_location = urlutils.derive_to_location(from_location)
+        target_controldir = br_from.controldir.clone(to_location, revision_id=revision_id)
+        note(gettext('Created new control directory.'))
 
 
 class cmd_renames(Command):
@@ -2033,7 +2085,7 @@ class cmd_init(Command):
         brz commit -m "imported project"
     """
 
-    _see_also = ['init-repository', 'branch', 'checkout']
+    _see_also = ['init-shared-repository', 'branch', 'checkout']
     takes_args = ['location?']
     takes_options = [
         Option('create-prefix',
@@ -2131,7 +2183,7 @@ class cmd_init(Command):
                 self.outf.write(gettext("Using shared repository: %s\n") % url)
 
 
-class cmd_init_repository(Command):
+class cmd_init_shared_repository(Command):
     __doc__ = """Create a shared repository for branches to share storage space.
 
     New branches created under the repository directory will store their
@@ -2149,7 +2201,7 @@ class cmd_init_repository(Command):
     :Examples:
         Create a shared repository holding just branches::
 
-            brz init-repo --no-trees repo
+            brz init-shared-repo --no-trees repo
             brz init repo/trunk
 
         Make a lightweight checkout elsewhere::
@@ -2173,7 +2225,7 @@ class cmd_init_repository(Command):
                             help='Branches in the repository will default to'
                             ' not having a working tree.'),
                      ]
-    aliases = ["init-repo"]
+    aliases = ["init-shared-repo", "init-repo"]
 
     def run(self, location, format=None, no_trees=False):
         if format is None:
@@ -2318,14 +2370,27 @@ class cmd_diff(Command):
                help='How many lines of context to show.',
                type=int,
                ),
+        RegistryOption.from_kwargs(
+            'color',
+            help='Color mode to use.',
+            title='Color Mode', value_switches=False, enum_switch=True,
+            never='Never colorize output.',
+            auto='Only colorize output if terminal supports it and STDOUT is a'
+            ' TTY.',
+            always='Always colorize output (default).'),
+        Option(
+            'check-style',
+            help=('Warn if trailing whitespace or spurious changes have been'
+                  '  added.'))
         ]
+
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None, format=None,
-            context=None):
+            context=None, color='never'):
         from .diff import (get_trees_and_branches_to_diff_locked,
                            show_diff_trees)
 
@@ -2358,7 +2423,17 @@ class cmd_diff(Command):
             file_list, revision, old, new, self._exit_stack, apply_view=True)
         # GNU diff on Windows uses ANSI encoding for filenames
         path_encoding = osutils.get_diff_header_encoding()
-        return show_diff_trees(old_tree, new_tree, self.outf,
+        outf = self.outf
+        if color == 'auto':
+            from .terminal import has_ansi_colors
+            if has_ansi_colors():
+                color = 'always'
+            else:
+                color = 'never'
+        if 'always' == color:
+            from .colordiff import DiffWriter
+            outf = DiffWriter(outf)
+        return show_diff_trees(old_tree, new_tree, outf,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
@@ -2386,13 +2461,13 @@ class cmd_deleted(Command):
         self.enter_context(tree.lock_read())
         old = tree.basis_tree()
         self.enter_context(old.lock_read())
-        for path, ie in old.iter_entries_by_dir():
-            if not tree.has_id(ie.file_id):
-                self.outf.write(path)
-                if show_ids:
-                    self.outf.write(' ')
-                    self.outf.write(ie.file_id)
-                self.outf.write('\n')
+        delta = tree.changes_from(old)
+        for change in delta.removed:
+            self.outf.write(change.path[0])
+            if show_ids:
+                self.outf.write(' ')
+                self.outf.write(change.file_id)
+            self.outf.write('\n')
 
 
 class cmd_modified(Command):
@@ -6712,36 +6787,34 @@ class cmd_reference(Command):
 
     takes_args = ['path?', 'location?']
     takes_options = [
+        'directory',
         Option('force-unversioned',
                help='Set reference even if path is not versioned.'),
         ]
 
-    def run(self, path=None, location=None, force_unversioned=False):
-        branchdir = '.'
-        if path is not None:
-            branchdir = path
+    def run(self, path=None, directory='.', location=None, force_unversioned=False):
         tree, branch, relpath = (
-            controldir.ControlDir.open_containing_tree_or_branch(branchdir))
-        if path is not None:
-            path = relpath
+            controldir.ControlDir.open_containing_tree_or_branch(directory))
         if tree is None:
             tree = branch.basis_tree()
         if path is None:
-            info = viewitems(branch._get_all_reference_info())
-            self._display_reference_info(tree, branch, info)
+            with tree.lock_read():
+                info = [
+                    (path, tree.get_reference_info(path, branch))
+                    for path in tree.iter_references()]
+                self._display_reference_info(tree, branch, info)
         else:
             if not tree.is_versioned(path) and not force_unversioned:
                 raise errors.NotVersionedError(path)
             if location is None:
-                info = [(path, branch.get_reference_info(path))]
+                info = [(path, tree.get_reference_info(path, branch))]
                 self._display_reference_info(tree, branch, info)
             else:
-                branch.set_reference_info(
-                    path, location, file_id=tree.path2id(path))
+                tree.set_reference_info(path, location)
 
     def _display_reference_info(self, tree, branch, info):
         ref_list = []
-        for path, (location, file_id) in info:
+        for path, location in info:
             ref_list.append((path, location))
         for path, location in sorted(ref_list):
             self.outf.write('%s %s\n' % (path, location))

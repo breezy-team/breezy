@@ -36,12 +36,12 @@ lazy_import(globals(), """
 import patiencediff
 
 from breezy import (
-    errors,
     tsort,
     )
 """)
 from . import (
     config,
+    errors,
     osutils,
     )
 from .repository import _strip_NULL_ghosts

@@ -21,11 +21,10 @@
 ### Core Stuff ###
 
 SHELL=bash
-PYTHON?=python
+PYTHON?=python3
+PYTHON2?=python2
 PYTHON3?=python3
-PYTHON24=python24
-PYTHON25=python25
-PYTHON26=python26
+PYTHON27=python27
 BRZ_TARGET=release
 PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
@@ -82,7 +81,7 @@ check-ci: docs extensions
 	# https://github.com/paramiko/paramiko/issues/713 is not a concern
 	# anymore -- vila 2017-05-24
 	set -o pipefail; \
-	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
+	BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON2) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
 	  ./brz selftest -v --parallel=fork -Oselftest.timeout=120 --subunit2 \
 	  | subunit-filter -s --passthrough --rename "^" "python2."; \
 	  BRZ_PLUGIN_PATH=$(BRZ_PLUGIN_PATH) $(PYTHON3) -Werror -Wignore::FutureWarning -Wignore::DeprecationWarning -Wignore::PendingDeprecationWarning -Wignore::ImportWarning -Wignore::ResourceWarning -O \
@@ -267,18 +266,10 @@ installer: exe copy-docs
 	$(PYTHON) tools/win32/run_script.py cog.py -d -o tools/win32/brz.iss tools/win32/brz.iss.cog
 	iscc /Q tools/win32/brz.iss
 
-# win32 Python's distutils-based installer
-# require to have Python interpreter installed on win32
-py-inst-24: docs
-	$(PYTHON24) setup.py bdist_wininst --install-script="brz-win32-bdist-postinstall.py" -d .
+py-inst-27: docs
+	$(PYTHON27) setup.py bdist_wininst --install-script="brz-win32-bdist-postinstall.py" -d .
 
-py-inst-25: docs
-	$(PYTHON25) setup.py bdist_wininst --install-script="brz-win32-bdist-postinstall.py" -d .
-
-py-inst-26: docs
-	$(PYTHON26) setup.py bdist_wininst --install-script="brz-win32-bdist-postinstall.py" -d .
-
-python-installer: py-inst-24 py-inst-25 py-inst-26
+python-installer: py-inst-27
 
 
 copy-docs: docs

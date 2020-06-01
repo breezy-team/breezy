@@ -34,7 +34,7 @@ from ..sixish import (
     PY3,
     StringIO,
     )
-from . import features, TestCaseInTempDir, TestCase
+from . import features, TestCaseInTempDir, TestCase, TestSkipped
 from ..trace import (
     mutter, mutter_callsite, report_exception,
     set_verbosity_level, get_verbosity_level, is_quiet, is_verbose, be_quiet,
@@ -327,6 +327,8 @@ class TestTrace(TestCase):
         self.overrideEnv('BRZ_LOG', '/no-such-dir/brz.log')
         self.overrideAttr(trace, '_brz_log_filename')
         logf = trace._open_brz_log()
+        if os.path.isdir('/no-such-dir'):
+            raise TestSkipped('directory creation succeeded')
         self.assertIs(None, logf)
         self.assertContainsRe(
             sys.stderr.getvalue(),
@@ -343,6 +345,8 @@ class TestTrace(TestCase):
         self.overrideEnv('XDG_CACHE_HOME', '/no-such-dir')
         self.overrideAttr(trace, '_brz_log_filename')
         logf = trace._open_brz_log()
+        if os.path.isdir('/no-such-dir'):
+            raise TestSkipped('directory creation succeeded')
         self.assertIs(None, logf)
         self.assertContainsRe(
             sys.stderr.getvalue(),

@@ -707,6 +707,23 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         b = self.open_branch(name=name)
         return b._format
 
+    def branch_names(self):
+        path = self._path_for_remote_call(self._client)
+        try:
+            response, handler = self._call_expecting_body(
+                b'BzrDir.get_branches', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_bzrdir.branch_names()
+        if response[0] != b"success":
+            raise errors.UnexpectedSmartServerResponse(response)
+        body = bencode.bdecode(handler.read_body_bytes())
+        ret = []
+        for name, value in viewitems(body):
+            name = name.decode('utf-8')
+            ret.append(name)
+        return ret
+
     def get_branches(self, possible_transports=None, ignore_fallbacks=False):
         path = self._path_for_remote_call(self._client)
         try:
@@ -721,9 +738,10 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         ret = {}
         for name, value in viewitems(body):
             name = name.decode('utf-8')
-            ret[name] = self._open_branch(name, value[0], value[1],
-                                          possible_transports=possible_transports,
-                                          ignore_fallbacks=ignore_fallbacks)
+            ret[name] = self._open_branch(
+                name, value[0].decode('ascii'), value[1],
+                possible_transports=possible_transports,
+                ignore_fallbacks=ignore_fallbacks)
         return ret
 
     def set_branch_reference(self, target_branch, name=None):
@@ -792,8 +810,9 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         if kind == 'ref':
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
+            ref_loc = urlutils.join(self.user_url, location_or_format.decode('utf-8'))
             return format.open(self, name=name, _found=True,
-                               location=location_or_format.decode('utf-8'),
+                               location=ref_loc,
                                ignore_fallbacks=ignore_fallbacks,
                                possible_transports=possible_transports)
         branch_format_name = location_or_format
@@ -2002,11 +2021,11 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def _add_revision(self, rev):
         if self._real_repository is not None:
             return self._real_repository._add_revision(rev)
-        text = self._serializer.write_revision_to_string(rev)
+        lines = self._serializer.write_revision_to_lines(rev)
         key = (rev.revision_id,)
         parents = tuple((parent,) for parent in rev.parent_ids)
         self._write_group_tokens, missing_keys = self._get_sink().insert_stream(
-            [('revisions', [FulltextContentFactory(key, parents, None, text)])],
+            [('revisions', [ChunkedContentFactory(key, parents, None, lines, chunks_are_lines=True)])],
             self._format, self._write_group_tokens)
 
     def get_inventory(self, revision_id):
@@ -2048,7 +2067,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 "Unexpected stream %r received" % substream_kind)
         for record in substream:
             (parent_id, new_id, versioned_root, tree_references, invdelta) = (
-                deserializer.parse_text_bytes(record.get_bytes_as("fulltext")))
+                deserializer.parse_text_bytes(record.get_bytes_as("lines")))
             if parent_id != prev_inv.revision_id:
                 raise AssertionError("invalid base %r != %r" % (parent_id,
                                                                 prev_inv.revision_id))
@@ -2209,7 +2228,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
                 if_present_ids=if_present_ids, limit=limit)
 
     def fetch(self, source, revision_id=None, find_ghosts=False,
-              fetch_spec=None):
+              fetch_spec=None, lossy=False):
         # No base implementation to use as RemoteRepository is not a subclass
         # of Repository; so this is a copy of Repository.fetch().
         if fetch_spec is not None and revision_id is not None:
@@ -2227,7 +2246,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             if (revision_id is not None
                     and not _mod_revision.is_null(revision_id)):
                 self.get_revision(revision_id)
-            return 0, []
+            return _mod_repository.FetchResult(0)
         # if there is no specific appropriate InterRepository, this will get
         # the InterRepository base class, which raises an
         # IncompatibleRepositories when asked to fetch.
@@ -2237,7 +2256,8 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             raise errors.UnsupportedOperation(
                 "fetch_spec not supported for %r" % inter)
         return inter.fetch(revision_id=revision_id,
-                           find_ghosts=find_ghosts, fetch_spec=fetch_spec)
+                           find_ghosts=find_ghosts, fetch_spec=fetch_spec,
+                           lossy=lossy)
 
     def create_bundle(self, target, base, fileobj, format=None):
         self._ensure_real()
@@ -3397,6 +3417,11 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._ensure_real()
         return self._custom_format.supports_set_append_revisions_only()
 
+    @property
+    def supports_reference_locations(self):
+        self._ensure_real()
+        return self._custom_format.supports_reference_locations
+
     def stores_revno(self):
         return True
 
@@ -4027,12 +4052,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 source, overwrite=overwrite, stop_revision=stop_revision,
                 _override_hook_target=self, **kwargs)
 
-    def push(self, target, overwrite=False, stop_revision=None, lossy=False):
+    def push(self, target, overwrite=False, stop_revision=None, lossy=False, tag_selector=None):
         with self.lock_read():
             self._ensure_real()
             return self._real_branch.push(
                 target, overwrite=overwrite, stop_revision=stop_revision, lossy=lossy,
-                _override_hook_source_branch=self)
+                _override_hook_source_branch=self, tag_selector=tag_selector)
 
     def peek_lock_mode(self):
         return self._lock_mode
@@ -4176,6 +4201,61 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         with self.lock_write():
             reconciler = BranchReconciler(self, thorough=thorough)
             return reconciler.reconcile()
+
+    def get_reference_info(self, file_id):
+        """Get the tree_path and branch_location for a tree reference."""
+        if not self._format.supports_reference_locations:
+            raise errors.UnsupportedOperation(self.get_reference_info, self)
+        return self._get_all_reference_info().get(file_id, (None, None))
+
+    def set_reference_info(self, file_id, branch_location, tree_path=None):
+        """Set the branch location to use for a tree reference."""
+        if not self._format.supports_reference_locations:
+            raise errors.UnsupportedOperation(self.set_reference_info, self)
+        self._ensure_real()
+        self._real_branch.set_reference_info(
+            file_id, branch_location, tree_path)
+
+    def _set_all_reference_info(self, reference_info):
+        if not self._format.supports_reference_locations:
+            raise errors.UnsupportedOperation(self.set_reference_info, self)
+        self._ensure_real()
+        self._real_branch._set_all_reference_info(reference_info)
+
+    def _get_all_reference_info(self):
+        if not self._format.supports_reference_locations:
+            return {}
+        try:
+            response, handler = self._call_expecting_body(
+                b'Branch.get_all_reference_info', self._remote_path())
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            return self._real_branch._get_all_reference_info()
+        if len(response) and response[0] != b'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        ret = {}
+        for (f, u, p) in bencode.bdecode(handler.read_body_bytes()):
+            ret[f] = (u.decode('utf-8'), p.decode('utf-8') if p else None)
+        return ret
+
+    def reference_parent(self, file_id, path, possible_transports=None):
+        """Return the parent branch for a tree-reference.
+
+        :param path: The path of the nested tree in the tree
+        :return: A branch associated with the nested tree
+        """
+        branch_location = self.get_reference_info(file_id)[0]
+        if branch_location is None:
+            try:
+                return branch.Branch.open_from_transport(
+                    self.controldir.root_transport.clone(path),
+                    possible_transports=possible_transports)
+            except errors.NotBranchError:
+                return None
+        return branch.Branch.open(
+            urlutils.join(
+                urlutils.strip_segment_parameters(self.user_url), branch_location),
+            possible_transports=possible_transports)
 
 
 class RemoteConfig(object):

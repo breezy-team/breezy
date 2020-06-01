@@ -141,13 +141,13 @@ class Test_TreeShim(tests.TestCase):
         changes = list(shim._delta_to_iter_changes())
         expected = [(b'foo-id', ('foo', 'bar/foo2'), False, (True, True),
                      (b'TREE_ROOT', b'bar-id'), ('foo', 'foo2'),
-                     ('file', 'file'), (False, False)),
+                     ('file', 'file'), (False, False), False),
                     (b'baz-id', ('bar/baz', None), True, (True, False),
                      (b'bar-id', None), ('baz', None),
-                     ('file', None), (False, None)),
+                     ('file', None), (False, None), False),
                     (b'link-id', (None, 'link'), True, (False, True),
                      (None, b'TREE_ROOT'), (None, 'link'),
-                     (None, 'symlink'), (None, False)),
+                     (None, 'symlink'), (None, False), False),
                     ]
         # from pprint import pformat
         # self.assertEqualDiff(pformat(expected), pformat(changes))

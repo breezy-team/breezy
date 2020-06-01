@@ -127,6 +127,7 @@ def load_tests(loader, standard_tests, pattern):
     submod_tests = loader.loadTestsFromModuleNames([
         'breezy.tests.per_intertree.test_compare',
         'breezy.tests.per_intertree.test_file_content_matches',
+        'breezy.tests.per_intertree.test_find_path',
         ])
     test_intertree_permutations = [
         # test InterTree with two default-format working trees.

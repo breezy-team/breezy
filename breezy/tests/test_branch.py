@@ -327,7 +327,7 @@ class TestBranch67(object):
         self.assertPathDoesNotExist('a/.bzr/branch/bound')
         self.assertEqual('ftp://example.com', branch.get_bound_location())
 
-    def do_checkout_test(self, lightweight=False):
+    def do_checkout_test(self, lightweight):
         tree = self.make_branch_and_tree('source',
                                          format=self.get_format_name_subtree())
         subtree = self.make_branch_and_tree('source/subtree',
@@ -339,7 +339,9 @@ class TestBranch67(object):
         subsubtree.add('file')
         subtree.add('file')
         subtree.add_reference(subsubtree)
+        subtree.set_reference_info('subsubtree', subsubtree.branch.user_url)
         tree.add_reference(subtree)
+        tree.set_reference_info('subtree', subtree.branch.user_url)
         tree.commit('a revision')
         subtree.commit('a subtree file')
         subsubtree.commit('a subsubtree file')
@@ -355,7 +357,7 @@ class TestBranch67(object):
             self.assertEndsWith(subbranch.base, 'target/subtree/subsubtree/')
 
     def test_checkout_with_references(self):
-        self.do_checkout_test()
+        self.do_checkout_test(lightweight=False)
 
     def test_light_checkout_with_references(self):
         self.do_checkout_test(lightweight=True)
@@ -489,11 +491,11 @@ class BzrBranch8(tests.TestCaseWithTransport):
     def test_reference_info_caches_cleared(self):
         branch = self.make_branch('branch')
         with branch.lock_write():
-            branch.set_reference_info('path2', 'location2', b'file-id')
+            branch.set_reference_info(b'file-id', 'location2', 'path2')
         doppelganger = _mod_branch.Branch.open('branch')
-        doppelganger.set_reference_info('path3', 'location3', b'file-id')
-        self.assertEqual(('location3', b'file-id'),
-                         branch.get_reference_info('path3'))
+        doppelganger.set_reference_info(b'file-id', 'location3', 'path3')
+        self.assertEqual(('location3', 'path3'),
+                         branch.get_reference_info(b'file-id'))
 
     def _recordParentMapCalls(self, repo):
         self._parent_map_calls = []

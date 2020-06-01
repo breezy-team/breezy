@@ -56,6 +56,7 @@ page on Launchpad, https://launchpad.net/bzr-fastimport.
 
 from __future__ import absolute_import
 
+from ... import version_info  # noqa: F401
 from ...commands import plugin_cmds
 
 

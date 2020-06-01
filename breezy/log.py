@@ -89,7 +89,7 @@ from .sixish import (
     range,
     zip,
     )
-from .tree import find_previous_path
+from .tree import InterTree
 
 
 def find_touching_revisions(repository, last_revision, last_tree, last_path):
@@ -109,7 +109,8 @@ def find_touching_revisions(repository, last_revision, last_tree, last_path):
     revno = len(history)
     for revision_id in history:
         this_tree = repository.revision_tree(revision_id)
-        this_path = find_previous_path(last_tree, this_tree, last_path)
+        this_intertree = InterTree.get(this_tree, last_tree)
+        this_path = this_intertree.find_source_path(last_path)
 
         # now we know how it was last time, and how it is in this revision.
         # are those two states effectively the same or not?
@@ -1016,7 +1017,7 @@ def _update_fileids(delta, fileids, stop_on):
       fileids set once their add or remove entry is detected respectively
     """
     if stop_on == 'add':
-        for item in delta.added:
+        for item in delta.added + delta.copied:
             if item.file_id in fileids:
                 fileids.remove(item.file_id)
     elif stop_on == 'delete':
@@ -1799,8 +1800,7 @@ class GnuChangelogLogFormatter(LogFormatter):
                 else:
                     path = c.path[0]
                 to_file.write('\t* %s:\n' % (path,))
-            for c in revision.delta.renamed:
-                oldpath, newpath = c[:2]
+            for c in revision.delta.renamed + revision.delta.copied:
                 # For renamed files, show both the old and the new path
                 to_file.write('\t* %s:\n\t* %s:\n' % (c.path[0], c.path[1]))
             to_file.write('\n')

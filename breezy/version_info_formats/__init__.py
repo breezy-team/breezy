@@ -134,6 +134,10 @@ class VersionInfoBuilder(object):
                 self._clean = False
                 self._file_revisions[change.path[1]] = u'renamed from %s' % (
                     change.path[0],)
+            for change in delta.copied:
+                self._clean = False
+                self._file_revisions[change.path[1]] = u'copied from %s' % (
+                    change.path[0],)
             for change in delta.modified:
                 self._clean = False
                 self._file_revisions[change.path[1]] = 'modified'

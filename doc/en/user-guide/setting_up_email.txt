@@ -30,7 +30,9 @@ does them.
 
 The order of precedence is
 
- 1. If the ``BZR_EMAIL`` environment variable is set.
+ 1. If the ``BRZ_EMAIL`` environment variable is set.
+ #. If the ``BZR_EMAIL`` environment variable is set, for backwards
+    compatibility with Bazaar.
  #. If an email is set for your current branch in the ``locations.conf``
     file.
  #. If an email is set four your current branch in the
@@ -90,7 +92,7 @@ overriding the default specified in the ``breezy.conf`` above.
 
 Setting email via environment variable
 --------------------------------------
-The final method Breezy will use is checking for the ``BZR_EMAIL``
+The final method Breezy will use is checking for the ``BRZ_EMAIL``
 and ``EMAIL`` environment variables.  Generally, you would use this
 method to override the email in a script context.  If you would like
 to set a general default, then please see the ini methods above.

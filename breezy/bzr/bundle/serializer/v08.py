@@ -269,13 +269,14 @@ class BundleSerializerV08(BundleSerializer):
 
         def do_diff(file_id, old_path, new_path, action, force_binary):
             def tree_lines(tree, path, require_text=False):
-                if tree.has_id(file_id):
+                try:
                     tree_file = tree.get_file(path)
+                except errors.NoSuchFile:
+                    return []
+                else:
                     if require_text is True:
                         tree_file = text_file(tree_file)
                     return tree_file.readlines()
-                else:
-                    return []
 
             try:
                 if force_binary:
@@ -312,7 +313,8 @@ class BundleSerializerV08(BundleSerializer):
         for change in delta.removed:
             action = Action('removed', [change.kind[0], change.path[0]]).write(self.to_file)
 
-        for change in delta.added:
+        # TODO(jelmer): Treat copied specially here?
+        for change in delta.added + delta.copied:
             action = Action(
                 'added', [change.kind[1], change.path[1]],
                 [('file-id', change.file_id.decode('utf-8'))])

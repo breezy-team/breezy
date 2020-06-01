@@ -85,7 +85,7 @@ class BashCompletionMixin(object):
         surplus = set(words) & self.completion_result
         if surplus:
             raise AssertionError('Completion should omit %r but it has %r'
-                                 % (surplus, res, self.completion_result))
+                                 % (surplus, self.completion_result))
 
     def get_script(self):
         commands.install_bzr_command_hooks()
@@ -117,7 +117,8 @@ _brz() {
 
     def test_cmd_ini(self):
         self.complete(['brz', 'ini'])
-        self.assertCompletionContains('init', 'init-repo', 'init-repository')
+        self.assertCompletionContains(
+            'init', 'init-shared-repo', 'init-shared-repository')
         self.assertCompletionOmits('commit')
 
     def test_init_opts(self):
@@ -297,8 +298,9 @@ class TestDataCollector(tests.TestCase):
     def test_commands(self):
         dc = DataCollector()
         dc.commands()
-        self.assertSubset(['init', 'init-repo', 'init-repository'],
-                          dc.data.all_command_aliases())
+        self.assertSubset(
+            ['init', 'init-shared-repo', 'init-shared-repository'],
+            dc.data.all_command_aliases())
 
     def test_commands_from_plugins(self):
         dc = DataCollector()

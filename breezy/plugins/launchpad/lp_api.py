@@ -69,23 +69,6 @@ from launchpadlib import uris
 MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 3)
 
 
-# We use production as the default because edge has been deprecated circa
-# 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
-DEFAULT_INSTANCE = 'production'
-
-LAUNCHPAD_DOMAINS = {
-    'production': 'launchpad.net',
-    'staging': 'staging.launchpad.net',
-    'qastaging': 'qastaging.launchpad.net',
-    'demo': 'demo.launchpad.net',
-    'dev': 'launchpad.test',
-    }
-
-LAUNCHPAD_BAZAAR_DOMAINS = [
-    'bazaar.%s' % domain
-    for domain in LAUNCHPAD_DOMAINS.values()]
-
-
 def get_cache_directory():
     """Return the directory to cache launchpadlib objects in."""
     return osutils.pathjoin(bedding.cache_dir(), 'launchpad')

@@ -65,7 +65,7 @@ project's main trunk branch.
 
 ::
 
-  $ brz init-repo sample
+  $ brz init-shared-repo sample
   Shared repository with trees (format: 2a)
   Location:
     shared repository: sample
@@ -193,7 +193,7 @@ Creating your own copy of another branch
 To work with someone else's code, you can make your own copy of their
 branch. Let's take a real-world example, Breezy's GTK interface::
 
-  $ brz init-repo ~/brz-gtk
+  $ brz init-shared-repo ~/brz-gtk
   $ brz branch lp:~brz/brz-gtk/trunk ~/brz-gtk/john
   Branched 292 revision(s).
 

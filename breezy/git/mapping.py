@@ -46,8 +46,6 @@ from ..sixish import (
     )
 from .errors import (
     NoPushSupport,
-    UnknownCommitExtra,
-    UnknownMercurialCommitExtra,
     )
 from .hg import (
     format_hg_metadata,
@@ -71,6 +69,24 @@ FILE_ID_PREFIX = b'git:'
 
 # Always the same.
 ROOT_ID = b"TREE_ROOT"
+
+
+class UnknownCommitExtra(errors.BzrError):
+    _fmt = "Unknown extra fields in %(object)r: %(fields)r."
+
+    def __init__(self, object, fields):
+        errors.BzrError.__init__(self)
+        self.object = object
+        self.fields = ",".join(fields)
+
+
+class UnknownMercurialCommitExtra(errors.BzrError):
+    _fmt = "Unknown mercurial extra fields in %(object)r: %(fields)r."
+
+    def __init__(self, object, fields):
+        errors.BzrError.__init__(self)
+        self.object = object
+        self.fields = b",".join(fields)
 
 
 def escape_file_id(file_id):
@@ -316,7 +332,9 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = commit.commit_timezone
         if u'git-gpg-signature' in rev.properties:
             commit.gpgsig = rev.properties[u'git-gpg-signature'].encode(
-                'ascii')
+                'utf-8')
+        if u'git-gpg-signature-b64' in rev.properties:
+            commit.gpgsig = base64.b64decode(rev.properties[u'git-gpg-signature-b64'])
         commit.message = self._encode_commit_message(rev, rev.message,
                                                      encoding)
         if not isinstance(commit.message, bytes):
@@ -329,7 +347,8 @@ class BzrGitMapping(foreign.VcsMapping):
             mapping_properties = set(
                 [u'author', u'author-timezone', u'author-timezone-neg-utc',
                  u'commit-timezone-neg-utc', u'git-implicit-encoding',
-                 u'git-gpg-signature', u'git-explicit-encoding',
+                 u'git-gpg-signature', u'git-gpg-signature-b64',
+                 u'git-explicit-encoding',
                  u'author-timestamp', u'file-modes'])
             for k, v in viewitems(rev.properties):
                 if k not in mapping_properties:
@@ -370,7 +389,7 @@ class BzrGitMapping(foreign.VcsMapping):
                 return metadata.revision_id
         return self.revision_id_foreign_to_bzr(commit.id)
 
-    def import_commit(self, commit, lookup_parent_revid):
+    def import_commit(self, commit, lookup_parent_revid, strict=True):
         """Convert a git commit to a bzr revision.
 
         :return: a `breezy.revision.Revision` object, foreign revid and a
@@ -411,8 +430,12 @@ class BzrGitMapping(foreign.VcsMapping):
         if commit._commit_timezone_neg_utc:
             rev.properties[u'commit-timezone-neg-utc'] = ""
         if commit.gpgsig:
-            rev.properties[u'git-gpg-signature'] = commit.gpgsig.decode(
-                'ascii')
+            try:
+                rev.properties[u'git-gpg-signature'] = commit.gpgsig.decode(
+                    'utf-8')
+            except UnicodeDecodeError:
+                rev.properties[u'git-gpg-signature-b64'] = base64.b64encode(
+                    commit.gpgsig)
         if commit.mergetag:
             for i, tag in enumerate(commit.mergetag):
                 rev.properties[u'git-mergetag-%d' % i] = tag.as_raw_string()
@@ -444,12 +467,12 @@ class BzrGitMapping(foreign.VcsMapping):
                 extra_lines.append(k + b' ' + v + b'\n')
             elif k == HG_EXTRA:
                 hgk, hgv = v.split(b':', 1)
-                if hgk not in (HG_EXTRA_AMEND_SOURCE, ):
+                if hgk not in (HG_EXTRA_AMEND_SOURCE, ) and strict:
                     raise UnknownMercurialCommitExtra(commit, [hgk])
                 extra_lines.append(k + b' ' + v + b'\n')
             else:
                 unknown_extra_fields.append(k)
-        if unknown_extra_fields:
+        if unknown_extra_fields and strict:
             raise UnknownCommitExtra(
                 commit,
                 [f.decode('ascii', 'replace') for f in unknown_extra_fields])
@@ -487,10 +510,10 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         ret += self._generate_git_svn_metadata(rev, encoding)
         return ret
 
-    def import_commit(self, commit, lookup_parent_revid):
+    def import_commit(self, commit, lookup_parent_revid, strict=True):
         rev, roundtrip_revid, verifiers = super(
             BzrGitMappingExperimental, self).import_commit(
-                commit, lookup_parent_revid)
+                commit, lookup_parent_revid, strict)
         rev.properties[u'converted_revision'] = "git %s\n" % commit.id
         return rev, roundtrip_revid, verifiers
 

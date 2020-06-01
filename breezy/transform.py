@@ -71,7 +71,7 @@ from .sixish import (
     viewvalues,
     )
 from .tree import (
-    find_previous_path,
+    InterTree,
     TreeChange,
     )
 
@@ -2036,6 +2036,11 @@ class _PreviewTree(inventorytree.InventoryTree):
         self._iter_changes_cache = dict((c.file_id, c) for c in
                                         self._transform.iter_changes())
 
+    def supports_tree_reference(self):
+        # TODO(jelmer): Support tree references in _PreviewTree.
+        # return self._transform._tree.supports_tree_reference()
+        return False
+
     def _content_change(self, file_id):
         """Return True if the content of this file changed"""
         changes = self._iter_changes_cache.get(file_id)
@@ -2121,21 +2126,6 @@ class _PreviewTree(inventorytree.InventoryTree):
 
         return tree_paths
 
-    def _has_id(self, file_id, fallback_check):
-        if file_id in self._transform._r_new_id:
-            return True
-        elif file_id in {self._transform.tree_file_id(trans_id) for
-                         trans_id in self._transform._removed_id}:
-            return False
-        else:
-            return fallback_check(file_id)
-
-    def has_id(self, file_id):
-        return self._has_id(file_id, self._transform._tree.has_id)
-
-    def has_or_had_id(self, file_id):
-        return self._has_id(file_id, self._transform._tree.has_or_had_id)
-
     def _path2trans_id(self, path):
         # We must not use None here, because that is a valid value to store.
         trans_id = self._path2trans_id_cache.get(path, object)
@@ -2165,7 +2155,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             path = osutils.pathjoin(*path)
         return self._transform.final_file_id(self._path2trans_id(path))
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         trans_id = self._transform.trans_id_file_id(file_id)
         try:
             return self._final_paths._determine_path(trans_id)
@@ -2182,11 +2172,6 @@ class _PreviewTree(inventorytree.InventoryTree):
         children.update(self._by_parent.get(trans_id, []))
         self._all_children_cache[trans_id] = children
         return children
-
-    def _iter_children(self, file_id):
-        trans_id = self._transform.trans_id_file_id(file_id)
-        for child_trans_id in self._all_children(trans_id):
-            yield self._transform.final_file_id(child_trans_id)
 
     def extras(self):
         possible_extras = set(self._transform.trans_id_tree_path(p) for p
@@ -2238,7 +2223,11 @@ class _PreviewTree(inventorytree.InventoryTree):
         for entry, trans_id in self._make_inv_entries(todo):
             yield entry
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
+        if recurse_nested:
+            raise NotImplementedError(
+                'follow tree references not yet supported')
+
         # This may not be a maximally efficient implementation, but it is
         # reasonably straightforward.  An implementation that grafts the
         # TreeTransform changes onto the tree's iter_entries_by_dir results
@@ -2262,8 +2251,13 @@ class _PreviewTree(inventorytree.InventoryTree):
         path_entries.sort()
         return path_entries
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         """See WorkingTree.list_files."""
+        if recurse_nested:
+            raise NotImplementedError(
+                'follow tree references not yet supported')
+
         # XXX This should behave like WorkingTree.list_files, but is really
         # more like RevisionTree.list_files.
         if from_dir == '.':
@@ -2352,6 +2346,15 @@ class _PreviewTree(inventorytree.InventoryTree):
         if kind == 'file':
             with self.get_file(path) as fileobj:
                 return sha_file(fileobj)
+
+    def get_reference_revision(self, path):
+        trans_id = self._path2trans_id(path)
+        if trans_id is None:
+            raise errors.NoSuchFile(path)
+        reference_revision = self._transform._new_reference_revision.get(trans_id)
+        if reference_revision is None:
+            return self._transform._tree.get_reference_revision(path)
+        return reference_revision
 
     def is_executable(self, path):
         trans_id = self._path2trans_id(path)
@@ -2562,13 +2565,6 @@ class FinalPaths(object):
 
     def get_paths(self, trans_ids):
         return [(self.get_path(t), t) for t in trans_ids]
-
-
-def topology_sorted_ids(tree):
-    """Determine the topological order of the ids in a tree"""
-    file_ids = list(tree)
-    file_ids.sort(key=tree.id2path)
-    return file_ids
 
 
 def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
@@ -2965,8 +2961,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         if basis_tree is None:
                             basis_tree = working_tree.basis_tree()
                             basis_tree.lock_read()
-                        basis_path = find_previous_path(
-                            working_tree, basis_tree, wt_path)
+                        basis_inter = InterTree.get(basis_tree, working_tree)
+                        basis_path = basis_inter.find_source_path(wt_path)
                         if basis_path is None:
                             if target_kind is None and not target_versioned:
                                 keep_content = True
@@ -3005,7 +3001,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
                     new_sha1 = target_tree.get_file_sha1(target_path)
-                    basis_path = find_previous_path(target_tree, basis_tree, target_path)
+                    basis_inter = InterTree.get(basis_tree, target_tree)
+                    basis_path = basis_inter.find_source_path(target_path)
                     if (basis_path is not None and
                             new_sha1 == basis_tree.get_file_sha1(basis_path)):
                         # If the new contents of the file match what is in basis,

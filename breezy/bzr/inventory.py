@@ -322,6 +322,12 @@ class InventoryEntry(object):
                    self.parent_id,
                    self.revision))
 
+    def is_unmodified(self, other):
+        other_revision = getattr(other, 'revision', None)
+        if other_revision is None:
+            return False
+        return self.revision == other.revision
+
     def __eq__(self, other):
         if other is self:
             # For the case when objects are cached
@@ -1823,7 +1829,7 @@ class CHKInventory(CommonInventory):
         return result
 
     @classmethod
-    def deserialise(klass, chk_store, bytes, expected_revision_id):
+    def deserialise(klass, chk_store, lines, expected_revision_id):
         """Deserialise a CHKInventory.
 
         :param chk_store: A CHK capable VersionedFiles instance.
@@ -1832,18 +1838,16 @@ class CHKInventory(CommonInventory):
             for.
         :return: A CHKInventory
         """
-        lines = bytes.split(b'\n')
-        if lines[-1] != b'':
-            raise AssertionError('bytes to deserialize must end with an eol')
-        lines.pop()
-        if lines[0] != b'chkinventory:':
+        if not lines[-1].endswith(b'\n'):
+            raise ValueError("last line should have trailing eol\n")
+        if lines[0] != b'chkinventory:\n':
             raise ValueError("not a serialised CHKInventory: %r" % bytes)
         info = {}
         allowed_keys = frozenset((b'root_id', b'revision_id',
                                   b'parent_id_basename_to_file_id',
                                   b'search_key_name', b'id_to_entry'))
         for line in lines[1:]:
-            key, value = line.split(b': ', 1)
+            key, value = line.rstrip(b'\n').split(b': ', 1)
             if key not in allowed_keys:
                 raise errors.BzrError('Unknown key in inventory: %r\n%r'
                                       % (key, bytes))

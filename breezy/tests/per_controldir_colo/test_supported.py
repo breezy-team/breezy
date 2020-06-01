@@ -184,6 +184,11 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         self.assertEqual(target_branch.base,
                          repo.controldir.get_branches()['foo'].base)
 
+    def test_branch_names(self):
+        repo = self.make_repository('branch-1')
+        target_branch = self.create_branch(repo.controldir, name='foo')
+        self.assertIn('foo', repo.controldir.branch_names())
+
     def test_branch_name_with_slash(self):
         repo = self.make_repository('branch-1')
         try:

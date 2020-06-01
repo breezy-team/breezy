@@ -85,6 +85,14 @@ class TreeEntry(object):
     def kind_character(self):
         return "???"
 
+    def is_unmodified(self, other):
+        """Does this entry reference the same entry?
+
+        This is mostly the same as __eq__, but returns False
+        for entries without enough information (i.e. revision is None)
+        """
+        return False
+
 
 class TreeDirectory(TreeEntry):
     """See TreeEntry. This is a directory in a working tree."""
@@ -134,10 +142,10 @@ class TreeChange(object):
     """Describes the changes between the same item in two different trees."""
 
     __slots__ = ['file_id', 'path', 'changed_content', 'versioned', 'parent_id',
-                 'name', 'kind', 'executable']
+                 'name', 'kind', 'executable', 'copied']
 
     def __init__(self, file_id, path, changed_content, versioned, parent_id,
-                 name, kind, executable):
+                 name, kind, executable, copied=False):
         self.file_id = file_id
         self.path = path
         self.changed_content = changed_content
@@ -146,6 +154,7 @@ class TreeChange(object):
         self.name = name
         self.kind = kind
         self.executable = executable
+        self.copied = copied
 
     def __repr__(self):
         return "%s%r" % (self.__class__.__name__, self._as_tuple())
@@ -155,7 +164,7 @@ class TreeChange(object):
 
     def _as_tuple(self):
         return (self.file_id, self.path, self.changed_content, self.versioned,
-                self.parent_id, self.name, self.kind, self.executable)
+                self.parent_id, self.name, self.kind, self.executable, self.copied)
 
     def __eq__(self, other):
         if isinstance(other, TreeChange):
@@ -180,7 +189,8 @@ class TreeChange(object):
             self.file_id, (self.path[0], None), self.changed_content,
             (self.versioned[0], None), (self.parent_id[0], None),
             (self.name[0], None), (self.kind[0], None),
-            (self.executable[0], None))
+            (self.executable[0], None),
+            copied=False)
 
 
 class Tree(object):
@@ -300,14 +310,14 @@ class Tree(object):
         """Iterate through all paths, including paths for missing files."""
         raise NotImplementedError(self.all_versioned_paths)
 
-    def id2path(self, file_id):
+    def id2path(self, file_id, recurse='down'):
         """Return the path for a file id.
 
         :raises NoSuchId:
         """
         raise NotImplementedError(self.id2path)
 
-    def iter_entries_by_dir(self, specific_files=None):
+    def iter_entries_by_dir(self, specific_files=None, recurse_nested=False):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple.
@@ -331,6 +341,10 @@ class Tree(object):
         The yield order (ignoring root) would be::
 
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
+
+        If recurse_nested is enabled then nested trees are included as if
+        they were a part of the tree. If is disabled then TreeReference
+        objects (without any children) are yielded.
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
@@ -343,12 +357,14 @@ class Tree(object):
         """
         raise NotImplementedError(self.iter_child_entries)
 
-    def list_files(self, include_root=False, from_dir=None, recursive=True):
+    def list_files(self, include_root=False, from_dir=None, recursive=True,
+                   recurse_nested=False):
         """List all files in this tree.
 
         :param include_root: Whether to include the entry for the tree root
         :param from_dir: Directory under which to list files
         :param recursive: Whether to list files recursively
+        :param recurse_nested: enter nested trees
         :return: iterator over tuples of
             (path, versioned, kind, inventory entry)
         """
@@ -359,6 +375,19 @@ class Tree(object):
             for path, entry in self.iter_entries_by_dir():
                 if entry.kind == 'tree-reference':
                     yield path
+
+    def get_containing_nested_tree(self, path):
+        """Find the nested tree that contains a path.
+
+        :return: tuple with (nested tree and path inside the nested tree)
+        """
+        for nested_path in self.iter_references():
+            nested_path += '/'
+            if path.startswith(nested_path):
+                nested_tree = self.get_nested_tree(nested_path)
+                return nested_tree, path[len(nested_path):]
+        else:
+            return None, None
 
     def get_nested_tree(self, path):
         """Open the nested tree at the specified path.
@@ -399,7 +428,7 @@ class Tree(object):
         """
         raise NotImplementedError(self.path_content_summary)
 
-    def get_reference_revision(self, path):
+    def get_reference_revision(self, path, branch=None):
         raise NotImplementedError("Tree subclass %s must implement "
                                   "get_reference_revision"
                                   % self.__class__.__name__)
@@ -546,14 +575,6 @@ class Tree(object):
         """
         raise NotImplementedError(self.annotate_iter)
 
-    def _iter_parent_trees(self):
-        """Iterate through parent trees, defaulting to Tree.revision_tree."""
-        for revision_id in self.get_parent_ids():
-            try:
-                yield self.revision_tree(revision_id)
-            except errors.NoSuchRevisionInTree:
-                yield self.repository.revision_tree(revision_id)
-
     def path2id(self, path):
         """Return the id for path in this tree."""
         raise NotImplementedError(self.path2id)
@@ -692,8 +713,7 @@ class Tree(object):
         :return: None if content filtering is not supported by this tree.
         """
         if self.supports_content_filtering():
-            return lambda path, file_id: \
-                self._content_filter_stack(path)
+            return self._content_filter_stack
         else:
             return None
 
@@ -946,8 +966,7 @@ class InterTree(InterObject):
         from_data = dict(from_entries_by_dir)
         to_entries_by_dir = list(self.target.iter_entries_by_dir(
             specific_files=target_specific_files))
-        path_equivs = find_previous_paths(
-            self.target, self.source, [p for p, e in to_entries_by_dir])
+        path_equivs = self.find_source_paths([p for p, e in to_entries_by_dir])
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
         # the unversioned path lookup only occurs on real trees - where there
@@ -1010,7 +1029,7 @@ class InterTree(InterObject):
             if file_id in to_paths:
                 # already returned
                 continue
-            to_path = find_previous_path(self.source, self.target, path)
+            to_path = self.find_target_path(path)
             entry_count += 1
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
@@ -1174,11 +1193,65 @@ class InterTree(InterObject):
                 target_sha1 = target_verifier_data
             return (source_sha1 == target_sha1)
 
+    def find_target_path(self, path, recurse='none'):
+        """Find target tree path.
+
+        :param path: Path to search for (exists in source)
+        :return: path in target, or None if there is no equivalent path.
+        :raise NoSuchFile: If the path doesn't exist in source
+        """
+        file_id = self.source.path2id(path)
+        if file_id is None:
+            raise errors.NoSuchFile(path)
+        try:
+            return self.target.id2path(file_id, recurse=recurse)
+        except errors.NoSuchId:
+            return None
+
+    def find_source_path(self, path, recurse='none'):
+        """Find the source tree path.
+
+        :param path: Path to search for (exists in target)
+        :return: path in source, or None if there is no equivalent path.
+        :raise NoSuchFile: if the path doesn't exist in target
+        """
+        file_id = self.target.path2id(path)
+        if file_id is None:
+            raise errors.NoSuchFile(path)
+        try:
+            return self.source.id2path(file_id, recurse=recurse)
+        except errors.NoSuchId:
+            return None
+
+    def find_target_paths(self, paths, recurse='none'):
+        """Find target tree paths.
+
+        :param paths: Iterable over paths in target to search for
+        :return: Dictionary mapping from source paths to paths in target , or
+            None if there is no equivalent path.
+        """
+        ret = {}
+        for path in paths:
+            ret[path] = self.find_target_path(path, recurse=recurse)
+        return ret
+
+    def find_source_paths(self, paths, recurse='none'):
+        """Find source tree paths.
+
+        :param paths: Iterable over paths in target to search for
+        :return: Dictionary mapping from target paths to paths in source, or
+            None if there is no equivalent path.
+        """
+        ret = {}
+        for path in paths:
+            ret[path] = self.find_source_path(path, recurse=recurse)
+        return ret
+
 
 InterTree.register_optimiser(InterTree)
 
 
-def find_previous_paths(from_tree, to_tree, paths):
+def find_previous_paths(from_tree, to_tree, paths, recurse='none'):
     """Find previous tree paths.
 
     :param from_tree: From tree
@@ -1187,13 +1260,10 @@ def find_previous_paths(from_tree, to_tree, paths):
     :return: Dictionary mapping from from_tree paths to paths in to_tree, or
         None if there is no equivalent path.
     """
-    ret = {}
-    for path in paths:
-        ret[path] = find_previous_path(from_tree, to_tree, path)
-    return ret
+    return InterTree.get(to_tree, from_tree).find_source_paths(paths, recurse=recurse)
 
 
-def find_previous_path(from_tree, to_tree, path, file_id=None):
+def find_previous_path(from_tree, to_tree, path, recurse='none'):
     """Find previous tree path.
 
     :param from_tree: From tree
@@ -1202,14 +1272,8 @@ def find_previous_path(from_tree, to_tree, path, file_id=None):
     :return: path in to_tree, or None if there is no equivalent path.
     :raise NoSuchFile: If the path doesn't exist in from_tree
     """
-    if file_id is None:
-        file_id = from_tree.path2id(path)
-    if file_id is None:
-        raise errors.NoSuchFile(path)
-    try:
-        return to_tree.id2path(file_id)
-    except errors.NoSuchId:
-        return None
+    return InterTree.get(to_tree, from_tree).find_source_path(
+        path, recurse=recurse)
 
 
 def get_canonical_path(tree, path, normalize):

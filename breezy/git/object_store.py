@@ -42,12 +42,12 @@ from .. import (
     osutils,
     ui,
     )
-from ..tree import find_previous_path
 from ..lock import LogicalLockResult
 from ..revision import (
     NULL_REVISION,
     )
 from ..sixish import viewitems
+from ..tree import InterTree
 from ..bzr.testament import (
     StrictTestament3,
     )
@@ -135,7 +135,7 @@ class LRUTreeCache(object):
         self._cache[tree.get_revision_id()] = tree
 
 
-def _find_missing_bzr_revids(graph, want, have):
+def _find_missing_bzr_revids(graph, want, have, shallow=None):
     """Find the revisions that have to be pushed.
 
     :param get_parent_map: Function that returns the parents for a sequence
@@ -145,13 +145,17 @@ def _find_missing_bzr_revids(graph, want, have):
     :return: Set of revisions to fetch
     """
     handled = set(have)
+    if shallow:
+        # Shallows themselves still need to be fetched, but let's exclude their
+        # parents.
+        for ps in graph.get_parent_map(shallow).values():
+            handled.update(ps)
+    handled.add(NULL_REVISION)
     todo = set()
     for rev in want:
         extra_todo = graph.find_unique_ancestors(rev, handled)
         todo.update(extra_todo)
         handled.update(extra_todo)
-    if NULL_REVISION in todo:
-        todo.remove(NULL_REVISION)
     return todo
 
 
@@ -231,7 +235,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
 
     def find_unchanged_parent_ie(path, kind, other, parent_trees):
         for ptree in parent_trees:
-            ppath = find_previous_path(tree, ptree, path)
+            intertree = InterTree.get(ptree, tree)
+            ppath = intertree.find_source_path(path)
             if ppath is not None:
                 pkind = ptree.kind(ppath)
                 if kind == "file":
@@ -265,7 +270,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     blob_id = idmap.lookup_blob_id(
                         pfile_id, prevision)
                 except KeyError:
-                    if not changed_content:
+                    if not change.changed_content:
                         # no-change merge ?
                         blob = Blob()
                         blob.data = tree.get_file_text(change.path[1])
@@ -757,13 +762,15 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise KeyError(sha)
 
-    def generate_lossy_pack_data(self, have, want, progress=None,
+    def generate_lossy_pack_data(self, have, want, shallow=None,
+                                 progress=None,
                                  get_tagged=None, ofs_delta=False):
         return pack_objects_to_data(
-            self.generate_pack_contents(have, want, progress, get_tagged,
+            self.generate_pack_contents(have, want, progress=progress,
+                                        shallow=shallow, get_tagged=get_tagged,
                                         lossy=True))
 
-    def generate_pack_contents(self, have, want, progress=None,
+    def generate_pack_contents(self, have, want, shallow=None, progress=None,
                                ofs_delta=False, get_tagged=None, lossy=False):
         """Iterate over the contents of a pack file.
 
@@ -792,9 +799,18 @@ class BazaarObjectStore(BaseObjectStore):
                     pending.add(type_data[0])
             except KeyError:
                 pass
+        shallows = set()
+        for commit_sha in shallow or set():
+            try:
+                for (type, type_data) in ret[commit_sha]:
+                    if type != "commit":
+                        raise AssertionError("Type was %s, not commit" % type)
+                    shallows.add(type_data[0])
+            except KeyError:
+                pass
 
         graph = self.repository.get_graph()
-        todo = _find_missing_bzr_revids(graph, pending, processed)
+        todo = _find_missing_bzr_revids(graph, pending, processed, shallow)
         ret = PackTupleIterable(self)
         with ui.ui_factory.nested_progress_bar() as pb:
             for i, revid in enumerate(graph.iter_topo_order(todo)):

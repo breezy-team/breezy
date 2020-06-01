@@ -24,6 +24,7 @@ memory.
 import errno
 import os
 import resource
+import sys
 
 from breezy import (
     osutils,
@@ -35,17 +36,23 @@ from breezy.tests import (
     )
 
 BIG_FILE_SIZE = 1024 * 1024 * 500
-BIG_FILE_CHUNK_SIZE = 1024 * 1024
+BIG_FILE_CHUNK_SIZE = 1024
 
 RESOURCE = resource.RLIMIT_AS
 LIMIT = 1024 * 1024 * 100
 
+if sys.version_info[0] == 2:
+    range = xrange
+
 
 def make_big_file(path):
     blob_1mb = BIG_FILE_CHUNK_SIZE * b'\x0c'
-    with open(path, 'wb') as f:
+    fd = os.open(path, os.O_CREAT | os.O_WRONLY)
+    try:
         for i in range(BIG_FILE_SIZE // BIG_FILE_CHUNK_SIZE):
-            f.write(blob_1mb)
+            os.write(fd, blob_1mb)
+    finally:
+        os.close(fd)
 
 
 class TestAdd(tests.TestCaseWithTransport):

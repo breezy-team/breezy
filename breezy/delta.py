@@ -34,6 +34,7 @@ class TreeDelta(object):
     added
     removed
     renamed
+    copied
     kind_changed
     modified
     unchanged
@@ -41,8 +42,8 @@ class TreeDelta(object):
 
     Each id is listed only once.
 
-    Files that are both modified and renamed are listed only in
-    renamed, with the text_modified flag true. The text_modified
+    Files that are both modified and renamed or copied are listed only in
+    renamed or copied, with the text_modified flag true. The text_modified
     applies either to the content of the file or the target of the
     symbolic link, depending of the kind of file.
 
@@ -57,6 +58,7 @@ class TreeDelta(object):
         self.added = []
         self.removed = []
         self.renamed = []
+        self.copied = []
         self.kind_changed = []
         self.modified = []
         self.unchanged = []
@@ -69,6 +71,7 @@ class TreeDelta(object):
         return self.added == other.added \
             and self.removed == other.removed \
             and self.renamed == other.renamed \
+            and self.copied == other.copied \
             and self.modified == other.modified \
             and self.unchanged == other.unchanged \
             and self.kind_changed == other.kind_changed \
@@ -79,16 +82,18 @@ class TreeDelta(object):
 
     def __repr__(self):
         return "TreeDelta(added=%r, removed=%r, renamed=%r," \
-            " kind_changed=%r, modified=%r, unchanged=%r," \
-            " unversioned=%r)" % (self.added,
-                                  self.removed, self.renamed, self.kind_changed, self.modified,
-                                  self.unchanged, self.unversioned)
+            " copied=%r, kind_changed=%r, modified=%r, unchanged=%r," \
+            " unversioned=%r)" % (
+                self.added, self.removed, self.renamed, self.copied,
+                self.kind_changed, self.modified, self.unchanged,
+                self.unversioned)
 
     def has_changed(self):
         return bool(self.modified
                     or self.added
                     or self.removed
                     or self.renamed
+                    or self.copied
                     or self.kind_changed)
 
     def get_changes_as_text(self, show_ids=False, show_unchanged=False,
@@ -130,10 +135,13 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
         elif fully_present[0] is False:
             delta.missing.append(change)
         elif change.name[0] != change.name[1] or change.parent_id[0] != change.parent_id[1]:
-            # If the name changes, or the parent_id changes, we have a rename
+            # If the name changes, or the parent_id changes, we have a rename or copy
             # (if we move a parent, that doesn't count as a rename for the
             # file)
-            delta.renamed.append(change)
+            if change.copied:
+                delta.copied.append(change)
+            else:
+                delta.renamed.append(change)
         elif change.kind[0] != change.kind[1]:
             delta.kind_changed.append(change)
         elif change.changed_content or change.executable[0] != change.executable[1]:
@@ -151,6 +159,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     delta.removed.sort(key=change_key)
     delta.added.sort(key=change_key)
     delta.renamed.sort(key=change_key)
+    delta.copied.sort(key=change_key)
     delta.missing.sort(key=change_key)
     # TODO: jam 20060529 These lists shouldn't need to be sorted
     #       since we added them in alphabetical order.
@@ -220,7 +229,7 @@ class _ChangeReporter(object):
             self.output("Operating on whole tree but only reporting on "
                         "'%s' view." % (self.view_name,))
 
-    def report(self, paths, versioned, renamed, modified, exe_change,
+    def report(self, paths, versioned, renamed, copied, modified, exe_change,
                kind):
         """Report one change to a file
 
@@ -228,6 +237,7 @@ class _ChangeReporter(object):
         :param versioned: may be 'added', 'removed', 'unchanged', or
             'unversioned.
         :param renamed: may be True or False
+        :param copied: may be True or False
         :param modified: may be 'created', 'deleted', 'kind changed',
             'modified' or 'unchanged'.
         :param exe_change: True if the execute bit has changed
@@ -253,13 +263,13 @@ class _ChangeReporter(object):
         # ( the path is different OR
         #   the kind is different)
         if (versioned == 'unchanged' and
-                (renamed or modified == 'kind changed')):
-            if renamed:
-                # on a rename, we show old and new
+                (renamed or copied or modified == 'kind changed')):
+            if renamed or copied:
+                # on a rename or copy, we show old and new
                 old_path, path = paths
             else:
-                # if it's not renamed, we're showing both for kind changes
-                # so only show the new path
+                # if it's not renamed or copied, we're showing both for kind
+                # changes so only show the new path
                 old_path, path = paths[1], paths[1]
             # if the file is not missing in the source, we show its kind
             # when we show two paths.
@@ -275,6 +285,8 @@ class _ChangeReporter(object):
             path = paths[1]
         if renamed:
             rename = "R"
+        elif copied:
+            rename = "C"
         else:
             rename = self.versioned_map[versioned]
         # we show the old kind on the new path when the content is deleted.
@@ -320,8 +332,14 @@ def report_changes(change_iterator, reporter):
         # as it had a value
         if None not in change.name and None not in change.parent_id and\
                 (change.name[0] != change.name[1] or change.parent_id[0] != change.parent_id[1]):
-            renamed = True
+            if change.copied:
+                copied = True
+                renamed = False
+            else:
+                renamed = True
+                copied = False
         else:
+            copied = False
             renamed = False
         if change.kind[0] != change.kind[1]:
             if change.kind[0] is None:
@@ -340,7 +358,7 @@ def report_changes(change_iterator, reporter):
             if change.kind[1] == "file":
                 exe_change = (change.executable[0] != change.executable[1])
         versioned_change = versioned_change_map[change.versioned]
-        reporter.report(change.path, versioned_change, renamed, modified,
+        reporter.report(change.path, versioned_change, renamed, copied, modified,
                         exe_change, change.kind)
 
 
@@ -439,6 +457,8 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
     show_list(delta.missing, 'missing', '!')
     extra_modified = []
     show_list(delta.renamed, 'renamed', 'R', with_file_id_format='%s',
+              show_more=show_more_renamed)
+    show_list(delta.copied, 'copied', 'C', with_file_id_format='%s',
               show_more=show_more_renamed)
     show_list(delta.kind_changed, 'kind changed', 'K',
               with_file_id_format='%s',
