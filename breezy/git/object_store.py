@@ -308,7 +308,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     for (path, file_id), chunks in tree.iter_files_bytes(
             [(path, (path, file_id)) for (path, file_id) in new_blobs]):
         obj = Blob()
-        obj.chunked = chunks
+        obj.chunked = list(chunks)
         if add_cache_entry is not None:
             add_cache_entry(obj, (file_id, tree.get_file_revision(path)), path)
         yield path, obj, (file_id, tree.get_file_revision(path))
@@ -569,7 +569,7 @@ class BazaarObjectStore(BaseObjectStore):
             ((key[0], key[1], key) for key in keys))
         for (file_id, revision, expected_sha), chunks in stream:
             blob = Blob()
-            blob.chunked = chunks
+            blob.chunked = list(chunks)
             if blob.id != expected_sha and blob.data == b"":
                 # Perhaps it's a symlink ?
                 tree = self.tree_cache.revision_tree(revision)

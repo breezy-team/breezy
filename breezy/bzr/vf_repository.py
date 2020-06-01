@@ -1272,7 +1272,7 @@ class VersionedFileRepository(Repository):
         for record in self.texts.get_record_stream(text_keys, 'unordered', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key[1], record.key[0])
-            yield text_keys[record.key], record.get_bytes_as('chunked')
+            yield text_keys[record.key], record.iter_bytes_as('chunked')
 
     def _generate_text_key_index(self, text_key_references=None,
                                  ancestors=None):
