@@ -639,7 +639,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
             mutter('hpss call:   %s', repr(args)[1:-1])
             if getattr(self._request._medium, 'base', None) is not None:
                 mutter('             (to %s)', self._request._medium.base)
-            self._request_start_time = osutils.timer_func()
+            self._request_start_time = osutils.perf_counter()
         self._write_args(args)
         self._request.finished_writing()
         self._last_verb = args[0]
@@ -655,7 +655,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
                 mutter('                  (to %s)',
                        self._request._medium._path)
             mutter('              %d bytes', len(body))
-            self._request_start_time = osutils.timer_func()
+            self._request_start_time = osutils.perf_counter()
             if 'hpssdetail' in debug.debug_flags:
                 mutter('hpss body content: %s', body)
         self._write_args(args)
@@ -675,7 +675,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
             if getattr(self._request._medium, '_path', None) is not None:
                 mutter('                  (to %s)',
                        self._request._medium._path)
-            self._request_start_time = osutils.timer_func()
+            self._request_start_time = osutils.perf_counter()
         self._write_args(args)
         readv_bytes = self._serialise_offsets(body)
         bytes = self._encode_bulk_data(readv_bytes)
@@ -707,7 +707,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         if 'hpss' in debug.debug_flags:
             if self._request_start_time is not None:
                 mutter('   result:   %6.3fs  %s',
-                       osutils.timer_func() - self._request_start_time,
+                       osutils.perf_counter() - self._request_start_time,
                        repr(result)[1:-1])
                 self._request_start_time = None
             else:
@@ -1173,9 +1173,9 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
         if self._response_start_time is None:
-            self._response_start_time = osutils.timer_func()
+            self._response_start_time = osutils.perf_counter()
         if include_time:
-            t = '%5.3fs ' % (time.clock() - self._response_start_time)
+            t = '%5.3fs ' % (osutils.perf_counter() - self._response_start_time)
         else:
             t = ''
         if extra_bytes is None:
@@ -1318,7 +1318,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
             base = getattr(self._medium_request._medium, 'base', None)
             if base is not None:
                 mutter('             (to %s)', base)
-            self._request_start_time = osutils.timer_func()
+            self._request_start_time = osutils.perf_counter()
         self._write_protocol_version()
         self._write_headers(self._headers)
         self._write_structure(args)
@@ -1336,7 +1336,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
             if path is not None:
                 mutter('                  (to %s)', path)
             mutter('              %d bytes', len(body))
-            self._request_start_time = osutils.timer_func()
+            self._request_start_time = osutils.perf_counter()
         self._write_protocol_version()
         self._write_headers(self._headers)
         self._write_structure(args)
@@ -1355,7 +1355,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
             path = getattr(self._medium_request._medium, '_path', None)
             if path is not None:
                 mutter('                  (to %s)', path)
-            self._request_start_time = osutils.timer_func()
+            self._request_start_time = osutils.perf_counter()
         self._write_protocol_version()
         self._write_headers(self._headers)
         self._write_structure(args)
@@ -1372,7 +1372,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
             path = getattr(self._medium_request._medium, '_path', None)
             if path is not None:
                 mutter('                  (to %s)', path)
-            self._request_start_time = osutils.timer_func()
+            self._request_start_time = osutils.perf_counter()
         self.body_stream_started = False
         self._write_protocol_version()
         self._write_headers(self._headers)

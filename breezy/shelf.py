@@ -68,7 +68,7 @@ class ShelfCreator(object):
         :param file_list: The files to make more similar to the target.
         """
         self.work_tree = work_tree
-        self.work_transform = transform.TreeTransform(work_tree)
+        self.work_transform = work_tree.get_transform()
         try:
             self.target_tree = target_tree
             self.shelf_transform = transform.TransformPreview(self.target_tree)
@@ -98,39 +98,38 @@ class ShelfCreator(object):
            ('modify text', file_id)
            ('modify target', file_id, target_target, work_target)
         """
-        for (file_id, paths, changed, versioned, parents, names, kind,
-             executable) in self.iter_changes:
+        for change in self.iter_changes:
             # don't shelve add of tree root.  Working tree should never
             # lack roots, and bzr misbehaves when they do.
             # FIXME ADHB (2009-08-09): should still shelve adds of tree roots
             # when a tree root was deleted / renamed.
-            if kind[0] is None and names[1] == '':
+            if change.kind[0] is None and change.name[1] == '':
                 continue
             # Also don't shelve deletion of tree root.
-            if kind[1] is None and names[0] == '':
+            if change.kind[1] is None and change.name[0] == '':
                 continue
-            if kind[0] is None or versioned[0] is False:
-                self.creation[file_id] = (kind[1], names[1], parents[1],
-                                          versioned)
-                yield ('add file', file_id, kind[1], paths[1])
-            elif kind[1] is None or versioned[0] is False:
-                self.deletion[file_id] = (kind[0], names[0], parents[0],
-                                          versioned)
-                yield ('delete file', file_id, kind[0], paths[0])
+            if change.kind[0] is None or change.versioned[0] is False:
+                self.creation[change.file_id] = (
+                    change.kind[1], change.name[1], change.parent_id[1], change.versioned)
+                yield ('add file', change.file_id, change.kind[1], change.path[1])
+            elif change.kind[1] is None or change.versioned[0] is False:
+                self.deletion[change.file_id] = (
+                    change.kind[0], change.name[0], change.parent_id[0], change.versioned)
+                yield ('delete file', change.file_id, change.kind[0], change.path[0])
             else:
-                if names[0] != names[1] or parents[0] != parents[1]:
-                    self.renames[file_id] = (names, parents)
-                    yield ('rename', file_id) + paths
+                if change.name[0] != change.name[1] or change.parent_id[0] != change.parent_id[1]:
+                    self.renames[change.file_id] = (change.name, change.parent_id)
+                    yield ('rename', change.file_id) + change.path
 
-                if kind[0] != kind[1]:
-                    yield ('change kind', file_id, kind[0], kind[1], paths[0])
-                elif kind[0] == 'symlink':
-                    t_target = self.target_tree.get_symlink_target(paths[0])
-                    w_target = self.work_tree.get_symlink_target(paths[1])
-                    yield ('modify target', file_id, paths[0], t_target,
+                if change.kind[0] != change.kind[1]:
+                    yield ('change kind', change.file_id, change.kind[0], change.kind[1], change.path[0])
+                elif change.kind[0] == 'symlink':
+                    t_target = self.target_tree.get_symlink_target(change.path[0])
+                    w_target = self.work_tree.get_symlink_target(change.path[1])
+                    yield ('modify target', change.file_id, change.path[0], t_target,
                            w_target)
-                elif changed:
-                    yield ('modify text', file_id)
+                elif change.changed_content:
+                    yield ('modify text', change.file_id)
 
     def shelve_change(self, change):
         """Shelve a change in the iter_shelvable format."""
@@ -209,8 +208,7 @@ class ShelfCreator(object):
     def _content_from_tree(tt, tree, file_id):
         trans_id = tt.trans_id_file_id(file_id)
         tt.delete_contents(trans_id)
-        transform.create_from_tree(tt, trans_id, tree, tree.id2path(file_id),
-                                   file_id)
+        transform.create_from_tree(tt, trans_id, tree, tree.id2path(file_id))
 
     def shelve_content_change(self, file_id):
         """Shelve a kind change or binary file content change.
@@ -268,7 +266,7 @@ class ShelfCreator(object):
                 else:
                     transform.create_from_tree(
                         to_transform, s_trans_id, tree,
-                        tree.id2path(file_id), file_id)
+                        tree.id2path(file_id))
         if version:
             to_transform.version_file(file_id, s_trans_id)
 

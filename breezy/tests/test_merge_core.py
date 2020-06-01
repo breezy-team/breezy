@@ -21,7 +21,6 @@ import breezy
 from .. import (
     controldir,
     errors,
-    generate_ids,
     merge_directive,
     osutils,
     )
@@ -36,8 +35,10 @@ from ..merge import (
     WeaveMerger,
     Merger,
     )
+from ..bzr import (
+    generate_ids,
+    )
 from ..osutils import getcwd, pathjoin
-from ..transform import TreeTransform
 from . import TestCaseWithTransport, TestSkipped
 from ..workingtree import WorkingTree
 
@@ -56,7 +57,7 @@ class MergeBuilder(object):
             wt.lock_write()
             wt.set_root_id(self.tree_root)
             wt.flush()
-            tt = TreeTransform(wt)
+            tt = wt.get_transform()
             return wt, tt
         self.base, self.base_tt = wt('base')
         self.this, self.this_tt = wt('this')

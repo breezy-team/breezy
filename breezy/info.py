@@ -113,7 +113,7 @@ def gather_location_info(repository=None, branch=None, working=None,
             if working_path == master_path_base:
                 locs['checkout of co-located branch'] = params['branch']
             elif 'branch' in params:
-                locs['checkout of branch'] = "%s, branch %s" (
+                locs['checkout of branch'] = "%s, branch %s" % (
                     master_path_base, params['branch'])
             else:
                 locs['checkout of branch'] = master_path
@@ -284,6 +284,7 @@ def _show_working_stats(working, outfile):
     outfile.write('  %8d added\n' % len(delta.added))
     outfile.write('  %8d removed\n' % len(delta.removed))
     outfile.write('  %8d renamed\n' % len(delta.renamed))
+    outfile.write('  %8d copied\n' % len(delta.copied))
 
     ignore_cnt = unknown_cnt = 0
     for path in working.extras():
@@ -456,7 +457,7 @@ def describe_layout(repository=None, branch=None, tree=None, control=None):
         extra = []
         if repository.make_working_trees():
             extra.append('trees')
-        if len(control.get_branches()) > 0:
+        if len(control.branch_names()) > 0:
             extra.append('colocated branches')
         if extra:
             phrase += ' with ' + " and ".join(extra)

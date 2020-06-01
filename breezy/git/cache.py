@@ -30,6 +30,7 @@ from dulwich.objects import (
     )
 
 from .. import (
+    bedding,
     errors as bzr_errors,
     osutils,
     registry,
@@ -46,21 +47,15 @@ from ..sixish import (
     viewvalues,
     )
 from ..transport import (
-    get_transport,
+    get_transport_from_path,
     )
 
 
 def get_cache_dir():
-    try:
-        from xdg.BaseDirectory import xdg_cache_home
-    except ImportError:
-        from ..config import config_dir
-        ret = os.path.join(config_dir(), "git")
-    else:
-        ret = os.path.join(xdg_cache_home, "breezy", "git")
-    if not os.path.isdir(ret):
-        os.makedirs(ret)
-    return ret
+    path = os.path.join(bedding.cache_dir(), "git")
+    if not os.path.isdir(path):
+        os.mkdir(path)
+    return path
 
 
 def get_remote_cache_transport(repository):
@@ -74,7 +69,7 @@ def get_remote_cache_transport(repository):
         path = os.path.join(get_cache_dir(), uuid)
         if not os.path.isdir(path):
             os.mkdir(path)
-    return get_transport(path)
+    return get_transport_from_path(path)
 
 
 def check_pysqlite_version(sqlite3):
@@ -613,11 +608,9 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
 
     def open(self, transport):
         try:
-            basepath = transport.local_abspath(".").encode(osutils._fs_enc)
+            basepath = transport.local_abspath(".")
         except bzr_errors.NotLocalUrl:
             basepath = get_cache_dir()
-        if not isinstance(basepath, str):
-            raise TypeError(basepath)
         try:
             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
         except ImportError:
@@ -850,8 +843,7 @@ class IndexGitShaMap(GitShaMap):
             except bzr_errors.FileExists:
                 pass
             return cls(transport.clone('git'))
-        from ..transport import get_transport
-        return cls(get_transport(get_cache_dir()))
+        return cls(get_transport_from_path(get_cache_dir()))
 
     def __repr__(self):
         if self._transport is not None:

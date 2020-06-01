@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf8 -*-
 # $Id: rst2pdf.py 5560 2008-05-20 13:00:31Z milde $
 

@@ -38,6 +38,7 @@ from .. import (
     )
 from .. import TestCaseWithTransport
 from ..matchers import ContainsNoVfsCalls
+from ..test_bedding import override_whoami
 
 
 class TestCommit(TestCaseWithTransport):
@@ -315,9 +316,8 @@ brz: ERROR: No changes to commit.\
         this_tree.commit('create_files')
         other_dir = this_tree.controldir.sprout('other')
         other_tree = other_dir.open_workingtree()
-        other_tree.lock_write()
-        # perform the needed actions on the files and dirs.
-        try:
+        with other_tree.lock_write():
+            # perform the needed actions on the files and dirs.
             other_tree.rename_one('dirtorename', 'renameddir')
             other_tree.rename_one('dirtoreparent', 'renameddir/reparenteddir')
             other_tree.rename_one('filetorename', 'renamedfile')
@@ -331,8 +331,6 @@ brz: ERROR: No changes to commit.\
             other_tree.add('newfile')
             other_tree.add('newdir/')
             other_tree.commit('modify all sample files and dirs.')
-        finally:
-            other_tree.unlock()
         this_tree.merge_from_branch(other_tree.branch)
         out, err = self.run_bzr('commit -m added', working_dir='this')
         self.assertEqual('', out)
@@ -868,11 +866,7 @@ altered in u2
         with open('foo/foo.txt', 'w') as f:
             f.write('hello')
         self.run_bzr(['add'], working_dir='foo')
-        self.overrideEnv('EMAIL', None)
-        self.overrideEnv('BRZ_EMAIL', None)
-        # Also, make sure that it's not inferred from mailname.
-        self.overrideAttr(config, '_auto_user_id',
-                          lambda: (None, None))
+        override_whoami(self)
         self.run_bzr_error(
             ['Unable to determine your name'],
             ['commit', '-m', 'initial'], working_dir='foo')

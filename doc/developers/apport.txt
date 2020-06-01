@@ -41,7 +41,7 @@ The process is
 
 #. An exception reaches the top-level handler.
 
-#. We log it in apport-format to a file in ~/.bazaar/crash.
+#. We log it in apport-format to a file in ~/.config/breezy/crash.
 
 #. We tell the user where that file is, and invite them to file a bug
    report.
@@ -59,7 +59,7 @@ Future ideas
   because sometimes they are in fact bugs.  Then the user can attach the
   apport report later if they decide to file a bug.  There may be quite a
   lot of them so we might need to limit the number that are stored, or do
-  this when a debug flag is set.  At the moment they go into .bzr.log and
+  this when a debug flag is set.  At the moment they go into bzr.log and
   that's probably ok to start with.
 
 * Raising an error from the breakin debugger should cause this to fire.
@@ -69,7 +69,7 @@ Future ideas
   longwinded than our current output and might make the traceback scroll
   off the screen.
 
-* Automatically trace messages (ie from .bzr.log) in the report.  We could
+* Automatically trace messages (ie from bzr.log) in the report.  We could
   just include the whole file, but it may be long, and including the whole
   thing has a greater risk of including sensitive data.
 

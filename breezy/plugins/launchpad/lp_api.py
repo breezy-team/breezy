@@ -37,7 +37,7 @@ except ImportError:  # python < 3
 
 from ... import (
     branch,
-    config,
+    bedding,
     errors,
     osutils,
     trace,
@@ -45,10 +45,20 @@ from ... import (
     )
 from ...i18n import gettext
 
+
+class LaunchpadlibMissing(errors.DependencyNotPresent):
+
+    _fmt = ("launchpadlib is required for Launchpad API access. "
+            "Please install the launchpadlib package.")
+
+    def __init__(self, e):
+        super(LaunchpadlibMissing, self).__init__(
+            'launchpadlib', e)
+
 try:
     import launchpadlib
 except ImportError as e:
-    raise errors.DependencyNotPresent('launchpadlib', e)
+    raise LaunchpadlibMissing(e)
 
 from launchpadlib.launchpad import (
     Launchpad,
@@ -59,26 +69,9 @@ from launchpadlib import uris
 MINIMUM_LAUNCHPADLIB_VERSION = (1, 6, 3)
 
 
-# We use production as the default because edge has been deprecated circa
-# 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
-DEFAULT_INSTANCE = 'production'
-
-LAUNCHPAD_DOMAINS = {
-    'production': 'launchpad.net',
-    'staging': 'staging.launchpad.net',
-    'qastaging': 'qastaging.launchpad.net',
-    'demo': 'demo.launchpad.net',
-    'dev': 'launchpad.dev',
-    }
-
-LAUNCHPAD_BAZAAR_DOMAINS = [
-    'bazaar.%s' % domain
-    for domain in LAUNCHPAD_DOMAINS.values()]
-
-
 def get_cache_directory():
     """Return the directory to cache launchpadlib objects in."""
-    return osutils.pathjoin(config.config_dir(), 'launchpad')
+    return osutils.pathjoin(bedding.cache_dir(), 'launchpad')
 
 
 def parse_launchpadlib_version(version_number):
@@ -122,7 +115,10 @@ def connect_launchpad(base_url, timeout=None, proxy_info=None,
     if proxy_info is None:
         import httplib2
         proxy_info = httplib2.proxy_info_from_environment('https')
-    cache_directory = get_cache_directory()
+    try:
+        cache_directory = get_cache_directory()
+    except EnvironmentError:
+        cache_directory = None
     return Launchpad.login_with(
         'breezy', base_url, cache_directory, timeout=timeout,
         proxy_info=proxy_info, version=version)

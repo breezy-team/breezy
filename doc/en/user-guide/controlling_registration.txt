@@ -95,12 +95,12 @@ Global ignores
 There are some ignored files which are not project specific, but more user
 specific. Things like editor temporary files, or personal temporary files.
 Rather than add these ignores to every project, brz supports a global
-ignore file in ``~/.bazaar/ignore`` [#]_. It has the same syntax as the
+ignore file in ``~/.config/breezy/ignore`` [#]_. It has the same syntax as the
 per-project ignore file.
 
 .. [#] On Windows, the users configuration files can be found in the
-   application data directory. So instead of ``~/.bazaar/branch.conf``
+   application data directory. So instead of ``~/.config/breezy/branch.conf``
    the configuration file can be found as:
-   ``C:\Documents and Settings\<username>\Application Data\Breezy\2.0\branch.conf``.
+   ``C:\Documents and Settings\<username>\Application Data\Breezy\3.0\branch.conf``.
    The same is true for ``locations.conf``, ``ignore``, and the
    ``plugins`` directory.

@@ -23,6 +23,7 @@ from breezy.tests import (
     features,
     TestCaseWithTransport,
     TestSkipped,
+    TestNotApplicable,
     )
 from breezy.workingtree import WorkingTree
 from breezy import osutils
@@ -39,14 +40,11 @@ class TestRemove(TestCaseWithTransport):
 
     def _make_tree_and_add(self, paths):
         tree = self.make_branch_and_tree('.')
-        tree.lock_write()
-        try:
+        with tree.lock_write():
             self.build_tree(paths)
             for path in paths:
                 file_id = path.replace('/', '_').encode('utf-8') + _id
                 tree.add(path, file_id)
-        finally:
-            tree.unlock()
         return tree
 
     def assertFilesDeleted(self, files):
@@ -278,7 +276,7 @@ class TestRemove(TestCaseWithTransport):
     def test_remove_backslash(self):
         # pad.lv/176263
         if os.path.sep == '\\':
-            raise tests.TestNotApplicable(
+            raise TestNotApplicable(
                 'unable to add filenames with backslashes where '
                 ' it is the path separator')
         tree = self.make_branch_and_tree('.')

@@ -24,14 +24,16 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 import gzip
 import itertools
+import patiencediff
 
 from breezy import (
     bencode,
-    errors,
-    patiencediff,
     ui,
     )
 """)
+from . import (
+    errors,
+    )
 from .i18n import gettext
 from .sixish import (
     BytesIO,

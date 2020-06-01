@@ -171,7 +171,7 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
     def is_compatible(source, target):
         return isinstance(target, DummyForeignVcsBranch)
 
-    def push(self, overwrite=False, stop_revision=None, lossy=False):
+    def push(self, overwrite=False, stop_revision=None, lossy=False, tag_selector=None):
         if not lossy:
             raise errors.NoRoundtrippingSupport(self.source, self.target)
         result = branch.BranchPushResult()

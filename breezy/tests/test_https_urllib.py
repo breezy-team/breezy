@@ -26,8 +26,7 @@ from .. import (
     trace,
 )
 from .. import tests
-from ..transport.http import _urllib2_wrappers
-from ..transport.http._urllib2_wrappers import ssl
+from ..transport.http import ssl, opt_ssl_ca_certs
 
 
 class CaCertsConfigTests(tests.TestCaseInTempDir):
@@ -49,7 +48,7 @@ class CaCertsConfigTests(tests.TestCaseInTempDir):
     def test_specified_doesnt_exist(self):
         stack = self.get_stack('')
         # Disable the default value mechanism to force the behavior we want
-        self.overrideAttr(_urllib2_wrappers.opt_ssl_ca_certs, 'default',
+        self.overrideAttr(opt_ssl_ca_certs, 'default',
                           os.path.join(self.test_dir, u"nonexisting.pem"))
         self.warnings = []
 

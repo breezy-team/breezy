@@ -55,14 +55,14 @@ class TestRevisionHistory(tests.TestCaseWithTransport):
     def test_revision_history_with_repo_branch(self):
         """With a repository branch location."""
         self._build_branch()
-        self.run_bzr('init-repo repo')
+        self.run_bzr('init-shared-repo repo')
         self.run_bzr('branch test repo/test')
         self._check_revision_history('repo/test')
 
     def test_revision_history_with_checkout(self):
         """With a repository branch checkout location."""
         self._build_branch()
-        self.run_bzr('init-repo repo')
+        self.run_bzr('init-shared-repo repo')
         self.run_bzr('branch test repo/test')
         self.run_bzr('checkout repo/test test-checkout')
         self._check_revision_history('test-checkout')
@@ -70,7 +70,7 @@ class TestRevisionHistory(tests.TestCaseWithTransport):
     def test_revision_history_with_lightweight_checkout(self):
         """With a repository branch lightweight checkout location."""
         self._build_branch()
-        self.run_bzr('init-repo repo')
+        self.run_bzr('init-shared-repo repo')
         self.run_bzr('branch test repo/test')
         self.run_bzr('checkout --lightweight repo/test test-checkout')
         self._check_revision_history('test-checkout')

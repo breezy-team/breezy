@@ -21,6 +21,7 @@ from breezy import (
     revisiontree,
     tests,
     )
+from breezy.tree import MissingNestedTree
 from breezy.bzr import (
     workingtree_4,
     )
@@ -51,7 +52,6 @@ class TestPlanFileMerge(TestCaseWithTree):
         work_a = self.make_branch_and_tree('wta')
         self.build_tree_contents([('wta/file', b'a\nb\nc\nd\n')])
         work_a.add('file')
-        file_id = work_a.path2id('file')
         work_a.commit('base version')
         work_b = work_a.controldir.sprout('wtb').open_workingtree()
         self.build_tree_contents([('wta/file', b'b\nc\nd\ne\n')])
@@ -72,25 +72,22 @@ class TestPlanFileMerge(TestCaseWithTree):
             ('unchanged', b'd\n'),
             ('new-a', b'e\n'),
             ('new-b', b'f\n'),
-        ], list(tree_a.plan_file_merge(file_id, tree_b)))
+        ], list(tree_a.plan_file_merge('file', tree_b)))
 
 
 class TestReference(TestCaseWithTree):
 
     def skip_if_no_reference(self, tree):
-        if not getattr(tree, 'supports_tree_reference', lambda: False)():
+        if not tree.supports_tree_reference():
             raise tests.TestNotApplicable('Tree references not supported')
 
     def create_nested(self):
         work_tree = self.make_branch_and_tree('wt')
-        work_tree.lock_write()
-        try:
+        with work_tree.lock_write():
             self.skip_if_no_reference(work_tree)
             subtree = self.make_branch_and_tree('wt/subtree')
             subtree.commit('foo')
             work_tree.add_reference(subtree)
-        finally:
-            work_tree.unlock()
         tree = self._convert_tree(work_tree)
         self.skip_if_no_reference(tree)
         return tree, subtree
@@ -108,13 +105,22 @@ class TestReference(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEqual(
-            [(u'subtree', subtree.get_root_id())],
+            [u'subtree'],
             list(tree.iter_references()))
+
+    def test_get_nested_tree(self):
+        tree, subtree = self.create_nested()
+        try:
+            changes = subtree.changes_from(tree.get_nested_tree('subtree'))
+            self.assertFalse(changes.has_changed())
+        except MissingNestedTree:
+            # Also okay.
+            pass
 
     def test_get_root_id(self):
         # trees should return some kind of root id; it can be none
         tree = self.make_branch_and_tree('tree')
-        root_id = tree.get_root_id()
+        root_id = tree.path2id('')
         if root_id is not None:
             self.assertIsInstance(root_id, bytes)
 
@@ -135,6 +141,8 @@ class TestFileIds(TestCaseWithTree):
     def test_id2path(self):
         # translate from file-id back to path
         work_tree = self.make_branch_and_tree('wt')
+        if not work_tree.supports_setting_file_ids():
+            self.skipTest("working tree does not support setting file ids")
         tree = self.get_tree_no_parents_abc_content(work_tree)
         a_id = tree.path2id('a')
         with tree.lock_read():
@@ -285,20 +293,6 @@ class TestIterChildEntries(TestCaseWithTree):
         tree = self._convert_tree(work_tree)
         self.assertRaises(errors.NoSuchFile, lambda:
                           list(tree.iter_child_entries('unknown')))
-
-
-class TestHasId(TestCaseWithTree):
-
-    def test_has_id(self):
-        work_tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/file'])
-        work_tree.add('file')
-        file_id = work_tree.path2id('file')
-        tree = self._convert_tree(work_tree)
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        self.assertTrue(tree.has_id(file_id))
-        self.assertFalse(tree.has_id(b'dir-id'))
 
 
 class TestExtras(TestCaseWithTree):

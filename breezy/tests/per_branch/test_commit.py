@@ -110,82 +110,84 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
 
     def test_post_commit_not_to_origin(self):
         tree = self.make_branch_and_memory_tree('branch')
-        tree.lock_write()
-        tree.add('')
-        revid = tree.commit('first revision')
-        branch.Branch.hooks.install_named_hook(
-            'post_commit', self.capture_post_commit_hook, None)
-        revid2 = tree.commit('second revision')
-        # having committed from up the branch, we should get the
-        # before and after revnos and revids correctly.
-        self.assertEqual([
-            ('post_commit', None, tree.branch.base, 1, revid, 2, revid2,
-             None, True)
-            ],
-            self.hook_calls)
-        tree.unlock()
+        with tree.lock_write():
+            tree.add('')
+            revid = tree.commit('first revision')
+            branch.Branch.hooks.install_named_hook(
+                'post_commit', self.capture_post_commit_hook, None)
+            revid2 = tree.commit('second revision')
+            # having committed from up the branch, we should get the
+            # before and after revnos and revids correctly.
+            self.assertEqual([
+                ('post_commit', None, tree.branch.base, 1, revid, 2, revid2,
+                 None, True)
+                ],
+                self.hook_calls)
+
+    def get_rootfull_delta(self, repository, revid):
+        tree = repository.revision_tree(revid)
+        with repository.lock_read():
+            parent_revid = repository.get_parent_map([revid])[revid][0]
+            basis_tree = repository.revision_tree(parent_revid)
+            tree = repository.revision_tree(revid)
+            return tree.changes_from(basis_tree, include_root=True)
 
     def test_pre_commit_passes(self):
-        empty_delta = delta.TreeDelta()
-        root_delta = delta.TreeDelta()
         tree = self.make_branch_and_memory_tree('branch')
-        tree.lock_write()
-        tree.add('')
-        root_delta.added = [('', tree.path2id(''), 'directory')]
-        branch.Branch.hooks.install_named_hook(
-            "pre_commit", self.capture_pre_commit_hook, None)
-        revid1 = tree.commit('first revision')
-        revid2 = tree.commit('second revision')
-        self.assertEqual([
-            ('pre_commit', 0, revision.NULL_REVISION, 1, revid1, root_delta),
-            ('pre_commit', 1, revid1, 2, revid2, empty_delta)
-            ],
-            self.hook_calls)
-        tree.unlock()
+        with tree.lock_write():
+            tree.add('')
+            branch.Branch.hooks.install_named_hook(
+                "pre_commit", self.capture_pre_commit_hook, None)
+            revid1 = tree.commit('first revision')
+            revid2 = tree.commit('second revision')
+            root_delta = self.get_rootfull_delta(tree.branch.repository, revid1)
+            empty_delta = tree.branch.repository.get_revision_delta(revid2)
+            self.assertEqual([
+                ('pre_commit', 0, revision.NULL_REVISION, 1, revid1, root_delta),
+                ('pre_commit', 1, revid1, 2, revid2, empty_delta)
+                ],
+                self.hook_calls)
 
     def test_pre_commit_fails(self):
-        empty_delta = delta.TreeDelta()
-        root_delta = delta.TreeDelta()
         tree = self.make_branch_and_memory_tree('branch')
-        tree.lock_write()
-        tree.add('')
-        root_delta.added = [('', tree.path2id(''), 'directory')]
+        with tree.lock_write():
+            tree.add('')
 
-        class PreCommitException(Exception):
+            class PreCommitException(Exception):
 
-            def __init__(self, revid):
-                self.revid = revid
+                def __init__(self, revid):
+                    self.revid = revid
 
-        def hook_func(local, master,
-                      old_revno, old_revid, new_revno, new_revid,
-                      tree_delta, future_tree):
-            raise PreCommitException(new_revid)
-        branch.Branch.hooks.install_named_hook(
-            "pre_commit", self.capture_pre_commit_hook, None)
-        branch.Branch.hooks.install_named_hook("pre_commit", hook_func, None)
-        revids = [None, None, None]
-        # this commit will raise an exception
-        # so the commit is rolled back and revno unchanged
-        err = self.assertRaises(PreCommitException, tree.commit, 'message')
-        # we have to record the revid to use in assertEqual later
-        revids[0] = err.revid
-        # unregister all pre_commit hooks
-        branch.Branch.hooks["pre_commit"] = []
-        # and re-register the capture hook
-        branch.Branch.hooks.install_named_hook(
-            "pre_commit", self.capture_pre_commit_hook, None)
-        # now these commits should go through
-        for i in range(1, 3):
-            revids[i] = tree.commit('message')
-        self.assertEqual([
-            ('pre_commit', 0, revision.NULL_REVISION,
-             1, revids[0], root_delta),
-            ('pre_commit', 0, revision.NULL_REVISION,
-             1, revids[1], root_delta),
-            ('pre_commit', 1, revids[1], 2, revids[2], empty_delta)
-            ],
-            self.hook_calls)
-        tree.unlock()
+            def hook_func(local, master,
+                          old_revno, old_revid, new_revno, new_revid,
+                          tree_delta, future_tree):
+                raise PreCommitException(new_revid)
+            branch.Branch.hooks.install_named_hook(
+                "pre_commit", self.capture_pre_commit_hook, None)
+            branch.Branch.hooks.install_named_hook("pre_commit", hook_func, None)
+            revids = [None, None, None]
+            # this commit will raise an exception
+            # so the commit is rolled back and revno unchanged
+            err = self.assertRaises(PreCommitException, tree.commit, 'message')
+            # we have to record the revid to use in assertEqual later
+            revids[0] = err.revid
+            # unregister all pre_commit hooks
+            branch.Branch.hooks["pre_commit"] = []
+            # and re-register the capture hook
+            branch.Branch.hooks.install_named_hook(
+                "pre_commit", self.capture_pre_commit_hook, None)
+            # now these commits should go through
+            for i in range(1, 3):
+                revids[i] = tree.commit('message')
+            self.assertEqual([
+                ('pre_commit', 0, revision.NULL_REVISION,
+                 1, revids[0], self.get_rootfull_delta(tree.branch.repository, revids[0])),
+                ('pre_commit', 0, revision.NULL_REVISION,
+                 1, revids[1], self.get_rootfull_delta(tree.branch.repository, revids[1])),
+                ('pre_commit', 1, revids[1], 2, revids[2],
+                 self.get_rootfull_delta(tree.branch.repository, revids[2]))
+                ],
+                self.hook_calls)
 
     def test_pre_commit_delta(self):
         # This tests the TreeDelta object passed to pre_commit hook.
@@ -219,22 +221,5 @@ class TestCommitHook(per_branch.TestCaseWithBranch):
                 "pre_commit", self.capture_pre_commit_hook, None)
             revid2 = tree.commit('second revision')
 
-        expected_delta = delta.TreeDelta()
-        if tree.has_versioned_directories():
-            expected_delta.added.append(
-                ('added_dir', added_dir_id, 'directory'))
-        if tree.supports_rename_tracking():
-            expected_delta.removed = [('to_be_unversioned',
-                                       to_be_unversioned_id, 'file')]
-            expected_delta.renamed = [('dir/subfile', 'dir/subfile_renamed',
-                                       dir_subfile_id, 'file', False, False)]
-        else:
-            expected_delta.added.append(('dir/subfile_renamed',
-                                         tree.path2id('dir/subfile_renamed'), 'file'))
-            expected_delta.removed = [
-                ('dir/subfile', dir_subfile_id, 'file'),
-                ('to_be_unversioned', to_be_unversioned_id, 'file')]
-        expected_delta.modified = [('rootfile', rootfile_id, 'file', True,
-                                    False)]
         self.assertEqual([('pre_commit', 1, revid1, 2, revid2,
-                           expected_delta)], self.hook_calls)
+                           self.get_rootfull_delta(tree.branch.repository, revid2))], self.hook_calls)

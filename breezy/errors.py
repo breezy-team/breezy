@@ -284,6 +284,13 @@ class WorkingTreeAlreadyPopulated(InternalBzrError):
         self.base = base
 
 
+class NoWhoami(BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+            "Please, set your name with the 'whoami' command.\n"
+            'E.g. brz whoami "Your Name <name@example.com>"')
+
+
 class BzrCommandError(BzrError):
     """Error from user command"""
 
@@ -1873,6 +1880,13 @@ class NonAsciiRevisionId(UnsupportedOperation):
     """
 
 
+class SharedRepositoriesUnsupported(UnsupportedOperation):
+    _fmt = "Shared repositories are not supported by %(format)r."
+
+    def __init__(self, format):
+        BzrError.__init__(self, format=format)
+
+
 class GhostTagsNotSupported(BzrError):
 
     _fmt = "Ghost tags not supported by format %(format)r."
@@ -2021,41 +2035,6 @@ class GhostRevisionUnusableHere(BzrError):
         self.revision_id = revision_id
 
 
-class IllegalUseOfScopeReplacer(InternalBzrError):
-
-    _fmt = ("ScopeReplacer object %(name)r was used incorrectly:"
-            " %(msg)s%(extra)s")
-
-    def __init__(self, name, msg, extra=None):
-        BzrError.__init__(self)
-        self.name = name
-        self.msg = msg
-        if extra:
-            self.extra = ': ' + str(extra)
-        else:
-            self.extra = ''
-
-
-class InvalidImportLine(InternalBzrError):
-
-    _fmt = "Not a valid import statement: %(msg)\n%(text)s"
-
-    def __init__(self, text, msg):
-        BzrError.__init__(self)
-        self.text = text
-        self.msg = msg
-
-
-class ImportNameCollision(InternalBzrError):
-
-    _fmt = ("Tried to import an object to the same name as"
-            " an existing object. %(name)s")
-
-    def __init__(self, name):
-        BzrError.__init__(self)
-        self.name = name
-
-
 class NotAMergeDirective(BzrError):
     """File starting with %(firstline)r is not a merge directive"""
 
@@ -2146,10 +2125,11 @@ class NoSuchTag(BzrError):
 class TagsNotSupported(BzrError):
 
     _fmt = ("Tags not supported by %(branch)s;"
-            " you may be able to use brz upgrade.")
+            " you may be able to use 'brz upgrade %(branch_url)s'.")
 
     def __init__(self, branch):
         self.branch = branch
+        self.branch_url = branch.user_url
 
 
 class TagAlreadyExists(BzrError):
@@ -2311,21 +2291,6 @@ class ShelvedChanges(UncommittedChanges):
             ' (See brz shelve --list).%(more)s')
 
 
-class UnableCreateSymlink(BzrError):
-
-    _fmt = 'Unable to create symlink %(path_str)son this platform'
-
-    def __init__(self, path=None):
-        path_str = ''
-        if path:
-            try:
-                path_str = repr(str(path))
-            except UnicodeEncodeError:
-                path_str = repr(path)
-            path_str += ' '
-        self.path_str = path_str
-
-
 class UnableEncodePath(BzrError):
 
     _fmt = ('Unable to encode %(kind)s path %(path)r in '
@@ -2460,3 +2425,13 @@ class ChangesAlreadyStored(BzrCommandError):
 
     _fmt = ('Cannot store uncommitted changes because this branch already'
             ' stores uncommitted changes.')
+
+
+class RevnoOutOfBounds(InternalBzrError):
+
+    _fmt = ("The requested revision number %(revno)d is outside of the "
+            "expected boundaries (%(minimum)d <= %(maximum)d).")
+
+    def __init__(self, revno, bounds):
+        InternalBzrError.__init__(
+            self, revno=revno, minimum=bounds[0], maximum=bounds[1])

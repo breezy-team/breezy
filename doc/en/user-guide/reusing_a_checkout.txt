@@ -61,7 +61,7 @@ One possible setup is to use a lightweight checkout in combination
 with a local tree-less repository. This lets you switch what you
 are working on with ease. For example::
 
-  brz init-repo --no-trees PROJECT
+  brz init-shared-repo --no-trees PROJECT
   cd PROJECT
   brz branch bzr+ssh://centralhost/srv/brz/PROJECT/trunk
   brz checkout --lightweight trunk my-sandbox

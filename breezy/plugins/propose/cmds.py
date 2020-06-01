@@ -38,7 +38,7 @@ from ...option import (
     )
 from ...sixish import text_type
 from ...trace import note
-from . import (
+from ... import (
     propose as _mod_propose,
     )
 
@@ -91,6 +91,7 @@ class cmd_publish_derived(Command):
             overwrite=overwrite)
         local_branch.set_push_location(remote_branch.user_url)
         local_branch.set_public_branch(public_url)
+        local_branch.set_submit_branch(submit_branch.user_url)
         note(gettext("Pushed to %s") % public_url)
 
 
@@ -143,10 +144,16 @@ class cmd_propose_merge(Command):
         Option('name', help='Name of the new remote branch.', type=str),
         Option('description', help='Description of the change.', type=str),
         Option('prerequisite', help='Prerequisite branch.', type=str),
+        Option('wip', help='Mark merge request as work-in-progress'),
+        Option(
+            'commit-message',
+            help='Set commit message for merge, if supported', type=str),
         ListOption('labels', short_name='l', type=text_type,
                    help='Labels to apply.'),
         Option('no-allow-lossy',
                help='Allow fallback to lossy push, if necessary.'),
+        Option('allow-collaboration',
+               help='Allow collaboration from target branch maintainer(s)'),
         ]
     takes_args = ['submit_branch?']
 
@@ -154,7 +161,8 @@ class cmd_propose_merge(Command):
 
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
-            labels=None, prerequisite=None):
+            labels=None, prerequisite=None, commit_message=None, wip=False,
+            allow_collaboration=False):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -175,6 +183,7 @@ class cmd_propose_merge(Command):
         remote_branch, public_branch_url = hoster.publish_derived(
             branch, target, name=name, allow_lossy=not no_allow_lossy)
         branch.set_push_location(remote_branch.user_url)
+        branch.set_submit_branch(target.user_url)
         note(gettext('Published branch to %s') % public_branch_url)
         if prerequisite is not None:
             prerequisite_branch = _mod_branch.Branch.open(prerequisite)
@@ -191,11 +200,13 @@ class cmd_propose_merge(Command):
         try:
             proposal = proposal_builder.create_proposal(
                 description=description, reviewers=reviewers,
-                prerequisite_branch=prerequisite_branch, labels=labels)
+                prerequisite_branch=prerequisite_branch, labels=labels,
+                commit_message=commit_message,
+                work_in_progress=wip, allow_collaboration=allow_collaboration)
         except _mod_propose.MergeProposalExists as e:
-            raise errors.BzrCommandError(gettext(
-                'There is already a branch merge proposal: %s') % e.url)
-        note(gettext('Merge proposal created: %s') % proposal.url)
+            note(gettext('There is already a branch merge proposal: %s'), e.url)
+        else:
+            note(gettext('Merge proposal created: %s') % proposal.url)
 
 
 class cmd_find_merge_proposal(Command):
@@ -227,90 +238,6 @@ class cmd_find_merge_proposal(Command):
             self.outf.write(gettext('Merge proposal: %s\n') % mp.url)
 
 
-class cmd_github_login(Command):
-    __doc__ = """Log into GitHub.
-
-    When communicating with GitHub, some commands need to authenticate to
-    GitHub.
-    """
-
-    takes_args = ['username?']
-
-    def run(self, username=None):
-        from github import Github, GithubException
-        from breezy.config import AuthenticationConfig
-        authconfig = AuthenticationConfig()
-        if username is None:
-            username = authconfig.get_user(
-                'https', 'github.com', prompt=u'GitHub username', ask=True)
-        password = authconfig.get_password('https', 'github.com', username)
-        client = Github(username, password)
-        user = client.get_user()
-        try:
-            authorization = user.create_authorization(
-                scopes=['user', 'repo', 'delete_repo'], note='Breezy',
-                note_url='https://github.com/breezy-team/breezy')
-        except GithubException as e:
-            errs = e.data.get('errors', [])
-            if errs:
-                err_code = errs[0].get('code')
-                if err_code == u'already_exists':
-                    raise errors.BzrCommandError('token already exists')
-            raise errors.BzrCommandError(e.data['message'])
-        # TODO(jelmer): This should really use something in
-        # AuthenticationConfig
-        from .github import store_github_token
-        store_github_token(scheme='https', host='github.com',
-                           token=authorization.token)
-
-
-class cmd_gitlab_login(Command):
-    __doc__ = """Log into a GitLab instance.
-
-    This command takes a GitLab instance URL (e.g. https://gitlab.com)
-    as well as an optional private token. Private tokens can be created via the
-    web UI.
-
-    :Examples:
-
-      Log into GNOME's GitLab (prompts for a token):
-
-         brz gitlab-login https://gitlab.gnome.org/
-
-      Log into Debian's salsa, using a token created earlier:
-
-         brz gitlab-login https://salsa.debian.org if4Theis6Eich7aef0zo
-    """
-
-    takes_args = ['url', 'private_token?']
-
-    takes_options = [
-        Option('name', help='Name for GitLab site in configuration.',
-               type=str),
-        Option('no-check',
-               "Don't check that the token is valid."),
-        ]
-
-    def run(self, url, private_token=None, name=None, no_check=False):
-        from breezy import ui
-        from .gitlabs import store_gitlab_token
-        if name is None:
-            try:
-                name = urlutils.parse_url(url)[3].split('.')[-2]
-            except (ValueError, IndexError):
-                raise errors.BzrCommandError(
-                    'please specify a site name with --name')
-        if private_token is None:
-            note("Please visit %s to obtain a private token.",
-                 urlutils.join(url, "profile/personal_access_tokens"))
-            private_token = ui.ui_factory.get_password(u'Private token')
-        if not no_check:
-            from gitlab import Gitlab
-            gl = Gitlab(url=url, private_token=private_token)
-            gl.auth()
-        store_gitlab_token(name=name, url=url, private_token=private_token)
-
-
 class cmd_my_merge_proposals(Command):
     __doc__ = """List all merge proposals owned by the logged-in user.
 
@@ -319,6 +246,7 @@ class cmd_my_merge_proposals(Command):
     hidden = True
 
     takes_options = [
+        'verbose',
         RegistryOption.from_kwargs(
             'status',
             title='Proposal Status',
@@ -330,9 +258,31 @@ class cmd_my_merge_proposals(Command):
             merged='Merged merge proposals',
             closed='Closed merge proposals')]
 
-    def run(self, status='open'):
-        from .propose import hosters
-        for name, hoster_cls in hosters.items():
+    def run(self, status='open', verbose=False):
+        for name, hoster_cls in _mod_propose.hosters.items():
             for instance in hoster_cls.iter_instances():
                 for mp in instance.iter_my_proposals(status=status):
                     self.outf.write('%s\n' % mp.url)
+                    if verbose:
+                        self.outf.write(
+                            '(Merging %s into %s)\n' %
+                            (mp.get_source_branch_url(),
+                             mp.get_target_branch_url()))
+                        description = mp.get_description()
+                        if description:
+                            self.outf.writelines(
+                                ['\t%s\n' % l
+                                 for l in description.splitlines()])
+                        self.outf.write('\n')
+
+
+class cmd_land_merge_proposal(Command):
+    __doc__ = """Land a merge proposal."""
+
+    takes_args = ['url']
+    takes_options = [
+        Option('message', help='Commit message to use.', type=str)]
+
+    def run(self, url, message=None):
+        proposal = _mod_propose.get_proposal_by_url(url)
+        proposal.merge(commit_message=message)

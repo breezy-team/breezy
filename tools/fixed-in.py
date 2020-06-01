@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # Simple script that will output the release where a given bug was fixed
 # searching the NEWS file
@@ -10,7 +10,7 @@ import sys
 
 class NewsParser(object):
 
-    paren_exp_re = re.compile('\(([^)]+)\)')
+    paren_exp_re = re.compile(r'\(([^)]+)\)')
     release_re = re.compile("brz[ -]")
     release_prefix_length = len('brz ')
     bugs_re = re.compile('#([0-9]+)')
@@ -51,14 +51,14 @@ class NewsParser(object):
     def try_date(self):
         if self.release is None:
             return False
-        date_re = re.compile(':%s: (NOT RELEASED YET|\d{4}-\d{2}-\d{2})'
+        date_re = re.compile(r':%s: (NOT RELEASED YET|\d{4}-\d{2}-\d{2})'
                              % (self.release,))
         match = date_re.match(self.lrs)
         if match is not None:
             self.date = match.group(1)
             return True
         # The old fashion way
-        released_re = re.compile(':Released:\s+(\d{4}-\d{2}-\d{2})')
+        released_re = re.compile(r':Released:\s+(\d{4}-\d{2}-\d{2})')
         match = released_re.match(self.lrs)
         if match is not None:
             self.date = match.group(1)

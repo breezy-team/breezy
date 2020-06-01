@@ -44,10 +44,10 @@ test out development formats (though we cannot guarantee bugs of course
    development version available before pulling in bzr.dev changes
    around release time, as that is when old format cleanups will occur.
 
-We cannot guarantee backwards compatability though, because some of the
+We cannot guarantee backwards compatibility though, because some of the
 planned work may be 'upgrade only'. Please see ``bzr help formats`` for
 the text of the 'development' format which will indicate its
-compatability with other formats if you need to interoperate with
+compatibility with other formats if you need to interoperate with
 users or services that do not have bzr.dev.
 
 Before converting to a development format
@@ -89,14 +89,14 @@ If you're starting a project from scratch and wish to use a shared repository
 for branches, you can make it a ``development`` repository like this::
 
   cd my-repo
-  bzr init-repo --development .
+  bzr init-shared-repo --development .
   cd my-stuff
   bzr init
   bzr add
   bzr commit -m "initial import"
 
 In other words, use the normal sequence of commands but add the
-``--development`` option to the ``init-repo`` command.
+``--development`` option to the ``init-shared-repo`` command.
 
 Upgrading an existing branch or repository to development
 ---------------------------------------------------------
@@ -141,7 +141,7 @@ Here are the commands for using the ``upgrade`` approach::
 Here are the commands for the shared repository approach::
 
   cd my-repo
-  bzr init-repo --development .
+  bzr init-shared-repo --development .
   bzr branch my-source-branch my-new-branch
   cd my-new-branch
 

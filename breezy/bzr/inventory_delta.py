@@ -277,23 +277,25 @@ class InventoryDeltaDeserializer(object):
         else:
             raise InventoryDeltaError("value %(val)r is not a bool", val=value)
 
-    def parse_text_bytes(self, bytes):
+    def parse_text_bytes(self, lines):
         """Parse the text bytes of a serialized inventory delta.
 
         If versioned_root and/or tree_references flags were set via
         require_flags, then the parsed flags must match or a BzrError will be
         raised.
 
-        :param bytes: The bytes to parse. This can be obtained by calling
-            delta_to_lines and then doing ''.join(delta_lines).
+        :param lines: The lines to parse. This can be obtained by calling
+            delta_to_lines.
         :return: (parent_id, new_id, versioned_root, tree_references,
             inventory_delta)
         """
-        if not bytes.endswith(b'\n'):
-            last_line = bytes.rsplit(b'\n', 1)[-1]
+        if not lines:
             raise InventoryDeltaError(
-                'last line not empty: %(line)r', line=last_line)
-        lines = bytes.split(b'\n')[:-1]  # discard the last empty line
+                'inventory delta is empty')
+        if not lines[-1].endswith(b'\n'):
+            raise InventoryDeltaError(
+                'last line not empty: %(line)r', line=lines[-1])
+        lines = [line.rstrip(b'\n') for line in lines]  # discard the last empty line
         if not lines or lines[0] != b'format: %s' % FORMAT_1:
             raise InventoryDeltaError(
                 'unknown format %(line)r', line=lines[0:1])

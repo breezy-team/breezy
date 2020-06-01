@@ -53,10 +53,10 @@ different kinds of users:
 Differences in the release process between beta and stable release will be
 mentioned when needed.
 
-When do we relase ?
-===================
+When do we release ?
+====================
 
-As of September 2018, we maintain a single series: 3.0.
+As of May 2020, we maintain a two series: 3.1 and trunk (3.2).
 
 #. as much as possible releases should not disturb development, and
    ongoing development should not disturb releases,
@@ -182,7 +182,7 @@ the alpha releases won't happen again.
 The process for releasing an alpha release is therefore:
 - upload a tarball to launchpad,
 - upload a tarball to pypi,
-- mail bazaar@lists.canonical.com,
+- mail bazaar@lists.ubuntu.com,
 - post an announcement on the home page.  
 
 Uploading tarballs are described below, just use alpha versions (3, 0, 0,
@@ -485,9 +485,10 @@ for the new branch and inform translators.
 Announcing the source freeze
 ----------------------------
 
-#. Post to the ``bazaar@lists.canonical.com`` list, saying that the source
-   has been frozen. Be extra clear that this is only a *source* release
-   targeted at packagers and installer builders (see
+#. Post to the ``bazaar@lists.ubuntu.com`` list and
+   ``breezy-vcs@googlegroups.com`` , saying that the source has been
+   frozen. Be extra clear that this is only a *source* release targeted at
+   packagers and installer builders (see
    <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue for
    platform maintainers and plugin authors to update their code.  This is
    done before the general public announcement of the release.
@@ -542,14 +543,14 @@ Now that the release is publicly available, tell people about it.
 
 #. Make an announcement mail.
 
-   For beta releases, this is sent to the ``bazaar@lists.canonical.com`` and
-   ``bazaar-announce@lists.canonical.com`` lists.
+   For beta releases, this is sent to the ``bazaar@lists.ubuntu.com`` and
+   ``bazaar-announce@lists.ubuntu.com`` lists.
 
    For stable releases (excluding SRUs which are for older stable releases),
    it should also be cc'd to ``info-gnu@gnu.org``,
    ``python-announce-list@python.org``, ``bug-directory@gnu.org``.
 
-   In all cases, it is good to set ``Reply-To: bazaar@lists.canonical.com``,
+   In all cases, it is good to set ``Reply-To: bazaar@lists.ubuntu.com``,
    so that people who reply to the announcement don't spam other lists.
 
    The announce mail will look something like this::
@@ -622,7 +623,7 @@ Now that the release is publicly available, tell people about it.
    To be able to upload the release you must create an account on
    <http://pypi.python.org/pypi> and have one of the existing owners of the
    project add you to the group and update your ``[pypi]`` section in your
-   ``~/pypirc`` file.
+   ``~/.pypirc`` file.
 
 
 Merging the released code back to trunk

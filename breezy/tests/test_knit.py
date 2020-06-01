@@ -18,6 +18,7 @@
 
 import gzip
 from io import BytesIO
+from patiencediff import PatienceSequenceMatcher
 import sys
 
 from .. import (
@@ -48,7 +49,6 @@ from ..bzr.knit import (
     _KnitKeyAccess,
     make_file_factory,
     )
-from ..patiencediff import PatienceSequenceMatcher
 from ..bzr import (
     knitpack_repo,
     pack_repo,
@@ -320,16 +320,22 @@ class KnitRecordAccessTestsMixin(object):
     """Tests for getting and putting knit records."""
 
     def test_add_raw_records(self):
-        """Add_raw_records adds records retrievable later."""
+        """add_raw_records adds records retrievable later."""
         access = self.get_access()
-        memos = access.add_raw_records([(b'key', 10)], b'1234567890')
+        memos = access.add_raw_records([(b'key', 10)], [b'1234567890'])
         self.assertEqual([b'1234567890'], list(access.get_raw_records(memos)))
+
+    def test_add_raw_record(self):
+        """add_raw_record adds records retrievable later."""
+        access = self.get_access()
+        memos = access.add_raw_record(b'key', 10, [b'1234567890'])
+        self.assertEqual([b'1234567890'], list(access.get_raw_records([memos])))
 
     def test_add_several_raw_records(self):
         """add_raw_records with many records and read some back."""
         access = self.get_access()
         memos = access.add_raw_records([(b'key', 10), (b'key2', 2), (b'key3', 5)],
-                                       b'12345678901234567')
+                                       [b'12345678901234567'])
         self.assertEqual([b'1234567890', b'12', b'34567'],
                          list(access.get_raw_records(memos)))
         self.assertEqual([b'1234567890'],
@@ -377,8 +383,8 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         """Create a pack file with 2 records."""
         access, writer = self._get_access(packname='packname', index='foo')
         memos = []
-        memos.extend(access.add_raw_records([(b'key1', 10)], b'1234567890'))
-        memos.extend(access.add_raw_records([(b'key2', 5)], b'12345'))
+        memos.extend(access.add_raw_records([(b'key1', 10)], [b'1234567890']))
+        memos.extend(access.add_raw_records([(b'key2', 5)], [b'12345']))
         writer.end()
         return memos
 
@@ -494,13 +500,13 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
     def test_read_from_several_packs(self):
         access, writer = self._get_access()
         memos = []
-        memos.extend(access.add_raw_records([(b'key', 10)], b'1234567890'))
+        memos.extend(access.add_raw_records([(b'key', 10)], [b'1234567890']))
         writer.end()
         access, writer = self._get_access('pack2', 'FOOBAR')
-        memos.extend(access.add_raw_records([(b'key', 5)], b'12345'))
+        memos.extend(access.add_raw_records([(b'key', 5)], [b'12345']))
         writer.end()
         access, writer = self._get_access('pack3', 'BAZ')
-        memos.extend(access.add_raw_records([(b'key', 5)], b'alpha'))
+        memos.extend(access.add_raw_records([(b'key', 5)], [b'alpha']))
         writer.end()
         transport = self.get_transport()
         access = pack_repo._DirectPackAccess({"FOO": (transport, 'packfile'),
@@ -529,7 +535,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         writer = pack.ContainerWriter(write_data)
         writer.begin()
         access.set_writer(writer, index, (transport, packname))
-        memos = access.add_raw_records([(b'key', 10)], b'1234567890')
+        memos = access.add_raw_records([(b'key', 10)], [b'1234567890'])
         writer.end()
         self.assertEqual([b'1234567890'], list(access.get_raw_records(memos)))
 

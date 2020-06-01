@@ -44,6 +44,7 @@ from ..remote import (
     HeadUpdateFailed,
     RemoteGitError,
     RemoteGitBranchFormat,
+    _git_url_and_path_from_transport,
     )
 
 from dulwich import porcelain
@@ -64,6 +65,11 @@ class SplitUrlTests(TestCase):
         self.assertEqual(("foo", None, "la", "/bar"),
                          split_git_url("git://la@foo/bar"))
 
+    def test_username_password(self):
+        self.assertEqual(
+            ("foo", None, "la", "/bar"),
+            split_git_url("git://la:passwd@foo/bar"))
+
     def test_nopath(self):
         self.assertEqual(("foo", None, None, "/"),
                          split_git_url("git://foo/"))
@@ -75,6 +81,11 @@ class SplitUrlTests(TestCase):
     def test_homedir(self):
         self.assertEqual(("foo", None, None, "~bar"),
                          split_git_url("git://foo/~bar"))
+
+    def test_file(self):
+        self.assertEqual(
+            ("", None, None, "/bar"),
+            split_git_url("file:///bar"))
 
 
 class ParseGitErrorTests(TestCase):
@@ -123,6 +134,14 @@ class ParseGitErrorTests(TestCase):
         self.assertIsInstance(e, PermissionDenied)
         self.assertEqual(e.path, 'porridge/gaduhistory.git')
         self.assertEqual(e.extra, ': denied to jelmer')
+
+    def test_invalid_repo_name(self):
+        e = parse_git_error(
+            "url",
+            """Gregwar/fatcat/tree/debian is not a valid repository name
+Email support@github.com for help
+""")
+        self.assertIsInstance(e, NotBranchError)
 
 
 class TestRemoteGitBranchFormat(TestCase):
@@ -338,6 +357,79 @@ class PushToRemoteBase(object):
              },
             self.remote_real.get_refs())
 
+    def test_push_branch_symref(self):
+        cfg = self.remote_real.get_config()
+        cfg.set((b'core', ), b'bare', True)
+        cfg.write_to_path()
+        self.remote_real.refs.set_symbolic_ref(b'HEAD', b'refs/heads/master')
+        c1 = self.remote_real.do_commit(
+            message=b'message',
+            committer=b'committer <committer@example.com>',
+            author=b'author <author@example.com>',
+            ref=b'refs/heads/master')
+        remote = ControlDir.open(self.remote_url)
+        wt = self.make_branch_and_tree('local', format=self._from_format)
+        self.build_tree(['local/blah'])
+        wt.add(['blah'])
+        revid = wt.commit('blah')
+
+        if self._from_format == 'git':
+            result = remote.push_branch(wt.branch, overwrite=True)
+        else:
+            result = remote.push_branch(wt.branch, lossy=True, overwrite=True)
+
+        self.assertEqual(None, result.old_revno)
+        if self._from_format == 'git':
+            self.assertEqual(1, result.new_revno)
+        else:
+            self.assertIs(None, result.new_revno)
+
+        result.report(BytesIO())
+
+        self.assertEqual(
+            {
+                b'HEAD': self.remote_real.refs[b'refs/heads/master'],
+                b'refs/heads/master': self.remote_real.refs[b'refs/heads/master'],
+            },
+            self.remote_real.get_refs())
+
+    def test_push_branch_new_with_tags(self):
+        remote = ControlDir.open(self.remote_url)
+        builder = self.make_branch_builder('local', format=self._from_format)
+        builder.start_series()
+        rev_1 = builder.build_snapshot(None, [
+            ('add', ('', None, 'directory', '')),
+            ('add', ('filename', None, 'file', b'content'))])
+        rev_2 = builder.build_snapshot(
+            [rev_1], [('modify', ('filename', b'new-content\n'))])
+        rev_3 = builder.build_snapshot(
+            [rev_1], [('modify', ('filename', b'new-new-content\n'))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        try:
+            branch.tags.set_tag('atag', rev_2)
+        except TagsNotSupported:
+            raise TestNotApplicable('source format does not support tags')
+
+        branch.get_config_stack().set('branch.fetch_tags', True)
+        if self._from_format == 'git':
+            result = remote.push_branch(branch, name='newbranch')
+        else:
+            result = remote.push_branch(
+                branch, lossy=True, name='newbranch')
+
+        self.assertEqual(0, result.old_revno)
+        if self._from_format == 'git':
+            self.assertEqual(2, result.new_revno)
+        else:
+            self.assertIs(None, result.new_revno)
+
+        result.report(BytesIO())
+
+        self.assertEqual(
+            {b'refs/heads/newbranch', b'refs/tags/atag'},
+            set(self.remote_real.get_refs().keys()))
+
     def test_push(self):
         c1 = self.remote_real.do_commit(
             message=b'message',
@@ -475,6 +567,8 @@ class RemoteControlDirTests(TestCaseWithTransport):
         self.assertEqual(
             {'': 'master', 'blah': 'blah', 'master': 'master'},
             {n: b.name for (n, b) in remote.get_branches().items()})
+        self.assertEqual(
+            set(['', 'blah', 'master']), set(remote.branch_names()))
 
     def test_remove_tag(self):
         c1 = self.remote_real.do_commit(
@@ -564,3 +658,34 @@ class RemoteControlDirTests(TestCaseWithTransport):
             author=b'author <author@example.com>')
         remote = ControlDir.open(self.remote_url)
         self.assertEqual('master', remote.open_branch().nick)
+
+
+class GitUrlAndPathFromTransportTests(TestCase):
+
+    def test_file(self):
+        split_url = _git_url_and_path_from_transport('file:///home/blah')
+        self.assertEqual(split_url.scheme, 'file')
+        self.assertEqual(split_url.path, '/home/blah')
+
+    def test_file_segment_params(self):
+        split_url = _git_url_and_path_from_transport('file:///home/blah,branch=master')
+        self.assertEqual(split_url.scheme, 'file')
+        self.assertEqual(split_url.path, '/home/blah')
+
+    def test_git_smart(self):
+        split_url = _git_url_and_path_from_transport(
+            'git://github.com/dulwich/dulwich,branch=master')
+        self.assertEqual(split_url.scheme, 'git')
+        self.assertEqual(split_url.path, '/dulwich/dulwich')
+
+    def test_https(self):
+        split_url = _git_url_and_path_from_transport(
+            'https://github.com/dulwich/dulwich')
+        self.assertEqual(split_url.scheme, 'https')
+        self.assertEqual(split_url.path, '/dulwich/dulwich')
+
+    def test_https_segment_params(self):
+        split_url = _git_url_and_path_from_transport(
+            'https://github.com/dulwich/dulwich,branch=master')
+        self.assertEqual(split_url.scheme, 'https')
+        self.assertEqual(split_url.path, '/dulwich/dulwich')

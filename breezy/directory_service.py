@@ -67,7 +67,7 @@ class DirectoryServiceRegistry(registry.Registry):
     name and URL, and return a URL.
     """
 
-    def dereference(self, url):
+    def dereference(self, url, purpose=None):
         """Dereference a supplied URL if possible.
 
         URLs that match a registered directory service prefix are looked up in
@@ -77,19 +77,39 @@ class DirectoryServiceRegistry(registry.Registry):
         requires further dereferencing.
 
         :param url: The URL to dereference
+        :param purpose: Purpose of the URL ('read', 'write' or None - if not declared)
         :return: The dereferenced URL if applicable, the input URL otherwise.
         """
         match = self.get_prefix(url)
         if match is None:
             return url
         service, name = match
-        return service().look_up(name, url)
+        directory = service()
+        try:
+            return directory.look_up(name, url, purpose=purpose)
+        except TypeError:
+            # Compatibility for plugins written for Breezy < 3.0.0
+            return directory.look_up(name, url)
 
 
 directories = DirectoryServiceRegistry()
 
 
-class AliasDirectory(object):
+class Directory(object):
+    """Abstract directory lookup class."""
+
+    def look_up(self, name, url, purpose=None):
+        """Look up an entry in a directory.
+
+        :param name: Directory name
+        :param url: The URL to dereference
+        :param purpose: Purpose of the URL ('read', 'write' or None - if not declared)
+        :return: The dereferenced URL if applicable, the input URL otherwise.
+        """
+        raise NotImplementedError(self.look_up)
+
+
+class AliasDirectory(Directory):
     """Directory lookup for locations associated with a branch.
 
     :parent, :submit, :public, :push, :this, and :bound are currently
@@ -110,7 +130,7 @@ class AliasDirectory(object):
     branch_aliases.register('this', lambda b: b.base,
                             help="This branch.")
 
-    def look_up(self, name, url):
+    def look_up(self, name, url, purpose=None):
         branch = _mod_branch.Branch.open_containing('.')[0]
         parts = url.split('/', 1)
         if len(parts) == 2:
@@ -156,17 +176,17 @@ directories.register(':', AliasDirectory,
                      'Easy access to remembered branch locations')
 
 
-class ColocatedDirectory(object):
+class ColocatedDirectory(Directory):
     """Directory lookup for colocated branches.
 
     co:somename will resolve to the colocated branch with "somename" in
     the current directory.
     """
 
-    def look_up(self, name, url):
+    def look_up(self, name, url, purpose=None):
         dir = _mod_controldir.ControlDir.open_containing('.')[0]
-        return urlutils.join_segment_parameters(dir.user_url,
-                                                {"branch": urlutils.escape(name)})
+        return urlutils.join_segment_parameters(
+            dir.user_url, {"branch": urlutils.escape(name)})
 
 
 directories.register('co:', ColocatedDirectory,

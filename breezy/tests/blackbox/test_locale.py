@@ -69,6 +69,9 @@ message:
   Unicode \xc2\xb5 commit
 """, out)
 
+    @unittest.skipIf(
+        sys.version_info[:2] >= (3, 8),
+        "python > 3.8 doesn't allow changing filesystem default encoding")
     def test_log_C(self):
         self.disable_missing_extensions_warning()
         out, err = self.run_log_quiet_long(
@@ -90,6 +93,9 @@ message:
   Unicode ? commit
 """, out)
 
+    @unittest.skipIf(
+        sys.version_info[:2] >= (3, 8),
+        "python > 3.8 doesn't allow changing filesystem default encoding")
     def test_log_BOGUS(self):
         out, err = self.run_log_quiet_long(
             ['tree'],

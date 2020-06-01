@@ -35,7 +35,7 @@ from ... import (
     )
 from ...i18n import gettext
 
-from .lp_api import (
+from .uris import (
     DEFAULT_INSTANCE,
     LAUNCHPAD_DOMAINS,
     )
@@ -63,7 +63,7 @@ def _requires_launchpad_login(scheme, netloc, path, query,
     """
     return (scheme in ('bzr+ssh', 'sftp')
             and (netloc.endswith('launchpad.net') or
-                 netloc.endswith('launchpad.dev')))
+                 netloc.endswith('launchpad.test')))
 
 
 def _expand_user(path, url, lp_login):
@@ -117,7 +117,7 @@ def _update_url_scheme(url):
 
 class LaunchpadDirectory(object):
 
-    def look_up(self, name, url):
+    def look_up(self, name, url, purpose=None):
         """See DirectoryService.look_up"""
         return self._resolve(url)
 

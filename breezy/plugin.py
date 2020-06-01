@@ -49,13 +49,16 @@ import imp
 from importlib import util as importlib_util
 
 from breezy import (
-    config,
+    bedding,
     debug,
-    errors,
     help_topics,
     trace,
     )
 """)
+
+from . import (
+    errors,
+    )
 
 
 _MODULE_PREFIX = "breezy.plugins."
@@ -225,7 +228,12 @@ def _env_plugin_path(key='BRZ_PLUGIN_PATH'):
     """
     path_details = []
     env = osutils.path_from_environ(key)
-    defaults = {"user": not env, "core": True, "site": True, 'entrypoints': True}
+    defaults = {
+        "user": not env,
+        "core": True,
+        "site": True,
+        'entrypoints': False,
+        }
     if env:
         # Add paths specified by user in order
         for p in env.split(os.pathsep):
@@ -402,7 +410,7 @@ def _get_site_plugin_paths(sys_paths):
 
 
 def get_user_plugin_path():
-    return osutils.pathjoin(config.config_dir(), 'plugins')
+    return osutils.pathjoin(bedding.config_dir(), 'plugins')
 
 
 def record_plugin_warning(warning_message):

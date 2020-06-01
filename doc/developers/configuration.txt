@@ -154,20 +154,6 @@ new sections for their own needs (this is not especially encouraged
 though). The ``bzr-bookmarks`` plugin defines a ``BOOKMARKS`` section there
 for example.
 
-pkgimport.conf
-==============
-
-The Ubuntu package importer defines a store and two stacks involving
-``pkgimport.conf``. A no-name section contains the options common to all
-packages and sections named after their corresponding package can also be
-defined.
-
-The ``ImporterStack`` uses ``locations.conf`` and the no-name section in
-``pkgimport.conf`` for the importer options.
-
-The ``PackageStack`` uses only ``pkgimport.conf`` and uses the section name
-after the package followed by the no-name section.
-
 location.conf
 =============
 

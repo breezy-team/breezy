@@ -81,7 +81,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         directory exists without a current control directory in it
     :param lossy: Allow lossy push
     """
-    to_transport = transport.get_transport(location)
+    to_transport = transport.get_transport(location, purpose='write')
     try:
         dir_to = controldir.ControlDir.open_from_transport(to_transport)
     except errors.NotBranchError:
@@ -169,10 +169,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     push_result.report(to_file)
     if verbose:
         br_to = push_result.target_branch
-        br_to.lock_read()
-        try:
+        with br_to.lock_read():
             from .log import show_branch_change
             show_branch_change(br_to, to_file, push_result.old_revno,
                                push_result.old_revid)
-        finally:
-            br_to.unlock()

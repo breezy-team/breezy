@@ -24,12 +24,14 @@
 from __future__ import absolute_import
 
 import breezy.bzr  # noqa: F401
+from breezy import controldir
 from ..commands import (
     Command,
     display_command,
     )
 from ..option import (
     Option,
+    RegistryOption,
     )
 from ..sixish import (
     text_type,
@@ -46,6 +48,15 @@ class cmd_git_import(Command):
 
     takes_options = [
         Option('colocated', help='Create colocated branches.'),
+        RegistryOption('dest-format',
+                       help='Specify a format for this branch. '
+                       'See "help formats" for a full list.',
+                       lazy_registry=('breezy.controldir', 'format_registry'),
+                       converter=lambda name: controldir.format_registry.make_controldir(
+                            name),
+                       value_switches=True,
+                       title="Branch format",
+                       ),
         ]
 
     def _get_colocated_branch(self, target_controldir, name):
@@ -69,7 +80,7 @@ class cmd_git_import(Command):
         except NotBranchError:
             return head_controldir.create_branch()
 
-    def run(self, src_location, dest_location=None, colocated=False):
+    def run(self, src_location, dest_location=None, colocated=False, dest_format=None):
         import os
         from .. import (
             controldir,
@@ -100,9 +111,8 @@ class cmd_git_import(Command):
             )
         from .repository import GitRepository
 
-        dest_format = controldir.ControlDirFormat.get_default_format()
         if dest_format is None:
-            raise BzrError('no default format')
+            dest_format = controldir.format_registry.make_controldir('default')
 
         if dest_location is None:
             dest_location = os.path.basename(src_location.rstrip("/\\"))
@@ -129,16 +139,15 @@ class cmd_git_import(Command):
 
         interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
-        refs = interrepo.fetch()
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            for i, (name, sha) in enumerate(viewitems(refs)):
+        result = interrepo.fetch()
+        with ui.ui_factory.nested_progress_bar() as pb:
+            for i, (name, sha) in enumerate(viewitems(result.refs)):
                 try:
                     branch_name = ref_to_branch_name(name)
                 except ValueError:
                     # Not a branch, ignore
                     continue
-                pb.update(gettext("creating branches"), i, len(refs))
+                pb.update(gettext("creating branches"), i, len(result.refs))
                 if (getattr(target_controldir._format, "colocated_branches",
                             False) and colocated):
                     if name == "HEAD":
@@ -159,8 +168,6 @@ class cmd_git_import(Command):
                         source_branch.base,
                         {"branch": urlutils.escape(branch_name)})
                     head_branch.set_parent(url)
-        finally:
-            pb.finished()
         trace.note(gettext(
             "Use 'bzr checkout' to create a working tree in "
             "the newly created branches."))
@@ -265,24 +272,17 @@ class cmd_git_apply(Command):
         :param f: Patch file to read.
         :param signoff: Add Signed-Off-By flag.
         """
-        from ..i18n import gettext
-        from ..errors import BzrCommandError
         from dulwich.patch import git_am_patch_split
-        import subprocess
+        from breezy.patch import patch_tree
         (c, diff, version) = git_am_patch_split(f)
         # FIXME: Cope with git-specific bits in patch
         # FIXME: Add new files to working tree
-        p = subprocess.Popen(["patch", "-p1"], stdin=subprocess.PIPE,
-                             cwd=wt.basedir)
-        p.communicate(diff)
-        exitcode = p.wait()
-        if exitcode != 0:
-            raise BzrCommandError(gettext("error running patch"))
-        message = c.message
+        patch_tree(wt, [diff], strip=1, out=self.outf)
+        message = c.message.decode('utf-8')
         if signoff:
             signed_off_by = wt.branch.get_config().username()
-            message += "Signed-off-by: %s\n" % signed_off_by.encode('utf-8')
-        wt.commit(authors=[c.author], message=message)
+            message += "Signed-off-by: %s\n" % (signed_off_by, )
+        wt.commit(authors=[c.author.decode('utf-8')], message=message)
 
     def run(self, patches_list=None, signoff=False, force=False):
         from ..errors import UncommittedChanges

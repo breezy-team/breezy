@@ -15,9 +15,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import BytesIO
+import os
+
 from .. import (
     conflicts,
     errors,
+    symbol_versioning,
+    trace,
     transport,
     workingtree,
     )
@@ -37,6 +42,7 @@ from ..tree import (
     TreeLink,
     )
 
+from .features import SymlinkFeature
 
 class TestTreeDirectory(TestCaseWithTransport):
 
@@ -405,6 +411,12 @@ class TestRevert(TestCaseWithTransport):
 
 class TestAutoResolve(TestCaseWithTransport):
 
+    def _auto_resolve(self, tree):
+        """Call auto_resolve on tree expecting deprecation"""
+        return self.applyDeprecated(
+            symbol_versioning.deprecated_in((3, 0, 1)),
+            tree.auto_resolve,)
+
     def test_auto_resolve(self):
         base = self.make_branch_and_tree('base')
         self.build_tree_contents([('base/hello', b'Hello')])
@@ -420,48 +432,78 @@ class TestAutoResolve(TestCaseWithTransport):
         this.merge_from_branch(other.branch)
         self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
-        this.auto_resolve()
+        self._auto_resolve(this)
         self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
-        self.build_tree_contents([('this/hello', b'<<<<<<<')])
-        this.auto_resolve()
+        self.build_tree_contents([('this/hello', '<<<<<<<')])
+        self._auto_resolve(this)
         self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
-        self.build_tree_contents([('this/hello', b'=======')])
-        this.auto_resolve()
+        self.build_tree_contents([('this/hello', '=======')])
+        self._auto_resolve(this)
         self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
-        self.build_tree_contents([('this/hello', b'\n>>>>>>>')])
-        remaining, resolved = this.auto_resolve()
+        self.build_tree_contents([('this/hello', '\n>>>>>>>')])
+        remaining, resolved = self._auto_resolve(this)
         self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          this.conflicts())
         self.assertEqual([], resolved)
         self.build_tree_contents([('this/hello', b'hELLO wORLD')])
-        remaining, resolved = this.auto_resolve()
+        remaining, resolved = self._auto_resolve(this)
         self.assertEqual([], this.conflicts())
         self.assertEqual([conflicts.TextConflict('hello', b'hello_id')],
                          resolved)
         self.assertPathDoesNotExist('this/hello.BASE')
 
+    def test_unsupported_symlink_auto_resolve(self):
+        self.requireFeature(SymlinkFeature)
+        base = self.make_branch_and_tree('base')
+        self.build_tree_contents([('base/hello', 'Hello')])
+        base.add('hello', b'hello_id')
+        base.commit('commit 0')
+        other = base.controldir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/hello', 'Hello')])
+        os.symlink('other/hello', 'other/foo')
+        other.add('foo', b'foo_id')
+        other.commit('commit symlink')
+        this = base.controldir.sprout('this').open_workingtree()
+        self.assertPathExists('this/hello')
+        self.build_tree_contents([('this/hello', 'Hello')])
+        this.commit('commit 2')
+        log = BytesIO()
+        trace.push_log_file(log)
+        os_symlink = getattr(os, 'symlink', None)
+        os.symlink = None
+        try:
+            this.merge_from_branch(other.branch)
+        finally:
+            if os_symlink:
+                os.symlink = os_symlink
+        self.assertContainsRe(
+            log.getvalue(),
+            b'Unable to create symlink "foo" on this filesystem')
+
     def test_auto_resolve_dir(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello/'])
         tree.add('hello', b'hello-id')
-        file_conflict = conflicts.TextConflict('file', b'hello-id')
+        file_conflict = conflicts.TextConflict('hello', b'hello-id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
-        tree.auto_resolve()
+        remaining, resolved = self._auto_resolve(tree)
+        self.assertEqual(
+            remaining,
+            conflicts.ConflictList([conflicts.TextConflict(u'hello', 'hello-id')]))
+        self.assertEqual(resolved, [])
 
-
-class TestFindTrees(TestCaseWithTransport):
-
-    def test_find_trees(self):
-        self.make_branch_and_tree('foo')
-        self.make_branch_and_tree('foo/bar')
-        # Sticking a tree inside a control dir is heinous, so let's skip it
-        self.make_branch_and_tree('foo/.bzr/baz')
-        self.make_branch('qux')
-        trees = workingtree.WorkingTree.find_trees('.')
-        self.assertEqual(2, len(list(trees)))
+    def test_auto_resolve_missing(self):
+        tree = self.make_branch_and_tree('tree')
+        file_conflict = conflicts.TextConflict('hello', b'hello-id')
+        tree.set_conflicts(conflicts.ConflictList([file_conflict]))
+        remaining, resolved = self._auto_resolve(tree)
+        self.assertEqual(remaining, [])
+        self.assertEqual(
+            resolved,
+            conflicts.ConflictList([conflicts.TextConflict(u'hello', 'hello-id')]))
 
 
 class TestStoredUncommitted(TestCaseWithTransport):

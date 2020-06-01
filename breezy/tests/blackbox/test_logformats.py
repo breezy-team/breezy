@@ -22,7 +22,7 @@
 import os
 
 from breezy import (
-    config,
+    bedding,
     tests,
     workingtree,
     )
@@ -34,21 +34,18 @@ class TestLogFormats(tests.TestCaseWithTransport):
         super(TestLogFormats, self).setUp()
 
         # Create a config file with some useful variables
-        conf_path = config.config_filename()
+        conf_path = bedding.config_path()
         if os.path.isfile(conf_path):
             # Something is wrong in environment,
             # we risk overwriting users config
             self.fail("%s exists" % conf_path)
 
-        config.ensure_config_dir_exists()
-        f = open(conf_path, 'wb')
-        try:
+        bedding.ensure_config_dir_exists()
+        with open(conf_path, 'wb') as f:
             f.write(b"""[DEFAULT]
 email=Joe Foo <joe@foo.com>
 log_format=line
 """)
-        finally:
-            f.close()
 
     def _make_simple_branch(self, relpath='.'):
         wt = self.make_branch_and_tree(relpath)

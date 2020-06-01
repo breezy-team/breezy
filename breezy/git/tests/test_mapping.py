@@ -34,15 +34,13 @@ from dulwich.tests.utils import (
     )
 
 from .. import tests
-from ..errors import (
-    UnknownCommitExtra,
-    UnknownMercurialCommitExtra,
-    )
 from ..mapping import (
     BzrGitMappingv1,
     escape_file_id,
     fix_person_identifier,
     unescape_file_id,
+    UnknownCommitExtra,
+    UnknownMercurialCommitExtra,
     )
 
 
@@ -111,8 +109,8 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = b"Author"
         mapping = BzrGitMappingv1()
-        rev, roundtrip_revid, verifiers = mapping.import_commit(c,
-                                                                mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, verifiers = mapping.import_commit(
+            c, mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
         self.assertEqual(u"Some message", rev.message)
@@ -136,8 +134,8 @@ class TestImportCommit(tests.TestCase):
         c.author = u"Authér".encode("iso8859-1")
         c.encoding = b"iso8859-1"
         mapping = BzrGitMappingv1()
-        rev, roundtrip_revid, verifiers = mapping.import_commit(c,
-                                                                mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, verifiers = mapping.import_commit(
+            c, mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
         self.assertEqual(u"Authér", rev.properties[u'author'])
@@ -155,8 +153,8 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("latin1")
         mapping = BzrGitMappingv1()
-        rev, roundtrip_revid, verifiers = mapping.import_commit(c,
-                                                                mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, verifiers = mapping.import_commit(
+            c, mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
         self.assertEqual(u"Authér", rev.properties[u'author'])
@@ -174,8 +172,8 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("utf-8")
         mapping = BzrGitMappingv1()
-        rev, roundtrip_revid, verifiers = mapping.import_commit(c,
-                                                                mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, verifiers = mapping.import_commit(
+            c, mapping.revision_id_foreign_to_bzr)
         self.assertEqual(None, roundtrip_revid)
         self.assertEqual({}, verifiers)
         self.assertEqual(u"Authér", rev.properties[u'author'])
@@ -196,6 +194,7 @@ class TestImportCommit(tests.TestCase):
         mapping = BzrGitMappingv1()
         self.assertRaises(UnknownCommitExtra, mapping.import_commit, c,
                           mapping.revision_id_foreign_to_bzr)
+        mapping.import_commit(c, mapping.revision_id_foreign_to_bzr, strict=False)
 
     def test_mergetag(self):
         c = Commit()
@@ -235,6 +234,26 @@ class TestImportCommit(tests.TestCase):
         self.assertRaises(
             UnknownMercurialCommitExtra,
             mapping.import_commit, c, mapping.revision_id_foreign_to_bzr)
+        mapping.import_commit(
+            c, mapping.revision_id_foreign_to_bzr, strict=False)
+        self.assertEqual(
+            mapping.revision_id_foreign_to_bzr(c.id),
+            mapping.get_revision_id(c))
+
+    def test_invalid_utf8(self):
+        c = Commit()
+        c.tree = b"cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = b"Some message \xc1"
+        c.committer = b"Committer"
+        c.commit_time = 4
+        c.author_time = 5
+        c.commit_timezone = 60 * 5
+        c.author_timezone = 60 * 3
+        c.author = b"Author"
+        mapping = BzrGitMappingv1()
+        self.assertEqual(
+            mapping.revision_id_foreign_to_bzr(c.id),
+            mapping.get_revision_id(c))
 
 
 class RoundtripRevisionsFromBazaar(tests.TestCase):
@@ -249,7 +268,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         commit = self.mapping.export_commit(orig_rev, b"mysha",
                                             self._lookup_parent, True, b"testamentsha")
         rev, roundtrip_revid, verifiers = self.mapping.import_commit(
-            commit, self.mapping.revision_id_foreign_to_bzr)
+            commit, self.mapping.revision_id_foreign_to_bzr, strict=True)
         self.assertEqual(rev.revision_id,
                          self.mapping.revision_id_foreign_to_bzr(commit.id))
         if self.mapping.roundtripping:
@@ -320,7 +339,7 @@ class RoundtripRevisionsFromGit(tests.TestCase):
 
     def assertRoundtripCommit(self, commit1):
         rev, roundtrip_revid, verifiers = self.mapping.import_commit(
-            commit1, self.mapping.revision_id_foreign_to_bzr)
+            commit1, self.mapping.revision_id_foreign_to_bzr, strict=True)
         commit2 = self.mapping.export_commit(rev, "12341212121212", None,
                                              True, None)
         self.assertEqual(commit1.committer, commit2.committer)

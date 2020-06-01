@@ -20,6 +20,7 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 import itertools
 from breezy import (
+    cleanup,
     config as _mod_config,
     debug,
     memorytree,
@@ -50,7 +51,7 @@ from .sixish import (
     text_type,
     viewitems,
     )
-from .trace import mutter, mutter_callsite, note, is_quiet
+from .trace import mutter, mutter_callsite, note, is_quiet, warning
 
 
 class UnstackableBranchFormat(errors.BzrError):
@@ -364,7 +365,10 @@ class Branch(controldir.ControlComponent):
         provide a more efficient implementation.
         """
         if len(revno) == 1:
-            return self.get_rev_id(revno[0])
+            try:
+                return self.get_rev_id(revno[0])
+            except errors.RevisionNotPresent as e:
+                raise errors.GhostRevisionsHaveNoRevno(revno[0], e.revision_id)
         revision_id_to_revno = self.get_revision_id_to_revno_map()
         revision_ids = [revision_id for revision_id, this_revno
                         in viewitems(revision_id_to_revno)
@@ -672,19 +676,12 @@ class Branch(controldir.ControlComponent):
             raise errors.UpgradeRequired(self.user_url)
         self.get_config_stack().set('append_revisions_only', enabled)
 
-    def set_reference_info(self, tree_path, branch_location, file_id=None):
-        """Set the branch location to use for a tree reference."""
-        raise errors.UnsupportedOperation(self.set_reference_info, self)
-
-    def get_reference_info(self, path):
-        """Get the tree_path and branch_location for a tree reference."""
-        raise errors.UnsupportedOperation(self.get_reference_info, self)
-
-    def fetch(self, from_branch, last_revision=None, limit=None, depth=None):
+    def fetch(self, from_branch, stop_revision=None, limit=None, lossy=False,
+              depth=None):
         """Copy revisions from from_branch into this branch.
 
         :param from_branch: Where to copy from.
-        :param last_revision: What revision to stop at (None for at the end
+        :param stop_revision: What revision to stop at (None for at the end
                               of the branch.
         :param limit: Optional rough limit of revisions to fetch
         :param depth: Revision depth
@@ -692,7 +689,7 @@ class Branch(controldir.ControlComponent):
         """
         with self.lock_write():
             return InterBranch.get(from_branch, self).fetch(
-                last_revision, limit=limit, depth=depth)
+                stop_revision, limit=limit, lossy=lossy, depth=depth)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
@@ -1199,7 +1196,8 @@ class Branch(controldir.ControlComponent):
         if revno < 1 or revno > self.revno():
             raise errors.InvalidRevisionNumber(revno)
 
-    def clone(self, to_controldir, revision_id=None, repository_policy=None):
+    def clone(self, to_controldir, revision_id=None, name=None,
+              repository_policy=None, tag_selector=None):
         """Clone this branch into to_controldir preserving all semantic values.
 
         Most API users will want 'create_clone_on_transport', which creates a
@@ -1208,15 +1206,16 @@ class Branch(controldir.ControlComponent):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        result = to_controldir.create_branch()
+        result = to_controldir.create_branch(name=name)
         with self.lock_read(), result.lock_write():
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
-            self.copy_content_into(result, revision_id=revision_id)
+            self.copy_content_into(
+                result, revision_id=revision_id, tag_selector=tag_selector)
         return result
 
     def sprout(self, to_controldir, revision_id=None, repository_policy=None,
-               repository=None, lossy=False):
+               repository=None, lossy=False, tag_selector=None):
         """Create a new line of development from the branch, into to_controldir.
 
         to_controldir controls the branch format.
@@ -1233,7 +1232,8 @@ class Branch(controldir.ControlComponent):
         with self.lock_read(), result.lock_write():
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
-            self.copy_content_into(result, revision_id=revision_id)
+            self.copy_content_into(
+                result, revision_id=revision_id, tag_selector=tag_selector)
             master_url = self.get_bound_location()
             if master_url is None:
                 result.set_parent(self.user_url)
@@ -1266,30 +1266,21 @@ class Branch(controldir.ControlComponent):
                 revno = 1
         destination.set_last_revision_info(revno, revision_id)
 
-    def copy_content_into(self, destination, revision_id=None):
+    def copy_content_into(self, destination, revision_id=None, tag_selector=None):
         """Copy the content of self into destination.
 
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
+        tag_selector: Optional callback that receives a tag name
+            and should return a boolean to indicate whether a tag should be copied
         """
         return InterBranch.get(self, destination).copy_content_into(
-            revision_id=revision_id)
+            revision_id=revision_id, tag_selector=tag_selector)
 
     def update_references(self, target):
-        if not getattr(self._format, 'supports_reference_locations', False):
+        if not self._format.supports_reference_locations:
             return
-        reference_dict = self._get_all_reference_info()
-        if len(reference_dict) == 0:
-            return
-        old_base = self.base
-        new_base = target.base
-        target_reference_dict = target._get_all_reference_info()
-        for tree_path, (branch_location, file_id) in viewitems(reference_dict):
-            branch_location = urlutils.rebase_url(branch_location,
-                                                  old_base, new_base)
-            target_reference_dict.setdefault(
-                tree_path, (branch_location, file_id))
-        target._set_all_reference_info(target_reference_dict)
+        return InterBranch.get(self, target).update_references()
 
     def check(self, refs):
         """Check consistency of the branch.
@@ -1329,7 +1320,8 @@ class Branch(controldir.ControlComponent):
 
     def create_clone_on_transport(self, to_transport, revision_id=None,
                                   stacked_on=None, create_prefix=False,
-                                  use_existing_dir=False, no_tree=None):
+                                  use_existing_dir=False, no_tree=None,
+                                  tag_selector=None):
         """Create a clone of this branch and its bzrdir.
 
         :param to_transport: The transport to clone onto.
@@ -1349,12 +1341,12 @@ class Branch(controldir.ControlComponent):
         dir_to = self.controldir.clone_on_transport(
             to_transport, revision_id=revision_id, stacked_on=stacked_on,
             create_prefix=create_prefix, use_existing_dir=use_existing_dir,
-            no_tree=no_tree)
+            no_tree=no_tree, tag_selector=tag_selector)
         return dir_to.open_branch()
 
     def create_checkout(self, to_location, revision_id=None,
                         lightweight=False, accelerator_tree=None,
-                        hardlink=False):
+                        hardlink=False, recurse_nested=True):
         """Create a checkout of a branch.
 
         :param to_location: The url to produce the checkout at
@@ -1367,6 +1359,7 @@ class Branch(controldir.ControlComponent):
             content is different.
         :param hardlink: If true, hard-link files from accelerator_tree,
             where possible.
+        :param recurse_nested: Whether to recurse into nested trees
         :return: The tree of the created checkout
         """
         t = transport.get_transport(to_location)
@@ -1407,8 +1400,11 @@ class Branch(controldir.ControlComponent):
                                            hardlink=hardlink)
         basis_tree = tree.basis_tree()
         with basis_tree.lock_read():
-            for path, file_id in basis_tree.iter_references():
-                reference_parent = self.reference_parent(path, file_id)
+            for path in basis_tree.iter_references():
+                reference_parent = tree.reference_parent(path)
+                if reference_parent is None:
+                    warning('Branch location for %s unknown.', path)
+                    continue
                 reference_parent.create_checkout(
                     tree.abspath(path),
                     basis_tree.get_reference_revision(path), lightweight)
@@ -1420,17 +1416,6 @@ class Branch(controldir.ControlComponent):
         :return: A `ReconcileResult` object.
         """
         raise NotImplementedError(self.reconcile)
-
-    def reference_parent(self, path, file_id=None, possible_transports=None):
-        """Return the parent branch for a tree-reference file_id
-
-        :param path: The path of the file_id in the tree
-        :param file_id: Optional file_id of the tree reference
-        :return: A branch associated with the file_id
-        """
-        # FIXME should provide multiple branches, based on config
-        return Branch.open(self.controldir.root_transport.clone(path).base,
-                           possible_transports=possible_transports)
 
     def supports_tags(self):
         return self._format.supports_tags()
@@ -1658,6 +1643,10 @@ class BranchFormat(controldir.ControlComponentFormat):
 
     def supports_store_uncommitted(self):
         """True if uncommitted changes can be stored in this branch."""
+        return True
+
+    def stores_revno(self):
+        """True if this branch format store revision numbers."""
         return True
 
 
@@ -2018,7 +2007,12 @@ class BranchPushResult(_Result):
         tag_updates = getattr(self, "tag_updates", None)
         if not is_quiet():
             if self.old_revid != self.new_revid:
-                note(gettext('Pushed up to revision %d.') % self.new_revno)
+                if self.new_revno is not None:
+                    note(gettext('Pushed up to revision %d.'),
+                         self.new_revno)
+                else:
+                    note(gettext('Pushed up to revision id %s.'),
+                         self.new_revid.decode('utf-8'))
             if tag_updates:
                 note(ngettext('%d tag updated.', '%d tags updated.',
                               len(tag_updates)) % len(tag_updates))
@@ -2074,7 +2068,7 @@ class InterBranch(InterObject):
         raise NotImplementedError(klass._get_branch_formats_to_test)
 
     def pull(self, overwrite=False, stop_revision=None,
-             possible_transports=None, local=False):
+             possible_transports=None, local=False, tag_selector=None):
         """Mirror source into target branch.
 
         The target branch is considered to be 'local', having low latency.
@@ -2084,29 +2078,38 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.pull)
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
-             _override_hook_source_branch=None):
+             _override_hook_source_branch=None, tag_selector=None):
         """Mirror the source branch into the target branch.
 
         The source branch is considered to be 'local', having low latency.
         """
         raise NotImplementedError(self.push)
 
-    def copy_content_into(self, revision_id=None):
+    def copy_content_into(self, revision_id=None, tag_selector=None):
         """Copy the content of source into target
 
-        revision_id: if not None, the revision history in the new branch will
-                     be truncated to end with revision_id.
+        :param revision_id:
+            if not None, the revision history in the new branch will
+            be truncated to end with revision_id.
+        :param tag_selector: Optional callback that can decide
+            to copy or not copy tags.
         """
         raise NotImplementedError(self.copy_content_into)
 
-    def fetch(self, stop_revision=None, limit=None, depth=None):
+    def fetch(self, stop_revision=None, limit=None, lossy=False, depth=None):
         """Fetch revisions.
 
         :param stop_revision: Last revision to fetch
         :param limit: Optional rough limit of revisions to fetch
         :param depth: Optional revision depth
+        :return: FetchResult object
         """
         raise NotImplementedError(self.fetch)
+
+    def update_references(self):
+        """Import reference information from source to target.
+        """
+        raise NotImplementedError(self.update_references)
 
 
 def _fix_overwrite_type(overwrite):
@@ -2137,15 +2140,15 @@ class GenericInterBranch(InterBranch):
             return format._custom_format
         return format
 
-    def copy_content_into(self, revision_id=None):
+    def copy_content_into(self, revision_id=None, tag_selector=None):
         """Copy the content of source into target
 
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
         with self.source.lock_read(), self.target.lock_write():
-            self.source.update_references(self.target)
             self.source._synchronize_history(self.target, revision_id)
+            self.update_references()
             try:
                 parent = self.source.get_parent()
             except errors.InaccessibleParent as e:
@@ -2154,9 +2157,9 @@ class GenericInterBranch(InterBranch):
                 if parent:
                     self.target.set_parent(parent)
             if self.source._push_should_merge_tags():
-                self.source.tags.merge_to(self.target.tags)
+                self.source.tags.merge_to(self.target.tags, selector=tag_selector)
 
-    def fetch(self, stop_revision=None, limit=None, depth=None):
+    def fetch(self, stop_revision=None, limit=None, lossy=False, depth=None):
         if self.target.base == self.source.base:
             return (0, [])
         if depth is not None:
@@ -2173,6 +2176,7 @@ class GenericInterBranch(InterBranch):
             fetch_spec = fetch_spec_factory.make_fetch_spec()
             return self.target.repository.fetch(
                 self.source.repository,
+                lossy=lossy,
                 fetch_spec=fetch_spec)
 
     def _update_revisions(self, stop_revision=None, overwrite=False,
@@ -2216,14 +2220,16 @@ class GenericInterBranch(InterBranch):
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, run_hooks=True,
-             _override_hook_target=None, local=False):
+             _override_hook_target=None, local=False,
+             tag_selector=None):
         """Pull from source into self, updating my master if any.
 
         :param run_hooks: Private parameter - if false, this branch
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
         """
-        with self.target.lock_write():
+        with cleanup.ExitStack() as exit_stack:
+            exit_stack.enter_context(self.target.lock_write())
             bound_location = self.target.get_bound_location()
             if local and not bound_location:
                 raise errors.LocalRequiresBoundBranch()
@@ -2242,23 +2248,21 @@ class GenericInterBranch(InterBranch):
                 # not pulling from master, so we need to update master.
                 master_branch = self.target.get_master_branch(
                     possible_transports)
-                master_branch.lock_write()
-            try:
-                if master_branch:
-                    # pull from source into master.
-                    master_branch.pull(
-                        self.source, overwrite, stop_revision, run_hooks=False)
-                return self._pull(
-                    overwrite, stop_revision, _hook_master=master_branch,
-                    run_hooks=run_hooks,
-                    _override_hook_target=_override_hook_target,
-                    merge_tags_to_master=not source_is_master)
-            finally:
-                if master_branch:
-                    master_branch.unlock()
+                exit_stack.enter_context(master_branch.lock_write())
+            if master_branch:
+                # pull from source into master.
+                master_branch.pull(
+                    self.source, overwrite, stop_revision, run_hooks=False,
+                    tag_selector=tag_selector)
+            return self._pull(
+                overwrite, stop_revision, _hook_master=master_branch,
+                run_hooks=run_hooks,
+                _override_hook_target=_override_hook_target,
+                merge_tags_to_master=not source_is_master,
+                tag_selector=tag_selector)
 
     def push(self, overwrite=False, stop_revision=None, lossy=False,
-             _override_hook_source_branch=None):
+             _override_hook_source_branch=None, tag_selector=None):
         """See InterBranch.push.
 
         This is the basic concrete implementation of push()
@@ -2290,18 +2294,21 @@ class GenericInterBranch(InterBranch):
                 with master_branch.lock_write():
                     # push into the master from the source branch.
                     master_inter = InterBranch.get(self.source, master_branch)
-                    master_inter._basic_push(overwrite, stop_revision)
+                    master_inter._basic_push(
+                        overwrite, stop_revision, tag_selector=tag_selector)
                     # and push into the target branch from the source. Note
                     # that we push from the source branch again, because it's
                     # considered the highest bandwidth repository.
-                    result = self._basic_push(overwrite, stop_revision)
+                    result = self._basic_push(
+                        overwrite, stop_revision, tag_selector=tag_selector)
                     result.master_branch = master_branch
                     result.local_branch = self.target
                     _run_hooks()
             else:
                 master_branch = None
                 # no master branch
-                result = self._basic_push(overwrite, stop_revision)
+                result = self._basic_push(
+                    overwrite, stop_revision, tag_selector=tag_selector)
                 # TODO: Why set master_branch and local_branch if there's no
                 # binding?  Maybe cleaner to just leave them unset? -- mbp
                 # 20070504
@@ -2310,7 +2317,7 @@ class GenericInterBranch(InterBranch):
                 _run_hooks()
             return result
 
-    def _basic_push(self, overwrite, stop_revision):
+    def _basic_push(self, overwrite, stop_revision, tag_selector=None):
         """Basic implementation of push without bound branches or hooks.
 
         Must be called with source read locked and target write locked.
@@ -2319,7 +2326,6 @@ class GenericInterBranch(InterBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         result.old_revno, result.old_revid = self.target.last_revision_info()
-        self.source.update_references(self.target)
         overwrite = _fix_overwrite_type(overwrite)
         if result.old_revid != stop_revision:
             # We assume that during 'push' this repository is closer than
@@ -2330,14 +2336,15 @@ class GenericInterBranch(InterBranch):
         if self.source._push_should_merge_tags():
             result.tag_updates, result.tag_conflicts = (
                 self.source.tags.merge_to(
-                    self.target.tags, "tags" in overwrite))
+                    self.target.tags, "tags" in overwrite, selector=tag_selector))
+        self.update_references()
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
     def _pull(self, overwrite=False, stop_revision=None,
               possible_transports=None, _hook_master=None, run_hooks=True,
               _override_hook_target=None, local=False,
-              merge_tags_to_master=True):
+              merge_tags_to_master=True, tag_selector=None):
         """See Branch.pull.
 
         This function is the core worker, used by GenericInterBranch.pull to
@@ -2366,7 +2373,6 @@ class GenericInterBranch(InterBranch):
         with self.source.lock_read():
             # We assume that during 'pull' the target repository is closer than
             # the source one.
-            self.source.update_references(self.target)
             graph = self.target.repository.get_graph(self.source.repository)
             # TODO: Branch formats should have a flag that indicates
             # that revno's are expensive, and pull() should honor that flag.
@@ -2382,7 +2388,9 @@ class GenericInterBranch(InterBranch):
             result.tag_updates, result.tag_conflicts = (
                 self.source.tags.merge_to(
                     self.target.tags, "tags" in overwrite,
-                    ignore_master=not merge_tags_to_master))
+                    ignore_master=not merge_tags_to_master,
+                    selector=tag_selector))
+            self.update_references()
             result.new_revno, result.new_revid = (
                 self.target.last_revision_info())
             if _hook_master:
@@ -2395,6 +2403,26 @@ class GenericInterBranch(InterBranch):
                 for hook in Branch.hooks['post_pull']:
                     hook(result)
             return result
+
+    def update_references(self):
+        if not getattr(self.source._format, 'supports_reference_locations', False):
+            return
+        reference_dict = self.source._get_all_reference_info()
+        if len(reference_dict) == 0:
+            return
+        old_base = self.source.base
+        new_base = self.target.base
+        target_reference_dict = self.target._get_all_reference_info()
+        for tree_path, (branch_location, file_id) in viewitems(reference_dict):
+            try:
+                branch_location = urlutils.rebase_url(branch_location,
+                                                      old_base, new_base)
+            except urlutils.InvalidRebaseURLs:
+                # Fall back to absolute URL
+                branch_location = urlutils.join(old_base, branch_location)
+            target_reference_dict.setdefault(
+                tree_path, (branch_location, file_id))
+        self.target._set_all_reference_info(target_reference_dict)
 
 
 InterBranch.register_optimiser(GenericInterBranch)

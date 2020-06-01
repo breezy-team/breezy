@@ -27,13 +27,15 @@ from .lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy import (
     atomicfile,
-    config,
     globbing,
     trace,
     )
 """)
+from . import (
+    bedding,
+    )
 
-# ~/.bazaar/ignore will be filled out using
+# ~/.config/breezy/ignore will be filled out using
 # this ignore list, if it does not exist
 # please keep these sorted (in C locale order) to aid merging
 USER_DEFAULTS = [
@@ -87,7 +89,7 @@ def parse_ignore_file(f):
 
 def get_user_ignores():
     """Get the list of user ignored files, possibly creating it."""
-    path = config.user_ignore_config_filename()
+    path = bedding.user_ignore_config_path()
     patterns = set(USER_DEFAULTS)
     try:
         f = open(path, 'rb')
@@ -101,8 +103,8 @@ def get_user_ignores():
         # since get_* should be a safe operation
         try:
             _set_user_ignores(USER_DEFAULTS)
-        except (IOError, OSError) as e:
-            if e.errno not in (errno.EPERM,):
+        except EnvironmentError as e:
+            if e.errno not in (errno.EPERM, errno.ENOENT):
                 raise
         return patterns
 
@@ -121,8 +123,8 @@ def _set_user_ignores(patterns):
     bad form to rewrite a user's ignore list.
     breezy only writes this file if it does not exist.
     """
-    ignore_path = config.user_ignore_config_filename()
-    config.ensure_config_dir_exists()
+    ignore_path = bedding.user_ignore_config_path()
+    bedding.ensure_config_dir_exists()
 
     # Create an empty file
     with open(ignore_path, 'wb') as f:
@@ -147,7 +149,7 @@ def add_unique_user_ignores(new_ignores):
     if not to_add:
         return []
 
-    with open(config.user_ignore_config_filename(), 'ab') as f:
+    with open(bedding.user_ignore_config_path(), 'ab') as f:
         for pattern in to_add:
             f.write(pattern.encode('utf8') + b'\n')
 

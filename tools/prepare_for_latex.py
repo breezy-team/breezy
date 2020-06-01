@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #
 # Modify reStructuredText 'image' directives by adding a percentage 'width'
 # attribute so that the images are scaled to fit on the page when the document
@@ -37,7 +37,7 @@ from subprocess import call
 
 verbose = False
 
-IMAGE_DIRECTIVE_PATTERN = re.compile(u'^..\\s+image::\\s+(.*)\`\s+$')
+IMAGE_DIRECTIVE_PATTERN = re.compile(u'^..\\s+image::\\s+(.*)\\`\\s+$')
 DIRECTIVE_ELEMENT_PATTERN = re.compile(u'^\\s+:[^:]+:\\s+')
 
 class Converter(object):

@@ -213,8 +213,7 @@ class EmailSender(object):
         """Spawn a 'mail' subprocess to send the email."""
         # TODO think up a good test for this, but I think it needs
         # a custom binary shipped with. RBC 20051021
-        msgfile = tempfile.NamedTemporaryFile()
-        try:
+        with tempfile.NamedTemporaryFile() as msgfile:
             msgfile.write(self.body().encode('utf8'))
             diff = self.get_diff()
             if diff:
@@ -229,8 +228,6 @@ class EmailSender(object):
             if rc != 0:
                 raise errors.BzrError(
                     "Failed to send email: exit status %s" % (rc,))
-        finally:
-            msgfile.close()
 
     def _send_using_smtplib(self):
         """Use python's smtplib to send the email."""

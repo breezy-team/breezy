@@ -80,6 +80,7 @@ from ..errors import (
     )
 
 from ..lock import LogicalLockResult
+from ..trace import warning
 
 
 class TransportRefsContainer(RefsContainer):
@@ -211,7 +212,11 @@ class TransportRefsContainer(RefsContainer):
         except NoSuchFile:
             return None
         with f:
-            header = f.read(len(SYMREF))
+            try:
+                header = f.read(len(SYMREF))
+            except ReadError:
+                # probably a directory
+                return None
             if header == SYMREF:
                 # Read only the first line
                 return header + next(iter(f)).rstrip(b"\r\n")
@@ -233,11 +238,8 @@ class TransportRefsContainer(RefsContainer):
         del self._packed_refs[name]
         if name in self._peeled_refs:
             del self._peeled_refs[name]
-        f = self.transport.open_write_stream("packed-refs")
-        try:
+        with self.transport.open_write_stream("packed-refs") as f:
             write_packed_refs(f, self._packed_refs, self._peeled_refs)
-        finally:
-            f.close()
 
     def set_symbolic_ref(self, name, other):
         """Make a ref point at another ref.
@@ -424,17 +426,19 @@ class TransportRepo(BaseRepo):
                     _mod_transport.get_transport_from_path(commondir)
         else:
             self._commontransport = self._controltransport
-        object_store = TransportObjectStore(
-            self._commontransport.clone(OBJECTDIR))
+        config = self.get_config()
+        object_store = TransportObjectStore.from_config(
+            self._commontransport.clone(OBJECTDIR),
+            config)
         if refs_text is not None:
             refs_container = InfoRefsContainer(BytesIO(refs_text))
             try:
                 head = TransportRefsContainer(
-                    self._commontransport).read_loose_ref("HEAD")
+                    self._commontransport).read_loose_ref(b"HEAD")
             except KeyError:
                 pass
             else:
-                refs_container._refs["HEAD"] = head
+                refs_container._refs[b"HEAD"] = head
         else:
             refs_container = TransportRefsContainer(
                 self._commontransport, self._controltransport)
@@ -512,6 +516,25 @@ class TransportRepo(BaseRepo):
         backends.extend(StackedConfig.default_backends())
         return StackedConfig(backends, writable=writable)
 
+    # Here for compatibility with dulwich < 0.19.17
+    def generate_pack_data(self, have, want, progress=None, ofs_delta=None):
+        """Generate pack data objects for a set of wants/haves.
+
+        Args:
+          have: List of SHA1s of objects that should not be sent
+          want: List of SHA1s of objects that should be sent
+          ofs_delta: Whether OFS deltas can be included
+          progress: Optional progress reporting method
+        """
+        shallow = self.get_shallow()
+        if shallow:
+            return self.object_store.generate_pack_data(
+                have, want, shallow=shallow,
+                progress=progress, ofs_delta=ofs_delta)
+        else:
+            return self.object_store.generate_pack_data(
+                have, want, progress=progress, ofs_delta=ofs_delta)
+
     def __repr__(self):
         return "<%s for %r>" % (self.__class__.__name__, self.transport)
 
@@ -544,15 +567,37 @@ class TransportRepo(BaseRepo):
 class TransportObjectStore(PackBasedObjectStore):
     """Git-style object store that exists on disk."""
 
-    def __init__(self, transport):
+    def __init__(self, transport,
+                 loose_compression_level=-1, pack_compression_level=-1):
         """Open an object store.
 
         :param transport: Transport to open data from
         """
         super(TransportObjectStore, self).__init__()
+        self.pack_compression_level = pack_compression_level
+        self.loose_compression_level = loose_compression_level
         self.transport = transport
         self.pack_transport = self.transport.clone(PACKDIR)
         self._alternates = None
+
+    @classmethod
+    def from_config(cls, path, config):
+        try:
+            default_compression_level = int(config.get(
+                (b'core', ), b'compression').decode())
+        except KeyError:
+            default_compression_level = -1
+        try:
+            loose_compression_level = int(config.get(
+                (b'core', ), b'looseCompression').decode())
+        except KeyError:
+            loose_compression_level = default_compression_level
+        try:
+            pack_compression_level = int(config.get(
+                (b'core', ), 'packCompression').decode())
+        except KeyError:
+            pack_compression_level = default_compression_level
+        return cls(path, loose_compression_level, pack_compression_level)
 
     def __eq__(self, other):
         if not isinstance(other, TransportObjectStore):
@@ -589,16 +634,7 @@ class TransportObjectStore(PackBasedObjectStore):
             return ret
 
     def _update_pack_cache(self):
-        pack_files = set()
-        pack_dir_contents = self._pack_names()
-        for name in pack_dir_contents:
-            if name.startswith("pack-") and name.endswith(".pack"):
-                # verify that idx exists first (otherwise the pack was not yet
-                # fully written)
-                idx_name = os.path.splitext(name)[0] + ".idx"
-                if idx_name in pack_dir_contents:
-                    pack_files.add(os.path.splitext(name)[0])
-
+        pack_files = set(self._pack_names())
         new_packs = []
         for basename in pack_files:
             pack_name = basename + ".pack"
@@ -607,6 +643,8 @@ class TransportObjectStore(PackBasedObjectStore):
                     size = self.pack_transport.stat(pack_name).st_size
                 except TransportNotPossible:
                     f = self.pack_transport.get(pack_name)
+                    # TODO(jelmer): Don't read entire file into memory?
+                    f = BytesIO(f.read())
                     pd = PackData(pack_name, f)
                 else:
                     pd = PackData(
@@ -625,19 +663,30 @@ class TransportObjectStore(PackBasedObjectStore):
         return new_packs
 
     def _pack_names(self):
+        pack_files = []
         try:
-            return self.pack_transport.list_dir(".")
+            dir_contents = self.pack_transport.list_dir(".")
+            for name in dir_contents:
+                if name.startswith("pack-") and name.endswith(".pack"):
+                    # verify that idx exists first (otherwise the pack was not yet
+                    # fully written)
+                    idx_name = os.path.splitext(name)[0] + ".idx"
+                    if idx_name in dir_contents:
+                        pack_files.append(os.path.splitext(name)[0])
         except TransportNotPossible:
             try:
                 f = self.transport.get('info/packs')
             except NoSuchFile:
-                # Hmm, warn about running 'git update-server-info' ?
-                return iter([])
+                warning('No info/packs on remote host;'
+                        'run \'git update-server-info\' on remote.')
             else:
                 with f:
-                    return read_packs_file(f)
+                    pack_files = [
+                        os.path.splitext(name)[0]
+                        for name in read_packs_file(f)]
         except NoSuchFile:
-            return iter([])
+            pass
+        return pack_files
 
     def _remove_pack(self, pack):
         self.pack_transport.delete(os.path.basename(pack.index.path))
@@ -682,7 +731,14 @@ class TransportObjectStore(PackBasedObjectStore):
         path = urlutils.quote_from_bytes(osutils.pathjoin(dir, file))
         if self.transport.has(path):
             return  # Already there, no need to write again
-        self.transport.put_bytes(path, obj.as_legacy_object())
+        # Backwards compatibility with Dulwich < 0.20, which doesn't support
+        # the compression_level parameter.
+        if self.loose_compression_level not in (-1, None):
+            raw_string = obj.as_legacy_object(
+                compression_level=self.loose_compression_level)
+        else:
+            raw_string = obj.as_legacy_object()
+        self.transport.put_bytes(path, raw_string)
 
     def move_in_pack(self, f):
         """Move a specific file containing a pack into the pack directory.
@@ -700,11 +756,8 @@ class TransportObjectStore(PackBasedObjectStore):
         p._filename = basename + ".pack"
         f.seek(0)
         self.pack_transport.put_file(basename + ".pack", f)
-        idxfile = self.pack_transport.open_write_stream(basename + ".idx")
-        try:
+        with self.pack_transport.open_write_stream(basename + ".idx") as idxfile:
             write_pack_index_v2(idxfile, entries, p.get_stored_checksum())
-        finally:
-            idxfile.close()
         idxfile = self.pack_transport.get(basename + ".idx")
         idx = load_pack_index_file(basename + ".idx", idxfile)
         final_pack = Pack.from_objects(p, idx)
@@ -729,19 +782,13 @@ class TransportObjectStore(PackBasedObjectStore):
 
         pack_sha = p.index.objects_sha1()
 
-        datafile = self.pack_transport.open_write_stream(
-            "pack-%s.pack" % pack_sha.decode('ascii'))
-        try:
+        with self.pack_transport.open_write_stream(
+                "pack-%s.pack" % pack_sha.decode('ascii')) as datafile:
             entries, data_sum = write_pack_objects(datafile, p.pack_tuples())
-        finally:
-            datafile.close()
         entries = sorted([(k, v[0], v[1]) for (k, v) in entries.items()])
-        idxfile = self.pack_transport.open_write_stream(
-            "pack-%s.idx" % pack_sha.decode('ascii'))
-        try:
+        with self.pack_transport.open_write_stream(
+                "pack-%s.idx" % pack_sha.decode('ascii')) as idxfile:
             write_pack_index_v2(idxfile, entries, data_sum)
-        finally:
-            idxfile.close()
 
     def add_pack(self):
         """Add a new pack to this object store.

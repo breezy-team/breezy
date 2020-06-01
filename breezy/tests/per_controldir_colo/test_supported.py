@@ -114,9 +114,46 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
                 'Control dir does not support creating new branches.')
         to_dir = from_tree.controldir.sprout(
             urlutils.join_segment_parameters(
-                other_branch.controldir.user_url, {"branch": "target"}))
+                other_branch.user_url, {"branch": "target"}))
         to_branch = to_dir.open_branch(name="target")
         self.assertEqual(revid, to_branch.last_revision())
+
+    def test_sprout_into_colocated_leaves_workingtree(self):
+        # a bzrdir can construct a branch and repository for itself.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            raise tests.TestNotApplicable('Control dir format not supported')
+        if not self.bzrdir_format.supports_workingtrees:
+            raise tests.TestNotApplicable(
+                'Control dir format does not support working trees')
+        from_tree = self.make_branch_and_tree('from')
+        self.build_tree_contents([('from/foo', 'contents')])
+        from_tree.add(['foo'])
+        revid1 = from_tree.commit("rev1")
+        self.build_tree_contents([('from/foo', 'new contents')])
+        revid2 = from_tree.commit("rev2")
+        try:
+            other_branch = self.make_branch_and_tree("to")
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable(
+                'Control dir does not support creating new branches.')
+
+        result = other_branch.controldir.push_branch(
+            from_tree.branch, revision_id=revid1)
+        self.assertTrue(result.workingtree_updated)
+        self.assertFileEqual('contents', 'to/foo')
+
+        from_tree.controldir.sprout(
+            urlutils.join_segment_parameters(
+                other_branch.user_url, {"branch": "target"}),
+            revision_id=revid2)
+        active_branch = other_branch.controldir.open_branch(name="")
+        self.assertEqual(revid1, active_branch.last_revision())
+        to_branch = other_branch.controldir.open_branch(name="target")
+        self.assertEqual(revid2, to_branch.last_revision())
+        self.assertFileEqual('contents', 'to/foo')
 
     def test_unicode(self):
         self.requireFeature(UnicodeFilenameFeature)
@@ -146,6 +183,11 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         self.assertIn('foo', list(repo.controldir.get_branches()))
         self.assertEqual(target_branch.base,
                          repo.controldir.get_branches()['foo'].base)
+
+    def test_branch_names(self):
+        repo = self.make_repository('branch-1')
+        target_branch = self.create_branch(repo.controldir, name='foo')
+        self.assertIn('foo', repo.controldir.branch_names())
 
     def test_branch_name_with_slash(self):
         repo = self.make_repository('branch-1')

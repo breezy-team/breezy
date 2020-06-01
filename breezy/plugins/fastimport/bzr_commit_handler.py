@@ -20,11 +20,11 @@ from __future__ import absolute_import
 from ... import (
     debug,
     errors,
-    generate_ids,
     osutils,
     revision,
     )
 from ...bzr import (
+    generate_ids,
     inventory,
     serializer,
     )
@@ -505,8 +505,8 @@ class CommitHandler(processor.CommitHandler):
             if newly_changed:
                 content = self.data_for_commit[file_id]
             else:
-                content = self.rev_store.get_file_text(
-                    self.parents[0], file_id)
+                revtree = self.rev_store.repo.revision_tree(self.parents[0])
+                content = revtree.get_file_text(src_path)
             self._modify_item(dest_path, kind, ie.executable, content, inv)
         elif kind == 'symlink':
             self._modify_item(dest_path, kind, False,
@@ -540,7 +540,7 @@ class CommitHandler(processor.CommitHandler):
         # The revision-id for this entry will be/has been updated and
         # that means the loader then needs to know what the "new" text is.
         # We therefore must go back to the revision store to get it.
-        lines = self.rev_store.get_file_lines(rev_id, file_id)
+        lines = self.rev_store.get_file_lines(rev_id, old_path)
         self.data_for_commit[file_id] = b''.join(lines)
 
     def _delete_all_items(self, inv):

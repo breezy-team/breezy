@@ -236,6 +236,10 @@ class SmartServerBranchRequestRevisionIdToRevno(SmartServerBranchRequest):
             dotted_revno = branch.revision_id_to_dotted_revno(revid)
         except errors.NoSuchRevision:
             return FailedSmartServerResponse((b'NoSuchRevision', revid))
+        except errors.GhostRevisionsHaveNoRevno as e:
+            return FailedSmartServerResponse(
+                (b'GhostRevisionsHaveNoRevno', e.revision_id,
+                    e.ghost_revision_id))
         return SuccessfulSmartServerResponse(
             (b'ok', ) + tuple([b'%d' % x for x in dotted_revno]))
 
@@ -435,3 +439,17 @@ class SmartServerBranchRequestGetPhysicalLockStatus(SmartServerBranchRequest):
             return SuccessfulSmartServerResponse((b'yes',))
         else:
             return SuccessfulSmartServerResponse((b'no',))
+
+
+class SmartServerBranchRequestGetAllReferenceInfo(SmartServerBranchRequest):
+    """Get the reference information.
+
+    New in 3.1.
+    """
+
+    def do_with_branch(self, branch):
+        all_reference_info = branch._get_all_reference_info()
+        content = bencode.bencode([
+            (key, value[0].encode('utf-8'), value[1].encode('utf-8') if value[1] else b'')
+            for (key, value) in all_reference_info.items()])
+        return SuccessfulSmartServerResponse((b'ok', ), content)

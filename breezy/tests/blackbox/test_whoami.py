@@ -17,7 +17,6 @@
 
 """Black-box tests for brz whoami."""
 
-import breezy
 from breezy import (
     branch,
     config,
@@ -25,6 +24,8 @@ from breezy import (
     tests,
     )
 from breezy.sixish import PY3
+
+from ..test_bedding import override_whoami
 
 
 class TestWhoami(tests.TestCaseWithTransport):
@@ -60,7 +61,7 @@ class TestWhoami(tests.TestCaseWithTransport):
     def test_whoami_branch(self):
         """branch specific user identity works."""
         wt = self.make_branch_and_tree('.')
-        b = breezy.branch.Branch.open('.')
+        b = branch.Branch.open('.')
         self.set_branch_email(b, 'Branch Identity <branch@identi.ty>')
         self.assertWhoAmI('Branch Identity <branch@identi.ty>')
         self.assertWhoAmI('branch@identi.ty', '--email')
@@ -85,7 +86,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         encoding.
         """
         wt = self.make_branch_and_tree('.')
-        b = breezy.branch.Branch.open('.')
+        b = branch.Branch.open('.')
         self.set_branch_email(b, u'Branch Identity \u20ac <branch@identi.ty>')
         self.assertWhoAmI('Branch Identity ? <branch@identi.ty>',
                           encoding='ascii')
@@ -103,10 +104,7 @@ class TestWhoami(tests.TestCaseWithTransport):
     def test_whoami_not_set(self):
         """Ensure whoami error if username is not set and not inferred.
         """
-        self.overrideEnv('EMAIL', None)
-        self.overrideEnv('BRZ_EMAIL', None)
-        # Also, make sure that it's not inferred from mailname.
-        self.overrideAttr(config, '_auto_user_id', lambda: (None, None))
+        override_whoami(self)
         out, err = self.run_bzr(['whoami'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
 
@@ -141,11 +139,9 @@ class TestWhoami(tests.TestCaseWithTransport):
                          c.get('email'))
         # Ensuring that the value does not come from the breezy.conf file
         # itself requires some isolation setup
-        self.overrideEnv('BRZ_EMAIL', None)
-        self.overrideEnv('EMAIL', None)
-        self.overrideAttr(config, '_auto_user_id', lambda: (None, None))
+        override_whoami(self)
         global_conf = config.GlobalStack()
-        self.assertRaises(config.NoWhoami, global_conf.get, 'email')
+        self.assertRaises(errors.NoWhoami, global_conf.get, 'email')
 
     def test_whoami_nonbranch_directory(self):
         """Test --directory mentioning a non-branch directory."""

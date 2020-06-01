@@ -133,8 +133,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)
-        self.assertTrue(RemoteBzrProber
-                        in controldir.ControlDirFormat._server_probers)
+        self.assertIn(RemoteBzrProber, controldir.ControlDirFormat._probers)
         self.assertIsInstance(fmt, RemoteBzrDirFormat)
 
     def test_open_detected_smart_format(self):
@@ -2042,6 +2041,29 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         branch.unlock()
         self.assertFinished(client)
 
+    def test_set_option_with_bool(self):
+        client = FakeClient()
+        client.add_expected_call(
+            b'Branch.get_stacked_on_url', (b'memory:///',),
+            b'error', (b'NotStacked',),)
+        client.add_expected_call(
+            b'Branch.lock_write', (b'memory:///', b'', b''),
+            b'success', (b'ok', b'branch token', b'repo token'))
+        client.add_expected_call(
+            b'Branch.set_config_option', (b'memory:///', b'branch token',
+                                          b'repo token', b'True', b'foo', b''),
+            b'success', ())
+        client.add_expected_call(
+            b'Branch.unlock', (b'memory:///', b'branch token', b'repo token'),
+            b'success', (b'ok',))
+        transport = MemoryTransport()
+        branch = self.make_remote_branch(transport, client)
+        branch.lock_write()
+        config = branch._get_config()
+        config.set_option(True, 'foo')
+        branch.unlock()
+        self.assertFinished(client)
+
     def test_backwards_compat_set_option(self):
         self.setup_smart_server_with_call_log()
         branch = self.make_branch('.')
@@ -2189,6 +2211,31 @@ class TestBranchRevisionIdToRevno(RemoteBranchTestCase):
         self.assertEqual((0, ), branch.revision_id_to_dotted_revno(b'null:'))
         self.assertRaises(errors.NoSuchRevision,
                           branch.revision_id_to_dotted_revno, b'unknown')
+        self.assertFinished(client)
+
+    def test_ghost_revid(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            b'Branch.get_stacked_on_url', (b'quack/',),
+            b'error', (b'NotStacked',),)
+        # Some older versions of bzr/brz didn't explicitly return
+        # GhostRevisionsHaveNoRevno
+        client.add_expected_call(
+            b'Branch.revision_id_to_revno', (b'quack/', b'revid'),
+            b'error', (b'error', b'GhostRevisionsHaveNoRevno',
+                       b'The reivison {revid} was not found because there was '
+                       b'a ghost at {ghost-revid}'))
+        client.add_expected_call(
+            b'Branch.revision_id_to_revno', (b'quack/', b'revid'),
+            b'error', (b'GhostRevisionsHaveNoRevno', b'revid', b'ghost-revid',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.assertRaises(errors.GhostRevisionsHaveNoRevno,
+                          branch.revision_id_to_dotted_revno, b'revid')
+        self.assertRaises(errors.GhostRevisionsHaveNoRevno,
+                          branch.revision_id_to_dotted_revno, b'revid')
         self.assertFinished(client)
 
     def test_dotted_no_smart_verb(self):
@@ -2814,8 +2861,8 @@ class TestRepositoryGetRevisions(TestRemoteRepository):
         somerev1.timezone = -60
         somerev1.inventory_sha1 = b"691b39be74c67b1212a75fcb19c433aaed903c2b"
         somerev1.message = "Message"
-        body = zlib.compress(chk_bencode_serializer.write_revision_to_string(
-            somerev1))
+        body = zlib.compress(b''.join(chk_bencode_serializer.write_revision_to_lines(
+            somerev1)))
         # Split up body into two bits to make sure the zlib compression object
         # gets data fed twice.
         client.add_success_response_with_body(
@@ -2966,6 +3013,31 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         self.assertRaises(
             errors.NoSuchRevision,
             repo.get_rev_id_for_revno, 5, (42, b'rev-foo'))
+        self.assertFinished(client)
+
+    def test_outofbounds(self):
+        repo, client = self.setup_fake_client_and_repository('quack')
+        client.add_expected_call(
+            b'Repository.get_rev_id_for_revno', (b'quack/',
+                                                 43, (42, b'rev-foo')),
+            b'error', (b'revno-outofbounds', 43, 0, 42))
+        self.assertRaises(
+            errors.RevnoOutOfBounds,
+            repo.get_rev_id_for_revno, 43, (42, b'rev-foo'))
+        self.assertFinished(client)
+
+    def test_outofbounds_old(self):
+        # Older versions of bzr didn't support RevnoOutOfBounds
+        repo, client = self.setup_fake_client_and_repository('quack')
+        client.add_expected_call(
+            b'Repository.get_rev_id_for_revno', (b'quack/',
+                                                 43, (42, b'rev-foo')),
+            b'error', (
+                b'error', b'ValueError',
+                b'requested revno (43) is later than given known revno (42)'))
+        self.assertRaises(
+            errors.RevnoOutOfBounds,
+            repo.get_rev_id_for_revno, 43, (42, b'rev-foo'))
         self.assertFinished(client)
 
     def test_branch_fallback_locking(self):
@@ -3464,9 +3536,9 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
 
         def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
-            text = fmt._serializer.write_inventory_to_string(inv)
-            yield versionedfile.FulltextContentFactory(
-                (b'rev1',), (), None, text)
+            chunks = fmt._serializer.write_inventory_to_lines(inv)
+            yield versionedfile.ChunkedContentFactory(
+                (b'rev1',), (), None, chunks, chunks_are_lines=True)
 
         def inventory_delta_substream():
             # An inventory delta.  This can't be streamed via this verb, so it
@@ -3893,6 +3965,12 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         err = errors.ErrorFromSmartServer((b'error', b'KeyError', b"1"))
         translated_error = self.translateErrorFromSmartServer(err)
         expected_error = errors.UnknownErrorFromSmartServer(err)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_RevnoOutOfBounds(self):
+        translated_error = self.translateTuple(
+            ((b'revno-outofbounds', 5, 0, 3)), path=b'path')
+        expected_error = errors.RevnoOutOfBounds(5, (0, 3))
         self.assertEqual(expected_error, translated_error)
 
 
@@ -4451,3 +4529,23 @@ class TestRepositoryAnnotate(TestRemoteRepository):
             (b'baserevid', b'line 1\n'),
             (b'somerevid', b'line2\n')],
             list(tree.annotate_iter('filename')))
+
+
+class TestBranchGetAllReferenceInfo(RemoteBranchTestCase):
+
+    def test_get_all_reference_info(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            b'Branch.get_stacked_on_url', (b'quack/',),
+            b'error', (b'NotStacked',))
+        client.add_expected_call(
+            b'Branch.get_all_reference_info', (b'quack/',),
+            b'success', (b'ok',), bencode.bencode([
+                (b'file-id', b'https://www.example.com/', b'')]))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch._get_all_reference_info()
+        self.assertFinished(client)
+        self.assertEqual({b'file-id': ('https://www.example.com/', None)}, result)

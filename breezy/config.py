@@ -91,6 +91,7 @@ import stat
 
 from breezy import (
     atomicfile,
+    cmdline,
     controldir,
     debug,
     directory_service,
@@ -108,6 +109,7 @@ from breezy.i18n import gettext
 """)
 from . import (
     commands,
+    bedding,
     errors,
     hooks,
     lazy_regex,
@@ -232,13 +234,6 @@ class NoSuchConfigOption(errors.BzrError):
         errors.BzrError.__init__(self, option_name=option_name)
 
 
-class NoWhoami(errors.BzrError):
-
-    _fmt = ('Unable to determine your name.\n'
-            "Please, set your name with the 'whoami' command.\n"
-            'E.g. brz whoami "Your Name <name@example.com>"')
-
-
 def signature_policy_from_unicode(signature_string):
     """Convert a string to a signing policy."""
     if signature_string.lower() == 'check-available':
@@ -265,7 +260,7 @@ def signing_policy_from_unicode(signature_string):
 
 def _has_decode_bug():
     """True if configobj will fail to decode to unicode on Python 2."""
-    if sys.version_info > (3,):
+    if PY3:
         return False
     conf = configobj.ConfigObj()
     decode = getattr(conf, "_decode", None)
@@ -334,6 +329,11 @@ class Config(object):
         cmd = self._get_change_editor()
         if cmd is None:
             return None
+        cmd = cmd.replace('@old_path', '{old_path}')
+        cmd = cmd.replace('@new_path', '{new_path}')
+        cmd = cmdline.split(cmd)
+        if '{old_path}' not in cmd:
+            cmd.extend(['{old_path}', '{new_path}'])
         return diff.DiffFromTool.from_string(cmd, old_tree, new_tree,
                                              sys.stdout)
 
@@ -556,12 +556,12 @@ class Config(object):
 
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
-        $BRZ_EMAIL can be set to override this, then
+        $BRZ_EMAIL or $BZR_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If no username can be found, NoWhoami exception is raised.
         """
-        v = os.environ.get('BRZ_EMAIL')
+        v = os.environ.get('BRZ_EMAIL') or os.environ.get('BZR_EMAIL')
         if v:
             if not PY3:
                 v = v.decode(osutils.get_user_encoding())
@@ -569,14 +569,7 @@ class Config(object):
         v = self._get_user_id()
         if v:
             return v
-        return default_email()
-
-    def ensure_username(self):
-        """Raise NoWhoami if username is not set.
-
-        This method relies on the username() function raising the error.
-        """
-        self.username()
+        return bedding.default_email()
 
     def get_alias(self, value):
         return self._get_alias(value)
@@ -844,7 +837,7 @@ class IniBasedConfig(Config):
         return POLICY_NONE
 
     def _get_change_editor(self):
-        return self.get_user_option('change_editor')
+        return self.get_user_option('change_editor', expand=False)
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
@@ -939,7 +932,7 @@ class IniBasedConfig(Config):
         if self.file_name is None:
             raise AssertionError('We cannot save, self.file_name is None')
         conf_dir = os.path.dirname(self.file_name)
-        ensure_config_dir_exists(conf_dir)
+        bedding.ensure_config_dir_exists(conf_dir)
         with atomicfile.AtomicFile(self.file_name) as atomic_file:
             self._get_parser().write(atomic_file)
         osutils.copy_ownership_from_path(self.file_name)
@@ -999,7 +992,7 @@ class LockableConfig(IniBasedConfig):
 
         If the directory doesn't exist it is created.
         """
-        ensure_config_dir_exists(self.dir)
+        bedding.ensure_config_dir_exists(self.dir)
         token = self._lock.lock_write(token)
         return lock.LogicalLockResult(self.unlock, token)
 
@@ -1026,7 +1019,7 @@ class GlobalConfig(LockableConfig):
     """The configuration that should be used for a specific location."""
 
     def __init__(self):
-        super(GlobalConfig, self).__init__(file_name=config_filename())
+        super(GlobalConfig, self).__init__(file_name=bedding.config_path())
 
     def config_id(self):
         return 'breezy'
@@ -1158,7 +1151,7 @@ class LocationConfig(LockableConfig):
 
     def __init__(self, location):
         super(LocationConfig, self).__init__(
-            file_name=locations_config_filename())
+            file_name=bedding.locations_config_path())
         # local file locations are looked up by local path, rather than
         # by file url. This is because the config file is a user
         # file, and we would rather not expose the user to file urls.
@@ -1430,257 +1423,12 @@ class BranchConfig(Config):
         return self._get_best_value('_acceptable_keys')
 
 
-def ensure_config_dir_exists(path=None):
-    """Make sure a configuration directory exists.
-    This makes sure that the directory exists.
-    On windows, since configuration directories are 2 levels deep,
-    it makes sure both the directory and the parent directory exists.
-    """
-    if path is None:
-        path = config_dir()
-    if not os.path.isdir(path):
-        if sys.platform == 'win32':
-            parent_dir = os.path.dirname(path)
-            if not os.path.isdir(parent_dir):
-                trace.mutter(
-                    'creating config parent directory: %r', parent_dir)
-                os.mkdir(parent_dir)
-        trace.mutter('creating config directory: %r', path)
-        os.mkdir(path)
-        osutils.copy_ownership_from_path(path)
-
-
-def bazaar_config_dir():
-    """Return per-user configuration directory as unicode string
-
-    By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
-    and Linux.  On Mac OS X and Linux, if there is a $XDG_CONFIG_HOME/bazaar
-    directory, that will be used instead
-
-    TODO: Global option --config-dir to override this.
-    """
-    base = osutils.path_from_environ('BZR_HOME')
-    if sys.platform == 'win32':
-        if base is None:
-            base = win32utils.get_appdata_location()
-        if base is None:
-            base = win32utils.get_home_location()
-        return osutils.pathjoin(base, 'bazaar', '2.0')
-    if base is None:
-        xdg_dir = osutils.path_from_environ('XDG_CONFIG_HOME')
-        if xdg_dir is None:
-            xdg_dir = osutils.pathjoin(osutils._get_home_dir(), ".config")
-        xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
-        if osutils.isdir(xdg_dir):
-            trace.mutter(
-                "Using configuration in XDG directory %s." % xdg_dir)
-            return xdg_dir
-        base = osutils._get_home_dir()
-    return osutils.pathjoin(base, ".bazaar")
-
-
-def _config_dir():
-    """Return per-user configuration directory as unicode string
-
-    By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
-    Mac OS X and Linux. If the breezy config directory doesn't exist but
-    the bazaar one (see bazaar_config_dir()) does, use that instead.
-    """
-    # TODO: Global option --config-dir to override this.
-    base = osutils.path_from_environ('BRZ_HOME')
-    if sys.platform == 'win32':
-        if base is None:
-            base = win32utils.get_appdata_location()
-        if base is None:
-            base = win32utils.get_home_location()
-    if base is None:
-        base = osutils.path_from_environ('XDG_CONFIG_HOME')
-        if base is None:
-            base = osutils.pathjoin(osutils._get_home_dir(), ".config")
-    breezy_dir = osutils.pathjoin(base, 'breezy')
-    if osutils.isdir(breezy_dir):
-        return (breezy_dir, 'breezy')
-    # If the breezy directory doesn't exist, but the bazaar one does, use that:
-    bazaar_dir = bazaar_config_dir()
-    if osutils.isdir(bazaar_dir):
-        trace.mutter(
-            "Using Bazaar configuration directory (%s)", bazaar_dir)
-        return (bazaar_dir, 'bazaar')
-    return (breezy_dir, 'breezy')
-
-
-def config_dir():
-    """Return per-user configuration directory as unicode string
-
-    By default this is %APPDATA%/breezy on Windows, $XDG_CONFIG_HOME/breezy on
-    Mac OS X and Linux. If the breezy config directory doesn't exist but
-    the bazaar one (see bazaar_config_dir()) does, use that instead.
-    """
-    return _config_dir()[0]
-
-
-def config_filename():
-    """Return per-user configuration ini file filename."""
-    path, kind = _config_dir()
-    if kind == 'bazaar':
-        return osutils.pathjoin(path, 'bazaar.conf')
-    else:
-        return osutils.pathjoin(path, 'breezy.conf')
-
-
-def locations_config_filename():
-    """Return per-user configuration ini file filename."""
-    return osutils.pathjoin(config_dir(), 'locations.conf')
-
-
-def authentication_config_filename():
-    """Return per-user authentication ini file filename."""
-    return osutils.pathjoin(config_dir(), 'authentication.conf')
-
-
-def user_ignore_config_filename():
-    """Return the user default ignore filename"""
-    return osutils.pathjoin(config_dir(), 'ignore')
-
-
-def crash_dir():
-    """Return the directory name to store crash files.
-
-    This doesn't implicitly create it.
-
-    On Windows it's in the config directory; elsewhere it's /var/crash
-    which may be monitored by apport.  It can be overridden by
-    $APPORT_CRASH_DIR.
-    """
-    if sys.platform == 'win32':
-        return osutils.pathjoin(config_dir(), 'Crash')
-    else:
-        # XXX: hardcoded in apport_python_hook.py; therefore here too -- mbp
-        # 2010-01-31
-        return os.environ.get('APPORT_CRASH_DIR', '/var/crash')
-
-
-def xdg_cache_dir():
-    # See http://standards.freedesktop.org/basedir-spec/latest/ar01s03.html
-    # Possibly this should be different on Windows?
-    e = os.environ.get('XDG_CACHE_HOME', None)
-    if e:
-        return e
-    else:
-        return os.path.expanduser('~/.cache')
-
-
-def _get_default_mail_domain(mailname_file='/etc/mailname'):
-    """If possible, return the assumed default email domain.
-
-    :returns: string mail domain, or None.
-    """
-    if sys.platform == 'win32':
-        # No implementation yet; patches welcome
-        return None
-    try:
-        f = open(mailname_file)
-    except (IOError, OSError):
-        return None
-    try:
-        domain = f.readline().strip()
-        return domain
-    finally:
-        f.close()
-
-
-def default_email():
-    v = os.environ.get('BRZ_EMAIL')
-    if v:
-        if not PY3:
-            v = v.decode(osutils.get_user_encoding())
-        return v
-    v = os.environ.get('EMAIL')
-    if v:
-        if not PY3:
-            v = v.decode(osutils.get_user_encoding())
-        return v
-    name, email = _auto_user_id()
-    if name and email:
-        return u'%s <%s>' % (name, email)
-    elif email:
-        return email
-    raise NoWhoami()
-
-
-def _auto_user_id():
-    """Calculate automatic user identification.
-
-    :returns: (realname, email), either of which may be None if they can't be
-    determined.
-
-    Only used when none is set in the environment or the id file.
-
-    This only returns an email address if we can be fairly sure the
-    address is reasonable, ie if /etc/mailname is set on unix.
-
-    This doesn't use the FQDN as the default domain because that may be
-    slow, and it doesn't use the hostname alone because that's not normally
-    a reasonable address.
-    """
-    if sys.platform == 'win32':
-        # No implementation to reliably determine Windows default mail
-        # address; please add one.
-        return None, None
-
-    default_mail_domain = _get_default_mail_domain()
-    if not default_mail_domain:
-        return None, None
-
-    import pwd
-    uid = os.getuid()
-    try:
-        w = pwd.getpwuid(uid)
-    except KeyError:
-        trace.mutter('no passwd entry for uid %d?' % uid)
-        return None, None
-
-    # we try utf-8 first, because on many variants (like Linux),
-    # /etc/passwd "should" be in utf-8, and because it's unlikely to give
-    # false positives.  (many users will have their user encoding set to
-    # latin-1, which cannot raise UnicodeError.)
-    gecos = w.pw_gecos
-    if isinstance(gecos, bytes):
-        try:
-            gecos = gecos.decode('utf-8')
-            encoding = 'utf-8'
-        except UnicodeError:
-            try:
-                encoding = osutils.get_user_encoding()
-                gecos = gecos.decode(encoding)
-            except UnicodeError:
-                trace.mutter("cannot decode passwd entry %s" % w)
-                return None, None
-
-    username = w.pw_name
-    if isinstance(username, bytes):
-        try:
-            username = username.decode(encoding)
-        except UnicodeError:
-            trace.mutter("cannot decode passwd entry %s" % w)
-            return None, None
-
-    comma = gecos.find(',')
-    if comma == -1:
-        realname = gecos
-    else:
-        realname = gecos[:comma]
-
-    return realname, (username + '@' + default_mail_domain)
-
-
 def parse_username(username):
     """Parse e-mail username and return a (name, address) tuple."""
     match = re.match(r'(.*?)\s*<?([\w+.-]+@[\w+.-]+)>?', username)
     if match is None:
         return (username, '')
-    else:
-        return (match.group(1), match.group(2))
+    return (match.group(1), match.group(2))
 
 
 def extract_email_address(e):
@@ -1745,8 +1493,7 @@ class AuthenticationConfig(object):
     def __init__(self, _file=None):
         self._config = None  # The ConfigObj
         if _file is None:
-            self._filename = authentication_config_filename()
-            self._input = self._filename = authentication_config_filename()
+            self._input = self._filename = bedding.authentication_config_path()
             self._check_permissions()
         else:
             # Tests can provide a string as _file
@@ -1793,7 +1540,7 @@ class AuthenticationConfig(object):
     def _save(self):
         """Save the config file, only tests should use it for now."""
         conf_dir = os.path.dirname(self._filename)
-        ensure_config_dir_exists(conf_dir)
+        bedding.ensure_config_dir_exists(conf_dir)
         fd = os.open(self._filename, os.O_RDWR | os.O_CREAT, 0o600)
         try:
             f = os.fdopen(fd, 'wb')
@@ -2741,6 +2488,16 @@ as fixed using ``bzr commit --fixes``, if no explicit
 bug tracker was specified.
 '''))
 option_registry.register(
+    Option('calculate_revnos', default=True,
+           from_unicode=bool_from_store,
+           help='''\
+Calculate revision numbers if they are not known.
+
+Always show revision numbers, even for branch formats that don't store them
+natively (such as Git). Calculating the revision number requires traversing
+the left hand ancestry of the branch and can be slow on very large branches.
+'''))
+option_registry.register(
     Option('check_signatures', default=CHECK_IF_POSSIBLE,
            from_unicode=signature_policy_from_unicode,
            help='''\
@@ -2789,8 +2546,8 @@ option_registry.register(
     Option('editor',
            help='The command called to launch an editor to enter a message.'))
 option_registry.register(
-    Option('email', override_from_env=['BRZ_EMAIL'], default=default_email,
-           help='The users identity'))
+    Option('email', override_from_env=['BRZ_EMAIL', 'BZR_EMAIL'],
+           default=bedding.default_email, help='The users identity'))
 option_registry.register(
     Option('gpg_signing_key',
            default=None,
@@ -2803,7 +2560,7 @@ option_registry.register(
     Option('language',
            help='Language to translate messages into.'))
 option_registry.register(
-    Option('locks.steal_dead', default=False, from_unicode=bool_from_store,
+    Option('locks.steal_dead', default=True, from_unicode=bool_from_store,
            help='''\
 Steal locks that appears to be dead.
 
@@ -2913,6 +2670,10 @@ option_registry.register(
            help="If we wait for a new request from a client for more than"
                 " X seconds, consider the client idle, and hangup."))
 option_registry.register(
+    Option('ssh',
+           default=None, override_from_env=['BRZ_SSH'],
+           help='SSH vendor to use.'))
+option_registry.register(
     Option('stacked_on_location',
            default=None,
            help="""The location where this branch is stacked on."""))
@@ -2937,10 +2698,10 @@ option_registry.register(
            from_unicode=bool_from_store, invalid='warning',
            help='''Whether to validate signatures in brz log.'''))
 option_registry.register_lazy('ssl.ca_certs',
-                              'breezy.transport.http._urllib2_wrappers', 'opt_ssl_ca_certs')
+                              'breezy.transport.http', 'opt_ssl_ca_certs')
 
 option_registry.register_lazy('ssl.cert_reqs',
-                              'breezy.transport.http._urllib2_wrappers', 'opt_ssl_cert_reqs')
+                              'breezy.transport.http', 'opt_ssl_cert_reqs')
 
 
 class Section(object):
@@ -3438,11 +3199,10 @@ class GlobalStore(LockableIniFileStore):
     """
 
     def __init__(self, possible_transports=None):
-        (path, kind) = _config_dir()
+        path, kind = bedding._config_dir()
         t = transport.get_transport_from_path(
             path, possible_transports=possible_transports)
-        filename = {'bazaar': 'bazaar.conf', 'breezy': 'breezy.conf'}[kind]
-        super(GlobalStore, self).__init__(t, filename)
+        super(GlobalStore, self).__init__(t, kind + '.conf')
         self.id = 'breezy'
 
 
@@ -3454,7 +3214,7 @@ class LocationStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
         t = transport.get_transport_from_path(
-            config_dir(), possible_transports=possible_transports)
+            bedding.config_dir(), possible_transports=possible_transports)
         super(LocationStore, self).__init__(t, 'locations.conf')
         self.id = 'locations'
 

@@ -22,6 +22,7 @@ See MemoryTree for more details.
 from __future__ import absolute_import
 
 import os
+import stat
 
 from . import (
     errors,
@@ -50,6 +51,12 @@ class MemoryTree(MutableInventoryTree):
         self._locks = 0
         self._lock_mode = None
 
+    def supports_symlinks(self):
+        return True
+
+    def supports_tree_reference(self):
+        return False
+
     def get_config_stack(self):
         return self.branch.get_config_stack()
 
@@ -62,7 +69,15 @@ class MemoryTree(MutableInventoryTree):
         with self.lock_tree_write():
             for f, file_id, kind in zip(files, ids, kinds):
                 if kind is None:
-                    kind = 'file'
+                    st_mode = self._file_transport.stat(f).st_mode
+                    if stat.S_ISREG(st_mode):
+                        kind = 'file'
+                    elif stat.S_ISLNK(st_mode):
+                        kind = 'symlink'
+                    elif stat.S_ISDIR(st_mode):
+                        kind = 'directory'
+                    else:
+                        raise AssertionError('Unknown file kind')
                 if file_id is None:
                     self._inventory.add_path(f, kind=kind)
                 else:
@@ -94,9 +109,6 @@ class MemoryTree(MutableInventoryTree):
         stream = self._file_transport.get(path)
         return sha_file(stream)
 
-    def get_root_id(self):
-        return self.path2id('')
-
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
         if entry is None:
@@ -127,7 +139,7 @@ class MemoryTree(MutableInventoryTree):
             # memory tree does not support nested trees yet.
             return kind, None, None, None
         elif kind == 'symlink':
-            raise NotImplementedError('symlink support')
+            return kind, None, None, self._inventory[id].symlink_target
         else:
             raise NotImplementedError('unknown kind')
 
@@ -148,8 +160,7 @@ class MemoryTree(MutableInventoryTree):
         return self._inventory.get_entry_by_path(path).executable
 
     def kind(self, path):
-        file_id = self.path2id(path)
-        return self._inventory[file_id].kind
+        return self._inventory.get_entry_by_path(path).kind
 
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
@@ -227,6 +238,8 @@ class MemoryTree(MutableInventoryTree):
                 continue
             if entry.kind == 'directory':
                 self._file_transport.mkdir(path)
+            elif entry.kind == 'symlink':
+                self._file_transport.symlink(entry.symlink_target, path)
             elif entry.kind == 'file':
                 self._file_transport.put_file(
                     path, self._basis_tree.get_file(path))
@@ -301,6 +314,10 @@ class MemoryTree(MutableInventoryTree):
                     _mod_revision.NULL_REVISION)
             else:
                 raise
+
+    def get_symlink_target(self, path):
+        with self.lock_read():
+            return self._file_transport.readlink(path)
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""

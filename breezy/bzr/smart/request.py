@@ -53,7 +53,7 @@ from ...sixish import text_type
 from ...lazy_import import lazy_import
 lazy_import(globals(), """
 from breezy.bzr import bzrdir
-from breezy.bundle import serializer
+from breezy.bzr.bundle import serializer
 
 import tempfile
 """)
@@ -309,7 +309,7 @@ class SmartServerRequestHandler(object):
         self.finished_reading = False
         self._command = None
         if 'hpss' in debug.debug_flags:
-            self._request_start_time = osutils.timer_func()
+            self._request_start_time = osutils.perf_counter()
             self._thread_id = get_ident()
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
@@ -318,7 +318,7 @@ class SmartServerRequestHandler(object):
         # that just putting it in a helper doesn't help a lot. And some state
         # is taken from the instance.
         if include_time:
-            t = '%5.3fs ' % (osutils.timer_func() - self._request_start_time)
+            t = '%5.3fs ' % (osutils.perf_counter() - self._request_start_time)
         else:
             t = ''
         if extra_bytes is None:
@@ -608,6 +608,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     b'Branch.revision_id_to_revno', 'breezy.bzr.smart.branch',
     'SmartServerBranchRequestRevisionIdToRevno', info='read')
+request_handlers.register_lazy(
+    b'Branch.get_all_reference_info', 'breezy.bzr.smart.branch',
+    'SmartServerBranchRequestGetAllReferenceInfo', info='read')
 request_handlers.register_lazy(
     b'BzrDir.checkout_metadir', 'breezy.bzr.smart.bzrdir',
     'SmartServerBzrDirRequestCheckoutMetaDir', info='read')

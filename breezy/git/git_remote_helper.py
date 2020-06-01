@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # vim: expandtab
 
 # Copyright (C) 2011-2018 Jelmer Vernooij <jelmer@jelmer.uk>
@@ -59,6 +59,7 @@ except ImportError:
     pass
 else:
     CAPABILITIES.append("import")
+    CAPABILITIES.append("refspec *:*")
 
 
 def open_remote_dir(url):
@@ -186,7 +187,7 @@ class RemoteHelper(object):
             self.batchcmd = None
         else:
             try:
-                self.commands[argv[0]](self, outf, argv)
+                self.commands[argv[0].decode()](self, outf, argv)
             except KeyError:
                 raise Exception("Unknown remote command %r" % argv)
         outf.flush()

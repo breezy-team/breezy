@@ -365,7 +365,7 @@ Implementation constraints
 * As this specification proposes a matching between some credentials
   definitions and real URLs, the implementation provides an optional UI
   feedback about which credential definition is used. Using ``-Dauth`` will
-  output some traces in the ``.bzr.log`` file metionning the sections
+  output some traces in the ``brz.log`` file metionning the sections
   used. This allows the user to validate his definitions.
 
 Questions and Answers

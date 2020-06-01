@@ -53,7 +53,10 @@ from .request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
-from ...repository import _strip_NULL_ghosts, network_format_registry
+from ...repository import (
+    _strip_NULL_ghosts,
+    network_format_registry,
+    )
 from ... import revision as _mod_revision
 from ..versionedfile import (
     ChunkedContentFactory,
@@ -328,13 +331,16 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
         try:
             found_flag, result = repository.get_rev_id_for_revno(
                 revno, known_pair)
-        except errors.RevisionNotPresent as err:
-            if err.revision_id != known_pair[1]:
+        except errors.NoSuchRevision as err:
+            if err.revision != known_pair[1]:
                 raise AssertionError(
                     'get_rev_id_for_revno raised RevisionNotPresent for '
-                    'non-initial revision: ' + err.revision_id)
+                    'non-initial revision: ' + err.revision)
             return FailedSmartServerResponse(
-                (b'nosuchrevision', err.revision_id))
+                (b'nosuchrevision', err.revision))
+        except errors.RevnoOutOfBounds as e:
+            return FailedSmartServerResponse(
+                (b'revno-outofbounds', e.revno, e.minimum, e.maximum))
         if found_flag:
             return SuccessfulSmartServerResponse((b'ok', result))
         else:
@@ -1185,7 +1191,7 @@ class SmartServerRepositoryIterFilesBytes(SmartServerRepositoryRequest):
                     continue
                 yield b"ok\0%d\n" % identifier
                 compressor = zlib.compressobj()
-                for bytes in record.get_bytes_as('chunked'):
+                for bytes in record.iter_bytes_as('chunked'):
                     data = compressor.compress(bytes)
                     if data:
                         yield data
@@ -1264,7 +1270,9 @@ class SmartServerRepositoryGetInventories(SmartServerRepositoryRequest):
                 inv_delta = inv._make_delta(prev_inv)
                 lines = serializer.delta_to_lines(
                     prev_inv.revision_id, inv.revision_id, inv_delta)
-                yield ChunkedContentFactory(inv.revision_id, None, None, lines)
+                yield ChunkedContentFactory(
+                    inv.revision_id, None, None, lines,
+                    chunks_are_lines=True)
                 prev_inv = inv
 
     def body_stream(self, repository, ordering, revids):

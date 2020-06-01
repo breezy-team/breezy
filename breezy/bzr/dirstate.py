@@ -166,7 +166,7 @@ Memory representation::
 
  vector of all directories, and vector of the childen ?
    i.e.
-     root_entrie = (direntry for root, [parent_direntries_for_root]),
+     root_entries = (direntry for root, [parent_direntries_for_root]),
      dirblocks = [
      ('', ['data for achild', 'data for bchild', 'data for cchild'])
      ('dir', ['achild', 'cchild', 'echild'])
@@ -235,6 +235,7 @@ from . import (
     )
 from .. import (
     cache_utf8,
+    cleanup,
     config,
     debug,
     errors,
@@ -250,6 +251,7 @@ from ..sixish import (
     viewitems,
     viewvalues,
     )
+from ..tree import TreeChange
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -366,7 +368,8 @@ class DirState(object):
     HEADER_FORMAT_2 = b'#bazaar dirstate flat format 2\n'
     HEADER_FORMAT_3 = b'#bazaar dirstate flat format 3\n'
 
-    def __init__(self, path, sha1_provider, worth_saving_limit=0):
+    def __init__(self, path, sha1_provider, worth_saving_limit=0,
+                 use_filesystem_for_exec=True):
         """Create a  DirState object.
 
         :param path: The path at which the dirstate file on disk should live.
@@ -375,6 +378,8 @@ class DirState(object):
             entries is known, only bother saving the dirstate if more than
             this count of entries have changed.
             -1 means never save hash changes, 0 means always save hash changes.
+        :param use_filesystem_for_exec: Whether to trust the filesystem
+            for executable bit information
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -423,6 +428,7 @@ class DirState(object):
         self._worth_saving_limit = worth_saving_limit
         self._config_stack = config.LocationStack(urlutils.local_path_to_url(
             path))
+        self._use_filesystem_for_exec = use_filesystem_for_exec
 
     def __repr__(self):
         return "%s(%r)" % \
@@ -1306,21 +1312,18 @@ class DirState(object):
         result = DirState.initialize(dir_state_filename,
                                      sha1_provider=sha1_provider)
         try:
-            with tree.lock_read():
-                try:
-                    parent_ids = tree.get_parent_ids()
-                    num_parents = len(parent_ids)
-                    parent_trees = []
-                    for parent_id in parent_ids:
-                        parent_tree = tree.branch.repository.revision_tree(
-                            parent_id)
-                        parent_trees.append((parent_id, parent_tree))
-                        parent_tree.lock_read()
-                    result.set_parent_trees(parent_trees, [])
-                    result.set_state_from_inventory(tree.root_inventory)
-                finally:
-                    for revid, parent_tree in parent_trees:
-                        parent_tree.unlock()
+            with cleanup.ExitStack() as exit_stack:
+                exit_stack.enter_context(tree.lock_read())
+                parent_ids = tree.get_parent_ids()
+                num_parents = len(parent_ids)
+                parent_trees = []
+                for parent_id in parent_ids:
+                    parent_tree = tree.branch.repository.revision_tree(
+                        parent_id)
+                    parent_trees.append((parent_id, parent_tree))
+                    exit_stack.enter_context(parent_tree.lock_read())
+                result.set_parent_trees(parent_trees, [])
+                result.set_state_from_inventory(tree.root_inventory)
         except:
             # The caller won't have a chance to unlock this, so make sure we
             # cleanup ourselves
@@ -1949,14 +1952,10 @@ class DirState(object):
 
     def _is_executable(self, mode, old_executable):
         """Is this file executable?"""
-        return bool(S_IEXEC & mode)
-
-    def _is_executable_win32(self, mode, old_executable):
-        """On win32 the executable bit is stored in the dirstate."""
-        return old_executable
-
-    if sys.platform == 'win32':
-        _is_executable = _is_executable_win32
+        if self._use_filesystem_for_exec:
+            return bool(S_IEXEC & mode)
+        else:
+            return old_executable
 
     def _read_link(self, abspath, old_link):
         """Read the target of a symlink"""
@@ -2403,7 +2402,8 @@ class DirState(object):
         return len(self._parents) - len(self._ghosts)
 
     @classmethod
-    def on_file(cls, path, sha1_provider=None, worth_saving_limit=0):
+    def on_file(cls, path, sha1_provider=None, worth_saving_limit=0,
+                use_filesystem_for_exec=True):
         """Construct a DirState on the file at path "path".
 
         :param path: The path at which the dirstate file on disk should live.
@@ -2412,12 +2412,15 @@ class DirState(object):
         :param worth_saving_limit: when the exact number of hash changed
             entries is known, only bother saving the dirstate if more than
             this count of entries have changed. -1 means never save.
+        :param use_filesystem_for_exec: Whether to trust the filesystem
+            for executable bit information
         :return: An unlocked DirState object, associated with the given path.
         """
         if sha1_provider is None:
             sha1_provider = DefaultSHA1Provider()
         result = cls(path, sha1_provider,
-                     worth_saving_limit=worth_saving_limit)
+                     worth_saving_limit=worth_saving_limit,
+                     use_filesystem_for_exec=use_filesystem_for_exec)
         return result
 
     def _read_dirblocks_if_needed(self):
@@ -3764,15 +3767,16 @@ class ProcessEntryPython(object):
                     else:
                         path_u = self.utf8_decode(path)[0]
                 source_kind = DirState._minikind_to_kind[source_minikind]
-                return (entry[0][2],
-                        (old_path_u, path_u),
-                        content_change,
-                        (True, True),
-                        (source_parent_id, target_parent_id),
-                        (self.utf8_decode(old_basename)[
-                         0], self.utf8_decode(entry[0][1])[0]),
-                        (source_kind, target_kind),
-                        (source_exec, target_exec)), changed
+                return TreeChange(
+                    entry[0][2],
+                    (old_path_u, path_u),
+                    content_change,
+                    (True, True),
+                    (source_parent_id, target_parent_id),
+                    (self.utf8_decode(old_basename)[
+                     0], self.utf8_decode(entry[0][1])[0]),
+                    (source_kind, target_kind),
+                    (source_exec, target_exec)), changed
         elif source_minikind in b'a' and target_minikind in _fdlt:
             # looks like a new file
             path = pathjoin(entry[0][0], entry[0][1])
@@ -3792,24 +3796,26 @@ class ProcessEntryPython(object):
                         and stat.S_IEXEC & path_info[3].st_mode)
                 else:
                     target_exec = target_details[3]
-                return (entry[0][2],
-                        (None, self.utf8_decode(path)[0]),
-                        True,
-                        (False, True),
-                        (None, parent_id),
-                        (None, self.utf8_decode(entry[0][1])[0]),
-                        (None, path_info[2]),
-                        (None, target_exec)), True
+                return TreeChange(
+                    entry[0][2],
+                    (None, self.utf8_decode(path)[0]),
+                    True,
+                    (False, True),
+                    (None, parent_id),
+                    (None, self.utf8_decode(entry[0][1])[0]),
+                    (None, path_info[2]),
+                    (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
-                return (entry[0][2],
-                        (None, self.utf8_decode(path)[0]),
-                        False,
-                        (False, True),
-                        (None, parent_id),
-                        (None, self.utf8_decode(entry[0][1])[0]),
-                        (None, None),
-                        (None, False)), True
+                return TreeChange(
+                    entry[0][2],
+                    (None, self.utf8_decode(path)[0]),
+                    False,
+                    (False, True),
+                    (None, parent_id),
+                    (None, self.utf8_decode(entry[0][1])[0]),
+                    (None, None),
+                    (None, False)), True
         elif source_minikind in _fdlt and target_minikind in b'a':
             # unversioned, possibly, or possibly not deleted: we dont care.
             # if its still on disk, *and* theres no other entry at this
@@ -3821,14 +3827,15 @@ class ProcessEntryPython(object):
                 self.source_index, path_utf8=entry[0][0])[0][2]
             if parent_id == entry[0][2]:
                 parent_id = None
-            return (entry[0][2],
-                    (self.utf8_decode(old_path)[0], None),
-                    True,
-                    (True, False),
-                    (parent_id, None),
-                    (self.utf8_decode(entry[0][1])[0], None),
-                    (DirState._minikind_to_kind[source_minikind], None),
-                    (source_details[3], None)), True
+            return TreeChange(
+                entry[0][2],
+                (self.utf8_decode(old_path)[0], None),
+                True,
+                (True, False),
+                (parent_id, None),
+                (self.utf8_decode(entry[0][1])[0], None),
+                (DirState._minikind_to_kind[source_minikind], None),
+                (source_details[3], None)), True
         elif source_minikind in _fdlt and target_minikind in b'r':
             # a rename; could be a true rename, or a rename inherited from
             # a renamed parent. TODO: handle this efficiently. Its not
@@ -3858,10 +3865,10 @@ class ProcessEntryPython(object):
 
         :param result: A result tuple.
         """
-        if not self.partial or not result[0]:
+        if not self.partial or not result.file_id:
             return
-        self.seen_ids.add(result[0])
-        new_path = result[1][1]
+        self.seen_ids.add(result.file_id)
+        new_path = result.path[1]
         if new_path:
             # Not the root and not a delete: queue up the parents of the path.
             self.search_specific_file_parents.update(
@@ -3962,15 +3969,16 @@ class ProcessEntryPython(object):
                 new_executable = bool(
                     stat.S_ISREG(root_dir_info[3].st_mode)
                     and stat.S_IEXEC & root_dir_info[3].st_mode)
-                yield (None,
-                       (None, current_root_unicode),
-                       True,
-                       (False, False),
-                       (None, None),
-                       (None, splitpath(current_root_unicode)[-1]),
-                       (None, root_dir_info[2]),
-                       (None, new_executable)
-                       )
+                yield TreeChange(
+                    None,
+                    (None, current_root_unicode),
+                    True,
+                    (False, False),
+                    (None, None),
+                    (None, splitpath(current_root_unicode)[-1]),
+                    (None, root_dir_info[2]),
+                    (None, new_executable)
+                    )
             initial_key = (current_root, b'', b'')
             block_index, _ = self.state._find_block_index_from_key(initial_key)
             if block_index == 0:
@@ -4044,16 +4052,15 @@ class ProcessEntryPython(object):
                                 new_executable = bool(
                                     stat.S_ISREG(current_path_info[3].st_mode)
                                     and stat.S_IEXEC & current_path_info[3].st_mode)
-                                yield (None,
-                                       (None, utf8_decode(
-                                           current_path_info[0])[0]),
-                                       True,
-                                       (False, False),
-                                       (None, None),
-                                       (None, utf8_decode(
-                                        current_path_info[1])[0]),
-                                       (None, current_path_info[2]),
-                                       (None, new_executable))
+                                yield TreeChange(
+                                    None,
+                                    (None, utf8_decode(current_path_info[0])[0]),
+                                    True,
+                                    (False, False),
+                                    (None, None),
+                                    (None, utf8_decode(current_path_info[1])[0]),
+                                    (None, current_path_info[2]),
+                                    (None, new_executable))
                             # dont descend into this unversioned path if it is
                             # a dir
                             if current_path_info[2] in ('directory',
@@ -4181,15 +4188,15 @@ class ProcessEntryPython(object):
                                 except UnicodeDecodeError:
                                     raise errors.BadFilenameEncoding(
                                         current_path_info[0], osutils._fs_enc)
-                                yield (None,
-                                       (None, relpath_unicode),
-                                       True,
-                                       (False, False),
-                                       (None, None),
-                                       (None, utf8_decode(
-                                        current_path_info[1])[0]),
-                                       (None, current_path_info[2]),
-                                       (None, new_executable))
+                                yield TreeChange(
+                                    None,
+                                    (None, relpath_unicode),
+                                    True,
+                                    (False, False),
+                                    (None, None),
+                                    (None, utf8_decode(current_path_info[1])[0]),
+                                    (None, current_path_info[2]),
+                                    (None, new_executable))
                             # dont descend into this unversioned path if it is
                             # a dir
                             if current_path_info[2] in ('directory'):
@@ -4285,8 +4292,8 @@ class ProcessEntryPython(object):
                 # expansion.
                 if changed:
                     self._gather_result_for_consistency(result)
-                    if (result[6][0] == 'directory' and
-                            result[6][1] != 'directory'):
+                    if (result.kind[0] == 'directory' and
+                            result.kind[1] != 'directory'):
                         # This stopped being a directory, the old children have
                         # to be included.
                         if entry[1][self.source_index][0] == b'r':

@@ -44,7 +44,7 @@ class BzrLibraryState(object):
     currently always exposed as breezy._global_state, but we desired to move
     to a point where no global state is needed at all.
 
-    :ivar cleanups: An ObjectWithCleanups which can be used for cleanups that
+    :ivar exit_stack: An ExitStack which can be used for cleanups that
         should occur when the use of breezy is completed. This is initialised
         in __enter__ and executed in __exit__.
     """
@@ -89,17 +89,18 @@ class BzrLibraryState(object):
         # isolation within the same interpreter.  It's not reached on normal
         # in-process run_bzr calls.  If it's broken, we expect that
         # TestRunBzrSubprocess may fail.
-        self.cleanups = cleanup.ObjectWithCleanups()
+        self.exit_stack = cleanup.ExitStack()
 
         if breezy.version_info[3] == 'final':
-            self.cleanups.add_cleanup(
+            self.exit_stack.callback(
                 symbol_versioning.suppress_deprecation_warnings(override=True))
 
         self._trace.__enter__()
 
         self._orig_ui = breezy.ui.ui_factory
-        breezy.ui.ui_factory = self._ui
-        self._ui.__enter__()
+        if self._ui is not None:
+            breezy.ui.ui_factory = self._ui
+            self._ui.__enter__()
 
         if breezy._global_state is not None:
             raise RuntimeError("Breezy already initialized")
@@ -111,11 +112,12 @@ class BzrLibraryState(object):
             # Save config changes
             for k, store in self.config_stores.items():
                 store.save_changes()
-        self.cleanups.cleanup_now()
+        self.exit_stack.close()
         trace._flush_stdout_stderr()
         trace._flush_trace()
         osutils.report_extension_load_failures()
-        self._ui.__exit__(None, None, None)
+        if self._ui is not None:
+            self._ui.__exit__(None, None, None)
         self._trace.__exit__(None, None, None)
         ui.ui_factory = self._orig_ui
         breezy._global_state = None

@@ -36,7 +36,7 @@ class FooService(object):
     # eg 'file:///foo' on Unix, or 'file:///C:/foo' on Windows
     base = urlutils.local_path_to_url('/foo')
 
-    def look_up(self, name, url):
+    def look_up(self, name, url, purpose=None):
         return self.base + name
 
 
@@ -55,13 +55,48 @@ class TestDirectoryLookup(TestCase):
     def test_dereference(self):
         self.assertEqual(FooService.base + 'bar',
                          self.registry.dereference('foo:bar'))
+        self.assertEqual(FooService.base + 'bar',
+                         self.registry.dereference('foo:bar', purpose='write'))
         self.assertEqual('baz:qux', self.registry.dereference('baz:qux'))
+        self.assertEqual(
+            'baz:qux',
+            self.registry.dereference('baz:qux', purpose='write'))
 
     def test_get_transport(self):
         directories.register('foo:', FooService, 'Map foo URLs to http urls')
         self.addCleanup(directories.remove, 'foo:')
         self.assertEqual(FooService.base + 'bar/',
                          transport.get_transport('foo:bar').base)
+
+
+class OldService(object):
+    """A directory service that maps the name to a FILE url"""
+
+    # eg 'file:///foo' on Unix, or 'file:///C:/foo' on Windows
+    base = urlutils.local_path_to_url('/foo')
+
+    def look_up(self, name, url):
+        return self.base + name
+
+
+class TestOldDirectoryLookup(TestCase):
+    """Test compatibility with older implementations of Directory
+    that don't support the purpose argument."""
+
+    def setUp(self):
+        super(TestOldDirectoryLookup, self).setUp()
+        self.registry = DirectoryServiceRegistry()
+        self.registry.register('old:', OldService, 'Map foo URLs to http urls')
+
+    def test_dereference(self):
+        self.assertEqual(OldService.base + 'bar',
+                         self.registry.dereference('old:bar'))
+        self.assertEqual(OldService.base + 'bar',
+                         self.registry.dereference('old:bar', purpose='write'))
+        self.assertEqual('baz:qux', self.registry.dereference('baz:qux'))
+        self.assertEqual(
+            'baz:qux',
+            self.registry.dereference('baz:qux', purpose='write'))
 
 
 class TestAliasDirectory(TestCaseWithTransport):

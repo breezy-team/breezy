@@ -207,7 +207,7 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr(['switch', '-b', 'anotherbranch'])
         self.assertEqual(
             {'', 'anotherbranch'},
-            set(tree.branch.controldir.get_branches().keys()))
+            set(tree.branch.controldir.branch_names()))
 
     def test_switch_into_unrelated_colocated(self):
         # Create a new colocated branch from an existing non-colocated branch.
@@ -347,7 +347,7 @@ class TestSwitch(TestCaseWithTransport):
         tree = branch.create_checkout('tree', lightweight=True)
 
         class FooLookup(object):
-            def look_up(self, name, url):
+            def look_up(self, name, url, purpose=None):
                 return 'foo-' + name
         directories.register('foo:', FooLookup, 'Create branches named foo-')
         self.addCleanup(directories.remove, 'foo:')
@@ -407,7 +407,7 @@ class TestSwitchParentLocationBase(TestCaseWithTransport):
         super(TestSwitchParentLocationBase, self).setUp()
         self.script_runner = script.ScriptRunner()
         self.script_runner.run_script(self, '''
-                $ brz init-repo --no-trees repo
+                $ brz init-shared-repo --no-trees repo
                 Shared repository...
                 Location:
                   shared repository: repo

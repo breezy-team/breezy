@@ -1550,21 +1550,21 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         if self._new_pack is not None:
-            operation = cleanup.OperationWithCleanups(self._new_pack.abort)
-            operation.add_cleanup(setattr, self, '_new_pack', None)
-            # If we aborted while in the middle of finishing the write
-            # group, _remove_pack_indices could fail because the indexes are
-            # already gone.  But they're not there we shouldn't fail in this
-            # case, so we pass ignore_missing=True.
-            operation.add_cleanup(self._remove_pack_indices, self._new_pack,
-                                  ignore_missing=True)
-            operation.run_simple()
+            with cleanup.ExitStack() as stack:
+                stack.callback(setattr, self, '_new_pack', None)
+                # If we aborted while in the middle of finishing the write
+                # group, _remove_pack_indices could fail because the indexes are
+                # already gone.  But they're not there we shouldn't fail in this
+                # case, so we pass ignore_missing=True.
+                stack.callback(self._remove_pack_indices, self._new_pack,
+                               ignore_missing=True)
+                self._new_pack.abort()
         for resumed_pack in self._resumed_packs:
-            operation = cleanup.OperationWithCleanups(resumed_pack.abort)
-            # See comment in previous finally block.
-            operation.add_cleanup(self._remove_pack_indices, resumed_pack,
-                                  ignore_missing=True)
-            operation.run_simple()
+            with cleanup.ExitStack() as stack:
+                # See comment in previous finally block.
+                stack.callback(self._remove_pack_indices, resumed_pack,
+                               ignore_missing=True)
+                resumed_pack.abort()
         del self._resumed_packs[:]
 
     def _remove_resumed_pack_indices(self):
@@ -1964,6 +1964,23 @@ class _DirectPackAccess(object):
         self._reload_func = reload_func
         self._flush_func = flush_func
 
+    def add_raw_record(self, key, size, raw_data):
+        """Add raw knit bytes to a storage area.
+
+        The data is spooled to the container writer in one bytes-record per
+        raw data item.
+
+        :param key: key of the data segment
+        :param size: length of the data segment
+        :param raw_data: A bytestring containing the data.
+        :return: An opaque index memo For _DirectPackAccess the memo is
+            (index, pos, length), where the index field is the write_index
+            object supplied to the PackAccess object.
+        """
+        p_offset, p_length = self._container_writer.add_bytes_record(
+            raw_data, size, [])
+        return (self._write_index, p_offset, p_length)
+
     def add_raw_records(self, key_sizes, raw_data):
         """Add raw knit bytes to a storage area.
 
@@ -1978,16 +1995,16 @@ class _DirectPackAccess(object):
             length), where the index field is the write_index object supplied
             to the PackAccess object.
         """
+        raw_data = b''.join(raw_data)
         if not isinstance(raw_data, bytes):
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []
         offset = 0
         for key, size in key_sizes:
-            p_offset, p_length = self._container_writer.add_bytes_record(
-                raw_data[offset:offset + size], [])
+            result.append(
+                self.add_raw_record(key, size, [raw_data[offset:offset + size]]))
             offset += size
-            result.append((self._write_index, p_offset, p_length))
         return result
 
     def flush(self):
