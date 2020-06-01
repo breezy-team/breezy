@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-from __future__ import absolute_import
-
 import ast
 
 from pyflakes.checker import Checker, ImportationFrom

@@ -16,6 +16,7 @@
 
 """Tests for repository implementations - tests a repository format."""
 
+from io import BytesIO
 import re
 
 from ... import (
@@ -41,11 +42,6 @@ from ...bzr import (
     )
 from ...bzr import (
     knitpack_repo,
-    )
-from ...sixish import (
-    BytesIO,
-    text_type,
-    unichr,
     )
 from .. import (
     per_repository,
@@ -421,7 +417,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.assertEqual(rev.message, message)
         # insist the class is unicode no matter what came in for
         # consistency.
-        self.assertIsInstance(rev.message, text_type)
+        self.assertIsInstance(rev.message, str)
 
     def test_commit_unicode_message(self):
         # a siple unicode message should be preserved
@@ -429,7 +425,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_commit_unicode_control_characters(self):
         # a unicode message with control characters should roundtrip too.
-        unichars = [unichr(x) for x in range(256)]
+        unichars = [chr(x) for x in range(256)]
         # '\r' is not directly allowed anymore, as it used to be translated
         # into '\n' anyway
         unichars[ord('\r')] = u'\n'

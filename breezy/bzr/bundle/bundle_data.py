@@ -16,8 +16,6 @@
 
 """Read in a bundle stream, and process it into a BundleReader object."""
 
-from __future__ import absolute_import
-
 import base64
 from io import BytesIO
 import os
@@ -42,9 +40,6 @@ from ..inventory import (
     )
 from ...osutils import sha_string, sha_strings, pathjoin
 from ...revision import Revision, NULL_REVISION
-from ...sixish import (
-    viewitems,
-    )
 from ..testament import StrictTestament
 from ...trace import mutter, warning
 from ...tree import (
@@ -112,7 +107,7 @@ class RevisionInfo(object):
         revision_info.timestamp = revision.timestamp
         revision_info.message = revision.message.split('\n')
         revision_info.properties = [': '.join(p) for p in
-                                    viewitems(revision.properties)]
+                                    revision.properties.items()]
         return revision_info
 
 
@@ -260,7 +255,7 @@ class BundleInfo(object):
 
         count = 0
         missing = {}
-        for revision_id, sha1 in viewitems(rev_to_sha):
+        for revision_id, sha1 in rev_to_sha.items():
             if repository.has_revision(revision_id):
                 testament = StrictTestament.from_revision(repository,
                                                           revision_id)
@@ -769,7 +764,7 @@ class BundleTree(Tree):
 
     def sorted_path_id(self):
         paths = []
-        for result in viewitems(self._new_id):
+        for result in self._new_id.items():
             paths.append(result)
         for id in self.base_tree.all_file_ids():
             try:

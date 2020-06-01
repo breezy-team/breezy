@@ -16,8 +16,6 @@
 
 """Remote dirs, repositories and branches."""
 
-from __future__ import absolute_import
-
 import gzip
 from io import BytesIO
 import re
@@ -50,10 +48,6 @@ from ..errors import (
     )
 from ..revision import NULL_REVISION
 from ..revisiontree import RevisionTree
-from ..sixish import (
-    text_type,
-    viewitems,
-    )
 from ..transport import (
     Transport,
     register_urlparse_netloc_protocol,
@@ -123,12 +117,8 @@ import os
 import select
 import tempfile
 
-try:
-    import urllib.parse as urlparse
-    from urllib.parse import splituser
-except ImportError:
-    import urlparse
-    from urllib import splituser
+import urllib.parse as urlparse
+from urllib.parse import splituser
 
 # urlparse only supports a limited number of schemes by default
 register_urlparse_netloc_protocol('git')
@@ -599,7 +589,7 @@ class RemoteGitDir(GitDir):
                         source, self.open_branch(name, nascent_ok=True))
             ret[actual_refname] = new_sha
             if fetch_tags:
-                for tagname, revid in viewitems(source.tags.get_tag_dict()):
+                for tagname, revid in source.tags.get_tag_dict().items():
                     if tag_selector and not tag_selector(tagname):
                         continue
                     if lossy:
@@ -1023,7 +1013,7 @@ class RemoteGitBranch(GitBranch):
             if peeled is None:
                 # Let's just hope it's a commit
                 peeled = unpeeled
-            if not isinstance(tag_name, text_type):
+            if not isinstance(tag_name, str):
                 raise TypeError(tag_name)
             yield (ref_name, tag_name, peeled, unpeeled)
 

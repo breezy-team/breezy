@@ -16,9 +16,6 @@
 
 """Merge logic for news_merge plugin."""
 
-from __future__ import absolute_import
-
-
 from .parser import simple_parse_lines
 from ... import merge, merge3
 

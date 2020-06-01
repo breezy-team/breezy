@@ -19,6 +19,7 @@
 """Tests for trace library"""
 
 import errno
+from io import StringIO
 import logging
 import os
 import re
@@ -29,10 +30,6 @@ from .. import (
     debug,
     errors,
     trace,
-    )
-from ..sixish import (
-    PY3,
-    StringIO,
     )
 from . import features, TestCaseInTempDir, TestCase, TestSkipped
 from ..trace import (
@@ -146,11 +143,7 @@ class TestTrace(TestCase):
             raise errors.BzrCommandError(u'argument foo\xb5 does not exist')
         except errors.BzrCommandError:
             msg = _format_exception()
-        if PY3:
-            expected = 'brz: ERROR: argument foo\xb5 does not exist\n'
-        else:
-            # GZ 2017-06-10: Pretty bogus, should encode per the output stream
-            expected = 'brz: ERROR: argument foo\xc2\xb5 does not exist\n'
+        expected = 'brz: ERROR: argument foo\xb5 does not exist\n'
         self.assertEqual(msg, expected)
 
     def test_format_exception(self):
@@ -410,10 +403,7 @@ class TestLogging(TestCase):
 
     def test_log_utf8_arg(self):
         logging.getLogger("brz").debug(b"%s", b"\xc2\xa7")
-        if PY3:
-            expected = u"   DEBUG  b'\\xc2\\xa7'\n"
-        else:
-            expected = u"   DEBUG  \xa7\n"
+        expected = u"   DEBUG  b'\\xc2\\xa7'\n"
         self.assertEqual(expected, self.get_log())
 
     def test_log_bytes_msg(self):
@@ -426,24 +416,12 @@ class TestLogging(TestCase):
     def test_log_bytes_arg(self):
         logging.getLogger("brz").debug(b"%s", b"\xa7")
         log = self.get_log()
-        if PY3:
-            self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
-        else:
-            self.assertContainsString(log, "UnicodeDecodeError: ")
-            self.assertContainsRe(
-                log,
-                "Logging record unformattable: ?'%s' % \\(b?'\\\\xa7',\\)\n")
+        self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
 
     def test_log_mixed_strings(self):
         logging.getLogger("brz").debug(u"%s", b"\xa7")
         log = self.get_log()
-        if PY3:
-            self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
-        else:
-            self.assertContainsString(log, "UnicodeDecodeError: ")
-            self.assertContainsRe(
-                log,
-                "Logging record unformattable: u'%s' % \\('\\\\xa7',\\)\n")
+        self.assertEqual(u"   DEBUG  b'\\xa7'\n", self.get_log())
 
     def test_log_repr_broken(self):
         class BadRepr(object):

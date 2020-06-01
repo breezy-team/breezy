@@ -27,7 +27,6 @@ from .. import (
     )
 from ..controldir import ControlDir
 from ..bzr.smart import medium
-from ..sixish import PY3
 from ..transport import remote
 
 from . import (
@@ -104,12 +103,8 @@ class ImportTariffTestCase(TestCaseWithTransport):
 
         bad_modules = []
         for module_name in forbidden_imports:
-            if PY3:
-                if err.find("\nimport '%s' " % module_name) != -1:
-                    bad_modules.append(module_name)
-            else:
-                if err.find("\nimport %s " % module_name) != -1:
-                    bad_modules.append(module_name)
+            if err.find("\nimport '%s' " % module_name) != -1:
+                bad_modules.append(module_name)
 
         if bad_modules:
             self.fail("command loaded forbidden modules %r"
@@ -159,7 +154,7 @@ class TestImportTariffs(ImportTariffTestCase):
     def test_simple_local(self):
         # 'st' in a default format working tree shouldn't need many modules
         self.make_branch_and_tree('.')
-        self.run_command_check_imports(['st'], [
+        forbidden_modules = [
             'breezy.annotate',
             'breezy.atomicfile',
             'breezy.bugtracker',
@@ -194,10 +189,10 @@ class TestImportTariffs(ImportTariffTestCase):
             'socket',
             'smtplib',
             'tarfile',
-            'tempfile',
             'termios',
             'tty',
-            ] + old_format_modules)
+            ] + old_format_modules
+        self.run_command_check_imports(['st'], forbidden_modules)
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff
         #

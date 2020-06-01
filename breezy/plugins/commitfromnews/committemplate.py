@@ -16,8 +16,6 @@
 
 """Logic to create commit templates."""
 
-from __future__ import absolute_import
-
 import patiencediff
 
 from ... import bugtracker, osutils
@@ -58,9 +56,9 @@ class CommitTemplate(object):
             return self.message
         if found_old_path is None:
             # New file
-            _, new_chunks = list(
+            _, new_chunks = next(
                 self.commit.builder.repository.iter_files_bytes(
-                    [(found_entry.file_id, found_entry.revision, None)]))[0]
+                    [(found_entry.file_id, found_entry.revision, None)]))
             content = b''.join(new_chunks).decode('utf-8')
             return self.merge_message(content)
         else:
@@ -76,7 +74,7 @@ class CommitTemplate(object):
             contents = self.commit.builder.repository.iter_files_bytes(needed)
             lines = {}
             for name, chunks in contents:
-                lines[name] = osutils.chunks_to_lines(chunks)
+                lines[name] = osutils.chunks_to_lines(list(chunks))
             new = lines['new']
             sequence_matcher = patiencediff.PatienceSequenceMatcher(
                 None, lines['old'], new)

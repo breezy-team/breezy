@@ -47,9 +47,8 @@ listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
 
-from __future__ import absolute_import
-
 import codecs
+from io import BytesIO
 import itertools
 import re
 import sys
@@ -84,12 +83,10 @@ from .osutils import (
     get_terminal_encoding,
     terminal_width,
     )
-from .sixish import (
-    BytesIO,
-    range,
-    zip,
+from .tree import (
+    find_previous_path,
+    InterTree,
     )
-from .tree import InterTree
 
 
 def find_touching_revisions(repository, last_revision, last_tree, last_path):

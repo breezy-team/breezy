@@ -17,19 +17,14 @@
 
 """An adapter between a Git control dir and a Bazaar ControlDir."""
 
-from __future__ import absolute_import
+import contextlib
 
 from .. import (
     branch as _mod_branch,
-    cleanup,
     errors as brz_errors,
     trace,
     osutils,
     urlutils,
-    )
-from ..sixish import (
-    PY3,
-    viewitems,
     )
 from ..transport import (
     do_catching_redirections,
@@ -192,7 +187,7 @@ class GitDir(ControlDir):
         else:
             wt = None
         if recurse == 'down':
-            with cleanup.ExitStack() as stack:
+            with contextlib.ExitStack() as stack:
                 basis = None
                 if wt is not None:
                     basis = wt.basis_tree()
@@ -252,7 +247,7 @@ class GitDir(ControlDir):
             determine_wants = interrepo.determine_wants_all
         (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
                                                        mapping=default_mapping)
-        for name, val in viewitems(refs):
+        for name, val in refs.items():
             target_git_repo.refs[name] = val
         result_dir = LocalGitDir(transport, target_git_repo, format)
         if revision_id is not None:
@@ -583,8 +578,6 @@ class LocalGitDir(GitDir):
             else:
                 base_url = urlutils.local_path_to_url(
                     commondir.decode(osutils._fs_enc)).rstrip('/.git/') + '/'
-            if not PY3:
-                params = {k: v.encode('utf-8') for (k, v) in viewitems(params)}
             return urlutils.join_segment_parameters(base_url, params)
         return None
 

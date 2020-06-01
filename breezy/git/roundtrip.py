@@ -45,8 +45,6 @@ This extra metadata is stored in so-called "supplements":
   * TreeSupplement
 """
 
-from __future__ import absolute_import
-
 from .. import osutils
 
 from io import BytesIO

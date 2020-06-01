@@ -16,8 +16,6 @@
 
 """Test our ability to build up test repositories"""
 
-from __future__ import absolute_import
-
 from io import BytesIO
 
 from dulwich.repo import Repo as GitRepo

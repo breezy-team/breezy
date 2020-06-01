@@ -18,8 +18,6 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
-from __future__ import absolute_import
-
 import base64
 import stat
 
@@ -38,11 +36,6 @@ from ..foreign import (
 from ..revision import (
     NULL_REVISION,
     Revision,
-    )
-from ..sixish import (
-    PY3,
-    text_type,
-    viewitems,
     )
 from .errors import (
     NoPushSupport,
@@ -175,7 +168,7 @@ class BzrGitMapping(foreign.VcsMapping):
     def generate_file_id(self, path):
         # Git paths are just bytestrings
         # We must just hope they are valid UTF-8..
-        if isinstance(path, text_type):
+        if isinstance(path, str):
             path = path.encode("utf-8")
         if path == b"":
             return ROOT_ID
@@ -191,8 +184,7 @@ class BzrGitMapping(foreign.VcsMapping):
     def revid_as_refname(self, revid):
         if not isinstance(revid, bytes):
             raise TypeError(revid)
-        if PY3:
-            revid = revid.decode('utf-8')
+        revid = revid.decode('utf-8')
         quoted_revid = urlutils.quote(revid)
         return b"refs/bzr/" + quoted_revid.encode('utf-8')
 
@@ -252,11 +244,11 @@ class BzrGitMapping(foreign.VcsMapping):
         (message, renames, branch, extra) = extract_hg_metadata(message)
         if branch is not None:
             rev.properties[u'hg:extra:branch'] = branch
-        for name, value in viewitems(extra):
+        for name, value in extra.items():
             rev.properties[u'hg:extra:' + name] = base64.b64encode(value)
         if renames:
             rev.properties[u'hg:renames'] = base64.b64encode(bencode.bencode(
-                [(new, old) for (old, new) in viewitems(renames)]))
+                [(new, old) for (old, new) in renames.items()]))
         return message
 
     def _extract_bzr_metadata(self, rev, message):
@@ -350,7 +342,7 @@ class BzrGitMapping(foreign.VcsMapping):
                  u'git-gpg-signature', u'git-gpg-signature-b64',
                  u'git-explicit-encoding',
                  u'author-timestamp', u'file-modes'])
-            for k, v in viewitems(rev.properties):
+            for k, v in rev.properties.items():
                 if k not in mapping_properties:
                     metadata.properties[k] = v
         if not lossy and metadata:
@@ -581,7 +573,7 @@ default_mapping = mapping_registry.get_default()()
 def symlink_to_blob(symlink_target):
     from dulwich.objects import Blob
     blob = Blob()
-    if isinstance(symlink_target, text_type):
+    if isinstance(symlink_target, str):
         symlink_target = symlink_target.encode('utf-8')
     blob.data = symlink_target
     return blob

@@ -448,23 +448,3 @@ class TestSource(TestSourceHelper):
             error_msg.extend(('', ''))
         if error_msg:
             self.fail('\n'.join(error_msg))
-
-    def test_feature_absolute_import(self):
-        """Using absolute imports means avoiding unnecesary stat and
-        open calls.
-
-        Make sure that all non-test files have absolute imports enabled.
-        """
-        missing_absolute_import = []
-        for fname, text in self.get_source_file_contents(
-                extensions=('.py', '.pyx')):
-            if "/tests/" in fname or "test_" in fname:
-                # We don't really care about tests
-                continue
-            if "from __future__ import absolute_import" not in text:
-                missing_absolute_import.append(fname)
-
-        if missing_absolute_import:
-            self.fail(
-                'The following files do not have absolute_import enabled:\n'
-                '\n' + '\n'.join(missing_absolute_import))

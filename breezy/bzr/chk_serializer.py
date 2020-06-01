@@ -16,7 +16,9 @@
 
 """Serializer object for CHK based inventory storage."""
 
-from __future__ import absolute_import
+from io import (
+    BytesIO,
+    )
 
 from .. import lazy_import
 lazy_import.lazy_import(globals(),
@@ -33,9 +35,6 @@ from .. import (
     )
 from . import (
     serializer,
-    )
-from ..sixish import (
-    BytesIO,
     )
 
 

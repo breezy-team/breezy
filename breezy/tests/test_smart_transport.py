@@ -19,6 +19,7 @@
 # all of this deals with byte strings so this is safe
 import doctest
 import errno
+from io import BytesIO
 import os
 import socket
 import subprocess
@@ -54,10 +55,6 @@ from . import (
     features,
     test_smart,
     test_server,
-    )
-from ..sixish import (
-    BytesIO,
-    int2byte,
     )
 from ..transport import (
     http,
@@ -3169,7 +3166,7 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
         decoder, response_handler = self.make_logging_response_decoder()
         for byte in bytearray(simple_response):
             self.assertNotEqual(0, decoder.next_read_size())
-            decoder.accept_bytes(int2byte(byte))
+            decoder.accept_bytes(bytes([byte]))
         # Now the response is complete
         self.assertEqual(0, decoder.next_read_size())
 

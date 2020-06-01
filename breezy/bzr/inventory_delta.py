@@ -22,8 +22,6 @@ In this module the interesting classes are:
  - InventoryDeltaSerializer - object to read/write inventory deltas.
 """
 
-from __future__ import absolute_import
-
 __all__ = ['InventoryDeltaSerializer']
 
 from .. import errors

@@ -12,8 +12,8 @@ import sys
 import copy
 import glob
 
-if sys.version_info < (2, 7):
-    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.7+\n")
+if sys.version_info < (3, 5):
+    sys.stderr.write("[ERROR] Not a supported Python version. Need 3.5+\n")
     sys.exit(1)
 
 
@@ -64,7 +64,6 @@ META_INFO = {
         ],
     'install_requires': [
         'configobj',
-        'six>=1.9.0',
         'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
@@ -596,12 +595,6 @@ elif 'py2exe' in sys.argv:
         includes.append(module)
 
     additional_packages = set()
-    if sys.version.startswith('2.7'):
-        additional_packages.add('xml.etree')
-    else:
-        import warnings
-        warnings.warn('Unknown Python version.\n'
-                      'Please check setup.py script for compatibility.')
 
     # Although we currently can't enforce it, we consider it an error for
     # py2exe to report any files are "missing".  Such modules we know aren't

@@ -16,8 +16,6 @@
 
 """Counted lock class"""
 
-from __future__ import absolute_import
-
 from . import (
     errors,
     )

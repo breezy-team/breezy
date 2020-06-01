@@ -19,6 +19,9 @@
 See doc/developer/inventory.txt for more information.
 """
 
+from io import (
+    BytesIO,
+    )
 from .. import osutils
 from ..bzr import (
     inventory,
@@ -27,9 +30,6 @@ from ..bzr import (
 from ..bzr.inventory_delta import InventoryDeltaError
 from ..bzr.inventory import Inventory
 from ..revision import NULL_REVISION
-from ..sixish import (
-    BytesIO,
-    )
 from . import TestCase
 
 ### DO NOT REFLOW THESE TEXTS. NEW LINES ARE SIGNIFICANT. ###

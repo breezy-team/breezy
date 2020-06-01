@@ -17,8 +17,6 @@
 
 """Tests for interfacing with a Git Repository"""
 
-from __future__ import absolute_import
-
 import dulwich
 from dulwich.repo import (
     Repo as GitRepo,

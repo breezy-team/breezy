@@ -16,8 +16,6 @@
 
 """XML externalization support."""
 
-from __future__ import absolute_import
-
 # "XML is like violence: if it doesn't solve your problem, you aren't
 # using enough of it." -- various
 
@@ -49,7 +47,6 @@ from .. import (
     errors,
     lazy_regex,
     )
-from ..sixish import text_type, bytesintern
 from . import (
     inventory,
     serializer,
@@ -144,10 +141,10 @@ def get_utf8_or_ascii(a_str, _encode_utf8=cache_utf8.encode):
     # This is fairly optimized because we know what cElementTree does, this is
     # not meant as a generic function for all cases. Because it is possible for
     # an 8-bit string to not be ascii or valid utf8.
-    if a_str.__class__ is text_type:
+    if a_str.__class__ is str:
         return _encode_utf8(a_str)
     else:
-        return bytesintern(a_str)
+        return a_str
 
 
 _utf8_re = lazy_regex.lazy_compile(b'[&<>\'\"]|[\x80-\xff]+')
@@ -206,7 +203,7 @@ def encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
     # to check if None, rather than try/KeyError
     text = _map.get(unicode_or_utf8_str)
     if text is None:
-        if isinstance(unicode_or_utf8_str, text_type):
+        if isinstance(unicode_or_utf8_str, str):
             # The alternative policy is to do a regular UTF8 encoding
             # and then escape only XML meta characters.
             # Performance is equivalent once you use cache_utf8. *However*

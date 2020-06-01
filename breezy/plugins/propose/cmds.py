@@ -16,8 +16,6 @@
 
 """Propose command implementations."""
 
-from __future__ import absolute_import
-
 from io import StringIO
 
 from ... import (
@@ -36,7 +34,6 @@ from ...option import (
     Option,
     RegistryOption,
     )
-from ...sixish import text_type
 from ...trace import note
 from ... import (
     propose as _mod_propose,
@@ -139,7 +136,7 @@ class cmd_propose_merge(Command):
             'hoster',
             help='Use the hoster.',
             lazy_registry=('breezy.plugins.propose.propose', 'hosters')),
-        ListOption('reviewers', short_name='R', type=text_type,
+        ListOption('reviewers', short_name='R', type=str,
                    help='Requested reviewers.'),
         Option('name', help='Name of the new remote branch.', type=str),
         Option('description', help='Description of the change.', type=str),
@@ -148,7 +145,7 @@ class cmd_propose_merge(Command):
         Option(
             'commit-message',
             help='Set commit message for merge, if supported', type=str),
-        ListOption('labels', short_name='l', type=text_type,
+        ListOption('labels', short_name='l', type=str,
                    help='Labels to apply.'),
         Option('no-allow-lossy',
                help='Allow fallback to lossy push, if necessary.'),

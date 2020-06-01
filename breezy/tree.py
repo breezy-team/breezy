@@ -17,8 +17,6 @@
 """Tree classes, representing directory at point in time.
 """
 
-from __future__ import absolute_import
-
 try:
     from collections.abc import deque
 except ImportError:  # python < 3.7
@@ -45,10 +43,6 @@ from . import (
     osutils,
     )
 from .inter import InterObject
-from .sixish import (
-    text_type,
-    viewvalues,
-    )
 
 
 class FileTimestampUnavailable(errors.BzrError):

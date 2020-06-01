@@ -17,8 +17,6 @@
 """Serializer factory for reading and writing bundles.
 """
 
-from __future__ import absolute_import
-
 from .... import (
     errors,
     ui,
@@ -34,7 +32,6 @@ from ..bundle_data import (
     )
 from ....diff import internal_diff
 from ....revision import NULL_REVISION
-from ....sixish import text_type
 from ...testament import StrictTestament
 from ....timestamp import (
     format_highres_date,
@@ -166,7 +163,7 @@ class BundleSerializerV08(BundleSerializer):
             f.write(b': ')
             f.write(value)
             f.write(b'\n')
-        elif isinstance(value, text_type):
+        elif isinstance(value, str):
             f.write(b': ')
             f.write(value.encode('utf-8'))
             f.write(b'\n')

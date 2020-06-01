@@ -19,7 +19,6 @@
 from testtools.matchers import *
 
 from ..bzr.smart.client import CallHookParams
-from ..sixish import PY3
 
 from . import (
     CapturedCall,
@@ -133,14 +132,9 @@ class TestHasLayout(TestCaseWithTransport):
         t.add(['a', 'b', 'b/c'], [b'a-id', b'b-id', b'c-id'])
         mismatch = HasLayout(['a']).match(t)
         self.assertIsNot(None, mismatch)
-        if PY3:
-            self.assertEqual(
-                set(("['', 'a', 'b/', 'b/c']", "['a']")),
-                set(mismatch.describe().split(" != ")))
-        else:
-            self.assertEqual(
-                set(("[u'', u'a', u'b/', u'b/c']", "['a']")),
-                set(mismatch.describe().split(" != ")))
+        self.assertEqual(
+            set(("['', 'a', 'b/', 'b/c']", "['a']")),
+            set(mismatch.describe().split(" != ")))
 
     def test_no_dirs(self):
         # Some tree/repository formats do not support versioned directories
@@ -152,14 +146,9 @@ class TestHasLayout(TestCaseWithTransport):
         self.assertIs(None, HasLayout(['', 'a', 'b/', 'b/c', 'd/']).match(t))
         mismatch = HasLayout([u'', u'a', u'd/']).match(t)
         self.assertIsNot(None, mismatch)
-        if PY3:
-            self.assertEqual(
-                set(("['', 'a', 'b/', 'b/c']", "['', 'a']")),
-                set(mismatch.describe().split(" != ")))
-        else:
-            self.assertEqual(
-                set(("[u'', u'a', u'b/', u'b/c']", "[u'', u'a']")),
-                set(mismatch.describe().split(" != ")))
+        self.assertEqual(
+            set(("['', 'a', 'b/', 'b/c']", "['', 'a']")),
+            set(mismatch.describe().split(" != ")))
 
 
 class TestHasPathRelations(TestCaseWithTransport):
@@ -237,11 +226,6 @@ class TestRevisionHistoryMatches(TestCaseWithTransport):
         tree.commit('msg1', rev_id=b'a')
         tree.commit('msg2', rev_id=b'b')
         matcher = RevisionHistoryMatches([b'a', b'b', b'c'])
-        if PY3:
-            self.assertEqual(
-                set(("[b'a', b'b']", "[b'a', b'b', b'c']")),
-                set(matcher.match(tree.branch).describe().split(" != ")))
-        else:
-            self.assertEqual(
-                set(("['a', 'b']", "['a', 'b', 'c']")),
-                set(matcher.match(tree.branch).describe().split(" != ")))
+        self.assertEqual(
+            set(("[b'a', b'b']", "[b'a', b'b', b'c']")),
+            set(matcher.match(tree.branch).describe().split(" != ")))

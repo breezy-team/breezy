@@ -16,14 +16,12 @@
 
 """Tests for handling of ignore files"""
 
+from io import BytesIO
 import os
 
 from .. import (
     bedding,
     ignores,
-    )
-from ..sixish import (
-    BytesIO,
     )
 from . import (
     TestCase,

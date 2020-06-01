@@ -20,8 +20,6 @@ Various types of reconfiguration operation are available either by
 constructing a class or using a factory method on Reconfigure.
 """
 
-from __future__ import absolute_import
-
 
 from . import (
     branch,

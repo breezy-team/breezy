@@ -14,19 +14,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 try:
     from collections.abc import deque
 except ImportError:  # python < 3.7
     from collections import deque
 
+from io import (
+    BytesIO,
+    )
+
 from ... import (
     debug,
     errors,
-    )
-from ...sixish import (
-    BytesIO,
     )
 from ...trace import mutter
 

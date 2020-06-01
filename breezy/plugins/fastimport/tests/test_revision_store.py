@@ -15,8 +15,6 @@
 
 """Direct tests of the revision_store classes."""
 
-from __future__ import absolute_import
-
 from .... import (
     branch,
     errors,

@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import absolute_import
-
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
 
@@ -27,9 +25,6 @@ from breezy import bugtracker
 from . import (
     errors,
     osutils,
-    )
-from .sixish import (
-    text_type,
     )
 
 NULL_REVISION = b"null:"
@@ -90,10 +85,10 @@ class Revision(object):
         """Verify that all revision properties are OK."""
         for name, value in self.properties.items():
             # GZ 2017-06-10: What sort of string are properties exactly?
-            not_text = not isinstance(name, (text_type, str))
+            not_text = not isinstance(name, str)
             if not_text or osutils.contains_whitespace(name):
                 raise ValueError("invalid property name %r" % name)
-            if not isinstance(value, (text_type, bytes)):
+            if not isinstance(value, (str, bytes)):
                 raise ValueError("invalid property value %r for %r" %
                                  (value, name))
 

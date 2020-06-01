@@ -33,8 +33,6 @@ The protocol is described in doc/developers/network-protocol.txt.
 
 """
 
-from __future__ import absolute_import
-
 # TODO: A plain integer from query_version is too simple; should give some
 # capabilities too?
 

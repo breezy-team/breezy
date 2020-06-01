@@ -17,8 +17,6 @@
 
 """Support for committing in native Git working trees."""
 
-from __future__ import absolute_import
-
 from dulwich.index import (
     commit_tree,
     )
@@ -38,9 +36,6 @@ from ..errors import (
     )
 from ..repository import (
     CommitBuilder,
-    )
-from ..sixish import (
-    viewitems,
     )
 
 from dulwich.objects import (
@@ -154,12 +149,11 @@ class GitCommitBuilder(CommitBuilder):
 
     def finish_inventory(self):
         # eliminate blobs that were removed
-        self._blobs = {k: v for (k, v) in viewitems(
-            self._blobs) if v is not None}
+        self._blobs = {k: v for (k, v) in self._blobs.items() if v is not None}
 
     def _iterblobs(self):
         return ((path, sha, mode) for (path, (mode, sha))
-                in viewitems(self._blobs))
+                in self._blobs.items())
 
     def commit(self, message):
         self._validate_unicode_text(message, 'commit message')

@@ -16,12 +16,11 @@
 
 """Tests for breezy.pack."""
 
+from io import BytesIO
+
 from .. import errors, tests
 from ..bzr import (
     pack,
-    )
-from ..sixish import (
-    BytesIO,
     )
 
 

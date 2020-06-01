@@ -16,9 +16,8 @@
 
 """Versioned text file storage api."""
 
-from __future__ import absolute_import
-
 from copy import copy
+from io import BytesIO
 import itertools
 import os
 import struct
@@ -46,12 +45,6 @@ from .. import (
     errors,
     )
 from ..registry import Registry
-from ..sixish import (
-    BytesIO,
-    viewitems,
-    viewvalues,
-    zip,
-    )
 from ..textmerge import TextMerge
 
 
@@ -327,7 +320,7 @@ class _MPDiffGenerator(object):
         refcounts = {}
         setdefault = refcounts.setdefault
         just_parents = set()
-        for child_key, parent_keys in viewitems(parent_map):
+        for child_key, parent_keys in parent_map.items():
             if not parent_keys:
                 # parent_keys may be None if a given VersionedFile claims to
                 # not support graph operations.
@@ -1179,7 +1172,7 @@ class VersionedFiles(object):
             this_parent_map = self.get_parent_map(pending)
             parent_map.update(this_parent_map)
             pending = set(itertools.chain.from_iterable(
-                viewvalues(this_parent_map)))
+                this_parent_map.values()))
             pending.difference_update(parent_map)
         kg = _mod_graph.KnownGraph(parent_map)
         return kg
@@ -1393,11 +1386,11 @@ class ThunkedVersionedFiles(VersionedFiles):
         """
         prefixes = self._partition_keys(keys)
         result = {}
-        for prefix, suffixes in viewitems(prefixes):
+        for prefix, suffixes in prefixes.items():
             path = self._mapper.map(prefix)
             vf = self._get_vf(path)
             parent_map = vf.get_parent_map(suffixes)
-            for key, parents in viewitems(parent_map):
+            for key, parents in parent_map.items():
                 result[prefix + (key,)] = tuple(
                     prefix + (parent,) for parent in parents)
         return result
@@ -1449,7 +1442,7 @@ class ThunkedVersionedFiles(VersionedFiles):
     def _iter_keys_vf(self, keys):
         prefixes = self._partition_keys(keys)
         sha1s = {}
-        for prefix, suffixes in viewitems(prefixes):
+        for prefix, suffixes in prefixes.items():
             path = self._mapper.map(prefix)
             vf = self._get_vf(path)
             yield prefix, suffixes, vf
@@ -1459,7 +1452,7 @@ class ThunkedVersionedFiles(VersionedFiles):
         sha1s = {}
         for prefix, suffixes, vf in self._iter_keys_vf(keys):
             vf_sha1s = vf.get_sha1s(suffixes)
-            for suffix, sha1 in viewitems(vf_sha1s):
+            for suffix, sha1 in vf_sha1s.items():
                 sha1s[prefix + (suffix,)] = sha1
         return sha1s
 
@@ -1659,7 +1652,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         result.update(
             _mod_graph.StackedParentsProvider(
                 self._providers).get_parent_map(keys))
-        for key, parents in viewitems(result):
+        for key, parents in result.items():
             if parents == ():
                 result[key] = (revision.NULL_REVISION,)
         return result
@@ -1838,7 +1831,7 @@ class VirtualVersionedFiles(VersionedFiles):
 
     def get_parent_map(self, keys):
         """See VersionedFiles.get_parent_map."""
-        parent_view = viewitems(self._get_parent_map(k for (k,) in keys))
+        parent_view = self._get_parent_map(k for (k,) in keys).items()
         return dict(((k,), tuple((p,) for p in v)) for k, v in parent_view)
 
     def get_sha1s(self, keys):
@@ -1995,7 +1988,7 @@ def sort_groupcompress(parent_map):
     # gc-optimal ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
-    for item in viewitems(parent_map):
+    for item in parent_map.items():
         key = item[0]
         if isinstance(key, bytes) or len(key) == 1:
             prefix = b''
@@ -2064,4 +2057,4 @@ class _KeyRefs(object):
             self._satisfy_refs_for_key(key)
 
     def get_referrers(self):
-        return set(itertools.chain.from_iterable(viewvalues(self.refs)))
+        return set(itertools.chain.from_iterable(self.refs.values()))

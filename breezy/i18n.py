@@ -22,8 +22,6 @@
 
 """i18n and l10n support for Bazaar."""
 
-from __future__ import absolute_import
-
 import gettext as _gettext
 import os
 import sys
@@ -141,24 +139,17 @@ def _get_locale_dir(base):
 
     :param base: plugins can specify their own local directory
     """
-    if sys.version_info > (3,):
-        decode_path = str
-    else:
-        fs_enc = sys.getfilesystemencoding()
-
-        def decode_path(path):
-            return path.decode(fs_enc)
     if getattr(sys, 'frozen', False):
         if base is None:
-            base = os.path.dirname(decode_path(sys.executable))
+            base = os.path.dirname(sys.executable)
         return os.path.join(base, u'locale')
     else:
         if base is None:
-            base = os.path.dirname(decode_path(__file__))
+            base = os.path.dirname(__file__)
         dirpath = os.path.realpath(os.path.join(base, u'locale'))
         if os.path.exists(dirpath):
             return dirpath
-    return os.path.join(decode_path(sys.prefix), u"share", u"locale")
+    return os.path.join(sys.prefix, u"share", u"locale")
 
 
 def _check_win32_locale():

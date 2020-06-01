@@ -19,7 +19,7 @@
 import gc
 import doctest
 from functools import reduce
-from io import BytesIO, TextIOWrapper
+from io import BytesIO, StringIO, TextIOWrapper
 import os
 import signal
 import sys
@@ -66,11 +66,6 @@ from ..bzr import (
     )
 from ..git import (
     workingtree as git_workingtree,
-    )
-from ..sixish import (
-    PY3,
-    StringIO,
-    text_type,
     )
 from ..symbol_versioning import (
     deprecated_function,
@@ -809,8 +804,8 @@ class TestTestResult(tests.TestCase):
 
         This is used to exercise the test framework.
         """
-        self.time(text_type, b'hello', errors='replace')
-        self.time(text_type, b'world', errors='replace')
+        self.time(str, b'hello', errors='replace')
+        self.time(str, b'world', errors='replace')
 
     def test_lsprofiling(self):
         """Verbose test result prints lsprof statistics from test cases."""
@@ -840,16 +835,10 @@ class TestTestResult(tests.TestCase):
         # and then repeated but with 'world', rather than 'hello'.
         # this should appear in the output stream of our test result.
         output = result_stream.getvalue()
-        if PY3:
-            self.assertContainsRe(output,
-                                  r"LSProf output for <class 'str'>\(\(b'hello',\), {'errors': 'replace'}\)")
-            self.assertContainsRe(output,
-                                  r"LSProf output for <class 'str'>\(\(b'world',\), {'errors': 'replace'}\)")
-        else:
-            self.assertContainsRe(output,
-                                  r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
-            self.assertContainsRe(output,
-                                  r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
+        self.assertContainsRe(output,
+                              r"LSProf output for <class 'str'>\(\(b'hello',\), {'errors': 'replace'}\)")
+        self.assertContainsRe(output,
+                              r"LSProf output for <class 'str'>\(\(b'world',\), {'errors': 'replace'}\)")
         self.assertContainsRe(output,
                               r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n")
         self.assertContainsRe(output,
@@ -1305,11 +1294,8 @@ class TestRunner(tests.TestCase):
             def test_log_unicode(self):
                 self.log(u"\u2606")
                 self.fail("Now print that log!")
-        if PY3:
-            bio = BytesIO()
-            out = TextIOWrapper(bio, 'ascii', 'backslashreplace')
-        else:
-            bio = out = StringIO()
+        bio = BytesIO()
+        out = TextIOWrapper(bio, 'ascii', 'backslashreplace')
         self.overrideAttr(osutils, "get_terminal_encoding",
                           lambda trace=False: "ascii")
         self.run_test_runner(
@@ -1982,7 +1968,7 @@ class TestExtraAssertions(tests.TestCase):
 
     def test_assert_isinstance(self):
         self.assertIsInstance(2, int)
-        self.assertIsInstance(u'', (str, text_type))
+        self.assertIsInstance(u'', str)
         e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
         self.assertIn(
             str(e),
@@ -1994,16 +1980,10 @@ class TestExtraAssertions(tests.TestCase):
         e = self.assertRaises(AssertionError,
                               self.assertIsInstance, None, int,
                               "it's just not")
-        if PY3:
-            self.assertEqual(
-                str(e),
-                "None is an instance of <class 'NoneType'> rather "
-                "than <class 'int'>: it's just not")
-        else:
-            self.assertEqual(
-                str(e),
-                "None is an instance of <type 'NoneType'> "
-                "rather than <type 'int'>: it's just not")
+        self.assertEqual(
+            str(e),
+            "None is an instance of <class 'NoneType'> rather "
+            "than <class 'int'>: it's just not")
 
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
@@ -2129,11 +2109,8 @@ class SelfTestHelper(object):
 
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
-        if PY3:
-            bio = BytesIO()
-            output = TextIOWrapper(bio, 'utf-8')
-        else:
-            bio = output = StringIO()
+        bio = BytesIO()
+        output = TextIOWrapper(bio, 'utf-8')
         old_transport = breezy.tests.default_transport
         old_root = tests.TestCaseWithMemoryTransport.TEST_ROOT
         tests.TestCaseWithMemoryTransport.TEST_ROOT = None
@@ -2142,9 +2119,8 @@ class SelfTestHelper(object):
         finally:
             breezy.tests.default_transport = old_transport
             tests.TestCaseWithMemoryTransport.TEST_ROOT = old_root
-        if PY3:
-            output.flush()
-            output.detach()
+        output.flush()
+        output.detach()
         bio.seek(0)
         return bio
 
@@ -3155,17 +3131,8 @@ class TestTestSuite(tests.TestCase):
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
-        if __doc__ is not None and not PY3:
-            expected_test_list.extend([
-                # modules_to_doctest
-                'breezy.timestamp.format_highres_date',
-                ])
         suite = tests.test_suite()
-        if PY3:
-            self.assertEqual({"testmod_names"}, set(calls))
-        else:
-            self.assertEqual({"testmod_names", "modules_to_doctest"},
-                             set(calls))
+        self.assertEqual({"testmod_names", "modules_to_doctest"}, set(calls))
         self.assertSubset(expected_test_list, _test_ids(suite))
 
     def test_test_suite_list_and_start(self):
@@ -3497,11 +3464,8 @@ class _Selftest(object):
         """To be overridden by subclasses that run tests out of process"""
 
     def _run_selftest(self, **kwargs):
-        if PY3:
-            bio = BytesIO()
-            sio = TextIOWrapper(bio, 'utf-8')
-        else:
-            sio = bio = StringIO()
+        bio = BytesIO()
+        sio = TextIOWrapper(bio, 'utf-8')
         self._inject_stream_into_subunit(bio)
         tests.selftest(stream=sio, stop_on_failure=False, **kwargs)
         sio.flush()

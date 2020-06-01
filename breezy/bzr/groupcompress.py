@@ -16,8 +16,6 @@
 
 """Core compression logic for compressing streams of related files."""
 
-from __future__ import absolute_import
-
 import time
 import zlib
 
@@ -46,12 +44,6 @@ from .. import (
     )
 from .btree_index import BTreeBuilder
 from ..lru_cache import LRUSizeCache
-from ..sixish import (
-    indexbytes,
-    map,
-    range,
-    viewitems,
-    )
 from .versionedfile import (
     _KeyRefs,
     adapter_registry,
@@ -80,7 +72,7 @@ def sort_gc_optimal(parent_map):
     # groupcompress ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
-    for key, value in viewitems(parent_map):
+    for key, value in parent_map.items():
         if isinstance(key, bytes) or len(key) == 1:
             prefix = b''
         else:
@@ -392,7 +384,7 @@ class GroupCompressBlock(object):
                 result.append((b'd', content_len, decomp_len, delta_info))
                 measured_len = 0
                 while delta_pos < content_len:
-                    c = indexbytes(delta_content, delta_pos)
+                    c = delta_content[delta_pos]
                     delta_pos += 1
                     if c & 0x80:  # Copy
                         (offset, length,
@@ -1632,7 +1624,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             # start with one key, recurse to its oldest parent, then grab
             # everything in the same group, etc.
             parent_map = dict((key, details[2]) for key, details in
-                              viewitems(locations))
+                              locations.items())
             for key in unadded_keys:
                 parent_map[key] = self._unadded_refs[key]
             parent_map.update(fallback_parent_map)
@@ -2090,10 +2082,10 @@ class _GCGraphIndex(object):
         if changed:
             result = []
             if self._parents:
-                for key, (value, node_refs) in viewitems(keys):
+                for key, (value, node_refs) in keys.items():
                     result.append((key, value, node_refs))
             else:
-                for key, (value, node_refs) in viewitems(keys):
+                for key, (value, node_refs) in keys.items():
                     result.append((key, value))
             records = result
         key_dependencies = self._key_dependencies

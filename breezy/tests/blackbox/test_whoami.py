@@ -23,7 +23,6 @@ from breezy import (
     errors,
     tests,
     )
-from breezy.sixish import PY3
 
 from ..test_bedding import override_whoami
 
@@ -35,7 +34,7 @@ class TestWhoami(tests.TestCaseWithTransport):
         self.assertEqual('', err)
         lines = out.splitlines()
         self.assertLength(1, lines)
-        if PY3 and isinstance(expected, bytes):
+        if isinstance(expected, bytes):
             expected = expected.decode(kwargs.get('encoding', 'ascii'))
         self.assertEqual(expected, lines[0].rstrip())
 

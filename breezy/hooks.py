@@ -16,8 +16,6 @@
 
 """Support for plugin hooking logic."""
 
-from __future__ import absolute_import
-
 from . import (
     errors,
     registry,

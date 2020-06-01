@@ -36,14 +36,13 @@ To force this off in brz turn set APPORT_DISABLE in the environment or
 -Dno_apport.
 """
 
-from __future__ import absolute_import
-
 # for interactive testing, try the 'brz assert-fail' command
 # or see http://code.launchpad.net/~mbp/bzr/bzr-fail
 #
 # to test with apport it's useful to set
 # export APPORT_IGNORE_OBSOLETE_PACKAGES=1
 
+from io import StringIO
 import os
 import platform
 import pprint
@@ -57,9 +56,6 @@ from . import (
     osutils,
     plugin,
     trace,
-    )
-from .sixish import (
-    StringIO,
     )
 
 

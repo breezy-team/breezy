@@ -14,15 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from io import StringIO
 
 from .. import (
     config,
     status as _mod_status,
     )
 from ..revisionspec import RevisionSpec
-from ..sixish import (
-    StringIO,
-    )
 from ..status import show_pending_merges, show_tree_status
 from . import TestCaseWithTransport
 

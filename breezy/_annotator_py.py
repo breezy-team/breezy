@@ -16,8 +16,6 @@
 
 """Functionality for doing annotations in the 'optimal' way"""
 
-from __future__ import absolute_import
-
 from .lazy_import import lazy_import
 lazy_import(globals(), """
 
@@ -32,10 +30,6 @@ from . import (
     errors,
     osutils,
     ui,
-    )
-from .sixish import (
-    range,
-    viewitems,
     )
 
 
@@ -95,7 +89,7 @@ class Annotator(object):
                     vf_keys_needed.add(key)
             needed_keys = set()
             next_parent_map.update(self._vf.get_parent_map(parent_lookup))
-            for key, parent_keys in viewitems(next_parent_map):
+            for key, parent_keys in next_parent_map.items():
                 if parent_keys is None:  # No graph versionedfile
                     parent_keys = ()
                     next_parent_map[key] = ()

@@ -15,22 +15,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
-try:
-    import http.client as http_client
-    import http.server as http_server
-except ImportError:
-    import httplib as http_client
-    import SimpleHTTPServer as http_server
+import http.client as http_client
+import http.server as http_server
 import os
 import posixpath
 import random
 import re
 import socket
 import sys
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
+from urllib.parse import urlparse
 
 from .. import (
     osutils,
@@ -340,8 +333,6 @@ Message: %(message)s.
         # abandon query parameters
         path = urlparse(path)[2]
         path = posixpath.normpath(urlutils.unquote(path))
-        if sys.version_info[0] == 2:
-            path = path.decode('utf-8')
         words = path.split('/')
         path = self._cwd
         for num, word in enumerate(w for w in words if w):
