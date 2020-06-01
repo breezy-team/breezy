@@ -43,12 +43,12 @@ def ensure_config_dir_exists(path=None):
     if path is None:
         path = config_dir()
     if not os.path.isdir(path):
-        if sys.platform == 'win32':
-            parent_dir = os.path.dirname(path)
-            if not os.path.isdir(parent_dir):
-                trace.mutter(
-                    'creating config parent directory: %r', parent_dir)
-                os.mkdir(parent_dir)
+        parent_dir = os.path.dirname(path)
+        if not os.path.isdir(parent_dir):
+            trace.mutter(
+                'creating config parent directory: %r', parent_dir)
+            os.mkdir(parent_dir)
+            osutils.copy_ownership_from_path(parent_dir)
         trace.mutter('creating config directory: %r', path)
         os.mkdir(path)
         osutils.copy_ownership_from_path(path)

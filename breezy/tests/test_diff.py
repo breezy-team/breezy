@@ -605,8 +605,8 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
             [('tree/' + alpha, b'\0'),
              ('tree/' + omega,
               (b'The %s and the %s\n' % (alpha_utf8, omega_utf8)))])
-        tree.add([alpha], [b'file-id'])
-        tree.add([omega], [b'file-id-2'])
+        tree.add([alpha])
+        tree.add([omega])
         diff_content = StubO()
         diff.show_diff_trees(tree.basis_tree(), tree, diff_content)
         diff_content.check_types(self, bytes)
@@ -802,8 +802,11 @@ class TestDiffTree(tests.TestCaseWithTransport):
         self.differ.diff('olddir/oldfile', 'newdir/newfile')
         self.assertContainsRe(
             self.differ.to_file.getvalue(),
-            br'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+0,0'
-            br' \@\@\n-old\n\n')
+            br'--- olddir/oldfile.*\n'
+            br'\+\+\+ newdir/newfile.*\n'
+            br'\@\@ -1,1 \+0,0 \@\@\n'
+            br'-old\n'
+            br'\n')
         self.assertContainsRe(self.differ.to_file.getvalue(),
                               b"=== target is 'new'\n")
 
