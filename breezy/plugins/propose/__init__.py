@@ -34,9 +34,6 @@ plugin_cmds.register_lazy(
 
 from ...propose import hosters
 hosters.register_lazy(
-    "launchpad", "breezy.plugins.propose.launchpad",
-    "Launchpad")
-hosters.register_lazy(
     "github", "breezy.plugins.propose.github",
     "GitHub")
 hosters.register_lazy(
