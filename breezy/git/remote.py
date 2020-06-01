@@ -221,6 +221,24 @@ def parse_git_error(url, message):
     return RemoteGitError(message)
 
 
+def parse_git_hangup(url, e):
+    """Parse the error lines from a git servers stderr on hangup.
+
+    :param url: URL of the remote repository
+    :param e: A HangupException
+    """
+    stderr_lines = getattr(e, 'stderr_lines', None)
+    if not stderr_lines:
+        return e
+    interesting_lines = [
+        line for line in stderr_lines
+        if line and line.replace('=', '')]
+    if len(interesting_lines) == 1:
+        interesting_line = interesting_lines[0]
+        return parse_git_error(url, interesting_line)
+    return RemoteGitError('\n'.join(stderr_lines))
+
+
 class GitSmartTransport(Transport):
 
     def __init__(self, url, _client=None):
@@ -420,6 +438,8 @@ class RemoteGitDir(GitDir):
                 prefix=(prefix.encode('utf-8') if prefix else None))
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         finally:
             if pb is not None:
                 pb.finished()
@@ -442,6 +462,8 @@ class RemoteGitDir(GitDir):
             return result
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         finally:
             if pb is not None:
                 pb.finished()
@@ -463,6 +485,8 @@ class RemoteGitDir(GitDir):
                 generate_pack_data, progress)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         finally:
             if pb is not None:
                 pb.finished()
