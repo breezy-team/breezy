@@ -181,6 +181,9 @@ Bug Fixes
 * Fix use of ``proxy_bypass`` on Python 3.
   (Jelmer Vernooĳ, #1878698)
 
+* Create $XDG_HOME_DIR if it does not exist.
+  (Jelmer Vernooĳ)
+
 Documentation
 *************
 
