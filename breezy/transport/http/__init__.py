@@ -1024,7 +1024,7 @@ class ProxyHandler(urllib_request.ProxyHandler):
         if bypass is None:
             # Nevertheless, there are platform-specific ways to
             # ignore proxies...
-            return urllib.proxy_bypass(host)
+            return urllib_request.proxy_bypass(host)
         else:
             return bypass
 

@@ -358,6 +358,26 @@ class TestDiff(DiffBase):
             "=== removed file 'a'\nBinary files old/a and new/a differ\n",
             output[0])
 
+    def test_moved_away(self):
+        # pad.lv/1880354
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'asdf\n')])
+        tree.add(['a'])
+        tree.commit('add a')
+        tree.rename_one('a', 'b')
+        self.build_tree_contents([('a', 'qwer\n')])
+        tree.add('a')
+        output, error = self.run_bzr('diff -p0', retcode=1)
+        self.assertEqualDiff("""\
+=== added file 'a'
+--- a\tYYYY-MM-DD HH:MM:SS +ZZZZ
++++ a\tYYYY-MM-DD HH:MM:SS +ZZZZ
+@@ -0,0 +1,1 @@
++qwer
+
+=== renamed file 'a' => 'b'
+""", subst_dates(output))
+
 
 class TestCheckoutDiff(TestDiff):
 
