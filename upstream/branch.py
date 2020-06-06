@@ -123,6 +123,8 @@ def _upstream_branch_version(
     except RevisionNotPresent:
         # Ghost revision somewhere on mainline.
         pass
+    if previous_version is None:
+        return None
     return add_rev(str(previous_version), upstream_revision)
 
 
@@ -168,12 +170,14 @@ def extract_svn_revno(rev):
             return svn_revno
 
 
-def upstream_version_add_revision(upstream_branch, version_string, revid):
+def upstream_version_add_revision(
+        upstream_branch, version_string, revid, sep='+'):
     """Update the revision in a upstream version string.
 
     :param branch: Branch in which the revision can be found
     :param version_string: Original version string
     :param revid: Revision id of the revision
+    :param sep: Separator to use when adding snapshot
     """
     try:
         revno = upstream_branch.revision_id_to_dotted_revno(revid)
@@ -219,11 +223,11 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
         return "%s%ssvn%d" % (m.group(1), m.group(2), svn_revno)
 
     if svn_revno:
-        return "%s+svn%d" % (version_string, svn_revno)
+        return "%s%ssvn%d" % (version_string, sep, svn_revno)
     elif gitid:
-        return "%s+git%s.%s" % (version_string, gitdate, gitid)
+        return "%s%sgit%s.%s" % (version_string, sep, gitdate, gitid)
     else:
-        return "%s+bzr%s" % (version_string, revno_str)
+        return "%s%sbzr%s" % (version_string, sep, revno_str)
 
 
 def get_snapshot_revision(upstream_version):
@@ -259,17 +263,20 @@ def get_snapshot_revision(upstream_version):
 
 
 def upstream_branch_version(upstream_branch, upstream_revision, package,
-                            previous_version):
+                            previous_version=None):
     """Determine the version string for a revision in an upstream branch.
 
     :param upstream_branch: The upstream branch object
     :param upstream_revision: The revision id of the upstream revision
     :param package: The name of the package
-    :param previous_version: The previous upstream version string
+    :param previous_version: The previous upstream version string (optional)
     :return: Upstream version string for `upstream_revision`.
     """
     graph = upstream_branch.repository.get_graph()
-    previous_revision = get_snapshot_revision(previous_version)
+    if previous_version is not None:
+        previous_revision = get_snapshot_revision(previous_version)
+    else:
+        previous_revision = None
     stop_revids = None
     if previous_revision is not None:
         previous_revspec = RevisionSpec.from_string(previous_revision)
