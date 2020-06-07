@@ -197,5 +197,6 @@ class OneZeroSourceExtractorTests(tests.TestCaseInTempDir):
             ThreeDotZeroQuiltSourceExtractor,
             SOURCE_EXTRACTORS[dsc['Format']])
         extractor = ThreeDotZeroQuiltSourceExtractor(builder.dsc_name(), dsc)
-        self.addCleanup(extractor.cleanup)
         self.assertEquals([], extractor.upstream_tarballs)
+        with extractor:
+            pass  # trigger cleanup

@@ -122,8 +122,7 @@ class DebBuild(object):
 def do_build(package_name, version, distiller, local_tree, config,
              build_command, target_dir=None):
     """Actually run a build."""
-    bd = tempfile.mkdtemp()
-    try:
+    with tempfile.TemporaryDirectory() as bd:
         build_source_dir = os.path.join(
             bd, package_name + "-" + version.upstream_version)
         builder = DebBuild(
@@ -143,5 +142,3 @@ def do_build(package_name, version, distiller, local_tree, config,
             if not os.path.exists(changes_path):
                 raise ChangesFileMissing(changes_path)
             return dget_changes(changes_path, target_dir)
-    finally:
-        shutil.rmtree(bd)

@@ -23,8 +23,8 @@ from __future__ import absolute_import
 
 from debian.changelog import Version
 
+from contextlib import ExitStack
 import os
-import shutil
 import subprocess
 import tempfile
 
@@ -50,25 +50,20 @@ class SourceExtractor(object):
         self.extracted_debianised = None
         self.unextracted_debian_md5 = None
         self.upstream_tarballs = []
-        self.tempdir = None
+        self.exit_stack = ExitStack()
 
     def extract(self):
         """Extract the package to a new temporary directory."""
         raise NotImplementedError(self.extract)
 
     def __enter__(self):
+        self.exit_stack.__enter__()
         self.extract()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.cleanup()
+        self.exit_stack.__exit__(exc_type, exc_val, exc_tb)
         return False
-
-    def cleanup(self):
-        """Cleanup any extracted files."""
-        if self.tempdir is not None and os.path.isdir(self.tempdir):
-            shutil.rmtree(self.tempdir)
-            self.tempdir = None
 
 
 class OneZeroSourceExtractor(SourceExtractor):
@@ -76,11 +71,11 @@ class OneZeroSourceExtractor(SourceExtractor):
 
     def extract(self):
         """Extract the package to a new temporary directory."""
-        self.tempdir = tempfile.mkdtemp()
+        tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen(
             "dpkg-source -su -x %s" % (dsc_filename,), shell=True,
-            cwd=self.tempdir, stdout=subprocess.PIPE,
+            cwd=tempdir, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
         (stdout, _) = proc.communicate()
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
@@ -88,9 +83,9 @@ class OneZeroSourceExtractor(SourceExtractor):
         name = self.dsc['Source']
         version = Version(self.dsc['Version'])
         self.extracted_upstream = os.path.join(
-            self.tempdir, "%s-%s.orig" % (name, str(version.upstream_version)))
+            tempdir, "%s-%s.orig" % (name, str(version.upstream_version)))
         self.extracted_debianised = os.path.join(
-            self.tempdir, "%s-%s" % (name, str(version.upstream_version)))
+            tempdir, "%s-%s" % (name, str(version.upstream_version)))
         if not os.path.exists(self.extracted_upstream):
             mutter("It's a native package")
             self.extracted_upstream = None
@@ -116,11 +111,11 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
     """Source extractor for the "3.0 (native)" source format."""
 
     def extract(self):
-        self.tempdir = tempfile.mkdtemp()
+        tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen(
             "dpkg-source -x %s" % (dsc_filename,), shell=True,
-            cwd=self.tempdir, stdout=subprocess.PIPE,
+            cwd=tempdir, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
         (stdout, _) = proc.communicate()
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
@@ -128,7 +123,7 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
         name = self.dsc['Source']
         version = Version(self.dsc['Version'])
         self.extracted_debianised = os.path.join(
-            self.tempdir, "%s-%s" % (name, str(version.upstream_version)))
+            tempdir, "%s-%s" % (name, str(version.upstream_version)))
         self.extracted_upstream = None
         for part in self.dsc['files']:
             if (part['name'].endswith(".tar.gz")
@@ -141,12 +136,12 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
     """Source extractor for the "3.0 (quilt)" source format."""
 
     def extract(self):
-        self.tempdir = tempfile.mkdtemp()
+        tempdir = self.exit_stack.enter_context(tempfile.TemporaryDirectory())
         dsc_filename = os.path.abspath(self.dsc_path)
         proc = subprocess.Popen(
             "dpkg-source --skip-debianization -x %s"
             % (dsc_filename,), shell=True,
-            cwd=self.tempdir, stdout=subprocess.PIPE,
+            cwd=tempdir, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
         (stdout, _) = proc.communicate()
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
@@ -154,12 +149,12 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         name = self.dsc['Source']
         version = Version(self.dsc['Version'])
         self.extracted_debianised = os.path.join(
-            self.tempdir, "%s-%s" % (name, str(version.upstream_version)))
+            tempdir, "%s-%s" % (name, str(version.upstream_version)))
         self.extracted_upstream = self.extracted_debianised + ".orig"
         os.rename(self.extracted_debianised, self.extracted_upstream)
         proc = subprocess.Popen(
             "dpkg-source -x %s" % (dsc_filename,), shell=True,
-            cwd=self.tempdir, stdout=subprocess.PIPE,
+            cwd=tempdir, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
         (stdout, _) = proc.communicate()
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \

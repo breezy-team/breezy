@@ -22,7 +22,6 @@ import errno
 import logging
 import os.path
 import re
-import shutil
 import subprocess
 import tempfile
 
@@ -52,8 +51,7 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
     """Merge a changelog file."""
     # Write the BASE, THIS and OTHER versions to files in a temporary
     # directory, and use dpkg-mergechangelogs to merge them.
-    tmpdir = tempfile.mkdtemp('deb_changelog_merge')
-    try:
+    with tempfile.TemporaryDirectory('deb_changelog_merge') as tmpdir:
         def writelines(filename, lines):
             with open(filename, 'wb') as f:
                 for line in lines:
@@ -111,5 +109,3 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             return 'not_applicable', stdout.splitlines(True)
         else:
             return 'success', stdout.splitlines(True)
-    finally:
-        shutil.rmtree(tmpdir)

@@ -855,8 +855,7 @@ class cmd_merge_upstream(Command):
                         "adjust 'export-upstream-revision' in the "
                         "configuration." % (version, upstream_branch_source))
             if need_upstream_tarball:
-                target_dir = tempfile.mkdtemp()
-                self.add_cleanup(shutil.rmtree, target_dir)
+                target_dir = self.enter_context(tempfile.TemporaryDirectory())
                 try:
                     locations = primary_upstream_source.fetch_tarballs(
                         package, version, target_dir, components=[None])
@@ -1099,10 +1098,9 @@ class cmd_import_upstream(Command):
         else:
             upstream = Branch.open(upstream_branch)
         self.add_cleanup(branch.lock_write().unlock)
-        tempdir = tempfile.mkdtemp(
+        tempdir = self.enter_context(tempfile.TemporaryDirectory(
             dir=branch.controldir.root_transport.clone('..')
-            .local_abspath('.'))
-        self.add_cleanup(shutil.rmtree, tempdir)
+            .local_abspath('.')))
         db = DistributionBranch(branch, pristine_upstream_branch=branch)
         if db.pristine_upstream_source.has_version(None, version):
             raise BzrCommandError(
@@ -1589,14 +1587,11 @@ class cmd_debrelease(Command):
             _check_tree(local_tree, subpath, strict)
             release(local_tree, subpath)
 
-            td = tempfile.mkdtemp()
-            try:
+            with tempfile.TemporaryDirectory() as td:
                 changes_file = _build_helper(
                         local_tree, subpath, local_tree.branch,
                         target_dir=(td if not skip_upload else None),
                         builder=builder)
                 if not skip_upload:
                     dput_changes(changes_file)
-            finally:
-                shutil.rmtree(td)
             local_tree.branch.push(branch)

@@ -392,21 +392,15 @@ class UScanSourceTests(TestCaseWithTransport):
         src = UScanSource(self.tree, '', True)
         self.build_tree(['watch'])
         self.tree.add(['watch'])
-        tmpdir = tempfile.mkdtemp()
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
             self.assertIsNot(src._export_file('watch', tmpdir), None)
-        finally:
-            shutil.rmtree(tmpdir)
 
     def test_export_watchfile(self):
         src = UScanSource(self.tree, '', False)
         self.build_tree(['debian/', 'debian/watch'])
         self.tree.smart_add(['debian/watch'])
-        tmpdir = tempfile.mkdtemp()
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
             self.assertIsNot(src._export_file('watch', tmpdir), None)
-        finally:
-            shutil.rmtree(tmpdir)
 
     def test__xml_report_extract_upstream_version(self):
         text = b"""

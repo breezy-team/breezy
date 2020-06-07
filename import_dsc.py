@@ -1357,8 +1357,7 @@ class DistributionBranch(object):
                        upstream_revisions=None, merge_type=None, force=False,
                        force_pristine_tar=False, committer=None,
                        files_excluded=None):
-        tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
-        try:
+        with tempfile.TemporaryDirectory(dir=os.path.join(self.tree.basedir, '..')) as tempdir:
             if previous_version is not None:
                 self._export_previous_upstream_tree(
                     package, previous_version, tempdir)
@@ -1419,17 +1418,12 @@ class DistributionBranch(object):
             finally:
                 if upstream_branch is not None:
                     upstream_branch.unlock()
-        finally:
-            shutil.rmtree(tempdir)
 
 
 @contextmanager
 def _extract_tarballs_to_tempdir(tarballs):
-    tempdir = tempfile.mkdtemp()
-    try:
+    with tempfile.TemporaryDirectory() as tempdir:
         extract_orig_tarballs(
             [(fn, component) for (fn, component, md5) in tarballs],
             tempdir)
         yield tempdir
-    finally:
-        shutil.rmtree(tempdir)

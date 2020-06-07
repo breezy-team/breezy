@@ -165,8 +165,7 @@ class MergeModeDistiller(SourceDistiller):
                 os.mkdir(target)
             extract_orig_tarballs(tarballs, target)
         # Now export the tree to provide the debian dir
-        basetempdir = tempfile.mkdtemp(prefix='builddeb-merge-debian-')
-        try:
+        with tempfile.TemporaryDirectory(prefix='builddeb-merge-debian-') as basetempdir:
             tempdir = os.path.join(basetempdir, "export")
             if self.top_level:
                 os.makedirs(tempdir)
@@ -179,5 +178,3 @@ class MergeModeDistiller(SourceDistiller):
             if os.path.exists(os.path.join(target, 'debian')):
                 shutil.rmtree(os.path.join(target, 'debian'))
             recursive_copy(tempdir, target)
-        finally:
-            shutil.rmtree(basetempdir)

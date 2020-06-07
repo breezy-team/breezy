@@ -23,7 +23,6 @@
 from __future__ import absolute_import
 
 import os
-import shutil
 import tempfile
 
 from debian.changelog import Version
@@ -126,9 +125,7 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
             # Instantiate a `DistributionBranch` object for the merge target
             # (packaging) branch.
             db = DistributionBranch(tree.branch, tree.branch)
-            tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir, '..'))
-
-            try:
+            with tempfile.TemporaryDirectory(dir=os.path.join(tree.basedir, '..')) as tempdir:
                 # Extract the merge target's upstream tree into a temporary
                 # directory.
                 db.extract_upstream_tree({None: ut_revid}, tempdir)
@@ -167,7 +164,5 @@ def fix_ancestry_as_needed(tree, source, source_revid=None):
                     else:
                         tree.commit(
                             'Merging shared upstream rev into target branch.')
-            finally:
-                shutil.rmtree(tempdir)
 
     return (upstreams_diverged, t_upstream_reverted)
