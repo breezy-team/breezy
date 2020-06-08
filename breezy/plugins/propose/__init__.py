@@ -25,23 +25,9 @@ plugin_cmds.register_lazy("cmd_propose_merge", ["propose"], __name__ + ".cmds")
 plugin_cmds.register_lazy("cmd_land_merge_proposal", ["land"], __name__ + ".cmds")
 plugin_cmds.register_lazy("cmd_publish_derived", ['publish'], __name__ + ".cmds")
 plugin_cmds.register_lazy("cmd_find_merge_proposal", ['find-proposal'], __name__ + ".cmds")
-plugin_cmds.register_lazy("cmd_github_login", ["gh-login"], __name__ + ".cmds")
-plugin_cmds.register_lazy("cmd_gitlab_login", ["gl-login"], __name__ + ".cmds")
 plugin_cmds.register_lazy(
     "cmd_my_merge_proposals", ["my-proposals"],
     __name__ + ".cmds")
-
-
-from ...propose import hosters
-hosters.register_lazy(
-    "launchpad", "breezy.plugins.propose.launchpad",
-    "Launchpad")
-hosters.register_lazy(
-    "github", "breezy.plugins.propose.github",
-    "GitHub")
-hosters.register_lazy(
-    "gitlab", "breezy.plugins.propose.gitlabs",
-    "GitLab")
 
 
 def test_suite():

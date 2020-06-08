@@ -1,8 +1,11 @@
 configobj
-dulwich>=0.19.12
-fastimport>=0.9.8
-patiencediff
 six>=1.9.0
+patiencediff
+fastimport>=0.9.8
+dulwich>=0.19.12
+
+[:python_version < "3.0"]
+dulwich<0.20
 
 [fastimport]
 

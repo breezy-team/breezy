@@ -106,7 +106,6 @@ class BzrBackendRepo(BackendRepo):
                         have, wants, progress=progress)
 
 
-
 class BzrTCPGitServer(TCPGitServer):
 
     def handle_error(self, request, client_address):
