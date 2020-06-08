@@ -134,6 +134,9 @@ Improvements
 * Ignore special files (fifos, block/character devices, sockets)
   when finding changes in Git working trees. (Jelmer Vernooĳ, #1857244)
 
+* Parse error messages from stderr when a remote Git server
+  hangs up. (Jelmer Vernooĳ)
+
 
 Bug Fixes
 *********
@@ -177,6 +180,12 @@ Bug Fixes
 
 * Cope with non-ascii characters in Git signatures.
   (Jelmer Vernooĳ, #1869533)
+
+* Fix use of ``proxy_bypass`` on Python 3.
+  (Jelmer Vernooĳ, #1878698)
+
+* Create $XDG_HOME_DIR if it does not exist.
+  (Jelmer Vernooĳ)
 
 Documentation
 *************
