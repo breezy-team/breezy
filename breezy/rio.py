@@ -189,7 +189,7 @@ class Stanza(object):
         result = []
         for text_tag, text_value in self.items:
             tag = text_tag.encode('ascii')
-            value = text_value.encode('utf-8')
+            value = text_value.encode('utf-8', 'surrogateescape')
             if value == b'':
                 result.append(tag + b': \n')
             elif b'\n' in value:

@@ -328,6 +328,18 @@ s: both\\\"
         s = Stanza()
         self.assertRaises(TypeError, s.add, 10, {})
 
+    def test_rio_surrogateescape(self):
+        raw_bytes = b'\xcb'
+        self.assertRaises(UnicodeDecodeError, raw_bytes.decode, 'utf-8')
+        uni_data = raw_bytes.decode('utf-8', 'surrogateescape')
+        s = Stanza(foo=uni_data)
+        self.assertEqual(s.get('foo'), uni_data)
+        raw_lines = s.to_lines()
+        self.assertEqual(raw_lines,
+                         [b'foo: ' + uni_data.encode('utf-8', 'surrogateescape') + b'\n'])
+        new_s = read_stanza(raw_lines)
+        self.assertEqual(new_s.get('foo'), uni_data)
+
     def test_rio_unicode(self):
         uni_data = u'\N{KATAKANA LETTER O}'
         s = Stanza(foo=uni_data)
