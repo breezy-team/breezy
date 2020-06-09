@@ -96,6 +96,10 @@ class TestResponseFileIter(tests.TestCase):
         f = response.ResponseFile('many', BytesIO(b'0\n1\nboo!\n'))
         self.assertEqual([b'0\n', b'1\n', b'boo!\n'], list(f))
 
+    def test_readlines(self):
+        f = response.ResponseFile('many', BytesIO(b'0\n1\nboo!\n'))
+        self.assertEqual([b'0\n', b'1\n', b'boo!\n'], f.readlines())
+
 
 class TestHTTPConnection(tests.TestCase):
 
