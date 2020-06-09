@@ -1,3 +1,10 @@
+breezy (3.1.0-2) unstable; urgency=medium
+
+  * Disable two more flaky tests:
+    bb.test_branch.TestRemoteBranch.test_branch_{remote,local}_remote.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 09 Jun 2020 12:29:42 +0000
+
 breezy (3.1.0-1) unstable; urgency=medium
 
   * New upstream release.
