@@ -1,10 +1,10 @@
-breezy-debian (2.8.38) UNRELEASED; urgency=medium
+breezy-debian (2.8.38) unstable; urgency=medium
 
   * Adapt version manipulation functions for lintian-brush.
   * Drop bundled quilt code - Breezy proper now ships this as a plugin.
   * Depend on Breezy >= 3.1.
 
- -- Jelmer Vernooĳ <jelmer@debian.org>  Sat, 06 Jun 2020 18:02:05 +0000
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 09 Jun 2020 23:40:42 +0000
 
 breezy-debian (2.8.37) unstable; urgency=medium
 
