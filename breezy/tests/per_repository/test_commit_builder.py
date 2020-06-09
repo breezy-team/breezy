@@ -808,6 +808,22 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                           branch, [], branch.get_config_stack(),
                           revprops={'invalid': u'property\rwith\r\ninvalid chars'})
 
+    def test_get_commit_builder_with_surrogateescape(self):
+        tree = self.make_branch_and_tree(".")
+        with tree.lock_write():
+            builder = tree.branch.get_commit_builder([], revprops={
+                'invalid': u'property' + b'\xc0'.decode('utf-8', 'surrogateescape')})
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                                             tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
+            try:
+                rev_id = builder.commit('foo bar blah')
+            except NotImplementedError:
+                raise tests.TestNotApplicable(
+                    'Format does not support revision properties')
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual('foo bar blah', rev.message)
+
     def test_commit_builder_commit_with_invalid_message(self):
         branch = self.make_branch('.')
         branch.repository.lock_write()
