@@ -25,7 +25,7 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	BRZ_PLUGIN_PATH=-site:-user \
 	LC_ALL=C.UTF-8 \
 	PYTHONPATH=$(CURDIR)/.pybuild/cpython3_$(PY3VERSION)_breezy/build \
-	$(shell py3versions -d) ./brz -Derror selftest -v --parallel=fork \
+	$(shell py3versions -d) ./brz -Derror selftest -v \
 	-Oselftest.timeout=6000 -x bash_completion \
 	-x breezy.tests.test_transport.TestSSHConnections.test_bzr_connect_to_bzr_ssh -x test_export_pot \
 	-x breezy.tests.blackbox.test_branch.TestRemoteBranch.test_branch_local_remote \

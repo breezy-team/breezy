@@ -1,3 +1,10 @@
+breezy (3.1.0-3) UNRELEASED; urgency=medium
+
+  * Build without subunit to make it easier to spot which tests are
+    failing and why.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 09 Jun 2020 18:49:53 +0000
+
 breezy (3.1.0-2) unstable; urgency=medium
 
   * Disable two more flaky tests:
