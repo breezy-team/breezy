@@ -27,7 +27,7 @@ from breezy.bzr import (
 from breezy.bzr.versionedfile import VersionedFiles
 from breezy.bzr.remote import RemoteRepository
 from breezy.tests import TestNotApplicable
-from breezy.tests.per_repository_chk import TestCaseWithRepositoryCHK
+from breezy.bzr.tests.per_repository_chk import TestCaseWithRepositoryCHK
 
 
 class TestCHKSupport(TestCaseWithRepositoryCHK):

@@ -4000,6 +4000,8 @@ test_prefix_alias_registry.register('bp', 'breezy.plugins')
 def _test_suite_testmod_names():
     """Return the standard list of test module names to test."""
     return [
+        'breezy.bzr.tests.test__chk_map',
+        'breezy.bzr.tests.per_repository_chk',
         'breezy.git.tests.test_blackbox',
         'breezy.git.tests.test_builder',
         'breezy.git.tests.test_branch',
@@ -4039,7 +4041,6 @@ def _test_suite_testmod_names():
         'breezy.tests.per_tree',
         'breezy.tests.per_pack_repository',
         'breezy.tests.per_repository',
-        'breezy.tests.per_repository_chk',
         'breezy.tests.per_repository_reference',
         'breezy.tests.per_repository_vf',
         'breezy.tests.per_uifactory',
@@ -4048,7 +4049,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test__annotator',
         'breezy.tests.test__bencode',
         'breezy.tests.test__btree_serializer',
-        'breezy.tests.test__chk_map',
         'breezy.tests.test__dirstate_helpers',
         'breezy.tests.test__groupcompress',
         'breezy.tests.test__known_graph',

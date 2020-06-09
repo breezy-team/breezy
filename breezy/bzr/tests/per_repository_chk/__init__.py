@@ -76,9 +76,9 @@ def load_tests(loader, standard_tests, pattern):
             unsupported_scenarios.append((test_name, scenario_info))
     result = loader.suiteClass()
     supported_tests = loader.loadTestsFromModuleNames([
-        'breezy.tests.per_repository_chk.test_supported'])
+        'breezy.bzr.tests.per_repository_chk.test_supported'])
     unsupported_tests = loader.loadTestsFromModuleNames([
-        'breezy.tests.per_repository_chk.test_unsupported'])
+        'breezy.bzr.tests.per_repository_chk.test_unsupported'])
     multiply_tests(supported_tests, supported_scenarios, result)
     multiply_tests(unsupported_tests, unsupported_scenarios, result)
     return result

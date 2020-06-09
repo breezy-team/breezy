@@ -20,7 +20,7 @@ CHK support is optional, and when it is not supported the methods and
 attributes CHK support added should fail in known ways.
 """
 
-from breezy.tests.per_repository_chk import TestCaseWithRepositoryCHK
+from breezy.bzr.tests.per_repository_chk import TestCaseWithRepositoryCHK
 
 
 class TestNoCHKSupport(TestCaseWithRepositoryCHK):
