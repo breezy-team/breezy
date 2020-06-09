@@ -79,6 +79,8 @@ META_INFO = {
         },
     'tests_require': [
         'testtools',
+        'testtools<=2.4.0;python_version<"3.0"',
+        'python-subunit',
     ],
 }
 
