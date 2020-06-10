@@ -23,7 +23,7 @@ from breezy import (
 from breezy.tests import (
     TestCaseWithTransport,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TestRemoveBranch(TestCaseWithTransport):

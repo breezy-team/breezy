@@ -30,7 +30,7 @@ from ...transport import memory
 from .. import (
     scenarios,
     )
-from ..matchers import ContainsNoVfsCalls
+from ...bzr.tests.matchers import ContainsNoVfsCalls
 
 
 load_tests = scenarios.load_tests_apply_scenarios

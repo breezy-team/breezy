@@ -868,7 +868,7 @@ class InterWeaveRepo(InterSameDataRepository):
                     self.source._eliminate_revisions_not_present(
                         required_revisions))
             if limit is not None:
-                topo_ordered = self.get_graph().iter_topo_order(result_set)
+                topo_ordered = self.source.get_graph().iter_topo_order(result_set)
                 result_set = set(itertools.islice(topo_ordered, limit))
             return self.source.revision_ids_to_search_result(result_set)
 

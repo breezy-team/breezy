@@ -44,7 +44,28 @@ def test_suite():
     suite = tests.TestUtil.TestSuite()
 
     testmod_names = [
+        'test_dirstate',
+        'per_inventory',
+        'per_pack_repository',
+        'per_repository_chk',
+        'per_repository_vf',
+        'per_versionedfile',
         'test__chk_map',
+        'test__dirstate_helpers',
+        'test__groupcompress',
+        'test_chk_map',
+        'test_chk_serializer',
+        'test_groupcompress',
+        'test_knit',
+        'test_pack',
+        'test_remote',
+        'test_smart',
+        'test_smart_request',
+        'test_smart_signals',
+        'test_smart_transport',
+        'test_versionedfile',
+        'test_weave',
+        'test_xml',
         ]
     testmod_names = ['%s.%s' % (__name__, t) for t in testmod_names]
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))

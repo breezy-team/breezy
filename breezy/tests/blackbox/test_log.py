@@ -34,7 +34,7 @@ from breezy.tests import (
     test_log,
     features,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):
