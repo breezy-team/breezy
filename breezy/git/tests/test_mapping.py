@@ -441,9 +441,14 @@ class FixPersonIdentifierTests(tests.TestCase):
                          fix_person_identifier(b"bar@blah.nl"))
 
     def test_fix(self):
-        self.assertEqual(b"person <bar@blah.nl>",
-                         fix_person_identifier(b"somebody <person <bar@blah.nl>>"))
-        self.assertEqual(b"person <bar@blah.nl>",
-                         fix_person_identifier(b"person<bar@blah.nl>"))
+        self.assertEqual(
+            b"person <bar@blah.nl>",
+            fix_person_identifier(b"somebody <person <bar@blah.nl>>"))
+        self.assertEqual(
+            b"person <bar@blah.nl>",
+            fix_person_identifier(b"person<bar@blah.nl>"))
+        self.assertEqual(
+            b'Rohan Garg <rohangarg@kubuntu.org>',
+            fix_person_identifier(b'Rohan Garg <rohangarg@kubuntu.org'))
         self.assertRaises(ValueError,
                           fix_person_identifier, b"person >bar@blah.nl<")

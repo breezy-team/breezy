@@ -22,7 +22,7 @@ from breezy import uncommit
 from breezy.bzr.bzrdir import BzrDirMetaFormat1
 from breezy.errors import BoundBranchOutOfDate
 from breezy.tests import TestCaseWithTransport
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 from breezy.tests.script import (
     run_script,
     ScriptRunner,

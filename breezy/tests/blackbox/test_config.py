@@ -25,7 +25,7 @@ from .. import (
     script,
     test_config as _t_config,
     )
-from ..matchers import ContainsNoVfsCalls
+from ...bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TestWithoutConfig(tests.TestCaseWithTransport):

@@ -35,7 +35,7 @@ from breezy.tests import (
     script,
     TestCaseWithTransport,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 from breezy.workingtree import WorkingTree
 
 

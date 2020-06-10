@@ -541,7 +541,7 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
 
     def test_assertEqualStat_equal(self):
-        from .test_dirstate import _FakeStat
+        from ..bzr.tests.test_dirstate import _FakeStat
         self.build_tree(["foo"])
         real = os.lstat("foo")
         fake = _FakeStat(real.st_size, real.st_mtime, real.st_ctime,

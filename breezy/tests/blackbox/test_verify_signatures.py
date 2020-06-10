@@ -21,7 +21,7 @@ from breezy import (
     gpg,
     tests,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TestVerifySignatures(tests.TestCaseWithTransport):

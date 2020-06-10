@@ -180,8 +180,8 @@ the alpha releases won't happen again.
 The process for releasing an alpha release is therefore:
 - upload a tarball to launchpad,
 - upload a tarball to pypi,
-- mail bazaar@lists.ubuntu.com,
-- post an announcement on the home page.  
+- mail bazaar@lists.ubuntu.com,breezy-vcs@googlegroups.com
+- post an announcement on the home page.
 
 Uploading tarballs are described below, just use alpha versions (3, 0, 0,
 'alpha', 1) in ``./breezy/__init__.py``

@@ -114,6 +114,8 @@ def fix_person_identifier(text):
     if b"<" not in text and b">" not in text:
         username = text
         email = text
+    elif b">" not in text:
+        return text + b">"
     else:
         if text.rindex(b">") < text.rindex(b"<"):
             raise ValueError(text)

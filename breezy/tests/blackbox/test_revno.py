@@ -22,7 +22,7 @@ import os
 
 from breezy import tests
 from breezy.errors import NoSuchRevision
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TestRevno(tests.TestCaseWithTransport):

@@ -35,7 +35,7 @@ from .. import (
     features,
     TestCaseWithTransport,
     )
-from ..matchers import ContainsNoVfsCalls
+from ...bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TestExport(TestCaseWithTransport):
