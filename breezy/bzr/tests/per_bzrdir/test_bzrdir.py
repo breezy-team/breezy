@@ -36,7 +36,7 @@ from breezy.tests import (
     TestNotApplicable,
     TestSkipped,
     )
-from breezy.tests.per_bzrdir import TestCaseWithBzrDir
+from breezy.bzr.tests.per_bzrdir import TestCaseWithBzrDir
 from breezy.transport.local import (
     LocalTransport,
     )

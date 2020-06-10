@@ -20,8 +20,8 @@
 import binascii
 import bisect
 
-from .. import tests
-from ..sixish import (
+from ... import tests
+from ...sixish import (
     int2byte,
     )
 

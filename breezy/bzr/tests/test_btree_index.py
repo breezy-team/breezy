@@ -20,7 +20,7 @@
 import pprint
 import zlib
 
-from .. import (
+from ... import (
     errors,
     fifo_cache,
     lru_cache,
@@ -28,15 +28,15 @@ from .. import (
     tests,
     transport,
     )
-from ..bzr import (
+from .. import (
     btree_index,
     index as _mod_index,
     )
-from ..tests import (
+from ...tests import (
     TestCaseWithTransport,
     scenarios,
     )
-from ..tests import (
+from ...tests import (
     features,
     )
 
