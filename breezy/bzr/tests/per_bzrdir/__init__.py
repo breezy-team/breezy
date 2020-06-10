@@ -55,7 +55,7 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
 
 def load_tests(loader, standard_tests, pattern):
     test_per_bzrdir = [
-        'breezy.tests.per_bzrdir.test_bzrdir',
+        'breezy.bzr.tests.per_bzrdir.test_bzrdir',
         ]
     submod_tests = loader.loadTestsFromModuleNames(test_per_bzrdir)
     formats = [format for format in ControlDirFormat.known_formats()
