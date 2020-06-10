@@ -37,7 +37,7 @@ from .. import (
     features,
     )
 from .. import TestCaseWithTransport
-from ..matchers import ContainsNoVfsCalls
+from ...bzr.tests.matchers import ContainsNoVfsCalls
 from ..test_bedding import override_whoami
 
 

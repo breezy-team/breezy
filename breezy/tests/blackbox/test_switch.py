@@ -34,7 +34,7 @@ from breezy.tests import (
 from breezy.tests.features import UnicodeFilenameFeature
 from breezy.directory_service import directories
 
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TestSwitch(TestCaseWithTransport):

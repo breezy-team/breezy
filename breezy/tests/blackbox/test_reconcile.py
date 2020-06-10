@@ -25,7 +25,7 @@ from breezy.repository import WriteGroup
 from breezy.bzr import (
     inventory,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TrivialTest(tests.TestCaseWithTransport):

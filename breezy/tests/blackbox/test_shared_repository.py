@@ -22,7 +22,7 @@ from breezy.bzr.bzrdir import BzrDirMetaFormat1
 from breezy.controldir import ControlDir
 import breezy.errors as errors
 from breezy.tests import TestCaseInTempDir
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TestSharedRepo(TestCaseInTempDir):

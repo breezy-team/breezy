@@ -30,7 +30,7 @@ from breezy.bzr import (
 from breezy.tests import (
     TestCaseWithTransport,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 from breezy.tests.features import (
     HardlinkFeature,
     )
