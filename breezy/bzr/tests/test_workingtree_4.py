@@ -20,19 +20,19 @@
 import os
 import time
 
-from .. import (
+from ... import (
     errors,
     osutils,
     )
-from ..bzr import (
+from .. import (
     bzrdir,
     dirstate,
     inventory,
     workingtree_4,
     )
-from ..lockdir import LockDir
-from . import TestCaseWithTransport, TestSkipped, features
-from ..tree import InterTree
+from ...lockdir import LockDir
+from ...tests import TestCaseWithTransport, TestSkipped, features
+from ...tree import InterTree
 
 
 class TestWorkingTreeFormat4(TestCaseWithTransport):
@@ -63,16 +63,10 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # Only the last unlock call will actually reset the
         # ignores. (bug #785671)
         tree = self.make_workingtree()
-        tree.lock_read()
-        try:
-            tree.lock_read()
-            try:
+        with tree.lock_read():
+            with tree.lock_read():
                 tree.is_ignored("foo")
-            finally:
-                tree.unlock()
             self.assertIsNot(None, tree._ignoreglobster)
-        finally:
-            tree.unlock()
         self.assertIs(None, tree._ignoreglobster)
 
     def test_uses_lockdir(self):

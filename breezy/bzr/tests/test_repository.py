@@ -213,7 +213,7 @@ class TestRepositoryFormatRegistry(TestCase):
 
     def test_register_extra_lazy(self):
         self.assertEqual([], self.registry._get_all())
-        self.registry.register_extra_lazy("breezy.tests.test_repository",
+        self.registry.register_extra_lazy(__name__,
                                           "SampleExtraRepositoryFormat")
         formats = self.registry._get_all()
         self.assertEqual(1, len(formats))
