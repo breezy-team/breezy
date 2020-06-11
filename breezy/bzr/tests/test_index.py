@@ -16,13 +16,13 @@
 
 """Tests for indices."""
 
-from .. import (
+from ... import (
     errors,
     tests,
     transport,
     )
-from ..sixish import int2byte
-from ..bzr import (
+from ...sixish import int2byte
+from .. import (
     index as _mod_index,
     )
 

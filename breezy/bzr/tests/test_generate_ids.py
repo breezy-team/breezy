@@ -16,10 +16,10 @@
 
 """Tests for breezy/generate_ids.py"""
 
-from .. import (
+from ... import (
     tests,
     )
-from ..bzr import (
+from .. import (
     generate_ids,
     )
 
