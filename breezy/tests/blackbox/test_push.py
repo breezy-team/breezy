@@ -41,7 +41,7 @@ from breezy.tests import (
     script,
     test_foreign,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 from breezy.transport import memory
 
 

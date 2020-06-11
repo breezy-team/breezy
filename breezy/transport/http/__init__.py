@@ -1700,8 +1700,9 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
                        403,
                        404,  # Not found
                        405,  # Method not allowed
-                       416,
-                       422,
+                       409,  # Conflict
+                       416,  # Range not satisfiable
+                       422,  # Unprocessible entity
                        501,  # Not implemented
                        ]
     """The error codes the caller will handle.
@@ -1900,9 +1901,14 @@ class HttpTransport(ConnectedTransport):
 
             @property
             def text(self):
+                if self.status == 204:
+                    return None
                 charset = cgi.parse_header(
                     self._actual.headers['Content-Type'])[1].get('charset')
-                return self.data.decode(charset)
+                if charset:
+                    return self.data.decode(charset)
+                else:
+                    return self.data.decode()
 
             def read(self, amt=None):
                 return self._actual.read(amt)

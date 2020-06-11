@@ -38,7 +38,7 @@ from breezy.tests.features import (
     HardlinkFeature,
     )
 from breezy.tests.blackbox import test_switch
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
 from breezy.tests.script import run_script
 from breezy.urlutils import local_path_to_url, strip_trailing_slash

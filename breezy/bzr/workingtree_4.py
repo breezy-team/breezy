@@ -2201,7 +2201,7 @@ class InterDirStateTree(InterTree):
     @classmethod
     def make_source_parent_tree_compiled_dirstate(klass, test_case, source,
                                                   target):
-        from ..tests.test__dirstate_helpers import \
+        from .tests.test__dirstate_helpers import \
             compiled_dirstate_helpers_feature
         test_case.requireFeature(compiled_dirstate_helpers_feature)
         from ._dirstate_helpers_pyx import ProcessEntryC

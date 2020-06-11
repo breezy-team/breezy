@@ -24,7 +24,7 @@ from breezy import (
     osutils,
     tests,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 from breezy.tests.script import (
     run_script,
     )

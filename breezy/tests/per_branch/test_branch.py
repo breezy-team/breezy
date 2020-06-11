@@ -37,7 +37,6 @@ from breezy import (
     tree as _mod_tree,
     )
 from breezy.bzr import (
-    branch as _mod_bzrbranch,
     remote,
     )
 from breezy.tests import (
@@ -257,7 +256,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         """
         t = self.get_transport()
         branch = self.make_branch('bzr.dev')
-        if not isinstance(branch, _mod_bzrbranch.BzrBranch):
+        if not branch.repository._format.supports_storing_branch_nick:
             raise tests.TestNotApplicable("not a bzr branch format")
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')

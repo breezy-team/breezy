@@ -529,11 +529,8 @@ create_signatures=always
         bound = master.sprout('bound')
         wt = bound.open_workingtree()
         wt.branch.set_bound_location(os.path.realpath('master'))
-        master_branch.lock_write()
-        try:
+        with master_branch.lock_write():
             self.assertRaises(LockContention, wt.commit, 'silly')
-        finally:
-            master_branch.unlock()
 
     def test_commit_bound_merge(self):
         # see bug #43959; commit of a merge in a bound branch fails to push

@@ -33,7 +33,7 @@ from breezy import (
 from breezy.bzr import (
     bzrdir,
     )
-from breezy.tests.matchers import ContainsNoVfsCalls
+from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 from breezy.transport import memory
 
 

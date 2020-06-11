@@ -19,7 +19,7 @@
 """
 
 from ... import tests
-from ..matchers import ContainsNoVfsCalls
+from ...bzr.tests.matchers import ContainsNoVfsCalls
 from ...transport import memory
 
 

@@ -246,10 +246,6 @@ class TestingChrootServer(chroot.ChrootServer):
 
 class TestThread(cethread.CatchingExceptionThread):
 
-    if not getattr(cethread.CatchingExceptionThread, 'is_alive', None):
-        def is_alive(self):
-            return self.isAlive()
-
     def join(self, timeout=5):
         """Overrides to use a default timeout.
 
