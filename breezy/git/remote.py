@@ -222,11 +222,13 @@ def parse_git_hangup(url, e):
         return e
     interesting_lines = [
         line for line in stderr_lines
-        if line and line.replace('=', '')]
+        if line and line.replace(b'=', b'')]
     if len(interesting_lines) == 1:
         interesting_line = interesting_lines[0]
-        return parse_git_error(url, interesting_line)
-    return RemoteGitError('\n'.join(stderr_lines))
+        return parse_git_error(
+            url, interesting_line.decode('utf-8', 'surrogateescape'))
+    return RemoteGitError(
+        b'\n'.join(stderr_lines).decode('utf-8', 'surrogateescape'))
 
 
 class GitSmartTransport(Transport):

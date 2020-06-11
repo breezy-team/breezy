@@ -18,7 +18,7 @@
 """Tests for the revision/inventory Serializers."""
 
 
-from ..bzr import (
+from .. import (
     chk_serializer,
     serializer,
     xml5,

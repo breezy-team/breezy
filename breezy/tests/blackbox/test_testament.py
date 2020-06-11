@@ -18,7 +18,7 @@
 
 import re
 
-from breezy.tests.test_testament import (
+from breezy.bzr.tests.test_testament import (
     osutils,
     REV_1_SHORT,
     REV_1_SHORT_STRICT,

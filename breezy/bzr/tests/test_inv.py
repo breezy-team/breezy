@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from .. import (
+from ... import (
     errors,
     osutils,
     repository,
@@ -23,12 +23,12 @@ from .. import (
     tests,
     workingtree,
     )
-from ..bzr import (
+from .. import (
     chk_map,
     groupcompress,
     inventory,
     )
-from ..bzr.inventory import (
+from ..inventory import (
     CHKInventory,
     Inventory,
     ROOT_ID,
@@ -43,7 +43,7 @@ from . import (
     TestCase,
     TestCaseWithTransport,
     )
-from .scenarios import load_tests_apply_scenarios
+from ...tests.scenarios import load_tests_apply_scenarios
 
 
 load_tests = load_tests_apply_scenarios

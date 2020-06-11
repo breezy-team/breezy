@@ -16,12 +16,12 @@
 
 """Tests for indices."""
 
-from .. import (
+from ... import (
     errors,
     tests,
     transport,
     )
-from ..bzr import (
+from .. import (
     index as _mod_index,
     )
 

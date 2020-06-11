@@ -22,14 +22,14 @@ See doc/developer/inventory.txt for more information.
 from io import (
     BytesIO,
     )
-from .. import osutils
-from ..bzr import (
+from ... import osutils
+from .. import (
     inventory,
     inventory_delta,
     )
-from ..bzr.inventory_delta import InventoryDeltaError
-from ..bzr.inventory import Inventory
-from ..revision import NULL_REVISION
+from ..inventory_delta import InventoryDeltaError
+from ..inventory import Inventory
+from ...revision import NULL_REVISION
 from . import TestCase
 
 ### DO NOT REFLOW THESE TEXTS. NEW LINES ARE SIGNIFICANT. ###
