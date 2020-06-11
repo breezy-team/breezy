@@ -39,6 +39,8 @@ from .. import (
     revision as _mod_revision,
     )
 
+from ..tree import InterTree
+
 from testtools.matchers import Equals, Mismatch, Matcher
 
 
