@@ -230,13 +230,14 @@ def parse_git_hangup(url, e):
     stderr_lines = getattr(e, 'stderr_lines', None)
     if not stderr_lines:
         return e
+    if all(line.startswith(b'remote: ') for line in stderr_lines):
+        stderr_lines = [
+            line[len(b'remote: '):] for line in stderr_lines]
     interesting_lines = [
         line for line in stderr_lines
         if line and line.replace(b'=', b'')]
     if len(interesting_lines) == 1:
         interesting_line = interesting_lines[0]
-        if interesting_line.startswith(b'remote: '):
-            interesting_line = interesting_line[len(b'remote: '):]
         return parse_git_error(
             url, interesting_line.decode('utf-8', 'surrogateescape'))
     return RemoteGitError(
