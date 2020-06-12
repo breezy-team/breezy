@@ -235,6 +235,8 @@ def parse_git_hangup(url, e):
         if line and line.replace(b'=', b'')]
     if len(interesting_lines) == 1:
         interesting_line = interesting_lines[0]
+        if interesting_line.startswith('remote: '):
+            interesting_line = interesting_line[len('remote: '):]
         return parse_git_error(
             url, interesting_line.decode('utf-8', 'surrogateescape'))
     return RemoteGitError(
