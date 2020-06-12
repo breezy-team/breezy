@@ -5,11 +5,17 @@ on: [push, pull_request]
 jobs:
   build:
 
+    continue-on-error: ${{ matrix.experimental }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.6, 3.7, 3.8, pypy3]
+        python-version: [3.6, 3.7, 3.8]
+        experimental: [false]
+        include:
+          - os: ubuntu-latest
+            python-version: pypy3
+            experimental: true
       fail-fast: false
 
     steps:
