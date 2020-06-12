@@ -241,9 +241,10 @@ class Serializer_v8(XMLSerializer):
                        revision_id=get_cached(elt.get('revision_id')),
                        inventory_sha1=elt.get('inventory_sha1').encode('ascii')
                        )
-        parents = elt.find('parents') or []
-        for p in parents:
-            rev.parent_ids.append(get_cached(p.get('revision_id')))
+        parents = elt.find('parents')
+        if parents is not None:
+            for p in parents:
+                rev.parent_ids.append(get_cached(p.get('revision_id')))
         self._unpack_revision_properties(elt, rev)
         v = elt.get('timezone')
         if v is None:
