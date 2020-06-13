@@ -4178,7 +4178,6 @@ def _test_suite_testmod_names():
         'breezy.tests.test_utextwrap',
         'breezy.tests.test_version',
         'breezy.tests.test_version_info',
-        'breezy.tests.test_vf_search',
         'breezy.tests.test_views',
         'breezy.tests.test_whitebox',
         'breezy.tests.test_win32utils',

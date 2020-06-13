@@ -30,7 +30,7 @@ from .. import (
     TestCaseWithTransport,
     TestSkipped,
     )
-from ...bzr.bzrdir import BzrDir
+from ...controldir import ControlDir
 
 
 class BisectTestCase(TestCaseWithTransport):
@@ -74,9 +74,9 @@ class BisectTestCase(TestCaseWithTransport):
                                                      'test_file_append')))
         self.tree.commit(message="add test files")
 
-        BzrDir.open(".").sprout("../temp-clone")
-        clone_bzrdir = BzrDir.open("../temp-clone")
-        clone_tree = clone_bzrdir.open_workingtree()
+        ControlDir.open(".").sprout("../temp-clone")
+        clone_controldir = ControlDir.open("../temp-clone")
+        clone_tree = clone_controldir.open_workingtree()
         for content in ["one dot one", "one dot two", "one dot three"]:
             test_file = open("../temp-clone/test_file", "w")
             test_file.write(content)
