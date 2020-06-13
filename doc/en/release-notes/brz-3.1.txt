@@ -5,6 +5,74 @@ Breezy Release Notes
 .. toctree::
    :maxdepth: 1
 
+brz 3.1.1
+#########
+
+:Codename: TBD
+:3.1.1: UNRELEASED
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Breezy.
+
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance
+   or memory usage, or better results.
+
+ * Permission denied errors from GitLab during push are now properly
+   recognized. (Jelmer Vernooĳ)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where brz would previously crash or give incorrect
+   or undesirable results.
+
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   breezy.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for brz developers.
+
+ * A new ``MergeProposal.post_comment`` function has been added, and
+   is currently implemented for GitHub, GitLab and Launchpad.
+   (Jelmer Vernooĳ)
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to brz's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+ * Tests for most bzr-specific functionality has been moved to the
+   ``breezy.bzr.tests`` module. (Jelmer Vernooĳ)
+
+..
+   vim: tw=74 ft=rst ff=unix
+
 brz 3.1.0
 #########
 
