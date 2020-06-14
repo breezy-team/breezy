@@ -78,6 +78,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_tag',
         'test_testament',
         'test_versionedfile',
+        'test_vf_search',
         'test_vfs_ratchet',
         'test_workingtree_4',
         'test_weave',
