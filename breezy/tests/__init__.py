@@ -2691,7 +2691,9 @@ class TestCaseWithMemoryTransport(TestCase):
             # http://pad.lv/825027).
             self.assertIs(None, os.environ.get('BRZ_HOME', None))
             os.environ['BRZ_HOME'] = root
-            wt = controldir.ControlDir.create_standalone_workingtree(root)
+            from breezy.bzr.bzrdir import BzrDirMetaFormat1
+            wt = controldir.ControlDir.create_standalone_workingtree(
+                root, format=BzrDirMetaFormat1())
             del os.environ['BRZ_HOME']
         except Exception as e:
             self.fail("Fail to initialize the safety net: %r\n" % (e,))
