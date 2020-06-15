@@ -151,7 +151,7 @@ class ParseHangupTests(TestCase):
     def setUp(self):
         super(ParseHangupTests, self).setUp()
         try:
-            HangupException(['foo'])
+            HangupException([b'foo'])
         except TypeError:
             self.skipTest('dulwich version too old')
 
@@ -162,18 +162,21 @@ class ParseHangupTests(TestCase):
     def test_single_line(self):
         self.assertEqual(
             RemoteGitError('foo bar'),
-            parse_git_hangup('http://', HangupException(['foo bar'])))
+            parse_git_hangup('http://', HangupException([b'foo bar'])))
 
     def test_multi_lines(self):
         self.assertEqual(
             RemoteGitError('foo bar\nbla bla'),
             parse_git_hangup(
-                'http://', HangupException(['foo bar', 'bla bla'])))
+                'http://', HangupException([b'foo bar', b'bla bla'])))
 
     def test_filter_boring(self):
         self.assertEqual(
             RemoteGitError('foo bar'), parse_git_hangup('http://', HangupException(
-                ['=======', 'foo bar', '======'])))
+                [b'=======', b'foo bar', b'======'])))
+        self.assertEqual(
+            RemoteGitError('foo bar'), parse_git_hangup('http://', HangupException(
+                [b'remote: =======', b'remote: foo bar', b'remote: ======'])))
 
     def test_permission_denied(self):
         self.assertEqual(
@@ -181,8 +184,8 @@ class ParseHangupTests(TestCase):
             parse_git_hangup(
                 'http://',
                 HangupException(
-                    ['=======',
-                     'You are not allowed to push code to this project.', '', '======'])))
+                    [b'=======',
+                     b'You are not allowed to push code to this project.', b'', b'======'])))
 
 
 class TestRemoteGitBranchFormat(TestCase):

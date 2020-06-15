@@ -457,7 +457,15 @@ class TestStaticTuple(tests.TestCase):
             refs = strs + [self.module.StaticTuple]
         else:
             refs = strs
-        self.assertEqual(sorted(refs), sorted(scanner.get_referents(k)))
+        def key(k):
+            if isinstance(k, type):
+                return (0, k)
+            if isinstance(k, str):
+                return (1, k)
+            raise TypeError(k)
+        self.assertEqual(
+            sorted(refs, key=key),
+            sorted(scanner.get_referents(k), key=key))
 
     def test_nested_referents(self):
         self.requireFeature(features.meliae)
@@ -469,8 +477,15 @@ class TestStaticTuple(tests.TestCase):
         refs = [k1, k2]
         if self.module is _static_tuple_py:
             refs.append(self.module.StaticTuple)
-        self.assertEqual(sorted(refs),
-                         sorted(scanner.get_referents(k3)))
+        def key(k):
+            if isinstance(k, type):
+                return (0, k)
+            if isinstance(k, self.module.StaticTuple):
+                return (1, k)
+            raise TypeError(k)
+
+        self.assertEqual(sorted(refs, key=key),
+                         sorted(scanner.get_referents(k3), key=key))
 
     def test_empty_is_singleton(self):
         key = self.module.StaticTuple()

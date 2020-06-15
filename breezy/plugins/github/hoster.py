@@ -188,7 +188,15 @@ class GitHubMergeProposal(MergeProposal):
 
     def merge(self, commit_message=None):
         # https://developer.github.com/v3/pulls/#merge-a-pull-request-merge-button
-        self._pr.merge(commit_message=commit_message)
+        data = {}
+        if commit_message:
+            data['commit_message'] = commit_messae
+        response = self._gh._api_request(
+            'PUT', self._pr['url'] + "/merge", body=json.dumps(data).encode('utf-8'))
+        if response.status == 422:
+            raise ValidationFailed(json.loads(response.text))
+        if response.status != 200:
+            raise InvalidHttpResponse(self._pr['url'], response.text)
 
     def get_merged_by(self):
         merged_by = self._pr.get('merged_by')
@@ -202,6 +210,16 @@ class GitHubMergeProposal(MergeProposal):
             return None
         import iso8601
         return iso8601.parse_date(merged_at)
+
+    def post_comment(self, body):
+        data = {'body': body}
+        response = self._gh._api_request(
+            'POST', self._pr['comments_url'], body=json.dumps(data).encode('utf-8'))
+        if response.status == 422:
+            raise ValidationFailed(json.loads(response.text))
+        if response.status != 201:
+            raise InvalidHttpResponse(self._pr['comments_url'], response.text)
+        json.loads(response.text)
 
 
 def parse_github_url(url):
