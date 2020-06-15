@@ -1147,7 +1147,7 @@ class ProxyHandler(urllib_request.ProxyHandler):
         if bypass is None:
             # Nevertheless, there are platform-specific ways to
             # ignore proxies...
-            return urllib.proxy_bypass(host)
+            return urllib_request.proxy_bypass(host)
         else:
             return bypass
 
@@ -1943,10 +1943,14 @@ class HttpTransport(ConnectedTransport):
                 report_activity=self._report_activity, ca_certs=ca_certs)
 
     def request(self, method, url, fields=None, headers=None, **urlopen_kw):
+        body = urlopen_kw.pop('body', None)
         if fields is not None:
             data = urlencode(fields).encode()
+            if body is not None:
+                raise ValueError(
+                    'body and fields are mutually exclusive')
         else:
-            data = urlopen_kw.pop('body', None)
+            data = body
         if headers is None:
             headers = {}
         request = Request(method, url, data, headers)

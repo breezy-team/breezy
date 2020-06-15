@@ -94,7 +94,8 @@ class TestUserIgnores(TestCaseInTempDir):
         self.assertPathDoesNotExist(ignore_path)
         os.mkdir('empty-home')
 
-        config_path = os.path.join(self.test_dir, 'empty-home', '.config')
+        config_path = os.path.join(
+            self.test_dir, 'empty-home', 'foo', '.config')
         self.overrideEnv('BRZ_HOME', config_path)
         self.assertPathDoesNotExist(config_path)
 

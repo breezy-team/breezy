@@ -121,6 +121,8 @@ def fix_person_identifier(text):
     if b"<" not in text and b">" not in text:
         username = text
         email = text
+    elif b">" not in text:
+        return text + b">"
     else:
         if text.rindex(b">") < text.rindex(b"<"):
             raise ValueError(text)
@@ -332,7 +334,9 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = commit.commit_timezone
         if u'git-gpg-signature' in rev.properties:
             commit.gpgsig = rev.properties[u'git-gpg-signature'].encode(
-                'ascii')
+                'utf-8')
+        if u'git-gpg-signature-b64' in rev.properties:
+            commit.gpgsig = base64.b64decode(rev.properties[u'git-gpg-signature-b64'])
         commit.message = self._encode_commit_message(rev, rev.message,
                                                      encoding)
         if not isinstance(commit.message, bytes):
@@ -345,7 +349,8 @@ class BzrGitMapping(foreign.VcsMapping):
             mapping_properties = set(
                 [u'author', u'author-timezone', u'author-timezone-neg-utc',
                  u'commit-timezone-neg-utc', u'git-implicit-encoding',
-                 u'git-gpg-signature', u'git-explicit-encoding',
+                 u'git-gpg-signature', u'git-gpg-signature-b64',
+                 u'git-explicit-encoding',
                  u'author-timestamp', u'file-modes'])
             for k, v in viewitems(rev.properties):
                 if k not in mapping_properties:
@@ -427,8 +432,12 @@ class BzrGitMapping(foreign.VcsMapping):
         if commit._commit_timezone_neg_utc:
             rev.properties[u'commit-timezone-neg-utc'] = ""
         if commit.gpgsig:
-            rev.properties[u'git-gpg-signature'] = commit.gpgsig.decode(
-                'ascii')
+            try:
+                rev.properties[u'git-gpg-signature'] = commit.gpgsig.decode(
+                    'utf-8')
+            except UnicodeDecodeError:
+                rev.properties[u'git-gpg-signature-b64'] = base64.b64encode(
+                    commit.gpgsig)
         if commit.mergetag:
             for i, tag in enumerate(commit.mergetag):
                 rev.properties[u'git-mergetag-%d' % i] = tag.as_raw_string()

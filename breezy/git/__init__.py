@@ -149,7 +149,7 @@ def user_agent_for_github():
 def is_github_url(url):
     (scheme, user, password, host, port,
      path) = urlutils.parse_url(url)
-    return host == "github.com"
+    return host in ("github.com", "gopkg.in")
 
 
 class RemoteGitProber(Prober):

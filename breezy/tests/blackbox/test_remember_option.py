@@ -195,8 +195,7 @@ class TestPullRemember(script.TestCaseWithTransportAndScript,
             $ echo new parent > file
             $ brz commit -m 'new parent'
             $ cd ..
-            ''' % {'working_dir': self.working_dir},
-            null_output_matches_anything=True)
+            ''', null_output_matches_anything=True)
 
     def assertLocations(self, expected_locations):
         br, _ = branch.Branch.open_containing(self.working_dir)

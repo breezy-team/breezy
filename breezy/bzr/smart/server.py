@@ -267,7 +267,7 @@ class SmartTCPServer(object):
         still_active = []
         for handler, thread in self._active_connections:
             thread.join(timeout)
-            if thread.isAlive():
+            if thread.is_alive():
                 still_active.append((handler, thread))
         self._active_connections = still_active
 

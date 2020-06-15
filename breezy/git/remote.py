@@ -221,6 +221,24 @@ def parse_git_error(url, message):
     return RemoteGitError(message)
 
 
+def parse_git_hangup(url, e):
+    """Parse the error lines from a git servers stderr on hangup.
+
+    :param url: URL of the remote repository
+    :param e: A HangupException
+    """
+    stderr_lines = getattr(e, 'stderr_lines', None)
+    if not stderr_lines:
+        return e
+    interesting_lines = [
+        line for line in stderr_lines
+        if line and line.replace('=', '')]
+    if len(interesting_lines) == 1:
+        interesting_line = interesting_lines[0]
+        return parse_git_error(url, interesting_line)
+    return RemoteGitError('\n'.join(stderr_lines))
+
+
 class GitSmartTransport(Transport):
 
     def __init__(self, url, _client=None):
@@ -420,6 +438,8 @@ class RemoteGitDir(GitDir):
                 prefix=(prefix.encode('utf-8') if prefix else None))
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         finally:
             if pb is not None:
                 pb.finished()
@@ -442,6 +462,8 @@ class RemoteGitDir(GitDir):
             return result
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         finally:
             if pb is not None:
                 pb.finished()
@@ -463,6 +485,8 @@ class RemoteGitDir(GitDir):
                 generate_pack_data, progress)
         except GitProtocolError as e:
             raise parse_git_error(self.transport.external_url(), e)
+        except HangupException as e:
+            raise parse_git_hangup(self.transport.external_url(), e)
         finally:
             if pb is not None:
                 pb.finished()
@@ -616,10 +640,24 @@ class RemoteGitDir(GitDir):
                     ret[tag_name_to_ref(tagname)] = new_sha
             return ret
         with source_store.lock_read():
-            if lossy:
-                generate_pack_data = source_store.generate_lossy_pack_data
-            else:
-                generate_pack_data = source_store.generate_pack_data
+            def generate_pack_data(have, want, progress=None,
+                                   ofs_delta=True):
+                git_repo = getattr(source.repository, '_git', None)
+                if git_repo:
+                    shallow = git_repo.get_shallow()
+                else:
+                    shallow = None
+                if lossy:
+                    return source_store.generate_lossy_pack_data(
+                        have, want, shallow=shallow,
+                        progress=progress, ofs_delta=ofs_delta)
+                elif shallow:
+                    return source_store.generate_pack_data(
+                        have, want, shallow=shallow,
+                        progress=progress, ofs_delta=ofs_delta)
+                else:
+                    return source_store.generate_pack_data(
+                        have, want, progress=progress, ofs_delta=ofs_delta)
             new_refs = self.send_pack(get_changed_refs, generate_pack_data)
         push_result.new_revid = repo.lookup_foreign_revision_id(
             new_refs[actual_refname])
@@ -722,7 +760,7 @@ class BzrGitHttpClient(dulwich.client.HttpGitClient):
             raise NotGitRepository()
         elif response.status != 200:
             raise GitProtocolError("unexpected http resp %d for %s" %
-                                   (response.code, url))
+                                   (response.status, url))
 
         # TODO: Optimization available by adding `preload_content=False` to the
         # request and just passing the `read` method on instead of going via
