@@ -154,6 +154,8 @@ class cmd_propose_merge(Command):
                help='Allow fallback to lossy push, if necessary.'),
         Option('allow-collaboration',
                help='Allow collaboration from target branch maintainer(s)'),
+        Option('allow-empty',
+               help='Do not prevent empty merge proposals.'),
         ]
     takes_args = ['submit_branch?']
 
@@ -162,7 +164,7 @@ class cmd_propose_merge(Command):
     def run(self, submit_branch=None, directory='.', hoster=None,
             reviewers=None, name=None, no_allow_lossy=False, description=None,
             labels=None, prerequisite=None, commit_message=None, wip=False,
-            allow_collaboration=False):
+            allow_collaboration=False, allow_empty=False):
         tree, branch, relpath = (
             controldir.ControlDir.open_containing_tree_or_branch(directory))
         if submit_branch is None:
@@ -172,8 +174,11 @@ class cmd_propose_merge(Command):
         if submit_branch is None:
             raise errors.BzrCommandError(
                 gettext("No target location specified or remembered"))
-        else:
-            target = _mod_branch.Branch.open(submit_branch)
+        target = _mod_branch.Branch.open(submit_branch)
+        if branch.last_revision() == target.last_revision():
+            if not allow_empty:
+                raise errors.BzrCommandError(gettext(
+                    'All local changes are already present in target.'))
         if hoster is None:
             hoster = _mod_propose.get_hoster(target)
         else:
