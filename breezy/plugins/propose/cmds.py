@@ -49,6 +49,13 @@ def branch_name(branch):
     return urlutils.basename(branch.user_url)
 
 
+def _check_already_merged(branch, target):
+    # TODO(jelmer): Check entire ancestry rather than just last revision?
+    if branch.last_revision() == target.last_revision():
+        raise errors.BzrCommandError(gettext(
+            'All local changes are already present in target.'))
+
+
 class cmd_publish_derived(Command):
     __doc__ = """Publish a derived branch.
 
@@ -82,6 +89,7 @@ class cmd_publish_derived(Command):
             submit_branch = local_branch.get_parent()
             note(gettext('Using parent branch %s') % submit_branch)
         submit_branch = _mod_branch.Branch.open(submit_branch)
+        _check_already_merged(local_branch, submit_branch)
         if name is None:
             name = branch_name(local_branch)
         hoster = _mod_propose.get_hoster(submit_branch)
@@ -175,10 +183,8 @@ class cmd_propose_merge(Command):
             raise errors.BzrCommandError(
                 gettext("No target location specified or remembered"))
         target = _mod_branch.Branch.open(submit_branch)
-        if branch.last_revision() == target.last_revision():
-            if not allow_empty:
-                raise errors.BzrCommandError(gettext(
-                    'All local changes are already present in target.'))
+        if not allow_empty:
+            _check_already_merged(branch, target)
         if hoster is None:
             hoster = _mod_propose.get_hoster(target)
         else:
