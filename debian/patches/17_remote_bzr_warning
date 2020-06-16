@@ -1,0 +1,22 @@
+=== modified file 'breezy/git/git-remote-bzr'
+--- old/breezy/git/git-remote-bzr	2020-01-31 17:43:44 +0000
++++ new/breezy/git/git-remote-bzr	2020-06-16 21:24:37 +0000
+@@ -43,10 +43,17 @@
+     open_remote_dir,
+     )
+ 
++from breezy.trace import warning
++
+ parser = optparse.OptionParser()
+ (opts, args) = parser.parse_args()
+ (shortname, url) = args
+ 
++warning(
++    'git-remote-bzr is experimental and has not been optimized for '
++    'performance. Use \'brz fast-export\' and \'git fast-import\' for '
++    'large repositories.')
++
+ helper = RemoteHelper(open_local_dir(), shortname, open_remote_dir(url))
+ if PY3:
+     helper.process(sys.stdin.buffer, sys.stdout.buffer)
+

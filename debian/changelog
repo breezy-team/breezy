@@ -1,3 +1,10 @@
+breezy (3.1.0-4) UNRELEASED; urgency=medium
+
+  * Ship git-remote-bzr. Closes: #939297
+    + Add patch 17_remote_bzr_warning: warn about status of git-remote-bzr.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Tue, 16 Jun 2020 21:31:31 +0000
+
 breezy (3.1.0-3) unstable; urgency=medium
 
   * Build without subunit to make it easier to spot which tests are

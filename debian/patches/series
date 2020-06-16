@@ -2,3 +2,4 @@
 03_spurious_test_failure
 08_disable_sphinx_epytext
 16_generate_ids
+17_remote_bzr_warning
