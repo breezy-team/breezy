@@ -1689,6 +1689,19 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                         mode |= 0o111
                     else:
                         mode &= ~0o111
+                if live_entry.sha != index_entry.sha:
+                    rp = path.decode('utf-8')
+                    if stat.S_ISREG(live_entry.mode):
+                        blob = Blob()
+                        with target.get_file(rp) as f:
+                            blob.data = f.read()
+                    elif stat.S_ISLNK(live_entry.mode):
+                        blob = Blob()
+                        blob.data = target.get_symlink_target(rp).encode(osutils._fs_enc)
+                    else:
+                        blob = None
+                    if blob is not None:
+                        store.add_object(blob)
                 blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
         for e in target.extras():
