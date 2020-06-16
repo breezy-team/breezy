@@ -532,8 +532,8 @@ class DivergedIncludes(TestBase):
                          [b"first line",
                           b"alternative second line"])
 
-        self.assertEqual(list(k.get_ancestry([b'2'])),
-                         [b'0', b'2'])
+        self.assertEqual(set(k.get_ancestry([b'2'])),
+                         set([b'0', b'2']))
 
 
 class ReplaceLine(TestBase):
@@ -581,8 +581,8 @@ class Merge(TestBase):
                           (b'text2', b'line from 2'),
                           ])
 
-        self.assertEqual(list(k.get_ancestry([b'merge'])),
-                         [b'text0', b'text1', b'text2', b'merge'])
+        self.assertEqual(set(k.get_ancestry([b'merge'])),
+                         set([b'text0', b'text1', b'text2', b'merge']))
 
         self.log('k._weave=' + pformat(k._weave))
 
