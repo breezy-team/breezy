@@ -24,7 +24,6 @@ import errno
 from io import BytesIO
 import os
 
-from dulwich import __version__ as dulwich_version
 from dulwich.config import (
     parse_submodules,
     ConfigFile as GitConfigFile,
@@ -1074,10 +1073,7 @@ class InterGitRevisionTrees(InterGitTrees):
                     self.target._repository._git.object_store])
         else:
             store = self.source._repository._git.object_store
-        if dulwich_version >= (0, 19, 15):
-            rename_detector = RenameDetector(store)
-        else:
-            rename_detector = None
+        rename_detector = RenameDetector(store)
         return tree_changes(
             store, self.source.tree, self.target.tree, want_unchanged=want_unchanged,
             include_trees=True, change_type_same=True, rename_detector=rename_detector), set()
@@ -1619,10 +1615,12 @@ class InterIndexGitTree(InterGitTrees):
     def __init__(self, source, target):
         super(InterIndexGitTree, self).__init__(source, target)
         self._index = target.index
-        if dulwich_version >= (0, 19, 15):
-            self.rename_detector = RenameDetector(self.source.store)
+        if self.source.store == self.target.store:
+            self.store = self.source.store
         else:
-            self.rename_detector = None
+            self.store = OverlayObjectStore(
+                [self.source.store, self.target.store])
+        self.rename_detector = RenameDetector(self.store)
 
     @classmethod
     def is_compatible(cls, source, target):
@@ -1651,7 +1649,7 @@ class InterIndexGitTree(InterGitTrees):
 _mod_tree.InterTree.register_optimiser(InterIndexGitTree)
 
 
-def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
+def changes_between_git_tree_and_working_copy(source_store, from_tree_sha, target,
                                               want_unchanged=False,
                                               want_unversioned=False,
                                               rename_detector=None):
@@ -1681,7 +1679,7 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                     blobs[path] = (index_entry.sha, index_entry.mode)
                 else:
                     dirified.append((path, Tree().id, stat.S_IFDIR))
-                    store.add_object(Tree())
+                    target.store.add_object(Tree())
             else:
                 mode = live_entry.mode
                 if not trust_executable:
@@ -1701,7 +1699,7 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                     else:
                         blob = None
                     if blob is not None:
-                        store.add_object(blob)
+                        target.store.add_object(blob)
                 blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
         for e in target.extras():
@@ -1718,12 +1716,13 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                     target.abspath(e).encode(osutils._fs_enc), st)
             else:
                 continue
-            store.add_object(blob)
+            target.store.add_object(blob)
             np = np.encode('utf-8')
             blobs[np] = (blob.id, cleanup_mode(st.st_mode))
             extras.add(np)
     to_tree_sha = commit_tree(
-        store, dirified + [(p, s, m) for (p, (s, m)) in blobs.items()])
+        target.store, dirified + [(p, s, m) for (p, (s, m)) in blobs.items()])
+    store = OverlayObjectStore([source_store, target.store])
     return tree_changes(
         store, from_tree_sha, to_tree_sha, include_trees=True,
         rename_detector=rename_detector,
