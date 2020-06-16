@@ -132,14 +132,16 @@ def _patch_filesystem_default_encoding(new_enc):
     is_py3 = sys.version_info > (3,)
     try:
         import ctypes
-        old_ptr = ctypes.c_void_p.in_dll(ctypes.pythonapi,
-                                         "Py_FileSystemDefaultEncoding")
-        if is_py3:
-            has_enc = ctypes.c_int.in_dll(ctypes.pythonapi,
-                                          "Py_HasFileSystemDefaultEncoding")
-            as_utf8 = ctypes.PYFUNCTYPE(
-                ctypes.POINTER(ctypes.c_char), ctypes.py_object)(
-                    ("PyUnicode_AsUTF8", ctypes.pythonapi))
+        pythonapi = getattr(ctypes, 'pythonapi', None)
+        if pythonapi is not None:
+            old_ptr = ctypes.c_void_p.in_dll(pythonapi,
+                                             "Py_FileSystemDefaultEncoding")
+            if is_py3:
+                has_enc = ctypes.c_int.in_dll(pythonapi,
+                                              "Py_HasFileSystemDefaultEncoding")
+                as_utf8 = ctypes.PYFUNCTYPE(
+                    ctypes.POINTER(ctypes.c_char), ctypes.py_object)(
+                        ("PyUnicode_AsUTF8", pythonapi))
     except (ImportError, ValueError):
         return  # No ctypes or not CPython implementation, do nothing
     if is_py3:
