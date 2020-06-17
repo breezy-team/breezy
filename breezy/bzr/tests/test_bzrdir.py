@@ -101,7 +101,7 @@ class TestFormatRegistry(TestCase):
         my_format_registry.register('deprecated', DeprecatedBzrDirFormat,
                                     'Some format.  Slower and unawesome and deprecated.',
                                     deprecated=True)
-        my_format_registry.register_lazy('lazy', 'breezy.tests.test_bzrdir',
+        my_format_registry.register_lazy('lazy', __name__,
                                          'DeprecatedBzrDirFormat', 'Format registered lazily',
                                          deprecated=True)
         bzr.register_metadir(my_format_registry, 'knit',
@@ -122,7 +122,7 @@ class TestFormatRegistry(TestCase):
                              branch_format='breezy.bzr.branch.BzrBranchFormat6', hidden=True)
         my_format_registry.register('hiddendeprecated', DeprecatedBzrDirFormat,
                                     'Old format.  Slower and does not support things. ', hidden=True)
-        my_format_registry.register_lazy('hiddenlazy', 'breezy.tests.test_bzrdir',
+        my_format_registry.register_lazy('hiddenlazy', __name__,
                                          'DeprecatedBzrDirFormat', 'Format registered lazily',
                                          deprecated=True, hidden=True)
         return my_format_registry
@@ -1393,7 +1393,7 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         self.assertEqual('fail', err._preformatted_string)
 
     def test_post_repo_init(self):
-        from ..controldir import RepoInitHookParams
+        from ...controldir import RepoInitHookParams
         calls = []
         bzrdir.BzrDir.hooks.install_named_hook('post_repo_init',
                                                calls.append, None)
