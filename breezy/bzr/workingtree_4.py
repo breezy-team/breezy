@@ -61,6 +61,7 @@ from ..lockable_files import LockableFiles
 from ..lockdir import LockDir
 from .inventorytree import (
     InventoryTree,
+    InterInventoryTree,
     InventoryRevisionTree,
     )
 from ..mutabletree import (
@@ -2173,7 +2174,7 @@ class DirStateRevisionTree(InventoryTree):
                     pending.append((dir[0], dir[4]))
 
 
-class InterDirStateTree(InterTree):
+class InterDirStateTree(InterInventoryTree):
     """Fast path optimiser for changes_from with dirstate trees.
 
     This is used only when both trees are in the dirstate working file, and
