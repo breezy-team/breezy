@@ -28,7 +28,7 @@ from dulwich.config import (
     parse_submodules,
     ConfigFile as GitConfigFile,
     )
-from dulwich.diff_tree import tree_changes
+from dulwich.diff_tree import tree_changes, RenameDetector
 from dulwich.errors import NotTreeError
 from dulwich.index import (
     blob_from_path_and_stat,
@@ -737,7 +737,9 @@ def tree_delta_from_git_changes(changes, mappings,
         target_extras = set()
     ret = delta.TreeDelta()
     added = []
-    for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+    for (change_type, old, new) in changes:
+        (oldpath, oldmode, oldsha) = old
+        (newpath, newmode, newsha) = new
         if newpath == b'' and not include_root:
             continue
         if oldpath is not None:
@@ -809,13 +811,17 @@ def tree_delta_from_git_changes(changes, mappings,
             fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
             (oldversioned, newversioned),
             (oldparent, newparent), (oldname, newname),
-            (oldkind, newkind), (oldexe, newexe))
+            (oldkind, newkind), (oldexe, newexe),
+            copied=(change_type == 'copy'))
         if oldpath is None:
             added.append((newpath, newkind))
         elif newpath is None or newmode == 0:
             ret.removed.append(change)
         elif oldpath != newpath:
-            ret.renamed.append(change)
+            if change_type == 'copy':
+                ret.copied.append(change)
+            else:
+                ret.renamed.append(change)
         elif mode_kind(oldmode) != mode_kind(newmode):
             ret.kind_changed.append(change)
         elif oldsha != newsha or oldmode != newmode:
@@ -863,7 +869,9 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
     """
     if target_extras is None:
         target_extras = set()
-    for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+    for (change_type, old, new) in changes:
+        (oldpath, oldmode, oldsha) = old
+        (newpath, newmode, newsha) = new
         if oldpath is not None:
             oldpath_decoded = oldpath.decode('utf-8')
         else:
@@ -934,7 +942,8 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
             (oldversioned, newversioned),
             (oldparent, newparent), (oldname, newname),
-            (oldkind, newkind), (oldexe, newexe))
+            (oldkind, newkind), (oldexe, newexe),
+            copied=(change_type == 'copy'))
 
 
 class InterGitTrees(_mod_tree.InterTree):
@@ -997,7 +1006,9 @@ class InterGitTrees(_mod_tree.InterTree):
         paths = set(paths)
         ret = {}
         changes = self._iter_git_changes(specific_files=paths)[0]
-        for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+        for (change_type, old, new) in changes:
+            oldpath = old[0]
+            newpath = new[0]
             if oldpath in paths:
                 ret[oldpath] = newpath
         for path in paths:
@@ -1015,7 +1026,9 @@ class InterGitTrees(_mod_tree.InterTree):
         paths = set(paths)
         ret = {}
         changes = self._iter_git_changes(specific_files=paths)[0]
-        for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+        for (change_type, old, new) in changes:
+            oldpath = old[0]
+            newpath = new[0]
             if newpath in paths:
                 ret[newpath] = oldpath
         for path in paths:
@@ -1060,9 +1073,10 @@ class InterGitRevisionTrees(InterGitTrees):
                     self.target._repository._git.object_store])
         else:
             store = self.source._repository._git.object_store
-        return store.tree_changes(
-            self.source.tree, self.target.tree, want_unchanged=want_unchanged,
-            include_trees=True, change_type_same=True), set()
+        rename_detector = RenameDetector(store)
+        return tree_changes(
+            store, self.source.tree, self.target.tree, want_unchanged=want_unchanged,
+            include_trees=True, change_type_same=True, rename_detector=rename_detector), set()
 
 
 _mod_tree.InterTree.register_optimiser(InterGitRevisionTrees)
@@ -1601,6 +1615,12 @@ class InterIndexGitTree(InterGitTrees):
     def __init__(self, source, target):
         super(InterIndexGitTree, self).__init__(source, target)
         self._index = target.index
+        if self.source.store == self.target.store:
+            self.store = self.source.store
+        else:
+            self.store = OverlayObjectStore(
+                [self.source.store, self.target.store])
+        self.rename_detector = RenameDetector(self.store)
 
     @classmethod
     def is_compatible(cls, source, target):
@@ -1622,15 +1642,17 @@ class InterIndexGitTree(InterGitTrees):
             return changes_between_git_tree_and_working_copy(
                 self.source.store, self.source.tree,
                 self.target, want_unchanged=want_unchanged,
-                want_unversioned=want_unversioned)
+                want_unversioned=want_unversioned,
+                rename_detector=self.rename_detector)
 
 
 _mod_tree.InterTree.register_optimiser(InterIndexGitTree)
 
 
-def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
+def changes_between_git_tree_and_working_copy(source_store, from_tree_sha, target,
                                               want_unchanged=False,
-                                              want_unversioned=False):
+                                              want_unversioned=False,
+                                              rename_detector=None):
     """Determine the changes between a git tree and a working tree with index.
 
     """
@@ -1657,7 +1679,7 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                     blobs[path] = (index_entry.sha, index_entry.mode)
                 else:
                     dirified.append((path, Tree().id, stat.S_IFDIR))
-                    store.add_object(Tree())
+                    target.store.add_object(Tree())
             else:
                 mode = live_entry.mode
                 if not trust_executable:
@@ -1665,6 +1687,19 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                         mode |= 0o111
                     else:
                         mode &= ~0o111
+                if live_entry.sha != index_entry.sha:
+                    rp = path.decode('utf-8')
+                    if stat.S_ISREG(live_entry.mode):
+                        blob = Blob()
+                        with target.get_file(rp) as f:
+                            blob.data = f.read()
+                    elif stat.S_ISLNK(live_entry.mode):
+                        blob = Blob()
+                        blob.data = target.get_symlink_target(rp).encode(osutils._fs_enc)
+                    else:
+                        blob = None
+                    if blob is not None:
+                        target.store.add_object(blob)
                 blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
         for e in target.extras():
@@ -1681,12 +1716,14 @@ def changes_between_git_tree_and_working_copy(store, from_tree_sha, target,
                     target.abspath(e).encode(osutils._fs_enc), st)
             else:
                 continue
-            store.add_object(blob)
+            target.store.add_object(blob)
             np = np.encode('utf-8')
             blobs[np] = (blob.id, cleanup_mode(st.st_mode))
             extras.add(np)
     to_tree_sha = commit_tree(
-        store, dirified + [(p, s, m) for (p, (s, m)) in blobs.items()])
-    return store.tree_changes(
-        from_tree_sha, to_tree_sha, include_trees=True,
+        target.store, dirified + [(p, s, m) for (p, (s, m)) in blobs.items()])
+    store = OverlayObjectStore([source_store, target.store])
+    return tree_changes(
+        store, from_tree_sha, to_tree_sha, include_trees=True,
+        rename_detector=rename_detector,
         want_unchanged=want_unchanged, change_type_same=True), extras

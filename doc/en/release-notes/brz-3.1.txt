@@ -32,6 +32,9 @@ Improvements
  * Permission denied errors from GitLab during push are now properly
    recognized. (Jelmer Vernooĳ)
 
+ * Support rename and copy tracking when accessing Git
+   repositories. (Jelmer Vernooĳ, #1760740)
+
 Bug Fixes
 *********
 
@@ -40,7 +43,6 @@ Bug Fixes
 
  * Don't require ``ctypes.pythonapi`` to exist, as it's missing on newer
    versions of Pypy3. (Jelmer Vernooĳ)
-
 
 Documentation
 *************
@@ -72,9 +74,6 @@ Testing
 
  * Tests for most bzr-specific functionality has been moved to the
    ``breezy.bzr.tests`` module. (Jelmer Vernooĳ)
-
-..
-   vim: tw=74 ft=rst ff=unix
 
 brz 3.1.0
 #########
