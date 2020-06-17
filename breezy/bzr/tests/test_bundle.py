@@ -62,7 +62,7 @@ def get_inventory_text(repo, revision_id):
 class MockTree(object):
 
     def __init__(self):
-        from ..bzr.inventory import InventoryDirectory, ROOT_ID
+        from ..inventory import InventoryDirectory, ROOT_ID
         object.__init__(self)
         self.paths = {ROOT_ID: ""}
         self.ids = {"": ROOT_ID}
@@ -112,8 +112,8 @@ class MockTree(object):
         return kind
 
     def make_entry(self, file_id, path):
-        from ..bzr.inventory import (InventoryFile, InventoryDirectory,
-                                     InventoryLink)
+        from ..inventory import (InventoryFile, InventoryDirectory,
+                                 InventoryLink)
         if not isinstance(file_id, bytes):
             raise TypeError(file_id)
         name = os.path.basename(path)
@@ -1330,7 +1330,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
 
         :return: The in-memory bundle
         """
-        from ..bzr.bundle import serializer
+        from ..bundle import serializer
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = self.get_raw(BytesIO(b''.join(bundle_txt)))
         new_text = new_text.replace(b'<file file_id="exe-1"',
@@ -1415,7 +1415,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         tree_a.commit("base", allow_pointless=True, rev_id=b'A')
         self.assertFalse(branch.repository.has_signature_for_revision_id(b'A'))
         try:
-            from ..bzr.testament import Testament
+            from ..testament import Testament
             # monkey patch gpg signing mechanism
             breezy.gpg.GPGStrategy = breezy.gpg.LoopbackGPGStrategy
             new_config = test_commit.MustSignConfig()
@@ -1457,7 +1457,7 @@ class V4_2aBundleTester(V4BundleTester):
 
         :return: The in-memory bundle
         """
-        from ..bzr.bundle import serializer
+        from ..bundle import serializer
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = self.get_raw(BytesIO(b''.join(bundle_txt)))
         # We are going to be replacing some text to set the executable bit on a
