@@ -23,7 +23,7 @@ import os
 import subprocess
 import sys
 
-from .. import (
+from ... import (
     branch,
     bzr,
     config,
@@ -38,7 +38,7 @@ from .. import (
     urlutils,
     win32utils,
     )
-from ..bzr import (
+from .. import (
     branch as bzrbranch,
     bzrdir,
     remote,
@@ -47,31 +47,31 @@ from ..bzr import (
     )
 import breezy.branch
 import breezy.bzr.branch
-from ..bzr.fullhistory import BzrBranchFormat5
-from ..errors import (
+from ..fullhistory import BzrBranchFormat5
+from ...errors import (
     NotBranchError,
     NoColocatedBranchSupport,
     UnknownFormatError,
     UnsupportedFormatError,
     )
-from . import (
+from ...tests import (
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestSkipped,
     )
-from . import (
+from ...tests import (
     http_server,
     http_utils,
     )
-from ..transport import (
+from ...transport import (
     memory,
     pathfilter,
     )
-from ..transport.http import HttpTransport
-from ..transport.nosmart import NoSmartTransportDecorator
-from ..transport.readonly import ReadonlyTransportDecorator
-from ..bzr import knitrepo, knitpack_repo
+from ...transport.http import HttpTransport
+from ...transport.nosmart import NoSmartTransportDecorator
+from ...transport.readonly import ReadonlyTransportDecorator
+from .. import knitrepo, knitpack_repo
 
 
 class TestDefaultFormat(TestCase):

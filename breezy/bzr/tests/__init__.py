@@ -59,6 +59,7 @@ def load_tests(loader, basic_tests, pattern):
         'test__groupcompress',
         'test_btree_index',
         'test_bundle',
+        'test_bzrdir',
         'test_chk_map',
         'test_chk_serializer',
         'test_generate_ids',
