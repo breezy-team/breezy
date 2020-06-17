@@ -19,7 +19,7 @@ from io import BytesIO
 import os
 import sys
 
-from .. import (
+from ... import (
     diff,
     errors,
     merge,
@@ -28,22 +28,22 @@ from .. import (
     tests,
     treebuilder,
     )
-from ..bzr import (
+from .. import (
     bzrdir,
     inventory,
     )
-from ..bzr.bundle.apply_bundle import install_bundle, merge_bundle
-from ..bzr.bundle.bundle_data import BundleTree
-from ..bzr.bundle.serializer import write_bundle, read_bundle, v09, v4
-from ..bzr.bundle.serializer.v08 import BundleSerializerV08
-from ..bzr.bundle.serializer.v09 import BundleSerializerV09
-from ..bzr.bundle.serializer.v4 import BundleSerializerV4
-from ..bzr import knitrepo
-from . import (
+from ..bundle.apply_bundle import install_bundle, merge_bundle
+from ..bundle.bundle_data import BundleTree
+from ..bundle.serializer import write_bundle, read_bundle, v09, v4
+from ..bundle.serializer.v08 import BundleSerializerV08
+from ..bundle.serializer.v09 import BundleSerializerV09
+from ..bundle.serializer.v4 import BundleSerializerV4
+from ..import knitrepo
+from ...tests import (
     features,
     test_commit,
     )
-from ..tree import InterTree
+from ...tree import InterTree
 
 
 def get_text(vf, key):
