@@ -38,6 +38,7 @@ from ..bzr.bundle.serializer import write_bundle, read_bundle, v09, v4
 from ..bzr.bundle.serializer.v08 import BundleSerializerV08
 from ..bzr.bundle.serializer.v09 import BundleSerializerV09
 from ..bzr.bundle.serializer.v4 import BundleSerializerV4
+from ..bzr.inventorytree import InventoryTree
 from ..bzr import knitrepo
 from . import (
     features,
@@ -59,7 +60,7 @@ def get_inventory_text(repo, revision_id):
         return get_text(repo.inventories, (revision_id,))
 
 
-class MockTree(object):
+class MockTree(InventoryTree):
 
     def __init__(self):
         from ..bzr.inventory import InventoryDirectory, ROOT_ID
