@@ -17,7 +17,7 @@
 
 """Black-box tests for brz branches."""
 
-from breezy.bzr.bzrdir import BzrDir
+from breezy.controldir import ControlDir
 from breezy.tests import TestCaseWithTransport
 
 
@@ -80,8 +80,8 @@ class TestBranches(TestCaseWithTransport):
 
     def test_shared_repos(self):
         self.make_repository('a', shared=True)
-        BzrDir.create_branch_convenience('a/branch1')
-        b = BzrDir.create_branch_convenience('a/branch2')
+        ControlDir.create_branch_convenience('a/branch1')
+        b = ControlDir.create_branch_convenience('a/branch2')
         b.create_checkout(lightweight=True, to_location='b')
         out, err = self.run_bzr('branches b')
         self.assertEqual(out, "  branch1\n"

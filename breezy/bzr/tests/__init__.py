@@ -46,6 +46,7 @@ def load_tests(loader, basic_tests, pattern):
     prefix = __name__ + '.'
 
     testmod_names = [
+        'blackbox',
         'test_dirstate',
         'per_bzrdir',
         'per_inventory',

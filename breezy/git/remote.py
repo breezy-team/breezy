@@ -121,7 +121,6 @@ from dulwich.repo import (
     )
 import os
 import select
-import tempfile
 
 try:
     import urllib.parse as urlparse
@@ -868,6 +867,7 @@ class GitRemoteRevisionTree(RevisionTree):
         """
         commit = self._repository.lookup_bzr_revision_id(
             self.get_revision_id())[0]
+        import tempfile
         f = tempfile.SpooledTemporaryFile()
         # git-upload-archive(1) generaly only supports refs. So let's see if we
         # can find one.
@@ -924,6 +924,7 @@ class RemoteGitRepository(GitRepository):
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
                       progress=None):
+        import tempfile
         fd, path = tempfile.mkstemp(suffix=".pack")
         try:
             self.fetch_pack(determine_wants, graph_walker,

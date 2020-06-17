@@ -39,9 +39,6 @@ from ..sixish import (
     viewvalues,
     )
 
-from .commit import (
-    GitCommitBuilder,
-    )
 from .filegraph import (
     GitFileLastChangeScanner,
     GitFileParentProvider,
@@ -265,6 +262,9 @@ class LocalGitRepository(GitRepository):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
+        from .commit import (
+            GitCommitBuilder,
+            )
         builder = GitCommitBuilder(
             self, parents, config, timestamp, timezone, committer, revprops,
             revision_id, lossy)
