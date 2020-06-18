@@ -90,7 +90,6 @@ import re
 import stat
 
 from breezy import (
-    atomicfile,
     cmdline,
     controldir,
     debug,
@@ -931,6 +930,7 @@ class IniBasedConfig(Config):
     def _write_config_file(self):
         if self.file_name is None:
             raise AssertionError('We cannot save, self.file_name is None')
+        from . import atomicfile
         conf_dir = os.path.dirname(self.file_name)
         bedding.ensure_config_dir_exists(conf_dir)
         with atomicfile.AtomicFile(self.file_name) as atomic_file:

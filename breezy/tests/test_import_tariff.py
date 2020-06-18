@@ -156,9 +156,9 @@ class TestImportTariffs(ImportTariffTestCase):
                           ['st'],
                           ['breezy.tree'])
 
-    def test_simple_local(self):
+    def test_simple_local_bzr(self):
         # 'st' in a default format working tree shouldn't need many modules
-        self.make_branch_and_tree('.')
+        self.make_branch_and_tree('.', format='bzr')
         self.run_command_check_imports(['st'], [
             'breezy.annotate',
             'breezy.atomicfile',
@@ -202,6 +202,51 @@ class TestImportTariffs(ImportTariffTestCase):
         # loading wt-specific stuff
         #
         # See https://bugs.launchpad.net/bzr/+bug/553017
+
+    def test_simple_local_git(self):
+        # 'st' in a default format working tree shouldn't need many modules
+        self.make_branch_and_tree('.', format='git')
+        self.run_command_check_imports(['st'], [
+            'breezy.annotate',
+            'breezy.bugtracker',
+            'breezy.bundle.commands',
+            'breezy.cmd_version_info',
+            'breezy.externalcommand',
+            'breezy.filters',
+            'breezy.hashcache',
+            # foreign branch plugins import the foreign_vcs_registry from
+            # breezy.foreign so it can't be blacklisted
+            'breezy.gpg',
+            'breezy.info',
+            'breezy.bzr.knit',
+            'breezy.merge3',
+            'breezy.merge_directive',
+            'breezy.msgeditor',
+            'breezy.bzr.remote',
+            'breezy.rules',
+            'breezy.sign_my_commits',
+            'breezy.bzr.smart',
+            'breezy.bzr.smart.client',
+            'breezy.bzr.smart.medium',
+            'breezy.bzr.smart.server',
+            'breezy.transform',
+            'breezy.version_info_formats.format_rio',
+            'breezy.bzr.xml_serializer',
+            'breezy.bzr.xml8',
+            'breezy.bzr.inventory',
+            'breezy.bzr.bzrdir',
+            'breezy.git.remote',
+            'breezy.git.commit',
+            'getpass',
+            'kerberos',
+            'shutil',
+            'ssl',
+            'smtplib',
+            'tarfile',
+            'tempfile',
+            'termios',
+            'tty',
+            ] + old_format_modules)
 
     def test_help_commands(self):
         # See https://bugs.launchpad.net/bzr/+bug/663773
