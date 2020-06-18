@@ -34,6 +34,8 @@ Homepage: https://www.breezy-vcs.org/
 Package: brz
 Recommends: python3-gpg, python3-dulwich (>= 0.19.11)
 Architecture: all
+Conflicts: git-remote-bzr
+Provides: git-remote-bzr
 Depends: python3-breezy (<= ${source:Version}.1~),
          python3-breezy (>= ${source:Version}),
          ${misc:Depends},

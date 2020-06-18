@@ -1,3 +1,9 @@
+breezy (3.1.0-5) UNRELEASED; urgency=medium
+
+  * Add Conflicts/Provides on git-remote-bzr. Closes: #963029
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 18 Jun 2020 02:32:04 +0000
+
 breezy (3.1.0-4) unstable; urgency=medium
 
   * Ship git-remote-bzr. Closes: #939297
