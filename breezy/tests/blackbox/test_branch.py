@@ -38,7 +38,6 @@ from breezy.tests.features import (
     HardlinkFeature,
     )
 from breezy.tests.blackbox import test_switch
-from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 from breezy.tests.test_sftp_transport import TestCaseWithSFTPServer
 from breezy.tests.script import run_script
 from breezy.urlutils import local_path_to_url, strip_trailing_slash
@@ -550,129 +549,6 @@ class TestBranchStacked(tests.TestCaseWithTransport):
             'This may take some time. Upgrade the repositories to the same format for better performance.\n'
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
-
-
-class TestSmartServerBranching(tests.TestCaseWithTransport):
-
-    def test_branch_from_trivial_branch_to_same_server_branch_acceptance(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('from')
-        for count in range(9):
-            t.commit(message='commit %d' % count)
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['branch', self.get_url('from'),
-                                 self.get_url('target')])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(2, self.hpss_connections)
-        self.assertLength(34, self.hpss_calls)
-        self.expectFailure(
-            "branching to the same branch requires VFS access",
-            self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
-
-    def test_branch_from_trivial_branch_streaming_acceptance(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('from')
-        for count in range(9):
-            t.commit(message='commit %d' % count)
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['branch', self.get_url('from'),
-                                 'local-target'])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
-        self.assertLength(11, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-
-    def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('trunk')
-        for count in range(8):
-            t.commit(message='commit %d' % count)
-        tree2 = t.branch.controldir.sprout('feature', stacked=True
-                                           ).open_workingtree()
-        local_tree = t.branch.controldir.sprout(
-            'local-working').open_workingtree()
-        local_tree.commit('feature change')
-        local_tree.branch.push(tree2.branch)
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['branch', self.get_url('feature'),
-                                 'local-target'])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(16, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
-
-    def test_branch_from_branch_with_tags(self):
-        self.setup_smart_server_with_call_log()
-        builder = self.make_branch_builder('source')
-        source, rev1, rev2 = fixtures.build_branch_with_non_ancestral_rev(
-            builder)
-        source.get_config_stack().set('branch.fetch_tags', True)
-        source.tags.set_tag('tag-a', rev2)
-        source.tags.set_tag('tag-missing', b'missing-rev')
-        # Now source has a tag not in its ancestry.  Make a branch from it.
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['branch', self.get_url('source'), 'target'])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(11, self.hpss_calls)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
-        self.assertLength(1, self.hpss_connections)
-
-    def test_branch_to_stacked_from_trivial_branch_streaming_acceptance(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('from')
-        for count in range(9):
-            t.commit(message='commit %d' % count)
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['branch', '--stacked', self.get_url('from'),
-                                 'local-target'])
-        # XXX: the number of hpss calls for this case isn't deterministic yet,
-        # so we can't easily assert about the number of calls.
-        #self.assertLength(XXX, self.hpss_calls)
-        # We can assert that none of the calls were readv requests for rix
-        # files, though (demonstrating that at least get_parent_map calls are
-        # not using VFS RPCs).
-        readvs_of_rix_files = [
-            c for c in self.hpss_calls
-            if c.call.method == 'readv' and c.call.args[-1].endswith('.rix')]
-        self.assertLength(1, self.hpss_connections)
-        self.assertLength(0, readvs_of_rix_files)
-        self.expectFailure("branching to stacked requires VFS access",
-                           self.assertThat, self.hpss_calls, ContainsNoVfsCalls)
-
-    def test_branch_from_branch_with_ghosts(self):
-        self.setup_smart_server_with_call_log()
-        t = self.make_branch_and_tree('from')
-        for count in range(9):
-            t.commit(message='commit %d' % count)
-        t.set_parent_ids([t.last_revision(), b'ghost'])
-        t.commit(message='add commit with parent')
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['branch', self.get_url('from'),
-                                 'local-target'])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)
-        self.assertLength(12, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

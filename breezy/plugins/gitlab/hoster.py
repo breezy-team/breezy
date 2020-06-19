@@ -272,6 +272,11 @@ class GitLabMergeProposal(MergeProposal):
         import iso8601
         return iso8601.parse_date(merged_at)
 
+    def post_comment(self, body):
+        kwargs = {'body': body}
+        self.gl._post_merge_request_note(
+            self._mr['project_id'], self._mr['iid'], kwargs)
+
 
 def gitlab_url_to_bzr_url(url, name):
     return git_url_to_bzr_url(url, branch=name)
@@ -410,6 +415,15 @@ class GitLab(Hoster):
         response = self._api_request('PUT', path, fields=mr)
         if response.status == 200:
             return json.loads(response.data)
+        raise errors.InvalidHttpResponse(path, response.text)
+
+    def _post_merge_request_note(self, project_id, iid, kwargs):
+        path = 'projects/%s/merge_requests/%s/notes' % (
+            urlutils.quote(str(project_id), ''), iid)
+        response = self._api_request('POST', path, fields=kwargs)
+        if response.status == 201:
+            json.loads(response.data)
+            return
         raise errors.InvalidHttpResponse(path, response.text)
 
     def _create_mergerequest(

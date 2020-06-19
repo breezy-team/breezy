@@ -187,6 +187,9 @@ class LaunchpadMergeProposal(MergeProposal):
         finally:
             shutil.rmtree(tmpdir)
 
+    def post_comment(self, body):
+        self._mp.createComment(content=body)
+
 
 class Launchpad(Hoster):
     """The Launchpad hosting service."""

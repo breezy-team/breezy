@@ -660,12 +660,9 @@ class VersionedFile(object):
     def _get_lf_split_line_list(self, version_ids):
         return [BytesIO(t).readlines() for t in self.get_texts(version_ids)]
 
-    def get_ancestry(self, version_ids, topo_sorted=True):
+    def get_ancestry(self, version_ids):
         """Return a list of all ancestors of given version(s). This
         will not include the null revision.
-
-        This list will not be topologically sorted if topo_sorted=False is
-        passed.
 
         Must raise RevisionNotPresent if any of the given versions are
         not present in file history."""

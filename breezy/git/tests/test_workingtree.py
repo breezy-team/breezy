@@ -20,6 +20,8 @@
 import os
 import stat
 
+from dulwich import __version__ as dulwich_version
+from dulwich.diff_tree import RenameDetector
 from dulwich.index import IndexEntry
 from dulwich.objects import (
     S_IFGITLINK,
@@ -139,9 +141,15 @@ class TreeDeltaFromGitChangesTests(TestCase):
 
     def test_missing(self):
         delta = TreeDelta()
-        delta.removed.append(TreeChange(b'git:a', ('a', 'a'), False, (True, True), (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'a'), ('file', None), (True, False)))
-        changes = [((b'a', b'a'), (stat.S_IFREG | 0o755, 0),
-                    (b'a' * 40, b'a' * 40))]
+        delta.removed.append(
+            TreeChange(
+                b'git:a', ('a', 'a'), False, (True, True),
+                (b'TREE_ROOT', b'TREE_ROOT'), ('a', 'a'), ('file', None),
+                (True, False)))
+        changes = [
+            ('remove',
+                (b'a', stat.S_IFREG | 0o755, b'a' * 40),
+                (b'a', 0, b'a' * 40))]
         self.assertEqual(
             delta,
             tree_delta_from_git_changes(changes, (default_mapping, default_mapping)))
@@ -156,7 +164,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
 
     def expectDelta(self, expected_changes,
                     expected_extras=None, want_unversioned=False,
-                    tree_id=None):
+                    tree_id=None, rename_detector=None):
         if tree_id is None:
             try:
                 tree_id = self.store[self.wt.branch.repository._git.head()].tree
@@ -164,7 +172,8 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
                 tree_id = None
         with self.wt.lock_read():
             changes, extras = changes_between_git_tree_and_working_copy(
-                self.store, tree_id, self.wt, want_unversioned=want_unversioned)
+                self.store, tree_id, self.wt, want_unversioned=want_unversioned,
+                rename_detector=rename_detector)
             self.assertEqual(expected_changes, list(changes))
         if expected_extras is None:
             expected_extras = set()
@@ -172,7 +181,7 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
 
     def test_empty(self):
         self.expectDelta(
-            [((None, b''), (None, stat.S_IFDIR), (None, Tree().id))])
+            [('add', (None, None, None), (b'', stat.S_IFDIR, Tree().id))])
 
     def test_added_file(self):
         self.build_tree(['a'])
@@ -181,20 +190,74 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         t = Tree()
         t.add(b"a", stat.S_IFREG | 0o644, a.id)
         self.expectDelta(
-            [((None, b''), (None, stat.S_IFDIR), (None, t.id)),
-             ((None, b'a'), (None, stat.S_IFREG | 0o644), (None, a.id))])
+            [('add', (None, None, None), (b'', stat.S_IFDIR, t.id)),
+             ('add', (None, None, None), (b'a', stat.S_IFREG | 0o644, a.id))])
+
+    def test_renamed_file(self):
+        self.build_tree(['a'])
+        self.wt.add(['a'])
+        self.wt.rename_one('a', 'b')
+        a = Blob.from_string(b'contents of a\n')
+        self.store.add_object(a)
+        oldt = Tree()
+        oldt.add(b"a", stat.S_IFREG | 0o644, a.id)
+        self.store.add_object(oldt)
+        newt = Tree()
+        newt.add(b"b", stat.S_IFREG | 0o644, a.id)
+        self.store.add_object(newt)
+        self.expectDelta(
+            [('modify', (b'', stat.S_IFDIR, oldt.id), (b'', stat.S_IFDIR, newt.id)),
+             ('delete', (b'a', stat.S_IFREG | 0o644, a.id), (None, None, None)),
+             ('add', (None, None, None), (b'b', stat.S_IFREG | 0o644, a.id)),
+             ],
+            tree_id=oldt.id)
+        if dulwich_version >= (0, 19, 15):
+            self.expectDelta(
+                [('modify', (b'', stat.S_IFDIR, oldt.id), (b'', stat.S_IFDIR, newt.id)),
+                 ('rename', (b'a', stat.S_IFREG | 0o644, a.id), (b'b', stat.S_IFREG | 0o644, a.id))],
+                tree_id=oldt.id, rename_detector=RenameDetector(self.store))
+
+    def test_copied_file(self):
+        self.build_tree(['a'])
+        self.wt.add(['a'])
+        self.wt.copy_one('a', 'b')
+        a = Blob.from_string(b'contents of a\n')
+        self.store.add_object(a)
+        oldt = Tree()
+        oldt.add(b"a", stat.S_IFREG | 0o644, a.id)
+        self.store.add_object(oldt)
+        newt = Tree()
+        newt.add(b"a", stat.S_IFREG | 0o644, a.id)
+        newt.add(b"b", stat.S_IFREG | 0o644, a.id)
+        self.store.add_object(newt)
+        self.expectDelta(
+            [('modify', (b'', stat.S_IFDIR, oldt.id), (b'', stat.S_IFDIR, newt.id)),
+             ('add', (None, None, None), (b'b', stat.S_IFREG | 0o644, a.id)),
+             ],
+            tree_id=oldt.id)
+
+        if dulwich_version >= (0, 19, 15):
+            self.expectDelta(
+                [('modify', (b'', stat.S_IFDIR, oldt.id), (b'', stat.S_IFDIR, newt.id)),
+                 ('copy', (b'a', stat.S_IFREG | 0o644, a.id), (b'b', stat.S_IFREG | 0o644, a.id))],
+                tree_id=oldt.id, rename_detector=RenameDetector(self.store, find_copies_harder=True))
+            self.expectDelta(
+                [('modify', (b'', stat.S_IFDIR, oldt.id), (b'', stat.S_IFDIR, newt.id)),
+                 ('add', (None, None, None), (b'b', stat.S_IFREG | 0o644, a.id)),
+                 ],
+                tree_id=oldt.id, rename_detector=RenameDetector(self.store, find_copies_harder=False))
 
     def test_added_unknown_file(self):
         self.build_tree(['a'])
         t = Tree()
         self.expectDelta(
-            [((None, b''), (None, stat.S_IFDIR), (None, t.id))])
+            [('add', (None, None, None), (b'', stat.S_IFDIR, t.id))])
         a = Blob.from_string(b'contents of a\n')
         t = Tree()
         t.add(b"a", stat.S_IFREG | 0o644, a.id)
         self.expectDelta(
-            [((None, b''), (None, stat.S_IFDIR), (None, t.id)),
-             ((None, b'a'), (None, stat.S_IFREG | 0o644), (None, a.id))],
+            [('add', (None, None, None), (b'', stat.S_IFDIR, t.id)),
+             ('add', (None, None, None), (b'a', stat.S_IFREG | 0o644, a.id))],
             [b'a'],
             want_unversioned=True)
 
@@ -206,8 +269,8 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         t = Tree()
         t.add(b"a", 0, ZERO_SHA)
         self.expectDelta(
-            [((None, b''), (None, stat.S_IFDIR), (None, t.id)),
-             ((None, b'a'), (None, 0), (None, ZERO_SHA))],
+            [('add', (None, None, None), (b'', stat.S_IFDIR, t.id)),
+             ('add', (None, None, None), (b'a', 0, ZERO_SHA))],
             [])
 
     def test_missing_versioned_file(self):
@@ -221,8 +284,12 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         newt = Tree()
         newt.add(b"a", 0, ZERO_SHA)
         self.expectDelta(
-            [((b'', b''), (stat.S_IFDIR, stat.S_IFDIR), (oldt.id, newt.id)),
-             ((b'a', b'a'), (stat.S_IFREG | 0o644, 0), (a.id, ZERO_SHA))])
+            [('modify',
+                (b'', stat.S_IFDIR, oldt.id),
+                (b'', stat.S_IFDIR, newt.id)),
+             ('modify',
+                 (b'a', stat.S_IFREG | 0o644, a.id),
+                 (b'a', 0, ZERO_SHA))])
 
     def test_versioned_replace_by_dir(self):
         self.build_tree(['a'])
@@ -237,16 +304,20 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         newa = Tree()
         newt.add(b"a", stat.S_IFDIR, newa.id)
         self.expectDelta([
-            ((b'', b''),
-             (stat.S_IFDIR, stat.S_IFDIR),
-             (oldt.id, newt.id)),
-            ((b'a', b'a'), (stat.S_IFREG | 0o644, stat.S_IFDIR), (olda.id, newa.id))
+            ('modify',
+                (b'', stat.S_IFDIR, oldt.id),
+                (b'', stat.S_IFDIR, newt.id)),
+            ('modify',
+                (b'a', stat.S_IFREG | 0o644, olda.id),
+                (b'a', stat.S_IFDIR, newa.id))
             ], want_unversioned=False)
         self.expectDelta([
-            ((b'', b''),
-             (stat.S_IFDIR, stat.S_IFDIR),
-             (oldt.id, newt.id)),
-            ((b'a', b'a'), (stat.S_IFREG | 0o644, stat.S_IFDIR), (olda.id, newa.id))
+            ('modify',
+                (b'', stat.S_IFDIR, oldt.id),
+                (b'', stat.S_IFDIR, newt.id)),
+            ('modify',
+                (b'a', stat.S_IFREG | 0o644, olda.id),
+                (b'a', stat.S_IFDIR, newa.id)),
             ], want_unversioned=True)
 
     def test_extra(self):
@@ -255,10 +326,12 @@ class ChangesBetweenGitTreeAndWorkingCopyTests(TestCaseWithTransport):
         newt = Tree()
         newt.add(b"a", stat.S_IFREG | 0o644, newa.id)
         self.expectDelta([
-            ((None, b''),
-             (None, stat.S_IFDIR),
-             (None, newt.id)),
-            ((None, b'a'), (None, stat.S_IFREG | 0o644), (None, newa.id))
+            ('add',
+                (None, None, None),
+                (b'', stat.S_IFDIR, newt.id)),
+            ('add',
+                (None, None, None),
+                (b'a', stat.S_IFREG | 0o644, newa.id)),
             ], [b'a'], want_unversioned=True)
 
     def test_submodule(self):
