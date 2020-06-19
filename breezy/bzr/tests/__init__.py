@@ -38,10 +38,12 @@ TestCaseWithTransport = tests.TestCaseWithTransport
 TestCaseWithMemoryTransport = tests.TestCaseWithMemoryTransport
 
 
-def test_suite():
-    loader = tests.TestUtil.TestLoader()
+def load_tests(loader, basic_tests, pattern):
+    suite = loader.suiteClass()
+    # add the tests for this module
+    suite.addTests(basic_tests)
 
-    suite = tests.TestUtil.TestSuite()
+    prefix = __name__ + '.'
 
     testmod_names = [
         'test_dirstate',
@@ -67,19 +69,23 @@ def test_suite():
         'test_matchers',
         'test_pack',
         'test_remote',
+        'test_repository',
         'test_smart',
         'test_smart_request',
         'test_smart_signals',
         'test_smart_transport',
         'test_serializer',
-        'test_tags',
+        'test_tag',
         'test_testament',
         'test_versionedfile',
+        'test_vf_search',
+        'test_vfs_ratchet',
         'test_workingtree_4',
         'test_weave',
         'test_xml',
         ]
-    testmod_names = ['%s.%s' % (__name__, t) for t in testmod_names]
-    suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
 
+    # add the tests for the sub modules
+    suite.addTests(loader.loadTestsFromModuleNames(
+        [prefix + module_name for module_name in testmod_names]))
     return suite

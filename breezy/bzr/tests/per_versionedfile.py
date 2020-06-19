@@ -532,34 +532,20 @@ class VersionedFileTestMixIn(object):
 
     def test_ancestry(self):
         f = self.get_file()
-        self.assertEqual([], f.get_ancestry([]))
+        self.assertEqual(set(), f.get_ancestry([]))
         f.add_lines(b'r0', [], [b'a\n', b'b\n'])
         f.add_lines(b'r1', [b'r0'], [b'b\n', b'c\n'])
         f.add_lines(b'r2', [b'r0'], [b'b\n', b'c\n'])
         f.add_lines(b'r3', [b'r2'], [b'b\n', b'c\n'])
         f.add_lines(b'rM', [b'r1', b'r2'], [b'b\n', b'c\n'])
-        self.assertEqual([], f.get_ancestry([]))
+        self.assertEqual(set(), f.get_ancestry([]))
         versions = f.get_ancestry([b'rM'])
-        # there are some possibilities:
-        # r0 r1 r2 rM r3
-        # r0 r1 r2 r3 rM
-        # etc
-        # so we check indexes
-        r0 = versions.index(b'r0')
-        r1 = versions.index(b'r1')
-        r2 = versions.index(b'r2')
-        self.assertFalse(b'r3' in versions)
-        rM = versions.index(b'rM')
-        self.assertTrue(r0 < r1)
-        self.assertTrue(r0 < r2)
-        self.assertTrue(r1 < rM)
-        self.assertTrue(r2 < rM)
 
         self.assertRaises(RevisionNotPresent,
                           f.get_ancestry, [b'rM', b'rX'])
 
         self.assertEqual(set(f.get_ancestry(b'rM')),
-                         set(f.get_ancestry(b'rM', topo_sorted=False)))
+                         set(f.get_ancestry(b'rM')))
 
     def test_mutate_after_finish(self):
         self._transaction = 'before'
@@ -732,23 +718,23 @@ class VersionedFileTestMixIn(object):
         # test key graph related apis: getncestry, _graph, get_parents
         # has_version
         # - these are ghost unaware and must not be reflect ghosts
-        self.assertEqual([b'notbxbfse'], vf.get_ancestry(b'notbxbfse'))
+        self.assertEqual(set([b'notbxbfse']), vf.get_ancestry(b'notbxbfse'))
         self.assertFalse(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual([parent_id_utf8, b'notbxbfse'],
+        self.assertEqual(set([parent_id_utf8, b'notbxbfse']),
                          vf.get_ancestry_with_ghosts([b'notbxbfse']))
         self.assertEqual([parent_id_utf8],
                          vf.get_parents_with_ghosts(b'notbxbfse'))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
         vf.add_lines(parent_id_utf8, [], [])
-        self.assertEqual([parent_id_utf8, b'notbxbfse'],
+        self.assertEqual(set([parent_id_utf8, b'notbxbfse']),
                          vf.get_ancestry([b'notbxbfse']))
         self.assertEqual({b'notbxbfse': (parent_id_utf8,)},
                          vf.get_parent_map([b'notbxbfse']))
         self.assertTrue(vf.has_version(parent_id_utf8))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual([parent_id_utf8, b'notbxbfse'],
+        self.assertEqual(set([parent_id_utf8, b'notbxbfse']),
                          vf.get_ancestry_with_ghosts([b'notbxbfse']))
         self.assertEqual([parent_id_utf8],
                          vf.get_parents_with_ghosts(b'notbxbfse'))

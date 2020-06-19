@@ -23,7 +23,6 @@ from breezy import (
 from breezy.tests import (
     TestCaseWithTransport,
     )
-from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TestRemoveBranch(TestCaseWithTransport):
@@ -104,19 +103,3 @@ class TestRemoveBranch(TestCaseWithTransport):
                      branch.controldir.user_url)
         self.assertFalse(dir.has_branch('otherbranch'))
 
-
-class TestSmartServerRemoveBranch(TestCaseWithTransport):
-
-    def test_simple_remove_branch(self):
-        self.setup_smart_server_with_call_log()
-        self.make_branch('branch')
-        self.reset_smart_call_log()
-        out, err = self.run_bzr(['rmbranch', self.get_url('branch')])
-        # This figure represent the amount of work to perform this use case. It
-        # is entirely ok to reduce this number if a test fails due to rpc_count
-        # being too low. If rpc_count increases, more network roundtrips have
-        # become necessary for this use case. Please do not adjust this number
-        # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(5, self.hpss_calls)
-        self.assertLength(1, self.hpss_connections)
-        self.assertThat(self.hpss_calls, ContainsNoVfsCalls)

@@ -172,6 +172,14 @@ class MergeProposal(object):
         """
         raise NotImplementedError(self.get_merged_at)
 
+    def post_comment(self, body):
+        """Post a comment on the merge proposal.
+
+        Args:
+          body: Body of the comment
+        """
+        raise NotImplementedError(self.post_comment)
+
 
 class MergeProposalBuilder(object):
     """Merge proposal creator.

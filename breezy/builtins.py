@@ -4224,7 +4224,7 @@ class cmd_selftest(Command):
 
         try:
             from . import tests
-        except ImportError:
+        except ImportError as e:
             raise errors.BzrCommandError("tests not available. Install the "
                                          "breezy tests to run the breezy testsuite.")
 

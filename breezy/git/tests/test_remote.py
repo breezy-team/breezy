@@ -172,6 +172,9 @@ class ParseHangupTests(TestCase):
         self.assertEqual(
             RemoteGitError('foo bar'), parse_git_hangup('http://', HangupException(
                 [b'=======', b'foo bar', b'======'])))
+        self.assertEqual(
+            RemoteGitError('foo bar'), parse_git_hangup('http://', HangupException(
+                [b'remote: =======', b'remote: foo bar', b'remote: ======'])))
 
     def test_permission_denied(self):
         self.assertEqual(

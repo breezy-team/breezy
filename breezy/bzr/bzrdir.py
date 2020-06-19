@@ -1491,6 +1491,11 @@ class BzrDirFormat(BzrFormat, controldir.ControlDirFormat):
         # implementation, please add new tests for it to the appropriate place.
         return filename == '.bzr' or filename.startswith('.bzr/')
 
+    @classmethod
+    def get_default_format(klass):
+        """Return the current default format."""
+        return controldir.format_registry.get('bzr')()
+
 
 class BzrDirMetaFormat1(BzrDirFormat):
     """Bzr meta control format 1

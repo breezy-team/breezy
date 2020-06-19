@@ -64,6 +64,7 @@ class GitCommitBuilder(CommitBuilder):
         self.store = self.repository._git.object_store
         self._blobs = {}
         self._inv_delta = []
+        self._deleted_paths = set()
         self._any_changes = False
         self._mapping = self.repository.get_mapping()
 
@@ -87,7 +88,7 @@ class GitCommitBuilder(CommitBuilder):
             self._any_changes = True
             if change.path[1] is None:
                 self._inv_delta.append((change.path[0], change.path[1], change.file_id, None))
-                self._blobs[change.path[0].encode("utf-8")] = None
+                self._deleted_paths.add(change.path[0].encode("utf-8"))
                 continue
             try:
                 entry_kls = entry_factory[change.kind[1]]
@@ -123,8 +124,9 @@ class GitCommitBuilder(CommitBuilder):
                 raise AssertionError("Unknown kind %r" % change.kind[1])
             mode = object_mode(change.kind[1], change.executable[1])
             self._inv_delta.append((change.path[0], change.path[1], change.file_id, entry))
-            encoded_new_path = change.path[1].encode("utf-8")
-            self._blobs[encoded_new_path] = (mode, sha)
+            if change.path[0] is not None:
+                self._deleted_paths.add(change.path[0].encode("utf-8"))
+            self._blobs[change.path[1].encode("utf-8")] = (mode, sha)
             if st is not None:
                 yield change.path[1], (entry.text_sha1, st)
         if not seen_root and len(self.parents) == 0:
@@ -141,6 +143,8 @@ class GitCommitBuilder(CommitBuilder):
         for entry in basis_tree._iter_tree_contents(include_trees=False):
             if entry.path in self._blobs:
                 continue
+            if entry.path in self._deleted_paths:
+                continue
             self._blobs[entry.path] = (entry.mode, entry.sha)
         self.new_inventory = None
 
@@ -150,7 +154,7 @@ class GitCommitBuilder(CommitBuilder):
 
     def finish_inventory(self):
         # eliminate blobs that were removed
-        self._blobs = {k: v for (k, v) in self._blobs.items() if v is not None}
+        self._blobs = {k: v for (k, v) in self._blobs.items()}
 
     def _iterblobs(self):
         return ((path, sha, mode) for (path, (mode, sha))
