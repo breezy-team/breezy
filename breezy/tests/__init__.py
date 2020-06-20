@@ -3995,6 +3995,7 @@ test_prefix_alias_registry.register('bd', 'breezy.doc')
 test_prefix_alias_registry.register('bu', 'breezy.utils')
 test_prefix_alias_registry.register('bt', 'breezy.tests')
 test_prefix_alias_registry.register('bgt', 'breezy.git.tests')
+test_prefix_alias_registry.register('bbt', 'breezy.bzr.tests')
 test_prefix_alias_registry.register('bb', 'breezy.tests.blackbox')
 test_prefix_alias_registry.register('bp', 'breezy.plugins')
 
