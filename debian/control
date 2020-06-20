@@ -34,17 +34,15 @@ Homepage: https://www.breezy-vcs.org/
 Package: brz
 Recommends: python3-gpg, python3-dulwich (>= 0.19.11)
 Architecture: all
-Conflicts: git-remote-bzr
-Provides: git-remote-bzr
+Conflicts: git-remote-bzr, bzr-git (<< 0.6.13+bzr1650+brz1), bzr (<< 2.7.0+bzr6622-1)
 Depends: python3-breezy (<= ${source:Version}.1~),
          python3-breezy (>= ${source:Version}),
          ${misc:Depends},
          ${python3:Depends}
-Conflicts: bzr (<< 2.7.0+bzr6622-1)
 Suggests: brz-doc,
           python3-breezy.tests,
           python3-fastimport (>= 0.9.8)
-Provides: bzr, bzr-stats, bzr-email, bzr-upload, bzr-git, bzr-fastimport
+Provides: bzr, bzr-stats, bzr-email, bzr-upload, bzr-git, bzr-fastimport, git-remote-bzr
 Description: easy to use distributed version control system
  Breezy is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many file formats and workflows, reliable,
