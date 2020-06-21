@@ -18,9 +18,6 @@
 from breezy import (
     controldir,
     )
-from breezy.bzr import (
-    branch as _mod_bzrbranch,
-    )
 from breezy.tests import TestCaseWithTransport
 
 

@@ -64,10 +64,6 @@ from ..trace import (
     warning,
     )
 
-from .config import (
-    GitBranchConfig,
-    GitBranchStack,
-    )
 from .errors import (
     NoPushSupport,
     )
@@ -487,9 +483,11 @@ class GitBranch(ForeignBranch):
         return "git"
 
     def get_config(self):
+        from .config import GitBranchConfig
         return GitBranchConfig(self)
 
     def get_config_stack(self):
+        from .config import GitBranchStack
         return GitBranchStack(self)
 
     def _get_nick(self, local=False, possible_master_transports=None):

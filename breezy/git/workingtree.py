@@ -55,7 +55,6 @@ from .. import (
     errors,
     controldir as _mod_controldir,
     globbing,
-    ignores,
     lock,
     merge,
     osutils,
@@ -631,6 +630,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         be ignored, otherwise None.  So this can simply be used as a
         boolean if desired."""
         if getattr(self, '_global_ignoreglobster', None) is None:
+            from breezy import ignores
             ignore_globs = set()
             ignore_globs.update(ignores.get_runtime_ignores())
             ignore_globs.update(ignores.get_user_ignores())
