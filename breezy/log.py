@@ -141,7 +141,6 @@ def show_log(branch,
              direction='reverse',
              start_revision=None,
              end_revision=None,
-             search=None,
              limit=None,
              show_diff=False,
              match=None):
@@ -162,9 +161,6 @@ def show_log(branch,
     :param start_revision: If not None, only show revisions >= start_revision
 
     :param end_revision: If not None, only show revisions <= end_revision
-
-    :param search: If not None, only show revisions with matching commit
-        messages
 
     :param limit: If set, shows only 'limit' revisions, all revisions are shown
         if None or 0.
@@ -202,8 +198,7 @@ def show_log(branch,
     rqst = make_log_request_dict(
         direction=direction,
         start_revision=start_revision, end_revision=end_revision,
-        limit=limit, message_search=search,
-        delta_type=delta_type, diff_type=diff_type)
+        limit=limit, delta_type=delta_type, diff_type=diff_type)
     Logger(branch, rqst).show(lf)
 
 
@@ -1945,8 +1940,7 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
                  verbose=False,
                  direction='forward',
                  start_revision=base_idx + 1,
-                 end_revision=len(new_rh),
-                 search=None)
+                 end_revision=len(new_rh))
 
 
 def get_history_change(old_revision_id, new_revision_id, repository):
