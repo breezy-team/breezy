@@ -403,7 +403,7 @@ class Unshelver(object):
             else:
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:
-                    raise errors.BzrCommandError(
+                    raise errors.CommandError(
                         gettext('No changes are shelved.'))
             apply_changes = True
             delete_shelf = True

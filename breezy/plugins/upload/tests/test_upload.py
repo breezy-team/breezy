@@ -606,7 +606,7 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
         rev1 = revisionspec.RevisionSpec.from_string('1')
         rev2 = revisionspec.RevisionSpec.from_string('2')
 
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           self.do_incremental_upload, revision=[rev1, rev2])
 
     def test_create_remote_dir_twice(self):

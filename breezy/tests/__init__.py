@@ -3408,7 +3408,7 @@ parallel_registry = registry.Registry()
 
 def fork_decorator(suite):
     if getattr(os, "fork", None) is None:
-        raise errors.BzrCommandError("platform does not support fork,"
+        raise errors.CommandError("platform does not support fork,"
                                      " try --parallel=subprocess instead.")
     concurrency = osutils.local_concurrency()
     if concurrency == 1:
@@ -3977,7 +3977,7 @@ class TestPrefixAliasRegistry(registry.Registry):
         try:
             parts[0] = self.get(parts[0])
         except KeyError:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 '%s is not a known test prefix alias' % parts[0])
         return '.'.join(parts)
 

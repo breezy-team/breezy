@@ -2934,7 +2934,7 @@ class CommandLineStore(Store):
             try:
                 name, value = over.split('=', 1)
             except ValueError:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     gettext("Invalid '%s', should be of the form 'name=value'")
                     % (over,))
             self.options[name] = value
@@ -4035,7 +4035,7 @@ class cmd_config(commands.Command):
 
     def _remove_config_option(self, name, directory, scope):
         if name is None:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 '--remove expects an option to remove.')
         conf = self._get_stack(directory, scope, write_access=True)
         try:

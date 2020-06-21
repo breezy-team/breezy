@@ -41,7 +41,7 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
     :param user_map: if not None, the file containing the user map.
     """
     from fastimport.errors import ParsingError
-    from ...errors import BzrCommandError
+    from ...errors import CommandError
     from fastimport import parser
     stream = _get_source_stream(source)
     user_mapper = _get_user_mapper(user_map)
@@ -50,7 +50,7 @@ def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
     try:
         return proc.process(p.iter_commands)
     except ParsingError as e:
-        raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
+        raise CommandError("%d: Parse error: %s" % (e.lineno, e))
 
 
 def _get_source_stream(source):
@@ -325,7 +325,7 @@ class cmd_fast_import(Command):
         from ...sixish import StringIO
         from fastimport import parser
         from fastimport.errors import ParsingError
-        from ...errors import BzrCommandError
+        from ...errors import CommandError
         from fastimport.processors import info_processor
         stream = _get_source_stream(source)
         output = StringIO()
@@ -335,7 +335,7 @@ class cmd_fast_import(Command):
             try:
                 return_code = proc.process(p.iter_commands)
             except ParsingError as e:
-                raise BzrCommandError("%d: Parse error: %s" % (e.lineno, e))
+                raise CommandError("%d: Parse error: %s" % (e.lineno, e))
             lines = output.getvalue().splitlines()
         finally:
             output.close()
