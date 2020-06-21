@@ -137,6 +137,7 @@ class InterTagsFromGitToRemoteGit(InterTags):
         updates = {}
         conflicts = []
         source_tag_refs = self.source.branch.get_tag_refs()
+        ref_to_tag_map = {}
 
         def get_changed_refs(old_refs):
             ret = dict(old_refs)
@@ -150,6 +151,7 @@ class InterTagsFromGitToRemoteGit(InterTags):
                     ret[ref_name] = unpeeled
                     updates[tag_name] = self.target.branch.repository.lookup_foreign_revision_id(
                         peeled)
+                    ref_to_tag_map[ref_name] = tag_name
                     self.target.branch._tag_refs = None
                 else:
                     conflicts.append(
@@ -158,8 +160,14 @@ class InterTagsFromGitToRemoteGit(InterTags):
                          self.target.branch.repository.lookup_foreign_revision_id(
                              old_refs[ref_name])))
             return ret
-        self.target.branch.repository.controldir.send_pack(
+        result = self.target.branch.repository.controldir.send_pack(
             get_changed_refs, lambda have, want: [])
+        if result is not None and not isinstance(result, dict):
+            for ref, error in result.ref_status.items():
+                if error:
+                    warning('unable to update ref %s: %s',
+                            ref, error)
+                    del updates[ref_to_tag_map[ref]]
         return updates, set(conflicts)
 
 
@@ -1170,6 +1178,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                 isinstance(target, RemoteGitBranch))
 
     def _basic_push(self, overwrite, stop_revision, tag_selector=None):
+        from .remote import RemoteGitError
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -1201,9 +1210,17 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                     continue
                 refs[tag_name_to_ref(name)] = sha
             return refs
-        self.target.repository.send_pack(
+        dw_result = self.target.repository.send_pack(
             get_changed_refs,
             self.source.repository._git.generate_pack_data)
+        if dw_result is not None and not isinstance(dw_result, dict):
+            error = dw_result.ref_status.get(self.target.ref)
+            if error:
+                raise RemoteGitError(error)
+            for ref, error in dw_result.ref_status.items():
+                if error:
+                    trace.warning('unable to open ref %s: %s',
+                                  ref, error)
         return result
 
 

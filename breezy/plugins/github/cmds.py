@@ -52,8 +52,8 @@ class cmd_github_login(Command):
             if errs:
                 err_code = errs[0].get('code')
                 if err_code == u'already_exists':
-                    raise errors.BzrCommandError('token already exists')
-            raise errors.BzrCommandError(e.data['message'])
+                    raise errors.CommandError('token already exists')
+            raise errors.CommandError(e.data['message'])
         # TODO(jelmer): This should really use something in
         # AuthenticationConfig
         from .github import store_github_token

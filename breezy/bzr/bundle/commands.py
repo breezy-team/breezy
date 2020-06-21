@@ -65,11 +65,11 @@ class cmd_bundle_info(Command):
             bundle_info = read_bundle(bundle_file)
         else:
             if verbose:
-                raise errors.BzrCommandError(gettext(
+                raise errors.CommandError(gettext(
                     '--verbose requires a merge directive'))
         reader_method = getattr(bundle_info, 'get_bundle_reader', None)
         if reader_method is None:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 gettext('Bundle format not supported'))
 
         by_kind = {}

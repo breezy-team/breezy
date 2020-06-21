@@ -392,7 +392,7 @@ class Transport(object):
         while True:
             new_transport = cur_transport.clone('..')
             if new_transport.base == cur_transport.base:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     "Failed to create path prefix for %s."
                     % cur_transport.base)
             try:

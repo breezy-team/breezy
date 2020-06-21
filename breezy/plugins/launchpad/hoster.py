@@ -535,7 +535,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
     def check_proposal(self):
         """Check that the submission is sensible."""
         if self.source_branch_lp.self_link == self.target_branch_lp.self_link:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 'Source and target branches must be different.')
         for mp in self.source_branch_lp.landing_targets:
             if mp.queue_status in ('Merged', 'Rejected'):
@@ -668,7 +668,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
     def check_proposal(self):
         """Check that the submission is sensible."""
         if self.source_branch_lp.self_link == self.target_branch_lp.self_link:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 'Source and target branches must be different.')
         for mp in self.source_branch_lp.landing_targets:
             if mp.queue_status in ('Merged', 'Rejected'):

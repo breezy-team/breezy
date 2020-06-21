@@ -135,7 +135,7 @@ def get_merge_type(typestring):
         type_list = '\n'.join(lines)
         msg = "No known merge type %s. Supported types are:\n%s" %\
             (typestring, type_list)
-        raise errors.BzrCommandError(msg)
+        raise errors.CommandError(msg)
 
 
 class Option(object):
@@ -460,7 +460,7 @@ class OptionParser(optparse.OptionParser):
         self.formatter = GettextIndentedHelpFormatter()
 
     def error(self, message):
-        raise errors.BzrCommandError(message)
+        raise errors.CommandError(message)
 
 
 class GettextIndentedHelpFormatter(optparse.IndentedHelpFormatter):

@@ -67,7 +67,7 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None,
         if tree is not None:
             parent_ids = tree.get_parent_ids()
             if len(parent_ids) > 1:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     gettext('Pending merges must be '
                             'committed or reverted before using switch.'))
 
@@ -139,12 +139,12 @@ def _set_branch_location(control, to_branch, current_branch, force=False):
             possible_transports = []
             try:
                 if not force and _any_local_commits(b, possible_transports):
-                    raise errors.BzrCommandError(gettext(
+                    raise errors.CommandError(gettext(
                         'Cannot switch as local commits found in the checkout. '
                         'Commit these to the bound branch or use --force to '
                         'throw them away.'))
             except errors.BoundBranchConnectionFailure as e:
-                raise errors.BzrCommandError(gettext(
+                raise errors.CommandError(gettext(
                     'Unable to connect to current master branch %(target)s: '
                     '%(error)s To switch anyway, use --force.') %
                     e.__dict__)
@@ -165,7 +165,7 @@ def _set_branch_location(control, to_branch, current_branch, force=False):
                     b.controldir.destroy_branch()
                     b.controldir.set_branch_reference(to_branch, name="")
                 else:
-                    raise errors.BzrCommandError(
+                    raise errors.CommandError(
                         gettext('Cannot switch a branch, only a checkout.'))
 
 

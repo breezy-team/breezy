@@ -110,11 +110,11 @@ class OptionTests(TestCase):
         options = [option.Option('number', type=int)]
         opts, args = self.parse(options, ['--number', '6'])
         self.assertEqual(6, opts.number)
-        self.assertRaises(errors.BzrCommandError, self.parse, options,
+        self.assertRaises(errors.CommandError, self.parse, options,
                           ['--number'])
-        self.assertRaises(errors.BzrCommandError, self.parse, options,
+        self.assertRaises(errors.CommandError, self.parse, options,
                           ['--no-number'])
-        self.assertRaises(errors.BzrCommandError, self.parse, options,
+        self.assertRaises(errors.CommandError, self.parse, options,
                           ['--number', 'a'])
 
     def test_is_hidden(self):
@@ -136,7 +136,7 @@ class OptionTests(TestCase):
         self.assertEqual({'format': 'two'}, opts)
         self.assertRaises(option.BadOptionValue, self.parse, options,
                           ['--format', 'three'])
-        self.assertRaises(errors.BzrCommandError, self.parse, options,
+        self.assertRaises(errors.CommandError, self.parse, options,
                           ['--two'])
         options = [option.RegistryOption('format', '', registry, str,
                                          value_switches=True)]
@@ -149,7 +149,7 @@ class OptionTests(TestCase):
         self.assertEqual({'format': 'two'}, opts)
         options = [option.RegistryOption('format', '', registry, str,
                                          enum_switch=False)]
-        self.assertRaises(errors.BzrCommandError, self.parse, options,
+        self.assertRaises(errors.CommandError, self.parse, options,
                           ['--format', 'two'])
 
     def test_override(self):
