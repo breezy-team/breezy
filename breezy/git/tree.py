@@ -726,7 +726,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 def tree_delta_from_git_changes(changes, mappings,
                                 specific_files=None,
                                 require_versioned=False, include_root=False,
-                                target_extras=None):
+                                source_extras=None, target_extras=None):
     """Create a TreeDelta from two git trees.
 
     source and target are iterators over tuples with:
@@ -735,6 +735,8 @@ def tree_delta_from_git_changes(changes, mappings,
     (old_mapping, new_mapping) = mappings
     if target_extras is None:
         target_extras = set()
+    if source_extras is None:
+        source_extras = set()
     ret = delta.TreeDelta()
     added = []
     for (change_type, old, new) in changes:
@@ -861,7 +863,8 @@ def tree_delta_from_git_changes(changes, mappings,
 
 
 def changes_from_git_changes(changes, mapping, specific_files=None,
-                             include_unchanged=False, target_extras=None):
+                             include_unchanged=False, source_extras=None,
+                             target_extras=None):
     """Create a iter_changes-like generator from a git stream.
 
     source and target are iterators over tuples with:
@@ -869,6 +872,8 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
     """
     if target_extras is None:
         target_extras = set()
+    if source_extras is None:
+        source_extras = set()
     for (change_type, old, new) in changes:
         (oldpath, oldmode, oldsha) = old
         (newpath, newmode, newsha) = new
@@ -962,7 +967,7 @@ class InterGitTrees(_mod_tree.InterTree):
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
         with self.lock_read():
-            changes, target_extras = self._iter_git_changes(
+            changes, source_extras, target_extras = self._iter_git_changes(
                 want_unchanged=want_unchanged,
                 require_versioned=require_versioned,
                 specific_files=specific_files,
@@ -971,13 +976,14 @@ class InterGitTrees(_mod_tree.InterTree):
             return tree_delta_from_git_changes(
                 changes, (self.source.mapping, self.target.mapping),
                 specific_files=specific_files,
-                include_root=include_root, target_extras=target_extras)
+                include_root=include_root,
+                source_extras=source_extras, target_extras=target_extras)
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
                      pb=None, extra_trees=[], require_versioned=True,
                      want_unversioned=False):
         with self.lock_read():
-            changes, target_extras = self._iter_git_changes(
+            changes, source_extras, target_extras = self._iter_git_changes(
                 want_unchanged=include_unchanged,
                 require_versioned=require_versioned,
                 specific_files=specific_files,
@@ -987,6 +993,7 @@ class InterGitTrees(_mod_tree.InterTree):
                 changes, self.target.mapping,
                 specific_files=specific_files,
                 include_unchanged=include_unchanged,
+                source_extras=source_extras,
                 target_extras=target_extras)
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
@@ -1074,9 +1081,11 @@ class InterGitRevisionTrees(InterGitTrees):
         else:
             store = self.source._repository._git.object_store
         rename_detector = RenameDetector(store)
-        return tree_changes(
-            store, self.source.tree, self.target.tree, want_unchanged=want_unchanged,
-            include_trees=True, change_type_same=True, rename_detector=rename_detector), set()
+        changes = tree_changes(
+            store, self.source.tree, self.target.tree,
+            want_unchanged=want_unchanged, include_trees=True,
+            change_type_same=True, rename_detector=rename_detector)
+        return changes, set(), set()
 
 
 _mod_tree.InterTree.register_optimiser(InterGitRevisionTrees)
@@ -1639,11 +1648,12 @@ class InterIndexGitTree(InterGitTrees):
                 require_versioned=require_versioned)
         # TODO(jelmer): Restrict to specific_files, for performance reasons.
         with self.lock_read():
-            return changes_between_git_tree_and_working_copy(
+            changes, target_extras = changes_between_git_tree_and_working_copy(
                 self.source.store, self.source.tree,
                 self.target, want_unchanged=want_unchanged,
                 want_unversioned=want_unversioned,
                 rename_detector=self.rename_detector)
+            return changes, set(), target_extras
 
 
 _mod_tree.InterTree.register_optimiser(InterIndexGitTree)
