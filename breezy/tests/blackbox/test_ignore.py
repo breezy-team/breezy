@@ -26,7 +26,7 @@ from breezy import (
     )
 import breezy
 from breezy.branch import Branch
-from breezy.errors import BzrCommandError
+from breezy.errors import CommandError
 from breezy.osutils import (
     pathjoin,
     )

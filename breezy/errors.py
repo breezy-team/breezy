@@ -291,7 +291,7 @@ class NoWhoami(BzrError):
             'E.g. brz whoami "Your Name <name@example.com>"')
 
 
-class BzrCommandError(BzrError):
+class CommandError(BzrError):
     """Error from user command"""
 
     # Error from malformed user command; please avoid raising this as a
@@ -299,8 +299,12 @@ class BzrCommandError(BzrError):
     #
     # I think it's a waste of effort to differentiate between errors that
     # are not intended to be caught anyway.  UI code need not subclass
-    # BzrCommandError, and non-UI code should not throw a subclass of
-    # BzrCommandError.  ADHB 20051211
+    # CommandError, and non-UI code should not throw a subclass of
+    # CommandError.  ADHB 20051211
+
+
+# Provide the old name as backup, for the moment.
+BzrCommandError = Command
 
 
 class NotWriteLocked(BzrError):
@@ -2413,7 +2417,7 @@ class UnsupportedKindChange(BzrError):
         self.format = format
 
 
-class ChangesAlreadyStored(BzrCommandError):
+class ChangesAlreadyStored(CommandError):
 
     _fmt = ('Cannot store uncommitted changes because this branch already'
             ' stores uncommitted changes.')
