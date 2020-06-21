@@ -744,6 +744,7 @@ def tree_delta_from_git_changes(changes, mappings,
         (newpath, newmode, newsha) = new
         if newpath == b'' and not include_root:
             continue
+        copied = (change_type == 'copy')
         if oldpath is not None:
             oldpath_decoded = oldpath.decode('utf-8')
         else:
@@ -761,36 +762,34 @@ def tree_delta_from_git_changes(changes, mappings,
                         specific_files, newpath_decoded))):
             continue
 
-        if oldpath_decoded is None:
-            fileid = new_mapping.generate_file_id(newpath_decoded)
+        if oldpath is None:
             oldexe = None
             oldkind = None
             oldname = None
             oldparent = None
             oldversioned = False
         else:
-            oldversioned = True
+            oldversioned = (oldpath not in source_extras)
             if oldmode:
                 oldexe = mode_is_executable(oldmode)
                 oldkind = mode_kind(oldmode)
             else:
                 oldexe = False
                 oldkind = None
-            if oldpath_decoded == u'':
+            if oldpath == b'':
                 oldparent = None
                 oldname = u''
             else:
                 (oldparentpath, oldname) = osutils.split(oldpath_decoded)
                 oldparent = old_mapping.generate_file_id(oldparentpath)
-            fileid = old_mapping.generate_file_id(oldpath_decoded)
-        if newpath_decoded is None:
+        if newpath is None:
             newexe = None
             newkind = None
             newname = None
             newparent = None
             newversioned = False
         else:
-            newversioned = (newpath_decoded not in target_extras)
+            newversioned = (newpath not in target_extras)
             if newmode:
                 newexe = mode_is_executable(newmode)
                 newkind = mode_kind(newmode)
@@ -803,6 +802,12 @@ def tree_delta_from_git_changes(changes, mappings,
             else:
                 newparentpath, newname = osutils.split(newpath_decoded)
                 newparent = new_mapping.generate_file_id(newparentpath)
+        if oldversioned and not copied:
+            fileid = old_mapping.generate_file_id(oldpath_decoded)
+        elif newversioned:
+            fileid = new_mapping.generate_file_id(newpath_decoded)
+        else:
+            fileid = None
         if old_mapping.is_special_file(oldpath):
             oldpath = None
         if new_mapping.is_special_file(newpath):
@@ -814,16 +819,24 @@ def tree_delta_from_git_changes(changes, mappings,
             (oldversioned, newversioned),
             (oldparent, newparent), (oldname, newname),
             (oldkind, newkind), (oldexe, newexe),
-            copied=(change_type == 'copy'))
-        if oldpath is None:
+            copied=copied)
+        if newpath is not None and not newversioned and newkind != 'directory':
+            change.file_id = None
+            ret.unversioned.append(change)
+        elif change_type == 'add':
             added.append((newpath, newkind))
         elif newpath is None or newmode == 0:
             ret.removed.append(change)
-        elif oldpath != newpath:
-            if change_type == 'copy':
-                ret.copied.append(change)
-            else:
-                ret.renamed.append(change)
+        elif change_type == 'delete':
+            ret.removed.append(change)
+        elif change_type == 'copy':
+            if stat.S_ISDIR(oldmode) and stat.S_ISDIR(newmode):
+                continue
+            ret.copied.append(change)
+        elif change_type == 'rename':
+            if stat.S_ISDIR(oldmode) and stat.S_ISDIR(newmode):
+                continue
+            ret.renamed.append(change)
         elif mode_kind(oldmode) != mode_kind(newmode):
             ret.kind_changed.append(change)
         elif oldsha != newsha or oldmode != newmode:
@@ -845,19 +858,13 @@ def tree_delta_from_git_changes(changes, mappings,
         path_decoded = osutils.normalized_filename(path)[0]
         parent_path, basename = osutils.split(path_decoded)
         parent_id = new_mapping.generate_file_id(parent_path)
-        if path in target_extras:
-            ret.unversioned.append(_mod_tree.TreeChange(
-                None, (None, path_decoded),
-                True, (False, False), (None, parent_id),
+        file_id = new_mapping.generate_file_id(path_decoded)
+        ret.added.append(
+            _mod_tree.TreeChange(
+                file_id, (None, path_decoded), True,
+                (False, True),
+                (None, parent_id),
                 (None, basename), (None, kind), (None, False)))
-        else:
-            file_id = new_mapping.generate_file_id(path_decoded)
-            ret.added.append(
-                _mod_tree.TreeChange(
-                    file_id, (None, path_decoded), True,
-                    (False, True),
-                    (None, parent_id),
-                    (None, basename), (None, kind), (None, False)))
 
     return ret
 
@@ -875,6 +882,8 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
     if source_extras is None:
         source_extras = set()
     for (change_type, old, new) in changes:
+        if change_type == 'unchanged' and not include_unchanged:
+            continue
         (oldpath, oldmode, oldsha) = old
         (newpath, newmode, newsha) = new
         if oldpath is not None:
@@ -897,15 +906,14 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             continue
         if newpath is not None and mapping.is_special_file(newpath):
             continue
-        if oldpath_decoded is None:
-            fileid = mapping.generate_file_id(newpath_decoded)
+        if oldpath is None:
             oldexe = None
             oldkind = None
             oldname = None
             oldparent = None
             oldversioned = False
         else:
-            oldversioned = True
+            oldversioned = (oldpath not in source_extras)
             if oldmode:
                 oldexe = mode_is_executable(oldmode)
                 oldkind = mode_kind(oldmode)
@@ -918,15 +926,14 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             else:
                 (oldparentpath, oldname) = osutils.split(oldpath_decoded)
                 oldparent = mapping.generate_file_id(oldparentpath)
-            fileid = mapping.generate_file_id(oldpath_decoded)
-        if newpath_decoded is None:
+        if newpath is None:
             newexe = None
             newkind = None
             newname = None
             newparent = None
             newversioned = False
         else:
-            newversioned = (newpath_decoded not in target_extras)
+            newversioned = (newpath not in target_extras)
             if newmode:
                 newexe = mode_is_executable(newmode)
                 newkind = mode_kind(newmode)
@@ -940,9 +947,15 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
                 newparentpath, newname = osutils.split(newpath_decoded)
                 newparent = mapping.generate_file_id(newparentpath)
         if (not include_unchanged and
-            oldkind == 'directory' and newkind == 'directory' and
+                oldkind == 'directory' and newkind == 'directory' and
                 oldpath_decoded == newpath_decoded):
             continue
+        if oldversioned and change_type != 'copy':
+            fileid = mapping.generate_file_id(oldpath_decoded)
+        elif newversioned:
+            fileid = mapping.generate_file_id(newpath_decoded)
+        else:
+            fileid = None
         yield _mod_tree.TreeChange(
             fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
             (oldversioned, newversioned),
@@ -1712,13 +1725,16 @@ def changes_between_git_tree_and_working_copy(source_store, from_tree_sha, targe
                         target.store.add_object(blob)
                 blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
-        for e in target.extras():
-            st = target._lstat(e)
+        for e in target._iter_files_recursive(include_dirs=False):
             try:
-                np, accessible = osutils.normalized_filename(e)
+                e, accessible = osutils.normalized_filename(e)
             except UnicodeDecodeError:
                 raise errors.BadFilenameEncoding(
                     e, osutils._fs_enc)
+            np = e.encode('utf-8')
+            if np in blobs:
+                continue
+            st = target._lstat(e)
             if stat.S_ISDIR(st.st_mode):
                 blob = Tree()
             elif stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode):
@@ -1727,7 +1743,6 @@ def changes_between_git_tree_and_working_copy(source_store, from_tree_sha, targe
             else:
                 continue
             target.store.add_object(blob)
-            np = np.encode('utf-8')
             blobs[np] = (blob.id, cleanup_mode(st.st_mode))
             extras.add(np)
     to_tree_sha = commit_tree(
