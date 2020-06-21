@@ -304,7 +304,7 @@ class CommandError(BzrError):
 
 
 # Provide the old name as backup, for the moment.
-BzrCommandError = Command
+BzrCommandError = CommandError
 
 
 class NotWriteLocked(BzrError):
