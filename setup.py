@@ -68,9 +68,8 @@ META_INFO = {
         'patiencediff',
         # Technically, Breezy works without these two dependencies too. But there's
         # no way to enable them by default and let users opt out.
-        'fastimport>=0.9.8',
-        'dulwich>=0.19.12',
-        'dulwich<0.20;python_version<"3.0"',
+        'dulwich>=0.19.12;python_version>="3.5"',
+        'dulwich<0.20,>=0.19.12;python_version<"3.0"',
         ],
     'extras_require': {
         'fastimport': [],
