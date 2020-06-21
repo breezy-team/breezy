@@ -889,13 +889,13 @@ class GuessBuildTypeTests(TestCaseWithTransport):
         # If version string and source format disagree on whether the package
         # is native, raise an exception.
         tree = self.make_branch_and_tree('.')
-        self.writeVersionFile(tree, "3.0 (native)")
+        self.writeVersionFile(tree, "3.0 (quilt)")
         e = self.assertRaises(
             InconsistentSourceFormatError, guess_build_type, tree,
-            Version("1.0-1"), contains_upstream_source=True)
+            Version("1.0"), contains_upstream_source=True)
         self.assertEquals(
             "Inconsistency between source format and version: "
-            "version is not native, format is native.", str(e))
+            "version is native, format is not native.", str(e))
 
 
 class TestExtractOrigTarballs(TestCaseInTempDir):

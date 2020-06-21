@@ -1,3 +1,10 @@
+breezy-debian (2.8.39) UNRELEASED; urgency=medium
+
+  * Allow debian revisions in the version string of native packages, but
+    warn about it.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 21 Jun 2020 03:18:09 +0000
+
 breezy-debian (2.8.38) unstable; urgency=medium
 
   * Adapt version manipulation functions for lintian-brush.
