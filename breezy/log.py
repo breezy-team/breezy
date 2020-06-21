@@ -428,8 +428,21 @@ class _DefaultLogGenerator(LogGenerator):
 
     def __init__(self, branch, rqst):
         self.branch = branch
-        self.rqst = rqst
-        if rqst.get('generate_tags') and branch.supports_tags():
+        self.levels = rqst.get('levels')
+        self.limit = rqst.get('limit')
+        self.diff_type = rqst.get('diff_type')
+        self.delta_type = rqst.get('delta_type')
+        self.show_signature = rqst.get('signature')
+        self.omit_merges = rqst.get('omit_merges')
+        self.generate_tags = rqst.get('generate_tags')
+        self.specific_fileids = rqst.get('specific_fileids')
+        self.match = rqst.get('match')
+        self.start_revision = rqst.get('start_revision')
+        self.end_revision = rqst.get('end_revision')
+        self.direction = rqst.get('direction')
+        self.exclude_common_ancestry = rqst.get('exclude_common_ancestry')
+        self._match_using_deltas = rqst.get('_match_using_deltas')
+        if self.generate_tags and branch.supports_tags():
             self.rev_tag_dict = branch.tags.get_reverse_tag_dict()
         else:
             self.rev_tag_dict = {}
@@ -439,38 +452,32 @@ class _DefaultLogGenerator(LogGenerator):
 
         :return: An iterator yielding LogRevision objects.
         """
-        rqst = self.rqst
-        levels = rqst.get('levels')
-        limit = rqst.get('limit')
-        diff_type = rqst.get('diff_type')
-        show_signature = rqst.get('signature')
-        omit_merges = rqst.get('omit_merges')
         log_count = 0
         revision_iterator = self._create_log_revision_iterator()
         for revs in revision_iterator:
             for (rev_id, revno, merge_depth), rev, delta in revs:
                 # 0 levels means show everything; merge_depth counts from 0
-                if (levels != 0 and merge_depth is not None and
-                        merge_depth >= levels):
+                if (self.levels != 0 and merge_depth is not None and
+                        merge_depth >= self.levels):
                     continue
-                if omit_merges and len(rev.parent_ids) > 1:
+                if self.omit_merges and len(rev.parent_ids) > 1:
                     continue
                 if rev is None:
                     raise errors.GhostRevisionUnusableHere(rev_id)
-                if diff_type is None:
+                if self.diff_type is None:
                     diff = None
                 else:
-                    diff = self._format_diff(rev, rev_id, diff_type)
-                if show_signature:
+                    diff = self._format_diff(rev, rev_id, self.diff_type)
+                if self.show_signature:
                     signature = format_signature_validity(rev_id, self.branch)
                 else:
                     signature = None
                 yield LogRevision(
                     rev, revno, merge_depth, delta,
                     self.rev_tag_dict.get(rev_id), diff, signature)
-                if limit:
+                if self.limit:
                     log_count += 1
-                    if log_count >= limit:
+                    if log_count >= self.limit:
                         return
 
     def _format_diff(self, rev, rev_id, diff_type):
@@ -481,8 +488,8 @@ class _DefaultLogGenerator(LogGenerator):
             ancestor_id = rev.parent_ids[0]
         tree_1 = repo.revision_tree(ancestor_id)
         tree_2 = repo.revision_tree(rev_id)
-        file_ids = self.rqst.get('specific_fileids')
-        if diff_type == 'partial' and file_ids is not None:
+        file_ids = self.specific_fileids
+        if self.diff_type == 'partial' and file_ids is not None:
             specific_files = [tree_2.id2path(id) for id in file_ids]
         else:
             specific_files = None
@@ -499,15 +506,14 @@ class _DefaultLogGenerator(LogGenerator):
             delta).
         """
         self.start_rev_id, self.end_rev_id = _get_revision_limits(
-            self.branch, self.rqst.get('start_revision'),
-            self.rqst.get('end_revision'))
-        if self.rqst.get('_match_using_deltas'):
+            self.branch, self.start_revision, self.end_revision)
+        if self._match_using_deltas:
             return self._log_revision_iterator_using_delta_matching()
         else:
             # We're using the per-file-graph algorithm. This scales really
             # well but only makes sense if there is a single file and it's
             # not a directory
-            file_count = len(self.rqst.get('specific_fileids'))
+            file_count = len(self.specific_fileids)
             if file_count != 1:
                 raise errors.BzrError(
                     "illegal LogRequest: must match-using-deltas "
@@ -516,40 +522,37 @@ class _DefaultLogGenerator(LogGenerator):
 
     def _log_revision_iterator_using_delta_matching(self):
         # Get the base revisions, filtering by the revision range
-        rqst = self.rqst
-        generate_merge_revisions = rqst.get('levels') != 1
-        delayed_graph_generation = not rqst.get('specific_fileids') and (
-            rqst.get('limit') or self.start_rev_id or self.end_rev_id)
+        generate_merge_revisions = self.levels != 1
+        delayed_graph_generation = not self.specific_fileids and (
+            self.limit or self.start_rev_id or self.end_rev_id)
         view_revisions = _calc_view_revisions(
             self.branch, self.start_rev_id, self.end_rev_id,
-            rqst.get('direction'),
+            self.direction,
             generate_merge_revisions=generate_merge_revisions,
             delayed_graph_generation=delayed_graph_generation,
-            exclude_common_ancestry=rqst.get('exclude_common_ancestry'))
+            exclude_common_ancestry=self.exclude_common_ancestry)
 
         # Apply the other filters
         return make_log_rev_iterator(self.branch, view_revisions,
-                                     rqst.get('delta_type'), rqst.get('match'),
-                                     file_ids=rqst.get('specific_fileids'),
-                                     direction=rqst.get('direction'))
+                                     self.delta_type, self.match,
+                                     file_ids=self.specific_fileids,
+                                     direction=self.direction)
 
     def _log_revision_iterator_using_per_file_graph(self):
         # Get the base revisions, filtering by the revision range.
         # Note that we always generate the merge revisions because
         # filter_revisions_touching_file_id() requires them ...
-        rqst = self.rqst
         view_revisions = _calc_view_revisions(
             self.branch, self.start_rev_id, self.end_rev_id,
-            rqst.get('direction'), generate_merge_revisions=True,
-            exclude_common_ancestry=rqst.get('exclude_common_ancestry'))
+            self.direction, generate_merge_revisions=True,
+            exclude_common_ancestry=self.exclude_common_ancestry)
         if not isinstance(view_revisions, list):
             view_revisions = list(view_revisions)
-        view_revisions = _filter_revisions_touching_file_id(self.branch,
-                                                            rqst.get('specific_fileids')[
-                                                                0], view_revisions,
-                                                            include_merges=rqst.get('levels') != 1)
-        return make_log_rev_iterator(self.branch, view_revisions,
-                                     rqst.get('delta_type'), rqst.get('match'))
+        view_revisions = _filter_revisions_touching_file_id(
+            self.branch, self.specific_fileids[0], view_revisions,
+            include_merges=self.levels != 1)
+        return make_log_rev_iterator(
+            self.branch, view_revisions, self.delta_type, self.match)
 
 
 def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
