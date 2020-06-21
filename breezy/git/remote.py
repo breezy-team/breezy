@@ -441,10 +441,10 @@ class RemoteGitDir(GitDir):
                 format=(format.encode('ascii') if format else None),
                 subdirs=subdirs,
                 prefix=(prefix.encode('utf-8') if prefix else None))
-        except GitProtocolError as e:
-            raise parse_git_error(self.transport.external_url(), e)
         except HangupException as e:
             raise parse_git_hangup(self.transport.external_url(), e)
+        except GitProtocolError as e:
+            raise parse_git_error(self.transport.external_url(), e)
         finally:
             if pb is not None:
                 pb.finished()
@@ -465,10 +465,10 @@ class RemoteGitDir(GitDir):
             self._refs = remote_refs_dict_to_container(
                 result.refs, result.symrefs)
             return result
-        except GitProtocolError as e:
-            raise parse_git_error(self.transport.external_url(), e)
         except HangupException as e:
             raise parse_git_hangup(self.transport.external_url(), e)
+        except GitProtocolError as e:
+            raise parse_git_error(self.transport.external_url(), e)
         finally:
             if pb is not None:
                 pb.finished()
@@ -488,10 +488,10 @@ class RemoteGitDir(GitDir):
             return self._client.send_pack(
                 self._client_path, get_changed_refs_wrapper,
                 generate_pack_data, progress)
-        except GitProtocolError as e:
-            raise parse_git_error(self.transport.external_url(), e)
         except HangupException as e:
             raise parse_git_hangup(self.transport.external_url(), e)
+        except GitProtocolError as e:
+            raise parse_git_error(self.transport.external_url(), e)
         finally:
             if pb is not None:
                 pb.finished()
@@ -520,7 +520,11 @@ class RemoteGitDir(GitDir):
 
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
-        self.send_pack(get_changed_refs, generate_pack_data)
+        result = self.send_pack(get_changed_refs, generate_pack_data)
+        if result is not None and not isinstance(result, dict):
+            error = result.ref_status.get(refname)
+            if error:
+                raise RemoteGitError(error)
 
     @property
     def user_url(self):
@@ -663,7 +667,18 @@ class RemoteGitDir(GitDir):
                 else:
                     return source_store.generate_pack_data(
                         have, want, progress=progress, ofs_delta=ofs_delta)
-            new_refs = self.send_pack(get_changed_refs, generate_pack_data)
+            dw_result = self.send_pack(get_changed_refs, generate_pack_data)
+            if not isinstance(dw_result, dict):
+                new_refs = dw_result.refs
+                error = dw_result.ref_status.get(actual_refname)
+                if error:
+                    raise RemoteGitError(error)
+                for ref, error in dw_result.ref_status.items():
+                    if error:
+                        trace.warning('unable to open ref %s: %s',
+                                      ref, error)
+            else:  # dulwich < 0.20.4
+                new_refs = dw_result
         push_result.new_revid = repo.lookup_foreign_revision_id(
             new_refs[actual_refname])
         if old_sha is not None:
@@ -982,7 +997,12 @@ class RemoteGitTagDict(GitTags):
 
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
-        self.repository.send_pack(get_changed_refs, generate_pack_data)
+        result = self.repository.send_pack(
+            get_changed_refs, generate_pack_data)
+        if result and not isinstance(result, dict):
+            error = result.ref_status.get(ref)
+            if error:
+                raise RemoteGitError(error)
 
 
 class RemoteGitBranch(GitBranch):
@@ -1066,7 +1086,12 @@ class RemoteGitBranch(GitBranch):
             return {self.ref: sha}
         def generate_pack_data(have, want, ofs_delta=False):
             return pack_objects_to_data([])
-        self.repository.send_pack(get_changed_refs, generate_pack_data)
+        result = self.repository.send_pack(
+            get_changed_refs, generate_pack_data)
+        if result is not None and not isinstance(result, dict):
+            error = result.ref_status.get(self.ref)
+            if error:
+                raise RemoteGitError(error)
         self._sha = sha
 
 
