@@ -454,6 +454,25 @@ def _log_revision_iterator_using_delta_matching(
                                  direction=direction)
 
 
+def _format_diff(branch, rev, diff_type, file_ids):
+    repo = branch.repository
+    if len(rev.parent_ids) == 0:
+        ancestor_id = _mod_revision.NULL_REVISION
+    else:
+        ancestor_id = rev.parent_ids[0]
+    tree_1 = repo.revision_tree(ancestor_id)
+    tree_2 = repo.revision_tree(rev.revision_id)
+    if diff_type == 'partial' and file_ids is not None:
+        specific_files = [tree_2.id2path(id) for id in file_ids]
+    else:
+        specific_files = None
+    s = BytesIO()
+    path_encoding = get_diff_header_encoding()
+    diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
+                         new_label='', path_encoding=path_encoding)
+    return s.getvalue()
+
+
 class _StartNotLinearAncestor(Exception):
     """Raised when a start revision is not found walking left-hand history."""
 
@@ -507,7 +526,8 @@ class _DefaultLogGenerator(LogGenerator):
                 if self.diff_type is None:
                     diff = None
                 else:
-                    diff = self._format_diff(rev, rev_id, self.diff_type)
+                    diff = _format_diff(
+                        self.branch, rev, self.diff_type, self.specific_fileids)
                 if self.show_signature:
                     signature = format_signature_validity(rev_id, self.branch)
                 else:
@@ -519,25 +539,6 @@ class _DefaultLogGenerator(LogGenerator):
                     log_count += 1
                     if log_count >= self.limit:
                         return
-
-    def _format_diff(self, rev, rev_id, diff_type):
-        repo = self.branch.repository
-        if len(rev.parent_ids) == 0:
-            ancestor_id = _mod_revision.NULL_REVISION
-        else:
-            ancestor_id = rev.parent_ids[0]
-        tree_1 = repo.revision_tree(ancestor_id)
-        tree_2 = repo.revision_tree(rev_id)
-        file_ids = self.specific_fileids
-        if self.diff_type == 'partial' and file_ids is not None:
-            specific_files = [tree_2.id2path(id) for id in file_ids]
-        else:
-            specific_files = None
-        s = BytesIO()
-        path_encoding = get_diff_header_encoding()
-        diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
-                             new_label='', path_encoding=path_encoding)
-        return s.getvalue()
 
     def _create_log_revision_iterator(self):
         """Create a revision iterator for log.
