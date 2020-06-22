@@ -101,6 +101,14 @@ class InterObject(object):
                 return provider(source, target)
         raise NoCompatibleInter(source, target)
 
+    @classmethod
+    def iter_optimisers(klass):
+        for provider in klass._optimisers:
+            if isinstance(provider, tuple):
+                yield get_named_object(provider[0], provider[1])
+            else:
+                yield provider
+
     def lock_read(self):
         """Take out a logical read lock.
 
