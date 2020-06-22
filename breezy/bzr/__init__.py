@@ -197,7 +197,7 @@ register_metadir(
     controldir.format_registry, 'rich-root',
     'breezy.bzr.knitrepo.RepositoryFormatKnit4',
     help='Variant of dirstate with better handling of tree roots. '
-    'Introduced in bzr 1.0',
+    'Introduced in bzr 1.0.',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,
@@ -217,7 +217,7 @@ register_metadir(
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack1',
     help='Pack-based format used in 1.x series. Introduced in 0.92. '
     'Interoperates with bzr repositories before 0.92 but cannot be '
-    'read by bzr < 0.92. ',
+    'read by bzr < 0.92.',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     deprecated=True,
@@ -228,7 +228,7 @@ register_metadir(
     'breezy.bzr.knitpack_repo.RepositoryFormatKnitPack3',
     help='Pack-based format used in 1.x series, with subtree support. '
     'Introduced in 0.92. Interoperates with '
-    'bzr repositories before 0.92 but cannot be read by bzr < 0.92. ',
+    'bzr repositories before 0.92 but cannot be read by bzr < 0.92.',
     branch_format='breezy.bzr.branch.BzrBranchFormat6',
     tree_format='breezy.bzr.workingtree_4.WorkingTreeFormat4',
     hidden=True,

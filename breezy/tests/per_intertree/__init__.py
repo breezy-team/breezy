@@ -135,7 +135,7 @@ def load_tests(loader, standard_tests, pattern):
          inventorytree.InterInventoryTree,
          default_tree_format, default_tree_format,
          return_provided_trees)]
-    for optimiser in InterTree._optimisers:
+    for optimiser in InterTree.iter_optimisers():
         if optimiser is inventorytree.InterCHKRevisionTree:
             # XXX: we shouldn't use an Intertree object to detect inventories
             # -- vila 20090311

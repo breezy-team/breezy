@@ -39,9 +39,6 @@ from ..sixish import (
     viewvalues,
     )
 
-from .commit import (
-    GitCommitBuilder,
-    )
 from .filegraph import (
     GitFileLastChangeScanner,
     GitFileParentProvider,
@@ -106,23 +103,15 @@ class GitCheck(check.Check):
             self._report_repo_results(verbose)
 
 
-_optimisers_loaded = False
-
-
-def lazy_load_optimisers():
-    global _optimisers_loaded
-    if _optimisers_loaded:
-        return
-    from . import interrepo
-    for optimiser in [interrepo.InterRemoteGitNonGitRepository,
-                      interrepo.InterLocalGitNonGitRepository,
-                      interrepo.InterLocalGitLocalGitRepository,
-                      interrepo.InterRemoteGitLocalGitRepository,
-                      interrepo.InterToLocalGitRepository,
-                      interrepo.InterToRemoteGitRepository,
-                      ]:
-        repository.InterRepository.register_optimiser(optimiser)
-    _optimisers_loaded = True
+for optimiser in ['InterRemoteGitNonGitRepository',
+                  'InterLocalGitNonGitRepository',
+                  'InterLocalGitLocalGitRepository',
+                  'InterRemoteGitLocalGitRepository',
+                  'InterToLocalGitRepository',
+                  'InterToRemoteGitRepository',
+                  ]:
+    repository.InterRepository.register_lazy_optimiser(
+        'breezy.git.interrepo', optimiser)
 
 
 class GitRepository(ForeignRepository):
@@ -137,7 +126,6 @@ class GitRepository(ForeignRepository):
         super(GitRepository, self).__init__(GitRepositoryFormat(),
                                             gitdir, control_files=None)
         self.base = gitdir.root_transport.base
-        lazy_load_optimisers()
         self._lock_mode = None
         self._lock_count = 0
 
@@ -265,6 +253,9 @@ class LocalGitRepository(GitRepository):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
+        from .commit import (
+            GitCommitBuilder,
+            )
         builder = GitCommitBuilder(
             self, parents, config, timestamp, timezone, committer, revprops,
             revision_id, lossy)
