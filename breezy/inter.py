@@ -20,6 +20,7 @@ from __future__ import absolute_import
 
 from .errors import BzrError
 from .lock import LogicalLockResult
+from .pyutils import get_named_object
 
 
 class NoCompatibleInter(BzrError):
@@ -92,10 +93,21 @@ class InterObject(object):
         If an optimised worker exists it will be used otherwise
         a default Inter worker instance will be created.
         """
-        for provider in reversed(klass._optimisers):
+        for i, provider in enumerate(reversed(klass._optimisers)):
+            if isinstance(provider, tuple):
+                provider = get_named_object(provider[0], provider[1])
+                klass._optimisers[-i] = provider
             if provider.is_compatible(source, target):
                 return provider(source, target)
         raise NoCompatibleInter(source, target)
+
+    @classmethod
+    def iter_optimisers(klass):
+        for provider in klass._optimisers:
+            if isinstance(provider, tuple):
+                yield get_named_object(provider[0], provider[1])
+            else:
+                yield provider
 
     def lock_read(self):
         """Take out a logical read lock.
@@ -119,6 +131,11 @@ class InterObject(object):
     def register_optimiser(klass, optimiser):
         """Register an InterObject optimiser."""
         klass._optimisers.append(optimiser)
+
+    @classmethod
+    def register_lazy_optimiser(klass, module_name, member_name):
+        # TODO(jelmer): Allow passing in a custom .is_compatible
+        klass._optimisers.append((module_name, member_name))
 
     def unlock(self):
         """Release the locks on source and target."""
