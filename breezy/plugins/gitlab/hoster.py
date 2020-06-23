@@ -215,6 +215,13 @@ class GitLabMergeProposal(MergeProposal):
         return self._branch_url_from_project(
             self._mr['source_project_id'], self._mr['source_branch'])
 
+    def get_source_revision(self):
+        from breezy.git.mapping import default_mapping
+        sha = self._mr['sha']
+        if sha is None:
+            return None
+        return default_mapping.revision_id_foreign_to_bzr(sha.encode('ascii'))
+
     def get_target_branch_url(self):
         return self._branch_url_from_project(
             self._mr['target_project_id'], self._mr['target_branch'])

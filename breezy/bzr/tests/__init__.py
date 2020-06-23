@@ -46,6 +46,7 @@ def load_tests(loader, basic_tests, pattern):
     prefix = __name__ + '.'
 
     testmod_names = [
+        'blackbox',
         'test_dirstate',
         'per_bzrdir',
         'per_inventory',
@@ -58,6 +59,8 @@ def load_tests(loader, basic_tests, pattern):
         'test__dirstate_helpers',
         'test__groupcompress',
         'test_btree_index',
+        'test_bundle',
+        'test_bzrdir',
         'test_chk_map',
         'test_chk_serializer',
         'test_generate_ids',
@@ -68,6 +71,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_knit',
         'test_matchers',
         'test_pack',
+        'test_read_bundle',
         'test_remote',
         'test_repository',
         'test_smart',

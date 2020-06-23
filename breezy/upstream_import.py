@@ -29,7 +29,7 @@ import zipfile
 from . import urlutils
 from .bzr import generate_ids
 from .controldir import ControlDir, is_control_filename
-from .errors import (BzrError, NoSuchFile, BzrCommandError, NotBranchError)
+from .errors import (BzrError, NoSuchFile, CommandError, NotBranchError)
 from .osutils import (pathjoin, isdir, file_iterator, basename,
                       file_kind, splitpath)
 from .trace import warning
@@ -318,7 +318,7 @@ def do_import(source, tree_directory=None):
         tree = WorkingTree.open_containing('.')[0]
     with tree.lock_write():
         if tree.changes_from(tree.basis_tree()).has_changed():
-            raise BzrCommandError("Working tree has uncommitted changes.")
+            raise CommandError("Working tree has uncommitted changes.")
 
         try:
             archive, external_compressor = get_archive_type(source)
@@ -328,7 +328,7 @@ def do_import(source, tree_directory=None):
                 s.seek(0)
                 import_dir(tree, s)
             else:
-                raise BzrCommandError('Unhandled import source')
+                raise CommandError('Unhandled import source')
         else:
             if archive == 'zip':
                 import_zip(tree, open_from_url(source))

@@ -63,7 +63,7 @@ class cmd_gitlab_login(Command):
             try:
                 name = urlutils.parse_url(url)[3].split('.')[-2]
             except (ValueError, IndexError):
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     'please specify a site name with --name')
         if private_token is None:
             note("Please visit %s to obtain a private token.",

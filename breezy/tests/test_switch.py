@@ -123,9 +123,9 @@ class TestSwitch(tests.TestCaseWithTransport):
         to_branch = branch.Branch.open('branch-2')
         # Check fails without --force
         err = self.assertRaises(
-            (errors.BzrCommandError, errors.NotBranchError),
+            (errors.CommandError, errors.NotBranchError),
             switch.switch, checkout.controldir, to_branch)
-        if isinstance(err, errors.BzrCommandError):
+        if isinstance(err, errors.CommandError):
             self.assertContainsRe(str(err),
                                   'Unable to connect to current master branch .*'
                                   'To switch anyway, use --force.')
@@ -147,7 +147,7 @@ class TestSwitch(tests.TestCaseWithTransport):
         tree2.commit('rev2')
         checkout.merge_from_branch(tree2.branch)
         # Check the error reporting is as expected
-        err = self.assertRaises(errors.BzrCommandError,
+        err = self.assertRaises(errors.CommandError,
                                 switch.switch, checkout.controldir, tree2.branch)
         self.assertContainsRe(str(err),
                               "Pending merges must be committed or reverted before using switch")
@@ -220,7 +220,7 @@ class TestSwitchHeavyweight(TestSwitch):
         checkout.commit(message='local only commit', local=True)
         self.build_tree(['checkout/file-4'])
         # Check the error reporting is as expected
-        err = self.assertRaises(errors.BzrCommandError,
+        err = self.assertRaises(errors.CommandError,
                                 switch.switch, checkout.controldir, to_branch)
         self.assertContainsRe(str(err),
                               'Cannot switch as local commits found in the checkout.')

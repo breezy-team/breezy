@@ -25,7 +25,7 @@ from ...commands import (
     Command,
     )
 from ...errors import (
-    BzrCommandError,
+    CommandError,
     NotBranchError,
     )
 from ...i18n import gettext
@@ -192,7 +192,7 @@ class cmd_lp_find_proposal(Command):
                 revision_id = revision[0].as_revision_id(b)
             merged = self._find_proposals(revision_id, pb)
             if len(merged) == 0:
-                raise BzrCommandError(gettext('No review found.'))
+                raise CommandError(gettext('No review found.'))
             trace.note(gettext('%d proposals(s) found.') % len(merged))
             for mp in merged:
                 webbrowser.open(lp_api.canonical_url(mp))

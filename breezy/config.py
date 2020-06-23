@@ -90,7 +90,6 @@ import re
 import stat
 
 from breezy import (
-    atomicfile,
     cmdline,
     controldir,
     debug,
@@ -903,6 +902,7 @@ class IniBasedConfig(Config):
     def _write_config_file(self):
         if self.file_name is None:
             raise AssertionError('We cannot save, self.file_name is None')
+        from . import atomicfile
         conf_dir = os.path.dirname(self.file_name)
         bedding.ensure_config_dir_exists(conf_dir)
         with atomicfile.AtomicFile(self.file_name) as atomic_file:
@@ -2902,7 +2902,7 @@ class CommandLineStore(Store):
             try:
                 name, value = over.split('=', 1)
             except ValueError:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     gettext("Invalid '%s', should be of the form 'name=value'")
                     % (over,))
             self.options[name] = value
@@ -4003,7 +4003,7 @@ class cmd_config(commands.Command):
 
     def _remove_config_option(self, name, directory, scope):
         if name is None:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 '--remove expects an option to remove.')
         conf = self._get_stack(directory, scope, write_access=True)
         try:

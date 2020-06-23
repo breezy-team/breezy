@@ -31,7 +31,6 @@ from breezy.tests import (
     test_log,
     features,
     )
-from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):
@@ -300,13 +299,13 @@ class Test_GenerateAllRevisions(TestLogWithLogCatcher):
         return builder
 
     def test_not_an_ancestor(self):
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           log._generate_all_revisions,
                           self.branch, '1.1.1', '2.1.3', 'reverse',
                           delayed_graph_generation=True)
 
     def test_wrong_order(self):
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           log._generate_all_revisions,
                           self.branch, '5', '2.1.3', 'reverse',
                           delayed_graph_generation=True)

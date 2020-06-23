@@ -126,6 +126,10 @@ class MergeProposal(object):
         """Return the source branch."""
         raise NotImplementedError(self.get_source_branch_url)
 
+    def get_source_revision(self):
+        """Return the latest revision for the source branch."""
+        raise NotImplementedError(self.get_source_revision)
+
     def get_target_branch_url(self):
         """Return the target branch."""
         raise NotImplementedError(self.get_target_branch_url)

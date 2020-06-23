@@ -20,7 +20,6 @@ from breezy import (
     ignores,
     tests,
     )
-from breezy.bzr.tests.matchers import ContainsNoVfsCalls
 
 
 class TestLS(tests.TestCaseWithTransport):

@@ -52,7 +52,7 @@ from .plugin import disable_plugins, load_plugins, plugin_name
 from . import errors, registry
 
 
-class BzrOptionError(errors.BzrCommandError):
+class BzrOptionError(errors.CommandError):
 
     _fmt = "Error in command line options"
 
@@ -298,10 +298,10 @@ def get_cmd_object(cmd_name, plugins_override=True):
         # No command found, see if this was a typo
         candidate = guess_command(cmd_name)
         if candidate is not None:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 gettext('unknown command "%s". Perhaps you meant "%s"')
                 % (cmd_name, candidate))
-        raise errors.BzrCommandError(gettext('unknown command "%s"')
+        raise errors.CommandError(gettext('unknown command "%s"')
                                      % cmd_name)
 
 
@@ -910,7 +910,7 @@ def parse_args(command, argv, alias_argv=None):
     try:
         options, args = parser.parse_args(args)
     except UnicodeEncodeError:
-        raise errors.BzrCommandError(
+        raise errors.CommandError(
             gettext('Only ASCII permitted in option names'))
 
     opts = dict((k, v) for k, v in options.__dict__.items() if
@@ -935,7 +935,7 @@ def _match_argform(cmd, takes_args, args):
                 argdict[argname + '_list'] = None
         elif ap[-1] == '+':
             if not args:
-                raise errors.BzrCommandError(gettext(
+                raise errors.CommandError(gettext(
                     "command {0!r} needs one or more {1}").format(
                     cmd, argname.upper()))
             else:
@@ -943,7 +943,7 @@ def _match_argform(cmd, takes_args, args):
                 args = []
         elif ap[-1] == '$':  # all but one
             if len(args) < 2:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     gettext("command {0!r} needs one or more {1}").format(
                         cmd, argname.upper()))
             argdict[argname + '_list'] = args[:-1]
@@ -952,14 +952,14 @@ def _match_argform(cmd, takes_args, args):
             # just a plain arg
             argname = ap
             if not args:
-                raise errors.BzrCommandError(
+                raise errors.CommandError(
                     gettext("command {0!r} requires argument {1}").format(
                         cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
 
     if args:
-        raise errors.BzrCommandError(gettext(
+        raise errors.CommandError(gettext(
             "extra argument to command {0}: {1}").format(
             cmd, args[0]))
 

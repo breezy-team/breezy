@@ -87,7 +87,7 @@ class cmd_git_import(Command):
             )
         from ..errors import (
             BzrError,
-            BzrCommandError,
+            CommandError,
             NoRepositoryPresent,
             NotBranchError,
             )
@@ -115,7 +115,7 @@ class cmd_git_import(Command):
 
         source_repo = Repository.open(src_location)
         if not isinstance(source_repo, GitRepository):
-            raise BzrCommandError(
+            raise CommandError(
                 gettext("%r is not a git repository") % src_location)
         try:
             target_controldir = ControlDir.open_from_transport(dest_transport)
@@ -128,7 +128,7 @@ class cmd_git_import(Command):
             target_repo = target_controldir.create_repository(shared=True)
 
         if not target_repo.supports_rich_root():
-            raise BzrCommandError(
+            raise CommandError(
                 gettext("Target repository doesn't support rich roots"))
 
         interrepo = InterRepository.get(source_repo, target_repo)
@@ -187,7 +187,7 @@ class cmd_git_object(Command):
     @display_command
     def run(self, sha1=None, directory=".", pretty=False):
         from ..errors import (
-            BzrCommandError,
+            CommandError,
             )
         from ..controldir import (
             ControlDir,
@@ -204,7 +204,7 @@ class cmd_git_object(Command):
                 try:
                     obj = object_store[sha1.encode('ascii')]
                 except KeyError:
-                    raise BzrCommandError(
+                    raise CommandError(
                         gettext("Object not found: %s") % sha1)
                 if pretty:
                     text = obj.as_pretty_string()
@@ -304,7 +304,7 @@ class cmd_git_push_pristine_tar_deltas(Command):
     def run(self, target, package, directory='.'):
         from ..branch import Branch
         from ..errors import (
-            BzrCommandError,
+            CommandError,
             NoSuchRevision,
             )
         from ..trace import warning
@@ -318,7 +318,7 @@ class cmd_git_push_pristine_tar_deltas(Command):
         target_bzr = Repository.open(target)
         target = getattr(target_bzr, '_git', None)
         if target is None:
-            raise BzrCommandError("Target not a git repository")
+            raise CommandError("Target not a git repository")
         git_store = get_object_store(source.repository)
         with git_store.lock_read():
             tag_dict = source.tags.get_tag_dict()
