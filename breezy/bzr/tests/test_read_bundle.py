@@ -19,15 +19,15 @@
 from io import BytesIO
 
 import breezy.mergeable
-from ..bzr.bundle.serializer import write_bundle
+from ..bundle.serializer import write_bundle
 import breezy.bzr.bzrdir
-from .. import errors
-from .. import tests
-from .test_transport import TestTransportImplementation
-from .per_transport import transport_test_permutations
+from ... import errors
+from ... import tests
+from ...tests.test_transport import TestTransportImplementation
+from ...tests.per_transport import transport_test_permutations
 import breezy.transport
 import breezy.urlutils
-from .scenarios import load_tests_apply_scenarios
+from ...tests.scenarios import load_tests_apply_scenarios
 
 
 load_tests = load_tests_apply_scenarios

@@ -140,8 +140,8 @@ class TestTrace(TestCase):
 
     def test_format_unicode_error(self):
         try:
-            raise errors.BzrCommandError(u'argument foo\xb5 does not exist')
-        except errors.BzrCommandError:
+            raise errors.CommandError(u'argument foo\xb5 does not exist')
+        except errors.CommandError:
             msg = _format_exception()
         expected = 'brz: ERROR: argument foo\xb5 does not exist\n'
         self.assertEqual(msg, expected)

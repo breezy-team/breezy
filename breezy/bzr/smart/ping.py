@@ -41,7 +41,7 @@ class cmd_ping(Command):
         try:
             medium = transport.get_smart_medium()
         except errors.NoSmartMedium as e:
-            raise errors.BzrCommandError(str(e))
+            raise errors.CommandError(str(e))
         client = _SmartClient(medium)
         # Use call_expecting_body (even though we don't expect a body) so that
         # we can see the response headers (if any) via the handler object.

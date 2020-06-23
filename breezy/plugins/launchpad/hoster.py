@@ -117,6 +117,23 @@ class LaunchpadMergeProposal(MergeProposal):
                 self._mp.source_git_repository.git_identity,
                 ref=self._mp.source_git_path.encode('utf-8'))
 
+    def get_source_revision(self):
+        if self._mp.source_branch:
+            last_scanned_id = self._mp.source_branch.last_scanned_id
+            if last_scanned_id:
+                return last_scanned_id.encode('utf-8')
+            else:
+                return None
+        else:
+            from breezy.git.mapping import default_mapping
+            git_repo = self._mp.source_git_repository
+            git_ref = git_repo.getRefByPath(path=self._mp.source_git_path)
+            sha = git_ref.commit_sha1
+            if sha is None:
+                return None
+            return default_mapping.revision_id_foreign_to_bzr(
+                sha.encode('ascii'))
+
     def get_target_branch_url(self):
         if self._mp.target_branch:
             return self._mp.target_branch.bzr_identity
@@ -533,7 +550,7 @@ class LaunchpadBazaarMergeProposalBuilder(MergeProposalBuilder):
     def check_proposal(self):
         """Check that the submission is sensible."""
         if self.source_branch_lp.self_link == self.target_branch_lp.self_link:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 'Source and target branches must be different.')
         for mp in self.source_branch_lp.landing_targets:
             if mp.queue_status in ('Merged', 'Rejected'):
@@ -666,7 +683,7 @@ class LaunchpadGitMergeProposalBuilder(MergeProposalBuilder):
     def check_proposal(self):
         """Check that the submission is sensible."""
         if self.source_branch_lp.self_link == self.target_branch_lp.self_link:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 'Source and target branches must be different.')
         for mp in self.source_branch_lp.landing_targets:
             if mp.queue_status in ('Merged', 'Rejected'):

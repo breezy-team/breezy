@@ -44,7 +44,7 @@ def _parse_version_info_format(format):
         return version_info_formats.get_builder(format)
     except KeyError:
         formats = version_info_formats.get_builder_formats()
-        raise errors.BzrCommandError(
+        raise errors.CommandError(
             gettext('No known version info format {0}.'
                     ' Supported types are: {1}').format(format, formats))
 
@@ -98,7 +98,7 @@ class cmd_version_info(Command):
             revision=None):
 
         if revision and len(revision) > 1:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 gettext('brz version-info --revision takes exactly'
                         ' one revision specifier'))
 

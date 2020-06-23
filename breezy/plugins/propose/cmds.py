@@ -49,7 +49,7 @@ def branch_name(branch):
 def _check_already_merged(branch, target):
     # TODO(jelmer): Check entire ancestry rather than just last revision?
     if branch.last_revision() == target.last_revision():
-        raise errors.BzrCommandError(gettext(
+        raise errors.CommandError(gettext(
             'All local changes are already present in target.'))
 
 
@@ -177,7 +177,7 @@ class cmd_propose_merge(Command):
         if submit_branch is None:
             submit_branch = branch.get_parent()
         if submit_branch is None:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 gettext("No target location specified or remembered"))
         target = _mod_branch.Branch.open(submit_branch)
         if not allow_empty:
@@ -237,7 +237,7 @@ class cmd_find_merge_proposal(Command):
         if submit_branch is None:
             submit_branch = branch.get_parent()
         if submit_branch is None:
-            raise errors.BzrCommandError(
+            raise errors.CommandError(
                 gettext("No target location specified or remembered"))
         else:
             target = _mod_branch.Branch.open(submit_branch)

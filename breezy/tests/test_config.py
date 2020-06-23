@@ -2348,7 +2348,7 @@ class TestCommandLineStore(tests.TestCase):
         self.assertEqual('y', section.get('x'))
 
     def test_wrong_syntax(self):
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           self.store._from_cmdline, ['a=b', 'c'])
 
 

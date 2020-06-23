@@ -419,7 +419,7 @@ def workingtree_grep(opts):
     if not tree:
         msg = ('Cannot search working tree. Working tree not found.\n'
                'To search for specific revision in history use the -r option.')
-        raise errors.BzrCommandError(msg)
+        raise errors.CommandError(msg)
 
     # GZ 2010-06-02: Shouldn't be smuggling this on opts, but easy for now
     opts.outputter = _Outputter(opts)

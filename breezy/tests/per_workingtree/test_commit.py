@@ -220,8 +220,8 @@ class TestCommit(TestCaseWithWorkingTree):
             self.assertEqual('a', wt.id2path(a_id))
 
         def fail_message(obj):
-            raise errors.BzrCommandError("empty commit message")
-        self.assertRaises(errors.BzrCommandError, wt.commit,
+            raise errors.CommandError("empty commit message")
+        self.assertRaises(errors.CommandError, wt.commit,
                           message_callback=fail_message)
         self.assertTrue(wt.is_versioned('a'))
         if wt.supports_setting_file_ids():

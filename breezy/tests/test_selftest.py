@@ -3261,7 +3261,7 @@ class TestTestPrefixRegistry(tests.TestCase):
 
     def test_resolve_unknown_alias(self):
         tpr = self._get_registry()
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.CommandError,
                           tpr.resolve_alias, 'I am not a prefix')
 
     def test_predefined_prefixes(self):

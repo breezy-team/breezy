@@ -169,7 +169,7 @@ def serve_command(handler_cls, backend, inf=sys.stdin, outf=sys.stdout):
 
 def serve_git_receive_pack(transport, host=None, port=None, inet=False):
     if not inet:
-        raise errors.BzrCommandError(
+        raise errors.CommandError(
             "git-receive-pack only works in inetd mode")
     backend = BzrBackend(transport)
     sys.exit(serve_command(ReceivePackHandler, backend=backend))
@@ -177,7 +177,7 @@ def serve_git_receive_pack(transport, host=None, port=None, inet=False):
 
 def serve_git_upload_pack(transport, host=None, port=None, inet=False):
     if not inet:
-        raise errors.BzrCommandError(
+        raise errors.CommandError(
             "git-receive-pack only works in inetd mode")
     backend = BzrBackend(transport)
     sys.exit(serve_command(UploadPackHandler, backend=backend))

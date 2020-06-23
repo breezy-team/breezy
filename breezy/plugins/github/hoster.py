@@ -132,6 +132,12 @@ class GitHubMergeProposal(MergeProposal):
     def get_source_branch_url(self):
         return self._branch_from_part(self._pr['head'])
 
+    def get_source_revision(self):
+        """Return the latest revision for the source branch."""
+        from breezy.git.mapping import default_mapping
+        return default_mapping.revision_id_foreign_to_bzr(
+            self._pr['head']['sha'].encode('ascii'))
+
     def get_target_branch_url(self):
         return self._branch_from_part(self._pr['base'])
 
