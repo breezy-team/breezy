@@ -893,13 +893,7 @@ class InterTree(InterObject):
         :return: path in target, or None if there is no equivalent path.
         :raise NoSuchFile: If the path doesn't exist in source
         """
-        file_id = self.source.path2id(path)
-        if file_id is None:
-            raise errors.NoSuchFile(path)
-        try:
-            return self.target.id2path(file_id, recurse=recurse)
-        except errors.NoSuchId:
-            return None
+        raise NotImplementedError(self.find_target_path)
 
     def find_source_path(self, path, recurse='none'):
         """Find the source tree path.
@@ -908,13 +902,7 @@ class InterTree(InterObject):
         :return: path in source, or None if there is no equivalent path.
         :raise NoSuchFile: if the path doesn't exist in target
         """
-        file_id = self.target.path2id(path)
-        if file_id is None:
-            raise errors.NoSuchFile(path)
-        try:
-            return self.source.id2path(file_id, recurse=recurse)
-        except errors.NoSuchId:
-            return None
+        raise NotImplementedError(self.find_source_path)
 
     def find_target_paths(self, paths, recurse='none'):
         """Find target tree paths.

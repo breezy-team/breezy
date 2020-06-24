@@ -1320,6 +1320,36 @@ class InterInventoryTree(InterTree):
                     changed_file_ids.add(result.file_id)
                     yield result
 
+    def find_target_path(self, path, recurse='none'):
+        """Find target tree path.
+
+        :param path: Path to search for (exists in source)
+        :return: path in target, or None if there is no equivalent path.
+        :raise NoSuchFile: If the path doesn't exist in source
+        """
+        file_id = self.source.path2id(path)
+        if file_id is None:
+            raise errors.NoSuchFile(path)
+        try:
+            return self.target.id2path(file_id, recurse=recurse)
+        except errors.NoSuchId:
+            return None
+
+    def find_source_path(self, path, recurse='none'):
+        """Find the source tree path.
+
+        :param path: Path to search for (exists in target)
+        :return: path in source, or None if there is no equivalent path.
+        :raise NoSuchFile: if the path doesn't exist in target
+        """
+        file_id = self.target.path2id(path)
+        if file_id is None:
+            raise errors.NoSuchFile(path)
+        try:
+            return self.source.id2path(file_id, recurse=recurse)
+        except errors.NoSuchId:
+            return None
+
 
 InterTree.register_optimiser(InterInventoryTree)
 
