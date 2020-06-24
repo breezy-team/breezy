@@ -38,6 +38,8 @@ Improvements
  * A new method ``MergeProposal.get_source_revision`` has been added.
    (Jelmer Vernooĳ)
 
+ * Add support for HTTP response code 308. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
