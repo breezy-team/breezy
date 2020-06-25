@@ -499,7 +499,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                             file_id, file_obj, heads, nostore_sha,
                             size=(stat_value.st_size if stat_value else None))
                         yield change.path[1], (entry.text_sha1, stat_value)
-                    except errors.ExistingContent:
+                    except versionedfile.ExistingContent:
                         # No content change against a carry_over parent
                         # Perhaps this should also yield a fs hash update?
                         carried_over = True

@@ -107,7 +107,9 @@ from ..bzr.versionedfile import (
     adapter_registry,
     ConstantMapper,
     ContentFactory,
+    ExistingContent,
     sort_groupcompress,
+    UnavailableRepresentation,
     VersionedFilesWithFallbacks,
     )
 
@@ -225,7 +227,7 @@ class FTAnnotatedToUnannotated(KnitAdapter):
 
     def get_bytes(self, factory, target_storage_kind):
         if target_storage_kind != 'knit-ft-gz':
-            raise errors.UnavailableRepresentation(
+            raise UnavailableRepresentation(
                 factory.key, target_storage_kind, factory.storage_kind)
         annotated_compressed_bytes = factory._raw_record
         rec, contents = \
@@ -241,7 +243,7 @@ class DeltaAnnotatedToUnannotated(KnitAdapter):
 
     def get_bytes(self, factory, target_storage_kind):
         if target_storage_kind != 'knit-delta-gz':
-            raise errors.UnavailableRepresentation(
+            raise UnavailableRepresentation(
                 factory.key, target_storage_kind, factory.storage_kind)
         annotated_compressed_bytes = factory._raw_record
         rec, contents = \
@@ -266,7 +268,7 @@ class FTAnnotatedToFullText(KnitAdapter):
             return b''.join(content.text())
         elif target_storage_kind in ('chunked', 'lines'):
             return content.text()
-        raise errors.UnavailableRepresentation(
+        raise UnavailableRepresentation(
             factory.key, target_storage_kind, factory.storage_kind)
 
 
@@ -295,7 +297,7 @@ class DeltaAnnotatedToFullText(KnitAdapter):
             return b''.join(basis_content.text())
         elif target_storage_kind in ('chunked', 'lines'):
             return basis_content.text()
-        raise errors.UnavailableRepresentation(
+        raise UnavailableRepresentation(
             factory.key, target_storage_kind, factory.storage_kind)
 
 
@@ -312,7 +314,7 @@ class FTPlainToFullText(KnitAdapter):
             return b''.join(content.text())
         elif target_storage_kind in ('chunked', 'lines'):
             return content.text()
-        raise errors.UnavailableRepresentation(
+        raise UnavailableRepresentation(
             factory.key, target_storage_kind, factory.storage_kind)
 
 
@@ -340,7 +342,7 @@ class DeltaPlainToFullText(KnitAdapter):
             return b''.join(content.text())
         elif target_storage_kind in ('chunked', 'lines'):
             return content.text()
-        raise errors.UnavailableRepresentation(
+        raise UnavailableRepresentation(
             factory.key, target_storage_kind, factory.storage_kind)
 
 
@@ -418,7 +420,7 @@ class KnitContentFactory(ContentFactory):
                 return self._knit.get_lines(self.key[0])
             elif storage_kind == 'fulltext':
                 return self._knit.get_text(self.key[0])
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
+        raise UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
@@ -466,7 +468,7 @@ class LazyKnitContentFactory(ContentFactory):
                 return chunks
             else:
                 return b''.join(chunks)
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
+        raise UnavailableRepresentation(self.key, storage_kind,
                                                self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
@@ -1068,7 +1070,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         # that out.
         digest = sha_string(line_bytes)
         if nostore_sha == digest:
-            raise errors.ExistingContent
+            raise ExistingContent
 
         present_parents = []
         if parent_texts is None:
@@ -1793,7 +1795,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
                 try:
                     # Try getting a fulltext directly from the record.
                     lines = record.get_bytes_as('lines')
-                except errors.UnavailableRepresentation:
+                except UnavailableRepresentation:
                     adapter_key = record.storage_kind, 'lines'
                     adapter = get_adapter(adapter_key)
                     lines = adapter.get_bytes(record, 'lines')

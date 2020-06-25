@@ -125,13 +125,6 @@ class TestErrors(tests.TestCase):
         self.assertEqual("Invalid range access in path at 12: bad range",
                          str(error))
 
-    def test_inventory_modified(self):
-        error = errors.InventoryModified("a tree to be repred")
-        self.assertEqualDiff("The current inventory for the tree 'a tree to "
-                             "be repred' has been modified, so a clean inventory cannot be "
-                             "read without data loss.",
-                             str(error))
-
     def test_jail_break(self):
         error = errors.JailBreak("some url")
         self.assertEqualDiff("An attempt to access a url outside the server"
@@ -197,13 +190,6 @@ class TestErrors(tests.TestCase):
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
                              "request limit. Be sure to finish_writing and finish_reading on "
                              "the currently open request.",
-                             str(error))
-
-    def test_unavailable_representation(self):
-        error = errors.UnavailableRepresentation(
-            ('key',), "mpdiff", "fulltext")
-        self.assertEqualDiff("The encoding 'mpdiff' is not available for key "
-                             "('key',) which is encoded as 'fulltext'.",
                              str(error))
 
     def test_unstackable_location(self):

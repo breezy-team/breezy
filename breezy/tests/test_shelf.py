@@ -32,9 +32,6 @@ from . import (
     features,
     KnownFailure,
     )
-from ..errors import (
-    MalformedTransform,
-    )
 
 
 EMPTY_SHELF = (b"Bazaar pack format 1 (introduced in 0.18)\n"
@@ -254,7 +251,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         try:
             creator.transform()
             self.check_shelve_creation(creator, tree)
-        except MalformedTransform:
+        except transform.MalformedTransform:
             raise KnownFailure(
                 'shelving directory with ignored file: see bug #611739')
 

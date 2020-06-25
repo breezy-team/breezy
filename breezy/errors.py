@@ -250,15 +250,6 @@ class NotStacked(BranchError):
     _fmt = "The branch '%(branch)s' is not stacked."
 
 
-class InventoryModified(InternalBzrError):
-
-    _fmt = ("The current inventory for the tree %(tree)r has been modified,"
-            " so a clean inventory cannot be read without data loss.")
-
-    def __init__(self, tree):
-        self.tree = tree
-
-
 class NoWorkingTree(BzrError):
 
     _fmt = 'No WorkingTree exists for "%(base)s".'
@@ -404,18 +395,6 @@ class ResourceBusy(PathError):
 class PermissionDenied(PathError):
 
     _fmt = 'Permission denied: "%(path)s"%(extra)s'
-
-
-class UnavailableRepresentation(InternalBzrError):
-
-    _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "
-            "is encoded as '%(native)s'.")
-
-    def __init__(self, key, wanted, native):
-        InternalBzrError.__init__(self)
-        self.wanted = wanted
-        self.native = native
-        self.key = key
 
 
 class UnsupportedProtocol(PathError):
@@ -1522,23 +1501,6 @@ class DuplicateHelpPrefix(BzrError):
         self.prefix = prefix
 
 
-class MalformedTransform(InternalBzrError):
-
-    _fmt = "Tree transform is malformed %(conflicts)r"
-
-
-class NoFinalPath(BzrError):
-
-    _fmt = ("No final name for trans_id %(trans_id)r\n"
-            "file-id: %(file_id)r\n"
-            "root trans-id: %(root_trans_id)r\n")
-
-    def __init__(self, trans_id, transform):
-        self.trans_id = trans_id
-        self.file_id = transform.final_file_id(trans_id)
-        self.root_trans_id = transform.root
-
-
 class BzrBadParameter(InternalBzrError):
 
     _fmt = "Bad parameter: %(param)r"
@@ -1554,11 +1516,6 @@ class BzrBadParameter(InternalBzrError):
 class BzrBadParameterNotUnicode(BzrBadParameter):
 
     _fmt = "Parameter %(param)s is neither unicode nor utf8."
-
-
-class ReusingTransform(BzrError):
-
-    _fmt = "Attempt to reuse a transform that has already been applied."
 
 
 class CantMoveRoot(BzrError):
@@ -1706,12 +1663,6 @@ class NoDiff3(BzrError):
     _fmt = "Diff3 is not installed on this machine."
 
 
-class ExistingContent(BzrError):
-    # Added in breezy 0.92, used by VersionedFile.add_lines.
-
-    _fmt = "The content being inserted is already present."
-
-
 class ExistingLimbo(BzrError):
 
     _fmt = """This tree contains left-over files from a failed operation.
@@ -1731,17 +1682,6 @@ class ExistingPendingDeletion(BzrError):
 
     def __init__(self, pending_deletion):
         BzrError.__init__(self, pending_deletion=pending_deletion)
-
-
-class ImmortalLimbo(BzrError):
-
-    _fmt = """Unable to delete transform temporary directory %(limbo_dir)s.
-    Please examine %(limbo_dir)s to see if it contains any files you wish to
-    keep, and delete it when you are done."""
-
-    def __init__(self, limbo_dir):
-        BzrError.__init__(self)
-        self.limbo_dir = limbo_dir
 
 
 class ImmortalPendingDeletion(BzrError):
@@ -1970,19 +1910,6 @@ class IncompatibleBundleFormat(BzrError):
         self.other = other
 
 
-class BadInventoryFormat(BzrError):
-
-    _fmt = "Root class for inventory serialization errors"
-
-
-class UnexpectedInventoryFormat(BadInventoryFormat):
-
-    _fmt = "The inventory was not in the expected format:\n %(msg)s"
-
-    def __init__(self, msg):
-        BadInventoryFormat.__init__(self, msg=msg)
-
-
 class RootNotRich(BzrError):
 
     _fmt = """This operation requires rich root data storage"""
@@ -2045,16 +1972,6 @@ class NoMergeSource(BzrError):
         " branch location."
 
 
-class IllegalMergeDirectivePayload(BzrError):
-    """A merge directive contained something other than a patch or bundle"""
-
-    _fmt = "Bad merge directive payload %(start)r"
-
-    def __init__(self, start):
-        BzrError(self)
-        self.start = start
-
-
 class PatchVerificationFailed(BzrError):
     """A patch from a merge directive could not be verified"""
 
@@ -2082,14 +1999,6 @@ class TargetNotBranch(BzrError):
     def __init__(self, location):
         BzrError.__init__(self)
         self.location = location
-
-
-class UnsupportedInventoryKind(BzrError):
-
-    _fmt = """Unsupported entry kind %(kind)s"""
-
-    def __init__(self, kind):
-        self.kind = kind
 
 
 class BadSubsumeSource(BzrError):

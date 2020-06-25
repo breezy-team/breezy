@@ -20,7 +20,7 @@ from breezy import errors
 from breezy.bzr import inventory
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_workingtree import TestCaseWithWorkingTree
-from breezy.bzr.workingtree import InventoryWorkingTree
+from breezy.bzr.workingtree import InventoryWorkingTree, InventoryModified
 
 
 class TestReadWorkingInventory(TestCaseWithWorkingTree):
@@ -49,7 +49,7 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
             # OR, the call can be ignored and the changes preserved
             try:
                 tree.read_working_inventory()
-            except errors.InventoryModified:
+            except InventoryModified:
                 pass
             else:
                 self.assertEqual(b'new-root', tree.path2id(''))

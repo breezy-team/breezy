@@ -62,6 +62,7 @@ from breezy import (
     )
 from breezy.bzr import (
     inventory,
+    serializer,
     xml5,
     xml7,
     )
@@ -99,6 +100,15 @@ MERGE_MODIFIED_HEADER_1 = b"BZR merge-modified list format 1"
 # and the conflict list file format.
 CONFLICT_HEADER_1 = b"BZR conflict list format 1"
 ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
+
+
+class InventoryModified(errors.InternalBzrError):
+
+    _fmt = ("The current inventory for the tree %(tree)r has been modified,"
+            " so a clean inventory cannot be read without data loss.")
+
+    def __init__(self, tree):
+        self.tree = tree
 
 
 class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
@@ -655,7 +665,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         # binary.
         with self.lock_read():
             if self._inventory_is_modified:
-                raise errors.InventoryModified(self)
+                raise InventoryModified(self)
             with self._transport.get('inventory') as f:
                 result = self._deserialize(f)
             self._set_inventory(result, dirty=False)
@@ -812,7 +822,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                     if inv.revision_id == revision_id:
                         return InventoryRevisionTree(
                             self.branch.repository, inv, revision_id)
-                except errors.BadInventoryFormat:
+                except serializer.BadInventoryFormat:
                     pass
         # raise if there was no inventory, or if we read the wrong inventory.
         raise errors.NoSuchRevisionInTree(self, revision_id)
