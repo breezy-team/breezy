@@ -67,11 +67,6 @@ class TestErrors(tests.TestCase):
             "^Filename b?'bad/filen\\\\xe5me' is not valid in your current"
             " filesystem encoding UTF-8$")
 
-    def test_duplicate_file_id(self):
-        error = errors.DuplicateFileId('a_file_id', 'foo')
-        self.assertEqualDiff('File id {a_file_id} already exists in inventory'
-                             ' as foo', str(error))
-
     def test_duplicate_help_prefix(self):
         error = errors.DuplicateHelpPrefix('foo')
         self.assertEqualDiff('The prefix foo is in the help search path twice.',
