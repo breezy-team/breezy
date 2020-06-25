@@ -593,6 +593,9 @@ class RemoteGitDir(GitDir):
             # No revision supplied by the user, default to the branch
             # revision
             revision_id = source.last_revision()
+        else:
+            if not source.repository.has_revision(revision_id):
+                raise NoSuchRevision(source, revision_id)
 
         push_result = GitPushResult()
         push_result.workingtree_updated = None
@@ -645,6 +648,9 @@ class RemoteGitDir(GitDir):
                             new_sha = repo.lookup_bzr_revision_id(revid)[0]
                         except errors.NoSuchRevision:
                             continue
+                        else:
+                            if not source.repository.has_revision(revid):
+                                continue
                     ret[tag_name_to_ref(tagname)] = new_sha
             return ret
         with source_store.lock_read():
