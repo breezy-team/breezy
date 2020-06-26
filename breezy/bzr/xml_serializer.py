@@ -86,7 +86,7 @@ class XMLSerializer(serializer.Serializer):
                                           entry_cache=entry_cache,
                                           return_from_cache=return_from_cache)
         except ParseError as e:
-            raise errors.UnexpectedInventoryFormat(str(e))
+            raise serializer.UnexpectedInventoryFormat(str(e))
 
     def read_inventory(self, f, revision_id=None):
         try:
@@ -96,7 +96,7 @@ class XMLSerializer(serializer.Serializer):
             finally:
                 f.close()
         except ParseError as e:
-            raise errors.UnexpectedInventoryFormat(str(e))
+            raise serializer.UnexpectedInventoryFormat(str(e))
 
     def write_revision_to_string(self, rev):
         return b''.join(self.write_revision_to_lines(rev))
@@ -320,7 +320,7 @@ def unpack_inventory_entry(elt, entry_cache=None, return_from_cache=False):
         ie = inventory.TreeReference(file_id, name, parent_id, revision,
                                      reference_revision)
     else:
-        raise errors.UnsupportedInventoryKind(kind)
+        raise serializer.UnsupportedInventoryKind(kind)
     ie.revision = revision
     if revision is not None and entry_cache is not None:
         # We cache a copy() because callers like to mutate objects, and
@@ -344,11 +344,11 @@ def unpack_inventory_flat(elt, format_num, unpack_entry,
         encountered
     """
     if elt.tag != 'inventory':
-        raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
+        raise serializer.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
     format = elt.get('format')
     if ((format is None and format_num is not None) or
             format.encode() != format_num):
-        raise errors.UnexpectedInventoryFormat('Invalid format version %r'
+        raise serializer.UnexpectedInventoryFormat('Invalid format version %r'
                                                % format)
     revision_id = elt.get('revision_id')
     if revision_id is not None:
@@ -422,7 +422,7 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
                     parent_str))
         elif ie.kind == 'tree-reference':
             if ie.kind not in supported_kinds:
-                raise errors.UnsupportedInventoryKind(ie.kind)
+                raise serializer.UnsupportedInventoryKind(ie.kind)
             if not working:
                 append(b'<tree-reference file_id="%s" name="%s"%s '
                        b'revision="%s" reference_revision="%s" />\n' % (
@@ -437,5 +437,5 @@ def serialize_inventory_flat(inv, append, root_id, supported_kinds, working):
                     encode_and_escape(ie.name),
                     parent_str))
         else:
-            raise errors.UnsupportedInventoryKind(ie.kind)
+            raise serializer.UnsupportedInventoryKind(ie.kind)
     append(b'</inventory>\n')

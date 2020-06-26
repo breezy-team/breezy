@@ -23,9 +23,9 @@ from dulwich.object_store import (
     )
 
 from .. import osutils
+from ..bzr.versionedfile import UnavailableRepresentation
 from ..errors import (
     NoSuchRevision,
-    UnavailableRepresentation,
     )
 from ..graph import Graph
 from ..revision import (

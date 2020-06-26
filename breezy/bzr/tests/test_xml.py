@@ -21,6 +21,7 @@ from ... import (
     )
 from .. import (
     inventory,
+    serializer,
     xml6,
     xml7,
     xml8,
@@ -409,10 +410,10 @@ class TestSerializer(TestCase):
         """Can't accidentally open a file with wrong serializer"""
         s_v6 = breezy.bzr.xml6.serializer_v6
         s_v7 = xml7.serializer_v7
-        self.assertRaises(errors.UnexpectedInventoryFormat,
+        self.assertRaises(serializer.UnexpectedInventoryFormat,
                           s_v7.read_inventory_from_lines,
                           breezy.osutils.split_lines(_expected_inv_v5))
-        self.assertRaises(errors.UnexpectedInventoryFormat,
+        self.assertRaises(serializer.UnexpectedInventoryFormat,
                           s_v6.read_inventory_from_lines,
                           breezy.osutils.split_lines(_expected_inv_v7))
 
@@ -424,9 +425,9 @@ class TestSerializer(TestCase):
         inv.root.revision = b'root-rev'
         inv.add(inventory.TreeReference(b'nested-id', 'nested', b'tree-root-321',
                                         b'rev-outer', b'rev-inner'))
-        self.assertRaises(errors.UnsupportedInventoryKind,
+        self.assertRaises(serializer.UnsupportedInventoryKind,
                           s_v5.write_inventory_to_lines, inv)
-        self.assertRaises(errors.UnsupportedInventoryKind,
+        self.assertRaises(serializer.UnsupportedInventoryKind,
                           s_v6.write_inventory_to_lines, inv)
         lines = s_v7.write_inventory_to_chunks(inv)
         inv2 = s_v7.read_inventory_from_lines(lines)
@@ -528,7 +529,7 @@ class TestSerializer(TestCase):
     def test_serialization_error(self):
         s_v5 = breezy.bzr.xml5.serializer_v5
         e = self.assertRaises(
-            errors.UnexpectedInventoryFormat,
+            serializer.UnexpectedInventoryFormat,
             s_v5.read_inventory_from_lines, [b"<Notquitexml"])
         self.assertEqual(str(e), "unclosed token: line 1, column 0")
 

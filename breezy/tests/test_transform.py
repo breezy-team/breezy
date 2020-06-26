@@ -51,11 +51,8 @@ from ..errors import (
     DuplicateKey,
     ExistingLimbo,
     ExistingPendingDeletion,
-    ImmortalLimbo,
     ImmortalPendingDeletion,
     LockError,
-    MalformedTransform,
-    ReusingTransform,
 )
 from ..osutils import (
     file_kind,
@@ -86,6 +83,10 @@ from ..transform import (
     resolve_conflicts,
     resolve_checkout,
     ROOT_PARENT,
+    ImmortalLimbo,
+    MalformedTransform,
+    NoFinalPath,
+    ReusingTransform,
     TransformPreview,
     TreeTransform,
 )
@@ -982,7 +983,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(('missing parent', 'Created directory', 'new-1'),
                          raw_conflicts.pop())
         # apply fail since the missing directory doesn't exist
-        self.assertRaises(errors.NoFinalPath, tt.apply)
+        self.assertRaises(NoFinalPath, tt.apply)
 
     def test_moving_versioned_directories(self):
         create, root = self.get_transform()
@@ -2445,7 +2446,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch, tt = self.get_branch_and_transform()
         parent_id = tt.trans_id_file_id(b'parent-id')
         tt.new_file('file', parent_id, [b'contents'], b'file-id')
-        self.assertRaises(errors.MalformedTransform, tt.commit, branch,
+        self.assertRaises(MalformedTransform, tt.commit, branch,
                           'message')
 
     def test_commit_rich_revision_data(self):

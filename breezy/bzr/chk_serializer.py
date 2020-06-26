@@ -22,6 +22,7 @@ from .. import lazy_import
 lazy_import.lazy_import(globals(),
                         """
 from breezy.bzr import (
+    serializer,
     xml_serializer,
     )
 """)
@@ -183,7 +184,7 @@ class CHKSerializer(serializer.Serializer):
                 entry_cache=entry_cache,
                 return_from_cache=return_from_cache)
         except xml_serializer.ParseError as e:
-            raise errors.UnexpectedInventoryFormat(e)
+            raise serializer.UnexpectedInventoryFormat(e)
 
     def read_inventory(self, f, revision_id=None):
         """Read an inventory from a file-like object."""
@@ -194,7 +195,7 @@ class CHKSerializer(serializer.Serializer):
             finally:
                 f.close()
         except xml_serializer.ParseError as e:
-            raise errors.UnexpectedInventoryFormat(e)
+            raise serializer.UnexpectedInventoryFormat(e)
 
     def write_inventory_to_lines(self, inv):
         """Return a list of lines with the encoded inventory."""

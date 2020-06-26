@@ -81,7 +81,6 @@ from .. import (
 from ..errors import (
     RevisionAlreadyPresent,
     RevisionNotPresent,
-    UnavailableRepresentation,
     )
 from ..osutils import dirname, sha, sha_strings, split_lines
 from ..revision import NULL_REVISION
@@ -93,7 +92,9 @@ from .versionedfile import (
     AbsentContentFactory,
     adapter_registry,
     ContentFactory,
+    ExistingContent,
     sort_groupcompress,
+    UnavailableRepresentation,
     VersionedFile,
     )
 from .weavefile import _read_weave_v5, write_weave_v5
@@ -488,7 +489,7 @@ class Weave(VersionedFile):
         if not sha1:
             sha1 = sha_strings(lines)
         if sha1 == nostore_sha:
-            raise errors.ExistingContent
+            raise ExistingContent
         if version_id is None:
             version_id = b"sha1:" + sha1
         if version_id in self._name_map:

@@ -84,6 +84,7 @@ def load_tests(loader, basic_tests, pattern):
         'test_versionedfile',
         'test_vf_search',
         'test_vfs_ratchet',
+        'test_workingtree',
         'test_workingtree_4',
         'test_weave',
         'test_xml',
