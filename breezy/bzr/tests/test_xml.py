@@ -21,6 +21,7 @@ from ... import (
     )
 from .. import (
     inventory,
+    serializer,
     xml6,
     xml7,
     xml8,
