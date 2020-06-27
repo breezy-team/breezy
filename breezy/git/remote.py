@@ -82,6 +82,7 @@ from .errors import (
     NoSuchRef,
     )
 from .mapping import (
+    encode_git_path,
     mapping_registry,
     )
 from .object_store import (
@@ -439,7 +440,7 @@ class RemoteGitDir(GitDir):
                 write_error,
                 format=(format.encode('ascii') if format else None),
                 subdirs=subdirs,
-                prefix=(prefix.encode('utf-8') if prefix else None))
+                prefix=(encode_git_path(prefix) if prefix else None))
         except HangupException as e:
             raise parse_git_hangup(self.transport.external_url(), e)
         except GitProtocolError as e:

@@ -133,6 +133,16 @@ def fix_person_identifier(text):
     return b"%s <%s>" % (username, email)
 
 
+def decode_git_path(path):
+    """Take a git path and decode it."""
+    return path.decode('utf-8')
+
+
+def encode_git_path(path):
+    """Take a regular path and encode it for git."""
+    return path.encode('utf-8')
+
+
 def warn_escaped(commit, num_escaped):
     trace.warning("Escaped %d XML-invalid characters in %s. Will be unable "
                   "to regenerate the SHA map.", num_escaped, commit)
@@ -178,7 +188,7 @@ class BzrGitMapping(foreign.VcsMapping):
         # Git paths are just bytestrings
         # We must just hope they are valid UTF-8..
         if isinstance(path, text_type):
-            path = path.encode("utf-8")
+            path = encode_git_path(path)
         if path == b"":
             return ROOT_ID
         return FILE_ID_PREFIX + escape_file_id(path)
@@ -188,7 +198,7 @@ class BzrGitMapping(foreign.VcsMapping):
             return u""
         if not file_id.startswith(FILE_ID_PREFIX):
             raise ValueError
-        return unescape_file_id(file_id[len(FILE_ID_PREFIX):]).decode('utf-8')
+        return decode_git_path(unescape_file_id(file_id[len(FILE_ID_PREFIX):]))
 
     def revid_as_refname(self, revid):
         if not isinstance(revid, bytes):
@@ -584,7 +594,7 @@ def symlink_to_blob(symlink_target):
     from dulwich.objects import Blob
     blob = Blob()
     if isinstance(symlink_target, text_type):
-        symlink_target = symlink_target.encode('utf-8')
+        symlink_target = encode_git_path(symlink_target)
     blob.data = symlink_target
     return blob
 

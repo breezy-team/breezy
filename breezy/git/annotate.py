@@ -32,6 +32,11 @@ from ..revision import (
     NULL_REVISION,
     )
 
+from .mapping import (
+    decode_git_path,
+    encode_git_path,
+    )
+
 
 class GitBlobContentFactory(object):
     """Static data content factory.
@@ -116,7 +121,7 @@ class AnnotateProvider(object):
             self.change_scanner.repository.lookup_bzr_revision_id(
                 text_revision))
         text_parents = []
-        path = path.encode('utf-8')
+        path = encode_git_path(path)
         for commit_parent in self.store[commit_id].parents:
             try:
                 (path, text_parent) = (
@@ -127,7 +132,7 @@ class AnnotateProvider(object):
             if text_parent not in text_parents:
                 text_parents.append(text_parent)
         return tuple([
-            (path.decode('utf-8'),
+            (decode_git_path(path),
                 self.change_scanner.repository.lookup_foreign_revision_id(p))
             for p in text_parents])
 
@@ -165,7 +170,7 @@ class AnnotateProvider(object):
                 continue
             try:
                 (mode, blob_sha) = tree_lookup_path(
-                    store.__getitem__, tree_id, path.encode('utf-8'))
+                    store.__getitem__, tree_id, encode_git_path(path))
             except KeyError:
                 yield GitAbsentContentFactory(store, path, text_revision)
             else:
