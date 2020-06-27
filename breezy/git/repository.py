@@ -45,6 +45,7 @@ from .filegraph import (
     )
 from .mapping import (
     default_mapping,
+    encode_git_path,
     foreign_vcs_git,
     mapping_registry,
     )
@@ -307,7 +308,7 @@ class LocalGitRepository(GitRepository):
                 try:
                     obj = tree_lookup_path(
                         self._git.object_store.__getitem__, root_tree,
-                        path.encode('utf-8'))
+                        encode_git_path(path))
                     if isinstance(obj, tuple):
                         (mode, item_id) = obj
                         obj = self._git.object_store[item_id]

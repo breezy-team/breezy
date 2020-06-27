@@ -72,6 +72,8 @@ from ..sixish import (
     )
 
 from .mapping import (
+    encode_git_path,
+    decode_git_path,
     mode_is_executable,
     mode_kind,
     default_mapping,
@@ -302,10 +304,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
             info = self._submodule_info()[relpath]
         except KeyError:
             nested_repo_transport = self._repository.controldir.user_transport.clone(
-                relpath.decode('utf-8'))
+                decode_git_path(relpath))
         else:
             nested_repo_transport = self._repository.controldir.control_transport.clone(
-                posixpath.join('modules', info[1].decode('utf-8')))
+                posixpath.join('modules', decode_git_path(info[1])))
         nested_controldir = _mod_controldir.ControlDir.open_from_transport(
             nested_repo_transport)
         return nested_controldir.find_repository()
@@ -314,7 +316,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return self._get_submodule_repository(relpath)._git.object_store
 
     def get_nested_tree(self, path):
-        encoded_path = path.encode('utf-8')
+        encoded_path = encode_git_path(path)
         nested_repo = self._get_submodule_repository(encoded_path)
         ref_rev = self.get_reference_revision(path)
         return nested_repo.revision_tree(ref_rev)
@@ -327,7 +329,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if self.commit_id == ZERO_SHA:
             return NULL_REVISION
         (unused_path, commit_id) = change_scanner.find_last_change_revision(
-            path.encode('utf-8'), self.commit_id)
+            encode_git_path(path), self.commit_id)
         return self._repository.lookup_foreign_revision_id(
             commit_id, self.mapping)
 
@@ -374,7 +376,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             tree = store[tree_id]
             for name, mode, hexsha in tree.items():
                 subpath = posixpath.join(path, name)
-                ret.add(subpath.decode('utf-8'))
+                ret.add(decode_git_path(subpath))
                 if stat.S_ISDIR(mode):
                     todo.append((store, subpath, hexsha))
         return ret
@@ -482,7 +484,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 else:
                     ie = self._get_file_ie(
                         store, child_path, name, mode, hexsha, parent_id)
-                yield (child_relpath.decode('utf-8'), "V", ie.kind, ie)
+                yield (decode_git_path(child_relpath), "V", ie.kind, ie)
 
     def _get_file_ie(self, store, path, name, mode, hexsha, parent_id):
         if not isinstance(path, bytes):
@@ -490,12 +492,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if not isinstance(name, bytes):
             raise TypeError(name)
         kind = mode_kind(mode)
-        path = path.decode('utf-8')
-        name = name.decode("utf-8")
+        path = decode_git_path(path)
+        name = decode_git_path(name)
         file_id = self.mapping.generate_file_id(path)
         ie = entry_factory[kind](file_id, name, parent_id)
         if kind == 'symlink':
-            ie.symlink_target = store[hexsha].data.decode('utf-8')
+            ie.symlink_target = decode_git_path(store[hexsha].data)
         elif kind == 'tree-reference':
             ie.reference_revision = self.mapping.revision_id_foreign_to_bzr(
                 hexsha)
@@ -507,7 +509,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return ie
 
     def _get_dir_ie(self, path, parent_id):
-        path = path.decode('utf-8')
+        path = decode_git_path(path)
         file_id = self.mapping.generate_file_id(path)
         return GitTreeDirectory(file_id, posixpath.basename(path), parent_id)
 
@@ -517,7 +519,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if mode is not None and not stat.S_ISDIR(mode):
             return
 
-        encoded_path = path.encode('utf-8')
+        encoded_path = encode_git_path(path)
         file_id = self.path2id(path)
         tree = store[tree_sha]
         for name, mode, hexsha in tree.iteritems():
@@ -538,7 +540,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
             if specific_files in ([""], []):
                 specific_files = None
             else:
-                specific_files = set([p.encode('utf-8')
+                specific_files = set([encode_git_path(p)
                                       for p in specific_files])
         todo = deque([(self.store, b"", self.tree, self.path2id(''))])
         if specific_files is None or u"" in specific_files:
@@ -551,7 +553,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 if self.mapping.is_special_file(name):
                     continue
                 child_path = posixpath.join(path, name)
-                child_path_decoded = child_path.decode('utf-8')
+                child_path_decoded = decode_git_path(child_path)
                 if recurse_nested and S_ISGITLINK(mode):
                     mode = stat.S_IFDIR
                     store = self._get_submodule_store(child_path)
@@ -610,7 +612,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         """See RevisionTree.get_symlink_target."""
         (store, mode, hexsha) = self._lookup_path(path)
         if stat.S_ISLNK(mode):
-            return store[hexsha].data.decode('utf-8')
+            return decode_git_path(store[hexsha].data)
         else:
             return None
 
@@ -619,7 +621,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         (store, mode, hexsha) = self._lookup_path(path)
         if S_ISGITLINK(mode):
             try:
-                nested_repo = self._get_submodule_repository(path.encode('utf-8'))
+                nested_repo = self._get_submodule_repository(encode_git_path(path))
             except errors.NotBranchError:
                 return self.mapping.revision_id_foreign_to_bzr(hexsha)
             else:
@@ -645,9 +647,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return (kind, len(contents), executable,
                     osutils.sha_string(contents))
         elif kind == 'symlink':
-            return (kind, None, None, store[hexsha].data.decode('utf-8'))
+            return (kind, None, None, decode_git_path(store[hexsha].data))
         elif kind == 'tree-reference':
-            nested_repo = self._get_submodule_repository(path.encode('utf-8'))
+            nested_repo = self._get_submodule_repository(encode_git_path(path))
             return (kind, None, None,
                     nested_repo.lookup_foreign_revision_id(hexsha))
         else:
@@ -703,21 +705,21 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def walkdirs(self, prefix=u""):
         (store, mode, hexsha) = self._lookup_path(prefix)
         todo = deque(
-            [(store, prefix.encode('utf-8'), hexsha, self.path2id(prefix))])
+            [(store, encode_git_path(prefix), hexsha, self.path2id(prefix))])
         while todo:
             store, path, tree_sha, parent_id = todo.popleft()
-            path_decoded = path.decode('utf-8')
+            path_decoded = decode_git_path(path)
             tree = store[tree_sha]
             children = []
             for name, mode, hexsha in tree.iteritems():
                 if self.mapping.is_special_file(name):
                     continue
                 child_path = posixpath.join(path, name)
-                file_id = self.path2id(child_path.decode('utf-8'))
+                file_id = self.path2id(decode_git_path(child_path))
                 if stat.S_ISDIR(mode):
                     todo.append((store, child_path, hexsha, file_id))
                 children.append(
-                    (child_path.decode('utf-8'), name.decode('utf-8'),
+                    (decode_git_path(child_path), decode_git_path(name),
                         mode_kind(mode), None,
                         file_id, mode_kind(mode)))
             yield (path_decoded, parent_id), children
@@ -746,11 +748,11 @@ def tree_delta_from_git_changes(changes, mappings,
             continue
         copied = (change_type == 'copy')
         if oldpath is not None:
-            oldpath_decoded = oldpath.decode('utf-8')
+            oldpath_decoded = decode_git_path(oldpath)
         else:
             oldpath_decoded = None
         if newpath is not None:
-            newpath_decoded = newpath.decode('utf-8')
+            newpath_decoded = decode_git_path(newpath)
         else:
             newpath_decoded = None
         if not (specific_files is None or
@@ -887,11 +889,11 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
         (oldpath, oldmode, oldsha) = old
         (newpath, newmode, newsha) = new
         if oldpath is not None:
-            oldpath_decoded = oldpath.decode('utf-8')
+            oldpath_decoded = decode_git_path(oldpath)
         else:
             oldpath_decoded = None
         if newpath is not None:
-            newpath_decoded = newpath.decode('utf-8')
+            newpath_decoded = decode_git_path(newpath)
         else:
             newpath_decoded = None
         if not (specific_files is None or
@@ -1115,7 +1117,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
 
     def is_versioned(self, path):
         with self.lock_read():
-            path = path.rstrip('/').encode('utf-8')
+            path = encode_git_path(path.rstrip('/'))
             (index, subpath) = self._lookup_index(path)
             return (subpath in index or self._has_dir(path))
 
@@ -1281,7 +1283,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             raise AssertionError("unknown kind '%s'" % kind)
         # Add an entry to the index or update the existing entry
         ensure_normalized_path(path)
-        encoded_path = path.encode("utf-8")
+        encoded_path = encode_git_path(path)
         if b'\r' in encoded_path or b'\n' in encoded_path:
             # TODO(jelmer): Why do we need to do this?
             trace.mutter('ignoring path with invalid newline in it: %r', path)
@@ -1326,7 +1328,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                     recurse_nested=recurse_nested):
                 if self.mapping.is_special_file(path):
                     continue
-                path = path.decode("utf-8")
+                path = decode_git_path(path)
                 if specific_files is not None and path not in specific_files:
                     continue
                 (parent, name) = posixpath.split(path)
@@ -1412,7 +1414,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
     def _unversion_path(self, path):
         if self._lock_mode is None:
             raise errors.ObjectNotLocked(self)
-        encoded_path = path.encode("utf-8")
+        encoded_path = encode_git_path(path)
         count = 0
         (index, subpath) = self._lookup_index(encoded_path)
         try:
@@ -1445,7 +1447,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         for (old_path, new_path, file_id, ie) in delta:
             if old_path is not None:
                 (index, old_subpath) = self._lookup_index(
-                    old_path.encode('utf-8'))
+                    encode_git_path(old_path))
                 if old_subpath in index:
                     self._index_del_entry(index, old_subpath)
                     self._versioned_dirs = None
@@ -1471,11 +1473,11 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             return rename_tuples
 
     def rename_one(self, from_rel, to_rel, after=None):
-        from_path = from_rel.encode("utf-8")
+        from_path = encode_git_path(from_rel)
         to_rel, can_access = osutils.normalized_filename(to_rel)
         if not can_access:
             raise errors.InvalidNormalization(to_rel)
-        to_path = to_rel.encode("utf-8")
+        to_path = encode_git_path(to_rel)
         with self.lock_tree_write():
             if not after:
                 # Perhaps it's already moved?
@@ -1601,7 +1603,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
             return (kind, None, None, None)
 
     def stored_kind(self, relpath):
-        (index, index_path) = self._lookup_index(relpath.encode('utf-8'))
+        (index, index_path) = self._lookup_index(encode_git_path(relpath))
         if index is None:
             return kind
         try:
@@ -1711,7 +1713,7 @@ def changes_between_git_tree_and_working_copy(source_store, from_tree_sha, targe
                     else:
                         mode &= ~0o111
                 if live_entry.sha != index_entry.sha:
-                    rp = path.decode('utf-8')
+                    rp = decode_git_path(path)
                     if stat.S_ISREG(live_entry.mode):
                         blob = Blob()
                         with target.get_file(rp) as f:
@@ -1731,7 +1733,7 @@ def changes_between_git_tree_and_working_copy(source_store, from_tree_sha, targe
             except UnicodeDecodeError:
                 raise errors.BadFilenameEncoding(
                     e, osutils._fs_enc)
-            np = e.encode('utf-8')
+            np = encode_git_path(e)
             if np in blobs:
                 continue
             st = target._lstat(e)
