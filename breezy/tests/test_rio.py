@@ -331,7 +331,10 @@ s: both\\\"
     def test_rio_surrogateescape(self):
         raw_bytes = b'\xcb'
         self.assertRaises(UnicodeDecodeError, raw_bytes.decode, 'utf-8')
-        uni_data = raw_bytes.decode('utf-8', 'surrogateescape')
+        try:
+            uni_data = raw_bytes.decode('utf-8', 'surrogateescape')
+        except LookupError:
+            self.skipTest('surrogateescape is not available on Python < 3')
         s = Stanza(foo=uni_data)
         self.assertEqual(s.get('foo'), uni_data)
         raw_lines = s.to_lines()
