@@ -2839,8 +2839,8 @@ class cmd_log(Command):
             # find the file ids to log and check for directory filtering
             b, file_info_list, rev1, rev2 = _get_info_for_log_files(
                 revision, file_list, self._exit_stack)
-            for relpath, found, kind in file_info_list:
-                if not found:
+            for relpath, kind in file_info_list:
+                if not kind:
                     raise errors.CommandError(gettext(
                         "Path unknown at end or start of revision range: %s") %
                         relpath)

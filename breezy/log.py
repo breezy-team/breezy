@@ -82,6 +82,7 @@ from .osutils import (
     format_date_with_offset_in_original_timezone,
     get_diff_header_encoding,
     get_terminal_encoding,
+    is_inside,
     terminal_width,
     )
 from .sixish import (
@@ -1058,15 +1059,27 @@ def _update_files(delta, files, stop_on):
             if item.path[1] in files:
                 files.remove(item.path[1])
         for item in delta.copied + delta.renamed:
-            files.remove(item.path[1])
-            files.add(item.path[0])
+            if item.path[1] in files:
+                files.remove(item.path[1])
+                files.add(item.path[0])
+            if item.kind[1] == 'directory':
+                for path in list(files):
+                    if is_inside(item.path[1], path):
+                        files.remove(path)
+                        files.add(item.path[0] + path[len(item.path[1]):])
     elif stop_on == 'delete':
         for item in delta.removed:
             if item.path[0] in files:
                 files.remove(item.path[0])
         for item in delta.copied + delta.renamed:
-            files.remove(item.path[0])
-            files.add(item.path[1])
+            if item.path[0] in files:
+                files.remove(item.path[0])
+                files.add(item.path[1])
+            if item.kind[0] == 'directory':
+                for path in list(files):
+                    if is_inside(item.path[0], path):
+                        files.remove(path)
+                        files.add(item.path[1] + path[len(item.path[0]):])
 
 
 def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
@@ -2126,29 +2139,26 @@ def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
         tree1 = None
         for fp in relpaths:
             kind = _get_kind_for_file(tree, fp)
-            if not tree.is_versioned(fp):
+            if not kind:
                 # go back to when time began
                 if tree1 is None:
                     try:
                         rev1 = b.get_rev_id(1)
                     except errors.NoSuchRevision:
                         # No history at all
-                        found = False
                         kind = None
                     else:
                         tree1 = b.repository.revision_tree(rev1)
                 if tree1:
-                    found = tree1.is_versioned(fp)
                     kind = _get_kind_for_file(tree1, fp)
-            info_list.append((fp, found, kind))
+            info_list.append((fp, kind))
 
     elif start_rev_info == end_rev_info:
         # One revision given - file must exist in it
         tree = b.repository.revision_tree(end_rev_info.rev_id)
         for fp in relpaths:
-            found = tree.is_versioned(fp)
             kind = _get_kind_for_file(tree, fp)
-            info_list.append((fp, found, kind))
+            info_list.append((fp, kind))
 
     else:
         # Revision range given. Get the file-id from the end tree.
@@ -2160,9 +2170,8 @@ def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
             tree = b.repository.revision_tree(rev_id)
         tree1 = None
         for fp in relpaths:
-            found = tree.is_versioned(fp)
             kind = _get_kind_for_file(tree, fp)
-            if not found:
+            if not kind:
                 if tree1 is None:
                     rev_id = start_rev_info.rev_id
                     if rev_id is None:
@@ -2170,9 +2179,8 @@ def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
                         tree1 = b.repository.revision_tree(rev1)
                     else:
                         tree1 = b.repository.revision_tree(rev_id)
-                found = tree1.is_versioned(fp)
                 kind = _get_kind_for_file(tree1, fp)
-            info_list.append((fp, found, kind))
+            info_list.append((fp, kind))
     return b, info_list, start_rev_info, end_rev_info
 
 
