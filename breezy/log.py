@@ -2095,7 +2095,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
     :param exit_stack: When the branch returned is read locked,
       an unlock call will be queued to the exit stack.
     :return: (branch, info_list, start_rev_info, end_rev_info) where
-      info_list is a list of (relative_path, file_id, kind) tuples where
+      info_list is a list of (relative_path, found, kind) tuples where
       kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
       branch will be read-locked.
     """
@@ -2125,31 +2125,30 @@ def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
             tree = b.basis_tree()
         tree1 = None
         for fp in relpaths:
-            file_id = tree.path2id(fp)
-            kind = _get_kind_for_file_id(tree, fp)
-            if file_id is None:
+            kind = _get_kind_for_file(tree, fp)
+            if not tree.is_versioned(fp):
                 # go back to when time began
                 if tree1 is None:
                     try:
                         rev1 = b.get_rev_id(1)
                     except errors.NoSuchRevision:
                         # No history at all
-                        file_id = None
+                        found = False
                         kind = None
                     else:
                         tree1 = b.repository.revision_tree(rev1)
                 if tree1:
-                    file_id = tree1.path2id(fp)
-                    kind = _get_kind_for_file_id(tree1, fp)
-            info_list.append((fp, file_id, kind))
+                    found = tree1.is_versioned(fp)
+                    kind = _get_kind_for_file(tree1, fp)
+            info_list.append((fp, found, kind))
 
     elif start_rev_info == end_rev_info:
         # One revision given - file must exist in it
         tree = b.repository.revision_tree(end_rev_info.rev_id)
         for fp in relpaths:
-            file_id = tree.path2id(fp)
-            kind = _get_kind_for_file_id(tree, fp)
-            info_list.append((fp, file_id, kind))
+            found = tree.is_versioned(fp)
+            kind = _get_kind_for_file(tree, fp)
+            info_list.append((fp, found, kind))
 
     else:
         # Revision range given. Get the file-id from the end tree.
@@ -2161,9 +2160,9 @@ def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
             tree = b.repository.revision_tree(rev_id)
         tree1 = None
         for fp in relpaths:
-            file_id = tree.path2id(fp)
-            kind = _get_kind_for_file_id(tree, fp)
-            if file_id is None:
+            found = tree.is_versioned(fp)
+            kind = _get_kind_for_file(tree, fp)
+            if not found:
                 if tree1 is None:
                     rev_id = start_rev_info.rev_id
                     if rev_id is None:
@@ -2171,13 +2170,13 @@ def _get_info_for_log_files(revisionspec_list, file_list, exit_stack):
                         tree1 = b.repository.revision_tree(rev1)
                     else:
                         tree1 = b.repository.revision_tree(rev_id)
-                file_id = tree1.path2id(fp)
-                kind = _get_kind_for_file_id(tree1, fp)
-            info_list.append((fp, file_id, kind))
+                found = tree1.is_versioned(fp)
+                kind = _get_kind_for_file(tree1, fp)
+            info_list.append((fp, found, kind))
     return b, info_list, start_rev_info, end_rev_info
 
 
-def _get_kind_for_file_id(tree, path):
+def _get_kind_for_file(tree, path):
     """Return the kind of a path or None if it doesn't exist."""
     with tree.lock_read():
         try:
