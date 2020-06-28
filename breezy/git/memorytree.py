@@ -41,6 +41,10 @@ from breezy import (
     )
 from breezy.transport.memory import MemoryTransport
 
+from .mapping import (
+    decode_git_path,
+    encode_git_path,
+    )
 from .tree import MutableGitIndexTree
 
 
@@ -96,7 +100,7 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
         while trees:
             (path, tree) = trees.pop()
             for name, mode, sha in tree.iteritems():
-                subpath = posixpath.join(path, name.decode('utf-8'))
+                subpath = posixpath.join(path, decode_git_path(name))
                 if stat.S_ISDIR(mode):
                     self._file_transport.mkdir(subpath)
                     trees.append((subpath, self.store[sha]))
@@ -183,7 +187,7 @@ class GitMemoryTree(MutableGitIndexTree, _mod_tree.Tree):
             return None
         elif stat.S_ISLNK(stat_val.st_mode):
             blob = Blob.from_string(
-                self._file_transport.readlink(path).encode('utf-8'))
+                encode_git_path(self._file_transport.readlink(path)))
         elif stat.S_ISREG(stat_val.st_mode):
             blob = Blob.from_string(self._file_transport.get_bytes(path))
         else:

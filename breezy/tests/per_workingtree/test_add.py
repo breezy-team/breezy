@@ -50,8 +50,8 @@ class TestAdd(TestCaseWithWorkingTree):
             self.skipTest("tree does not support setting file ids")
         self.build_tree(['a', 'b'])
         tree.add(['a'])
-        self.assertRaises(errors.DuplicateFileId,
-                          tree.add, ['b'], [tree.path2id('a')])
+        self.assertRaises(
+            inventory.DuplicateFileId, tree.add, ['b'], [tree.path2id('a')])
         # And the entry should not have been added.
         self.assertTreeLayout(['', 'a'], tree)
 

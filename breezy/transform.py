@@ -51,9 +51,9 @@ from breezy.bzr import (
     )
 from breezy.i18n import gettext
 """)
-from .errors import (DuplicateKey, MalformedTransform,
-                     ReusingTransform, CantMoveRoot,
-                     ImmortalLimbo, NoFinalPath)
+from .errors import (DuplicateKey,
+                     CantMoveRoot,
+                     BzrError, InternalBzrError)
 from .filters import filtered_output_bytes, ContentFilterContext
 from .mutabletree import MutableTree
 from .osutils import (
@@ -77,6 +77,39 @@ from .tree import (
 
 
 ROOT_PARENT = "root-parent"
+
+
+class NoFinalPath(BzrError):
+
+    _fmt = ("No final name for trans_id %(trans_id)r\n"
+            "file-id: %(file_id)r\n"
+            "root trans-id: %(root_trans_id)r\n")
+
+    def __init__(self, trans_id, transform):
+        self.trans_id = trans_id
+        self.file_id = transform.final_file_id(trans_id)
+        self.root_trans_id = transform.root
+
+
+class ReusingTransform(BzrError):
+
+    _fmt = "Attempt to reuse a transform that has already been applied."
+
+
+class MalformedTransform(InternalBzrError):
+
+    _fmt = "Tree transform is malformed %(conflicts)r"
+
+
+class ImmortalLimbo(BzrError):
+
+    _fmt = """Unable to delete transform temporary directory %(limbo_dir)s.
+    Please examine %(limbo_dir)s to see if it contains any files you wish to
+    keep, and delete it when you are done."""
+
+    def __init__(self, limbo_dir):
+        BzrError.__init__(self)
+        self.limbo_dir = limbo_dir
 
 
 def unique_add(map, key, value):

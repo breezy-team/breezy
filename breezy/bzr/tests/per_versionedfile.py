@@ -61,8 +61,10 @@ from .. import versionedfile as versionedfile
 from ..versionedfile import (
     ChunkedContentFactory,
     ConstantMapper,
+    ExistingContent,
     HashEscapedPrefixMapper,
     PrefixMapper,
+    UnavailableRepresentation,
     VirtualVersionedFiles,
     make_versioned_files_factory,
     )
@@ -306,7 +308,7 @@ class VersionedFileTestMixIn(object):
         # we now have a copy of all the lines in the vf.
         for sha, (version, lines) in zip(
                 shas, (empty_text, sample_text_nl, sample_text_no_nl)):
-            self.assertRaises(errors.ExistingContent,
+            self.assertRaises(ExistingContent,
                               vf.add_lines, version + b"2", [], lines,
                               nostore_sha=sha)
             # and no new version should have been added.
@@ -331,7 +333,7 @@ class VersionedFileTestMixIn(object):
             raise TestSkipped("add_lines_with_ghosts is optional")
         for sha, (version, lines) in zip(
                 shas, (empty_text, sample_text_nl, sample_text_no_nl)):
-            self.assertRaises(errors.ExistingContent,
+            self.assertRaises(ExistingContent,
                               vf.add_lines_with_ghosts, version + b"2", [], lines,
                               nostore_sha=sha)
             # and no new version should have been added.
@@ -1647,10 +1649,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         for sha, (version, lines) in zip(
                 shas, (empty_text, sample_text_nl, sample_text_no_nl)):
             new_key = self.get_simple_key(version + b"2")
-            self.assertRaises(errors.ExistingContent,
+            self.assertRaises(ExistingContent,
                               vf.add_lines, new_key, [], lines,
                               nostore_sha=sha)
-            self.assertRaises(errors.ExistingContent,
+            self.assertRaises(ExistingContent,
                               vf.add_lines, new_key, [], lines,
                               nostore_sha=sha)
             # and no new version should have been added.
@@ -1985,7 +1987,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                                  factory.sha1)
             self.assertEqual(parent_map[factory.key], factory.parents)
             # currently no stream emits mpdiff
-            self.assertRaises(errors.UnavailableRepresentation,
+            self.assertRaises(UnavailableRepresentation,
                               factory.get_bytes_as, 'mpdiff')
             self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
                                   bytes)

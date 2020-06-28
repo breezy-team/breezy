@@ -31,6 +31,7 @@ from .. import (
     )
 from ..inventory import (
     CHKInventory,
+    DuplicateFileId,
     Inventory,
     ROOT_ID,
     InventoryFile,
@@ -1601,3 +1602,12 @@ class TestMutableInventoryFromTree(TestCaseWithTransport):
         inv.get_entry(b'thefileid').executable = True
         self.assertFalse(tree.root_inventory.get_entry(
             b'thefileid').executable)
+
+
+class ErrorTests(TestCase):
+
+    def test_duplicate_file_id(self):
+        error = DuplicateFileId('a_file_id', 'foo')
+        self.assertEqualDiff(
+            'File id {a_file_id} already exists in inventory as foo',
+            str(error))

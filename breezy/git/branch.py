@@ -67,6 +67,10 @@ from ..trace import (
 from .errors import (
     NoPushSupport,
     )
+from .mapping import (
+    encode_git_path,
+    decode_git_path,
+    )
 from .push import (
     remote_divergence,
     )
@@ -499,7 +503,7 @@ class GitBranch(ForeignBranch):
             cs = self.repository._git.get_config_stack()
             try:
                 return cs.get((b"branch", self.name.encode('utf-8')),
-                              b"nick").decode("utf-8")
+                        b"nick").decode("utf-8")
             except KeyError:
                 pass
         return self.name or u"HEAD"
@@ -1044,8 +1048,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 for path, url, section in parse_submodules(
                         GitConfigFile.from_file(f)):
                     self.target.set_reference_info(
-                        tree.path2id(path.decode('utf-8')), url.decode('utf-8'),
-                        path.decode('utf-8'))
+                        tree.path2id(decode_git_path(path)), url.decode('utf-8'),
+                        decode_git_path(path))
         except errors.NoSuchFile:
             pass
 
