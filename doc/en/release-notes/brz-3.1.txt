@@ -63,6 +63,9 @@ API Changes
  * ``BzrCommandError`` has been renamed to ``CommandError``.
    (Jelmer Vernooĳ)
 
+ * The ``osutils.safe_file_id`` and ``osutils.safe_revision_id`` methods
+   have been removed. (Jelmer Vernooĳ)
+
 Internals
 *********
 
