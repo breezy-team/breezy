@@ -2833,7 +2833,7 @@ class cmd_log(Command):
             else:
                 revision = change
 
-        file_ids = []
+        files = []
         filter_by_dir = False
         if file_list:
             # find the file ids to log and check for directory filtering
@@ -2846,10 +2846,10 @@ class cmd_log(Command):
                         relpath)
                 # If the relpath is the top of the tree, we log everything
                 if relpath == '':
-                    file_ids = []
+                    files = []
                     break
                 else:
-                    file_ids.append(file_id)
+                    files.append(relpath)
                 filter_by_dir = filter_by_dir or (
                     kind in ['directory', 'tree-reference'])
         else:
@@ -2880,7 +2880,7 @@ class cmd_log(Command):
             delta_type = 'full'
         if not show_diff:
             diff_type = None
-        elif file_ids:
+        elif files:
             diff_type = 'partial'
         else:
             diff_type = 'full'
@@ -2912,7 +2912,7 @@ class cmd_log(Command):
         # original algorithm - per-file-graph - for the "single
         # file that isn't a directory without showing a delta" case.
         partial_history = revision and b.repository._format.supports_chks
-        match_using_deltas = (len(file_ids) != 1 or filter_by_dir
+        match_using_deltas = (len(files) != 1 or filter_by_dir
                               or delta_type or partial_history)
 
         match_dict = {}
@@ -2928,10 +2928,10 @@ class cmd_log(Command):
             match_dict['bugs'] = match_bugs
 
         # Build the LogRequest and execute it
-        if len(file_ids) == 0:
-            file_ids = None
+        if len(files) == 0:
+            files = None
         rqst = make_log_request_dict(
-            direction=direction, specific_fileids=file_ids,
+            direction=direction, specific_files=files,
             start_revision=rev1, end_revision=rev2, limit=limit,
             message_search=message, delta_type=delta_type,
             diff_type=diff_type, _match_using_deltas=match_using_deltas,
