@@ -1029,10 +1029,11 @@ class InterGitTrees(_mod_tree.InterTree):
         ret = {}
         changes = self._iter_git_changes(specific_files=paths)[0]
         for (change_type, old, new) in changes:
-            oldpath = old[0]
-            newpath = new[0]
+            if old[0] is None:
+                continue
+            oldpath = decode_git_path(old[0])
             if oldpath in paths:
-                ret[oldpath] = newpath
+                ret[oldpath] = decode_git_path(new[0]) if new[0] else None
         for path in paths:
             if path not in ret:
                 if self.source.has_filename(path):
@@ -1049,10 +1050,11 @@ class InterGitTrees(_mod_tree.InterTree):
         ret = {}
         changes = self._iter_git_changes(specific_files=paths)[0]
         for (change_type, old, new) in changes:
-            oldpath = old[0]
-            newpath = new[0]
+            if new[0] is None:
+                continue
+            newpath = decode_git_path(new[0])
             if newpath in paths:
-                ret[newpath] = oldpath
+                ret[newpath] = decode_git_path(old[0]) if old[0] else None
         for path in paths:
             if path not in ret:
                 if self.target.has_filename(path):

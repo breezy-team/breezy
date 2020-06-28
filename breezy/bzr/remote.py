@@ -2590,12 +2590,14 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
             # file-id based, so filtering before or afterwards is
             # currently easier.
             if specific_fileids is None:
-                trees = dict((t.get_revision_id(), t) for
-                             t in self.revision_trees(required_trees))
+                trees = {
+                    t.get_revision_id(): t
+                    for t in self.revision_trees(required_trees)}
             else:
-                trees = dict((t.get_revision_id(), t) for
-                             t in self._filtered_revision_trees(required_trees,
-                                                                specific_fileids))
+                trees = {
+                    t.get_revision_id(): t
+                    for t in self._filtered_revision_trees(
+                        required_trees, specific_fileids)}
 
             # Calculate the deltas
             for revision in revisions:
@@ -2608,7 +2610,7 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
     def get_revision_delta(self, revision_id):
         with self.lock_read():
             r = self.get_revision(revision_id)
-            return list(self.get_deltas_for_revisions([r]))[0]
+            return list(self.get_revision_deltas([r]))[0]
 
     def revision_trees(self, revision_ids):
         with self.lock_read():
