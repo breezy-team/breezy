@@ -33,6 +33,7 @@ from ..controldir import (
 
 from .mapping import (
     default_mapping,
+    decode_git_path,
     )
 from .object_store import (
     BazaarObjectStore,
@@ -60,7 +61,7 @@ class BzrBackend(Backend):
 
     def open_repository(self, path):
         # FIXME: More secure path sanitization
-        transport = self.transport.clone(path.decode('utf-8').lstrip("/"))
+        transport = self.transport.clone(decode_git_path(path).lstrip("/"))
         trace.mutter('client opens %r: %r', path, transport)
         return BzrBackendRepo(transport, self.mapping)
 

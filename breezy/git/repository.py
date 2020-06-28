@@ -45,6 +45,7 @@ from .filegraph import (
     )
 from .mapping import (
     default_mapping,
+    encode_git_path,
     foreign_vcs_git,
     mapping_registry,
     )
@@ -103,23 +104,15 @@ class GitCheck(check.Check):
             self._report_repo_results(verbose)
 
 
-_optimisers_loaded = False
-
-
-def lazy_load_optimisers():
-    global _optimisers_loaded
-    if _optimisers_loaded:
-        return
-    from . import interrepo
-    for optimiser in [interrepo.InterRemoteGitNonGitRepository,
-                      interrepo.InterLocalGitNonGitRepository,
-                      interrepo.InterLocalGitLocalGitRepository,
-                      interrepo.InterRemoteGitLocalGitRepository,
-                      interrepo.InterToLocalGitRepository,
-                      interrepo.InterToRemoteGitRepository,
-                      ]:
-        repository.InterRepository.register_optimiser(optimiser)
-    _optimisers_loaded = True
+for optimiser in ['InterRemoteGitNonGitRepository',
+                  'InterLocalGitNonGitRepository',
+                  'InterLocalGitLocalGitRepository',
+                  'InterRemoteGitLocalGitRepository',
+                  'InterToLocalGitRepository',
+                  'InterToRemoteGitRepository',
+                  ]:
+    repository.InterRepository.register_lazy_optimiser(
+        'breezy.git.interrepo', optimiser)
 
 
 class GitRepository(ForeignRepository):
@@ -134,7 +127,6 @@ class GitRepository(ForeignRepository):
         super(GitRepository, self).__init__(GitRepositoryFormat(),
                                             gitdir, control_files=None)
         self.base = gitdir.root_transport.base
-        lazy_load_optimisers()
         self._lock_mode = None
         self._lock_count = 0
 
@@ -316,7 +308,7 @@ class LocalGitRepository(GitRepository):
                 try:
                     obj = tree_lookup_path(
                         self._git.object_store.__getitem__, root_tree,
-                        path.encode('utf-8'))
+                        encode_git_path(path))
                     if isinstance(obj, tuple):
                         (mode, item_id) = obj
                         obj = self._git.object_store[item_id]

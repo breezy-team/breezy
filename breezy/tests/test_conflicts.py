@@ -23,6 +23,7 @@ from .. import (
     option,
     osutils,
     tests,
+    transform,
     )
 from ..sixish import text_type
 from . import (
@@ -1077,7 +1078,7 @@ class TestMalformedTransform(script.TestCaseWithTransportAndScript):
         # This is nearly like TestResolveNonDirectoryParent but with branch and
         # trunk switched. As such it should certainly produce the same
         # conflict.
-        self.assertRaises(errors.MalformedTransform,
+        self.assertRaises(transform.MalformedTransform,
                           self.run_script, """
 $ brz init trunk
 ...

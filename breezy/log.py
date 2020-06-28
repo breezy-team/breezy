@@ -1010,7 +1010,7 @@ def _generate_deltas(repository, log_rev_iterator, delta_type, fileids,
         revisions = [rev[1] for rev in revs]
         new_revs = []
         if delta_type == 'full' and not check_fileids:
-            deltas = repository.get_deltas_for_revisions(revisions)
+            deltas = repository.get_revision_deltas(revisions)
             for rev, delta in zip(revs, deltas):
                 new_revs.append((rev[0], rev[1], delta))
         else:

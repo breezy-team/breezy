@@ -100,6 +100,14 @@ class GitlabLoginError(errors.BzrError):
         self.error = error
 
 
+class ForkingDisabled(errors.BzrError):
+
+    _fmt = ("Forking on project %(project)s is disabled.")
+
+    def __init__(self, project):
+        self.project = project
+
+
 class MergeRequestExists(Exception):
     """Raised when a merge requests already exists."""
 
@@ -217,6 +225,13 @@ class GitLabMergeProposal(MergeProposal):
     def get_source_branch_url(self):
         return self._branch_url_from_project(
             self._mr['source_project_id'], self._mr['source_branch'])
+
+    def get_source_revision(self):
+        from breezy.git.mapping import default_mapping
+        sha = self._mr['sha']
+        if sha is None:
+            return None
+        return default_mapping.revision_id_foreign_to_bzr(sha.encode('ascii'))
 
     def get_target_branch_url(self):
         return self._branch_url_from_project(
@@ -349,6 +364,8 @@ class GitLab(Hoster):
     def _fork_project(self, project_name, timeout=50, interval=5):
         path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
         response = self._api_request('POST', path)
+        if response.status == 404:
+            raise ForkingDisabled(project_name)
         if response.status not in (200, 201):
             raise errors.InvalidHttpResponse(path, response.text)
         # The response should be valid JSON, but let's ignore it

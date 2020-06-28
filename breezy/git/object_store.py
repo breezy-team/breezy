@@ -57,6 +57,7 @@ from .cache import (
     )
 from .mapping import (
     default_mapping,
+    encode_git_path,
     entry_mode,
     extract_unusual_modes,
     mapping_registry,
@@ -202,7 +203,7 @@ def directory_to_tree(path, children, lookup_ie_sha1, unusual_modes,
             mode = entry_mode(value)
         hexsha = lookup_ie_sha1(child_path, value)
         if hexsha is not None:
-            tree.add(value.name.encode("utf-8"), mode, hexsha)
+            tree.add(encode_git_path(value.name), mode, hexsha)
     if not allow_empty and len(tree) == 0:
         # Only the root can be an empty tree
         if empty_file_name is not None:
