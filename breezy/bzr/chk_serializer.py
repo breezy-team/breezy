@@ -43,7 +43,7 @@ from ..sixish import (
 def _validate_properties(props, _decode=cache_utf8._utf8_decode):
     # TODO: we really want an 'isascii' check for key
     # Cast the utf8 properties into Unicode 'in place'
-    return {_decode(key)[0]: _decode(value)[0] for key, value in props.items()}
+    return {_decode(key)[0]: _decode(value, 'surrogateescape')[0] for key, value in props.items()}
 
 
 def _is_format_10(value):
@@ -91,7 +91,7 @@ class BEncodeRevisionSerializer1(object):
         # which changes infrequently.
         revprops = {}
         for key, value in rev.properties.items():
-            revprops[encode_utf8(key)[0]] = encode_utf8(value)[0]
+            revprops[encode_utf8(key)[0]] = encode_utf8(value, 'surrogateescape')[0]
         ret.append((b'properties', revprops))
         ret.extend([
             (b"timestamp", b"%.3f" % rev.timestamp),
