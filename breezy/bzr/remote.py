@@ -2278,9 +2278,9 @@ class RemoteRepository(_mod_repository.Repository, _RpcHelper,
         identifiers = []
         for (file_id, revid, identifier) in desired_files:
             lines.append(b''.join([
-                osutils.safe_file_id(file_id),
+                file_id,
                 b'\0',
-                osutils.safe_revision_id(revid)]))
+                revid]))
             identifiers.append(identifier)
         (response_tuple, response_handler) = (
             self._call_with_body_bytes_expecting_body(
