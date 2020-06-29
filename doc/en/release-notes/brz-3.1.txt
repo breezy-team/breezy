@@ -40,6 +40,9 @@ Improvements
 
  * Add support for HTTP response code 308. (Jelmer Vernooĳ)
 
+ * Handle non-utf8 characters in Git repositories by surrogate escaping
+   them.  (Jelmer Vernooĳ, #1489872)
+
 Bug Fixes
 *********
 
