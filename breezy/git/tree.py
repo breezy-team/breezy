@@ -385,7 +385,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if self.tree is None:
             raise errors.NoSuchFile(path)
 
-        encoded_path = path.encode('utf-8')
+        encoded_path = encode_git_path(path)
         parts = encoded_path.split(b'/')
         hexsha = self.tree
         store = self.store
@@ -452,16 +452,16 @@ class GitRevisionTree(revisiontree.RevisionTree):
             parent_path = posixpath.dirname(from_dir)
             parent_id = self.mapping.generate_file_id(parent_path)
             if mode_kind(mode) == 'directory':
-                root_ie = self._get_dir_ie(from_dir.encode("utf-8"), parent_id)
+                root_ie = self._get_dir_ie(encode_git_path(from_dir), parent_id)
             else:
                 root_ie = self._get_file_ie(
-                    store, from_dir.encode("utf-8"),
+                    store, encode_git_path(from_dir),
                     posixpath.basename(from_dir), mode, hexsha)
         if include_root:
             yield (from_dir, "V", root_ie.kind, root_ie)
         todo = []
         if root_ie.kind == 'directory':
-            todo.append((store, from_dir.encode("utf-8"),
+            todo.append((store, encode_git_path(from_dir),
                          b"", hexsha, root_ie.file_id))
         while todo:
             (store, path, relpath, hexsha, parent_id) = todo.pop()
@@ -857,7 +857,7 @@ def tree_delta_from_git_changes(changes, mappings,
     for path, kind in added:
         if kind == 'directory' and path not in implicit_dirs:
             continue
-        path_decoded = osutils.normalized_filename(path)[0]
+        path_decoded = decode_git_path(path)
         parent_path, basename = osutils.split(path_decoded)
         parent_id = new_mapping.generate_file_id(parent_path)
         file_id = new_mapping.generate_file_id(path_decoded)
@@ -1261,8 +1261,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 # old index
                 stat_val = os.stat_result(
                     (stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-            blob.set_raw_string(
-                self.get_symlink_target(path).encode("utf-8"))
+            blob.set_raw_string(encode_git_path(self.get_symlink_target(path)))
             # Add object to the repository if it didn't exist yet
             if blob.id not in self.store:
                 self.store.add_object(blob)

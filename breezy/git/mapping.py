@@ -135,12 +135,22 @@ def fix_person_identifier(text):
 
 def decode_git_path(path):
     """Take a git path and decode it."""
-    return path.decode('utf-8')
+    try:
+        return path.decode('utf-8')
+    except UnicodeDecodeError:
+        if PY3:
+            return path.decode('utf-8', 'surrogateescape')
+        raise
 
 
 def encode_git_path(path):
     """Take a regular path and encode it for git."""
-    return path.encode('utf-8')
+    try:
+        return path.encode('utf-8')
+    except UnicodeEncodeError:
+        if PY3:
+            return path.encode('utf-8', 'surrogateescape')
+        raise
 
 
 def warn_escaped(commit, num_escaped):
@@ -344,7 +354,7 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = commit.commit_timezone
         if u'git-gpg-signature' in rev.properties:
             commit.gpgsig = rev.properties[u'git-gpg-signature'].encode(
-                'utf-8', 'surrogateencode')
+                'utf-8', 'surrogateescape')
         commit.message = self._encode_commit_message(rev, rev.message,
                                                      encoding)
         if not isinstance(commit.message, bytes):
