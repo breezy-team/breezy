@@ -2712,8 +2712,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     executable = tree.is_executable(tree_path)
                     if executable:
                         tt.set_executability(executable, trans_id)
-                    trans_data = (trans_id, file_id,
-                                  tree_path, entry.text_sha1)
+                    trans_data = (trans_id, tree_path, entry.text_sha1)
                     deferred_contents.append((tree_path, trans_data))
                 else:
                     file_trans_id[file_id] = new_by_entry(
@@ -2765,11 +2764,11 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         unchanged = dict(unchanged)
         new_desired_files = []
         count = 0
-        for unused_tree_path, (trans_id, file_id, tree_path, text_sha1) in desired_files:
+        for unused_tree_path, (trans_id, tree_path, text_sha1) in desired_files:
             accelerator_path = unchanged.get(tree_path)
             if accelerator_path is None:
                 new_desired_files.append((tree_path,
-                                          (trans_id, file_id, tree_path, text_sha1)))
+                                          (trans_id, tree_path, text_sha1)))
                 continue
             pb.update(gettext('Adding file contents'), count + offset, total)
             if hardlink:
@@ -2785,7 +2784,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                     tt.create_file(chunks, trans_id, sha1=text_sha1)
             count += 1
         offset += count
-    for count, ((trans_id, file_id, tree_path, text_sha1), contents) in enumerate(
+    for count, ((trans_id, tree_path, text_sha1), contents) in enumerate(
             tree.iter_files_bytes(new_desired_files)):
         if wt.supports_content_filtering():
             filters = wt._content_filter_stack(tree_path)
