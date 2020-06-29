@@ -26,6 +26,7 @@ from breezy import (
     revision as _mod_revision,
     tests,
     )
+from breezy.sixish import PY3
 from breezy.tree import TreeChange
 from breezy.bzr import (
     inventorytree,
@@ -820,6 +821,24 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertRaises(ValueError, branch.repository.get_commit_builder,
                           branch, [], branch.get_config_stack(),
                           revprops={'invalid': u'property\rwith\r\ninvalid chars'})
+
+    def test_get_commit_builder_with_surrogateescape(self):
+        if not PY3:
+            self.skipTest('python 2 does not have surrogateescape')
+        tree = self.make_branch_and_tree(".")
+        with tree.lock_write():
+            builder = tree.branch.get_commit_builder([], revprops={
+                'invalid': u'property' + b'\xc0'.decode('utf-8', 'surrogateescape')})
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                                             tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
+            try:
+                rev_id = builder.commit('foo bar blah')
+            except NotImplementedError:
+                raise tests.TestNotApplicable(
+                    'Format does not support revision properties')
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual('foo bar blah', rev.message)
 
     def test_commit_builder_commit_with_invalid_message(self):
         branch = self.make_branch('.')

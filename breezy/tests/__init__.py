@@ -2466,10 +2466,10 @@ class CapturedCall(object):
         self.stack = ''.join(traceback.format_list(stack))
 
     def __str__(self):
-        return self.call.method
+        return self.call.method.decode('utf-8')
 
     def __repr__(self):
-        return self.call.method
+        return self.call.method.decode('utf-8')
 
     def stack(self):
         return self.stack

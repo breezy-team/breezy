@@ -1051,7 +1051,6 @@ class WorkingTree(mutabletree.MutableTree, ControlComponent):
             if file_id is None:
                 raise ValueError(
                     'WorkingTree.set_root_id with fileid=None')
-            file_id = osutils.safe_file_id(file_id)
             self._set_root_id(file_id)
 
     def _set_root_id(self, file_id):

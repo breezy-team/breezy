@@ -910,7 +910,7 @@ class TestLogFile(TestLogWithLogCatcher):
         # Check logging a deleted file is ok if the file existed
         # at the start of the revision range
         self.prepare_tree(complex=True)
-        self.assertLogRevnos(['file1'], ['1'])
+        self.assertLogRevnos(['file1'], [])
 
     def test_log_file_renamed(self):
         """File matched against revision range, not current tree."""

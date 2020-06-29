@@ -890,19 +890,6 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         raise NotImplementedError(self.iter_revisions)
 
-    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
-        """Produce a generator of revision deltas.
-
-        Note that the input is a sequence of REVISIONS, not revision_ids.
-        Trees will be held in memory until the generator exits.
-        Each delta is relative to the revision's lefthand predecessor.
-
-        :param specific_fileids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
-        """
-        raise NotImplementedError(self.get_deltas_for_revisions)
-
     def get_revision_delta(self, revision_id):
         """Return the delta for one revision.
 
@@ -911,7 +898,7 @@ class Repository(controldir.ControlComponent, _RelockDebugMixin):
         """
         with self.lock_read():
             r = self.get_revision(revision_id)
-            return list(self.get_deltas_for_revisions([r]))[0]
+            return list(self.get_revision_deltas([r]))[0]
 
     def get_revision_deltas(self, revisions, specific_files=None):
         """Produce a generator of revision deltas.

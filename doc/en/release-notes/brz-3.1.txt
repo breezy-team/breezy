@@ -40,6 +40,9 @@ Improvements
 
  * Add support for HTTP response code 308. (Jelmer Vernooĳ)
 
+ * Handle non-utf8 characters in Git repositories by surrogate escaping
+   them.  (Jelmer Vernooĳ, #1489872)
+
 Bug Fixes
 *********
 
@@ -62,6 +65,9 @@ API Changes
 
  * ``BzrCommandError`` has been renamed to ``CommandError``.
    (Jelmer Vernooĳ)
+
+ * The ``osutils.safe_file_id`` and ``osutils.safe_revision_id`` methods
+   have been removed. (Jelmer Vernooĳ)
 
 Internals
 *********
