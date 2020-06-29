@@ -30,7 +30,6 @@ from breezy import (
 from breezy.bzr import (
     inventorytree,
     )
-from breezy.transform import TransformPreview
 from breezy.tests import (
     default_transport,
     multiply_tests,
@@ -111,7 +110,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
 
 
 def mutable_trees_to_preview_trees(test_case, source, target):
-    preview = TransformPreview(target)
+    preview = target.preview_transform()
     test_case.addCleanup(preview.finalize)
     return source, preview.get_preview_tree()
 

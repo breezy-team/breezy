@@ -176,7 +176,7 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         paths = ['file1', 'file2', 'dir1/', 'dir2/']
         self.build_tree(paths)
         tree.add(paths)
-        tt = tree.get_transform()
+        tt = tree.transform()
         root_transaction_id = tt.trans_id_tree_path('')
         tt.new_symlink('link1',
                        root_transaction_id, 'link-target', b'link1')

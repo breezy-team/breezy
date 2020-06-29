@@ -1812,95 +1812,7 @@ class TreeTransform(DiskTreeTransform):
             calculating one.
         :param _mover: Supply an alternate FileMover, for testing
         """
-        for hook in MutableTree.hooks['pre_transform']:
-            hook(self._tree, self)
-        if not no_conflicts:
-            self._check_malformed()
-        with ui.ui_factory.nested_progress_bar() as child_pb:
-            if precomputed_delta is None:
-                child_pb.update(gettext('Apply phase'), 0, 2)
-                inventory_delta = self._generate_inventory_delta()
-                offset = 1
-            else:
-                inventory_delta = precomputed_delta
-                offset = 0
-            if _mover is None:
-                mover = _FileMover()
-            else:
-                mover = _mover
-            try:
-                child_pb.update(gettext('Apply phase'), 0 + offset, 2 + offset)
-                self._apply_removals(mover)
-                child_pb.update(gettext('Apply phase'), 1 + offset, 2 + offset)
-                modified_paths = self._apply_insertions(mover)
-            except BaseException:
-                mover.rollback()
-                raise
-            else:
-                mover.apply_deletions()
-        if self.final_file_id(self.root) is None:
-            inventory_delta = [e for e in inventory_delta if e[0] != '']
-        self._tree.apply_inventory_delta(inventory_delta)
-        self._apply_observed_sha1s()
-        self._done = True
-        self.finalize()
-        return _TransformResults(modified_paths, self.rename_count)
-
-    def _generate_inventory_delta(self):
-        """Generate an inventory delta for the current transform."""
-        inventory_delta = []
-        new_paths = self._inventory_altered()
-        total_entries = len(new_paths) + len(self._removed_id)
-        with ui.ui_factory.nested_progress_bar() as child_pb:
-            for num, trans_id in enumerate(self._removed_id):
-                if (num % 10) == 0:
-                    child_pb.update(gettext('removing file'),
-                                    num, total_entries)
-                if trans_id == self._new_root:
-                    file_id = self._tree.path2id('')
-                else:
-                    file_id = self.tree_file_id(trans_id)
-                # File-id isn't really being deleted, just moved
-                if file_id in self._r_new_id:
-                    continue
-                path = self._tree_id_paths[trans_id]
-                inventory_delta.append((path, None, file_id, None))
-            new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
-                                     new_paths)
-            for num, (path, trans_id) in enumerate(new_paths):
-                if (num % 10) == 0:
-                    child_pb.update(gettext('adding file'),
-                                    num + len(self._removed_id), total_entries)
-                file_id = new_path_file_ids[trans_id]
-                if file_id is None:
-                    continue
-                kind = self.final_kind(trans_id)
-                if kind is None:
-                    kind = self._tree.stored_kind(self._tree.id2path(file_id))
-                parent_trans_id = self.final_parent(trans_id)
-                parent_file_id = new_path_file_ids.get(parent_trans_id)
-                if parent_file_id is None:
-                    parent_file_id = self.final_file_id(parent_trans_id)
-                if trans_id in self._new_reference_revision:
-                    new_entry = inventory.TreeReference(
-                        file_id,
-                        self._new_name[trans_id],
-                        self.final_file_id(self._new_parent[trans_id]),
-                        None, self._new_reference_revision[trans_id])
-                else:
-                    new_entry = inventory.make_entry(kind,
-                                                     self.final_name(trans_id),
-                                                     parent_file_id, file_id)
-                try:
-                    old_path = self._tree.id2path(new_entry.file_id)
-                except errors.NoSuchId:
-                    old_path = None
-                new_executability = self._new_executability.get(trans_id)
-                if new_executability is not None:
-                    new_entry.executable = new_executability
-                inventory_delta.append(
-                    (old_path, path, new_entry.file_id, new_entry))
-        return inventory_delta
+        raise NotImplementedError(self.apply)
 
     def _apply_removals(self, mover):
         """Perform tree operations that remove directory/inventory names.
@@ -1999,60 +1911,6 @@ class TreeTransform(DiskTreeTransform):
         for trans_id, observed in viewitems(self._observed_sha1s):
             path = paths.get_path(trans_id)
             self._tree._observed_sha1(path, observed)
-
-
-class TransformPreview(DiskTreeTransform):
-    """A TreeTransform for generating preview trees.
-
-    Unlike TreeTransform, this version works when the input tree is a
-    RevisionTree, rather than a WorkingTree.  As a result, it tends to ignore
-    unversioned files in the input tree.
-    """
-
-    def __init__(self, tree, pb=None, case_sensitive=True):
-        tree.lock_read()
-        limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
-        DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
-
-    def canonical_path(self, path):
-        return path
-
-    def tree_kind(self, trans_id):
-        path = self._tree_id_paths.get(trans_id)
-        if path is None:
-            return None
-        kind = self._tree.path_content_summary(path)[0]
-        if kind == 'missing':
-            kind = None
-        return kind
-
-    def _set_mode(self, trans_id, mode_id, typefunc):
-        """Set the mode of new file contents.
-        The mode_id is the existing file to get the mode from (often the same
-        as trans_id).  The operation is only performed if there's a mode match
-        according to typefunc.
-        """
-        # is it ok to ignore this?  probably
-        pass
-
-    def iter_tree_children(self, parent_id):
-        """Iterate through the entry's tree children, if any"""
-        try:
-            path = self._tree_id_paths[parent_id]
-        except KeyError:
-            return
-        try:
-            entry = next(self._tree.iter_entries_by_dir(
-                specific_files=[path]))[1]
-        except StopIteration:
-            return
-        children = getattr(entry, 'children', {})
-        for child in children:
-            childpath = joinpath(path, child)
-            yield self.trans_id_tree_path(childpath)
-
-    def new_orphan(self, trans_id, parent_id):
-        raise NotImplementedError(self.new_orphan)
 
 
 class _PreviewTree(inventorytree.InventoryTree):
@@ -2654,7 +2512,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         if wt.path2id('') != tree.path2id(''):
             wt.set_root_id(tree.path2id(''))
             wt.flush()
-    tt = wt.get_transform()
+    tt = wt.transform()
     divert = set()
     try:
         pp.next_phase()
@@ -2919,7 +2777,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
     """Revert a working tree's contents to those of a target tree."""
     pb = ui.ui_factory.nested_progress_bar()
     try:
-        with target_tree.lock_read(), working_tree.get_transform(pb) as tt:
+        with target_tree.lock_read(), working_tree.transform(pb) as tt:
             pp = ProgressPhase("Revert phase", 3, pb)
             conflicts, merge_modified = _prepare_revert_transform(
                 working_tree, target_tree, tt, filenames, backups, pp)
@@ -3295,7 +3153,7 @@ def link_tree(target_tree, source_tree):
     :param target_tree: Tree to change
     :param source_tree: Tree to hard-link from
     """
-    with target_tree.get_transform() as tt:
+    with target_tree.transform() as tt:
         for change in target_tree.iter_changes(source_tree, include_unchanged=True):
             if change.changed_content:
                 continue

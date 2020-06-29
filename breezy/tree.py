@@ -764,6 +764,11 @@ class Tree(object):
         """Check if this tree support versioning a specific file kind."""
         return (kind in ('file', 'directory', 'symlink', 'tree-reference'))
 
+    def preview_transform(self, pb=None):
+        """Create a preview transform.
+        """
+        raise NotImplementedError(self.preview_transform)
+
 
 class InterTree(InterObject):
     """This class represents operations taking place between two Trees.

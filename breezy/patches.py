@@ -612,8 +612,7 @@ class AppliedPatches(object):
         self.prefix = prefix
 
     def __enter__(self):
-        from .transform import TransformPreview
-        self._tt = TransformPreview(self.tree)
+        self._tt = self.tree.preview_transform()
         apply_patches(self._tt, self.patches, prefix=self.prefix)
         return self._tt.get_preview_tree()
 

@@ -232,7 +232,7 @@ def import_dir(tree, dir_input):
 
 
 def import_archive(tree, archive_file):
-    with tree.get_transform() as tt:
+    with tree.transform() as tt:
         import_archive_to_transform(tree, archive_file, tt)
         tt.apply()
 

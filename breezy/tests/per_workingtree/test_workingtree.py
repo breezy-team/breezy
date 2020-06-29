@@ -143,9 +143,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                     ('zz_dir', 'directory'),
                     ], files)
 
-    def test_get_transform(self):
+    def test_transform(self):
         tree = self.make_branch_and_tree('tree')
-        with tree.get_transform():
+        with tree.transform():
             pass
 
     def test_list_files_kind_change(self):

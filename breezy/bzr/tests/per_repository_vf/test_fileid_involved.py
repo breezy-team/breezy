@@ -430,6 +430,6 @@ def set_executability(wt, path, executable=True):
     os.chmod() doesn't work on windows. But TreeTransform can mark or
     unmark a file as executable.
     """
-    with wt.get_transform() as tt:
+    with wt.transform() as tt:
         tt.set_executability(executable, tt.trans_id_tree_path(path))
         tt.apply()

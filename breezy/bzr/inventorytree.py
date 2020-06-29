@@ -317,6 +317,10 @@ class InventoryTree(Tree):
             vf.fallback_versionedfiles.append(base_vf)
         return last_revision
 
+    def preview_transform(self, pb=None):
+        from .transform import TransformPreview
+        return TransformPreview(self, pb=pb)
+
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):
     """Find the ids corresponding to specified filenames.
@@ -498,9 +502,9 @@ class MutableInventoryTree(MutableTree, InventoryTree):
                                          inventory, new_revid)
         self.set_parent_trees([(new_revid, rev_tree)])
 
-    def get_transform(self, pb=None):
-        from ..transform import TreeTransform
-        return TreeTransform(self, pb=pb)
+    def transform(self, pb=None):
+        from .transform import InventoryTreeTransform
+        return InventoryTreeTransform(self, pb=pb)
 
 
 class _SmartAddHelper(object):

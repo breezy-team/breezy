@@ -434,7 +434,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self._make_abc_tree(tree)
         self.build_tree(['d/'], transport=tree.controldir.root_transport)
         tree.add(['d'], [b'd-id'])
-        tt = tree.get_transform()
+        tt = tree.transform()
         trans_id = tt.trans_id_tree_path('b')
         parent_trans_id = tt.trans_id_tree_path('d')
         tt.adjust_path('e', parent_trans_id, trans_id)

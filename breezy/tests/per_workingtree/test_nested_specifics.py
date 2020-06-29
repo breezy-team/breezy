@@ -37,7 +37,7 @@ class TestNestedSupport(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         if not isinstance(tree, inventorytree.InventoryTree):
             raise TestNotApplicable('not an inventory tree')
-        transform = tree.get_transform()
+        transform = tree.transform()
         trans_id = transform.new_directory('reference', transform.root,
                                            b'subtree-id')
         transform.set_tree_reference(b'subtree-revision', trans_id)
