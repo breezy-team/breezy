@@ -76,7 +76,11 @@ def export_marks(filename, revision_ids):
     try:
         # Write the revision info
         for mark in revision_ids:
-            f.write(':%s %s\n' % (mark.lstrip(b':').decode('utf-8'),
+            if isinstance(mark, int):
+                mark_name = str(mark)
+            elif isinstance(mark, bytes):
+                mark_name = mark.lstrip(b':').decode('utf-8')
+            f.write(':%s %s\n' % (mark_name,
                                   revision_ids[mark].decode('utf-8')))
     finally:
         f.close()
