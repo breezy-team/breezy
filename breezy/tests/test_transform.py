@@ -87,6 +87,7 @@ from ..transform import (
     MalformedTransform,
     NoFinalPath,
     ReusingTransform,
+    TransformRenameFailed,
 )
 from ..bzr.transform import (
     InventoryTreeTransform as TreeTransform,
@@ -3848,3 +3849,12 @@ class TestLinkTree(tests.TestCaseWithTransport):
         """If the file to be linked is unmodified, link"""
         transform.link_tree(self.child_tree, self.parent_tree)
         self.assertTrue(self.hardlinked())
+
+
+class ErrorTests(tests.TestCase):
+
+    def test_transform_rename_failed(self):
+        e = TransformRenameFailed(u"from", u"to", "readonly file", 2)
+        self.assertEqual(
+            u"Failed to rename from to to: readonly file",
+            str(e))
