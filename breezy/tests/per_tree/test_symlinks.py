@@ -27,7 +27,7 @@ from breezy.tests import (
     )
 from breezy.mutabletree import MutableTree
 from breezy.tests import TestSkipped
-from breezy.transform import _PreviewTree
+from breezy.bzr.transform import _PreviewTree
 from breezy.tests import (
     features,
     )

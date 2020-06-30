@@ -41,6 +41,7 @@ from ..transform import (
     _TransformResults,
     DiskTreeTransform,
     joinpath,
+    NoFinalPath,
     FinalPaths,
     )
 from . import (
@@ -659,7 +660,7 @@ class _PreviewTree(inventorytree.InventoryTree):
         """
         if (from_tree is not self._transform._tree or include_unchanged
                 or specific_files or want_unversioned):
-            return tree.InterTree(from_tree, self).iter_changes(
+            return tree.InterTree.get(from_tree, self).iter_changes(
                 include_unchanged=include_unchanged,
                 specific_files=specific_files,
                 pb=pb,

@@ -21,9 +21,11 @@ import os
 from breezy import (
     osutils,
     tests,
-    transform,
     )
 
+from breezy.bzr.transform import (
+    _PreviewTree,
+    )
 from breezy.tests import (
     features,
     per_tree,
@@ -112,7 +114,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
             self.assertEqual('missing', summary[0])
             self.assertIs(None, summary[2])
             self.assertIs(None, summary[3])
-        elif isinstance(tree, transform._PreviewTree):
+        elif isinstance(tree, _PreviewTree):
             self.expectFailure('PreviewTree returns "missing" for unversioned'
                                'files', self.assertEqual, 'file', summary[0])
             self.assertEqual('file', summary[0])
