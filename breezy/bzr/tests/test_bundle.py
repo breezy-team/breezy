@@ -39,6 +39,7 @@ from ..bundle.serializer.v08 import BundleSerializerV08
 from ..bundle.serializer.v09 import BundleSerializerV09
 from ..bundle.serializer.v4 import BundleSerializerV4
 from ..import knitrepo
+from ..inventorytree import InventoryTree
 from ...tests import (
     features,
     test_commit,
@@ -59,7 +60,7 @@ def get_inventory_text(repo, revision_id):
         return get_text(repo.inventories, (revision_id,))
 
 
-class MockTree(object):
+class MockTree(InventoryTree):
 
     def __init__(self):
         from ..inventory import InventoryDirectory, ROOT_ID

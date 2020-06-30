@@ -40,6 +40,7 @@ from ..inventory import (
     InventoryFile,
     InventoryLink,
     )
+from ..inventorytree import InventoryTree
 from ...osutils import sha_string, sha_strings, pathjoin
 from ...revision import Revision, NULL_REVISION
 from ...sixish import (
@@ -476,7 +477,7 @@ class BundleInfo(object):
         return None, self.target, 'inapplicable'
 
 
-class BundleTree(Tree):
+class BundleTree(InventoryTree):
 
     def __init__(self, base_tree, revision_id):
         self.base_tree = base_tree
