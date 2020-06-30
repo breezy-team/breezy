@@ -1013,7 +1013,7 @@ class InterGitTrees(_mod_tree.InterTree):
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
                           require_versioned=False, extra_trees=None,
-                          want_unversioned=False):
+                          want_unversioned=False, include_trees=True):
         raise NotImplementedError(self._iter_git_changes)
 
     def find_target_path(self, path, recurse='none'):
@@ -1027,7 +1027,8 @@ class InterGitTrees(_mod_tree.InterTree):
     def find_target_paths(self, paths, recurse='none'):
         paths = set(paths)
         ret = {}
-        changes = self._iter_git_changes(specific_files=paths)[0]
+        changes = self._iter_git_changes(
+            specific_files=paths, include_trees=False)[0]
         for (change_type, old, new) in changes:
             if old[0] is None:
                 continue
@@ -1048,7 +1049,8 @@ class InterGitTrees(_mod_tree.InterTree):
     def find_source_paths(self, paths, recurse='none'):
         paths = set(paths)
         ret = {}
-        changes = self._iter_git_changes(specific_files=paths)[0]
+        changes = self._iter_git_changes(
+            specific_files=paths, include_trees=False)[0]
         for (change_type, old, new) in changes:
             if new[0] is None:
                 continue
@@ -1081,7 +1083,7 @@ class InterGitRevisionTrees(InterGitTrees):
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
                           require_versioned=True, extra_trees=None,
-                          want_unversioned=False):
+                          want_unversioned=False, include_trees=True):
         trees = [self.source]
         if extra_trees is not None:
             trees.extend(extra_trees)
@@ -1100,7 +1102,7 @@ class InterGitRevisionTrees(InterGitTrees):
         rename_detector = RenameDetector(store)
         changes = tree_changes(
             store, self.source.tree, self.target.tree,
-            want_unchanged=want_unchanged, include_trees=True,
+            want_unchanged=want_unchanged, include_trees=include_trees,
             change_type_same=True, rename_detector=rename_detector)
         return changes, set(), set()
 
@@ -1653,7 +1655,7 @@ class InterToIndexGitTree(InterGitTrees):
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
                           require_versioned=False, extra_trees=None,
-                          want_unversioned=False):
+                          want_unversioned=False, include_trees=True):
         trees = [self.source]
         if extra_trees is not None:
             trees.extend(extra_trees)
@@ -1667,7 +1669,8 @@ class InterToIndexGitTree(InterGitTrees):
                 self.source.store, self.source.tree,
                 self.target, want_unchanged=want_unchanged,
                 want_unversioned=want_unversioned,
-                rename_detector=self.rename_detector)
+                rename_detector=self.rename_detector,
+                include_trees=include_trees)
             return changes, set(), target_extras
 
 
@@ -1693,7 +1696,7 @@ class InterFromIndexGitTree(InterGitTrees):
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
                           require_versioned=False, extra_trees=None,
-                          want_unversioned=False):
+                          want_unversioned=False, include_trees=True):
         trees = [self.source]
         if extra_trees is not None:
             trees.extend(extra_trees)
@@ -1705,7 +1708,8 @@ class InterFromIndexGitTree(InterGitTrees):
         with self.lock_read():
             from_tree_sha, extras = snapshot_workingtree(self.source, want_unversioned=want_unversioned)
             return tree_changes(
-                self.store, from_tree_sha, self.target.tree, include_trees=True,
+                self.store, from_tree_sha, self.target.tree,
+                include_trees=include_trees,
                 rename_detector=self.rename_detector,
                 want_unchanged=want_unchanged, change_type_same=True), extras
 
@@ -1732,7 +1736,7 @@ class InterIndexGitTree(InterGitTrees):
 
     def _iter_git_changes(self, want_unchanged=False, specific_files=None,
                           require_versioned=False, extra_trees=None,
-                          want_unversioned=False):
+                          want_unversioned=False, include_trees=True):
         trees = [self.source]
         if extra_trees is not None:
             trees.extend(extra_trees)
@@ -1747,7 +1751,8 @@ class InterIndexGitTree(InterGitTrees):
             to_tree_sha, to_extras = snapshot_workingtree(
                 self.target, want_unversioned=want_unversioned)
             changes = tree_changes(
-                self.store, from_tree_sha, to_tree_sha, include_trees=True,
+                self.store, from_tree_sha, to_tree_sha,
+                include_trees=include_trees,
                 rename_detector=self.rename_detector,
                 want_unchanged=want_unchanged, change_type_same=True)
             return changes, from_extras, to_extras
@@ -1830,13 +1835,14 @@ def snapshot_workingtree(target, want_unversioned=False):
 def changes_between_git_tree_and_working_copy(source_store, from_tree_sha, target,
                                               want_unchanged=False,
                                               want_unversioned=False,
-                                              rename_detector=None):
+                                              rename_detector=None,
+                                              include_trees=True):
     """Determine the changes between a git tree and a working tree with index.
 
     """
     to_tree_sha, extras = snapshot_workingtree(target, want_unversioned=want_unversioned)
     store = OverlayObjectStore([source_store, target.store])
     return tree_changes(
-        store, from_tree_sha, to_tree_sha, include_trees=True,
+        store, from_tree_sha, to_tree_sha, include_trees=include_trees,
         rename_detector=rename_detector,
         want_unchanged=want_unchanged, change_type_same=True), extras
