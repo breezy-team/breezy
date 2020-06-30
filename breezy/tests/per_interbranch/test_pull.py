@@ -19,7 +19,6 @@
 from breezy.branch import Branch
 from breezy.controldir import ControlDir
 from breezy import errors
-from breezy.memorytree import MemoryTree
 from breezy.revision import NULL_REVISION
 from breezy.tests import TestNotApplicable
 from breezy.tests.per_interbranch import TestCaseWithInterBranch
@@ -276,7 +275,7 @@ class TestPullHook(TestCaseWithInterBranch):
         rev1 = target.commit('rev 1')
         target.unlock()
         sourcedir = target.controldir.clone(self.get_url('source'))
-        source = MemoryTree.create_on_branch(sourcedir.open_branch())
+        source = sourcedir.open_branch().create_memorytree()
         rev2 = source.commit('rev 2')
         Branch.hooks.install_named_hook('post_pull',
                                         self.capture_post_pull_hook, None)

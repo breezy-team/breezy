@@ -1203,8 +1203,9 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     (index, subpath) = self._lookup_index(entry.path)
                     index[subpath] = index_entry_from_stat(st, entry.sha, 0)
 
-    def _update_git_tree(self, old_revision, new_revision, change_reporter=None,
-                         show_base=False):
+    def _update_git_tree(
+            self, old_revision, new_revision, change_reporter=None,
+            show_base=False):
         basis_tree = self.revision_tree(old_revision)
         if new_revision != old_revision:
             with basis_tree.lock_read():

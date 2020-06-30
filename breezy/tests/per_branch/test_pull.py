@@ -20,7 +20,6 @@ from breezy import (
     branch,
     controldir,
     errors,
-    memorytree,
     revision,
     )
 from breezy.tests import (
@@ -322,8 +321,7 @@ class TestPullHook(per_branch.TestCaseWithBranch):
         rev1 = target.commit('rev 1')
         target.unlock()
         sourcedir = target.controldir.clone(self.get_url('source'))
-        source = memorytree.MemoryTree.create_on_branch(
-            sourcedir.open_branch())
+        source = sourcedir.open_branch().create_memorytree()
         rev2 = source.commit('rev 2')
         branch.Branch.hooks.install_named_hook(
             'post_pull', self.capture_post_pull_hook, None)

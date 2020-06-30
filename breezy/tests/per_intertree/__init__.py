@@ -131,7 +131,8 @@ def load_tests(loader, standard_tests, pattern):
         ])
     test_intertree_permutations = [
         # test InterTree with two default-format working trees.
-        (InterTree.__name__, InterTree,
+        (inventorytree.InterInventoryTree.__name__,
+         inventorytree.InterInventoryTree,
          default_tree_format, default_tree_format,
          return_provided_trees)]
     for optimiser in InterTree.iter_optimisers():
@@ -142,8 +143,8 @@ def load_tests(loader, standard_tests, pattern):
             chk_tree_format._get_matchingcontroldir = \
                 lambda: breezy.controldir.format_registry.make_controldir('2a')
             test_intertree_permutations.append(
-                (InterTree.__name__ + "(CHKInventory)",
-                 InterTree,
+                (inventorytree.InterInventoryTree.__name__ + "(CHKInventory)",
+                 inventorytree.InterInventoryTree,
                  chk_tree_format,
                  chk_tree_format,
                  mutable_trees_to_revision_trees))
@@ -174,8 +175,8 @@ def load_tests(loader, standard_tests, pattern):
                  optimiser._test_mutable_trees_to_test_trees))
     # PreviewTree does not have an InterTree optimiser class.
     test_intertree_permutations.append(
-        (InterTree.__name__ + "(PreviewTree)",
-         InterTree,
+        (inventorytree.InterInventoryTree.__name__ + "(PreviewTree)",
+         inventorytree.InterInventoryTree,
          default_tree_format,
          default_tree_format,
          mutable_trees_to_preview_trees))
