@@ -25,6 +25,7 @@ from ....branch import Branch
 from ..config import (
     BUILD_TYPE_MERGE,
     DebBuildConfig,
+    UpstreamMetadataSyntaxError,
     )
 from . import TestCaseWithTransport
 
@@ -99,6 +100,21 @@ class DebBuildConfigTests(TestCaseWithTransport):
         self.assertEquals(
             "tag:exampl-$UPSTREAM_VERSION", cfg.export_upstream_revision)
 
+    def test_invalid_upstream_metadata(self):
+        cfg = DebBuildConfig([], tree=self.branch.basis_tree())
+        self.assertIs(None, cfg.upstream_branch)
+
+        self.build_tree_contents([
+          ('debian/',),
+          ('debian/upstream/',),
+          ('debian/upstream/metadata',
+           b'debian/changelog.blah'
+           )])
+        self.tree.add(
+            ['debian', 'debian/upstream', 'debian/upstream/metadata'])
+
+        self.assertRaises(
+            UpstreamMetadataSyntaxError, DebBuildConfig, [], tree=self.tree)
 
 try:
     from ...svn.config import SubversionBuildPackageConfig  # noqa: F401

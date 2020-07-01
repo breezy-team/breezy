@@ -75,8 +75,11 @@ class UpstreamMetadataConfig(object):
     def __init__(self, text):
         try:
             self.metadata = yaml.safe_load(text)
-        except yaml.scanner.ScannerError as e:
+        except (yaml.scanner.ScannerError, yaml.parser.ParserError) as e:
             raise UpstreamMetadataSyntaxError('debian/upstream/metadata', e)
+        if isinstance(self.metadata, str):
+            raise UpstreamMetadataSyntaxError(
+              'debian/upstream/metadata', TypeError(self.metadata))
 
     def get_value(self, section, option):
         if section == "BUILDDEB":
@@ -365,5 +368,3 @@ def _test():
 
 if __name__ == '__main__':
     _test()
-
-# vim: ts=2 sts=2 sw=2

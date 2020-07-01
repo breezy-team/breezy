@@ -440,6 +440,7 @@ class cmd_builddeb(Command):
             source=False, revision=None, package_merge=None,
             strict=False):
         from .builder import DebBuild
+        from .config import UpstreamMetadataSyntaxError
         from .errors import (
             NoPreviousUpload,
             )
@@ -460,7 +461,12 @@ class cmd_builddeb(Command):
         _check_tree(tree, subpath, strict=strict)
 
         with tree.lock_read():
-            config = debuild_config(tree, subpath)
+            try:
+                config = debuild_config(tree, subpath)
+            except UpstreamMetadataSyntaxError as e:
+                raise BzrCommandError(
+                    gettext('Unable to parse upstream metadata file %s: %s')
+                    % (e.path, e.error))
             if reuse:
                 note(gettext("Reusing existing build dir"))
                 dont_purge = True

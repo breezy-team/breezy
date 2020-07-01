@@ -34,7 +34,7 @@ from ...osutils import (
     is_inside_any,
     )
 from ...trace import warning
-from ...transform import TreeTransform, resolve_conflicts, cook_conflicts
+from ...transform import resolve_conflicts, cook_conflicts
 from ...transport import get_transport
 from ...workingtree import WorkingTree
 from .errors import UnknownType
@@ -128,7 +128,7 @@ def _get_paths_to_process(archive_file, prefix, implied_parents, exclude=None):
 def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
                     exclude=None):
     prefix = common_directory(names_of_files(archive_file))
-    with TreeTransform(tree) as tt:
+    with tree.transform() as tt:
         removed = set()
         for path, entry in tree.iter_entries_by_dir():
             if entry.parent_id is None:
