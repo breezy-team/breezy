@@ -69,7 +69,7 @@ def export_marks(filename, revision_ids):
     :param revision_ids: dictionary mapping marks -> bzr revision-ids
     """
     try:
-        f = open(filename, 'w')
+        f = open(filename, 'wb')
     except IOError:
         warning("Could not open export-marks file %s - not exporting marks",
                 filename)
@@ -77,8 +77,7 @@ def export_marks(filename, revision_ids):
 
     try:
         # Write the revision info
-        for mark in revision_ids:
-            f.write(':%s %s\n' % (mark.lstrip(b':').decode('utf-8'),
-                                  revision_ids[mark].decode('utf-8')))
+        for mark, revid in sorted(revision_ids.items()):
+            f.write(b':%s %s\n' % (mark.lstrip(b':'), revid))
     finally:
         f.close()
