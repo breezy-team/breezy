@@ -352,7 +352,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         with transform:
             transform.delete_contents(root)
             e = self.assertRaises(AssertionError, self.assertRaises,
-                                  errors.TransformRenameFailed,
+                                  TransformRenameFailed,
                                   transform.apply)
         self.assertContainsRe('TransformRenameFailed not raised', str(e))
 
@@ -1045,7 +1045,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         file_trans_id = rename_transform.trans_id_file_id(b'myfile-id')
         dir_id = rename_transform.trans_id_file_id(b'first-id')
         rename_transform.adjust_path('newname', dir_id, file_trans_id)
-        e = self.assertRaises(errors.TransformRenameFailed,
+        e = self.assertRaises(TransformRenameFailed,
                               rename_transform.apply)
         # On nix looks like:
         # "Failed to rename .../work/.bzr/checkout/limbo/new-1
