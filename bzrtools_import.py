@@ -192,7 +192,7 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
                         break
             if found_file_id is not None and found_file_id != existing_file_id:
                 # Found a specific file id in one of the source trees
-                tt.version_file(found_file_id, trans_id)
+                tt.version_file(trans_id=trans_id, file_id=found_file_id)
                 if existing_file_id is not None:
                     # We need to remove the existing file so it can be
                     # replaced by the file (and file id) from the
@@ -205,7 +205,7 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
                 # base tree.
                 name = basename(member.name.rstrip('/'))
                 file_id = generate_ids.gen_file_id(name)
-                tt.version_file(file_id, trans_id)
+                tt.version_file(file_id=file_id, trans_id=trans_id)
             path = tree.abspath(relative_path)
             if member.name in seen:
                 if tt.final_kind(trans_id) == 'file':
@@ -237,13 +237,14 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
                         if other_tree.has_filename(relative_path):
                             file_id = other_tree.path2id(relative_path)
                             if file_id is not None:
-                                tt.version_file(file_id, trans_id)
+                                tt.version_file(
+                                    trans_id=trans_id, file_id=file_id)
                                 found = True
                                 break
                 if not found:
                     # Should this really use the trans_id as the
                     # file_id?
-                    tt.version_file(trans_id, trans_id)
+                    tt.version_file(trans_id=trans_id, file_id=trans_id)
             added.add(relative_path)
 
         for path in removed.difference(added):
