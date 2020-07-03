@@ -33,7 +33,7 @@ from .. import (
 
 from ..i18n import gettext
 from ..mutabletree import MutableTree
-from ..sixish import text_type, viewvalues
+from ..sixish import text_type, viewvalues, viewitems
 from ..transform import (
     ROOT_PARENT,
     TreeTransform,
@@ -43,6 +43,7 @@ from ..transform import (
     joinpath,
     NoFinalPath,
     FinalPaths,
+    unique_add,
     )
 from . import (
     inventory,
@@ -52,6 +53,42 @@ from . import (
 
 class InventoryTreeTransform(TreeTransform):
     """Tree transform for Bazaar trees."""
+
+    def version_file(self, trans_id, file_id=None):
+        """Schedule a file to become versioned."""
+        if file_id is None:
+            raise ValueError()
+        unique_add(self._new_id, trans_id, file_id)
+        unique_add(self._r_new_id, file_id, trans_id)
+
+    def cancel_versioning(self, trans_id):
+        """Undo a previous versioning of a file"""
+        file_id = self._new_id[trans_id]
+        del self._new_id[trans_id]
+        del self._r_new_id[file_id]
+
+    def _duplicate_ids(self):
+        """Each inventory id may only be used once"""
+        conflicts = []
+        try:
+            all_ids = self._tree.all_file_ids()
+        except errors.UnsupportedOperation:
+            # it's okay for non-file-id trees to raise UnsupportedOperation.
+            return []
+        removed_tree_ids = set((self.tree_file_id(trans_id) for trans_id in
+                                self._removed_id))
+        active_tree_ids = all_ids.difference(removed_tree_ids)
+        for trans_id, file_id in viewitems(self._new_id):
+            if file_id in active_tree_ids:
+                path = self._tree.id2path(file_id)
+                old_trans_id = self.trans_id_tree_path(path)
+                conflicts.append(('duplicate id', old_trans_id, trans_id))
+        return conflicts
+
+    def find_conflicts(self):
+        conflicts = super(InventoryTreeTransform, self).find_conflicts()
+        conflicts.extend(self._duplicate_ids())
+        return conflicts
 
     def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
         """Apply all changes to the inventory and filesystem.

@@ -791,10 +791,8 @@ class Merge3Merger(object):
         hooks = [factory(self) for factory in factories] + [self]
         self.active_hooks = [hook for hook in hooks if hook is not None]
         with ui.ui_factory.nested_progress_bar() as child_pb:
-            for num, (file_id, changed, paths3, parents3, names3,
+            for num, (trans_id, file_id, changed, paths3, parents3, names3,
                       executable3) in enumerate(entries):
-                trans_id = self.tt.trans_id_file_id(file_id)
-
                 # Try merging each entry
                 child_pb.update(gettext('Preparing file merge'),
                                 num, len(entries))
@@ -863,8 +861,9 @@ class Merge3Merger(object):
             names3 = change.name + (this_name,)
             paths3 = change.path + (this_path, )
             executable3 = change.executable + (this_executable,)
+            trans_id = self.tt.trans_id_file_id(file_id)
             result.append(
-                (change.file_id, change.changed_content, paths3,
+                (trans_id, change.file_id, change.changed_content, paths3,
                  parents3, names3, executable3))
         return result
 
@@ -1039,7 +1038,8 @@ class Merge3Merger(object):
                     raise AssertionError('unhandled kind: %s' % other_ie.kind)
 
             # If we have gotten this far, that means something has changed
-            result.append((file_id, content_changed,
+            trans_id = self.tt.trans_id_file_id(file_id)
+            result.append((trans_id, file_id, content_changed,
                            ((base_path, lca_paths),
                             other_path, this_path),
                            ((base_ie.parent_id, lca_parent_ids),

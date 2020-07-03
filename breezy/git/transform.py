@@ -25,6 +25,7 @@ from ..transform import (
     _TransformResults,
     _FileMover,
     FinalPaths,
+    unique_add,
     )
 
 from ..bzr import inventory
@@ -32,6 +33,19 @@ from ..bzr import inventory
 
 class GitTreeTransform(TreeTransform):
     """Tree transform for Bazaar trees."""
+
+    def version_file(self, trans_id, file_id=None):
+        """Schedule a file to become versioned."""
+        if file_id is None:
+            raise ValueError()
+        unique_add(self._new_id, trans_id, file_id)
+        unique_add(self._r_new_id, file_id, trans_id)
+
+    def cancel_versioning(self, trans_id):
+        """Undo a previous versioning of a file"""
+        file_id = self._new_id[trans_id]
+        del self._new_id[trans_id]
+        del self._r_new_id[file_id]
 
     def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
         """Apply all changes to the inventory and filesystem.

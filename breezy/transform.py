@@ -401,16 +401,11 @@ class TreeTransformBase(object):
 
     def version_file(self, trans_id, file_id=None):
         """Schedule a file to become versioned."""
-        if file_id is None:
-            raise ValueError()
-        unique_add(self._new_id, trans_id, file_id)
-        unique_add(self._r_new_id, file_id, trans_id)
+        raise NotImplementedError(self.version_file)
 
     def cancel_versioning(self, trans_id):
         """Undo a previous versioning of a file"""
-        file_id = self._new_id[trans_id]
-        del self._new_id[trans_id]
-        del self._r_new_id[file_id]
+        raise NotImplementedError(self.cancel_versioning)
 
     def new_paths(self, filesystem_only=False):
         """Determine the paths of all new and changed files.
@@ -540,7 +535,6 @@ class TreeTransformBase(object):
         conflicts.extend(self._unversioned_parents(by_parent))
         conflicts.extend(self._parent_loops())
         conflicts.extend(self._duplicate_entries(by_parent))
-        conflicts.extend(self._duplicate_ids())
         conflicts.extend(self._parent_type_conflicts(by_parent))
         conflicts.extend(self._improper_versioning())
         conflicts.extend(self._executability_conflicts())
@@ -721,24 +715,6 @@ class TreeTransformBase(object):
                                       name))
                 last_name = name
                 last_trans_id = trans_id
-        return conflicts
-
-    def _duplicate_ids(self):
-        """Each inventory id may only be used once"""
-        conflicts = []
-        try:
-            all_ids = self._tree.all_file_ids()
-        except errors.UnsupportedOperation:
-            # it's okay for non-file-id trees to raise UnsupportedOperation.
-            return []
-        removed_tree_ids = set((self.tree_file_id(trans_id) for trans_id in
-                                self._removed_id))
-        active_tree_ids = all_ids.difference(removed_tree_ids)
-        for trans_id, file_id in viewitems(self._new_id):
-            if file_id in active_tree_ids:
-                path = self._tree.id2path(file_id)
-                old_trans_id = self.trans_id_tree_path(path)
-                conflicts.append(('duplicate id', old_trans_id, trans_id))
         return conflicts
 
     def _parent_type_conflicts(self, by_parent):
