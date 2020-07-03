@@ -32,7 +32,7 @@ class TestInventoryAltered(TestCaseWithTransport):
         tree.add('foo', b'foo-id')
         with tree.preview_transform() as tt:
             tt.unversion_file(tt.root)
-            tt.version_file(b'new-id', tt.root)
+            tt.version_file(tt.root, file_id=b'new-id')
             foo_trans_id = tt.trans_id_tree_path('foo')
             foo_tuple = ('foo', foo_trans_id)
             root_tuple = ('', tt.root)
@@ -44,6 +44,6 @@ class TestInventoryAltered(TestCaseWithTransport):
         tree.add('foo', b'foo-id')
         with tree.preview_transform() as tt:
             tt.unversion_file(tt.root)
-            tt.version_file(tree.path2id(''), tt.root)
+            tt.version_file(tt.root, file_id=tree.path2id(''))
             tt.trans_id_tree_path('foo')
             self.assertEqual([], tt._inventory_altered())

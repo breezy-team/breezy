@@ -31,7 +31,6 @@ from breezy import (
     revision as _mod_revision,
     textfile,
     trace,
-    transform,
     tree as _mod_tree,
     tsort,
     ui,
@@ -48,6 +47,7 @@ from . import (
     errors,
     hooks,
     registry,
+    transform,
     )
 from .sixish import (
     viewitems,
@@ -1288,7 +1288,7 @@ class Merge3Merger(object):
                     keep_this = True
                     # versioning the merged file will trigger a duplicate
                     # conflict
-                    self.tt.version_file(file_id, trans_id)
+                    self.tt.version_file(trans_id, file_id=file_id)
                     transform.create_from_tree(
                         self.tt, trans_id, self.other_tree,
                         other_path,
@@ -1335,7 +1335,7 @@ class Merge3Merger(object):
         else:
             raise AssertionError('unknown hook_status: %r' % (hook_status,))
         if not this_path and result == "modified":
-            self.tt.version_file(file_id, trans_id)
+            self.tt.version_file(trans_id, file_id=file_id)
         if not keep_this:
             # The merge has been performed and produced a new content, so the
             # old contents should not be retained.
@@ -1486,7 +1486,7 @@ class Merge3Merger(object):
                     filter_tree_path)
                 file_group.append(trans_id)
                 if set_version and not versioned:
-                    self.tt.version_file(file_id, trans_id)
+                    self.tt.version_file(trans_id, file_id=file_id)
                     versioned = True
         return file_group
 
