@@ -135,20 +135,20 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertIs(None, transform.final_kind(trans_id))
         transform.create_file([b'contents'], trans_id)
         transform.set_executability(True, trans_id)
-        transform.version_file(b'my_pretties', trans_id)
+        transform.version_file(trans_id, file_id=b'my_pretties')
         self.assertRaises(DuplicateKey, transform.version_file,
-                          b'my_pretties', trans_id)
+                          trans_id, file_id=b'my_pretties')
         self.assertEqual(transform.final_file_id(trans_id), b'my_pretties')
         self.assertEqual(transform.final_parent(trans_id), root)
         self.assertIs(transform.final_parent(root), ROOT_PARENT)
         self.assertIs(transform.get_tree_parent(root), ROOT_PARENT)
         oz_id = transform.create_path('oz', root)
         transform.create_directory(oz_id)
-        transform.version_file(b'ozzie', oz_id)
+        transform.version_file(oz_id, file_id=b'ozzie')
         trans_id2 = transform.create_path('name2', root)
         transform.create_file([b'contents'], trans_id2)
         transform.set_executability(False, trans_id2)
-        transform.version_file(b'my_pretties2', trans_id2)
+        transform.version_file(trans_id2, file_id=b'my_pretties2')
         modified_paths = transform.apply().modified_paths
         with self.wt.get_file('name') as f:
             self.assertEqual(b'contents', f.read())
@@ -419,7 +419,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(transform.find_conflicts(),
                          [('unversioned parent', lion_id),
                           ('missing parent', lion_id)])
-        transform.version_file(b"Courage", lion_id)
+        transform.version_file(lion_id, file_id=b"Courage")
         self.assertEqual(transform.find_conflicts(),
                          [('missing parent', lion_id),
                           ('versioning no contents', lion_id)])
@@ -436,7 +436,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.set_executability(True, oz_id)
         self.assertEqual(transform.find_conflicts(),
                          [('unversioned executability', oz_id)])
-        transform.version_file(b'oz-id', oz_id)
+        transform.version_file(oz_id, file_id=b'oz-id')
         self.assertEqual(transform.find_conflicts(),
                          [('non-file executability', oz_id)])
         transform.set_executability(None, oz_id)
@@ -764,7 +764,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.new_symlink(link_name1, oz_id, link_target1, b'wizard-id')
         wiz_id = transform.create_path(link_name2, oz_id)
         transform.create_symlink(link_target2, wiz_id)
-        transform.version_file(b'wiz-id2', wiz_id)
+        transform.version_file(wiz_id, file_id=b'wiz-id2')
         transform.set_executability(True, wiz_id)
         self.assertEqual(transform.find_conflicts(),
                          [('non-file executability', wiz_id)])
@@ -987,7 +987,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform, root = self.transform()
         transform.adjust_root_path('oldroot', fun)
         new_root = transform.trans_id_tree_path('')
-        transform.version_file(b'new-root', new_root)
+        transform.version_file(new_root, file_id=b'new-root')
         transform.apply()
 
     def test_renames(self):
@@ -1148,7 +1148,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform, root = self.transform()
         try:
             old = transform.trans_id_tree_path('old')
-            transform.version_file(b'id-1', old)
+            transform.version_file(old, file_id=b'id-1')
             self.assertEqual([(b'id-1', (None, 'old'), False, (False, True),
                                (b'eert_toor', b'eert_toor'),
                                ('old', 'old'), ('file', 'file'),
@@ -1197,7 +1197,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             # move file_id to a different file
             self.assertEqual([], list(transform.iter_changes()))
             transform.unversion_file(old)
-            transform.version_file(b'id-1', new)
+            transform.version_file(new, file_id=b'id-1')
             transform.adjust_path('old', root, new)
             self.assertEqual([(b'id-1', ('old', 'old'), True, (True, True),
                                (b'eert_toor', b'eert_toor'),
@@ -1308,7 +1308,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             transform.create_directory(subdir)
             transform.set_executability(False, old)
             transform.unversion_file(old)
-            transform.version_file(b'id-1', old)
+            transform.version_file(old, file_id=b'id-1')
             transform.adjust_path('old', root, old)
             self.assertEqual([], list(transform.iter_changes()))
         finally:
@@ -1550,7 +1550,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         tt.create_directory(foo_trans_id)
         bar_trans_id = tt.trans_id_tree_path("foo/bar")
         tt.create_file([b"aa\n"], bar_trans_id)
-        tt.version_file(b"bar-1", bar_trans_id)
+        tt.version_file(bar_trans_id, file_id=b"bar-1")
         tt.apply()
         self.assertPathExists("foo/bar")
         with wt.lock_read():

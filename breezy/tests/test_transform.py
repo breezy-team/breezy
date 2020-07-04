@@ -124,7 +124,7 @@ class TestInventoryAltered(tests.TestCaseWithTransport):
         tree.add('foo', b'foo-id')
         with tree.preview_transform() as tt:
             tt.unversion_file(tt.root)
-            tt.version_file(b'new-id', tt.root)
+            tt.version_file(tt.root, file_id=b'new-id')
             foo_trans_id = tt.trans_id_tree_path('foo')
             foo_tuple = ('foo', foo_trans_id)
             root_tuple = ('', tt.root)
@@ -136,7 +136,7 @@ class TestInventoryAltered(tests.TestCaseWithTransport):
         tree.add('foo', b'foo-id')
         with tree.preview_transform() as tt:
             tt.unversion_file(tt.root)
-            tt.version_file(tree.path2id(''), tt.root)
+            tt.version_file(tt.root, file_id=tree.path2id(''))
             tt.trans_id_tree_path('foo')
             self.assertEqual([], tt._inventory_altered())
 
@@ -1374,7 +1374,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview.unversion_file(preview.trans_id_file_id(b'b-id'))
         c_trans_id = preview.trans_id_file_id(b'c-id')
         preview.unversion_file(c_trans_id)
-        preview.version_file(b'c-id', c_trans_id)
+        preview.version_file(c_trans_id, file_id=b'c-id')
         preview_tree = preview.get_preview_tree()
         self.assertEqual({b'a-id', b'c-id', tree.path2id('')},
                          preview_tree.all_file_ids())

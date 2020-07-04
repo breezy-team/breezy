@@ -23,8 +23,10 @@ import time
 
 from . import (
     config as _mod_config,
+    controldir,
     errors,
     lazy_import,
+    osutils,
     registry,
     trace,
     tree,
@@ -32,25 +34,22 @@ from . import (
 lazy_import.lazy_import(globals(), """
 from breezy import (
     annotate,
-    bencode,
     cleanup,
-    controldir,
     commit,
     conflicts,
-    delta,
     lock,
     multiparent,
-    osutils,
     revision as _mod_revision,
     ui,
     urlutils,
     )
+from breezy.i18n import gettext
 from breezy.bzr import (
     inventory,
     inventorytree,
     )
-from breezy.i18n import gettext
 """)
+
 from .errors import (DuplicateKey,
                      CantMoveRoot,
                      BzrError, InternalBzrError)
@@ -188,6 +187,23 @@ class TreeTransformBase(object):
         """Support Context Manager API."""
         self.finalize()
 
+    def iter_tree_children(self, trans_id):
+        """Iterate through the entry's tree children, if any.
+
+        :param trans_id: trans id to iterate
+        :returns: Iterator over paths
+        """
+        raise NotImplementedError(self.iter_tree_children)
+
+    def _read_symlink_target(self, trans_id):
+        raise NotImplementedError(self._read_symlink_target)
+
+    def canonical_path(self, path):
+        return path
+
+    def tree_kind(self, trans_id):
+        raise NotImplementedError(self.tree_kind)
+
     def finalize(self):
         """Release the working tree lock, if held.
 
@@ -247,7 +263,7 @@ class TreeTransformBase(object):
             file_id = self.final_file_id(child_id)
             if file_id is not None:
                 self.unversion_file(child_id)
-            self.version_file(file_id, child_id)
+            self.version_file(child_id, file_id=file_id)
 
         # the physical root needs a new transaction id
         self._tree_path_ids.pop("")
@@ -257,7 +273,7 @@ class TreeTransformBase(object):
             parent = self._new_root
         self.adjust_path(name, parent, old_root)
         self.create_directory(old_root)
-        self.version_file(old_root_file_id, old_root)
+        self.version_file(old_root, file_id=old_root_file_id)
         self.unversion_file(self._new_root)
 
     def fixup_new_roots(self):
@@ -297,7 +313,7 @@ class TreeTransformBase(object):
                 and self._new_root not in self._removed_id):
             self.unversion_file(self._new_root)
         if file_id is not None:
-            self.version_file(file_id, self._new_root)
+            self.version_file(self._new_root, file_id=file_id)
 
         # Now move children of new root into old root directory.
         # Ensure all children are registered with the transaction, but don't
@@ -391,7 +407,7 @@ class TreeTransformBase(object):
         """Set the reference associated with a directory"""
         unique_add(self._new_reference_revision, trans_id, revision_id)
 
-    def version_file(self, file_id, trans_id):
+    def version_file(self, trans_id, file_id=None):
         """Schedule a file to become versioned."""
         if file_id is None:
             raise ValueError()
@@ -819,7 +835,7 @@ class TreeTransformBase(object):
         """Helper function to create a new filesystem entry."""
         trans_id = self.create_path(name, parent_id)
         if file_id is not None:
-            self.version_file(file_id, trans_id)
+            self.version_file(trans_id, file_id=file_id)
         return trans_id
 
     def new_file(self, name, parent_id, contents, file_id=None,
@@ -897,7 +913,7 @@ class TreeTransformBase(object):
                 # The child is removed as part of the transform. Since it was
                 # versioned before, it's not an orphan
                 continue
-            elif self.final_file_id(child_tid) is None:
+            if self.final_file_id(child_tid) is None:
                 # The child is not versioned
                 orphans.append(child_tid)
             else:
@@ -1144,6 +1160,7 @@ class TreeTransformBase(object):
 
         :param serializer: A Serialiser like pack.ContainerSerializer.
         """
+        from . import bencode
         new_name = {k.encode('utf-8'): v.encode('utf-8')
                     for k, v in viewitems(self._new_name)}
         new_parent = {k.encode('utf-8'): v.encode('utf-8')
@@ -1195,6 +1212,7 @@ class TreeTransformBase(object):
         :param records: An iterable of (names, content) tuples, as per
             pack.ContainerPushParser.
         """
+        from . import bencode
         names, content = next(records)
         attribs = bencode.bdecode(content)
         self._id_number = attribs[b'_id_number']
@@ -1402,6 +1420,9 @@ class DiskTreeTransform(TreeTransformBase):
         for descendant in list(descendants):
             descendants.update(self._limbo_descendants(descendant))
         return descendants
+
+    def _set_mode(self, trans_id, mode_id, typefunc):
+        raise NotImplementedError(self._set_mode)
 
     def create_file(self, contents, trans_id, mode_id=None, sha1=None):
         """Schedule creation of a new file.
@@ -2013,9 +2034,6 @@ class TransformPreview(DiskTreeTransform):
         tree.lock_read()
         limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
         DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
-
-    def canonical_path(self, path):
-        return path
 
     def tree_kind(self, trans_id):
         path = self._tree_id_paths.get(trans_id)
@@ -2709,7 +2727,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     # getting the file text, and get them all at once.
                     trans_id = tt.create_path(entry.name, parent_id)
                     file_trans_id[file_id] = trans_id
-                    tt.version_file(file_id, trans_id)
+                    tt.version_file(trans_id, file_id=file_id)
                     executable = tree.is_executable(tree_path)
                     if executable:
                         tt.set_executability(executable, trans_id)
@@ -2925,6 +2943,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
             conflicts, merge_modified = _prepare_revert_transform(
                 working_tree, target_tree, tt, filenames, backups, pp)
             if change_reporter:
+                from . import delta
                 change_reporter = delta._ChangeReporter(
                     unversioned_filter=working_tree.is_ignored)
                 delta.report_changes(tt.iter_changes(), change_reporter)
@@ -3013,7 +3032,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         new_trans_id = tt.create_path(wt_name, parent_trans_id)
                         if wt_versioned and target_versioned:
                             tt.unversion_file(trans_id)
-                            tt.version_file(file_id, new_trans_id)
+                            tt.version_file(new_trans_id, file_id=file_id)
                         # New contents should have the same unix perms as old
                         # contents
                         mode_id = trans_id
@@ -3051,7 +3070,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 elif target_kind is not None:
                     raise AssertionError(target_kind)
             if not wt_versioned and target_versioned:
-                tt.version_file(file_id, trans_id)
+                tt.version_file(trans_id, file_id=file_id)
             if wt_versioned and not target_versioned:
                 tt.unversion_file(trans_id)
             if (target_name is not None
@@ -3196,7 +3215,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
             if path_tree and path_tree.path2id('') == file_id:
                 # This is the root entry, skip it
                 continue
-            tt.version_file(file_id, conflict[1])
+            tt.version_file(conflict[1], file_id=file_id)
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))
         elif c_type == 'non-directory parent':
             parent_id = conflict[1]
