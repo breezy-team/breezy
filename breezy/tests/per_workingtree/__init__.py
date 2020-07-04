@@ -155,6 +155,7 @@ def load_tests(loader, standard_tests, pattern):
         'shelf_manager',
         'smart_add',
         'symlinks',
+        'transform',
         'uncommit',
         'unversion',
         'views',
