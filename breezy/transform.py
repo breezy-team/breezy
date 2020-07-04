@@ -72,6 +72,7 @@ from .sixish import (
 from .tree import (
     InterTree,
     TreeChange,
+    find_previous_path,
     )
 
 
@@ -2678,7 +2679,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     divert = set()
     try:
         pp.next_phase()
-        file_trans_id[wt.path2id('')] = tt.trans_id_tree_path('')
+        file_trans_id[find_previous_path(wt, tree, '')] = tt.trans_id_tree_path('')
         with ui.ui_factory.nested_progress_bar() as pb:
             deferred_contents = []
             num = 0
@@ -2715,19 +2716,19 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                         except errors.NotBranchError:
                             pass
                         else:
-                            divert.add(file_id)
-                    if (file_id not in divert
+                            divert.add(tree_path)
+                    if (tree_path not in divert
                         and _content_match(
                             tree, entry, tree_path, kind, target_path)):
                         tt.delete_contents(tt.trans_id_tree_path(tree_path))
                         if kind == 'directory':
                             reparent = True
-                parent_id = file_trans_id[entry.parent_id]
+                parent_id = file_trans_id[osutils.dirname(tree_path)]
                 if entry.kind == 'file':
                     # We *almost* replicate new_by_entry, so that we can defer
                     # getting the file text, and get them all at once.
                     trans_id = tt.create_path(entry.name, parent_id)
-                    file_trans_id[file_id] = trans_id
+                    file_trans_id[tree_path] = trans_id
                     tt.version_file(trans_id, file_id=file_id)
                     executable = tree.is_executable(tree_path)
                     if executable:
@@ -2735,10 +2736,10 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     trans_data = (trans_id, tree_path, entry.text_sha1)
                     deferred_contents.append((tree_path, trans_data))
                 else:
-                    file_trans_id[file_id] = new_by_entry(
+                    file_trans_id[tree_path] = new_by_entry(
                         tree_path, tt, entry, parent_id, tree)
                 if reparent:
-                    new_trans_id = file_trans_id[file_id]
+                    new_trans_id = file_trans_id[tree_path]
                     old_parent = tt.trans_id_tree_path(tree_path)
                     _reparent_children(tt, old_parent, new_trans_id)
             offset = num + 1 - len(deferred_contents)
