@@ -100,7 +100,7 @@ class TransformGroup(object):
         self.wt = ControlDir.create_standalone_workingtree(dirname)
         self.wt.set_root_id(root_id)
         self.b = self.wt.branch
-        self.tt = TreeTransform(self.wt)
+        self.tt = self.wt.transform()
         self.root = self.tt.trans_id_tree_path('')
 
 
@@ -617,7 +617,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
     def test_build_tree_hardlinks_preserve_execute(self):
         self.requireFeature(HardlinkFeature)
         source = self.create_ab_tree()
-        tt = TreeTransform(source)
+        tt = source.transform()
         trans_id = tt.trans_id_tree_path('file1')
         tt.set_executability(True, trans_id)
         tt.apply()
@@ -950,7 +950,7 @@ class TestTransformRollback(tests.TestCaseWithTransport):
     def test_rollback_rename(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b'])
-        tt = TreeTransform(tree)
+        tt = tree.transform()
         self.addCleanup(tt.finalize)
         a_id = tt.trans_id_tree_path('a')
         tt.adjust_path('c', tt.root, a_id)
@@ -966,7 +966,7 @@ class TestTransformRollback(tests.TestCaseWithTransport):
     def test_rollback_rename_into_place(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b'])
-        tt = TreeTransform(tree)
+        tt = tree.transform()
         self.addCleanup(tt.finalize)
         a_id = tt.trans_id_tree_path('a')
         tt.adjust_path('c', tt.root, a_id)
@@ -982,7 +982,7 @@ class TestTransformRollback(tests.TestCaseWithTransport):
     def test_rollback_deletion(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b'])
-        tt = TreeTransform(tree)
+        tt = tree.transform()
         self.addCleanup(tt.finalize)
         a_id = tt.trans_id_tree_path('a')
         tt.delete_contents(a_id)
@@ -1026,13 +1026,13 @@ class TestFinalizeRobustness(tests.TestCaseWithTransport):
     def create_transform_and_root_trans_id(self):
         """Setup a transform creating a file in limbo"""
         tree = self.make_branch_and_tree('.')
-        tt = TreeTransform(tree)
+        tt = tree.transform()
         return tt, tt.create_path("a", tt.root)
 
     def create_transform_and_subdir_trans_id(self):
         """Setup a transform creating a directory containing a file in limbo"""
         tree = self.make_branch_and_tree('.')
-        tt = TreeTransform(tree)
+        tt = tree.transform()
         d_trans_id = tt.create_path("d", tt.root)
         tt.create_directory(d_trans_id)
         f_trans_id = tt.create_path("a", d_trans_id)
@@ -1132,7 +1132,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
         self.build_tree(['dir/', ])
         wt.add(['dir'], [b'dir-id'])
         wt.commit('Create dir')
-        tt = TreeTransform(wt)
+        tt = wt.transform()
         self.addCleanup(tt.finalize)
         return wt, tt
 
@@ -1441,7 +1441,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
 
     def test_iter_entries_by_dir_new(self):
         tree = self.make_branch_and_tree('tree')
-        tt = TreeTransform(tree)
+        tt = tree.transform()
         tt.new_file('new', tt.root, [b'contents'], b'new-id')
         self.assertMatchingIterEntries(tt)
 
@@ -1449,7 +1449,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/deleted'])
         tree.add('deleted', b'deleted-id')
-        tt = TreeTransform(tree)
+        tt = tree.transform()
         tt.delete_contents(tt.trans_id_file_id(b'deleted-id'))
         self.assertMatchingIterEntries(tt)
 
@@ -1457,7 +1457,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/removed'])
         tree.add('removed', b'removed-id')
-        tt = TreeTransform(tree)
+        tt = tree.transform()
         tt.unversion_file(tt.trans_id_file_id(b'removed-id'))
         self.assertMatchingIterEntries(tt)
 
@@ -1465,7 +1465,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/moved', 'tree/new_parent/'])
         tree.add(['moved', 'new_parent'], [b'moved-id', b'new_parent-id'])
-        tt = TreeTransform(tree)
+        tt = tree.transform()
         tt.adjust_path('moved', tt.trans_id_file_id(b'new_parent-id'),
                        tt.trans_id_file_id(b'moved-id'))
         self.assertMatchingIterEntries(tt)
@@ -1475,7 +1475,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree.set_root_id(b'tree-root-id')
         self.build_tree(['tree/parent/', 'tree/parent/child'])
         tree.add(['parent', 'parent/child'], [b'parent-id', b'child-id'])
-        tt = TreeTransform(tree)
+        tt = tree.transform()
         self.assertMatchingIterEntries(tt, ['', 'parent/child'])
 
     def test_symlink_content_summary(self):
@@ -1902,11 +1902,8 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.assertEqual({'new-1': True}, tt._new_executability)
         self.assertEqual({'new-1': 'file',
                           'new-2': 'directory'}, tt._new_contents)
-        foo_limbo = open(tt._limbo_name('new-1'), 'rb')
-        try:
+        with open(tt._limbo_name('new-1'), 'rb') as foo_limbo:
             foo_content = foo_limbo.read()
-        finally:
-            foo_limbo.close()
         self.assertEqual(b'bar', foo_content)
 
     def symlink_creation_records(self):
@@ -2113,7 +2110,7 @@ class TestOrphan(tests.TestCaseWithTransport):
         self.build_tree(['dir/', 'dir/file', 'dir/foo'])
         wt.add(['dir', 'dir/file'], [b'dir-id', b'file-id'])
         wt.commit('add dir and file ignoring foo')
-        tt = transform.TreeTransform(wt)
+        tt = wt.transform()
         self.addCleanup(tt.finalize)
         # dir and bar are deleted
         dir_tid = tt.trans_id_tree_path('dir')
@@ -2198,7 +2195,7 @@ class TestTransformHooks(tests.TestCaseWithTransport):
         os.chdir('..')
 
     def transform(self):
-        transform = TreeTransform(self.wt)
+        transform = self.wt.transform()
         self.addCleanup(transform.finalize)
         return transform, transform.root
 
@@ -2257,7 +2254,7 @@ class TestLinkTree(tests.TestCaseWithTransport):
 
     def test_link_fails_if_execute_bit_changed(self):
         """If the file to be linked has modified execute bit, don't link."""
-        tt = TreeTransform(self.child_tree)
+        tt = self.child_tree.transform()
         try:
             trans_id = tt.trans_id_tree_path('foo')
             tt.set_executability(True, trans_id)
