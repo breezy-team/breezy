@@ -31,6 +31,7 @@ from breezy import (
     revision as _mod_revision,
     textfile,
     trace,
+    transform,
     tree as _mod_tree,
     tsort,
     ui,
@@ -47,7 +48,6 @@ from . import (
     errors,
     hooks,
     registry,
-    transform,
     )
 from .sixish import (
     viewitems,

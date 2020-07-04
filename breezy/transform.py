@@ -44,12 +44,11 @@ from breezy import (
     urlutils,
     )
 from breezy.i18n import gettext
-""")
-
 from breezy.bzr import (
     inventory,
     inventorytree,
     )
+""")
 
 from .errors import (DuplicateKey,
                      CantMoveRoot,

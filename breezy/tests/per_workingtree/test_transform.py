@@ -1148,7 +1148,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform, root = self.transform()
         try:
             old = transform.trans_id_tree_path('old')
-            transform.version_file(b'id-1', old)
+            transform.version_file(old, file_id=b'id-1')
             self.assertEqual([(b'id-1', (None, 'old'), False, (False, True),
                                (b'eert_toor', b'eert_toor'),
                                ('old', 'old'), ('file', 'file'),
