@@ -268,7 +268,7 @@ class ShelfCreator(object):
                         to_transform, s_trans_id, tree,
                         tree.id2path(file_id))
         if version:
-            to_transform.version_file(file_id, s_trans_id)
+            to_transform.version_file(s_trans_id, file_id=file_id)
 
     def _inverse_lines(self, new_lines, file_id):
         """Produce a version with only those changes removed from new_lines."""

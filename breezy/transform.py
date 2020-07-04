@@ -264,7 +264,7 @@ class TreeTransformBase(object):
             file_id = self.final_file_id(child_id)
             if file_id is not None:
                 self.unversion_file(child_id)
-            self.version_file(file_id, child_id)
+            self.version_file(child_id, file_id=file_id)
 
         # the physical root needs a new transaction id
         self._tree_path_ids.pop("")
@@ -274,7 +274,7 @@ class TreeTransformBase(object):
             parent = self._new_root
         self.adjust_path(name, parent, old_root)
         self.create_directory(old_root)
-        self.version_file(old_root_file_id, old_root)
+        self.version_file(old_root, file_id=old_root_file_id)
         self.unversion_file(self._new_root)
 
     def fixup_new_roots(self):
@@ -314,7 +314,7 @@ class TreeTransformBase(object):
                 and self._new_root not in self._removed_id):
             self.unversion_file(self._new_root)
         if file_id is not None:
-            self.version_file(file_id, self._new_root)
+            self.version_file(self._new_root, file_id=file_id)
 
         # Now move children of new root into old root directory.
         # Ensure all children are registered with the transaction, but don't
@@ -408,7 +408,7 @@ class TreeTransformBase(object):
         """Set the reference associated with a directory"""
         unique_add(self._new_reference_revision, trans_id, revision_id)
 
-    def version_file(self, file_id, trans_id):
+    def version_file(self, trans_id, file_id=None):
         """Schedule a file to become versioned."""
         if file_id is None:
             raise ValueError()
@@ -836,7 +836,7 @@ class TreeTransformBase(object):
         """Helper function to create a new filesystem entry."""
         trans_id = self.create_path(name, parent_id)
         if file_id is not None:
-            self.version_file(file_id, trans_id)
+            self.version_file(trans_id, file_id=file_id)
         return trans_id
 
     def new_file(self, name, parent_id, contents, file_id=None,
@@ -2728,7 +2728,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     # getting the file text, and get them all at once.
                     trans_id = tt.create_path(entry.name, parent_id)
                     file_trans_id[file_id] = trans_id
-                    tt.version_file(file_id, trans_id)
+                    tt.version_file(trans_id, file_id=file_id)
                     executable = tree.is_executable(tree_path)
                     if executable:
                         tt.set_executability(executable, trans_id)
@@ -3033,7 +3033,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         new_trans_id = tt.create_path(wt_name, parent_trans_id)
                         if wt_versioned and target_versioned:
                             tt.unversion_file(trans_id)
-                            tt.version_file(file_id, new_trans_id)
+                            tt.version_file(new_trans_id, file_id=file_id)
                         # New contents should have the same unix perms as old
                         # contents
                         mode_id = trans_id
@@ -3071,7 +3071,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 elif target_kind is not None:
                     raise AssertionError(target_kind)
             if not wt_versioned and target_versioned:
-                tt.version_file(file_id, trans_id)
+                tt.version_file(trans_id, file_id=file_id)
             if wt_versioned and not target_versioned:
                 tt.unversion_file(trans_id)
             if (target_name is not None
@@ -3216,7 +3216,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
             if path_tree and path_tree.path2id('') == file_id:
                 # This is the root entry, skip it
                 continue
-            tt.version_file(file_id, conflict[1])
+            tt.version_file(conflict[1], file_id=file_id)
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))
         elif c_type == 'non-directory parent':
             parent_id = conflict[1]

@@ -518,7 +518,7 @@ class PathConflict(Conflict):
             tree = self._revision_tree(tt._tree, revid)
             transform.create_from_tree(
                 tt, tid, tree, tree.id2path(file_id))
-            tt.version_file(file_id, tid)
+            tt.version_file(tid, file_id=file_id)
         else:
             tid = tt.trans_id_file_id(file_id)
         # Adjust the path for the retained file id
@@ -672,7 +672,7 @@ class TextConflict(Conflict):
                        item_parent_tid, item_tid)
         # Associate the file_id to the right content
         tt.unversion_file(item_tid)
-        tt.version_file(self.file_id, winner_tid)
+        tt.version_file(winner_tid, file_id=self.file_id)
         tt.apply()
 
     def action_auto(self, tree):
