@@ -169,7 +169,7 @@ class TestMergeImplementation(TestCaseWithTransport):
                 b'e\n', 'test/foo')
 
     def get_limbodir_deletiondir(self, wt):
-        transform = wt.get_transform()
+        transform = wt.transform()
         limbodir = transform._limbodir
         deletiondir = transform._deletiondir
         transform.finalize()

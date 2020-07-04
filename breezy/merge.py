@@ -762,7 +762,7 @@ class Merge3Merger(object):
             stack.enter_context(self.this_tree.lock_read())
             stack.enter_context(self.base_tree.lock_read())
             stack.enter_context(self.other_tree.lock_read())
-            self.tt = self.working_tree.get_transform()
+            self.tt = self.working_tree.transform()
             stack.enter_context(self.tt)
             self._compute_transform()
             results = self.tt.apply(no_conflicts=True)
@@ -774,7 +774,7 @@ class Merge3Merger(object):
 
     def make_preview_transform(self):
         with self.base_tree.lock_read(), self.other_tree.lock_read():
-            self.tt = transform.TransformPreview(self.working_tree)
+            self.tt = self.working_tree.preview_transform()
             self._compute_transform()
             return self.tt
 

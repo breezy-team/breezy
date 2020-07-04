@@ -146,7 +146,7 @@ class TestMerge(TestCaseWithTransport):
         merger = _mod_merge.Merge3Merger(wt, wt, wt.basis_tree(), other_tree,
                                          this_branch=wt.branch,
                                          do_merge=False)
-        with transform.TransformPreview(wt) as merger.tt:
+        with wt.preview_transform() as merger.tt:
             merger._compute_transform()
             new_root_id = merger.tt.final_file_id(merger.tt.root)
             self.assertEqual(wt.path2id(''), new_root_id)
@@ -2260,7 +2260,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         builder.build_snapshot([b'C-id', b'B-id'], [], revision_id=b'E-id')
         # Have to use a real WT, because BranchBuilder doesn't support exec bit
         wt = self.get_wt_from_builder(builder)
-        with wt.get_transform() as tt:
+        with wt.transform() as tt:
             tt.set_executability(True, tt.trans_id_tree_path('foo'))
             tt.apply()
         self.assertTrue(wt.is_executable('foo'))

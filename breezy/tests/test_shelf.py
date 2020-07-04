@@ -500,7 +500,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         parser = pack.ContainerPushParser()
         with open('shelf', 'rb') as shelf_file:
             parser.accept_bytes(shelf_file.read())
-        tt = transform.TransformPreview(tree)
+        tt = tree.preview_transform()
         self.addCleanup(tt.finalize)
         records = iter(parser.read_pending_records())
         # skip revision-id

@@ -174,7 +174,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         else:
             self.case_sensitive = False
 
-    def get_transform(self, pb=None):
+    def transform(self, pb=None):
         from ..transform import TreeTransform
         return TreeTransform(self, pb=pb)
 
