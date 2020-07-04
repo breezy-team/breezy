@@ -762,7 +762,7 @@ class Merge3Merger(object):
             stack.enter_context(self.this_tree.lock_read())
             stack.enter_context(self.base_tree.lock_read())
             stack.enter_context(self.other_tree.lock_read())
-            self.tt = self.working_tree.get_transform()
+            self.tt = self.working_tree.transform()
             stack.enter_context(self.tt)
             self._compute_transform()
             results = self.tt.apply(no_conflicts=True)

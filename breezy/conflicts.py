@@ -459,7 +459,7 @@ class Conflict(object):
         raise NotImplementedError(self.action_take_other)
 
     def _resolve_with_cleanups(self, tree, *args, **kwargs):
-        with tree.get_transform() as tt:
+        with tree.transform() as tt:
             self._resolve(tt, *args, **kwargs)
 
 
@@ -796,7 +796,7 @@ class ParentLoop(HandledPathConflict):
         pass
 
     def action_take_other(self, tree):
-        with tree.get_transform() as tt:
+        with tree.transform() as tt:
             p_tid = tt.trans_id_file_id(self.file_id)
             parent_tid = tt.get_tree_parent(p_tid)
             cp_tid = tt.trans_id_file_id(self.conflict_file_id)

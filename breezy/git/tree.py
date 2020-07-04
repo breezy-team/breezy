@@ -1630,7 +1630,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
     def _live_entry(self, relpath):
         raise NotImplementedError(self._live_entry)
 
-    def get_transform(self, pb=None):
+    def transform(self, pb=None):
         from ..transform import TreeTransform
         return TreeTransform(self, pb=pb)
 
