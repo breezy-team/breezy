@@ -1723,14 +1723,14 @@ class TestInventoryAltered(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
         tree.add('foo', b'foo-id')
-        with TransformPreview(tree) as tt:
+        with tree.preview_transform() as tt:
             self.assertEqual([], tt._inventory_altered())
 
     def test_inventory_altered_changed_parent_id(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
         tree.add('foo', b'foo-id')
-        with TransformPreview(tree) as tt:
+        with tree.preview_transform() as tt:
             tt.unversion_file(tt.root)
             tt.version_file(b'new-id', tt.root)
             foo_trans_id = tt.trans_id_tree_path('foo')
@@ -1742,7 +1742,7 @@ class TestInventoryAltered(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
         tree.add('foo', b'foo-id')
-        with TransformPreview(tree) as tt:
+        with tree.preview_transform() as tt:
             tt.unversion_file(tt.root)
             tt.version_file(tree.path2id(''), tt.root)
             tt.trans_id_tree_path('foo')
@@ -2355,7 +2355,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
 
     def get_branch_and_transform(self):
         branch = self.get_branch()
-        tt = TransformPreview(branch.basis_tree())
+        tt = branch.basis_tree().preview_transform()
         self.addCleanup(tt.finalize)
         return branch, tt
 
@@ -2363,7 +2363,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch = self.get_branch()
         basis = branch.repository.revision_tree(
             _mod_revision.NULL_REVISION)
-        tt = TransformPreview(basis)
+        tt = basis.preview_transform()
         self.addCleanup(tt.finalize)
         e = self.assertRaises(ValueError, tt.commit, branch, '')
         self.assertEqual('TreeTransform not based on branch basis: null:',
@@ -2386,7 +2386,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         branch.lock_write()
         self.addCleanup(branch.unlock)
-        tt = TransformPreview(branch.basis_tree())
+        tt = branch.basis_tree().preview_transform()
         self.addCleanup(tt.finalize)
         tt.new_directory('', ROOT_PARENT, b'TREE_ROOT')
         tt.commit(branch, 'my message')
@@ -2398,7 +2398,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         branch.lock_write()
         self.addCleanup(branch.unlock)
-        tt = TransformPreview(branch.basis_tree())
+        tt = branch.basis_tree().preview_transform()
         self.addCleanup(tt.finalize)
         e = self.assertRaises(ValueError, tt.commit, branch,
                               'my message', [b'rev1b-id'])
@@ -2431,7 +2431,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch, tt = self.get_branch_and_transform()
         tt.new_file('file', tt.root, [b'contents'], b'file-id')
         tt.commit(branch, 'message', strict=True)
-        tt = TransformPreview(branch.basis_tree())
+        tt = branch.basis_tree().preview_transform()
         self.addCleanup(tt.finalize)
         trans_id = tt.trans_id_file_id(b'file-id')
         tt.delete_contents(trans_id)
@@ -2788,24 +2788,24 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def get_empty_preview(self):
         repository = self.make_repository('repo')
         tree = repository.revision_tree(_mod_revision.NULL_REVISION)
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         return preview
 
     def test_transform_preview(self):
         revision_tree = self.create_tree()
-        preview = TransformPreview(revision_tree)
+        preview = revision_tree.preview_transform()
         self.addCleanup(preview.finalize)
 
     def test_transform_preview_tree(self):
         revision_tree = self.create_tree()
-        preview = TransformPreview(revision_tree)
+        preview = revision_tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.get_preview_tree()
 
     def test_transform_new_file(self):
         revision_tree = self.create_tree()
-        preview = TransformPreview(revision_tree)
+        preview = revision_tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.new_file('file2', preview.root, [b'content B\n'], b'file2-id')
         preview_tree = preview.get_preview_tree()
@@ -2815,7 +2815,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
 
     def test_diff_preview_tree(self):
         revision_tree = self.create_tree()
-        preview = TransformPreview(revision_tree)
+        preview = revision_tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.new_file('file2', preview.root, [b'content B\n'], b'file2-id')
         preview_tree = preview.get_preview_tree()
@@ -2836,7 +2836,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree.add('foo', b'foo-id')
         tree.commit('rev1', rev_id=b'rev1')
         revision_tree = tree.branch.repository.revision_tree(b'rev1')
-        preview = TransformPreview(revision_tree)
+        preview = revision_tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.delete_versioned(preview.trans_id_tree_path('foo'))
         preview_tree = preview.get_preview_tree()
@@ -2856,7 +2856,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
 
     def test_transform_conflicts(self):
         revision_tree = self.create_tree()
-        preview = TransformPreview(revision_tree)
+        preview = revision_tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.new_file('a', preview.root, [b'content 2'])
         resolve_conflicts(preview)
@@ -2865,7 +2865,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
 
     def get_tree_and_preview_tree(self):
         revision_tree = self.create_tree()
-        preview = TransformPreview(revision_tree)
+        preview = revision_tree.preview_transform()
         self.addCleanup(preview.finalize)
         a_trans_id = preview.trans_id_file_id(b'a-id')
         preview.delete_contents(a_trans_id)
@@ -2917,7 +2917,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
 
     def test_kind(self):
         revision_tree = self.create_tree()
-        preview = TransformPreview(revision_tree)
+        preview = revision_tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.new_file('file', preview.root, [b'contents'], b'file-id')
         preview.new_directory('directory', preview.root, b'dir-id')
@@ -2938,7 +2938,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         work_tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
         work_tree.add('file', b'file-id')
-        preview = TransformPreview(work_tree)
+        preview = work_tree.preview_transform()
         self.addCleanup(preview.finalize)
         file_trans_id = preview.trans_id_tree_path('file')
         preview.adjust_path('renamed', preview.root, file_trans_id)
@@ -2950,7 +2950,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         work_tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/old', b'old')])
         work_tree.add('old', b'old-id')
-        preview = TransformPreview(work_tree)
+        preview = work_tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.new_file('name', preview.root, [b'contents'], b'new-id',
                          'executable')
@@ -2977,7 +2977,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/c'])
         tree.add(['a', 'b', 'c'], [b'a-id', b'b-id', b'c-id'])
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.unversion_file(preview.trans_id_file_id(b'b-id'))
         c_trans_id = preview.trans_id_file_id(b'c-id')
@@ -2991,7 +2991,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/unchanged', 'tree/deleted'])
         tree.add(['unchanged', 'deleted'], [b'unchanged-id', b'deleted-id'])
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.unversion_file(preview.trans_id_file_id(b'deleted-id'))
         preview_tree = preview.get_preview_tree()
@@ -3002,7 +3002,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/unchanged'])
         tree.add(['unchanged'], [b'unchanged-id'])
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.new_file('new', preview.trans_id_file_id(b'unchanged-id'),
                          [b'contents'], b'new-id')
@@ -3014,7 +3014,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.build_tree(['tree/old_parent/', 'tree/old_parent/child'])
         tree.add(['old_parent', 'old_parent/child'],
                  [b'old_parent-id', b'child-id'])
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         new_parent = preview.new_directory('new_parent', preview.root,
                                            b'new_parent-id')
@@ -3029,7 +3029,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.build_tree(['tree/old_name/', 'tree/old_name/child'])
         tree.add(['old_name', 'old_name/child'],
                  [b'parent-id', b'child-id'])
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.adjust_path('new_name', preview.root,
                             preview.trans_id_file_id(b'parent-id'))
@@ -3102,7 +3102,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/path/'])
         tree.add('path')
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.delete_contents(preview.trans_id_tree_path('path'))
         summary = preview.get_preview_tree().path_content_summary('path')
@@ -3127,7 +3127,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/path'])
         tree.add('path')
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         path_id = preview.trans_id_tree_path('path')
         preview.set_executability(True, path_id)
@@ -3167,7 +3167,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree.add('file', b'file-id')
         tree.commit('a', rev_id=b'one')
         self.build_tree_contents([('tree/file', b'a\nb\n')])
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         file_trans_id = preview.trans_id_file_id(b'file-id')
         preview.delete_contents(file_trans_id)
@@ -3200,7 +3200,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree/file', b'a\n')])
         tree.add('file', b'file-id')
         tree.commit('a', rev_id=b'one')
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         file_trans_id = preview.trans_id_file_id(b'file-id')
         preview.adjust_path('newname', preview.root, file_trans_id)
@@ -3218,7 +3218,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tree.add('file', b'file-id')
         tree.commit('a', rev_id=b'one')
         self.build_tree_contents([('tree/file', b'a\nb\n')])
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         file_trans_id = preview.trans_id_file_id(b'file-id')
         preview.delete_contents(file_trans_id)
@@ -3252,7 +3252,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         work_a.add('file', b'file-id')
         base_id = work_a.commit('base version')
         tree_b = work_a.controldir.sprout('wtb').open_workingtree()
-        preview = TransformPreview(work_a)
+        preview = work_a.preview_transform()
         self.addCleanup(preview.finalize)
         trans_id = preview.trans_id_file_id(b'file-id')
         preview.delete_contents(trans_id)
@@ -3275,7 +3275,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         work_a.add('file', b'file-id')
         base_id = work_a.commit('base version')
         tree_b = work_a.controldir.sprout('wtb').open_workingtree()
-        preview = TransformPreview(work_a.basis_tree())
+        preview = work_a.basis_tree().preview_transform()
         self.addCleanup(preview.finalize)
         trans_id = preview.trans_id_file_id(b'file-id')
         preview.delete_contents(trans_id)
@@ -3308,7 +3308,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.build_tree(['tree/removed-file', 'tree/existing-file',
                          'tree/not-removed-file'])
         work_tree.add(['removed-file', 'not-removed-file'])
-        preview = TransformPreview(work_tree)
+        preview = work_tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.new_file('new-file', preview.root, [b'contents'])
         preview.new_file('new-versioned-file', preview.root, [b'contents'],
@@ -3330,7 +3330,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(child_tree.unlock)
         work_tree.lock_write()
         self.addCleanup(work_tree.unlock)
-        preview = TransformPreview(work_tree)
+        preview = work_tree.preview_transform()
         self.addCleanup(preview.finalize)
         file_trans_id = preview.trans_id_file_id(b'file-id')
         preview.delete_contents(file_trans_id)
@@ -3351,7 +3351,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def test_merge_preview_into_workingtree(self):
         tree = self.make_branch_and_tree('tree')
         tree.set_root_id(b'TREE_ROOT')
-        tt = TransformPreview(tree)
+        tt = tree.preview_transform()
         self.addCleanup(tt.finalize)
         tt.new_file('name', tt.root, [b'content'], b'file-id')
         tree2 = self.make_branch_and_tree('tree2')
@@ -3366,7 +3366,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree/foo', b'bar')])
         tree.add('foo', b'foo-id')
         tree.commit('foo')
-        tt = TransformPreview(tree)
+        tt = tree.preview_transform()
         self.addCleanup(tt.finalize)
         trans_id = tt.trans_id_file_id(b'foo-id')
         tt.delete_contents(trans_id)
@@ -3381,7 +3381,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def test_has_filename(self):
         wt = self.make_branch_and_tree('tree')
         self.build_tree(['tree/unmodified', 'tree/removed', 'tree/modified'])
-        tt = TransformPreview(wt)
+        tt = wt.preview_transform()
         removed_id = tt.trans_id_tree_path('removed')
         tt.delete_contents(removed_id)
         tt.new_file('new', tt.root, [b'contents'])
@@ -3398,7 +3398,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
 
     def test_is_executable(self):
         tree = self.make_branch_and_tree('tree')
-        preview = TransformPreview(tree)
+        preview = tree.preview_transform()
         self.addCleanup(preview.finalize)
         preview.new_file('foo', preview.root, [b'bar'], b'baz-id')
         preview_tree = preview.get_preview_tree()
@@ -3409,7 +3409,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         rev_id = tree.commit('rev1')
         tree.branch.lock_write()
         self.addCleanup(tree.branch.unlock)
-        tt = TransformPreview(tree)
+        tt = tree.preview_transform()
         tt.new_file('file', tt.root, [b'contents'], b'file_id')
         self.addCleanup(tt.finalize)
         preview = tt.get_preview_tree()
@@ -3425,7 +3425,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.requireFeature(features.UnicodeFilenameFeature)
         branch = self.make_branch('any')
         tree = branch.repository.revision_tree(_mod_revision.NULL_REVISION)
-        tt = TransformPreview(tree)
+        tt = tree.preview_transform()
         self.addCleanup(tt.finalize)
         foo_id = tt.new_directory('', ROOT_PARENT)
         bar_id = tt.new_file(u'\u1234bar', foo_id, [b'contents'])
@@ -3450,7 +3450,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
     def get_preview(self, tree=None):
         if tree is None:
             tree = self.make_branch_and_tree('tree')
-        tt = TransformPreview(tree)
+        tt = tree.preview_transform()
         self.addCleanup(tt.finalize)
         return tt
 
@@ -3709,7 +3709,7 @@ class TestOrphan(tests.TestCaseWithTransport):
 
     def test_no_orphan_for_transform_preview(self):
         tree = self.make_branch_and_tree('tree')
-        tt = transform.TransformPreview(tree)
+        tt = tree.preview_transform()
         self.addCleanup(tt.finalize)
         self.assertRaises(NotImplementedError, tt.new_orphan, 'foo', 'bar')
 

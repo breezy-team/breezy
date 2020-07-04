@@ -324,6 +324,10 @@ class InventoryTree(Tree):
             vf.fallback_versionedfiles.append(base_vf)
         return last_revision
 
+    def preview_transform(self, pb=None):
+        from ..transform import TransformPreview
+        return TransformPreview(self, pb=pb)
+
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):
     """Find the ids corresponding to specified filenames.

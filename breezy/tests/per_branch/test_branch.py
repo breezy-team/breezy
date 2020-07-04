@@ -28,7 +28,6 @@ from breezy import (
     merge,
     osutils,
     urlutils,
-    transform,
     transport,
     repository,
     revision,
@@ -863,7 +862,7 @@ class FakeShelfCreator(object):
 
     def write_shelf(self, shelf_file, message=None):
         tree = self.branch.repository.revision_tree(revision.NULL_REVISION)
-        with transform.TransformPreview(tree) as tt:
+        with tree.preview_transform() as tt:
             shelf.ShelfCreator._write_shelf(
                 shelf_file, tt, revision.NULL_REVISION)
 

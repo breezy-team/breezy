@@ -39,7 +39,6 @@ from breezy.tests.per_workingtree import (
     make_scenario as wt_make_scenario,
     )
 from breezy.revisiontree import RevisionTree
-from breezy.transform import TransformPreview
 from breezy.tests import (
     features,
     )
@@ -70,7 +69,7 @@ def _dirstate_tree_from_workingtree(testcase, tree):
 
 
 def preview_tree_pre(testcase, tree):
-    tt = TransformPreview(tree)
+    tt = tree.preview_transform()
     testcase.addCleanup(tt.finalize)
     preview_tree = tt.get_preview_tree()
     preview_tree.set_parent_ids(tree.get_parent_ids())
@@ -79,7 +78,7 @@ def preview_tree_pre(testcase, tree):
 
 def preview_tree_post(testcase, tree):
     basis = tree.basis_tree()
-    tt = TransformPreview(basis)
+    tt = basis.preview_transform()
     testcase.addCleanup(tt.finalize)
     tree.lock_read()
     testcase.addCleanup(tree.unlock)

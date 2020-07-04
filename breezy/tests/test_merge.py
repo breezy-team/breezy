@@ -146,7 +146,7 @@ class TestMerge(TestCaseWithTransport):
         merger = _mod_merge.Merge3Merger(wt, wt, wt.basis_tree(), other_tree,
                                          this_branch=wt.branch,
                                          do_merge=False)
-        with transform.TransformPreview(wt) as merger.tt:
+        with wt.preview_transform() as merger.tt:
             merger._compute_transform()
             new_root_id = merger.tt.final_file_id(merger.tt.root)
             self.assertEqual(wt.path2id(''), new_root_id)

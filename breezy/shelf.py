@@ -71,7 +71,7 @@ class ShelfCreator(object):
         self.work_transform = work_tree.transform()
         try:
             self.target_tree = target_tree
-            self.shelf_transform = transform.TransformPreview(self.target_tree)
+            self.shelf_transform = self.target_tree.preview_transform()
             try:
                 self.renames = {}
                 self.creation = {}
@@ -365,7 +365,7 @@ class Unshelver(object):
             base_tree = tree.revision_tree(base_revision_id)
         except errors.NoSuchRevisionInTree:
             base_tree = tree.branch.repository.revision_tree(base_revision_id)
-        tt = transform.TransformPreview(base_tree)
+        tt = base_tree.preview_transform()
         tt.deserialize(records)
         return klass(tree, base_tree, tt, metadata.get(b'message'))
 
