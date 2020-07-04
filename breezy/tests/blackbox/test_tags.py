@@ -22,7 +22,6 @@ from breezy import (
     lockable_files,
     lockdir,
     tag,
-    transform,
     )
 from breezy.bzr import (
     branch as bzrbranch,

@@ -28,7 +28,6 @@ from breezy import (
     merge,
     osutils,
     urlutils,
-    transform,
     transport,
     repository,
     revision,

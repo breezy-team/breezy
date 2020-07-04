@@ -21,15 +21,6 @@ from __future__ import absolute_import
 
 from .lazy_import import lazy_import
 lazy_import(globals(), """
-
-from breezy import (
-    conflicts as _mod_conflicts,
-    debug,
-    delta,
-    filters,
-    revision as _mod_revision,
-    rules,
-    )
 from breezy.i18n import gettext
 """)
 
@@ -37,6 +28,7 @@ from . import (
     errors,
     lock,
     osutils,
+    revision as _mod_revision,
     trace,
     )
 from .inter import InterObject
@@ -270,6 +262,7 @@ class Tree(object):
 
         Each conflict is an instance of breezy.conflicts.Conflict.
         """
+        from . import conflicts as _mod_conflicts
         return _mod_conflicts.ConflictList()
 
     def extras(self):
@@ -689,6 +682,7 @@ class Tree(object):
             or None if unknown
         :return: the list of filters - [] if there are none
         """
+        from . import debug, filters
         filter_pref_names = filters._get_registered_names()
         if len(filter_pref_names) == 0:
             return []
@@ -723,6 +717,7 @@ class Tree(object):
         :return: an iterator of tuple sequences, one per path-name.
           See _RulesSearcher.get_items for details on the tuple sequence.
         """
+        from . import rules
         if _default_searcher is None:
             _default_searcher = rules._per_user_searcher
         searcher = self._get_rules_searcher(_default_searcher)
@@ -760,8 +755,7 @@ class Tree(object):
         return (kind in ('file', 'directory', 'symlink', 'tree-reference'))
 
     def preview_transform(self, pb=None):
-        """Create a preview transform.
-        """
+        """Obtain a transform object."""
         raise NotImplementedError(self.preview_transform)
 
 
@@ -809,6 +803,7 @@ class InterTree(InterObject):
             a PathsNotVersionedError will be thrown.
         :param want_unversioned: Scan for unversioned paths.
         """
+        from . import delta
         trees = (self.source,)
         if extra_trees is not None:
             trees = trees + tuple(extra_trees)
