@@ -4500,6 +4500,9 @@ error_translators.register(b'UnresumableWriteGroup',
                            lambda err, find, get_path: errors.UnresumableWriteGroup(
                                repository=find('repository'), write_groups=err.error_args[0],
                                reason=err.error_args[1]))
+error_translators.register(b'AlreadyControlDir',
+                           lambda err, find, get_path: errors.AlreadyControlDirError(get_path()))
+
 no_context_error_translators.register(b'GhostRevisionsHaveNoRevno',
                                       lambda err: errors.GhostRevisionsHaveNoRevno(*err.error_args))
 no_context_error_translators.register(b'IncompatibleRepositories',
