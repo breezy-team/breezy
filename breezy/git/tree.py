@@ -724,6 +724,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
                         file_id, mode_kind(mode)))
             yield (path_decoded, parent_id), children
 
+    def preview_transform(self, pb=None):
+        from ..transform import TransformPreview
+        return TransformPreview(self, pb=pb)
+
 
 def tree_delta_from_git_changes(changes, mappings,
                                 specific_files=None,
@@ -1633,6 +1637,10 @@ class MutableGitIndexTree(mutabletree.MutableTree):
     def transform(self, pb=None):
         from ..transform import TreeTransform
         return TreeTransform(self, pb=pb)
+
+    def preview_transform(self, pb=None):
+        from ..transform import TransformPreview
+        return TransformPreview(self, pb=pb)
 
 
 

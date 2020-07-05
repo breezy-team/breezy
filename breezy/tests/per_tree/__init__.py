@@ -354,6 +354,7 @@ def load_tests(loader, standard_tests, pattern):
         'revision_tree',
         'symlinks',
         'test_trees',
+        'transform',
         'tree',
         'walkdirs',
         ]
