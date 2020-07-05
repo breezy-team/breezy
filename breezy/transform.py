@@ -23,27 +23,25 @@ import time
 
 from . import (
     config as _mod_config,
+    controldir,
     errors,
     lazy_import,
+    osutils,
     registry,
     trace,
     )
 lazy_import.lazy_import(globals(), """
 from breezy import (
-    bencode,
     cleanup,
-    controldir,
-    commit,
     conflicts,
-    delta,
     multiparent,
-    osutils,
     revision as _mod_revision,
     ui,
     urlutils,
     )
 from breezy.i18n import gettext
 """)
+
 from .errors import (DuplicateKey,
                      BzrError, InternalBzrError)
 from .filters import filtered_output_bytes, ContentFilterContext
@@ -195,6 +193,23 @@ class TreeTransformBase(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Support Context Manager API."""
         self.finalize()
+
+    def iter_tree_children(self, trans_id):
+        """Iterate through the entry's tree children, if any.
+
+        :param trans_id: trans id to iterate
+        :returns: Iterator over paths
+        """
+        raise NotImplementedError(self.iter_tree_children)
+
+    def _read_symlink_target(self, trans_id):
+        raise NotImplementedError(self._read_symlink_target)
+
+    def canonical_path(self, path):
+        return path
+
+    def tree_kind(self, trans_id):
+        raise NotImplementedError(self.tree_kind)
 
     def finalize(self):
         """Release the working tree lock, if held.
@@ -842,7 +857,7 @@ class TreeTransformBase(object):
                 # The child is removed as part of the transform. Since it was
                 # versioned before, it's not an orphan
                 continue
-            elif self.final_file_id(child_tid) is None:
+            if self.final_file_id(child_tid) is None:
                 # The child is not versioned
                 orphans.append(child_tid)
             else:
@@ -1046,6 +1061,7 @@ class TreeTransformBase(object):
         if self._tree.get_revision_id() != last_rev_id:
             raise ValueError('TreeTransform not based on branch basis: %s' %
                              self._tree.get_revision_id().decode('utf-8'))
+        from . import commit
         revprops = commit.Commit.update_revprops(revprops, branch, authors)
         builder = branch.get_commit_builder(parent_ids,
                                             timestamp=timestamp,
@@ -1089,6 +1105,7 @@ class TreeTransformBase(object):
 
         :param serializer: A Serialiser like pack.ContainerSerializer.
         """
+        from . import bencode
         new_name = {k.encode('utf-8'): v.encode('utf-8')
                     for k, v in viewitems(self._new_name)}
         new_parent = {k.encode('utf-8'): v.encode('utf-8')
@@ -1140,6 +1157,7 @@ class TreeTransformBase(object):
         :param records: An iterable of (names, content) tuples, as per
             pack.ContainerPushParser.
         """
+        from . import bencode
         names, content = next(records)
         attribs = bencode.bdecode(content)
         self._id_number = attribs[b'_id_number']
@@ -1347,6 +1365,9 @@ class DiskTreeTransform(TreeTransformBase):
         for descendant in list(descendants):
             descendants.update(self._limbo_descendants(descendant))
         return descendants
+
+    def _set_mode(self, trans_id, mode_id, typefunc):
+        raise NotImplementedError(self._set_mode)
 
     def create_file(self, contents, trans_id, mode_id=None, sha1=None):
         """Schedule creation of a new file.
@@ -2222,6 +2243,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
             conflicts, merge_modified = _prepare_revert_transform(
                 working_tree, target_tree, tt, filenames, backups, pp)
             if change_reporter:
+                from . import delta
                 change_reporter = delta._ChangeReporter(
                     unversioned_filter=working_tree.is_ignored)
                 delta.report_changes(tt.iter_changes(), change_reporter)

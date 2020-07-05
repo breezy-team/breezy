@@ -228,6 +228,7 @@ class TestImportTariffs(ImportTariffTestCase):
             'breezy.gpg',
             'breezy.info',
             'breezy.bzr.knit',
+            'breezy.merge',
             'breezy.merge3',
             'breezy.merge_directive',
             'breezy.msgeditor',

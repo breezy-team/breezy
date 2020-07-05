@@ -56,7 +56,6 @@ from .. import (
     controldir as _mod_controldir,
     globbing,
     lock,
-    merge,
     osutils,
     revision as _mod_revision,
     trace,
@@ -1204,6 +1203,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             show_base=False):
         basis_tree = self.revision_tree(old_revision)
         if new_revision != old_revision:
+            from .. import merge
             with basis_tree.lock_read():
                 new_basis_tree = self.branch.basis_tree()
                 merge.merge_inner(
@@ -1312,6 +1312,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def copy_content_into(self, tree, revision_id=None):
         """Copy the current content and user files of this tree into tree."""
+        from .. import merge
         with self.lock_read():
             if revision_id is None:
                 merge.transform_tree(tree, self)

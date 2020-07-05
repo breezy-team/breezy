@@ -1535,7 +1535,7 @@ class InterRepository(InterObject):
             try:
                 self.target.set_make_working_trees(
                     self.source.make_working_trees())
-            except NotImplementedError:
+            except (NotImplementedError, errors.RepositoryUpgradeRequired):
                 pass
             self.target.fetch(self.source, revision_id=revision_id)
 
