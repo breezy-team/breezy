@@ -133,7 +133,42 @@ class _TransformResults(object):
         self.rename_count = rename_count
 
 
-class TreeTransformInterface(object):
+class TreeTransform(object):
+    """Represent a tree transformation.
+
+    This object is designed to support incremental generation of the transform,
+    in any order.
+
+    However, it gives optimum performance when parent directories are created
+    before their contents.  The transform is then able to put child files
+    directly in their parent directory, avoiding later renames.
+
+    It is easy to produce malformed transforms, but they are generally
+    harmless.  Attempting to apply a malformed transform will cause an
+    exception to be raised before any modifications are made to the tree.
+
+    Many kinds of malformed transforms can be corrected with the
+    resolve_conflicts function.  The remaining ones indicate programming error,
+    such as trying to create a file with no path.
+
+    Two sets of file creation methods are supplied.  Convenience methods are:
+     * new_file
+     * new_directory
+     * new_symlink
+
+    These are composed of the low-level methods:
+     * create_path
+     * create_file or create_directory or create_symlink
+     * version_file
+     * set_executability
+
+    Transform/Transaction ids
+    -------------------------
+    trans_ids are temporary ids assigned to all files involved in a transform.
+    It's possible, even common, that not all files in the Tree have trans_ids.
+
+    trans_ids are only valid for the TreeTransform that generated them.
+    """
 
     def __init__(self, tree, pb=None):
         self._tree = tree
@@ -496,7 +531,7 @@ class TreeTransformInterface(object):
         raise NotImplementedError(self.cancel_creation)
 
 
-class TreeTransformBase(TreeTransformInterface):
+class TreeTransformBase(TreeTransform):
     """The base class for TreeTransform and its kin."""
 
     def __init__(self, tree, pb=None, case_sensitive=True):
@@ -508,7 +543,7 @@ class TreeTransformBase(TreeTransformInterface):
         :param case_sensitive: If True, the target of the transform is
             case sensitive, not just case preserving.
         """
-        TreeTransformInterface.__init__(self, tree, pb=pb)
+        super(TreeTransformBase, self).__init__(tree, pb=pb)
         # mapping of trans_id => (sha1 of content, stat_value)
         self._observed_sha1s = {}
         # Mapping of trans_id -> new file_id
@@ -1431,6 +1466,22 @@ class TreeTransformBase(TreeTransformInterface):
         """Cancel the creation of new file contents."""
         raise NotImplementedError(self.cancel_creation)
 
+    def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
+        """Apply all changes to the inventory and filesystem.
+
+        If filesystem or inventory conflicts are present, MalformedTransform
+        will be thrown.
+
+        If apply succeeds, finalize is not necessary.
+
+        :param no_conflicts: if True, the caller guarantees there are no
+            conflicts, so no check is made.
+        :param precomputed_delta: An inventory delta to use instead of
+            calculating one.
+        :param _mover: Supply an alternate FileMover, for testing
+        """
+        raise NotImplementedError(self.apply)
+
 
 class DiskTreeTransform(TreeTransformBase):
     """Tree transform storing its contents on disk."""
@@ -1735,244 +1786,6 @@ opt_transform_orphan = _mod_config.RegistryOption(
     'transform.orphan_policy', orphaning_registry,
     help='Policy for orphaned files during transform operations.',
     invalid='warning')
-
-
-class TreeTransform(DiskTreeTransform):
-    """Represent a tree transformation.
-
-    This object is designed to support incremental generation of the transform,
-    in any order.
-
-    However, it gives optimum performance when parent directories are created
-    before their contents.  The transform is then able to put child files
-    directly in their parent directory, avoiding later renames.
-
-    It is easy to produce malformed transforms, but they are generally
-    harmless.  Attempting to apply a malformed transform will cause an
-    exception to be raised before any modifications are made to the tree.
-
-    Many kinds of malformed transforms can be corrected with the
-    resolve_conflicts function.  The remaining ones indicate programming error,
-    such as trying to create a file with no path.
-
-    Two sets of file creation methods are supplied.  Convenience methods are:
-     * new_file
-     * new_directory
-     * new_symlink
-
-    These are composed of the low-level methods:
-     * create_path
-     * create_file or create_directory or create_symlink
-     * version_file
-     * set_executability
-
-    Transform/Transaction ids
-    -------------------------
-    trans_ids are temporary ids assigned to all files involved in a transform.
-    It's possible, even common, that not all files in the Tree have trans_ids.
-
-    trans_ids are used because filenames and file_ids are not good enough
-    identifiers; filenames change, and not all files have file_ids.  File-ids
-    are also associated with trans-ids, so that moving a file moves its
-    file-id.
-
-    trans_ids are only valid for the TreeTransform that generated them.
-
-    Limbo
-    -----
-    Limbo is a temporary directory use to hold new versions of files.
-    Files are added to limbo by create_file, create_directory, create_symlink,
-    and their convenience variants (new_*).  Files may be removed from limbo
-    using cancel_creation.  Files are renamed from limbo into their final
-    location as part of TreeTransform.apply
-
-    Limbo must be cleaned up, by either calling TreeTransform.apply or
-    calling TreeTransform.finalize.
-
-    Files are placed into limbo inside their parent directories, where
-    possible.  This reduces subsequent renames, and makes operations involving
-    lots of files faster.  This optimization is only possible if the parent
-    directory is created *before* creating any of its children, so avoid
-    creating children before parents, where possible.
-
-    Pending-deletion
-    ----------------
-    This temporary directory is used by _FileMover for storing files that are
-    about to be deleted.  In case of rollback, the files will be restored.
-    FileMover does not delete files until it is sure that a rollback will not
-    happen.
-    """
-
-    def __init__(self, tree, pb=None):
-        """Note: a tree_write lock is taken on the tree.
-
-        Use TreeTransform.finalize() to release the lock (can be omitted if
-        TreeTransform.apply() called).
-        """
-        tree.lock_tree_write()
-        try:
-            limbodir = urlutils.local_path_from_url(
-                tree._transport.abspath('limbo'))
-            osutils.ensure_empty_directory_exists(
-                limbodir,
-                errors.ExistingLimbo)
-            deletiondir = urlutils.local_path_from_url(
-                tree._transport.abspath('pending-deletion'))
-            osutils.ensure_empty_directory_exists(
-                deletiondir,
-                errors.ExistingPendingDeletion)
-        except BaseException:
-            tree.unlock()
-            raise
-
-        # Cache of realpath results, to speed up canonical_path
-        self._realpaths = {}
-        # Cache of relpath results, to speed up canonical_path
-        self._relpaths = {}
-        DiskTreeTransform.__init__(self, tree, limbodir, pb,
-                                   tree.case_sensitive)
-        self._deletiondir = deletiondir
-
-    def canonical_path(self, path):
-        """Get the canonical tree-relative path"""
-        # don't follow final symlinks
-        abs = self._tree.abspath(path)
-        if abs in self._relpaths:
-            return self._relpaths[abs]
-        dirname, basename = os.path.split(abs)
-        if dirname not in self._realpaths:
-            self._realpaths[dirname] = os.path.realpath(dirname)
-        dirname = self._realpaths[dirname]
-        abs = pathjoin(dirname, basename)
-        if dirname in self._relpaths:
-            relpath = pathjoin(self._relpaths[dirname], basename)
-            relpath = relpath.rstrip('/\\')
-        else:
-            relpath = self._tree.relpath(abs)
-        self._relpaths[abs] = relpath
-        return relpath
-
-    def tree_kind(self, trans_id):
-        """Determine the file kind in the working tree.
-
-        :returns: The file kind or None if the file does not exist
-        """
-        path = self._tree_id_paths.get(trans_id)
-        if path is None:
-            return None
-        try:
-            return file_kind(self._tree.abspath(path))
-        except errors.NoSuchFile:
-            return None
-
-    def _set_mode(self, trans_id, mode_id, typefunc):
-        """Set the mode of new file contents.
-        The mode_id is the existing file to get the mode from (often the same
-        as trans_id).  The operation is only performed if there's a mode match
-        according to typefunc.
-        """
-        if mode_id is None:
-            mode_id = trans_id
-        try:
-            old_path = self._tree_id_paths[mode_id]
-        except KeyError:
-            return
-        try:
-            mode = os.stat(self._tree.abspath(old_path)).st_mode
-        except OSError as e:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                # Either old_path doesn't exist, or the parent of the
-                # target is not a directory (but will be one eventually)
-                # Either way, we know it doesn't exist *right now*
-                # See also bug #248448
-                return
-            else:
-                raise
-        if typefunc(mode):
-            osutils.chmod_if_possible(self._limbo_name(trans_id), mode)
-
-    def iter_tree_children(self, parent_id):
-        """Iterate through the entry's tree children, if any"""
-        try:
-            path = self._tree_id_paths[parent_id]
-        except KeyError:
-            return
-        try:
-            children = os.listdir(self._tree.abspath(path))
-        except OSError as e:
-            if not (osutils._is_error_enotdir(e) or
-                    e.errno in (errno.ENOENT, errno.ESRCH)):
-                raise
-            return
-
-        for child in children:
-            childpath = joinpath(path, child)
-            if self._tree.is_control_filename(childpath):
-                continue
-            yield self.trans_id_tree_path(childpath)
-
-    def _generate_limbo_path(self, trans_id):
-        """Generate a limbo path using the final path if possible.
-
-        This optimizes the performance of applying the tree transform by
-        avoiding renames.  These renames can be avoided only when the parent
-        directory is already scheduled for creation.
-
-        If the final path cannot be used, falls back to using the trans_id as
-        the relpath.
-        """
-        parent = self._new_parent.get(trans_id)
-        # if the parent directory is already in limbo (e.g. when building a
-        # tree), choose a limbo name inside the parent, to reduce further
-        # renames.
-        use_direct_path = False
-        if self._new_contents.get(parent) == 'directory':
-            filename = self._new_name.get(trans_id)
-            if filename is not None:
-                if parent not in self._limbo_children:
-                    self._limbo_children[parent] = set()
-                    self._limbo_children_names[parent] = {}
-                    use_direct_path = True
-                # the direct path can only be used if no other file has
-                # already taken this pathname, i.e. if the name is unused, or
-                # if it is already associated with this trans_id.
-                elif self._case_sensitive_target:
-                    if (self._limbo_children_names[parent].get(filename)
-                            in (trans_id, None)):
-                        use_direct_path = True
-                else:
-                    for l_filename, l_trans_id in viewitems(
-                            self._limbo_children_names[parent]):
-                        if l_trans_id == trans_id:
-                            continue
-                        if l_filename.lower() == filename.lower():
-                            break
-                    else:
-                        use_direct_path = True
-
-        if not use_direct_path:
-            return DiskTreeTransform._generate_limbo_path(self, trans_id)
-
-        limbo_name = pathjoin(self._limbo_files[parent], filename)
-        self._limbo_children[parent].add(trans_id)
-        self._limbo_children_names[parent][filename] = trans_id
-        return limbo_name
-
-    def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
-        """Apply all changes to the inventory and filesystem.
-
-        If filesystem or inventory conflicts are present, MalformedTransform
-        will be thrown.
-
-        If apply succeeds, finalize is not necessary.
-
-        :param no_conflicts: if True, the caller guarantees there are no
-            conflicts, so no check is made.
-        :param precomputed_delta: An inventory delta to use instead of
-            calculating one.
-        :param _mover: Supply an alternate FileMover, for testing
-        """
-        raise NotImplementedError(self.apply)
 
 
 def joinpath(parent, child):
