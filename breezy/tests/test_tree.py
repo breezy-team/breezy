@@ -232,3 +232,14 @@ class GetCanonicalPath(TestCaseWithTransport):
         self.assertEqual(
             'a/C',
             get_canonical_path(tree, 'A/C', lambda x: x.lower()))
+
+    def test_trailing_slash(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a/', 'tree/a/b'])
+        tree.add(['a', 'a/b'])
+        self.assertEqual(
+            'a',
+            get_canonical_path(tree, 'a', lambda x: x))
+        self.assertEqual(
+            'a',
+            get_canonical_path(tree, 'a/', lambda x: x))

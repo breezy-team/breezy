@@ -1686,32 +1686,12 @@ class TreeTransform(DiskTreeTransform):
             tree.unlock()
             raise
 
-        # Cache of realpath results, to speed up canonical_path
-        self._realpaths = {}
-        # Cache of relpath results, to speed up canonical_path
-        self._relpaths = {}
         DiskTreeTransform.__init__(self, tree, limbodir, pb,
                                    tree.case_sensitive)
         self._deletiondir = deletiondir
 
     def canonical_path(self, path):
-        """Get the canonical tree-relative path"""
-        # don't follow final symlinks
-        abs = self._tree.abspath(path)
-        if abs in self._relpaths:
-            return self._relpaths[abs]
-        dirname, basename = os.path.split(abs)
-        if dirname not in self._realpaths:
-            self._realpaths[dirname] = os.path.realpath(dirname)
-        dirname = self._realpaths[dirname]
-        abs = pathjoin(dirname, basename)
-        if dirname in self._relpaths:
-            relpath = pathjoin(self._relpaths[dirname], basename)
-            relpath = relpath.rstrip('/\\')
-        else:
-            relpath = self._tree.relpath(abs)
-        self._relpaths[abs] = relpath
-        return relpath
+        return self._tree.get_canonical_path(path)
 
     def tree_kind(self, trans_id):
         """Determine the file kind in the working tree.
@@ -2034,6 +2014,9 @@ class TransformPreview(DiskTreeTransform):
         tree.lock_read()
         limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
         DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
+
+    def canonical_path(self, path):
+        return path
 
     def tree_kind(self, trans_id):
         path = self._tree_id_paths.get(trans_id)
