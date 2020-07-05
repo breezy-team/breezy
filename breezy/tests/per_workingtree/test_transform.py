@@ -1326,15 +1326,13 @@ class TestTreeTransform(TestCaseWithWorkingTree):
     def test_rename_count(self):
         transform, root = self.transform()
         transform.new_file('name1', root, [b'contents'])
-        self.assertEqual(transform.rename_count, 0)
-        transform.apply()
-        self.assertEqual(transform.rename_count, 1)
+        result = transform.apply()
+        self.assertEqual(result.rename_count, 1)
         transform2, root = self.transform()
         transform2.adjust_path('name2', root,
                                transform2.trans_id_tree_path('name1'))
-        self.assertEqual(transform2.rename_count, 0)
-        transform2.apply()
-        self.assertEqual(transform2.rename_count, 2)
+        result = transform2.apply()
+        self.assertEqual(result.rename_count, 2)
 
     def test_change_parent(self):
         """Ensure that after we change a parent, the results are still right.

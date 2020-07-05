@@ -126,66 +126,75 @@ def unique_add(map, key, value):
 
 
 class _TransformResults(object):
+
     def __init__(self, modified_paths, rename_count):
         object.__init__(self)
         self.modified_paths = modified_paths
         self.rename_count = rename_count
 
 
-class TreeTransformBase(object):
-    """The base class for TreeTransform and its kin."""
+class TreeTransform(object):
+    """Represent a tree transformation.
 
-    def __init__(self, tree, pb=None, case_sensitive=True):
-        """Constructor.
+    This object is designed to support incremental generation of the transform,
+    in any order.
 
-        :param tree: The tree that will be transformed, but not necessarily
-            the output tree.
-        :param pb: ignored
-        :param case_sensitive: If True, the target of the transform is
-            case sensitive, not just case preserving.
-        """
-        object.__init__(self)
+    However, it gives optimum performance when parent directories are created
+    before their contents.  The transform is then able to put child files
+    directly in their parent directory, avoiding later renames.
+
+    It is easy to produce malformed transforms, but they are generally
+    harmless.  Attempting to apply a malformed transform will cause an
+    exception to be raised before any modifications are made to the tree.
+
+    Many kinds of malformed transforms can be corrected with the
+    resolve_conflicts function.  The remaining ones indicate programming error,
+    such as trying to create a file with no path.
+
+    Two sets of file creation methods are supplied.  Convenience methods are:
+     * new_file
+     * new_directory
+     * new_symlink
+
+    These are composed of the low-level methods:
+     * create_path
+     * create_file or create_directory or create_symlink
+     * version_file
+     * set_executability
+
+    Transform/Transaction ids
+    -------------------------
+    trans_ids are temporary ids assigned to all files involved in a transform.
+    It's possible, even common, that not all files in the Tree have trans_ids.
+
+    trans_ids are only valid for the TreeTransform that generated them.
+    """
+
+    def __init__(self, tree, pb=None):
         self._tree = tree
+        # A progress bar
+        self._pb = pb
         self._id_number = 0
+        # Mapping of path in old tree -> trans_id
+        self._tree_path_ids = {}
+        # Mapping trans_id -> path in old tree
+        self._tree_id_paths = {}
         # mapping of trans_id -> new basename
         self._new_name = {}
         # mapping of trans_id -> new parent trans_id
         self._new_parent = {}
         # mapping of trans_id with new contents -> new file_kind
         self._new_contents = {}
-        # mapping of trans_id => (sha1 of content, stat_value)
-        self._observed_sha1s = {}
         # Set of trans_ids whose contents will be removed
         self._removed_contents = set()
         # Mapping of trans_id -> new execute-bit value
         self._new_executability = {}
         # Mapping of trans_id -> new tree-reference value
         self._new_reference_revision = {}
-        # Mapping of trans_id -> new file_id
-        self._new_id = {}
-        # Mapping of old file-id -> trans_id
-        self._non_present_ids = {}
-        # Mapping of new file_id -> trans_id
-        self._r_new_id = {}
         # Set of trans_ids that will be removed
         self._removed_id = set()
-        # Mapping of path in old tree -> trans_id
-        self._tree_path_ids = {}
-        # Mapping trans_id -> path in old tree
-        self._tree_id_paths = {}
-        # The trans_id that will be used as the tree root
-        if tree.is_versioned(''):
-            self._new_root = self.trans_id_tree_path('')
-        else:
-            self._new_root = None
         # Indicator of whether the transform has been applied
         self._done = False
-        # A progress bar
-        self._pb = pb
-        # Whether the target is case sensitive
-        self._case_sensitive_target = case_sensitive
-        # A counter of how many files have been renamed
-        self.rename_count = 0
 
     def __enter__(self):
         """Support Context Manager API."""
@@ -203,14 +212,353 @@ class TreeTransformBase(object):
         """
         raise NotImplementedError(self.iter_tree_children)
 
-    def _read_symlink_target(self, trans_id):
-        raise NotImplementedError(self._read_symlink_target)
-
     def canonical_path(self, path):
         return path
 
     def tree_kind(self, trans_id):
         raise NotImplementedError(self.tree_kind)
+
+    def by_parent(self):
+        """Return a map of parent: children for known parents.
+
+        Only new paths and parents of tree files with assigned ids are used.
+        """
+        by_parent = {}
+        items = list(viewitems(self._new_parent))
+        items.extend((t, self.final_parent(t))
+                     for t in list(self._tree_id_paths))
+        for trans_id, parent_id in items:
+            if parent_id not in by_parent:
+                by_parent[parent_id] = set()
+            by_parent[parent_id].add(trans_id)
+        return by_parent
+
+    def finalize(self):
+        """Release the working tree lock, if held.
+
+        This is required if apply has not been invoked, but can be invoked
+        even after apply.
+        """
+        raise NotImplementedError(self.finalize)
+
+    def create_path(self, name, parent):
+        """Assign a transaction id to a new path"""
+        trans_id = self._assign_id()
+        unique_add(self._new_name, trans_id, name)
+        unique_add(self._new_parent, trans_id, parent)
+        return trans_id
+
+    def adjust_path(self, name, parent, trans_id):
+        """Change the path that is assigned to a transaction id."""
+        if parent is None:
+            raise ValueError("Parent trans-id may not be None")
+        if trans_id == self._new_root:
+            raise CantMoveRoot
+        self._new_name[trans_id] = name
+        self._new_parent[trans_id] = parent
+
+    def adjust_root_path(self, name, parent):
+        """Emulate moving the root by moving all children, instead.
+
+        We do this by undoing the association of root's transaction id with the
+        current tree.  This allows us to create a new directory with that
+        transaction id.  We unversion the root directory and version the
+        physically new directory, and hope someone versions the tree root
+        later.
+        """
+        raise NotImplementedError(self.adjust_root_path)
+
+    def fixup_new_roots(self):
+        """Reinterpret requests to change the root directory
+
+        Instead of creating a root directory, or moving an existing directory,
+        all the attributes and children of the new root are applied to the
+        existing root directory.
+
+        This means that the old root trans-id becomes obsolete, so it is
+        recommended only to invoke this after the root trans-id has become
+        irrelevant.
+        """
+        raise NotImplementedError(self.fixup_new_roots)
+
+    def _assign_id(self):
+        """Produce a new tranform id"""
+        new_id = "new-%s" % self._id_number
+        self._id_number += 1
+        return new_id
+
+    def trans_id_tree_path(self, path):
+        """Determine (and maybe set) the transaction ID for a tree path."""
+        path = self.canonical_path(path)
+        if path not in self._tree_path_ids:
+            self._tree_path_ids[path] = self._assign_id()
+            self._tree_id_paths[self._tree_path_ids[path]] = path
+        return self._tree_path_ids[path]
+
+    def get_tree_parent(self, trans_id):
+        """Determine id of the parent in the tree."""
+        path = self._tree_id_paths[trans_id]
+        if path == "":
+            return ROOT_PARENT
+        return self.trans_id_tree_path(os.path.dirname(path))
+
+    def delete_contents(self, trans_id):
+        """Schedule the contents of a path entry for deletion"""
+        kind = self.tree_kind(trans_id)
+        if kind is not None:
+            self._removed_contents.add(trans_id)
+
+    def cancel_deletion(self, trans_id):
+        """Cancel a scheduled deletion"""
+        self._removed_contents.remove(trans_id)
+
+    def delete_versioned(self, trans_id):
+        """Delete and unversion a versioned file"""
+        self.delete_contents(trans_id)
+        self.unversion_file(trans_id)
+
+    def set_executability(self, executability, trans_id):
+        """Schedule setting of the 'execute' bit
+        To unschedule, set to None
+        """
+        if executability is None:
+            del self._new_executability[trans_id]
+        else:
+            unique_add(self._new_executability, trans_id, executability)
+
+    def set_tree_reference(self, revision_id, trans_id):
+        """Set the reference associated with a directory"""
+        unique_add(self._new_reference_revision, trans_id, revision_id)
+
+    def version_file(self, trans_id, file_id=None):
+        """Schedule a file to become versioned."""
+        raise NotImplementedError(self.version_file)
+
+    def cancel_versioning(self, trans_id):
+        """Undo a previous versioning of a file"""
+        raise NotImplementedError(self.cancel_versioning)
+
+    def unversion_file(self, trans_id):
+        """Schedule a path entry to become unversioned"""
+        self._removed_id.add(trans_id)
+
+    def new_paths(self, filesystem_only=False):
+        """Determine the paths of all new and changed files.
+
+        :param filesystem_only: if True, only calculate values for files
+            that require renames or execute bit changes.
+        """
+        raise NotImplementedError(self.new_paths)
+
+    def final_kind(self, trans_id):
+        """Determine the final file kind, after any changes applied.
+
+        :return: None if the file does not exist/has no contents.  (It is
+            conceivable that a path would be created without the corresponding
+            contents insertion command)
+        """
+        if trans_id in self._new_contents:
+            return self._new_contents[trans_id]
+        elif trans_id in self._removed_contents:
+            return None
+        else:
+            return self.tree_kind(trans_id)
+
+    def tree_path(self, trans_id):
+        """Determine the tree path associated with the trans_id."""
+        return self._tree_id_paths.get(trans_id)
+
+    def final_is_versioned(self, trans_id):
+        raise NotImplementedError(self.final_is_versioned)
+
+    def final_parent(self, trans_id):
+        """Determine the parent file_id, after any changes are applied.
+
+        ROOT_PARENT is returned for the tree root.
+        """
+        try:
+            return self._new_parent[trans_id]
+        except KeyError:
+            return self.get_tree_parent(trans_id)
+
+    def final_name(self, trans_id):
+        """Determine the final filename, after all changes are applied."""
+        try:
+            return self._new_name[trans_id]
+        except KeyError:
+            try:
+                return os.path.basename(self._tree_id_paths[trans_id])
+            except KeyError:
+                raise NoFinalPath(trans_id, self)
+
+    def path_changed(self, trans_id):
+        """Return True if a trans_id's path has changed."""
+        return (trans_id in self._new_name) or (trans_id in self._new_parent)
+
+    def new_contents(self, trans_id):
+        return (trans_id in self._new_contents)
+
+    def find_conflicts(self):
+        """Find any violations of inventory or filesystem invariants"""
+        raise NotImplementedError(self.find_conflicts)
+
+    def new_file(self, name, parent_id, contents, file_id=None,
+                 executable=None, sha1=None):
+        """Convenience method to create files.
+
+        name is the name of the file to create.
+        parent_id is the transaction id of the parent directory of the file.
+        contents is an iterator of bytestrings, which will be used to produce
+        the file.
+        :param file_id: The inventory ID of the file, if it is to be versioned.
+        :param executable: Only valid when a file_id has been supplied.
+        """
+        raise NotImplementedError(self.new_file)
+
+    def new_directory(self, name, parent_id, file_id=None):
+        """Convenience method to create directories.
+
+        name is the name of the directory to create.
+        parent_id is the transaction id of the parent directory of the
+        directory.
+        file_id is the inventory ID of the directory, if it is to be versioned.
+        """
+        raise NotImplementedError(self.new_directory)
+
+    def new_symlink(self, name, parent_id, target, file_id=None):
+        """Convenience method to create symbolic link.
+
+        name is the name of the symlink to create.
+        parent_id is the transaction id of the parent directory of the symlink.
+        target is a bytestring of the target of the symlink.
+        file_id is the inventory ID of the file, if it is to be versioned.
+        """
+        raise NotImplementedError(self.new_symlink)
+
+    def new_orphan(self, trans_id, parent_id):
+        """Schedule an item to be orphaned.
+
+        When a directory is about to be removed, its children, if they are not
+        versioned are moved out of the way: they don't have a parent anymore.
+
+        :param trans_id: The trans_id of the existing item.
+        :param parent_id: The parent trans_id of the item.
+        """
+        raise NotImplementedError(self.new_orphan)
+
+    def iter_changes(self):
+        """Produce output in the same format as Tree.iter_changes.
+
+        Will produce nonsensical results if invoked while inventory/filesystem
+        conflicts (as reported by TreeTransform.find_conflicts()) are present.
+
+        This reads the Transform, but only reproduces changes involving a
+        file_id.  Files that are not versioned in either of the FROM or TO
+        states are not reflected.
+        """
+        raise NotImplementedError(self.iter_changes)
+
+    def get_preview_tree(self):
+        """Return a tree representing the result of the transform.
+
+        The tree is a snapshot, and altering the TreeTransform will invalidate
+        it.
+        """
+        raise NotImplementedError(self.get_preview_tree)
+
+    def commit(self, branch, message, merge_parents=None, strict=False,
+               timestamp=None, timezone=None, committer=None, authors=None,
+               revprops=None, revision_id=None):
+        """Commit the result of this TreeTransform to a branch.
+
+        :param branch: The branch to commit to.
+        :param message: The message to attach to the commit.
+        :param merge_parents: Additional parent revision-ids specified by
+            pending merges.
+        :param strict: If True, abort the commit if there are unversioned
+            files.
+        :param timestamp: if not None, seconds-since-epoch for the time and
+            date.  (May be a float.)
+        :param timezone: Optional timezone for timestamp, as an offset in
+            seconds.
+        :param committer: Optional committer in email-id format.
+            (e.g. "J Random Hacker <jrandom@example.com>")
+        :param authors: Optional list of authors in email-id format.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.  (Specifying a revision-id
+            may reduce performance for some non-native formats.)
+        :return: The revision_id of the revision committed.
+        """
+        raise NotImplementedError(self.commit)
+
+    def create_file(self, contents, trans_id, mode_id=None, sha1=None):
+        """Schedule creation of a new file.
+
+        :seealso: new_file.
+
+        :param contents: an iterator of strings, all of which will be written
+            to the target destination.
+        :param trans_id: TreeTransform handle
+        :param mode_id: If not None, force the mode of the target file to match
+            the mode of the object referenced by mode_id.
+            Otherwise, we will try to preserve mode bits of an existing file.
+        :param sha1: If the sha1 of this content is already known, pass it in.
+            We can use it to prevent future sha1 computations.
+        """
+        raise NotImplementedError(self.create_file)
+
+    def create_directory(self, trans_id):
+        """Schedule creation of a new directory.
+
+        See also new_directory.
+        """
+        raise NotImplementedError(self.create_directory)
+
+    def create_symlink(self, target, trans_id):
+        """Schedule creation of a new symbolic link.
+
+        target is a bytestring.
+        See also new_symlink.
+        """
+        raise NotImplementedError(self.create_symlink)
+
+    def create_hardlink(self, path, trans_id):
+        """Schedule creation of a hard link"""
+        raise NotImplementedError(self.create_hardlink)
+
+    def cancel_creation(self, trans_id):
+        """Cancel the creation of new file contents."""
+        raise NotImplementedError(self.cancel_creation)
+
+
+class TreeTransformBase(TreeTransform):
+    """The base class for TreeTransform and its kin."""
+
+    def __init__(self, tree, pb=None, case_sensitive=True):
+        """Constructor.
+
+        :param tree: The tree that will be transformed, but not necessarily
+            the output tree.
+        :param pb: ignored
+        :param case_sensitive: If True, the target of the transform is
+            case sensitive, not just case preserving.
+        """
+        super(TreeTransformBase, self).__init__(tree, pb=pb)
+        # mapping of trans_id => (sha1 of content, stat_value)
+        self._observed_sha1s = {}
+        # Mapping of trans_id -> new file_id
+        self._new_id = {}
+        # Mapping of old file-id -> trans_id
+        self._non_present_ids = {}
+        # Mapping of new file_id -> trans_id
+        self._r_new_id = {}
+        # The trans_id that will be used as the tree root
+        if tree.is_versioned(''):
+            self._new_root = self.trans_id_tree_path('')
+        else:
+            self._new_root = None
+        # Whether the target is case sensitive
+        self._case_sensitive_target = case_sensitive
 
     def finalize(self):
         """Release the working tree lock, if held.
@@ -230,27 +578,12 @@ class TreeTransformBase(object):
 
     root = property(__get_root)
 
-    def _assign_id(self):
-        """Produce a new tranform id"""
-        new_id = "new-%s" % self._id_number
-        self._id_number += 1
-        return new_id
-
     def create_path(self, name, parent):
         """Assign a transaction id to a new path"""
         trans_id = self._assign_id()
         unique_add(self._new_name, trans_id, name)
         unique_add(self._new_parent, trans_id, parent)
         return trans_id
-
-    def adjust_path(self, name, parent, trans_id):
-        """Change the path that is assigned to a transaction id."""
-        if parent is None:
-            raise ValueError("Parent trans-id may not be None")
-        if trans_id == self._new_root:
-            raise CantMoveRoot
-        self._new_name[trans_id] = name
-        self._new_parent[trans_id] = parent
 
     def adjust_root_path(self, name, parent):
         """Emulate moving the root by moving all children, instead.
@@ -368,53 +701,6 @@ class TreeTransformBase(object):
             else:
                 return self.trans_id_tree_path(path)
 
-    def trans_id_tree_path(self, path):
-        """Determine (and maybe set) the transaction ID for a tree path."""
-        path = self.canonical_path(path)
-        if path not in self._tree_path_ids:
-            self._tree_path_ids[path] = self._assign_id()
-            self._tree_id_paths[self._tree_path_ids[path]] = path
-        return self._tree_path_ids[path]
-
-    def get_tree_parent(self, trans_id):
-        """Determine id of the parent in the tree."""
-        path = self._tree_id_paths[trans_id]
-        if path == "":
-            return ROOT_PARENT
-        return self.trans_id_tree_path(os.path.dirname(path))
-
-    def delete_contents(self, trans_id):
-        """Schedule the contents of a path entry for deletion"""
-        kind = self.tree_kind(trans_id)
-        if kind is not None:
-            self._removed_contents.add(trans_id)
-
-    def cancel_deletion(self, trans_id):
-        """Cancel a scheduled deletion"""
-        self._removed_contents.remove(trans_id)
-
-    def unversion_file(self, trans_id):
-        """Schedule a path entry to become unversioned"""
-        self._removed_id.add(trans_id)
-
-    def delete_versioned(self, trans_id):
-        """Delete and unversion a versioned file"""
-        self.delete_contents(trans_id)
-        self.unversion_file(trans_id)
-
-    def set_executability(self, executability, trans_id):
-        """Schedule setting of the 'execute' bit
-        To unschedule, set to None
-        """
-        if executability is None:
-            del self._new_executability[trans_id]
-        else:
-            unique_add(self._new_executability, trans_id, executability)
-
-    def set_tree_reference(self, revision_id, trans_id):
-        """Set the reference associated with a directory"""
-        unique_add(self._new_reference_revision, trans_id, revision_id)
-
     def version_file(self, trans_id, file_id=None):
         """Schedule a file to become versioned."""
         raise NotImplementedError(self.version_file)
@@ -443,24 +729,6 @@ class TreeTransformBase(object):
         for id_set in id_sets:
             new_ids.update(id_set)
         return sorted(FinalPaths(self).get_paths(new_ids))
-
-    def final_kind(self, trans_id):
-        """Determine the final file kind, after any changes applied.
-
-        :return: None if the file does not exist/has no contents.  (It is
-            conceivable that a path would be created without the corresponding
-            contents insertion command)
-        """
-        if trans_id in self._new_contents:
-            return self._new_contents[trans_id]
-        elif trans_id in self._removed_contents:
-            return None
-        else:
-            return self.tree_kind(trans_id)
-
-    def tree_path(self, trans_id):
-        """Determine the tree path associated with the trans_id."""
-        return self._tree_id_paths.get(trans_id)
 
     def tree_file_id(self, trans_id):
         """Determine the file id associated with the trans_id in the tree"""
@@ -499,48 +767,6 @@ class TreeTransformBase(object):
         for key, value in viewitems(self._non_present_ids):
             if value == trans_id:
                 return key
-
-    def final_parent(self, trans_id):
-        """Determine the parent file_id, after any changes are applied.
-
-        ROOT_PARENT is returned for the tree root.
-        """
-        try:
-            return self._new_parent[trans_id]
-        except KeyError:
-            return self.get_tree_parent(trans_id)
-
-    def final_name(self, trans_id):
-        """Determine the final filename, after all changes are applied."""
-        try:
-            return self._new_name[trans_id]
-        except KeyError:
-            try:
-                return os.path.basename(self._tree_id_paths[trans_id])
-            except KeyError:
-                raise NoFinalPath(trans_id, self)
-
-    def by_parent(self):
-        """Return a map of parent: children for known parents.
-
-        Only new paths and parents of tree files with assigned ids are used.
-        """
-        by_parent = {}
-        items = list(viewitems(self._new_parent))
-        items.extend((t, self.final_parent(t))
-                     for t in list(self._tree_id_paths))
-        for trans_id, parent_id in items:
-            if parent_id not in by_parent:
-                by_parent[parent_id] = set()
-            by_parent[parent_id].add(trans_id)
-        return by_parent
-
-    def path_changed(self, trans_id):
-        """Return True if a trans_id's path has changed."""
-        return (trans_id in self._new_name) or (trans_id in self._new_parent)
-
-    def new_contents(self, trans_id):
-        return (trans_id in self._new_contents)
 
     def find_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
@@ -1240,6 +1466,22 @@ class TreeTransformBase(object):
         """Cancel the creation of new file contents."""
         raise NotImplementedError(self.cancel_creation)
 
+    def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
+        """Apply all changes to the inventory and filesystem.
+
+        If filesystem or inventory conflicts are present, MalformedTransform
+        will be thrown.
+
+        If apply succeeds, finalize is not necessary.
+
+        :param no_conflicts: if True, the caller guarantees there are no
+            conflicts, so no check is made.
+        :param precomputed_delta: An inventory delta to use instead of
+            calculating one.
+        :param _mover: Supply an alternate FileMover, for testing
+        """
+        raise NotImplementedError(self.apply)
+
 
 class DiskTreeTransform(TreeTransformBase):
     """Tree transform storing its contents on disk."""
@@ -1328,7 +1570,7 @@ class DiskTreeTransform(TreeTransformBase):
     def adjust_path(self, name, parent, trans_id):
         previous_parent = self._new_parent.get(trans_id)
         previous_name = self._new_name.get(trans_id)
-        TreeTransformBase.adjust_path(self, name, parent, trans_id)
+        super(DiskTreeTransform, self).adjust_path(name, parent, trans_id)
         if (trans_id in self._limbo_files
                 and trans_id not in self._needs_rename):
             self._rename_in_limbo([trans_id])
@@ -1544,244 +1786,6 @@ opt_transform_orphan = _mod_config.RegistryOption(
     'transform.orphan_policy', orphaning_registry,
     help='Policy for orphaned files during transform operations.',
     invalid='warning')
-
-
-class TreeTransform(DiskTreeTransform):
-    """Represent a tree transformation.
-
-    This object is designed to support incremental generation of the transform,
-    in any order.
-
-    However, it gives optimum performance when parent directories are created
-    before their contents.  The transform is then able to put child files
-    directly in their parent directory, avoiding later renames.
-
-    It is easy to produce malformed transforms, but they are generally
-    harmless.  Attempting to apply a malformed transform will cause an
-    exception to be raised before any modifications are made to the tree.
-
-    Many kinds of malformed transforms can be corrected with the
-    resolve_conflicts function.  The remaining ones indicate programming error,
-    such as trying to create a file with no path.
-
-    Two sets of file creation methods are supplied.  Convenience methods are:
-     * new_file
-     * new_directory
-     * new_symlink
-
-    These are composed of the low-level methods:
-     * create_path
-     * create_file or create_directory or create_symlink
-     * version_file
-     * set_executability
-
-    Transform/Transaction ids
-    -------------------------
-    trans_ids are temporary ids assigned to all files involved in a transform.
-    It's possible, even common, that not all files in the Tree have trans_ids.
-
-    trans_ids are used because filenames and file_ids are not good enough
-    identifiers; filenames change, and not all files have file_ids.  File-ids
-    are also associated with trans-ids, so that moving a file moves its
-    file-id.
-
-    trans_ids are only valid for the TreeTransform that generated them.
-
-    Limbo
-    -----
-    Limbo is a temporary directory use to hold new versions of files.
-    Files are added to limbo by create_file, create_directory, create_symlink,
-    and their convenience variants (new_*).  Files may be removed from limbo
-    using cancel_creation.  Files are renamed from limbo into their final
-    location as part of TreeTransform.apply
-
-    Limbo must be cleaned up, by either calling TreeTransform.apply or
-    calling TreeTransform.finalize.
-
-    Files are placed into limbo inside their parent directories, where
-    possible.  This reduces subsequent renames, and makes operations involving
-    lots of files faster.  This optimization is only possible if the parent
-    directory is created *before* creating any of its children, so avoid
-    creating children before parents, where possible.
-
-    Pending-deletion
-    ----------------
-    This temporary directory is used by _FileMover for storing files that are
-    about to be deleted.  In case of rollback, the files will be restored.
-    FileMover does not delete files until it is sure that a rollback will not
-    happen.
-    """
-
-    def __init__(self, tree, pb=None):
-        """Note: a tree_write lock is taken on the tree.
-
-        Use TreeTransform.finalize() to release the lock (can be omitted if
-        TreeTransform.apply() called).
-        """
-        tree.lock_tree_write()
-        try:
-            limbodir = urlutils.local_path_from_url(
-                tree._transport.abspath('limbo'))
-            osutils.ensure_empty_directory_exists(
-                limbodir,
-                errors.ExistingLimbo)
-            deletiondir = urlutils.local_path_from_url(
-                tree._transport.abspath('pending-deletion'))
-            osutils.ensure_empty_directory_exists(
-                deletiondir,
-                errors.ExistingPendingDeletion)
-        except BaseException:
-            tree.unlock()
-            raise
-
-        # Cache of realpath results, to speed up canonical_path
-        self._realpaths = {}
-        # Cache of relpath results, to speed up canonical_path
-        self._relpaths = {}
-        DiskTreeTransform.__init__(self, tree, limbodir, pb,
-                                   tree.case_sensitive)
-        self._deletiondir = deletiondir
-
-    def canonical_path(self, path):
-        """Get the canonical tree-relative path"""
-        # don't follow final symlinks
-        abs = self._tree.abspath(path)
-        if abs in self._relpaths:
-            return self._relpaths[abs]
-        dirname, basename = os.path.split(abs)
-        if dirname not in self._realpaths:
-            self._realpaths[dirname] = os.path.realpath(dirname)
-        dirname = self._realpaths[dirname]
-        abs = pathjoin(dirname, basename)
-        if dirname in self._relpaths:
-            relpath = pathjoin(self._relpaths[dirname], basename)
-            relpath = relpath.rstrip('/\\')
-        else:
-            relpath = self._tree.relpath(abs)
-        self._relpaths[abs] = relpath
-        return relpath
-
-    def tree_kind(self, trans_id):
-        """Determine the file kind in the working tree.
-
-        :returns: The file kind or None if the file does not exist
-        """
-        path = self._tree_id_paths.get(trans_id)
-        if path is None:
-            return None
-        try:
-            return file_kind(self._tree.abspath(path))
-        except errors.NoSuchFile:
-            return None
-
-    def _set_mode(self, trans_id, mode_id, typefunc):
-        """Set the mode of new file contents.
-        The mode_id is the existing file to get the mode from (often the same
-        as trans_id).  The operation is only performed if there's a mode match
-        according to typefunc.
-        """
-        if mode_id is None:
-            mode_id = trans_id
-        try:
-            old_path = self._tree_id_paths[mode_id]
-        except KeyError:
-            return
-        try:
-            mode = os.stat(self._tree.abspath(old_path)).st_mode
-        except OSError as e:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                # Either old_path doesn't exist, or the parent of the
-                # target is not a directory (but will be one eventually)
-                # Either way, we know it doesn't exist *right now*
-                # See also bug #248448
-                return
-            else:
-                raise
-        if typefunc(mode):
-            osutils.chmod_if_possible(self._limbo_name(trans_id), mode)
-
-    def iter_tree_children(self, parent_id):
-        """Iterate through the entry's tree children, if any"""
-        try:
-            path = self._tree_id_paths[parent_id]
-        except KeyError:
-            return
-        try:
-            children = os.listdir(self._tree.abspath(path))
-        except OSError as e:
-            if not (osutils._is_error_enotdir(e) or
-                    e.errno in (errno.ENOENT, errno.ESRCH)):
-                raise
-            return
-
-        for child in children:
-            childpath = joinpath(path, child)
-            if self._tree.is_control_filename(childpath):
-                continue
-            yield self.trans_id_tree_path(childpath)
-
-    def _generate_limbo_path(self, trans_id):
-        """Generate a limbo path using the final path if possible.
-
-        This optimizes the performance of applying the tree transform by
-        avoiding renames.  These renames can be avoided only when the parent
-        directory is already scheduled for creation.
-
-        If the final path cannot be used, falls back to using the trans_id as
-        the relpath.
-        """
-        parent = self._new_parent.get(trans_id)
-        # if the parent directory is already in limbo (e.g. when building a
-        # tree), choose a limbo name inside the parent, to reduce further
-        # renames.
-        use_direct_path = False
-        if self._new_contents.get(parent) == 'directory':
-            filename = self._new_name.get(trans_id)
-            if filename is not None:
-                if parent not in self._limbo_children:
-                    self._limbo_children[parent] = set()
-                    self._limbo_children_names[parent] = {}
-                    use_direct_path = True
-                # the direct path can only be used if no other file has
-                # already taken this pathname, i.e. if the name is unused, or
-                # if it is already associated with this trans_id.
-                elif self._case_sensitive_target:
-                    if (self._limbo_children_names[parent].get(filename)
-                            in (trans_id, None)):
-                        use_direct_path = True
-                else:
-                    for l_filename, l_trans_id in viewitems(
-                            self._limbo_children_names[parent]):
-                        if l_trans_id == trans_id:
-                            continue
-                        if l_filename.lower() == filename.lower():
-                            break
-                    else:
-                        use_direct_path = True
-
-        if not use_direct_path:
-            return DiskTreeTransform._generate_limbo_path(self, trans_id)
-
-        limbo_name = pathjoin(self._limbo_files[parent], filename)
-        self._limbo_children[parent].add(trans_id)
-        self._limbo_children_names[parent][filename] = trans_id
-        return limbo_name
-
-    def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
-        """Apply all changes to the inventory and filesystem.
-
-        If filesystem or inventory conflicts are present, MalformedTransform
-        will be thrown.
-
-        If apply succeeds, finalize is not necessary.
-
-        :param no_conflicts: if True, the caller guarantees there are no
-            conflicts, so no check is made.
-        :param precomputed_delta: An inventory delta to use instead of
-            calculating one.
-        :param _mover: Supply an alternate FileMover, for testing
-        """
-        raise NotImplementedError(self.apply)
 
 
 def joinpath(parent, child):
