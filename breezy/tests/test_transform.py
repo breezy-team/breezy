@@ -87,9 +87,11 @@ from ..transform import (
     MalformedTransform,
     NoFinalPath,
     ReusingTransform,
-    TransformPreview,
-    TreeTransform,
+    TransformRenameFailed,
 )
+from ..bzr.transform import (
+    InventoryTreeTransform as TreeTransform,
+    )
 
 
 class TransformGroup(object):
@@ -107,38 +109,6 @@ class TransformGroup(object):
 def conflict_text(tree, merge):
     template = b'%s TREE\n%s%s\n%s%s MERGE-SOURCE\n'
     return template % (b'<' * 7, tree, b'=' * 7, merge, b'>' * 7)
-
-
-class TestInventoryAltered(tests.TestCaseWithTransport):
-
-    def test_inventory_altered_unchanged(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/foo'])
-        tree.add('foo', b'foo-id')
-        with tree.preview_transform() as tt:
-            self.assertEqual([], tt._inventory_altered())
-
-    def test_inventory_altered_changed_parent_id(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/foo'])
-        tree.add('foo', b'foo-id')
-        with tree.preview_transform() as tt:
-            tt.unversion_file(tt.root)
-            tt.version_file(tt.root, file_id=b'new-id')
-            foo_trans_id = tt.trans_id_tree_path('foo')
-            foo_tuple = ('foo', foo_trans_id)
-            root_tuple = ('', tt.root)
-            self.assertEqual([root_tuple, foo_tuple], tt._inventory_altered())
-
-    def test_inventory_altered_noop_changed_parent_id(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/foo'])
-        tree.add('foo', b'foo-id')
-        with tree.preview_transform() as tt:
-            tt.unversion_file(tt.root)
-            tt.version_file(tt.root, file_id=tree.path2id(''))
-            tt.trans_id_tree_path('foo')
-            self.assertEqual([], tt._inventory_altered())
 
 
 class TestTransformMerge(TestCaseInTempDir):
@@ -1603,3 +1573,12 @@ class TestLinkTree(tests.TestCaseWithTransport):
         """If the file to be linked is unmodified, link"""
         transform.link_tree(self.child_tree, self.parent_tree)
         self.assertTrue(self.hardlinked())
+
+
+class ErrorTests(tests.TestCase):
+
+    def test_transform_rename_failed(self):
+        e = TransformRenameFailed(u"from", u"to", "readonly file", 2)
+        self.assertEqual(
+            u"Failed to rename from to to: readonly file",
+            str(e))

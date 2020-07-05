@@ -31,7 +31,6 @@ from breezy import (
     revision as _mod_revision,
     textfile,
     trace,
-    transform,
     tree as _mod_tree,
     tsort,
     ui,
@@ -48,6 +47,7 @@ from . import (
     errors,
     hooks,
     registry,
+    transform,
     )
 from .sixish import (
     viewitems,
@@ -780,10 +780,10 @@ class Merge3Merger(object):
 
     def _compute_transform(self):
         if self._lca_trees is None:
-            entries = self._entries3()
+            entries = list(self._entries3())
             resolver = self._three_way
         else:
-            entries = self._entries_lca()
+            entries = list(self._entries_lca())
             resolver = self._lca_multi_way
         # Prepare merge hooks
         factories = Merger.hooks['merge_file_content']
@@ -794,7 +794,6 @@ class Merge3Merger(object):
             for num, (file_id, changed, paths3, parents3, names3,
                       executable3) in enumerate(entries):
                 trans_id = self.tt.trans_id_file_id(file_id)
-
                 # Try merging each entry
                 child_pb.update(gettext('Preparing file merge'),
                                 num, len(entries))
@@ -835,7 +834,6 @@ class Merge3Merger(object):
         other and this.  names3 is a tuple of names for base, other and this.
         executable3 is a tuple of execute-bit values for base, other and this.
         """
-        result = []
         iterator = self.other_tree.iter_changes(self.base_tree,
                                                 specific_files=self.interesting_files,
                                                 extra_trees=[self.this_tree])
@@ -863,10 +861,9 @@ class Merge3Merger(object):
             names3 = change.name + (this_name,)
             paths3 = change.path + (this_path, )
             executable3 = change.executable + (this_executable,)
-            result.append(
+            yield (
                 (change.file_id, change.changed_content, paths3,
                  parents3, names3, executable3))
-        return result
 
     def _entries_lca(self):
         """Gather data about files modified between multiple trees.
@@ -895,7 +892,6 @@ class Merge3Merger(object):
                 self.interesting_files, lookup_trees)
         else:
             interesting_files = None
-        result = []
         from .multiwalker import MultiWalker
         walker = MultiWalker(self.other_tree, self._lca_trees)
 
@@ -1039,7 +1035,7 @@ class Merge3Merger(object):
                     raise AssertionError('unhandled kind: %s' % other_ie.kind)
 
             # If we have gotten this far, that means something has changed
-            result.append((file_id, content_changed,
+            yield (file_id, content_changed,
                            ((base_path, lca_paths),
                             other_path, this_path),
                            ((base_ie.parent_id, lca_parent_ids),
@@ -1048,8 +1044,7 @@ class Merge3Merger(object):
                             other_ie.name, this_ie.name),
                            ((base_ie.executable, lca_executable),
                             other_ie.executable, this_ie.executable)
-                           ))
-        return result
+                           )
 
     def write_modified(self, results):
         if not self.working_tree.supports_merge_modified():

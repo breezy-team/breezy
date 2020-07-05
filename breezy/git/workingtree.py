@@ -224,10 +224,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         else:
             self.case_sensitive = False
 
-    def transform(self, pb=None):
-        from ..transform import TreeTransform
-        return TreeTransform(self, pb=pb)
-
     def merge_modified(self):
         return {}
 
@@ -1075,8 +1071,8 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def store_uncommitted(self):
         raise errors.StoringUncommittedNotSupported(self)
 
-    def apply_inventory_delta(self, changes):
-        for (old_path, new_path, file_id, ie) in changes:
+    def _apply_transform_delta(self, changes):
+        for (old_path, new_path, ie) in changes:
             if old_path is not None:
                 (index, old_subpath) = self._lookup_index(
                     encode_git_path(old_path))

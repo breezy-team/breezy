@@ -325,7 +325,7 @@ class InventoryTree(Tree):
         return last_revision
 
     def preview_transform(self, pb=None):
-        from ..transform import TransformPreview
+        from .transform import TransformPreview
         return TransformPreview(self, pb=pb)
 
 
@@ -510,8 +510,8 @@ class MutableInventoryTree(MutableTree, InventoryTree):
         self.set_parent_trees([(new_revid, rev_tree)])
 
     def transform(self, pb=None):
-        from ..transform import TreeTransform
-        return TreeTransform(self, pb=pb)
+        from .transform import InventoryTreeTransform
+        return InventoryTreeTransform(self, pb=pb)
 
 
 class _SmartAddHelper(object):
