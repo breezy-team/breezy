@@ -71,6 +71,7 @@ class GitTreeTransform(TreeTransform):
             hook(self._tree, self)
         if not no_conflicts:
             self._check_malformed()
+        self.rename_count = 0
         with ui.ui_factory.nested_progress_bar() as child_pb:
             if precomputed_delta is None:
                 child_pb.update(gettext('Apply phase'), 0, 2)

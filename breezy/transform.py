@@ -183,6 +183,21 @@ class TreeTransformInterface(object):
     def tree_kind(self, trans_id):
         raise NotImplementedError(self.tree_kind)
 
+    def by_parent(self):
+        """Return a map of parent: children for known parents.
+
+        Only new paths and parents of tree files with assigned ids are used.
+        """
+        by_parent = {}
+        items = list(viewitems(self._new_parent))
+        items.extend((t, self.final_parent(t))
+                     for t in list(self._tree_id_paths))
+        for trans_id, parent_id in items:
+            if parent_id not in by_parent:
+                by_parent[parent_id] = set()
+            by_parent[parent_id].add(trans_id)
+        return by_parent
+
     def finalize(self):
         """Release the working tree lock, if held.
 
@@ -193,7 +208,10 @@ class TreeTransformInterface(object):
 
     def create_path(self, name, parent):
         """Assign a transaction id to a new path"""
-        raise NotImplementedError(self.create_path)
+        trans_id = self._assign_id()
+        unique_add(self._new_name, trans_id, name)
+        unique_add(self._new_parent, trans_id, parent)
+        return trans_id
 
     def adjust_path(self, name, parent, trans_id):
         """Change the path that is assigned to a transaction id."""
@@ -506,8 +524,6 @@ class TreeTransformBase(TreeTransformInterface):
             self._new_root = None
         # Whether the target is case sensitive
         self._case_sensitive_target = case_sensitive
-        # A counter of how many files have been renamed
-        self.rename_count = 0
 
     def finalize(self):
         """Release the working tree lock, if held.
@@ -716,21 +732,6 @@ class TreeTransformBase(TreeTransformInterface):
         for key, value in viewitems(self._non_present_ids):
             if value == trans_id:
                 return key
-
-    def by_parent(self):
-        """Return a map of parent: children for known parents.
-
-        Only new paths and parents of tree files with assigned ids are used.
-        """
-        by_parent = {}
-        items = list(viewitems(self._new_parent))
-        items.extend((t, self.final_parent(t))
-                     for t in list(self._tree_id_paths))
-        for trans_id, parent_id in items:
-            if parent_id not in by_parent:
-                by_parent[parent_id] = set()
-            by_parent[parent_id].add(trans_id)
-        return by_parent
 
     def find_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
