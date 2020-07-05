@@ -137,19 +137,37 @@ class TreeTransformInterface(object):
 
     def __init__(self, tree, pb=None):
         self._tree = tree
+        # A progress bar
+        self._pb = pb
         self._id_number = 0
         # Mapping of path in old tree -> trans_id
         self._tree_path_ids = {}
         # Mapping trans_id -> path in old tree
         self._tree_id_paths = {}
+        # mapping of trans_id -> new basename
+        self._new_name = {}
+        # mapping of trans_id -> new parent trans_id
+        self._new_parent = {}
+        # mapping of trans_id with new contents -> new file_kind
+        self._new_contents = {}
+        # Set of trans_ids whose contents will be removed
+        self._removed_contents = set()
+        # Mapping of trans_id -> new execute-bit value
+        self._new_executability = {}
+        # Mapping of trans_id -> new tree-reference value
+        self._new_reference_revision = {}
+        # Set of trans_ids that will be removed
+        self._removed_id = set()
+        # Indicator of whether the transform has been applied
+        self._done = False
 
     def __enter__(self):
         """Support Context Manager API."""
-        raise NotImplementedError(self.__enter__)
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Support Context Manager API."""
-        raise NotImplementedError(self.__exit__)
+        self.finalize()
 
     def iter_tree_children(self, trans_id):
         """Iterate through the entry's tree children, if any.
@@ -179,7 +197,12 @@ class TreeTransformInterface(object):
 
     def adjust_path(self, name, parent, trans_id):
         """Change the path that is assigned to a transaction id."""
-        raise NotImplementedError(self.adjust_path)
+        if parent is None:
+            raise ValueError("Parent trans-id may not be None")
+        if trans_id == self._new_root:
+            raise CantMoveRoot
+        self._new_name[trans_id] = name
+        self._new_parent[trans_id] = parent
 
     def adjust_root_path(self, name, parent):
         """Emulate moving the root by moving all children, instead.
@@ -228,29 +251,31 @@ class TreeTransformInterface(object):
 
     def delete_contents(self, trans_id):
         """Schedule the contents of a path entry for deletion"""
-        raise NotImplementedError(self.delete_contents)
+        kind = self.tree_kind(trans_id)
+        if kind is not None:
+            self._removed_contents.add(trans_id)
 
     def cancel_deletion(self, trans_id):
         """Cancel a scheduled deletion"""
-        raise NotImplementedError(self.cancel_deletion)
-
-    def unversion_file(self, trans_id):
-        """Schedule a path entry to become unversioned"""
-        raise NotImplementedError(self.unversion_file)
+        self._removed_contents.remove(trans_id)
 
     def delete_versioned(self, trans_id):
         """Delete and unversion a versioned file"""
-        raise NotImplementedError(self.delete_versioned)
+        self.delete_contents(trans_id)
+        self.unversion_file(trans_id)
 
     def set_executability(self, executability, trans_id):
         """Schedule setting of the 'execute' bit
         To unschedule, set to None
         """
-        raise NotImplementedError(self.set_executability)
+        if executability is None:
+            del self._new_executability[trans_id]
+        else:
+            unique_add(self._new_executability, trans_id, executability)
 
     def set_tree_reference(self, revision_id, trans_id):
         """Set the reference associated with a directory"""
-        raise NotImplementedError(self.set_tree_reference)
+        unique_add(self._new_reference_revision, trans_id, revision_id)
 
     def version_file(self, trans_id, file_id=None):
         """Schedule a file to become versioned."""
@@ -259,6 +284,10 @@ class TreeTransformInterface(object):
     def cancel_versioning(self, trans_id):
         """Undo a previous versioning of a file"""
         raise NotImplementedError(self.cancel_versioning)
+
+    def unversion_file(self, trans_id):
+        """Schedule a path entry to become unversioned"""
+        self._removed_id.add(trans_id)
 
     def new_paths(self, filesystem_only=False):
         """Determine the paths of all new and changed files.
@@ -275,11 +304,16 @@ class TreeTransformInterface(object):
             conceivable that a path would be created without the corresponding
             contents insertion command)
         """
-        raise NotImplementedError(self.final_kind)
+        if trans_id in self._new_contents:
+            return self._new_contents[trans_id]
+        elif trans_id in self._removed_contents:
+            return None
+        else:
+            return self.tree_kind(trans_id)
 
     def tree_path(self, trans_id):
         """Determine the tree path associated with the trans_id."""
-        raise NotImplementedError(self.tree_path)
+        return self._tree_id_paths.get(trans_id)
 
     def final_is_versioned(self, trans_id):
         raise NotImplementedError(self.final_is_versioned)
@@ -289,18 +323,27 @@ class TreeTransformInterface(object):
 
         ROOT_PARENT is returned for the tree root.
         """
-        raise NotImplementedError(self.final_parent)
+        try:
+            return self._new_parent[trans_id]
+        except KeyError:
+            return self.get_tree_parent(trans_id)
 
     def final_name(self, trans_id):
         """Determine the final filename, after all changes are applied."""
-        raise NotImplementedError(self.final_name)
+        try:
+            return self._new_name[trans_id]
+        except KeyError:
+            try:
+                return os.path.basename(self._tree_id_paths[trans_id])
+            except KeyError:
+                raise NoFinalPath(trans_id, self)
 
     def path_changed(self, trans_id):
         """Return True if a trans_id's path has changed."""
-        raise NotImplementedError(self.path_changed)
+        return (trans_id in self._new_name) or (trans_id in self._new_parent)
 
     def new_contents(self, trans_id):
-        raise NotImplementedError(self.new_contents)
+        return (trans_id in self._new_contents)
 
     def find_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
@@ -448,49 +491,23 @@ class TreeTransformBase(TreeTransformInterface):
             case sensitive, not just case preserving.
         """
         TreeTransformInterface.__init__(self, tree, pb=pb)
-        # mapping of trans_id -> new basename
-        self._new_name = {}
-        # mapping of trans_id -> new parent trans_id
-        self._new_parent = {}
-        # mapping of trans_id with new contents -> new file_kind
-        self._new_contents = {}
         # mapping of trans_id => (sha1 of content, stat_value)
         self._observed_sha1s = {}
-        # Set of trans_ids whose contents will be removed
-        self._removed_contents = set()
-        # Mapping of trans_id -> new execute-bit value
-        self._new_executability = {}
-        # Mapping of trans_id -> new tree-reference value
-        self._new_reference_revision = {}
         # Mapping of trans_id -> new file_id
         self._new_id = {}
         # Mapping of old file-id -> trans_id
         self._non_present_ids = {}
         # Mapping of new file_id -> trans_id
         self._r_new_id = {}
-        # Set of trans_ids that will be removed
-        self._removed_id = set()
         # The trans_id that will be used as the tree root
         if tree.is_versioned(''):
             self._new_root = self.trans_id_tree_path('')
         else:
             self._new_root = None
-        # Indicator of whether the transform has been applied
-        self._done = False
-        # A progress bar
-        self._pb = pb
         # Whether the target is case sensitive
         self._case_sensitive_target = case_sensitive
         # A counter of how many files have been renamed
         self.rename_count = 0
-
-    def __enter__(self):
-        """Support Context Manager API."""
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Support Context Manager API."""
-        self.finalize()
 
     def finalize(self):
         """Release the working tree lock, if held.
@@ -516,15 +533,6 @@ class TreeTransformBase(TreeTransformInterface):
         unique_add(self._new_name, trans_id, name)
         unique_add(self._new_parent, trans_id, parent)
         return trans_id
-
-    def adjust_path(self, name, parent, trans_id):
-        """Change the path that is assigned to a transaction id."""
-        if parent is None:
-            raise ValueError("Parent trans-id may not be None")
-        if trans_id == self._new_root:
-            raise CantMoveRoot
-        self._new_name[trans_id] = name
-        self._new_parent[trans_id] = parent
 
     def adjust_root_path(self, name, parent):
         """Emulate moving the root by moving all children, instead.
@@ -642,38 +650,6 @@ class TreeTransformBase(TreeTransformInterface):
             else:
                 return self.trans_id_tree_path(path)
 
-    def delete_contents(self, trans_id):
-        """Schedule the contents of a path entry for deletion"""
-        kind = self.tree_kind(trans_id)
-        if kind is not None:
-            self._removed_contents.add(trans_id)
-
-    def cancel_deletion(self, trans_id):
-        """Cancel a scheduled deletion"""
-        self._removed_contents.remove(trans_id)
-
-    def unversion_file(self, trans_id):
-        """Schedule a path entry to become unversioned"""
-        self._removed_id.add(trans_id)
-
-    def delete_versioned(self, trans_id):
-        """Delete and unversion a versioned file"""
-        self.delete_contents(trans_id)
-        self.unversion_file(trans_id)
-
-    def set_executability(self, executability, trans_id):
-        """Schedule setting of the 'execute' bit
-        To unschedule, set to None
-        """
-        if executability is None:
-            del self._new_executability[trans_id]
-        else:
-            unique_add(self._new_executability, trans_id, executability)
-
-    def set_tree_reference(self, revision_id, trans_id):
-        """Set the reference associated with a directory"""
-        unique_add(self._new_reference_revision, trans_id, revision_id)
-
     def version_file(self, trans_id, file_id=None):
         """Schedule a file to become versioned."""
         raise NotImplementedError(self.version_file)
@@ -702,24 +678,6 @@ class TreeTransformBase(TreeTransformInterface):
         for id_set in id_sets:
             new_ids.update(id_set)
         return sorted(FinalPaths(self).get_paths(new_ids))
-
-    def final_kind(self, trans_id):
-        """Determine the final file kind, after any changes applied.
-
-        :return: None if the file does not exist/has no contents.  (It is
-            conceivable that a path would be created without the corresponding
-            contents insertion command)
-        """
-        if trans_id in self._new_contents:
-            return self._new_contents[trans_id]
-        elif trans_id in self._removed_contents:
-            return None
-        else:
-            return self.tree_kind(trans_id)
-
-    def tree_path(self, trans_id):
-        """Determine the tree path associated with the trans_id."""
-        return self._tree_id_paths.get(trans_id)
 
     def tree_file_id(self, trans_id):
         """Determine the file id associated with the trans_id in the tree"""
@@ -759,26 +717,6 @@ class TreeTransformBase(TreeTransformInterface):
             if value == trans_id:
                 return key
 
-    def final_parent(self, trans_id):
-        """Determine the parent file_id, after any changes are applied.
-
-        ROOT_PARENT is returned for the tree root.
-        """
-        try:
-            return self._new_parent[trans_id]
-        except KeyError:
-            return self.get_tree_parent(trans_id)
-
-    def final_name(self, trans_id):
-        """Determine the final filename, after all changes are applied."""
-        try:
-            return self._new_name[trans_id]
-        except KeyError:
-            try:
-                return os.path.basename(self._tree_id_paths[trans_id])
-            except KeyError:
-                raise NoFinalPath(trans_id, self)
-
     def by_parent(self):
         """Return a map of parent: children for known parents.
 
@@ -793,13 +731,6 @@ class TreeTransformBase(TreeTransformInterface):
                 by_parent[parent_id] = set()
             by_parent[parent_id].add(trans_id)
         return by_parent
-
-    def path_changed(self, trans_id):
-        """Return True if a trans_id's path has changed."""
-        return (trans_id in self._new_name) or (trans_id in self._new_parent)
-
-    def new_contents(self, trans_id):
-        return (trans_id in self._new_contents)
 
     def find_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
@@ -1587,7 +1518,7 @@ class DiskTreeTransform(TreeTransformBase):
     def adjust_path(self, name, parent, trans_id):
         previous_parent = self._new_parent.get(trans_id)
         previous_name = self._new_name.get(trans_id)
-        TreeTransformBase.adjust_path(self, name, parent, trans_id)
+        super(DiskTreeTransform, self).adjust_path(name, parent, trans_id)
         if (trans_id in self._limbo_files
                 and trans_id not in self._needs_rename):
             self._rename_in_limbo([trans_id])
