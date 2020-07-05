@@ -73,12 +73,16 @@ from ...transform import (
     TransformRenameFailed,
 )
 
+from breezy.tests.per_workingtree import TestCaseWithWorkingTree
 
 
-class TestTreeTransform(tests.TestCaseWithTransport):
+
+class TestTreeTransform(TestCaseWithWorkingTree):
 
     def setUp(self):
         super(TestTreeTransform, self).setUp()
+        if not self.workingtree_format.supports_setting_file_ids:
+            self.skipTest('test not compatible with non-file-id trees yet')
         self.wt = self.make_branch_and_tree('wt')
 
     def transform(self):
@@ -386,6 +390,10 @@ class TestTreeTransform(tests.TestCaseWithTransport):
     def test_tree_reference(self):
         transform, root = self.transform()
         tree = transform._tree
+        if not tree.supports_tree_reference():
+            raise tests.TestNotApplicable(
+                'Tree format does not support references')
+
         trans_id = transform.new_directory('reference', root, b'subtree-id')
         transform.set_tree_reference(b'subtree-revision', trans_id)
         transform.apply()
@@ -1644,7 +1652,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
     def test_create_from_tree(self):
         tree1 = self.make_branch_and_tree('tree1')
         self.build_tree_contents([('tree1/foo/',), ('tree1/bar', b'baz')])
-        tree1.add(['foo', 'bar'], [b'foo-id', b'bar-id'])
+        tree1.add(['foo', 'bar'])
         tree2 = self.make_branch_and_tree('tree2')
         tt = tree2.transform()
         foo_trans_id = tt.create_path('foo', tt.root)
@@ -1659,7 +1667,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         """Provided lines are used instead of tree content."""
         tree1 = self.make_branch_and_tree('tree1')
         self.build_tree_contents([('tree1/foo', b'bar'), ])
-        tree1.add('foo', b'foo-id')
+        tree1.add('foo')
         tree2 = self.make_branch_and_tree('tree2')
         tt = tree2.transform()
         foo_trans_id = tt.create_path('foo', tt.root)
@@ -1671,7 +1679,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.requireFeature(SymlinkFeature)
         tree1 = self.make_branch_and_tree('tree1')
         os.symlink('bar', 'tree1/foo')
-        tree1.add('foo', b'foo-id')
+        tree1.add('foo')
         tt = self.make_branch_and_tree('tree2').transform()
         foo_trans_id = tt.create_path('foo', tt.root)
         create_from_tree(tt, foo_trans_id, tree1, 'foo')

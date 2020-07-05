@@ -17,18 +17,24 @@
 
 from __future__ import absolute_import
 
+import errno
+import os
+
 from .. import errors, ui
 from ..i18n import gettext
 from ..mutabletree import MutableTree
+from ..sixish import viewitems
 from ..transform import (
     TreeTransform,
     _TransformResults,
     _FileMover,
     FinalPaths,
     unique_add,
+    TransformRenameFailed,
     )
 
 from ..bzr import inventory
+from ..bzr.transform import TransformPreview as GitTransformPreview
 
 
 class GitTreeTransform(TreeTransform):
@@ -94,6 +100,84 @@ class GitTreeTransform(TreeTransform):
         self._done = True
         self.finalize()
         return _TransformResults(modified_paths, self.rename_count)
+
+    def _apply_removals(self, mover):
+        """Perform tree operations that remove directory/inventory names.
+
+        That is, delete files that are to be deleted, and put any files that
+        need renaming into limbo.  This must be done in strict child-to-parent
+        order.
+
+        If inventory_delta is None, no inventory delta generation is performed.
+        """
+        tree_paths = sorted(viewitems(self._tree_path_ids), reverse=True)
+        with ui.ui_factory.nested_progress_bar() as child_pb:
+            for num, (path, trans_id) in enumerate(tree_paths):
+                # do not attempt to move root into a subdirectory of itself.
+                if path == '':
+                    continue
+                child_pb.update(gettext('removing file'), num, len(tree_paths))
+                full_path = self._tree.abspath(path)
+                if trans_id in self._removed_contents:
+                    delete_path = os.path.join(self._deletiondir, trans_id)
+                    mover.pre_delete(full_path, delete_path)
+                elif (trans_id in self._new_name or
+                      trans_id in self._new_parent):
+                    try:
+                        mover.rename(full_path, self._limbo_name(trans_id))
+                    except TransformRenameFailed as e:
+                        if e.errno != errno.ENOENT:
+                            raise
+                    else:
+                        self.rename_count += 1
+
+    def _apply_insertions(self, mover):
+        """Perform tree operations that insert directory/inventory names.
+
+        That is, create any files that need to be created, and restore from
+        limbo any files that needed renaming.  This must be done in strict
+        parent-to-child order.
+
+        If inventory_delta is None, no inventory delta is calculated, and
+        no list of modified paths is returned.
+        """
+        new_paths = self.new_paths(filesystem_only=True)
+        modified_paths = []
+        with ui.ui_factory.nested_progress_bar() as child_pb:
+            for num, (path, trans_id) in enumerate(new_paths):
+                if (num % 10) == 0:
+                    child_pb.update(gettext('adding file'),
+                                    num, len(new_paths))
+                full_path = self._tree.abspath(path)
+                if trans_id in self._needs_rename:
+                    try:
+                        mover.rename(self._limbo_name(trans_id), full_path)
+                    except TransformRenameFailed as e:
+                        # We may be renaming a dangling inventory id
+                        if e.errno != errno.ENOENT:
+                            raise
+                    else:
+                        self.rename_count += 1
+                    # TODO: if trans_id in self._observed_sha1s, we should
+                    #       re-stat the final target, since ctime will be
+                    #       updated by the change.
+                if (trans_id in self._new_contents
+                        or self.path_changed(trans_id)):
+                    if trans_id in self._new_contents:
+                        modified_paths.append(full_path)
+                if trans_id in self._new_executability:
+                    self._set_executability(path, trans_id)
+                if trans_id in self._observed_sha1s:
+                    o_sha1, o_st_val = self._observed_sha1s[trans_id]
+                    st = osutils.lstat(full_path)
+                    self._observed_sha1s[trans_id] = (o_sha1, st)
+        for path, trans_id in new_paths:
+            # new_paths includes stuff like workingtree conflicts. Only the
+            # stuff in new_contents actually comes from limbo.
+            if trans_id in self._limbo_files:
+                del self._limbo_files[trans_id]
+        self._new_contents.clear()
+        return modified_paths
 
     def _inventory_altered(self):
         """Determine which trans_ids need new Inventory entries.

@@ -1460,14 +1460,8 @@ class Merge3Merger(object):
             data.append(('BASE', self.base_tree, base_path, base_lines))
 
         # We need to use the actual path in the working tree of the file here,
-        # ignoring the conflict suffixes
-        wt = self.this_tree
-        if wt.supports_content_filtering():
-            try:
-                filter_tree_path = wt.id2path(file_id)
-            except errors.NoSuchId:
-                # file has been deleted
-                filter_tree_path = None
+        if self.this_tree.supports_content_filtering():
+            filter_tree_path = this_path
         else:
             # Skip the id2path lookup for older formats
             filter_tree_path = None
