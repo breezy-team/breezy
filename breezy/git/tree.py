@@ -1639,7 +1639,7 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         return GitTreeTransform(self, pb=pb)
 
     def preview_transform(self, pb=None):
-        from ..transform import GitTransformPreview
+        from .transform import GitTransformPreview
         return GitTransformPreview(self, pb=pb)
 
 
