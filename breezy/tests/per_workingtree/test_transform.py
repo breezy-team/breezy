@@ -256,6 +256,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.assertEqual(st1.st_mtime, st2.st_mtime)
 
     def test_change_root_id(self):
+        if not self.workingtree_format.supports_setting_file_ids:
+            raise tests.TestNotApplicable(
+                'format does not support setting file ids')
         transform, root = self.transform()
         self.assertNotEqual(b'new-root-id', self.wt.path2id(''))
         transform.new_directory('', ROOT_PARENT, b'new-root-id')
@@ -265,7 +268,18 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         transform.apply()
         self.assertEqual(b'new-root-id', self.wt.path2id(''))
 
+    def test_replace_root(self):
+        transform, root = self.transform()
+        transform.new_directory('', ROOT_PARENT, b'new-root-id')
+        transform.delete_contents(root)
+        transform.unversion_file(root)
+        transform.fixup_new_roots()
+        transform.apply()
+
     def test_change_root_id_add_files(self):
+        if not self.workingtree_format.supports_setting_file_ids:
+            raise tests.TestNotApplicable(
+                'format does not support setting file ids')
         transform, root = self.transform()
         self.assertNotEqual(b'new-root-id', self.wt.path2id(''))
         new_trans_id = transform.new_directory('', ROOT_PARENT, b'new-root-id')
