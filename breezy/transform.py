@@ -1350,3 +1350,10 @@ def link_tree(target_tree, source_tree):
             tt.delete_contents(trans_id)
             tt.create_hardlink(source_tree.abspath(change.path[0]), trans_id)
         tt.apply()
+
+
+class PreviewTree(object):
+    """Preview tree."""
+
+    def __init__(self, transform):
+        self._transform = transform

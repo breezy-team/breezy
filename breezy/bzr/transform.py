@@ -51,6 +51,7 @@ from ..transform import (
     ImmortalLimbo,
     ReusingTransform,
     MalformedTransform,
+    PreviewTree,
     )
 from ..tree import TreeChange
 from . import (
@@ -1655,7 +1656,7 @@ class InventoryTreeTransform(DiskTreeTransform):
         The tree is a snapshot, and altering the TreeTransform will invalidate
         it.
         """
-        return _PreviewTree(self)
+        return InventoryPreviewTree(self)
 
     def _inventory_altered(self):
         """Determine which trans_ids need new Inventory entries.
@@ -1807,11 +1808,11 @@ class TransformPreview(InventoryTreeTransform):
         raise NotImplementedError(self.new_orphan)
 
 
-class _PreviewTree(inventorytree.InventoryTree):
+class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
     def __init__(self, transform):
-        self._transform = transform
+        PreviewTree.__init__(self, transform)
         self._final_paths = FinalPaths(transform)
         self.__by_parent = None
         self._parent_ids = []
@@ -1822,7 +1823,7 @@ class _PreviewTree(inventorytree.InventoryTree):
             c.file_id: c for c in self._transform.iter_changes()}
 
     def supports_tree_reference(self):
-        # TODO(jelmer): Support tree references in _PreviewTree.
+        # TODO(jelmer): Support tree references in PreviewTree.
         # return self._transform._tree.supports_tree_reference()
         return False
 
@@ -1889,7 +1890,7 @@ class _PreviewTree(inventorytree.InventoryTree):
     @property
     def root_inventory(self):
         """This Tree does not use inventory as its backing data."""
-        raise NotImplementedError(_PreviewTree.root_inventory)
+        raise NotImplementedError(PreviewTree.root_inventory)
 
     def all_file_ids(self):
         tree_ids = set(self._transform._tree.all_file_ids())
