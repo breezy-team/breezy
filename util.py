@@ -310,12 +310,9 @@ def md5sum_filename(filename):
     :return: MD5 Checksum as hex digest
     """
     m = hashlib.md5()
-    f = open(filename, 'rb')
-    try:
+    with open(filename, 'rb') as f:
         for line in f:
             m.update(line)
-    finally:
-        f.close()
     return m.hexdigest()
 
 
@@ -363,8 +360,7 @@ def _download_part(name, base_transport, target_dir, md5sum):
     f_t = base_transport
     if part_base_dir != '':
         f_t = base_transport.clone(part_base_dir)
-    f_f = f_t.get(part_path)
-    try:
+    with f_t.get(part_path) as f_f:
         target_path = os.path.join(target_dir, part_path)
         fd, temp_path = tempfile.mkstemp(prefix="builddeb-")
         fobj = os.fdopen(fd, "wb")
@@ -377,8 +373,6 @@ def _download_part(name, base_transport, target_dir, md5sum):
         finally:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
-    finally:
-        f_f.close()
 
 
 def open_file(url):
