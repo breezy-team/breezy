@@ -1808,17 +1808,12 @@ class TransformPreview(InventoryTreeTransform):
         raise NotImplementedError(self.new_orphan)
 
 
-class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
+class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
     def __init__(self, transform):
         PreviewTree.__init__(self, transform)
         self._final_paths = FinalPaths(transform)
-        self.__by_parent = None
-        self._parent_ids = []
-        self._all_children_cache = {}
-        self._path2trans_id_cache = {}
-        self._final_name_cache = {}
         self._iter_changes_cache = {
             c.file_id: c for c in self._transform.iter_changes()}
 
@@ -1831,19 +1826,6 @@ class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
         """Return True if the content of this file changed"""
         changes = self._iter_changes_cache.get(file_id)
         return (changes is not None and changes.changed_content)
-
-    def _get_repository(self):
-        repo = getattr(self._transform._tree, '_repository', None)
-        if repo is None:
-            repo = self._transform._tree.branch.repository
-        return repo
-
-    def _iter_parent_trees(self):
-        for revision_id in self.get_parent_ids():
-            try:
-                yield self.revision_tree(revision_id)
-            except errors.NoSuchRevisionInTree:
-                yield self._get_repository().revision_tree(revision_id)
 
     def _get_file_revision(self, path, file_id, vf, tree_revision):
         parent_keys = [
@@ -1861,12 +1843,6 @@ class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
         name = self._transform._limbo_name(trans_id)
         return os.lstat(name)
 
-    @property
-    def _by_parent(self):
-        if self.__by_parent is None:
-            self.__by_parent = self._transform.by_parent()
-        return self.__by_parent
-
     def _comparison_data(self, entry, path):
         kind, size, executable, link_or_sha1 = self.path_content_summary(path)
         if kind == 'missing':
@@ -1876,16 +1852,6 @@ class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
             file_id = self._transform.final_file_id(self._path2trans_id(path))
             executable = self.is_executable(path)
         return kind, executable, None
-
-    def is_locked(self):
-        return False
-
-    def lock_read(self):
-        # Perhaps in theory, this should lock the TreeTransform?
-        return lock.LogicalLockResult(self.unlock)
-
-    def unlock(self):
-        pass
 
     @property
     def root_inventory(self):
@@ -1912,28 +1878,6 @@ class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
 
         return tree_paths
 
-    def _path2trans_id(self, path):
-        # We must not use None here, because that is a valid value to store.
-        trans_id = self._path2trans_id_cache.get(path, object)
-        if trans_id is not object:
-            return trans_id
-        segments = osutils.splitpath(path)
-        cur_parent = self._transform.root
-        for cur_segment in segments:
-            for child in self._all_children(cur_parent):
-                final_name = self._final_name_cache.get(child)
-                if final_name is None:
-                    final_name = self._transform.final_name(child)
-                    self._final_name_cache[child] = final_name
-                if final_name == cur_segment:
-                    cur_parent = child
-                    break
-            else:
-                self._path2trans_id_cache[path] = None
-                return None
-        self._path2trans_id_cache[path] = cur_parent
-        return cur_parent
-
     def path2id(self, path):
         if isinstance(path, list):
             if path == []:
@@ -1947,17 +1891,6 @@ class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
             return self._final_paths._determine_path(trans_id)
         except NoFinalPath:
             raise errors.NoSuchId(self, file_id)
-
-    def _all_children(self, trans_id):
-        children = self._all_children_cache.get(trans_id)
-        if children is not None:
-            return children
-        children = set(self._transform.iter_tree_children(trans_id))
-        # children in the _new_parent set are provided by _by_parent.
-        children.difference_update(self._transform._new_parent)
-        children.update(self._by_parent.get(trans_id, []))
-        self._all_children_cache[trans_id] = children
-        return children
 
     def extras(self):
         possible_extras = set(self._transform.trans_id_tree_path(p) for p
@@ -2070,21 +2003,6 @@ class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
             for path, entry in entries:
                 yield path, 'V', entry.kind, entry
 
-    def kind(self, path):
-        trans_id = self._path2trans_id(path)
-        if trans_id is None:
-            raise errors.NoSuchFile(path)
-        return self._transform.final_kind(trans_id)
-
-    def stored_kind(self, path):
-        trans_id = self._path2trans_id(path)
-        if trans_id is None:
-            raise errors.NoSuchFile(path)
-        try:
-            return self._transform._new_contents[trans_id]
-        except KeyError:
-            return self._transform._tree.stored_kind(path)
-
     def get_file_mtime(self, path):
         """See Tree.get_file_mtime"""
         file_id = self.path2id(path)
@@ -2095,77 +2013,6 @@ class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
                 self._transform._tree.id2path(file_id))
         trans_id = self._path2trans_id(path)
         return self._stat_limbo_file(trans_id).st_mtime
-
-    def get_file_size(self, path):
-        """See Tree.get_file_size"""
-        trans_id = self._path2trans_id(path)
-        if trans_id is None:
-            raise errors.NoSuchFile(path)
-        kind = self._transform.final_kind(trans_id)
-        if kind != 'file':
-            return None
-        if trans_id in self._transform._new_contents:
-            return self._stat_limbo_file(trans_id).st_size
-        if self.kind(path) == 'file':
-            return self._transform._tree.get_file_size(path)
-        else:
-            return None
-
-    def get_file_verifier(self, path, stat_value=None):
-        trans_id = self._path2trans_id(path)
-        if trans_id is None:
-            raise errors.NoSuchFile(path)
-        kind = self._transform._new_contents.get(trans_id)
-        if kind is None:
-            return self._transform._tree.get_file_verifier(path)
-        if kind == 'file':
-            with self.get_file(path) as fileobj:
-                return ("SHA1", osutils.sha_file(fileobj))
-
-    def get_file_sha1(self, path, stat_value=None):
-        trans_id = self._path2trans_id(path)
-        if trans_id is None:
-            raise errors.NoSuchFile(path)
-        kind = self._transform._new_contents.get(trans_id)
-        if kind is None:
-            return self._transform._tree.get_file_sha1(path)
-        if kind == 'file':
-            with self.get_file(path) as fileobj:
-                return osutils.sha_file(fileobj)
-
-    def get_reference_revision(self, path):
-        trans_id = self._path2trans_id(path)
-        if trans_id is None:
-            raise errors.NoSuchFile(path)
-        reference_revision = self._transform._new_reference_revision.get(trans_id)
-        if reference_revision is None:
-            return self._transform._tree.get_reference_revision(path)
-        return reference_revision
-
-    def is_executable(self, path):
-        trans_id = self._path2trans_id(path)
-        if trans_id is None:
-            return False
-        try:
-            return self._transform._new_executability[trans_id]
-        except KeyError:
-            try:
-                return self._transform._tree.is_executable(path)
-            except OSError as e:
-                if e.errno == errno.ENOENT:
-                    return False
-                raise
-            except errors.NoSuchFile:
-                return False
-
-    def has_filename(self, path):
-        trans_id = self._path2trans_id(path)
-        if trans_id in self._transform._new_contents:
-            return True
-        elif trans_id in self._transform._removed_contents:
-            return False
-        else:
-            return self._transform._tree.has_filename(path)
 
     def path_content_summary(self, path):
         trans_id = self._path2trans_id(path)
@@ -2220,18 +2067,6 @@ class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
             raise ValueError('want_unversioned is not supported')
         return self._transform.iter_changes()
 
-    def get_file(self, path):
-        """See Tree.get_file"""
-        file_id = self.path2id(path)
-        if not self._content_change(file_id):
-            return self._transform._tree.get_file(path)
-        trans_id = self._path2trans_id(path)
-        name = self._transform._limbo_name(trans_id)
-        return open(name, 'rb')
-
-    def get_file_with_stat(self, path):
-        return self.get_file(path), None
-
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
         file_id = self.path2id(path)
@@ -2264,15 +2099,6 @@ class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
                                    self.get_file(path).readlines(),
                                    default_revision)
 
-    def get_symlink_target(self, path):
-        """See Tree.get_symlink_target"""
-        file_id = self.path2id(path)
-        if not self._content_change(file_id):
-            return self._transform._tree.get_symlink_target(path)
-        trans_id = self._path2trans_id(path)
-        name = self._transform._limbo_name(trans_id)
-        return osutils.readlink(name)
-
     def walkdirs(self, prefix=''):
         pending = [self._transform.root]
         while len(pending) > 0:
@@ -2303,14 +2129,20 @@ class InventoryPreviewTree(inventorytree.InventoryTree, PreviewTree):
             pending.extend(sorted(subdirs, key=self._final_paths.get_path,
                                   reverse=True))
 
-    def get_parent_ids(self):
-        return self._parent_ids
+    def get_symlink_target(self, path):
+        """See Tree.get_symlink_target"""
+        file_id = self.path2id(path)
+        if not self._content_change(file_id):
+            return self._transform._tree.get_symlink_target(path)
+        trans_id = self._path2trans_id(path)
+        name = self._transform._limbo_name(trans_id)
+        return osutils.readlink(name)
 
-    def set_parent_ids(self, parent_ids):
-        self._parent_ids = parent_ids
-
-    def get_revision_tree(self, revision_id):
-        return self._transform._tree.get_revision_tree(revision_id)
-
-
-
+    def get_file(self, path):
+        """See Tree.get_file"""
+        file_id = self.path2id(path)
+        if not self._content_change(file_id):
+            return self._transform._tree.get_file(path)
+        trans_id = self._path2trans_id(path)
+        name = self._transform._limbo_name(trans_id)
+        return open(name, 'rb')
