@@ -23,16 +23,10 @@ def changelog_changes(tree, basis_tree, cl_path='debian/changelog'):
     changes = []
     for change in tree.iter_changes(
             basis_tree, specific_files=[cl_path]):
-        try:
-            paths = change.path
-            changed_content = change.changed_content
-            versioned = change.versioned
-            kind = change.kind
-        except AttributeError:  # brz < 3.1
-            paths = change[1]
-            changed_content = change[2]
-            versioned = change[3]
-            kind = change[6]
+        paths = change.path
+        changed_content = change.changed_content
+        versioned = change.versioned
+        kind = change.kind
         # Content not changed
         if not changed_content:
             return None
