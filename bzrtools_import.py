@@ -128,7 +128,11 @@ def _get_paths_to_process(archive_file, prefix, implied_parents, exclude=None):
 def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
                     exclude=None):
     prefix = common_directory(names_of_files(archive_file))
-    with tree.transform() as tt:
+    try:
+        transform = tree.transform
+    except AttributeError:  # brz < 3.1.1
+        transform = tree.get_transform
+    with transform() as tt:
         removed = set()
         for path, entry in tree.iter_entries_by_dir():
             if entry.parent_id is None:
