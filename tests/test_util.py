@@ -63,7 +63,6 @@ from ..util import (
     lookup_distribution,
     move_file_if_different,
     get_parent_dir,
-    recursive_copy,
     safe_decode,
     strip_changelog_message,
     suite_to_distribution,
@@ -83,38 +82,6 @@ from ....tests.features import (
     SymlinkFeature,
     ModuleAvailableFeature,
     )
-
-
-class RecursiveCopyTests(TestCaseInTempDir):
-
-    def test_recursive_copy(self):
-        os.mkdir('a')
-        os.mkdir('b')
-        os.mkdir('c')
-        os.mkdir('a/d')
-        os.mkdir('a/d/e')
-        with open('a/f', 'w') as f:
-            f.write('f')
-        os.mkdir('b/g')
-        recursive_copy('a', 'b')
-        self.assertPathExists('a')
-        self.assertPathExists('b')
-        self.assertPathExists('c')
-        self.assertPathExists('b/d')
-        self.assertPathExists('b/d/e')
-        self.assertPathExists('b/f')
-        self.assertPathExists('a/d')
-        self.assertPathExists('a/d/e')
-        self.assertPathExists('a/f')
-
-    def test_recursive_copy_symlink(self):
-        os.mkdir('a')
-        os.symlink('c', 'a/link')
-        os.mkdir('b')
-        recursive_copy('a', 'b')
-        self.assertPathExists('b')
-        self.assertPathExists('b/link')
-        self.assertEqual('c', os.readlink('b/link'))
 
 
 class SafeDecodeTests(TestCase):
