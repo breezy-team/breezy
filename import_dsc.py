@@ -1325,14 +1325,15 @@ class DistributionBranch(object):
                 existing_controldir.create_workingtree()
         self.pristine_upstream_branch = branch
         self.pristine_upstream_tree = branch.controldir.open_workingtree()
-        if self.tree:
-            root_id = self.tree.path2id('')
-        else:
-            tip = self.branch.basis_tree()
-            with tip.lock_read():
-                root_id = tip.path2id('')
-        if root_id and self.pristine_upstream_tree.supports_setting_file_ids():
-            self.pristine_upstream_tree.set_root_id(root_id)
+        if self.pristine_upstream_tree.supports_setting_file_ids():
+            if self.tree:
+                root_id = self.tree.path2id('')
+            else:
+                tip = self.branch.basis_tree()
+                with tip.lock_read():
+                    root_id = tip.path2id('')
+            if root_id:
+                self.pristine_upstream_tree.set_root_id(root_id)
 
     def _export_previous_upstream_tree(
             self, package, previous_version, tempdir):

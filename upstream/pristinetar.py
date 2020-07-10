@@ -335,10 +335,7 @@ class PristineTarSource(UpstreamSource):
             files_excluded_re = None
 
         def include_change(c):
-            try:
-                path = c.path[1]
-            except AttributeError:  # breezy < 3.1
-                path = c[1][1]
+            path = c.path[1]
             if path is None:
                 return True
             if exclude and osutils.is_inside_any(exclude, path):

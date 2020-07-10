@@ -31,7 +31,6 @@ from ...export import (
 from .util import (
     extract_orig_tarballs,
     get_parent_dir,
-    recursive_copy,
     )
 
 
