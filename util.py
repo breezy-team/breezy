@@ -136,29 +136,6 @@ def safe_decode(s):
         return s.decode('iso-8859-1')
 
 
-def recursive_copy(fromdir, todir):
-    """Copy the contents of fromdir to todir.
-
-    Like shutil.copytree, but the destination directory must already exist
-    with this method, rather than not exists for shutil.
-    """
-    mutter("Copying %s to %s", fromdir, todir)
-    for entry in os.listdir(fromdir):
-        path = os.path.join(fromdir, entry)
-        if os.path.isdir(path):
-            tosubdir = os.path.join(todir, entry)
-            if not os.path.exists(tosubdir):
-                os.mkdir(tosubdir)
-            recursive_copy(path, tosubdir)
-        else:
-            # Python 3 has a follow_symlinks argument to shutil.copy, but
-            # Python 2 does not...
-            if os.path.islink(path):
-                os.symlink(os.readlink(path), os.path.join(todir, entry))
-            else:
-                shutil.copy(path, todir)
-
-
 def find_changelog(t, subpath='', merge=False, max_blocks=1):
     """Find the changelog in the given tree.
 
@@ -310,12 +287,9 @@ def md5sum_filename(filename):
     :return: MD5 Checksum as hex digest
     """
     m = hashlib.md5()
-    f = open(filename, 'rb')
-    try:
+    with open(filename, 'rb') as f:
         for line in f:
             m.update(line)
-    finally:
-        f.close()
     return m.hexdigest()
 
 
@@ -363,8 +337,7 @@ def _download_part(name, base_transport, target_dir, md5sum):
     f_t = base_transport
     if part_base_dir != '':
         f_t = base_transport.clone(part_base_dir)
-    f_f = f_t.get(part_path)
-    try:
+    with f_t.get(part_path) as f_f:
         target_path = os.path.join(target_dir, part_path)
         fd, temp_path = tempfile.mkstemp(prefix="builddeb-")
         fobj = os.fdopen(fd, "wb")
@@ -377,8 +350,6 @@ def _download_part(name, base_transport, target_dir, md5sum):
         finally:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
-    finally:
-        f_f.close()
 
 
 def open_file(url):
