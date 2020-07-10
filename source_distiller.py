@@ -177,4 +177,4 @@ class MergeModeDistiller(SourceDistiller):
             # use_existing
             if os.path.exists(os.path.join(target, 'debian')):
                 shutil.rmtree(os.path.join(target, 'debian'))
-            recursive_copy(tempdir, target)
+            shutil.copytree(tempdir, target, symlinks=True, dirs_exist_ok=True)
