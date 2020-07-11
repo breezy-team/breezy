@@ -388,7 +388,7 @@ class GitHub(Hoster):
         return self._list_paged(path, {'q': query}, per_page=DEFAULT_PER_PAGE)
 
     def _create_fork(self, path, owner=None):
-        if owner and owner != self._current_user['login']:
+        if owner and owner != self.current_user['login']:
             path += '?organization=%s' % owner
         response = self._api_request('POST', path)
         if response.status != 202:
@@ -399,10 +399,16 @@ class GitHub(Hoster):
     def base_url(self):
         return WEB_GITHUB_URL
 
-    def __init__(self, transport, token):
-        self._token = token
+    def __init__(self, transport):
+        self._token = retrieve_github_token('https', GITHUB_HOST)
         self.transport = transport
-        self._current_user = self._get_user()
+        self._current_user = None
+
+    @property
+    def current_user(self):
+        if self._current_user is None:
+            self._current_user = self._get_user()
+        return self._current_user
 
     def publish_derived(self, local_branch, base_branch, name, project=None,
                         owner=None, revision_id=None, overwrite=False,
@@ -410,7 +416,7 @@ class GitHub(Hoster):
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo(base_owner, base_project)
         if owner is None:
-            owner = self._current_user['login']
+            owner = self.current_user['login']
         if project is None:
             project = base_repo['name']
         try:
@@ -446,7 +452,7 @@ class GitHub(Hoster):
         base_owner, base_project, base_branch_name = parse_github_branch_url(base_branch)
         base_repo = self._get_repo(base_owner, base_project)
         if owner is None:
-            owner = self._current_user['login']
+            owner = self.current_user['login']
         if project is None:
             project = base_repo['name']
         try:
@@ -504,14 +510,11 @@ class GitHub(Hoster):
             raise UnsupportedHoster(url)
         transport = get_transport(
             API_GITHUB_URL, possible_transports=possible_transports)
-        token = retrieve_github_token('https', GITHUB_HOST)
-        return cls(transport, token)
+        return cls(transport)
 
     @classmethod
     def iter_instances(cls):
-        token = retrieve_github_token('https', GITHUB_HOST)
-        if token is not None:
-            yield cls(get_transport(API_GITHUB_URL), token)
+        yield cls(get_transport(API_GITHUB_URL))
 
     def iter_my_proposals(self, status='open'):
         query = ['is:pr']
@@ -524,7 +527,7 @@ class GitHub(Hoster):
             query.append('is:closed')
         elif status == 'merged':
             query.append('is:merged')
-        query.append('author:%s' % self._current_user['login'])
+        query.append('author:%s' % self.current_user['login'])
         for issue in self._search_issues(query=' '.join(query)):
             url = issue['pull_request']['url']
             response = self._api_request('GET', url)
