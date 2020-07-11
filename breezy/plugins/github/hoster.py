@@ -399,8 +399,8 @@ class GitHub(Hoster):
     def base_url(self):
         return WEB_GITHUB_URL
 
-    def __init__(self, transport):
-        self._token = retrieve_github_token('https', GITHUB_HOST)
+    def __init__(self, transport, token):
+        self._token = token
         self.transport = transport
         self._current_user = self._get_user()
 
@@ -504,11 +504,14 @@ class GitHub(Hoster):
             raise UnsupportedHoster(url)
         transport = get_transport(
             API_GITHUB_URL, possible_transports=possible_transports)
-        return cls(transport)
+        token = retrieve_github_token('https', GITHUB_HOST)
+        return cls(transport, token)
 
     @classmethod
     def iter_instances(cls):
-        yield cls(get_transport(API_GITHUB_URL))
+        token = retrieve_github_token('https', GITHUB_HOST)
+        if token is not None:
+            yield cls(get_transport(API_GITHUB_URL), token)
 
     def iter_my_proposals(self, status='open'):
         query = ['is:pr']
