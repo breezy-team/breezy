@@ -241,8 +241,7 @@ class Launchpad(Hoster):
 
     @property
     def base_url(self):
-        return lp_api.uris.web_root_for_service_root(
-            str(self.launchpad._root_uri))
+        return lp_api.uris.web_root_for_service_root(self._api_base_url)
 
     def __repr__(self):
         return "Launchpad(staging=%s)" % self._staging
