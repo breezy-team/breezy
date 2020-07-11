@@ -558,7 +558,7 @@ class GitLab(Hoster):
                 raise GitLabLoginMissing()
             else:
                 raise GitlabLoginError(response.text)
-        raise UnsupportedHoster(url)
+        raise UnsupportedHoster(self.base_url)
 
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
