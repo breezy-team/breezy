@@ -1330,7 +1330,8 @@ class AbstractAuthHandler(urllib_request.BaseHandler):
         if not server_headers:
             # The http error MUST have the associated
             # header. This must never happen in production code.
-            raise KeyError('%s not found' % self.auth_required_header)
+            trace.mutter('%s not found', self.auth_required_header)
+            return None
 
         auth = self.get_auth(request)
         auth['modified'] = False
@@ -1829,9 +1830,11 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
                        204,
                        206,  # Partial content
                        400,
+                       401,
                        403,
                        404,  # Not found
                        405,  # Method not allowed
+                       407,
                        409,  # Conflict
                        416,  # Range not satisfiable
                        422,  # Unprocessible entity
