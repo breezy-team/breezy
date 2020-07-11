@@ -535,7 +535,7 @@ class GitHub(Hoster):
     def iter_my_forks(self):
         response = self._api_request('GET', '/user/repos')
         if response.status != 200:
-            raise InvalidHttpResponse(url, response.text)
+            raise InvalidHttpResponse(self.transport.user_url, response.text)
         for project in json.loads(response.text):
             if not project['fork']:
                 continue
