@@ -52,6 +52,9 @@ Bug Fixes
  * Don't require ``ctypes.pythonapi`` to exist, as it's missing on newer
    versions of Pypy3. (Jelmer Vernooĳ)
 
+ * Prevent exceptions during commit when quilt is not installed but
+   the tree contains quilt patches. (Jelmer Vernooĳ)
+
 Documentation
 *************
 
