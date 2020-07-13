@@ -41,6 +41,12 @@ class TestConvertURL(TestCase):
                 'git+ssh://user@foo/bar/path'),
             ('git+ssh://user@foo/bar/path'))
 
+    def test_just_ssh(self):
+        self.assertEqual(
+            git_url_to_bzr_url(
+                'ssh://user@foo/bar/path'),
+            ('git+ssh://user@foo/bar/path'))
+
     def test_path(self):
         self.assertEqual(git_url_to_bzr_url('/bar/path'), ('/bar/path'))
 
