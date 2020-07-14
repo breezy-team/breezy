@@ -125,7 +125,11 @@ class SmartHgProber(controldir.Prober):
 
     @classmethod
     def priority(klass, transport):
-        return 90
+        if 'hg.' in transport.base:
+            return 90
+        # hgweb repositories are prone to return *a* page for every possible URL,
+        # making probing hard for other formats so use 99 here rather than 100.
+        return 99
 
     @staticmethod
     def _has_hg_http_smart_server(transport, external_url):
