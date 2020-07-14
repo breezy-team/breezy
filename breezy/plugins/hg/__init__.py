@@ -82,7 +82,7 @@ class LocalHgProber(controldir.Prober):
     def probe_transport(klass, transport):
         """Our format is present if the transport has a '.hg/' subdir."""
         if klass._has_hg_dumb_repository(transport):
-            return HgDirFormat()
+            return LocalHgDirFormat()
         raise errors.NotBranchError(path=transport.base)
 
     @classmethod
@@ -125,7 +125,7 @@ class SmartHgProber(controldir.Prober):
 
     @classmethod
     def priority(klass, transport):
-        if 'hg.' in transport.base:
+        if 'hg' in transport.base:
             return 90
         # hgweb repositories are prone to return *a* page for every possible URL,
         # making probing hard for other formats so use 99 here rather than 100.
