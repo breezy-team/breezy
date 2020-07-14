@@ -141,8 +141,7 @@ class SmartHgProber(controldir.Prober):
         """
         from breezy.urlutils import urlparse
         parsed_url = urlparse.urlparse(external_url)
-        parsed_url = parsed_url._replace(
-            query='cmd=capabilities', path=parsed_url.path.rstrip('/') + '/hg')
+        parsed_url = parsed_url._replace(query='cmd=capabilities')
         url = urlparse.urlunparse(parsed_url)
         resp = transport.request(
             'GET', url, headers={'Accept': 'application/mercurial-0.1'})
