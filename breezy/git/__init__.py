@@ -190,8 +190,7 @@ class RemoteGitProber(Prober):
             # hgweb :(
             raise brz_errors.NotBranchError(transport.base)
         elif resp.status != 200:
-            raise brz_errors.InvalidHttpResponse(
-                url, 'Unable to handle http code %d' % resp.status)
+            raise brz_errors.UnexpectedHttpStatus(url, resp.status)
 
         ct = resp.getheader("Content-Type")
         if ct and ct.startswith("application/x-git"):

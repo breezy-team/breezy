@@ -44,7 +44,11 @@ from ... import (
     version_string as breezy_version,
     )
 from ...config import AuthenticationConfig, GlobalStack
-from ...errors import InvalidHttpResponse, PermissionDenied
+from ...errors import (
+    InvalidHttpResponse,
+    PermissionDenied,
+    UnexpectedHttpStatus,
+    )
 from ...git.urls import git_url_to_bzr_url
 from ...i18n import gettext
 from ...sixish import PY3
@@ -165,7 +169,7 @@ class GitHubMergeProposal(MergeProposal):
         if response.status == 422:
             raise ValidationFailed(json.loads(response.text))
         if response.status != 200:
-            raise InvalidHttpResponse(self._pr['url'], response.text)
+            raise UnexpectedHttpStatus(self._pr['url'], response.status)
         self._pr = json.loads(response.text)
 
     def set_description(self, description):
@@ -202,7 +206,7 @@ class GitHubMergeProposal(MergeProposal):
         if response.status == 422:
             raise ValidationFailed(json.loads(response.text))
         if response.status != 200:
-            raise InvalidHttpResponse(self._pr['url'], response.text)
+            raise UnexpectedHttpStatus(self._pr['url'], response.status)
 
     def get_merged_by(self):
         merged_by = self._pr.get('merged_by')
@@ -224,7 +228,8 @@ class GitHubMergeProposal(MergeProposal):
         if response.status == 422:
             raise ValidationFailed(json.loads(response.text))
         if response.status != 201:
-            raise InvalidHttpResponse(self._pr['comments_url'], response.text)
+            raise UnexpectedHttpStatus(
+                self._pr['comments_url'], response.status)
         json.loads(response.text)
 
 
@@ -287,7 +292,7 @@ class GitHub(Hoster):
             raise NoSuchProject(path)
         if response.status == 200:
             return json.loads(response.text)
-        raise InvalidHttpResponse(path, response.text)
+        raise UnexpectedHttpStatus(path, response.status)
 
     def _get_repo_pulls(self, path, head=None, state=None):
         path = path + '?'
@@ -303,7 +308,7 @@ class GitHub(Hoster):
             raise NoSuchProject(path)
         if response.status == 200:
             return json.loads(response.text)
-        raise InvalidHttpResponse(path, response.text)
+        raise UnexpectedHttpStatus(path, response.status)
 
     def _create_pull(self, path, title, head, base, body=None, labels=None,
                      assignee=None, draft=False, maintainer_can_modify=False):
@@ -326,14 +331,14 @@ class GitHub(Hoster):
         if response.status == 403:
             raise PermissionDenied(path, response.text)
         if response.status != 201:
-            raise InvalidHttpResponse(path, 'req is invalid %d %r: %r' % (response.status, data, response.text))
+            raise UnexpectedHttpStatus(path, response.status)
         return json.loads(response.text)
 
     def _get_user_by_email(self, email):
         path = 'search/users?q=%s+in:email' % email
         response = self._api_request('GET', path)
         if response.status != 200:
-            raise InvalidHttpResponse(path, response.text)
+            raise UnexpectedHttpStatus(path, response.status)
         ret = json.loads(response.text)
         if ret['total_count'] == 0:
             raise KeyError('no user with email %s' % email)
@@ -348,14 +353,14 @@ class GitHub(Hoster):
             path = 'user'
         response = self._api_request('GET', path)
         if response.status != 200:
-            raise InvalidHttpResponse(path, response.text)
+            raise UnexpectedHttpStatus(path, response.status)
         return json.loads(response.text)
 
     def _get_organization(self, name):
         path = 'orgs/%s' % name
         response = self._api_request('GET', path)
         if response.status != 200:
-            raise InvalidHttpResponse(path, response.text)
+            raise UnexpectedHttpStatus(path, response.status)
         return json.loads(response.text)
 
     def _list_paged(self, path, parameters=None, per_page=None):
@@ -374,7 +379,7 @@ class GitHub(Hoster):
                 ';'.join(['%s=%s' % (k, urlutils.quote(v))
                           for (k, v) in parameters.items()]))
             if response.status != 200:
-                raise InvalidHttpResponse(path, response.text)
+                raise UnexpectedHttpStatus(path, response.status)
             data = json.loads(response.text)
             for entry in data['items']:
                 i += 1
@@ -392,7 +397,7 @@ class GitHub(Hoster):
             path += '?organization=%s' % owner
         response = self._api_request('POST', path)
         if response.status != 202:
-            raise InvalidHttpResponse(path, 'status: %d, %r' % (response.status, response.text))
+            raise UnexpectedHttpStatus(path, response.status)
         return json.loads(response.text)
 
     @property
@@ -532,7 +537,7 @@ class GitHub(Hoster):
             url = issue['pull_request']['url']
             response = self._api_request('GET', url)
             if response.status != 200:
-                raise InvalidHttpResponse(url, response.text)
+                raise UnexpectedHttpStatus(url, response.status)
             yield GitHubMergeProposal(self, json.loads(response.text))
 
     def get_proposal_by_url(self, url):
@@ -541,7 +546,7 @@ class GitHub(Hoster):
     def iter_my_forks(self):
         response = self._api_request('GET', '/user/repos')
         if response.status != 200:
-            raise InvalidHttpResponse(self.transport.user_url, response.text)
+            raise UnexpectedHttpStatus(self.transport.user_url, response.status)
         for project in json.loads(response.text):
             if not project['fork']:
                 continue
@@ -556,7 +561,7 @@ class GitHub(Hoster):
             return
         if response.status == 200:
             return json.loads(response.text)
-        raise InvalidHttpResponse(path, response.text)
+        raise UnexpectedHttpStatus(path, response.status)
 
 
 class GitHubMergeProposalBuilder(MergeProposalBuilder):

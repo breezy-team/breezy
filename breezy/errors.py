@@ -1323,6 +1323,31 @@ class InvalidHttpResponse(TransportError):
         TransportError.__init__(self, msg, orig_error=orig_error)
 
 
+class UnexpectedHttpStatus(InvalidHttpResponse):
+
+    _fmt = "Unexpected HTTP status %(code)d for %(path)s"
+
+    def __init__(self, path, code, msg=None):
+        self.path = path
+        self.code = code
+        self.msg = msg
+        full_msg = 'status code %d unexpected' % code
+        if msg is not None:
+            full_msg += ': ' + msg
+        InvalidHttpResponse.__init__(
+            self, path, full_msg)
+
+
+class BadHttpRequest(UnexpectedHttpStatus):
+
+    _fmt = "Bad http request for %(path)s: %(reason)s"
+
+    def __init__(self, path, reason):
+        self.path = path
+        self.reason = reason
+        TransportError.__init__(self, reason)
+
+
 class InvalidHttpRange(InvalidHttpResponse):
 
     _fmt = "Invalid http range %(range)r for %(path)s: %(msg)s"
