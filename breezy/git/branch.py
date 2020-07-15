@@ -1180,7 +1180,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                 isinstance(target, RemoteGitBranch))
 
     def _basic_push(self, overwrite, stop_revision, tag_selector=None):
-        from .remote import RemoteGitError
+        from .remote import parse_git_error
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -1218,11 +1218,10 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
         if dw_result is not None and not isinstance(dw_result, dict):
             error = dw_result.ref_status.get(self.target.ref)
             if error:
-                raise RemoteGitError(error)
+                raise parse_git_error(error)
             for ref, error in dw_result.ref_status.items():
                 if error:
-                    trace.warning('unable to open ref %s: %s',
-                                  ref, error)
+                    trace.warning('unable to open ref %s: %s', ref, error)
         return result
 
 
