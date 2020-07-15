@@ -9,6 +9,7 @@ import errno
 import os
 from io import BytesIO
 import tarfile
+from typing import BinaryIO, Optional
 
 from ...upstream_import import (
     add_implied_parents,
@@ -34,13 +35,14 @@ from ...osutils import (
     is_inside_any,
     )
 from ...trace import warning
+from ...tree import Tree
 from ...transform import resolve_conflicts, cook_conflicts
 from ...transport import get_transport
 from ...workingtree import WorkingTree
 from .errors import UnknownType
 
 
-def open_from_url(location):
+def open_from_url(location: str):
     location = urlutils.normalize_url(location)
     dirname, basename = urlutils.split(location)
     if location.endswith('/') and not basename.endswith('/'):
@@ -53,7 +55,7 @@ files_to_ignore = set(
      '.bzr-builddeb'])
 
 
-def should_ignore(relative_path):
+def should_ignore(relative_path: str) -> bool:
     parts = splitpath(relative_path)
     if not parts:
         return False
@@ -64,7 +66,10 @@ def should_ignore(relative_path):
             return True
 
 
-def import_tar(tree, tar_input, file_ids_from=None, target_tree=None):
+def import_tar(
+        tree: Tree, tar_input: BinaryIO,
+        file_ids_from=None,
+        target_tree: Optional[Tree] = None) -> None:
     """Replace the contents of a working directory with tarfile contents.
     The tarfile may be a gzipped stream.  File ids will be updated.
     """
@@ -74,14 +79,17 @@ def import_tar(tree, tar_input, file_ids_from=None, target_tree=None):
         target_tree=target_tree)
 
 
-def import_zip(tree, zip_input, file_ids_from=None, target_tree=None):
+def import_zip(
+        tree: Tree, zip_input: BinaryIO, file_ids_from=None, target_tree=None):
     zip_file = ZipFileWrapper(zip_input, 'r')
     import_archive(
         tree, zip_file, file_ids_from=file_ids_from,
         target_tree=target_tree)
 
 
-def import_dir(tree, dir, file_ids_from=None, target_tree=None, exclude=None):
+def import_dir(
+        tree: Tree, dir: str, file_ids_from=None, target_tree=None,
+        exclude=None):
     dir_input = BytesIO(dir.encode('utf-8'))
     dir_input.seek(0)
     dir_file = DirWrapper(dir_input)
@@ -102,7 +110,9 @@ def import_archive(tree, archive_file, file_ids_from=None, target_tree=None,
             exclude=exclude)
 
 
-def _get_paths_to_process(archive_file, prefix, implied_parents, exclude=None):
+def _get_paths_to_process(
+        archive_file: str, prefix: Optional[str],
+        implied_parents, exclude=None):
     to_process = set()
     for member in archive_file.getmembers():
         if member.type == 'g':
@@ -125,8 +135,9 @@ def _get_paths_to_process(archive_file, prefix, implied_parents, exclude=None):
     return to_process
 
 
-def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
-                    exclude=None):
+def _import_archive(
+        tree: Tree, archive_file: str, file_ids_from,
+        target_tree: Optional[Tree] = None, exclude=None):
     prefix = common_directory(names_of_files(archive_file))
     try:
         transform = tree.transform
@@ -259,7 +270,7 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None,
         tt.apply()
 
 
-def do_import(source, tree_directory=None):
+def do_import(source: str, tree_directory: Optional[str] = None) -> None:
     """Implementation of import command.  Intended for UI only"""
     if tree_directory is not None:
         try:
