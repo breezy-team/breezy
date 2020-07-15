@@ -423,7 +423,7 @@ class GitLab(Hoster):
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status != 200:
-            raise errors.UnexpectedHttpStatus(path, response.status
+            raise errors.UnexpectedHttpStatus(path, response.status)
         return json.loads(response.data)
 
     def _list_projects(self, owner):
