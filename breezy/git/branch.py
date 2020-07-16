@@ -1218,7 +1218,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
         if dw_result is not None and not isinstance(dw_result, dict):
             error = dw_result.ref_status.get(self.target.ref)
             if error:
-                raise parse_git_error(error)
+                raise parse_git_error(self.target.user_url, error)
             for ref, error in dw_result.ref_status.items():
                 if error:
                     trace.warning('unable to open ref %s: %s', ref, error)
