@@ -641,7 +641,7 @@ def run_dist_command(rev_tree, package, version, target_filename,
             note('No tarballs found in dist directory.')
         diff = set(os.listdir(td)) - set([package])
         if len(diff) == 1:
-            fn = diff.pop(0)
+            fn = diff.pop()
             note('Found tarball %s in parent directory.', fn)
             os.rename(
                 os.path.join(td, fn),
