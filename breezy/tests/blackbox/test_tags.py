@@ -22,7 +22,6 @@ from breezy import (
     lockable_files,
     lockdir,
     tag,
-    transform,
     )
 from breezy.bzr import (
     branch as bzrbranch,
@@ -147,9 +146,9 @@ class TestTagging(TestCaseWithTransport):
     def make_fork(self, branch):
         fork = branch.create_clone_on_transport(self.get_transport('fork'))
         self.addCleanup(fork.lock_write().unlock)
-        with transform.TransformPreview(fork.basis_tree()) as tt:
+        with fork.basis_tree().preview_transform() as tt:
             tt.commit(fork, message='Commit in fork.', revision_id=b'fork-0')
-        with transform.TransformPreview(fork.basis_tree()) as tt:
+        with fork.basis_tree().preview_transform() as tt:
             tt.commit(fork, message='Commit in fork.', revision_id=b'fork-1')
         return fork
 

@@ -1362,38 +1362,6 @@ def safe_utf8(unicode_or_utf8_string):
     return unicode_or_utf8_string.encode('utf-8')
 
 
-def safe_revision_id(unicode_or_utf8_string):
-    """Revision ids should now be utf8, but at one point they were unicode.
-
-    :param unicode_or_utf8_string: A possibly Unicode revision_id. (can also be
-        utf8 or None).
-    :return: None or a utf8 revision id.
-    """
-    if (unicode_or_utf8_string is None
-            or unicode_or_utf8_string.__class__ == bytes):
-        return unicode_or_utf8_string
-    raise TypeError('Unicode revision ids are no longer supported. '
-                    'Revision id generators should be creating utf8 revision '
-                    'ids.')
-
-
-def safe_file_id(unicode_or_utf8_string):
-    """File ids should now be utf8, but at one point they were unicode.
-
-    This is the same as safe_utf8, except it uses the cached encode functions
-    to save a little bit of performance.
-
-    :param unicode_or_utf8_string: A possibly Unicode file_id. (can also be
-        utf8 or None).
-    :return: None or a utf8 file id.
-    """
-    if (unicode_or_utf8_string is None
-            or unicode_or_utf8_string.__class__ == bytes):
-        return unicode_or_utf8_string
-    raise TypeError('Unicode file ids are no longer supported. '
-                    'File id generators should be creating utf8 file ids.')
-
-
 _platform_normalizes_filenames = False
 if sys.platform == 'darwin':
     _platform_normalizes_filenames = True

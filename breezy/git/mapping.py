@@ -126,6 +126,26 @@ def fix_person_identifier(text):
     return b"%s <%s>" % (username, email)
 
 
+def decode_git_path(path):
+    """Take a git path and decode it."""
+    try:
+        return path.decode('utf-8')
+    except UnicodeDecodeError:
+        if PY3:
+            return path.decode('utf-8', 'surrogateescape')
+        raise
+
+
+def encode_git_path(path):
+    """Take a regular path and encode it for git."""
+    try:
+        return path.encode('utf-8')
+    except UnicodeEncodeError:
+        if PY3:
+            return path.encode('utf-8', 'surrogateescape')
+        raise
+
+
 def warn_escaped(commit, num_escaped):
     trace.warning("Escaped %d XML-invalid characters in %s. Will be unable "
                   "to regenerate the SHA map.", num_escaped, commit)
@@ -181,14 +201,7 @@ class BzrGitMapping(foreign.VcsMapping):
             return u""
         if not file_id.startswith(FILE_ID_PREFIX):
             raise ValueError
-        return unescape_file_id(file_id[len(FILE_ID_PREFIX):]).decode('utf-8')
-
-    def revid_as_refname(self, revid):
-        if not isinstance(revid, bytes):
-            raise TypeError(revid)
-        revid = revid.decode('utf-8')
-        quoted_revid = urlutils.quote(revid)
-        return b"refs/bzr/" + quoted_revid.encode('utf-8')
+        return decode_git_path(unescape_file_id(file_id[len(FILE_ID_PREFIX):]))
 
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
@@ -326,9 +339,7 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = commit.commit_timezone
         if u'git-gpg-signature' in rev.properties:
             commit.gpgsig = rev.properties[u'git-gpg-signature'].encode(
-                'utf-8')
-        if u'git-gpg-signature-b64' in rev.properties:
-            commit.gpgsig = base64.b64decode(rev.properties[u'git-gpg-signature-b64'])
+                'utf-8', 'surrogateescape')
         commit.message = self._encode_commit_message(rev, rev.message,
                                                      encoding)
         if not isinstance(commit.message, bytes):
@@ -341,8 +352,7 @@ class BzrGitMapping(foreign.VcsMapping):
             mapping_properties = set(
                 [u'author', u'author-timezone', u'author-timezone-neg-utc',
                  u'commit-timezone-neg-utc', u'git-implicit-encoding',
-                 u'git-gpg-signature', u'git-gpg-signature-b64',
-                 u'git-explicit-encoding',
+                 u'git-gpg-signature', u'git-explicit-encoding',
                  u'author-timestamp', u'file-modes'])
             for k, v in rev.properties.items():
                 if k not in mapping_properties:
@@ -424,12 +434,8 @@ class BzrGitMapping(foreign.VcsMapping):
         if commit._commit_timezone_neg_utc:
             rev.properties[u'commit-timezone-neg-utc'] = ""
         if commit.gpgsig:
-            try:
-                rev.properties[u'git-gpg-signature'] = commit.gpgsig.decode(
-                    'utf-8')
-            except UnicodeDecodeError:
-                rev.properties[u'git-gpg-signature-b64'] = base64.b64encode(
-                    commit.gpgsig)
+            rev.properties[u'git-gpg-signature'] = commit.gpgsig.decode(
+                'utf-8', 'surrogateescape')
         if commit.mergetag:
             for i, tag in enumerate(commit.mergetag):
                 rev.properties[u'git-mergetag-%d' % i] = tag.as_raw_string()
@@ -576,7 +582,7 @@ def symlink_to_blob(symlink_target):
     from dulwich.objects import Blob
     blob = Blob()
     if isinstance(symlink_target, str):
-        symlink_target = symlink_target.encode('utf-8')
+        symlink_target = encode_git_path(symlink_target)
     blob.data = symlink_target
     return blob
 

@@ -79,7 +79,7 @@ class DarcsProber(controldir.Prober):
 
     @classmethod
     def probe_transport(klass, transport):
-        if transport.has('_darcs/format'):
+        if transport.has_any(['_darcs/format', '_darcs/inventory']):
             return DarcsDirFormat()
         raise errors.NotBranchError(path=transport.base)
 

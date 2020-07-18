@@ -44,6 +44,7 @@ def test_suite():
         'test_exporter',
         'test_branch_mapper',
         'test_generic_processor',
+        'test_marks_file',
         'test_revision_store',
         ]]
     loader = TestLoader()

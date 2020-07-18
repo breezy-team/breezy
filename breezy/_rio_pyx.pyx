@@ -175,7 +175,7 @@ def _read_stanza_utf8(line_iter):
                     raise ValueError("invalid rio tag %r" % (tag,))
         if tag is not None: # add last tag-value
             PyList_Append(pairs,
-                (tag, PyUnicode_DecodeUTF8(accum_value, accum_len-1, "strict")))
+                (tag, PyUnicode_DecodeUTF8(accum_value, accum_len-1, "surrogateescape")))
             return Stanza.from_pairs(pairs)
         else:     # didn't see any content
             return None

@@ -85,7 +85,7 @@ class TestRevert(tests.TestCaseWithTransport):
 
     def tree_with_executable(self):
         tree = self.make_branch_and_tree('tree')
-        tt = tree.get_transform()
+        tt = tree.transform()
         tt.new_file('newfile', tt.root, [b'helooo!'], b'newfile-id', True)
         tt.apply()
         with tree.lock_write():
@@ -95,7 +95,7 @@ class TestRevert(tests.TestCaseWithTransport):
 
     def test_preserve_execute(self):
         tree = self.tree_with_executable()
-        tt = tree.get_transform()
+        tt = tree.transform()
         newfile = tt.trans_id_tree_path('newfile')
         tt.delete_contents(newfile)
         tt.create_file([b'Woooorld!'], newfile)
@@ -111,7 +111,7 @@ class TestRevert(tests.TestCaseWithTransport):
 
     def test_revert_executable(self):
         tree = self.tree_with_executable()
-        tt = tree.get_transform()
+        tt = tree.transform()
         newfile = tt.trans_id_tree_path('newfile')
         tt.set_executability(False, newfile)
         tt.apply()

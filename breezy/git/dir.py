@@ -39,6 +39,10 @@ from ..controldir import (
     RepositoryAcquisitionPolicy,
     )
 
+from .mapping import (
+    decode_git_path,
+    encode_git_path,
+    )
 from .push import (
     GitPushResult,
     )
@@ -537,7 +541,7 @@ class LocalGitDir(GitDir):
                     target_branch._format, self._format)
             # TODO(jelmer): Do some consistency checking across branches..
             self.control_transport.put_bytes(
-                'commondir', target_path.encode('utf-8'))
+                'commondir', encode_git_path(target_path))
             # TODO(jelmer): Urgh, avoid mucking about with internals.
             self._git._commontransport = (
                 target_branch.repository._git._commontransport.clone())
@@ -577,7 +581,7 @@ class LocalGitDir(GitDir):
                 base_url = self.user_url.rstrip('/')
             else:
                 base_url = urlutils.local_path_to_url(
-                    commondir.decode(osutils._fs_enc)).rstrip('/.git/') + '/'
+                    decode_git_path(commondir)).rstrip('/.git/') + '/'
             return urlutils.join_segment_parameters(base_url, params)
         return None
 

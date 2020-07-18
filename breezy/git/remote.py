@@ -76,6 +76,7 @@ from .errors import (
     NoSuchRef,
     )
 from .mapping import (
+    encode_git_path,
     mapping_registry,
     )
 from .object_store import (
@@ -203,6 +204,10 @@ def parse_git_error(url, message):
     if re.match('(.+) is not a valid repository name',
                 message.splitlines()[0]):
         return NotBranchError(url, message)
+    if message == (
+            'GitLab: You are not allowed to push code to protected branches '
+            'on this project.'):
+        return PermissionDenied(url, message)
     m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
     if m:
         return PermissionDenied(m.group(1), 'denied to %s' % m.group(2))
@@ -429,7 +434,7 @@ class RemoteGitDir(GitDir):
                 write_error,
                 format=(format.encode('ascii') if format else None),
                 subdirs=subdirs,
-                prefix=(prefix.encode('utf-8') if prefix else None))
+                prefix=(encode_git_path(prefix) if prefix else None))
         except HangupException as e:
             raise parse_git_hangup(self.transport.external_url(), e)
         except GitProtocolError as e:
@@ -583,6 +588,9 @@ class RemoteGitDir(GitDir):
             # No revision supplied by the user, default to the branch
             # revision
             revision_id = source.last_revision()
+        else:
+            if not source.repository.has_revision(revision_id):
+                raise NoSuchRevision(source, revision_id)
 
         push_result = GitPushResult()
         push_result.workingtree_updated = None
@@ -635,6 +643,9 @@ class RemoteGitDir(GitDir):
                             new_sha = repo.lookup_bzr_revision_id(revid)[0]
                         except errors.NoSuchRevision:
                             continue
+                        else:
+                            if not source.repository.has_revision(revid):
+                                continue
                     ret[tag_name_to_ref(tagname)] = new_sha
             return ret
         with source_store.lock_read():

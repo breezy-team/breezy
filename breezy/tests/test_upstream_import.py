@@ -284,7 +284,7 @@ class TestWithStuff(TestCaseWithTransport):
     def get_empty_tt(self):
         b = self.make_repository('foo')
         null_tree = b.revision_tree(_mod_revision.NULL_REVISION)
-        tt = transform.TransformPreview(null_tree)
+        tt = null_tree.preview_transform()
         tt.new_directory('', transform.ROOT_PARENT, b'tree-root')
         tt.fixup_new_roots()
         self.addCleanup(tt.finalize)

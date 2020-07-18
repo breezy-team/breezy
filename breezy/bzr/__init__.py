@@ -40,6 +40,12 @@ class BzrProber(controldir.Prober):
             format_string = transport.get_bytes(".bzr/branch-format")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
+        except errors.BadHttpRequest as e:
+            if e.reason == 'no such method: .bzr':
+                # hgweb 
+                raise errors.NotBranchError(path=transport.base)
+            raise
+
         try:
             first_line = format_string[:format_string.index(b"\n") + 1]
         except ValueError:

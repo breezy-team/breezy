@@ -19,6 +19,7 @@
 from ...errors import (
     LossyPushToSameVCS,
     TagsNotSupported,
+    NoSuchRevision,
     )
 from ...revision import NULL_REVISION
 from .. import TestNotApplicable
@@ -45,6 +46,13 @@ class TestPush(TestCaseWithControlDir):
         self.assertEqual(dir.open_branch().base, result.target_branch.base)
         self.assertEqual(dir.open_branch().base,
                          tree.branch.get_push_location())
+
+    def test_push_no_such_revision(self):
+        tree, rev_1 = self.create_simple_tree()
+        dir = self.make_repository('dir').controldir
+        self.assertRaises(
+            NoSuchRevision, dir.push_branch,
+            tree.branch, revision_id=b'idonotexist')
 
     def test_push_new_branch_fetch_tags(self):
         builder = self.make_branch_builder('from')

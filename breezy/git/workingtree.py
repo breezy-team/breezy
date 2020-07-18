@@ -54,7 +54,6 @@ from .. import (
     controldir as _mod_controldir,
     globbing,
     lock,
-    merge,
     osutils,
     revision as _mod_revision,
     trace,
@@ -79,6 +78,8 @@ from .tree import (
     MutableGitIndexTree,
     )
 from .mapping import (
+    encode_git_path,
+    decode_git_path,
     mode_kind,
     )
 
@@ -120,10 +121,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         try:
             info = self._submodule_info()[relpath]
         except KeyError:
-            index_path = os.path.join(self.basedir, relpath.decode('utf-8'), '.git', 'index')
+            index_path = os.path.join(self.basedir, decode_git_path(relpath), '.git', 'index')
         else:
             index_path = self.control_transport.local_abspath(
-                posixpath.join('modules', info[1].decode('utf-8'), 'index'))
+                posixpath.join('modules', decode_git_path(info[1]), 'index'))
         return Index(index_path)
 
     def lock_read(self):
@@ -219,10 +220,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             self.case_sensitive = True
         else:
             self.case_sensitive = False
-
-    def get_transform(self, pb=None):
-        from ..transform import TreeTransform
-        return TreeTransform(self, pb=pb)
 
     def merge_modified(self):
         return {}
@@ -461,7 +458,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 kind = osutils.file_kind(abspath)
                 if kind in ("file", "symlink"):
                     (index, subpath) = self._lookup_index(
-                        filepath.encode('utf-8'))
+                        encode_git_path(filepath))
                     if subpath in index:
                         # Already present
                         continue
@@ -471,7 +468,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     added.append(filepath)
                 elif kind == "directory":
                     (index, subpath) = self._lookup_index(
-                        filepath.encode('utf-8'))
+                        encode_git_path(filepath))
                     if subpath not in index:
                         call_action(filepath, kind)
                     if recurse:
@@ -511,7 +508,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         user_dirs.append(subp)
                     else:
                         (index, subpath) = self._lookup_index(
-                            subp.encode('utf-8'))
+                            encode_git_path(subp))
                         if subpath in index:
                             # Already present
                             continue
@@ -572,7 +569,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """
         with self.lock_read():
             index_paths = set(
-                [p.decode('utf-8') for p, i in self._recurse_index_entries()])
+                [decode_git_path(p) for p, i in self._recurse_index_entries()])
             all_paths = set(self._iter_files_recursive(include_dirs=False))
             return iter(all_paths - index_paths)
 
@@ -677,7 +674,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def get_file_verifier(self, path, stat_value=None):
         with self.lock_read():
-            (index, subpath) = self._lookup_index(path.encode('utf-8'))
+            (index, subpath) = self._lookup_index(encode_git_path(path))
             try:
                 return ("GIT", index[subpath].sha)
             except KeyError:
@@ -709,7 +706,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def stored_kind(self, path):
         with self.lock_read():
-            encoded_path = path.encode('utf-8')
+            encoded_path = encode_git_path(path)
             (index, subpath) = self._lookup_index(encoded_path)
             try:
                 return mode_kind(index[subpath].mode)
@@ -723,7 +720,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         return os.lstat(self.abspath(path))
 
     def _live_entry(self, path):
-        encoded_path = self.abspath(path.decode('utf-8')).encode(
+        encoded_path = self.abspath(decode_git_path(path)).encode(
             osutils._fs_enc)
         return index_entry_from_path(encoded_path)
 
@@ -732,7 +729,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             if self._supports_executable():
                 mode = self._lstat(path).st_mode
             else:
-                (index, subpath) = self._lookup_index(path.encode('utf-8'))
+                (index, subpath) = self._lookup_index(encode_git_path(path))
                 try:
                     mode = index[subpath].mode
                 except KeyError:
@@ -777,7 +774,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                          name.decode(osutils._fs_enc))])
             for path in path_iterator:
                 try:
-                    encoded_path = path.encode("utf-8")
+                    encoded_path = encode_git_path(path)
                 except UnicodeEncodeError:
                     raise errors.BadFilenameEncoding(
                         path, osutils._fs_enc)
@@ -831,7 +828,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             for path in self.index:
                 if self.mapping.is_special_file(path):
                     continue
-                path = path.decode("utf-8")
+                path = decode_git_path(path)
                 paths.add(path)
                 while path != "":
                     path = posixpath.dirname(path).strip("/")
@@ -841,12 +838,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             return paths
 
     def iter_child_entries(self, path):
-        encoded_path = path.encode('utf-8')
+        encoded_path = encode_git_path(path)
         with self.lock_read():
             parent_id = self.path2id(path)
             found_any = False
             for item_path, value in self.index.iteritems():
-                decoded_item_path = item_path.decode('utf-8')
+                decoded_item_path = decode_git_path(item_path)
                 if self.mapping.is_special_file(item_path):
                     continue
                 if not osutils.is_inside(path, decoded_item_path):
@@ -871,14 +868,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
             for item_path, value in self.index.iteritems():
                 if value.flags & FLAG_STAGEMASK:
                     conflicts.append(_mod_conflicts.TextConflict(
-                        item_path.decode('utf-8')))
+                        decode_git_path(item_path)))
             return conflicts
 
     def set_conflicts(self, conflicts):
         by_path = set()
         for conflict in conflicts:
             if conflict.typestring in ('text conflict', 'contents conflict'):
-                by_path.add(conflict.path.encode('utf-8'))
+                by_path.add(encode_git_path(conflict.path))
             else:
                 raise errors.UnsupportedOperation(self.set_conflicts, self)
         with self.lock_tree_write():
@@ -901,7 +898,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                                            'contents conflict'):
                     try:
                         self._set_conflicted(
-                            conflict.path.encode('utf-8'), True)
+                            encode_git_path(conflict.path), True)
                     except KeyError:
                         raise errors.UnsupportedOperation(
                             self.add_conflicts, self)
@@ -1037,7 +1034,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def _walkdirs(self, prefix=u""):
         if prefix != u"":
             prefix += u"/"
-        prefix = prefix.encode('utf-8')
+        prefix = encode_git_path(prefix)
         per_dir = defaultdict(set)
         if prefix == b"":
             per_dir[(u'', self.path2id(''))] = set()
@@ -1047,14 +1044,14 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 return
             (dirname, child_name) = posixpath.split(path)
             add_entry(dirname, 'directory')
-            dirname = dirname.decode("utf-8")
+            dirname = decode_git_path(dirname)
             dir_file_id = self.path2id(dirname)
             if not isinstance(value, tuple) or len(value) != 10:
                 raise ValueError(value)
             per_dir[(dirname, dir_file_id)].add(
-                (path.decode("utf-8"), child_name.decode("utf-8"),
+                (decode_git_path(path), decode_git_path(child_name),
                  kind, None,
-                 self.path2id(path.decode("utf-8")),
+                 self.path2id(decode_git_path(path)),
                  kind))
         with self.lock_read():
             for path, value in self.index.iteritems():
@@ -1071,11 +1068,11 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def store_uncommitted(self):
         raise errors.StoringUncommittedNotSupported(self)
 
-    def apply_inventory_delta(self, changes):
-        for (old_path, new_path, file_id, ie) in changes:
+    def _apply_transform_delta(self, changes):
+        for (old_path, new_path, ie) in changes:
             if old_path is not None:
                 (index, old_subpath) = self._lookup_index(
-                    old_path.encode('utf-8'))
+                    encode_git_path(old_path))
                 try:
                     self._index_del_entry(index, old_subpath)
                 except KeyError:
@@ -1187,7 +1184,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                         # Let's at least try to use the working tree file:
                         try:
                             st = self._lstat(self.abspath(
-                                entry.path.decode('utf-8')))
+                                decode_git_path(entry.path)))
                         except OSError:
                             # But if it doesn't exist, we'll make something up.
                             obj = self.store[entry.sha]
@@ -1198,10 +1195,12 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                     (index, subpath) = self._lookup_index(entry.path)
                     index[subpath] = index_entry_from_stat(st, entry.sha, 0)
 
-    def _update_git_tree(self, old_revision, new_revision, change_reporter=None,
-                         show_base=False):
+    def _update_git_tree(
+            self, old_revision, new_revision, change_reporter=None,
+            show_base=False):
         basis_tree = self.revision_tree(old_revision)
         if new_revision != old_revision:
+            from .. import merge
             with basis_tree.lock_read():
                 new_basis_tree = self.branch.basis_tree()
                 merge.merge_inner(
@@ -1310,6 +1309,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def copy_content_into(self, tree, revision_id=None):
         """Copy the current content and user files of this tree into tree."""
+        from .. import merge
         with self.lock_read():
             if revision_id is None:
                 merge.transform_tree(tree, self)
@@ -1338,10 +1338,10 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
 
     def get_reference_info(self, path):
         submodule_info = self._submodule_info()
-        info = submodule_info.get(path.encode('utf-8'))
+        info = submodule_info.get(encode_git_path(path))
         if info is None:
             return None
-        return info[0].decode('utf-8')
+        return decode_git_path(info[0])
 
     def set_reference_info(self, tree_path, branch_location):
         path = self.abspath('.gitmodules')
@@ -1352,7 +1352,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 config = GitConfigFile()
             else:
                 raise
-        section = (b'submodule', tree_path.encode('utf-8'))
+        section = (b'submodule', encode_git_path(tree_path))
         if branch_location is None:
             try:
                 del config[section]
@@ -1364,7 +1364,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
                 branch_location)
             config.set(
                 section,
-                b'path', tree_path.encode('utf-8'))
+                b'path', encode_git_path(tree_path))
             config.set(
                 section,
                 b'url', branch_location.encode('utf-8'))

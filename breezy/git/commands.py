@@ -309,6 +309,7 @@ class cmd_git_push_pristine_tar_deltas(Command):
             )
         from ..trace import warning
         from ..repository import Repository
+        from .mapping import encode_git_path
         from .object_store import get_object_store
         from .pristine_tar import (
             revision_pristine_tar_data,
@@ -345,5 +346,5 @@ class cmd_git_push_pristine_tar_deltas(Command):
                     warning(
                         "base git id %s for %s missing in target repository",
                         gitid, filename)
-                store_git_pristine_tar_data(target, filename.encode('utf-8'),
+                store_git_pristine_tar_data(target, encode_git_path(filename),
                                             delta, gitid)

@@ -361,7 +361,7 @@ class Conflict(object):
         # Stanza is purely a Unicode api.
         if isinstance(file_id, str):
             file_id = cache_utf8.encode(file_id)
-        self.file_id = osutils.safe_file_id(file_id)
+        self.file_id = file_id
 
     def as_stanza(self):
         s = rio.Stanza(type=self.typestring, path=self.path)
@@ -456,7 +456,7 @@ class Conflict(object):
         raise NotImplementedError(self.action_take_other)
 
     def _resolve_with_cleanups(self, tree, *args, **kwargs):
-        with tree.get_transform() as tt:
+        with tree.transform() as tt:
             self._resolve(tt, *args, **kwargs)
 
 
@@ -515,7 +515,7 @@ class PathConflict(Conflict):
             tree = self._revision_tree(tt._tree, revid)
             transform.create_from_tree(
                 tt, tid, tree, tree.id2path(file_id))
-            tt.version_file(file_id, tid)
+            tt.version_file(tid, file_id=file_id)
         else:
             tid = tt.trans_id_file_id(file_id)
         # Adjust the path for the retained file id
@@ -669,7 +669,7 @@ class TextConflict(Conflict):
                        item_parent_tid, item_tid)
         # Associate the file_id to the right content
         tt.unversion_file(item_tid)
-        tt.version_file(self.file_id, winner_tid)
+        tt.version_file(winner_tid, file_id=self.file_id)
         tt.apply()
 
     def action_auto(self, tree):
@@ -735,7 +735,7 @@ class HandledPathConflict(HandledConflict):
         # so they can be unicode.
         if isinstance(conflict_file_id, str):
             conflict_file_id = cache_utf8.encode(conflict_file_id)
-        self.conflict_file_id = osutils.safe_file_id(conflict_file_id)
+        self.conflict_file_id = conflict_file_id
 
     def _cmp_list(self):
         return HandledConflict._cmp_list(self) + [self.conflict_path,
@@ -793,7 +793,7 @@ class ParentLoop(HandledPathConflict):
         pass
 
     def action_take_other(self, tree):
-        with tree.get_transform() as tt:
+        with tree.transform() as tt:
             p_tid = tt.trans_id_file_id(self.file_id)
             parent_tid = tt.get_tree_parent(p_tid)
             cp_tid = tt.trans_id_file_id(self.conflict_file_id)

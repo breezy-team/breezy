@@ -60,6 +60,16 @@ class InvalidEntryName(errors.InternalBzrError):
         self.name = name
 
 
+class DuplicateFileId(errors.BzrError):
+
+    _fmt = "File id {%(file_id)s} already exists in inventory as %(entry)s"
+
+    def __init__(self, file_id, entry):
+        errors.BzrError.__init__(self)
+        self.file_id = file_id
+        self.entry = entry
+
+
 class InventoryEntry(object):
     """Description of a versioned file.
 
@@ -1131,7 +1141,7 @@ class Inventory(CommonInventory):
                 new_entry = replacement
             try:
                 self.add(new_entry)
-            except errors.DuplicateFileId:
+            except DuplicateFileId:
                 raise errors.InconsistentDelta(new_path, new_entry.file_id,
                                                "New id is already present in target.")
             except AttributeError:
@@ -1233,8 +1243,7 @@ class Inventory(CommonInventory):
         :return: entry
         """
         if entry.file_id in self._byid:
-            raise errors.DuplicateFileId(entry.file_id,
-                                         self._byid[entry.file_id])
+            raise DuplicateFileId(entry.file_id, self._byid[entry.file_id])
         if entry.parent_id is None:
             self.root = entry
         else:

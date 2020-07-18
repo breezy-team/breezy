@@ -313,7 +313,7 @@ def gather_class_stats(repository, revs):
     with ui.ui_factory.nested_progress_bar() as pb:
         with repository.lock_read():
             i = 0
-            for delta in repository.get_deltas_for_revisions(revs):
+            for delta in repository.get_revision_deltas(revs):
                 pb.update("classifying commits", i, len(revs))
                 for c in classify_delta(delta):
                     if c not in ret:
@@ -362,7 +362,7 @@ def find_credits(repository, revid):
                     if ps is not None and r != NULL_REVISION]
         revs = repository.get_revisions(ancestry)
         with ui.ui_factory.nested_progress_bar() as pb:
-            iterator = zip(revs, repository.get_deltas_for_revisions(revs))
+            iterator = zip(revs, repository.get_revision_deltas(revs))
             for i, (rev, delta) in enumerate(iterator):
                 pb.update("analysing revisions", i, len(revs))
                 # Don't count merges
