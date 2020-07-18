@@ -18,6 +18,7 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+from debian.changelog import Version
 import os
 import re
 import subprocess
@@ -42,6 +43,7 @@ from ....lock import _RelockDebugMixin, LogicalLockResult
 from ....revision import NULL_REVISION
 from ....revisionspec import RevisionSpec
 from ....trace import note, mutter
+from ....tree import Tree
 
 try:
     from ....revisionspec import InvalidRevisionSpec
@@ -412,10 +414,10 @@ class UpstreamBranchSource(UpstreamSource):
     """
 
     def __init__(self, upstream_branch, upstream_revision_map=None,
-                 config=None, actual_branch=None, dist_command=None):
+                 config=None, actual_branch=None, create_dist=None):
         self.upstream_branch = upstream_branch
         self._actual_branch = actual_branch or upstream_branch
-        self.dist_command = dist_command
+        self.create_dist = create_dist
         self.config = config
         if upstream_revision_map is None:
             self.upstream_revision_map = {}
@@ -424,7 +426,7 @@ class UpstreamBranchSource(UpstreamSource):
 
     @classmethod
     def from_branch(cls, upstream_branch, upstream_revision_map=None,
-                    config=None, local_dir=None, dist_command=None):
+                    config=None, local_dir=None, create_dist=None):
         """Create a new upstream branch source from a branch.
 
         This will optionally fetch into a local directory.
@@ -447,7 +449,7 @@ class UpstreamBranchSource(UpstreamSource):
         return cls(
             upstream_branch=upstream_branch,
             upstream_revision_map=upstream_revision_map, config=config,
-            actual_branch=actual_branch, dist_command=dist_command)
+            actual_branch=actual_branch, create_dist=create_dist)
 
     def version_as_revision(self, package, version, tarballs=None):
         if version in self.upstream_revision_map:
@@ -527,9 +529,8 @@ class UpstreamBranchSource(UpstreamSource):
             target_filename = self._tarball_path(
                 package, version, None, target_dir)
             rev_tree = self.upstream_branch.repository.revision_tree(revid)
-            if self.dist_command is None or not run_dist_command(
-                    rev_tree, package, version, target_filename,
-                    self.dist_command):
+            if self.create_dist is None or not self.create_dist(
+                    rev_tree, package, version, target_filename):
                 tarball_base = "%s-%s" % (package, version)
                 try:
                     export(rev_tree, target_filename, 'tgz', tarball_base)
@@ -551,11 +552,11 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
     """
 
     def __init__(self, upstream_branch_url, upstream_revision_map=None,
-                 config=None, dist_command=None):
+                 config=None, create_dist=None):
         self.upstream_branch_url = upstream_branch_url
         self._upstream_branch = None
         self.config = config
-        self.dist_command = dist_command
+        self.create_dist = create_dist
         if upstream_revision_map is None:
             self.upstream_revision_map = {}
         else:
@@ -575,10 +576,10 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
 class LocalUpstreamBranchSource(UpstreamBranchSource):
     """Upstream branch source in a local branch."""
 
-    def __init__(self, local_branch, dist_command=None):
+    def __init__(self, local_branch, create_dist=None):
         self.local_branch = local_branch
         self.upstream_revision_map = {}
-        self.dist_command = dist_command
+        self.create_dist = create_dist
         self.config = None
 
     @classmethod
@@ -601,8 +602,9 @@ class DistCommandFailed(BzrError):
         super(DistCommandFailed, self).__init__(error=error)
 
 
-def run_dist_command(rev_tree, package, version, target_filename,
-                     dist_command):
+def run_dist_command(
+        rev_tree: Tree, package: str, version: Version, target_filename: str,
+        dist_command: str) -> bool:
     from ..repack_tarball import get_filetype
     with tempfile.TemporaryDirectory() as td:
         package_dir = os.path.join(td, package)

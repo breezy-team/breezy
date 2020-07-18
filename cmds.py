@@ -26,6 +26,7 @@ from __future__ import absolute_import
 import os
 import shutil
 import tempfile
+from typing import Optional
 
 from ... import (
     urlutils,
@@ -706,11 +707,15 @@ class cmd_merge_upstream(Command):
                     'merge had completed failed. Add the new changelog '
                     'entry yourself, review the merge, and then commit.')
 
-    def run(self, location=None, upstream_branch=None, version=None,
-            distribution=None, package=None,
-            directory=".", revision=None, merge_type=None,
-            last_version=None, force=None, snapshot=False, launchpad=False,
-            force_pristine_tar=False, dist_command=None):
+    def run(self, location: Optional[str] = None,
+            upstream_branch: Optional[str] = None,
+            version: Optional[str] = None,
+            distribution: Optional[str] = None, package: Optional[str] = None,
+            directory: str = ".", revision=None, merge_type=None,
+            last_version: Optional[str] = None,
+            force: Optional[bool] = None, snapshot: bool = False,
+            launchpad: bool = False, force_pristine_tar: bool = False,
+            dist_command: Optional[str] = None):
         from debian.changelog import Version
 
         from .errors import PackageVersionNotPresent
@@ -726,6 +731,7 @@ class cmd_merge_upstream(Command):
             )
         from .upstream.branch import (
             UpstreamBranchSource,
+            run_dist_command,
             )
         from .util import (
             guess_build_type,
@@ -790,10 +796,17 @@ class cmd_merge_upstream(Command):
             else:
                 upstream_branch = None
 
+            if dist_command:
+                def create_dist(tree, package, version, target_filename):
+                    run_dist_command(
+                        tree, package, version, target_filename, dist_command)
+            else:
+                create_dist = None
+
             if upstream_branch is not None:
                 upstream_branch_source = UpstreamBranchSource.from_branch(
                     upstream_branch, config=config, local_dir=tree.controldir,
-                    dist_command=dist_command)
+                    create_dist=create_dist)
             else:
                 upstream_branch_source = None
 
@@ -802,7 +815,7 @@ class cmd_merge_upstream(Command):
                     primary_upstream_source = UpstreamBranchSource.from_branch(
                         Branch.open(location), config=config,
                         local_dir=tree.controldir,
-                        dist_command=dist_command)
+                        create_dist=create_dist)
                 except NotBranchError:
                     primary_upstream_source = TarfileSource(location, version)
             else:
