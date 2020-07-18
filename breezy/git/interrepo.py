@@ -249,7 +249,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 # broken symref?
                 continue
             revid = None
-            if not v.startswith(SYMREF):
+            if v and not v.startswith(SYMREF):
                 try:
                     for (kind, type_data) in self.source_store.lookup_git_sha(
                             v):
