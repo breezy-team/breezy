@@ -1393,7 +1393,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                old_refs, new_refs)
         result.tag_updates = {}
         result.tag_conflicts = []
-        ret = dict(old_refs)
+        ret = {}
 
         def ref_equals(refs, ref, git_sha, revid):
             try:
