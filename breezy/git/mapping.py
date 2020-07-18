@@ -210,14 +210,6 @@ class BzrGitMapping(foreign.VcsMapping):
             raise ValueError
         return decode_git_path(unescape_file_id(file_id[len(FILE_ID_PREFIX):]))
 
-    def revid_as_refname(self, revid):
-        if not isinstance(revid, bytes):
-            raise TypeError(revid)
-        if PY3:
-            revid = revid.decode('utf-8')
-        quoted_revid = urlutils.quote(revid)
-        return b"refs/bzr/" + quoted_revid.encode('utf-8')
-
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
             ret = [(path, unusual_file_modes[path])
