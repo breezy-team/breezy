@@ -222,6 +222,8 @@ class GitDir(ControlDir):
                         target, basis.get_reference_revision(path),
                         force_new_repo=force_new_repo, recurse=recurse,
                         stacked=stacked)
+        # Don't leak resources:
+        result_repo._git.object_store.close()
         return result
 
     def clone_on_transport(self, transport, revision_id=None,
