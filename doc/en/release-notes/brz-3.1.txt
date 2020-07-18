@@ -43,6 +43,9 @@ Improvements
  * Handle non-utf8 characters in Git repositories by surrogate escaping
    them.  (Jelmer Vernooĳ, #1489872)
 
+ * ``BzrDir.sprout`` now correctly handles the ``revision_id``
+   argument when ``source_branch`` is None. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
