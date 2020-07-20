@@ -46,6 +46,10 @@ Improvements
  * ``BzrDir.sprout`` now correctly handles the ``revision_id``
    argument when ``source_branch`` is None. (Jelmer Vernooĳ)
 
+ * Warn when loading a plugin that is broken, but support
+   ``suppress_warnings=load_plugin_failure`` to suppress it.
+   (Jelmer Vernooĳ, #1882528)
+
 Bug Fixes
 *********
 
