@@ -100,6 +100,14 @@ class GitlabLoginError(errors.BzrError):
         self.error = error
 
 
+class GitLabConflict(errors.BzrError):
+
+    _fmt = "Conflict during operation: %(msg)s"
+
+    def __init__(self, msg):
+        errors.BzrError(self, msg=msg)
+
+
 class ForkingDisabled(errors.BzrError):
 
     _fmt = ("Forking on project %(project)s is disabled.")
@@ -366,6 +374,9 @@ class GitLab(Hoster):
         response = self._api_request('POST', path)
         if response.status == 404:
             raise ForkingDisabled(project_name)
+        if response.status == 409:
+            resp = json.loads(response.data)
+            raise GitLabConflict(resp.get('message'))
         if response.status not in (200, 201):
             raise errors.UnexpectedHttpStatus(path, response.status)
         # The response should be valid JSON, but let's ignore it
