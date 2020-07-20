@@ -22,6 +22,8 @@
 
 from __future__ import absolute_import
 
+from email.message import Message
+
 from ... import (
     diff,
     errors,
@@ -33,10 +35,10 @@ from io import BytesIO
 import time
 
 
-def write_dep3_bug_line(f, bug_url, status):
+def write_dep3_bug_line(message, bug_url, status):
     """Write a DEP-3 compatible line with a bug link.
 
-    :param f: File-like object to write to
+    :param message: Message object to udpate
     :param bug_url: Bug URL
     :param status: Bug status (e.g. "fixed")
     """
@@ -44,10 +46,10 @@ def write_dep3_bug_line(f, bug_url, status):
     if status != "fixed":
         return
     if bug_url.startswith("http://bugs.debian.org/"):
-        f.write("Bug-Debian: %s\n" % bug_url)
+        message.add_header("Bug-Debian", bug_url)
     else:
         # FIXME: Filter out Ubuntu bugs on Launchpad
-        f.write("Bug: %s\n" % bug_url)
+        message.add_header("Bug", bug_url)
 
 
 def write_dep3_patch_header(
@@ -68,37 +70,38 @@ def write_dep3_patch_header(
     :param applied_upstream: If the patch is applied upstream,
         an informal string describing where it was merged
     """
-    # FIXME: Handle line breaks, etc sensibly
+    header = Message()
     if description is not None:
         description = description.strip("\n")
         description = description.replace("\n\n", "\n.\n")
         description = description.replace("\n", "\n ")
-        f.write("Description: %s\n" % description)
+        header["Description"] = description
     if origin is not None:
-        f.write("Origin: %s\n" % origin)
+        header.add_header("Origin", origin)
     if forwarded is not None:
-        f.write("Forwarded: %s\n" % forwarded)
+        header.add_header("Forwarded", forwarded)
     if authors is not None:
         for author in authors:
-            f.write("Author: %s\n" % author)
+            header.add_header("Author", author)
     if bugs is not None:
         for bug_url, status in bugs:
-            write_dep3_bug_line(f, bug_url, status)
+            write_dep3_bug_line(header, bug_url, status)
     if last_update is not None:
-        f.write("Last-Update: %s\n" % time.strftime("%Y-%m-%d",
-                time.gmtime(last_update)))
+        header.add_header(
+            "Last-Update",
+            time.strftime("%Y-%m-%d", time.gmtime(last_update)))
     if applied_upstream is not None:
-        f.write("Applied-Upstream: %s\n" % applied_upstream)
+        header.add_header("Applied-Upstream", applied_upstream)
     if revision_id is not None:
         try:
             (foreign_revid, mapping) = foreign_vcs_registry.parse_revision_id(
                     revision_id)
         except errors.InvalidRevisionId:
-            f.write("X-Bzr-Revision-Id: %s\n" % revision_id.decode('utf-8'))
+            header.add_header("X-Bzr-Revision-Id", revision_id.decode('utf-8'))
         else:
             if mapping.vcs.abbreviation == "git":
-                f.write("X-Git-Commit: %s\n" % foreign_revid.decode('utf-8'))
-    f.write("\n")
+                header.add_header("X-Git-Commit", foreign_revid.decode('utf-8'))
+    f.write(str(header))
 
 
 def gather_bugs_and_authors(repository, interesting_revision_ids):
