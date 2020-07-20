@@ -316,6 +316,14 @@ class TestLoadingPlugins(BaseTestPlugins):
                               "because the file path isn't a valid module name; try renaming "
                               "it to 'bad_plugin_name_'\\.")
 
+    def test_plugin_with_error(self):
+        # The file name here invalid for a python module.
+        name = 'some_error.py'
+        with open(name, 'w') as f:
+            f.write('raise Exception("bad")\n')
+        log = self.load_and_capture(name)
+        self.assertEqual('', log)
+
 
 class TestPlugins(BaseTestPlugins):
 
