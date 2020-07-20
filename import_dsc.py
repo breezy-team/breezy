@@ -28,7 +28,7 @@
 from __future__ import absolute_import
 
 import calendar
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 import os
 import shutil
 import stat
@@ -306,26 +306,6 @@ class DistributionBranch(object):
         else:
             return str(version)
 
-    def _has_version(self, branch, tag_name, md5=None):
-        if not branch.tags.has_tag(tag_name):
-            return False
-        revid = branch.tags.lookup_tag(tag_name)
-        with branch.lock_read():
-            graph = branch.repository.get_graph()
-            if not graph.is_ancestor(revid, branch.last_revision()):
-                return False
-        if md5 is None:
-            return True
-        rev = branch.repository.get_revision(revid)
-        # TODO(jelmer): Check the commit message for git repositories
-        try:
-            return rev.properties['deb-md5'] == md5
-        except KeyError:
-            warning(
-                "tag %s present in branch, but there is no "
-                "associated 'deb-md5' property" % tag_name)
-            return False
-
     def has_version(self, version, md5=None, vendor=None):
         """Whether this branch contains the package version specified.
 
@@ -340,14 +320,14 @@ class DistributionBranch(object):
         :return: True if this branch contains the specified version of the
             package. False otherwise.
         """
-        if self._has_version(self.branch, str(version), md5=md5):
+        if branch_has_debian_version(self.branch, str(version), md5=md5):
             return True
         # TODO(jelmer): There is some overlap here with revid_of_version
         for debian_tag_name in ["debian-%s" % version, "debian/%s" % version]:
-            if self._has_version(self.branch, debian_tag_name, md5=md5):
+            if branch_has_debian_version(self.branch, debian_tag_name, md5=md5):
                 return True
         for ubuntu_tag_name in ["ubuntu-%s" % version, "ubuntu/%s" % version]:
-            if self._has_version(self.branch, ubuntu_tag_name, md5=md5):
+            if branch_has_debian_version(self.branch, ubuntu_tag_name, md5=md5):
                 return True
         return False
 
@@ -426,13 +406,13 @@ class DistributionBranch(object):
             revision id of. The Version must be present in the branch.
         :return: the revision id corresponding to that version
         """
-        if self._has_version(self.branch, str(version)):
+        if branch_has_debian_version(self.branch, str(version)):
             return self.branch.tags.lookup_tag(str(version))
         for debian_tag_name in ["debian-%s" % version, "debian/%s" % version]:
-            if self._has_version(self.branch, debian_tag_name):
+            if branch_has_debian_version(self.branch, debian_tag_name):
                 return self.branch.tags.lookup_tag(debian_tag_name)
         for ubuntu_tag_name in ["ubuntu-%s" % version, "ubuntu/%s" % version]:
-            if self._has_version(self.branch, ubuntu_tag_name):
+            if branch_has_debian_version(self.branch, ubuntu_tag_name):
                 return self.branch.tags.lookup_tag(ubuntu_tag_name)
         return self.branch.tags.lookup_tag(str(version))
 
@@ -453,31 +433,6 @@ class DistributionBranch(object):
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name
 
-    def _default_config_for_tree(self, tree):
-        # FIXME: shouldn't go to configobj directly
-        for path in ('debian/bzr-builddeb.conf', '.bzr-builddeb/default.conf'):
-            fileid = tree.path2id(path)
-            if fileid is not None:
-                break
-        else:
-            return None, None, None
-        with tree.lock_read():
-            config = ConfigObj(tree.get_file(path))
-            try:
-                config['BUILDDEB']
-            except KeyError:
-                config['BUILDDEB'] = {}
-        return fileid, path, config
-
-    def _is_tree_native(self, config):
-        if config is not None:
-            try:
-                current_value = config['BUILDDEB']['native']
-            except KeyError:
-                current_value = False
-            return current_value == "True"
-        return False
-
     def is_version_native(self, version):
         """Determines whether the given version is native.
 
@@ -489,8 +444,8 @@ class DistributionBranch(object):
         revid = self.revid_of_version(version)
         rev_tree = self.branch.repository.revision_tree(revid)
         (config_fileid, config_path,
-         current_config) = self._default_config_for_tree(rev_tree)
-        if self._is_tree_native(current_config):
+         current_config) = _default_config_for_tree(rev_tree)
+        if _is_tree_native(current_config):
             return True
         rev = self.branch.repository.get_revision(revid)
         try:
@@ -923,8 +878,8 @@ class DistributionBranch(object):
     def _mark_native_config(self, native):
         poss_native_tree = self.branch.basis_tree()
         (config_fileid, config_relpath,
-         current_config) = self._default_config_for_tree(poss_native_tree)
-        current_native = self._is_tree_native(current_config)
+         current_config) = _default_config_for_tree(poss_native_tree)
+        current_native = _is_tree_native(current_config)
         if current_config is not None:
             # Add that back to the current tree
             current_config.filename = self.tree.abspath(config_relpath)
@@ -1021,7 +976,7 @@ class DistributionBranch(object):
         changelog_path = os.path.join(
             self.tree.basedir, 'debian', 'changelog')
         if os.path.exists(changelog_path):
-            changelog = self.get_changelog_from_source(
+            changelog = get_changelog_from_source(
                 self.tree.basedir, max_blocks=1)
         message, authors, thanks, bugs = \
             get_commit_info_from_changelog(changelog, self.branch)
@@ -1100,20 +1055,6 @@ class DistributionBranch(object):
                         self.pristine_upstream_branch.tags)
         # FIXME: What about other versions ?
         return {None: parents}
-
-    def get_changelog_from_source(self, dir, max_blocks=None):
-        cl_filename = os.path.join(dir, "debian", "changelog")
-        with open(cl_filename, 'rb') as f:
-            content = f.read()
-        # Older versions of python-debian were accepting various encodings in
-        # the changelog. This is not true with 0.1.20ubuntu2 at least which
-        # force an 'utf-8' encoding. This leads to failures when trying to
-        # parse old changelogs. Using safe_decode() below will fallback to
-        # iso-8859-1 (latin_1) in this case.
-        content = safe_decode(content)
-        cl = Changelog()
-        cl.parse_changelog(content, strict=False, max_blocks=max_blocks)
-        return cl
 
     def _fetch_from_branch(self, branch, revid):
         branch.branch.tags.merge_to(self.branch.tags)
@@ -1223,15 +1164,6 @@ class DistributionBranch(object):
                 debian_part, version, parents, md5, native=True,
                 timestamp=timestamp, file_ids_from=file_ids_from)
 
-    def _get_safe_versions_from_changelog(self, cl):
-        versions = []
-        for block in cl._blocks:
-            try:
-                versions.append(block.version)
-            except VersionError:
-                break
-        return versions
-
     def import_package(self, dsc_filename, use_time_from_changelog=True,
                        file_ids_from=None, pull_debian=True,
                        force_pristine_tar=False):
@@ -1246,7 +1178,7 @@ class DistributionBranch(object):
             dsc = deb822.Dsc(f.read())
         version = Version(dsc['Version'])
         with extract(dsc_filename, dsc) as extractor:
-            cl = self.get_changelog_from_source(extractor.extracted_debianised)
+            cl = get_changelog_from_source(extractor.extracted_debianised)
             timestamp = None
             author = None
             if use_time_from_changelog and len(cl._blocks) > 0:
@@ -1258,7 +1190,7 @@ class DistributionBranch(object):
                                  time_tuple[:9]) - time_tuple[9],
                                  time_tuple[9])
                 author = safe_decode(cl.author)
-            versions = self._get_safe_versions_from_changelog(cl)
+            versions = _get_safe_versions_from_changelog(cl)
             if self.has_version(version):
                 raise AssertionError(
                         "Trying to import version %s again" % str(version))
@@ -1360,7 +1292,10 @@ class DistributionBranch(object):
                        upstream_revisions=None, merge_type=None, force=False,
                        force_pristine_tar=False, committer=None,
                        files_excluded=None):
-        with tempfile.TemporaryDirectory(dir=os.path.join(self.tree.basedir, '..')) as tempdir:
+        with ExitStack() as es:
+            tempdir = es.enter_context(
+                tempfile.TemporaryDirectory(
+                    dir=os.path.join(self.tree.basedir, '..')))
             if previous_version is not None:
                 self._export_previous_upstream_tree(
                     package, previous_version, tempdir)
@@ -1369,58 +1304,54 @@ class DistributionBranch(object):
             if self.pristine_upstream_source.has_version(package, version):
                 raise UpstreamAlreadyImported(version)
             if upstream_branch is not None:
-                upstream_branch.lock_read()
-            try:
-                if upstream_branch is not None:
-                    if upstream_revisions is None:
-                        upstream_revisions = {None: upstream_branch.last_revision()}
-                    if (not force and
-                            self.has_merged_upstream_revisions(self.branch.last_revision(), upstream_branch.repository, upstream_revisions)):
-                        raise UpstreamBranchAlreadyMerged
-                upstream_tarballs = [
-                    (os.path.abspath(fn), component, md5sum_filename(fn)) for
-                    (fn, component) in
-                    tarball_filenames]
-                with _extract_tarballs_to_tempdir(upstream_tarballs) as tarball_dir:
-                    # FIXME: should use upstream_parents()?
-                    parents = {None: []}
-                    if self.pristine_upstream_branch.last_revision() != NULL_REVISION:
-                        parents = {None: [self.pristine_upstream_branch.last_revision()]}
-                    imported_revids = self.import_upstream(
-                        tarball_dir, package, version, parents,
-                        upstream_tarballs=upstream_tarballs,
-                        upstream_branch=upstream_branch,
-                        upstream_revisions=upstream_revisions,
-                        force_pristine_tar=force_pristine_tar,
-                        committer=committer, files_excluded=files_excluded)
-                    self._fetch_upstream_to_branch(imported_revids)
-                if self.branch.last_revision() != NULL_REVISION:
-                    try:
-                        conflicts = self.tree.merge_from_branch(
-                                self.pristine_upstream_branch,
-                                merge_type=merge_type)
-                    except UnrelatedBranches:
-                        # Bug lp:515367 where the first upstream tarball is
-                        # missing a proper history link and a criss-cross merge
-                        # then recurses and finds no deeper ancestor.
-                        # Use the previous upstream import as the from revision
-                        if len(parents[None]) == 0:
-                            from_revision = NULL_REVISION
-                        else:
-                            from_revision = parents[None][0]
-                        conflicts = self.tree.merge_from_branch(
+                es.enter_context(upstream_branch.lock_read())
+            if upstream_branch is not None:
+                if upstream_revisions is None:
+                    upstream_revisions = {None: upstream_branch.last_revision()}
+                if (not force and
+                        self.has_merged_upstream_revisions(self.branch.last_revision(), upstream_branch.repository, upstream_revisions)):
+                    raise UpstreamBranchAlreadyMerged
+            upstream_tarballs = [
+                (os.path.abspath(fn), component, md5sum_filename(fn)) for
+                (fn, component) in
+                tarball_filenames]
+            with _extract_tarballs_to_tempdir(upstream_tarballs) as tarball_dir:
+                # FIXME: should use upstream_parents()?
+                parents = {None: []}
+                if self.pristine_upstream_branch.last_revision() != NULL_REVISION:
+                    parents = {None: [self.pristine_upstream_branch.last_revision()]}
+                imported_revids = self.import_upstream(
+                    tarball_dir, package, version, parents,
+                    upstream_tarballs=upstream_tarballs,
+                    upstream_branch=upstream_branch,
+                    upstream_revisions=upstream_revisions,
+                    force_pristine_tar=force_pristine_tar,
+                    committer=committer, files_excluded=files_excluded)
+                self._fetch_upstream_to_branch(imported_revids)
+            if self.branch.last_revision() != NULL_REVISION:
+                try:
+                    conflicts = self.tree.merge_from_branch(
                             self.pristine_upstream_branch,
-                            merge_type=merge_type, from_revision=from_revision)
-                else:
-                    # Pull so that merge-upstream allows you to start a branch
-                    # from upstream tarball.
-                    conflicts = 0
-                    self.tree.pull(self.pristine_upstream_branch)
-                self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
-                return conflicts
-            finally:
-                if upstream_branch is not None:
-                    upstream_branch.unlock()
+                            merge_type=merge_type)
+                except UnrelatedBranches:
+                    # Bug lp:515367 where the first upstream tarball is
+                    # missing a proper history link and a criss-cross merge
+                    # then recurses and finds no deeper ancestor.
+                    # Use the previous upstream import as the from revision
+                    if len(parents[None]) == 0:
+                        from_revision = NULL_REVISION
+                    else:
+                        from_revision = parents[None][0]
+                    conflicts = self.tree.merge_from_branch(
+                        self.pristine_upstream_branch,
+                        merge_type=merge_type, from_revision=from_revision)
+            else:
+                # Pull so that merge-upstream allows you to start a branch
+                # from upstream tarball.
+                conflicts = 0
+                self.tree.pull(self.pristine_upstream_branch)
+            self.pristine_upstream_branch.tags.merge_to(self.branch.tags)
+            return conflicts
 
 
 @contextmanager
@@ -1430,3 +1361,76 @@ def _extract_tarballs_to_tempdir(tarballs):
             [(fn, component) for (fn, component, md5) in tarballs],
             tempdir)
         yield tempdir
+
+
+def _get_safe_versions_from_changelog(cl):
+    versions = []
+    for block in cl._blocks:
+        try:
+            versions.append(block.version)
+        except VersionError:
+            break
+    return versions
+
+
+def get_changelog_from_source(dir, max_blocks=None):
+    cl_filename = os.path.join(dir, "debian", "changelog")
+    with open(cl_filename, 'rb') as f:
+        content = f.read()
+    # Older versions of python-debian were accepting various encodings in
+    # the changelog. This is not true with 0.1.20ubuntu2 at least which
+    # force an 'utf-8' encoding. This leads to failures when trying to
+    # parse old changelogs. Using safe_decode() below will fallback to
+    # iso-8859-1 (latin_1) in this case.
+    content = safe_decode(content)
+    cl = Changelog()
+    cl.parse_changelog(content, strict=False, max_blocks=max_blocks)
+    return cl
+
+
+def _is_tree_native(config):
+    if config is not None:
+        try:
+            current_value = config['BUILDDEB']['native']
+        except KeyError:
+            current_value = False
+        return current_value == "True"
+    return False
+
+
+def _default_config_for_tree(tree):
+    # FIXME: shouldn't go to configobj directly
+    for path in ('debian/bzr-builddeb.conf', '.bzr-builddeb/default.conf'):
+        fileid = tree.path2id(path)
+        if fileid is not None:
+            break
+    else:
+        return None, None, None
+    with tree.lock_read():
+        config = ConfigObj(tree.get_file(path))
+        try:
+            config['BUILDDEB']
+        except KeyError:
+            config['BUILDDEB'] = {}
+    return fileid, path, config
+
+
+def branch_has_debian_version(branch, tag_name, md5=None):
+    if not branch.tags.has_tag(tag_name):
+        return False
+    revid = branch.tags.lookup_tag(tag_name)
+    with branch.lock_read():
+        graph = branch.repository.get_graph()
+        if not graph.is_ancestor(revid, branch.last_revision()):
+            return False
+    if md5 is None:
+        return True
+    rev = branch.repository.get_revision(revid)
+    # TODO(jelmer): Check the commit message for git repositories
+    try:
+        return rev.properties['deb-md5'] == md5
+    except KeyError:
+        warning(
+            "tag %s present in branch, but there is no "
+            "associated 'deb-md5' property" % tag_name)
+        return False
