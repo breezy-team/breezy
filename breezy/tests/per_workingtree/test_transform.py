@@ -48,9 +48,6 @@ from ...osutils import (
     file_kind,
     pathjoin,
 )
-from ...sixish import (
-    text_type,
-    )
 from .. import (
     features,
     TestSkipped,
@@ -897,7 +894,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
         tt.finalize()
-        conflicts_s = [text_type(c) for c in cooked_conflicts]
+        conflicts_s = [str(c) for c in cooked_conflicts]
         self.assertEqual(len(cooked_conflicts), len(conflicts_s))
         self.assertEqual(conflicts_s[0], 'Conflict adding file dorothy.  '
                                          'Moved existing file to '

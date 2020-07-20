@@ -26,7 +26,6 @@ from breezy import (
     revision as _mod_revision,
     tests,
     )
-from breezy.sixish import PY3
 from breezy.tree import TreeChange
 from breezy.bzr import (
     inventorytree,
@@ -823,8 +822,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                           revprops={'invalid': u'property\rwith\r\ninvalid chars'})
 
     def test_get_commit_builder_with_surrogateescape(self):
-        if not PY3:
-            self.skipTest('python 2 does not have surrogateescape')
         tree = self.make_branch_and_tree(".")
         with tree.lock_write():
             builder = tree.branch.get_commit_builder([], revprops={

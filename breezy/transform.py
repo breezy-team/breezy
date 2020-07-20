@@ -218,7 +218,7 @@ class TreeTransform(object):
         Only new paths and parents of tree files with assigned ids are used.
         """
         by_parent = {}
-        items = list(viewitems(self._new_parent))
+        items = list(self._new_parent.items())
         items.extend((t, self.final_parent(t))
                      for t in list(self._tree_id_paths))
         for trans_id, parent_id in items:

@@ -25,7 +25,6 @@ import time
 from .. import errors, multiparent, osutils, trace, ui, urlutils
 from ..i18n import gettext
 from ..mutabletree import MutableTree
-from ..sixish import viewitems, viewvalues
 from ..transform import (
     TreeTransform,
     _TransformResults,
@@ -142,7 +141,7 @@ class TreeTransformBase(TreeTransform):
         irrelevant.
 
         """
-        new_roots = [k for k, v in viewitems(self._new_parent)
+        new_roots = [k for k, v in self._new_parent.items()
                      if v == ROOT_PARENT]
         if len(new_roots) < 1:
             return
@@ -277,7 +276,7 @@ class TreeTransformBase(TreeTransform):
         file_id = self.tree_file_id(trans_id)
         if file_id is not None:
             return file_id
-        for key, value in viewitems(self._non_present_ids):
+        for key, value in self._non_present_ids.items():
             if value == trans_id:
                 return key
 
@@ -389,7 +388,7 @@ class TreeTransformBase(TreeTransform):
     def _unversioned_parents(self, by_parent):
         """If parent directories are versioned, children must be versioned."""
         conflicts = []
-        for parent_id, children in viewitems(by_parent):
+        for parent_id, children in by_parent.items():
             if parent_id == ROOT_PARENT:
                 continue
             if self.final_is_versioned(parent_id):
@@ -451,7 +450,7 @@ class TreeTransformBase(TreeTransform):
         conflicts = []
         if (self._new_name, self._new_parent) == ({}, {}):
             return conflicts
-        for children in viewvalues(by_parent):
+        for children in by_parent.values():
             name_ids = []
             for child_tid in children:
                 name = self.final_name(child_tid)
@@ -477,7 +476,7 @@ class TreeTransformBase(TreeTransform):
     def _parent_type_conflicts(self, by_parent):
         """Children must have a directory parent"""
         conflicts = []
-        for parent_id, children in viewitems(by_parent):
+        for parent_id, children in by_parent.items():
             if parent_id == ROOT_PARENT:
                 continue
             no_children = True
@@ -849,17 +848,17 @@ class TreeTransformBase(TreeTransform):
         """
         from .. import bencode
         new_name = {k.encode('utf-8'): v.encode('utf-8')
-                    for k, v in viewitems(self._new_name)}
+                    for k, v in self._new_name.items()}
         new_parent = {k.encode('utf-8'): v.encode('utf-8')
-                      for k, v in viewitems(self._new_parent)}
+                      for k, v in self._new_parent.items()}
         new_id = {k.encode('utf-8'): v
-                  for k, v in viewitems(self._new_id)}
+                  for k, v in self._new_id.items()}
         new_executability = {k.encode('utf-8'): int(v)
-                             for k, v in viewitems(self._new_executability)}
+                             for k, v in self._new_executability.items()}
         tree_path_ids = {k.encode('utf-8'): v.encode('utf-8')
-                         for k, v in viewitems(self._tree_path_ids)}
+                         for k, v in self._tree_path_ids.items()}
         non_present_ids = {k: v.encode('utf-8')
-                           for k, v in viewitems(self._non_present_ids)}
+                           for k, v in self._non_present_ids.items()}
         removed_contents = [trans_id.encode('utf-8')
                             for trans_id in self._removed_contents]
         removed_id = [trans_id.encode('utf-8')
@@ -877,7 +876,7 @@ class TreeTransformBase(TreeTransform):
             }
         yield serializer.bytes_record(bencode.bencode(attribs),
                                       ((b'attribs',),))
-        for trans_id, kind in sorted(viewitems(self._new_contents)):
+        for trans_id, kind in sorted(self._new_contents.items()):
             if kind == 'file':
                 with open(self._limbo_name(trans_id), 'rb') as cur_file:
                     lines = cur_file.readlines()
@@ -904,18 +903,18 @@ class TreeTransformBase(TreeTransform):
         attribs = bencode.bdecode(content)
         self._id_number = attribs[b'_id_number']
         self._new_name = {k.decode('utf-8'): v.decode('utf-8')
-                          for k, v in viewitems(attribs[b'_new_name'])}
+                          for k, v in attribs[b'_new_name'].items()}
         self._new_parent = {k.decode('utf-8'): v.decode('utf-8')
-                            for k, v in viewitems(attribs[b'_new_parent'])}
+                            for k, v in attribs[b'_new_parent'].items()}
         self._new_executability = {
             k.decode('utf-8'): bool(v)
-            for k, v in viewitems(attribs[b'_new_executability'])}
+            for k, v in attribs[b'_new_executability'].items()}
         self._new_id = {k.decode('utf-8'): v
-                        for k, v in viewitems(attribs[b'_new_id'])}
-        self._r_new_id = {v: k for k, v in viewitems(self._new_id)}
+                        for k, v in attribs[b'_new_id'].items()}
+        self._r_new_id = {v: k for k, v in self._new_id.items()}
         self._tree_path_ids = {}
         self._tree_id_paths = {}
-        for bytepath, trans_id in viewitems(attribs[b'_tree_path_ids']):
+        for bytepath, trans_id in attribs[b'_tree_path_ids'].items():
             path = bytepath.decode('utf-8')
             trans_id = trans_id.decode('utf-8')
             self._tree_path_ids[path] = trans_id
@@ -927,7 +926,7 @@ class TreeTransformBase(TreeTransform):
             for trans_id in attribs[b'_removed_contents'])
         self._non_present_ids = {
             k: v.decode('utf-8')
-            for k, v in viewitems(attribs[b'_non_present_ids'])}
+            for k, v in attribs[b'_non_present_ids'].items()}
         for ((trans_id, kind),), content in records:
             trans_id = trans_id.decode('utf-8')
             kind = kind.decode('ascii')
@@ -1034,7 +1033,7 @@ class DiskTreeTransform(TreeTransformBase):
         if self._tree is None:
             return
         try:
-            limbo_paths = list(viewvalues(self._limbo_files))
+            limbo_paths = list(self._limbo_files.values())
             limbo_paths.extend(self._possibly_stale_limbo_files)
             limbo_paths.sort(reverse=True)
             for path in limbo_paths:
@@ -1432,8 +1431,8 @@ class GitTreeTransform(DiskTreeTransform):
                             in (trans_id, None)):
                         use_direct_path = True
                 else:
-                    for l_filename, l_trans_id in viewitems(
-                            self._limbo_children_names[parent]):
+                    for l_filename, l_trans_id in (
+                            self._limbo_children_names[parent].items()):
                         if l_trans_id == trans_id:
                             continue
                         if l_filename.lower() == filename.lower():
@@ -1520,7 +1519,7 @@ class GitTreeTransform(DiskTreeTransform):
 
         If inventory_delta is None, no inventory delta generation is performed.
         """
-        tree_paths = sorted(viewitems(self._tree_path_ids), reverse=True)
+        tree_paths = sorted(self._tree_path_ids.items(), reverse=True)
         with ui.ui_factory.nested_progress_bar() as child_pb:
             for num, (path, trans_id) in enumerate(tree_paths):
                 # do not attempt to move root into a subdirectory of itself.
