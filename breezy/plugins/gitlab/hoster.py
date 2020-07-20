@@ -375,8 +375,8 @@ class GitLab(Hoster):
         if response.status == 404:
             raise ForkingDisabled(project_name)
         if response.status == 409:
-            json = await response.json()
-            raise GitLabConflict(json.get('message'))
+            resp = json.loads(response.data)
+            raise GitLabConflict(resp.get('message'))
         if response.status not in (200, 201):
             raise errors.UnexpectedHttpStatus(path, response.status)
         # The response should be valid JSON, but let's ignore it
