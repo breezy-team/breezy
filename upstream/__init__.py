@@ -591,7 +591,8 @@ class LaunchpadReleaseFileSource(UpstreamSource):
             warning("More than one release file for release %s of package %s"
                     "found on Launchpad. Using the first.", version, package)
         hosted_file = release_files[0]
-        with tempfile.TemporaryDirectory(prefix="builddeb-launchpad-source-") as tmpdir:
+        with tempfile.TemporaryDirectory(
+                prefix="builddeb-launchpad-source-") as tmpdir:
             with hosted_file.open() as inf:
                 note("Downloading upstream tarball %s from Launchpad",
                      inf.filename)

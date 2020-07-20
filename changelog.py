@@ -18,8 +18,15 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from typing import List, Optional
 
-def changelog_changes(tree, basis_tree, cl_path='debian/changelog'):
+from breezy.tree import Tree
+from debmutate.changelog import new_changelog_entries
+
+
+def changelog_changes(
+        tree: Tree, basis_tree: Tree,
+        cl_path: str = 'debian/changelog') -> List[str]:
     changes = []
     for change in tree.iter_changes(
             basis_tree, specific_files=[cl_path]):
@@ -39,20 +46,13 @@ def changelog_changes(tree, basis_tree, cl_path='debian/changelog'):
 
         old_text = basis_tree.get_file_lines(paths[0])
         new_text = tree.get_file_lines(paths[1])
-        import difflib
-        sequencematcher = difflib.SequenceMatcher
-        for group in sequencematcher(
-                None, old_text, new_text).get_grouped_opcodes(0):
-            j1, j2 = group[0][3], group[-1][4]
-            for line in new_text[j1:j2]:
-                if line.startswith(b"  "):
-                    # Debian Policy Manual states that debian/changelog must be
-                    # UTF-8
-                    changes.append(line.decode('utf-8'))
+        changes.extend(new_changelog_entries(old_text, new_text))
     return changes
 
 
-def changelog_commit_message(tree, basis_tree, path='debian/changelog'):
+def changelog_commit_message(
+        tree: Tree, basis_tree: Tree,
+        path: str = 'debian/changelog') -> Optional[str]:
     changes = changelog_changes(tree, basis_tree, path)
     if not changes:
         return None

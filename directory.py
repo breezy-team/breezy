@@ -31,6 +31,8 @@ from ...trace import note, warning
 from debian.deb822 import Deb822
 from debian.changelog import Version
 
+from debmutate.vcs import source_package_vcs
+
 
 def fixup_broken_git_url(url):
     """Attempt to fix up broken Git URLs.
@@ -139,26 +141,6 @@ vcs_field_to_bzr_url_converters = [
     ("Git", vcs_git_url_to_bzr_url),
     ("Hg", vcs_hg_url_to_bzr_url)
 ]
-
-
-def source_package_vcs(control):
-    """Extract the Vcs URL from a source package.
-
-    Args:
-      control: A source control paragraph
-    Returns:
-      Tuple with Vcs type and Vcs URL
-    Raises:
-      KeyError: When no Vcs header was found
-    """
-    for prefix in ['Vcs-', 'XS-Vcs-', 'X-Vcs']:
-        for field, value in control.items():
-            if field.startswith(prefix):
-                vcs_type = field[len(prefix):]
-                if vcs_type == 'Browser':
-                    continue
-                return vcs_type, value
-    raise KeyError
 
 
 def source_package_vcs_url(control):

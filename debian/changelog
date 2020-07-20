@@ -1,3 +1,9 @@
+breezy-debian (2.8.40) unstable; urgency=medium
+
+  * Depend on debmutate for control editing.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Fri, 17 Jul 2020 01:26:14 +0000
+
 breezy-debian (2.8.39) unstable; urgency=medium
 
   * Allow debian revisions in the version string of native packages, but
