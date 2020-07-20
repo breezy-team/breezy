@@ -897,7 +897,8 @@ class DistributionBranch(object):
 
     def import_upstream_tarballs(self, tarballs, package, version, parents,
                                  upstream_branch=None, upstream_revisions=None,
-                                 force_pristine_tar=False):
+                                 force_pristine_tar=False, committer=None,
+                                 files_excluded=None):
         """Import an upstream part to the upstream branch.
 
         :param tarballs: List of tarballs / components to extract
@@ -916,7 +917,8 @@ class DistributionBranch(object):
                 tarball_dir, package, version, parents, tarballs,
                 upstream_branch=upstream_branch,
                 upstream_revisions=upstream_revisions,
-                force_pristine_tar=force_pristine_tar)
+                force_pristine_tar=force_pristine_tar,
+                committer=committer, files_excluded=files_excluded)
 
     def _mark_native_config(self, native):
         poss_native_tree = self.branch.basis_tree()
