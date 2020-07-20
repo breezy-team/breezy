@@ -357,15 +357,15 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         for tree1, tree2 in zip(trees1, trees2):
             self.assertFalse(tree2.changes_from(tree1).has_changed())
 
-    def test_get_deltas_for_revisions(self):
+    def test_get_revision_deltas(self):
         repository = self.controldir.open_repository()
         repository.lock_read()
         self.addCleanup(repository.unlock)
         revisions = [repository.get_revision(r) for r in
                      [b'rev1', b'rev2', b'rev3', b'rev4']]
-        deltas1 = list(repository.get_deltas_for_revisions(revisions))
-        deltas2 = [repository.get_revision_delta(r.revision_id) for r in
-                   revisions]
+        deltas1 = list(repository.get_revision_deltas(revisions))
+        deltas2 = [repository.get_revision_delta(r.revision_id)
+                   for r in revisions]
         self.assertEqual(deltas1, deltas2)
 
     def test_all_revision_ids(self):

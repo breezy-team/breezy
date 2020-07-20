@@ -113,7 +113,12 @@ def start_commit_check_quilt(tree):
     config = tree.get_config_stack()
     policy = config.get('quilt.commit_policy')
     from .merge import start_commit_quilt_patches
-    start_commit_quilt_patches(tree, policy)
+    from .wrapper import QuiltNotInstalled
+    try:
+        start_commit_quilt_patches(tree, policy)
+    except QuiltNotInstalled:
+        trace.warning(
+            'quilt not installed; not updating patches')
 
 
 def post_build_tree_quilt(tree):
@@ -122,7 +127,12 @@ def post_build_tree_quilt(tree):
     if policy is None:
         return
     from .merge import post_process_quilt_patches
-    post_process_quilt_patches(tree, [], policy)
+    from .wrapper import QuiltNotInstalled
+    try:
+        post_process_quilt_patches(tree, [], policy)
+    except QuiltNotInstalled:
+        trace.warning(
+            'quilt not installed; not touching patches')
 
 
 from ...hooks import install_lazy_named_hook

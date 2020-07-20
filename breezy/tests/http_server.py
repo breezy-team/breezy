@@ -187,22 +187,6 @@ Message: %(message)s.
         header_line = '%s: %s\r\n' % (keyword, value)
         return len(header_line)
 
-    def send_head(self):
-        """Overrides base implementation to work around a bug in python2.5."""
-        path = self.translate_path(self.path)
-        if os.path.isdir(path) and not self.path.endswith('/'):
-            # redirect browser - doing basically what apache does when
-            # DirectorySlash option is On which is quite common (braindead, but
-            # common)
-            self.send_response(301)
-            self.send_header("Location", self.path + "/")
-            # Indicates that the body is empty for HTTP/1.1 clients
-            self.send_header('Content-Length', '0')
-            self.end_headers()
-            return None
-
-        return http_server.SimpleHTTPRequestHandler.send_head(self)
-
     def send_range_content(self, file, start, length):
         file.seek(start)
         self.wfile.write(file.read(length))

@@ -227,7 +227,7 @@ class Response(http_client.HTTPResponse):
     """
 
     # Some responses have bodies in which we have no interest
-    _body_ignored_responses = [301, 302, 303, 307, 400, 401, 403, 404, 501]
+    _body_ignored_responses = [301, 302, 303, 307, 308, 400, 401, 403, 404, 501]
 
     # in finish() below, we may have to discard several MB in the worst
     # case. To avoid buffering that much, we read and discard by chunks
@@ -879,7 +879,7 @@ class HTTPRedirectHandler(urllib_request.HTTPRedirectHandler):
 
         origin_req_host = req.origin_req_host
 
-        if code in (301, 302, 303, 307):
+        if code in (301, 302, 303, 307, 308):
             return Request(req.get_method(), newurl,
                            headers=req.headers,
                            origin_req_host=origin_req_host,
@@ -950,7 +950,7 @@ class HTTPRedirectHandler(urllib_request.HTTPRedirectHandler):
 
         return self.parent.open(redirected_req)
 
-    http_error_301 = http_error_303 = http_error_307 = http_error_302
+    http_error_301 = http_error_303 = http_error_307 = http_error_308 = http_error_302
 
 
 class ProxyHandler(urllib_request.ProxyHandler):
@@ -1860,10 +1860,10 @@ class HttpTransport(ConnectedTransport):
 
         code = response.code
         if (request.follow_redirections is False
-                and code in (301, 302, 303, 307)):
+                and code in (301, 302, 303, 307, 308)):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
-                                           is_permanent=(code == 301))
+                                           is_permanent=(code in (301, 308)))
 
         if request.redirected_to is not None:
             trace.mutter('redirected from: %s to: %s' % (request.get_full_url(),
@@ -1982,11 +1982,9 @@ class HttpTransport(ConnectedTransport):
                     abspath, range_header,
                     'Server return code %d' % response.status)
             else:
-                raise errors.InvalidHttpResponse(
-                    abspath, 'Unexpected status %d' % response.status)
+                raise errors.BadHttpRequest(abspath, response.reason)
         elif response.status not in (200, 206):
-            raise errors.InvalidHttpResponse(
-                abspath, 'Unexpected status %d' % response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status)
 
         data = handle_response(
             abspath, response.status, response.getheader, response)
@@ -2217,8 +2215,7 @@ class HttpTransport(ConnectedTransport):
             'POST', abspath, body=body_bytes,
             headers={'Content-Type': 'application/octet-stream'})
         if response.status not in (200, 403):
-            raise errors.InvalidHttpResponse(
-                abspath, 'Unexpected status %d' % response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status)
         code = response.status
         data = handle_response(
             abspath, code, response.getheader, response)
@@ -2232,8 +2229,7 @@ class HttpTransport(ConnectedTransport):
         abspath = self._remote_path(relpath)
         response = self.request('HEAD', abspath)
         if response.status not in (200, 404):
-            raise errors.InvalidHttpResponse(
-                abspath, 'Unexpected status %d' % response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status)
 
         return response
 
@@ -2499,9 +2495,8 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
             t = self._http_transport_ref()
             code, body_filelike = t._post(bytes)
             if code != 200:
-                raise errors.InvalidHttpResponse(
-                    t._remote_path('.bzr/smart'),
-                    'Expected 200 response code, got %r' % (code,))
+                raise errors.UnexpectedHttpStatus(
+                    t._remote_path('.bzr/smart'), code)
         except (errors.InvalidHttpResponse, errors.ConnectionReset) as e:
             raise errors.SmartProtocolError(str(e))
         return body_filelike

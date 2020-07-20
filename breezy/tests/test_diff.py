@@ -559,7 +559,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
     def test_internal_diff_exec_property(self):
         tree = self.make_branch_and_tree('tree')
 
-        tt = tree.get_transform()
+        tt = tree.transform()
         tt.new_file('a', tt.root, [b'contents\n'], b'a-id', True)
         tt.new_file('b', tt.root, [b'contents\n'], b'b-id', False)
         tt.new_file('c', tt.root, [b'contents\n'], b'c-id', True)
@@ -569,7 +569,7 @@ class TestShowDiffTrees(tests.TestCaseWithTransport):
         tt.apply()
         tree.commit('one', rev_id=b'rev-1')
 
-        tt = tree.get_transform()
+        tt = tree.transform()
         tt.set_executability(False, tt.trans_id_file_id(b'a-id'))
         tt.set_executability(True, tt.trans_id_file_id(b'b-id'))
         tt.set_executability(False, tt.trans_id_file_id(b'c-id'))

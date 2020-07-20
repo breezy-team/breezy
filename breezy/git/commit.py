@@ -46,6 +46,7 @@ from dulwich.index import read_submodule_head
 
 
 from .mapping import (
+    encode_git_path,
     object_mode,
     fix_person_identifier,
     )
@@ -80,7 +81,7 @@ class GitCommitBuilder(CommitBuilder):
                      entry_factory[change.kind[1]](
                          change.file_id, change.name[1], change.parent_id[1])))
                 if change.kind[0] in ("file", "symlink"):
-                    self._blobs[change.path[0].encode("utf-8")] = None
+                    self._blobs[encode_git_path(change.path[0])] = None
                     self._any_changes = True
                 if change.path[1] == "":
                     seen_root = True
@@ -88,7 +89,7 @@ class GitCommitBuilder(CommitBuilder):
             self._any_changes = True
             if change.path[1] is None:
                 self._inv_delta.append((change.path[0], change.path[1], change.file_id, None))
-                self._deleted_paths.add(change.path[0].encode("utf-8"))
+                self._deleted_paths.add(encode_git_path(change.path[0]))
                 continue
             try:
                 entry_kls = entry_factory[change.kind[1]]
@@ -110,7 +111,7 @@ class GitCommitBuilder(CommitBuilder):
             elif change.kind[1] == "symlink":
                 symlink_target = workingtree.get_symlink_target(change.path[1])
                 blob = Blob()
-                blob.data = symlink_target.encode("utf-8")
+                blob.data = encode_git_path(symlink_target)
                 self.store.add_object(blob)
                 sha = blob.id
                 entry.symlink_target = symlink_target
@@ -125,8 +126,8 @@ class GitCommitBuilder(CommitBuilder):
             mode = object_mode(change.kind[1], change.executable[1])
             self._inv_delta.append((change.path[0], change.path[1], change.file_id, entry))
             if change.path[0] is not None:
-                self._deleted_paths.add(change.path[0].encode("utf-8"))
-            self._blobs[change.path[1].encode("utf-8")] = (mode, sha)
+                self._deleted_paths.add(encode_git_path(change.path[0]))
+            self._blobs[encode_git_path(change.path[1])] = (mode, sha)
             if st is not None:
                 yield change.path[1], (entry.text_sha1, st)
         if not seen_root and len(self.parents) == 0:

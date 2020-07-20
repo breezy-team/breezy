@@ -523,7 +523,7 @@ class DirState(object):
                     file_id_entry[0][0], file_id_entry[0][1])
                 kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
                 info = '%s:%s' % (kind, path)
-                raise errors.DuplicateFileId(file_id, info)
+                raise inventory.DuplicateFileId(file_id, info)
         first_key = (dirname, basename, b'')
         block_index, present = self._find_block_index_from_key(first_key)
         if present:

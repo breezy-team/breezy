@@ -818,50 +818,6 @@ class TestSafeUtf8(tests.TestCase):
                           osutils.safe_utf8, b'\xbb\xbb')
 
 
-class TestSafeRevisionId(tests.TestCase):
-
-    def test_from_ascii_string(self):
-        # this shouldn't give a warning because it's getting an ascii string
-        self.assertEqual(b'foobar', osutils.safe_revision_id(b'foobar'))
-
-    def test_from_unicode_string_ascii_contents(self):
-        self.assertRaises(TypeError,
-                          osutils.safe_revision_id, u'bargam')
-
-    def test_from_unicode_string_unicode_contents(self):
-        self.assertRaises(TypeError,
-                          osutils.safe_revision_id, u'bargam\xae')
-
-    def test_from_utf8_string(self):
-        self.assertEqual(b'foo\xc2\xae',
-                         osutils.safe_revision_id(b'foo\xc2\xae'))
-
-    def test_none(self):
-        """Currently, None is a valid revision_id"""
-        self.assertEqual(None, osutils.safe_revision_id(None))
-
-
-class TestSafeFileId(tests.TestCase):
-
-    def test_from_ascii_string(self):
-        self.assertEqual(b'foobar', osutils.safe_file_id(b'foobar'))
-
-    def test_from_unicode_string_ascii_contents(self):
-        self.assertRaises(TypeError, osutils.safe_file_id, u'bargam')
-
-    def test_from_unicode_string_unicode_contents(self):
-        self.assertRaises(TypeError,
-                          osutils.safe_file_id, u'bargam\xae')
-
-    def test_from_utf8_string(self):
-        self.assertEqual(b'foo\xc2\xae',
-                         osutils.safe_file_id(b'foo\xc2\xae'))
-
-    def test_none(self):
-        """Currently, None is a valid revision_id"""
-        self.assertEqual(None, osutils.safe_file_id(None))
-
-
 class TestSendAll(tests.TestCase):
 
     def test_send_with_disconnected_socket(self):

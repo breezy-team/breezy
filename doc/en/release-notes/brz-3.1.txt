@@ -38,6 +38,14 @@ Improvements
  * A new method ``MergeProposal.get_source_revision`` has been added.
    (Jelmer Vernooĳ)
 
+ * Add support for HTTP response code 308. (Jelmer Vernooĳ)
+
+ * Handle non-utf8 characters in Git repositories by surrogate escaping
+   them.  (Jelmer Vernooĳ, #1489872)
+
+ * ``BzrDir.sprout`` now correctly handles the ``revision_id``
+   argument when ``source_branch`` is None. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
@@ -46,6 +54,9 @@ Bug Fixes
 
  * Don't require ``ctypes.pythonapi`` to exist, as it's missing on newer
    versions of Pypy3. (Jelmer Vernooĳ)
+
+ * Prevent exceptions during commit when quilt is not installed but
+   the tree contains quilt patches. (Jelmer Vernooĳ)
 
 Documentation
 *************
@@ -60,6 +71,9 @@ API Changes
 
  * ``BzrCommandError`` has been renamed to ``CommandError``.
    (Jelmer Vernooĳ)
+
+ * The ``osutils.safe_file_id`` and ``osutils.safe_revision_id`` methods
+   have been removed. (Jelmer Vernooĳ)
 
 Internals
 *********

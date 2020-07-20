@@ -39,6 +39,7 @@ from .filegraph import (
     )
 from .mapping import (
     default_mapping,
+    encode_git_path,
     foreign_vcs_git,
     mapping_registry,
     )
@@ -301,7 +302,7 @@ class LocalGitRepository(GitRepository):
                 try:
                     obj = tree_lookup_path(
                         self._git.object_store.__getitem__, root_tree,
-                        path.encode('utf-8'))
+                        encode_git_path(path))
                     if isinstance(obj, tuple):
                         (mode, item_id) = obj
                         obj = self._git.object_store[item_id]
@@ -543,41 +544,6 @@ class LocalGitRepository(GitRepository):
         if revision_id is None:
             raise ValueError('invalid revision id %s' % revision_id)
         return GitRevisionTree(self, revision_id)
-
-    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
-        """Produce a generator of revision deltas.
-
-        Note that the input is a sequence of REVISIONS, not revision_ids.
-        Trees will be held in memory until the generator exits.
-        Each delta is relative to the revision's lefthand predecessor.
-
-        :param specific_fileids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
-        """
-        # Get the revision-ids of interest
-        required_trees = set()
-        for revision in revisions:
-            required_trees.add(revision.revision_id)
-            required_trees.update(revision.parent_ids[:1])
-
-        trees = dict((t.get_revision_id(), t) for
-                     t in self.revision_trees(required_trees))
-
-        # Calculate the deltas
-        for revision in revisions:
-            if not revision.parent_ids:
-                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
-            else:
-                old_tree = trees[revision.parent_ids[0]]
-            new_tree = trees[revision.revision_id]
-            if specific_fileids is not None:
-                specific_files = [new_tree.id2path(
-                    fid) for fid in specific_fileids]
-            else:
-                specific_files = None
-            yield new_tree.changes_from(
-                old_tree, specific_files=specific_files)
 
     def set_make_working_trees(self, trees):
         raise errors.UnsupportedOperation(self.set_make_working_trees, self)

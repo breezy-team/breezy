@@ -137,3 +137,13 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
             multiparent.MultiParent([multiparent.NewText([b'first\n'])]),
             ]
         self.assertEqual(expected_diffs, diffs)
+
+
+class ErrorTests(tests.TestCase):
+
+    def test_unavailable_representation(self):
+        error = versionedfile.UnavailableRepresentation(
+            ('key',), "mpdiff", "fulltext")
+        self.assertEqualDiff("The encoding 'mpdiff' is not available for key "
+                             "('key',) which is encoded as 'fulltext'.",
+                             str(error))

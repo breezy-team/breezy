@@ -76,3 +76,4 @@ selftest.log
 .coverage
 doc/developers/api/*.txt
 __pycache__
+.mypy_cache

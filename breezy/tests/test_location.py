@@ -83,6 +83,13 @@ class TestLocationToUrl(tests.TestCase):
                 ':pserver:anonymous@odessa.cvs.sourceforge.net:/cvsroot/odess'))
         self.assertRaises(ValueError, location_to_url, ':pserver:blah')
 
+    def test_missing_scheme(self):
+        self.skipTest('need clever guessing of scheme')
+        self.assertEqual(
+            'cvs+pserver://anonymous@savi.cvs.sourceforge.net:/cvsroot/savi',
+            location_to_url(
+                'anonymous@savi.cvs.sourceforge.net:/cvsroot/savi'))
+
     def test_rcp_url(self):
         self.assertEqual(
             "ssh://example.com/srv/git/bar",

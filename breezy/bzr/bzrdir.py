@@ -430,6 +430,8 @@ class BzrDir(controldir.ControlDir):
                 # actually useful?
                 # Not especially, but it's part of the contract.
                 result_branch = result.create_branch()
+                if revision_id is not None:
+                    result_branch.generate_revision_history(revision_id)
             else:
                 result_branch = source_branch.sprout(
                     result, revision_id=revision_id,

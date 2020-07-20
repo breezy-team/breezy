@@ -37,7 +37,6 @@ from ...bzr import (
     )
 from ...branch import Branch
 from ...controldir import ControlDir
-from ...memorytree import MemoryTree
 from ...revision import NULL_REVISION
 from ...bzr.smart.repository import SmartServerRepositoryGetParentMap
 from . import (
@@ -470,7 +469,7 @@ class TestPushHook(TestCaseWithInterBranch):
         rev1 = target.commit('rev 1')
         target.unlock()
         sourcedir = target.branch.controldir.clone(self.get_url('source'))
-        source = MemoryTree.create_on_branch(sourcedir.open_branch())
+        source = sourcedir.open_branch().create_memorytree()
         rev2 = source.commit('rev 2')
         Branch.hooks.install_named_hook('post_push',
                                         self.capture_post_push_hook, None)

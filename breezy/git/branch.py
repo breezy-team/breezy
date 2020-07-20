@@ -62,6 +62,10 @@ from ..trace import (
 from .errors import (
     NoPushSupport,
     )
+from .mapping import (
+    encode_git_path,
+    decode_git_path,
+    )
 from .push import (
     remote_divergence,
     )
@@ -494,7 +498,7 @@ class GitBranch(ForeignBranch):
             cs = self.repository._git.get_config_stack()
             try:
                 return cs.get((b"branch", self.name.encode('utf-8')),
-                              b"nick").decode("utf-8")
+                        b"nick").decode("utf-8")
             except KeyError:
                 pass
         return self.name or u"HEAD"
@@ -1039,8 +1043,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 for path, url, section in parse_submodules(
                         GitConfigFile.from_file(f)):
                     self.target.set_reference_info(
-                        tree.path2id(path.decode('utf-8')), url.decode('utf-8'),
-                        path.decode('utf-8'))
+                        tree.path2id(decode_git_path(path)), url.decode('utf-8'),
+                        decode_git_path(path))
         except errors.NoSuchFile:
             pass
 
@@ -1171,7 +1175,7 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
                 isinstance(target, RemoteGitBranch))
 
     def _basic_push(self, overwrite, stop_revision, tag_selector=None):
-        from .remote import RemoteGitError
+        from .remote import parse_git_error
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -1209,11 +1213,10 @@ class InterLocalGitRemoteGitBranch(InterGitBranch):
         if dw_result is not None and not isinstance(dw_result, dict):
             error = dw_result.ref_status.get(self.target.ref)
             if error:
-                raise RemoteGitError(error)
+                raise parse_git_error(self.target.user_url, error)
             for ref, error in dw_result.ref_status.items():
                 if error:
-                    trace.warning('unable to open ref %s: %s',
-                                  ref, error)
+                    trace.warning('unable to open ref %s: %s', ref, error)
         return result
 
 
@@ -1385,7 +1388,7 @@ class InterToGitBranch(branch.GenericInterBranch):
                old_refs, new_refs)
         result.tag_updates = {}
         result.tag_conflicts = []
-        ret = dict(old_refs)
+        ret = {}
 
         def ref_equals(refs, ref, git_sha, revid):
             try:

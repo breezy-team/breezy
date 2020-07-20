@@ -30,7 +30,6 @@ from breezy import (
     revision as _mod_revision,
     textfile,
     trace,
-    transform,
     tree as _mod_tree,
     tsort,
     ui,
@@ -47,6 +46,7 @@ from . import (
     errors,
     hooks,
     registry,
+    transform,
     )
 # TODO: Report back as changes are merged in
 
@@ -758,7 +758,7 @@ class Merge3Merger(object):
             stack.enter_context(self.this_tree.lock_read())
             stack.enter_context(self.base_tree.lock_read())
             stack.enter_context(self.other_tree.lock_read())
-            self.tt = self.working_tree.get_transform()
+            self.tt = self.working_tree.transform()
             stack.enter_context(self.tt)
             self._compute_transform()
             results = self.tt.apply(no_conflicts=True)
@@ -770,16 +770,16 @@ class Merge3Merger(object):
 
     def make_preview_transform(self):
         with self.base_tree.lock_read(), self.other_tree.lock_read():
-            self.tt = transform.TransformPreview(self.working_tree)
+            self.tt = self.working_tree.preview_transform()
             self._compute_transform()
             return self.tt
 
     def _compute_transform(self):
         if self._lca_trees is None:
-            entries = self._entries3()
+            entries = list(self._entries3())
             resolver = self._three_way
         else:
-            entries = self._entries_lca()
+            entries = list(self._entries_lca())
             resolver = self._lca_multi_way
         # Prepare merge hooks
         factories = Merger.hooks['merge_file_content']
@@ -790,7 +790,6 @@ class Merge3Merger(object):
             for num, (file_id, changed, paths3, parents3, names3,
                       executable3) in enumerate(entries):
                 trans_id = self.tt.trans_id_file_id(file_id)
-
                 # Try merging each entry
                 child_pb.update(gettext('Preparing file merge'),
                                 num, len(entries))
@@ -831,7 +830,6 @@ class Merge3Merger(object):
         other and this.  names3 is a tuple of names for base, other and this.
         executable3 is a tuple of execute-bit values for base, other and this.
         """
-        result = []
         iterator = self.other_tree.iter_changes(self.base_tree,
                                                 specific_files=self.interesting_files,
                                                 extra_trees=[self.this_tree])
@@ -859,10 +857,9 @@ class Merge3Merger(object):
             names3 = change.name + (this_name,)
             paths3 = change.path + (this_path, )
             executable3 = change.executable + (this_executable,)
-            result.append(
+            yield (
                 (change.file_id, change.changed_content, paths3,
                  parents3, names3, executable3))
-        return result
 
     def _entries_lca(self):
         """Gather data about files modified between multiple trees.
@@ -891,7 +888,6 @@ class Merge3Merger(object):
                 self.interesting_files, lookup_trees)
         else:
             interesting_files = None
-        result = []
         from .multiwalker import MultiWalker
         walker = MultiWalker(self.other_tree, self._lca_trees)
 
@@ -1035,7 +1031,7 @@ class Merge3Merger(object):
                     raise AssertionError('unhandled kind: %s' % other_ie.kind)
 
             # If we have gotten this far, that means something has changed
-            result.append((file_id, content_changed,
+            yield (file_id, content_changed,
                            ((base_path, lca_paths),
                             other_path, this_path),
                            ((base_ie.parent_id, lca_parent_ids),
@@ -1044,8 +1040,7 @@ class Merge3Merger(object):
                             other_ie.name, this_ie.name),
                            ((base_ie.executable, lca_executable),
                             other_ie.executable, this_ie.executable)
-                           ))
-        return result
+                           )
 
     def write_modified(self, results):
         if not self.working_tree.supports_merge_modified():
@@ -1284,7 +1279,7 @@ class Merge3Merger(object):
                     keep_this = True
                     # versioning the merged file will trigger a duplicate
                     # conflict
-                    self.tt.version_file(file_id, trans_id)
+                    self.tt.version_file(trans_id, file_id=file_id)
                     transform.create_from_tree(
                         self.tt, trans_id, self.other_tree,
                         other_path,
@@ -1331,7 +1326,7 @@ class Merge3Merger(object):
         else:
             raise AssertionError('unknown hook_status: %r' % (hook_status,))
         if not this_path and result == "modified":
-            self.tt.version_file(file_id, trans_id)
+            self.tt.version_file(trans_id, file_id=file_id)
         if not keep_this:
             # The merge has been performed and produced a new content, so the
             # old contents should not be retained.
@@ -1461,14 +1456,8 @@ class Merge3Merger(object):
             data.append(('BASE', self.base_tree, base_path, base_lines))
 
         # We need to use the actual path in the working tree of the file here,
-        # ignoring the conflict suffixes
-        wt = self.this_tree
-        if wt.supports_content_filtering():
-            try:
-                filter_tree_path = wt.id2path(file_id)
-            except errors.NoSuchId:
-                # file has been deleted
-                filter_tree_path = None
+        if self.this_tree.supports_content_filtering():
+            filter_tree_path = this_path
         else:
             # Skip the id2path lookup for older formats
             filter_tree_path = None
@@ -1482,7 +1471,7 @@ class Merge3Merger(object):
                     filter_tree_path)
                 file_group.append(trans_id)
                 if set_version and not versioned:
-                    self.tt.version_file(file_id, trans_id)
+                    self.tt.version_file(trans_id, file_id=file_id)
                     versioned = True
         return file_group
 

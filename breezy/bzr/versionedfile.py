@@ -64,6 +64,23 @@ for target_storage_kind in ('fulltext', 'chunked', 'lines'):
                                    'breezy.bzr.knit', 'DeltaAnnotatedToFullText')
 
 
+class UnavailableRepresentation(errors.InternalBzrError):
+
+    _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "
+            "is encoded as '%(native)s'.")
+
+    def __init__(self, key, wanted, native):
+        errors.InternalBzrError.__init__(self)
+        self.wanted = wanted
+        self.native = native
+        self.key = key
+
+
+class ExistingContent(errors.BzrError):
+
+    _fmt = "The content being inserted is already present."
+
+
 class ContentFactory(object):
     """Abstract interface for insertion and retrieval from a VersionedFile.
 
@@ -127,8 +144,8 @@ class ChunkedContentFactory(ContentFactory):
             if self._chunks_are_lines:
                 return self._chunks
             return list(osutils.chunks_to_lines(self._chunks))
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if storage_kind == 'chunked':
@@ -137,8 +154,8 @@ class ChunkedContentFactory(ContentFactory):
             if self._chunks_are_lines:
                 return iter(self._chunks)
             return iter(osutils.chunks_to_lines(self._chunks))
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
 class FulltextContentFactory(ContentFactory):
     """Static data content factory.
@@ -174,16 +191,16 @@ class FulltextContentFactory(ContentFactory):
             return [self._text]
         elif storage_kind == 'lines':
             return osutils.split_lines(self._text)
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         if storage_kind == 'chunked':
             return iter([self._text])
         elif storage_kind == 'lines':
             return iter(osutils.split_lines(self._text))
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
 
 class FileContentFactory(ContentFactory):
@@ -206,8 +223,8 @@ class FileContentFactory(ContentFactory):
             return list(osutils.file_iterator(self.file))
         elif storage_kind == 'lines':
             return list(self.file.readlines())
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
     def iter_bytes_as(self, storage_kind):
         self.file.seek(0)
@@ -215,8 +232,8 @@ class FileContentFactory(ContentFactory):
             return osutils.file_iterator(self.file)
         elif storage_kind == 'lines':
             return self.file
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-                                               self.storage_kind)
+        raise UnavailableRepresentation(self.key, storage_kind,
+                                        self.storage_kind)
 
 
 class AbsentContentFactory(ContentFactory):

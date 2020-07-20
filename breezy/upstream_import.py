@@ -227,7 +227,7 @@ def import_dir(tree, dir_input):
 
 
 def import_archive(tree, archive_file):
-    with tree.get_transform() as tt:
+    with tree.transform() as tt:
         import_archive_to_transform(tree, archive_file, tt)
         tt.apply()
 
@@ -285,7 +285,7 @@ def import_archive_to_transform(tree, archive_file, tt):
         if tt.tree_file_id(trans_id) is None:
             name = basename(member.name.rstrip('/'))
             file_id = generate_ids.gen_file_id(name)
-            tt.version_file(file_id, trans_id)
+            tt.version_file(trans_id, file_id=file_id)
 
     for relative_path in implied_parents.difference(added):
         if relative_path == "":
@@ -294,7 +294,7 @@ def import_archive_to_transform(tree, archive_file, tt):
         path = tree.abspath(relative_path)
         do_directory(tt, trans_id, tree, relative_path, path)
         if tt.tree_file_id(trans_id) is None:
-            tt.version_file(trans_id, trans_id)
+            tt.version_file(trans_id, file_id=trans_id)
         added.add(relative_path)
 
     for path in removed.difference(added):
