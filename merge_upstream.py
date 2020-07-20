@@ -30,13 +30,16 @@ from __future__ import absolute_import
 
 import os
 import subprocess
+import tempfile
 
 from debian.changelog import Version
 
 from ... import osutils
+from ...revision import NULL_REVISION
 
 from .errors import (
     DchError,
+    UpstreamAlreadyImported,
     )
 from .import_dsc import (
     DistributionBranch,
@@ -90,6 +93,7 @@ def upstream_merge_changelog_line(upstream_version):
     return entry_description
 
 
+# TODO(jelmer): Move into debmutate
 def changelog_add_new_version(
         tree, subpath, upstream_version, distribution_name, changelog,
         package):
@@ -124,6 +128,55 @@ def changelog_add_new_version(
         raise DchError("Adding changelog entry failed: %s" % stderr)
     if not tree.is_versioned(cl_path):
         tree.add([cl_path])
+
+
+def do_import(
+        tree, subpath, tarball_filenames, package, version,
+        current_version, upstream_branch, upstream_revisions, merge_type=None,
+        force=False, force_pristine_tar=False, committer=None,
+        files_excluded=None):
+    """Import new tarballs.
+
+    Args:
+      tree: Working tree to operate in
+      tarball_filenames: List of tarball filenames as tuples with (path,
+        component)
+      package: Package name
+      version: New upstream version to merge
+      current_version: Current upstream version in tree
+      upstream_branch: Optional upstream branch to merge from
+      upstream_revisions: Dictionary mapping versions to upstream revisions
+      merge_type: Merge type
+      committer: Committer string to use
+      files_excluded: Files to exclude
+    """
+    db = DistributionBranch(tree.branch, tree.branch, tree=tree)
+    dbs = DistributionBranchSet()
+    dbs.add_branch(db)
+    tarballs = [(p, component_from_orig_tarball(p, package, version), None)
+                for p in tarball_filenames]
+
+    with tempfile.TemporaryDirectory(
+            dir=os.path.join(db.tree.basedir, '..')) as tempdir:
+        if current_version is not None:
+            db._export_previous_upstream_tree(
+                package, current_version, tempdir)
+        else:
+            db.create_empty_upstream_tree(tempdir)
+        if db.pristine_upstream_source.has_version(package, version):
+            raise UpstreamAlreadyImported(version)
+
+        parents = {None: []}
+        if db.pristine_upstream_branch.last_revision() != NULL_REVISION:
+            parents = {None: [db.pristine_upstream_branch.last_revision()]}
+
+        return db.import_upstream_tarballs(
+            tarballs, package, version,
+            parents,
+            upstream_branch=upstream_branch,
+            upstream_revisions=upstream_revisions,
+            force_pristine_tar=force_pristine_tar,
+            committer=committer, files_excluded=files_excluded)
 
 
 def do_merge(
