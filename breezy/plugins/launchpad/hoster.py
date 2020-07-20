@@ -224,13 +224,8 @@ class Launchpad(Hoster):
 
     merge_proposal_description_format = 'plain'
 
-    def __init__(self, staging=False):
-        self._staging = staging
-        if staging:
-            lp_base_url = uris.STAGING_SERVICE_ROOT
-        else:
-            lp_base_url = uris.LPNET_SERVICE_ROOT
-        self._api_base_url = lp_base_url
+    def __init__(self, service_root):
+        self._api_base_url = service_root
         self._launchpad = None
 
     @property
@@ -244,7 +239,7 @@ class Launchpad(Hoster):
         return lp_api.uris.web_root_for_service_root(self._api_base_url)
 
     def __repr__(self):
-        return "Launchpad(staging=%s)" % self._staging
+        return "Launchpad(service_root=%s)" % self._api_base_url
 
     def hosts(self, branch):
         # TODO(jelmer): staging vs non-staging?
@@ -253,7 +248,7 @@ class Launchpad(Hoster):
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         if plausible_launchpad_url(url):
-            return Launchpad()
+            return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
         raise UnsupportedHoster(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
@@ -464,7 +459,12 @@ class Launchpad(Hoster):
 
     @classmethod
     def iter_instances(cls):
-        yield cls()
+        credential_store = lp_api.get_credential_store()
+        for service_root in uris.service_roots.values():
+            auth_engine = lp_api.get_auth_engine(service_root)
+            creds = credential_store.load(auth_engine.unique_consumer_id)
+            if creds is not None:
+                yield cls(service_root)
 
     def iter_my_proposals(self, status='open'):
         statuses = status_to_lp_mp_statuses(status)
