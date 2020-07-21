@@ -108,7 +108,7 @@ class NoLaunchpadBranch(errors.BzrError):
 
 
 def get_auth_engine(base_url):
-    return RequestTokenAuthorizationEngine(base_url, application_name='breezy')
+    return Launchpad.authorization_engine_factory(base_url, 'breezy')
 
 
 def get_credential_store():
