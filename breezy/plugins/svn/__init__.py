@@ -28,6 +28,9 @@ from ... import (
     errors,
     transport as _mod_transport,
     )
+from ...revisionspec import (
+    revspec_registry,
+    )
 
 
 class SubversionUnsupportedError(errors.UnsupportedFormatError):
@@ -183,6 +186,9 @@ class SvnRepositoryProber(controldir.Prober):
 
 controldir.ControlDirFormat.register_prober(SvnWorkingTreeProber)
 controldir.ControlDirFormat.register_prober(SvnRepositoryProber)
+
+
+revspec_registry.register_lazy("svn:", __name__ + ".revspec", "RevisionSpec_svn")
 
 
 _mod_transport.register_transport_proto(
