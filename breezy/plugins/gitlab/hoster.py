@@ -369,9 +369,12 @@ class GitLab(Hoster):
             return json.loads(response.data)
         raise errors.UnexpectedHttpStatus(path, response.status)
 
-    def _fork_project(self, project_name, timeout=50, interval=5):
+    def _fork_project(self, project_name, timeout=50, interval=5, owner=None):
         path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
-        response = self._api_request('POST', path)
+        fields = {}
+        if owner is not None:
+            fields['namespace'] = owner
+        response = self._api_request('POST', path, fields=fields)
         if response.status == 404:
             raise ForkingDisabled(project_name)
         if response.status == 409:
@@ -500,7 +503,7 @@ class GitLab(Hoster):
         try:
             target_project = self._get_project('%s/%s' % (owner, project))
         except NoSuchProject:
-            target_project = self._fork_project(base_project)
+            target_project = self._fork_project(base_project, owner=owner)
         remote_repo_url = git_url_to_bzr_url(target_project['ssh_url_to_repo'])
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         try:
