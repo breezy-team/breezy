@@ -460,7 +460,7 @@ class Launchpad(Hoster):
     @classmethod
     def iter_instances(cls):
         credential_store = lp_api.get_credential_store()
-        for service_root in uris.service_roots.values():
+        for service_root in set(uris.service_roots.values()):
             auth_engine = lp_api.get_auth_engine(service_root)
             creds = credential_store.load(auth_engine.unique_consumer_id)
             if creds is not None:
