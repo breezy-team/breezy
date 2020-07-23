@@ -248,7 +248,7 @@ class Launchpad(Hoster):
     @classmethod
     def probe_from_url(cls, url, possible_transports=None):
         if plausible_launchpad_url(url):
-            return Launchpad(lp_uris.LPNET_SERVICE_ROOT)
+            return Launchpad(uris.LPNET_SERVICE_ROOT)
         raise UnsupportedHoster(url)
 
     def _get_lp_git_ref_from_branch(self, branch):
