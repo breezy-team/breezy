@@ -229,6 +229,12 @@ class Launchpad(Hoster):
         self._launchpad = None
 
     @property
+    def name(self):
+        if self._api_base_url == uris.LPNET_SERVICE_ROOT:
+            return 'Launchpad'
+        return 'Launchpad at %s' % self.base_url
+
+    @property
     def launchpad(self):
         if self._launchpad is None:
             self._launchpad = lp_api.connect_launchpad(self._api_base_url, version='devel')
@@ -240,6 +246,12 @@ class Launchpad(Hoster):
 
     def __repr__(self):
         return "Launchpad(service_root=%s)" % self._api_base_url
+
+    def get_current_user(self):
+        return self.launchpad.me.name
+
+    def get_user_url(self, username):
+        return self.launchpad.people[username].web_link
 
     def hosts(self, branch):
         # TODO(jelmer): staging vs non-staging?
