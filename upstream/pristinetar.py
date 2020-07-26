@@ -26,8 +26,10 @@ from base64 import (
 import configparser
 from debian.copyright import globs_to_re
 import errno
+from io import BytesIO
 import os
 import subprocess
+from tarfile import TarFile
 import tempfile
 
 from .... import debug
@@ -473,7 +475,9 @@ class BzrPristineTarSource(BasePristineTarSource):
         try:
             self.reconstruct_pristine_tar(
                 revid, package, version, target_filename)
-        except PristineTarError:
+        except PristineTarError as e:
+            warning('Unable to reconstruct %s using pristine tar: %s',
+                    target_filename, e)
             raise PackageVersionNotPresent(package, version, self)
         return target_filename
 
@@ -490,14 +494,14 @@ class BzrPristineTarSource(BasePristineTarSource):
     def reconstruct_pristine_tar(self, revid, package, version, dest_filename):
         """Reconstruct a pristine-tar tarball from a bzr revision."""
         tree = self.branch.repository.revision_tree(revid)
-        with tempfile.TemporaryDirectory(prefix="bd-pristine-") as tmpdir:
-            dest = os.path.join(tmpdir, "orig")
-            try:
-                delta = self.get_pristine_tar_delta(
-                    package, version, dest_filename, revid)
-            except PristineTarDeltaAbsent:
-                export(tree, dest_filename, per_file_timestamps=True)
-            else:
+        try:
+            delta = self.get_pristine_tar_delta(
+                package, version, dest_filename, revid)
+        except PristineTarDeltaAbsent:
+            export(tree, dest_filename, per_file_timestamps=True)
+        else:
+            with tempfile.TemporaryDirectory(prefix="bd-pristine-") as tmpdir:
+                dest = os.path.join(tmpdir, "orig")
                 export(tree, dest, format='dir')
                 reconstruct_pristine_tar(dest, delta, dest_filename)
 
@@ -523,6 +527,41 @@ def get_pristine_tar_source(packaging_tree, packaging_branch):
     if git:
         return GitPristineTarSource.from_tree(packaging_tree)
     return BzrPristineTarSource(packaging_branch)
+
+
+class PristineTarDelta(object):
+
+    def __init__(self, tar):
+        self._tar = tar
+
+    @classmethod
+    def from_bytes(cls, data):
+        tar = TarFile.gzopen(name='delta.tar.gz', fileobj=BytesIO(data))
+        return cls(tar)
+
+    def root(self):
+        return os.path.commonpath(self.manifest())
+
+    @property
+    def version(self):
+        return int(self._tar.extractfile('version').read().strip())
+
+    @property
+    def type(self):
+        return self._tar.extractfile('type').read().strip()
+
+    @property
+    def sha256sum(self):
+        return self._tar.extractfile('sha256sum').read().strip()
+
+    def manifest(self):
+        return self._tar.extractfile('manifest').readlines(False)
+
+    def delta(self):
+        return self._tar.extractfile('delta').read()
+
+    def wrapper(self):
+        return self._tar.extractfile('wrapper').read()
 
 
 class GitPristineTarSource(BasePristineTarSource):
@@ -690,16 +729,14 @@ class GitPristineTarSource(BasePristineTarSource):
         return tag_name, revid
 
     def fetch_component_tarball(self, package, version, component, target_dir):
-        revid = self.version_component_as_revision(package, version, component)
-        format = 'gz'
-        target_filename = self._tarball_path(package, version, component,
-                                             target_dir, format=format)
-        note("Using pristine-tar to reconstruct %s.",
-             os.path.basename(target_filename))
+        note("Using pristine-tar to reconstruct %s/%s.",
+             package, version)
         try:
-            self.reconstruct_pristine_tar(
-                revid, package, version, target_filename)
-        except PristineTarError:
+            target_filename = self.reconstruct_pristine_tar(
+                    package, version, component, target_dir)
+        except PristineTarError as e:
+            warning('Unable to reconstruct %s/%s using pristine tar: %s',
+                    package, version, e)
             raise PackageVersionNotPresent(package, version, self)
         return target_filename
 
@@ -719,8 +756,7 @@ class GitPristineTarSource(BasePristineTarSource):
 
         return tags
 
-    def get_pristine_tar_delta(self, package, version, dest_filename,
-                               revid=None):
+    def get_pristine_tar_delta(self, package, version):
         try:
             pristine_tar_branch = self.branch.controldir.open_branch(
                 'pristine-tar')
@@ -729,22 +765,39 @@ class GitPristineTarSource(BasePristineTarSource):
         else:
             revtree = pristine_tar_branch.repository.revision_tree(
                 pristine_tar_branch.last_revision())
-            try:
-                return revtree.get_file_text(
-                    '%s.delta' % osutils.basename(dest_filename))
-            except NoSuchFile:
-                raise PristineTarDeltaAbsent(version)
+            for suffix in ['tar.gz', 'tar.bz2', 'tar.xz']:
+                basename = '%s_%s.orig.%s' % (package, version, suffix)
+                try:
+                    delta_bytes = revtree.get_file_text(basename + '.delta')
+                except NoSuchFile:
+                    continue
+                delta_id = revtree.get_file_text(basename + '.id')
+                try:
+                    delta_sig = revtree.get_file_text(basename + '.asc')
+                except NoSuchFile:
+                    delta_sig = None
+                return (basename, delta_bytes, delta_id, delta_sig)
         raise PristineTarDeltaAbsent(version)
 
-    def reconstruct_pristine_tar(self, revid, package, version, dest_filename):
-        """Reconstruct a pristine-tar tarball from a bzr revision."""
-        tree = self.branch.repository.revision_tree(revid)
-        with tempfile.TemporaryDirectory(prefix="bd-pristine-") as tmpdir:
-            dest = os.path.join(tmpdir, "orig")
+    def reconstruct_pristine_tar(self, package, version, component, target_dir):
+        """Reconstruct a pristine-tar tarball from a git revision."""
+        try:
+            dest_filename, delta_bytes, delta_id, delta_sig = self.get_pristine_tar_delta(
+                package, version)
+        except PristineTarDeltaAbsent:
+            revid = self.version_component_as_revision(
+                package, version, component)
+            tree = self.branch.repository.revision_tree(revid)
+            target_dir = self._tarball_path(
+                package, version, component, target_dir, format='gz')
+            export(tree, dest_filename, per_file_timestamps=True)
+            return dest_filename
+        else:
+            dest_filename = os.path.join(target_dir, dest_filename)
             try:
-                delta = self.get_pristine_tar_delta(
-                    package, version, dest_filename, revid)
-                export(tree, dest, format='dir')
-                reconstruct_pristine_tar(dest, delta, dest_filename)
-            except PristineTarDeltaAbsent:
-                export(tree, dest_filename, per_file_timestamps=True)
+                subprocess.check_call(
+                    ['pristine-tar', 'checkout', dest_filename],
+                    cwd=self.branch.repository.user_transport.local_abspath('.'))
+            except subprocess.CalledProcessError as e:
+                raise PristineTarError(str(e))
+            return dest_filename
