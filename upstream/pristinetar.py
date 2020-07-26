@@ -792,7 +792,7 @@ class GitPristineTarSource(BasePristineTarSource):
             revid = self.version_component_as_revision(
                 package, version, component)
             tree = self.branch.repository.revision_tree(revid)
-            target_dir = self._tarball_path(
+            dest_filename = self._tarball_path(
                 package, version, component, target_dir, format='gz')
             export(tree, dest_filename, per_file_timestamps=True)
             return dest_filename
