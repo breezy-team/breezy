@@ -573,27 +573,6 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
             self.__class__.__name__, self.upstream_branch_url)
 
 
-class LocalUpstreamBranchSource(UpstreamBranchSource):
-    """Upstream branch source in a local branch."""
-
-    def __init__(self, local_branch, create_dist=None):
-        self.local_branch = local_branch
-        self.upstream_revision_map = {}
-        self.create_dist = create_dist
-        self.config = None
-
-    @classmethod
-    def from_controldir(cls, controldir):
-        return cls(controldir.open_branch('upstream'))
-
-    @property
-    def upstream_branch(self):
-        return self.local_branch
-
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.local_branch)
-
-
 class DistCommandFailed(BzrError):
 
     _fmt = "Dist command failed to produce a tarball: %(error)s"

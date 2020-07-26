@@ -81,9 +81,8 @@ class RevisionSpec_upstream(RevisionSpec):
             find_changelog,
             MissingChangelogError,
             )
-        from .upstream.pristinetar import PristineTarSource
+        from .upstream.pristinetar import get_pristine_tar_source
         from .upstream import StackedUpstreamSource
-        from .upstream.branch import LocalUpstreamBranchSource
         from debian.changelog import Version
         tree, subpath = WorkingTree.open_containing('.')
         try:
@@ -106,8 +105,7 @@ class RevisionSpec_upstream(RevisionSpec):
                 version_spec = self.spec
 
         upstream_source = StackedUpstreamSource([
-            PristineTarSource(branch),
-            LocalUpstreamBranchSource(branch),
+            get_pristine_tar_source(tree, branch),
             ])
         try:
             revision_id = upstream_source.version_as_revisions(

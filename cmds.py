@@ -183,8 +183,9 @@ def _get_upstream_branch_source(
     return upstream_source
 
 
-def _get_upstream_sources(local_tree, subpath, branch, build_type, config,
-                          upstream_version, top_level, export_upstream=None,
+def _get_upstream_sources(local_tree, subpath, packaging_branch,
+                          build_type, config, upstream_version, top_level,
+                          export_upstream=None,
                           export_upstream_revision=None):
     from .upstream import (
         AptSource,
@@ -192,17 +193,12 @@ def _get_upstream_sources(local_tree, subpath, branch, build_type, config,
         UScanSource,
         )
     from .upstream.pristinetar import (
-        PristineTarSource,
+        get_pristine_tar_source,
         )
     from .upstream.branch import (
         LazyUpstreamBranchSource,
-        LocalUpstreamBranchSource,
         )
-    yield PristineTarSource.from_tree(branch, local_tree)
-    try:
-        yield LocalUpstreamBranchSource.from_controldir(branch.controldir)
-    except NotBranchError:
-        pass
+    yield get_pristine_tar_source(local_tree, packaging_branch)
     yield AptSource()
     if build_type == BUILD_TYPE_MERGE:
         upstream_branch_source = _get_upstream_branch_source(
@@ -218,10 +214,11 @@ def _get_upstream_sources(local_tree, subpath, branch, build_type, config,
         yield SelfSplitSource(local_tree)
 
 
-def _get_distiller(tree, subpath, branch, changelog, build_type, config,
-                   contains_upstream_source=True, top_level=False,
-                   orig_dir=default_orig_dir, use_existing=False,
-                   export_upstream=None, export_upstream_revision=None):
+def _get_distiller(
+        tree, subpath, packaging_branch, changelog, build_type, config,
+        contains_upstream_source=True, top_level=False,
+        orig_dir=default_orig_dir, use_existing=False,
+        export_upstream=None, export_upstream_revision=None):
     from .util import (
         guess_build_type,
         )
@@ -243,8 +240,8 @@ def _get_distiller(tree, subpath, branch, changelog, build_type, config,
     note(gettext("Building package in %s mode") % build_type)
 
     upstream_sources = list(_get_upstream_sources(
-        tree, subpath, branch, build_type=build_type, config=config,
-        upstream_version=changelog.version.upstream_version,
+        tree, subpath, packaging_branch, build_type=build_type,
+        config=config, upstream_version=changelog.version.upstream_version,
         top_level=top_level, export_upstream=export_upstream,
         export_upstream_revision=export_upstream_revision))
 
@@ -567,7 +564,7 @@ class cmd_get_orig_source(Command):
             UpstreamProvider,
             )
         from .upstream.pristinetar import (
-            PristineTarSource,
+            get_pristine_tar_source,
             )
         from .util import (
             find_changelog,
@@ -586,7 +583,7 @@ class cmd_get_orig_source(Command):
         upstream_provider = UpstreamProvider(
             changelog.package,
             str(version), orig_dir,
-            [PristineTarSource.from_tree(tree.branch, tree),
+            [get_pristine_tar_source(tree, tree.branch),
              AptSource(),
              UScanSource(tree, larstiq)])
 
@@ -1219,7 +1216,7 @@ class cmd_builddeb_do(Command):
             UpstreamProvider,
             )
         from .upstream.pristinetar import (
-            PristineTarSource,
+            get_pristine_tar_source,
             )
         from .hooks import run_hook
         from .util import (
@@ -1265,7 +1262,7 @@ class cmd_builddeb_do(Command):
 
         upstream_provider = UpstreamProvider(
             changelog.package, changelog.version.upstream_version, orig_dir,
-            [PristineTarSource.from_tree(t.branch, t),
+            [get_pristine_tar_source(t, t.branch),
              AptSource(),
              UScanSource(t, top_level)])
 
@@ -1545,7 +1542,7 @@ class LocalTree(object):
         return False
 
 
-def _build_helper(local_tree, subpath, branch, target_dir, builder):
+def _build_helper(local_tree, subpath, packaging_branch, target_dir, builder):
     # TODO(jelmer): Integrate this with cmd_builddeb
     from .builder import (
         do_build,
@@ -1563,8 +1560,8 @@ def _build_helper(local_tree, subpath, branch, target_dir, builder):
         local_tree, subpath)
 
     distiller = _get_distiller(
-            local_tree, subpath, branch, build_type=None, config=config,
-            changelog=changelog,
+            local_tree, subpath, packaging_branch, build_type=None,
+            config=config, changelog=changelog,
             contains_upstream_source=contains_upstream_source,
             top_level=top_level)
 

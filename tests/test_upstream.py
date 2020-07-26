@@ -33,6 +33,8 @@ import tempfile
 import tarfile
 import zipfile
 
+from unittest import expectedFailure
+
 from ....revision import (
     NULL_REVISION,
     Revision,
@@ -85,11 +87,13 @@ from ..upstream.branch import (
     upstream_version_add_revision
     )
 from ..upstream.pristinetar import (
-    PristineTarSource,
+    get_pristine_tar_source,
     is_upstream_tag,
     revision_pristine_tar_format,
     revision_pristine_tar_delta,
     upstream_tag_version,
+    GitPristineTarSource,
+    BzrPristineTarSource,
     )
 
 
@@ -974,12 +978,12 @@ class GenericPristineTarSourceTests(TestCase):
         self.assertEquals(b"bla", revision_pristine_tar_delta(rev))
 
 
-class PristineTarSourceTests(TestCaseWithTransport):
+class GitPristineTarSourceTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(PristineTarSourceTests, self).setUp()
-        self.tree = self.make_branch_and_tree('unstable')
-        self.source = PristineTarSource(self.tree.branch)
+        super(GitPristineTarSourceTests, self).setUp()
+        self.tree = self.make_branch_and_tree('unstable', format='git')
+        self.source = GitPristineTarSource(self.tree.branch)
 
     def test_gbp_tag_format(self):
         self.build_tree_contents([
@@ -988,8 +992,7 @@ class PristineTarSourceTests(TestCaseWithTransport):
 [DEFAULT]
 upstream-tag = blah-%(version)s
 """)])
-        self.source = PristineTarSource.from_tree(
-            self.tree.branch, self.tree)
+        self.source = GitPristineTarSource.from_tree(self.tree)
         upstream_v_no = "0.1"
         self.assertEqual(
             self.source.tag_name(upstream_v_no),
@@ -1002,11 +1005,107 @@ upstream-tag = blah-%(version)s
 [DEFAULT]
 upstream-tag = blah-%(version%~%-)s
 """)])
-        self.source = PristineTarSource.from_tree(
-            self.tree.branch, self.tree)
+        self.source = GitPristineTarSource.from_tree(self.tree)
         self.assertEqual(
             self.source.tag_name("0.1~1"),
             "blah-0.1-1")
+
+    def test_upstream_tag_name(self):
+        upstream_v_no = "0.1"
+        self.assertEqual(
+            self.source.tag_name(upstream_v_no),
+            "upstream/" + upstream_v_no)
+
+    def test_tag_name_distro(self):
+        self.assertEquals(
+            self.source.tag_name("0.3", distro="ubuntu"),
+            "upstream-ubuntu/0.3")
+
+    def test_version(self):
+        self.assertEquals(
+            ['upstream/3.3', 'upstream-3.3', 'upstream_3.3', '3.3',
+             'v3.3', 'release-3.3', 'v3.3-release', 'pkg-3.3'],
+            self.source.possible_tag_names("pkg", "3.3", component=None))
+
+    def test_version_with_tilde(self):
+        self.assertEquals([
+            'upstream/3.3~brz232',
+            'upstream-3.3~brz232',
+            'upstream/3.3_brz232',
+            'upstream_3.3~brz232',
+            '3.3~brz232',
+            'v3.3~brz232',
+            'pkg-3.3~brz232'],
+            self.source.possible_tag_names(
+                'pkg', "3.3~brz232", component=None))
+
+    def test_version_component(self):
+        self.assertEquals([
+            'upstream-3.3/extlib'],
+            self.source.possible_tag_names('pkg', "3.3", component="extlib"))
+
+    def test_version_as_revisions_missing(self):
+        self.assertRaises(PackageVersionNotPresent,
+            self.source.version_as_revisions, None, "1.2")
+
+    def test_version_as_revisions_single(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1", revid1)
+        self.assertEquals({None: revid1},
+            self.source.version_as_revisions(None, "2.1"))
+
+    def test_version_component_as_revision(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1/lib", revid1)
+        self.assertEquals(revid1,
+            self.source.version_component_as_revision(None, "2.1", "lib"))
+
+    # git doesn't support subtags
+    @expectedFailure
+    def test_version_as_revisions(self):
+        revid1 = self.tree.commit("msg")
+        revid2 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1", revid1)
+        self.tree.branch.tags.set_tag("upstream-2.1/lib", revid2)
+        self.assertEquals({None: revid1, "lib": revid2},
+                self.source.version_as_revisions(None, "2.1", [
+            ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
+            ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")]))
+
+    def test_version_as_revisions_partially_missing(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1", revid1)
+        self.assertRaises(PackageVersionNotPresent,
+                self.source.version_as_revisions, 'pkg', "2.1", [
+            ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
+            ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")])
+
+    @expectedFailure
+    def test_has_version_multiple(self):
+        revid1 = self.tree.commit("msg")
+        revid2 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1", revid1)
+        self.tree.branch.tags.set_tag("upstream-2.1/lib", revid2)
+        self.assertTrue(
+                self.source.has_version(None, "2.1", [
+            ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
+            ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")]))
+
+    def test_has_version_partially_missing(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1", revid1)
+        self.assertFalse(
+                self.source.has_version(None, "2.1", [
+            ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
+            ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")]))
+
+
+class BzrPristineTarSourceTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(BzrPristineTarSourceTests, self).setUp()
+        self.tree = self.make_branch_and_tree('unstable', format='bzr')
+        self.source = BzrPristineTarSource(self.tree.branch)
 
     def test_upstream_tag_name(self):
         upstream_v_no = "0.1"
@@ -1034,7 +1133,8 @@ upstream-tag = blah-%(version%~%-)s
             '3.3~brz232',
             'v3.3~brz232',
             'pkg-3.3~brz232'],
-            self.source.possible_tag_names('pkg', "3.3~brz232", component=None))
+            self.source.possible_tag_names(
+                'pkg', "3.3~brz232", component=None))
 
     def test_version_component(self):
         self.assertEquals([
@@ -1092,6 +1192,8 @@ upstream-tag = blah-%(version%~%-)s
                 self.source.has_version(None, "2.1", [
             ("upstream_2.1.orig.tar.gz", None, "somemd5sum"),
             ("upstream_2.1.orig-lib.tar.gz", "lib", "othermd5sum")]))
+
+
 
 
 class TarfileSourceTests(TestCaseWithTransport):
