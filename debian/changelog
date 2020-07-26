@@ -1,3 +1,9 @@
+breezy-debian (2.8.41) UNRELEASED; urgency=medium
+
+  * Fix pristine-tar checkouts for git repositories.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 17:16:58 +0000
+
 breezy-debian (2.8.40) unstable; urgency=medium
 
   * Depend on debmutate for control editing.
