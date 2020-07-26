@@ -20,6 +20,7 @@
 
 from __future__ import absolute_import
 
+from email.message import Message
 from email.parser import Parser
 from io import BytesIO, TextIOWrapper
 
@@ -111,24 +112,24 @@ class Dep3HeaderTests(TestCase):
 
     def test_write_bug_fix_only(self):
         # non-fixed bug lines are ignored
-        f = StringIO()
-        write_dep3_bug_line(f, "http://bar/", "pending")
-        self.assertEquals("", f.getvalue())
+        message = Message()
+        write_dep3_bug_line(message, "http://bar/", "pending")
+        self.assertEquals("\n", str(message))
 
     def test_write_normal_bug(self):
-        f = StringIO()
+        message = Message()
         write_dep3_bug_line(
-            f, "http://bugzilla.samba.org/bug.cgi?id=42", "fixed")
+            message, "http://bugzilla.samba.org/bug.cgi?id=42", "fixed")
         self.assertEquals(
-            "Bug: http://bugzilla.samba.org/bug.cgi?id=42\n",
-            f.getvalue())
+            "Bug: http://bugzilla.samba.org/bug.cgi?id=42\n\n",
+            str(message))
 
     def test_write_debian_bug(self):
-        f = StringIO()
-        write_dep3_bug_line(f, "http://bugs.debian.org/234354", "fixed")
+        message = Message()
+        write_dep3_bug_line(message, "http://bugs.debian.org/234354", "fixed")
         self.assertEquals(
-            "Bug-Debian: http://bugs.debian.org/234354\n",
-            f.getvalue())
+            "Bug-Debian: http://bugs.debian.org/234354\n\n",
+            str(message))
 
 
 class GatherBugsAndAuthors(TestCaseWithTransport):

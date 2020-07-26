@@ -41,6 +41,9 @@ from . import make_new_upstream_tarball_xz
 from ..import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
+        _default_config_for_tree,
+        get_changelog_from_source,
+        _is_tree_native,
         )
 from ..upstream.pristinetar import (
         PristineTarDeltaTooLarge,
@@ -1254,8 +1257,8 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertTrue(self.db1.is_version_native(version))
         revtree = self.tree1.branch.repository.revision_tree(rev_id1)
         (config_fileid, config_relpath,
-         current_config) = self.db1._default_config_for_tree(revtree)
-        self.assertTrue(self.db1._is_tree_native(current_config))
+         current_config) = _default_config_for_tree(revtree)
+        self.assertTrue(_is_tree_native(current_config))
 
     def test_import_native_two(self):
         version1 = Version("1.0")
@@ -1909,4 +1912,4 @@ package (1.0-1) UNRELEASED; urgency=low
 
  -- Jo\xe9 Master <joe@example.com>  Thu,  2 Dec 2004 16:59:43 +0100
 '''.encode('latin_1'))])
-        cl = self.db1.get_changelog_from_source(self.db1.tree.basedir)
+        cl = get_changelog_from_source(self.db1.tree.basedir)
