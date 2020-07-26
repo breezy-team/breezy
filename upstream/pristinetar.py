@@ -25,9 +25,11 @@ from base64 import (
     )
 import configparser
 from debian.copyright import globs_to_re
+from debian.changelog import Version
 import errno
 from io import BytesIO
 import os
+import re
 import subprocess
 from tarfile import TarFile
 import tempfile
@@ -253,23 +255,10 @@ class BasePristineTarSource(UpstreamSource):
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name, revid
 
-    def fetch_tarballs(self, package, version, target_dir, components=None):
-        note("Looking for upstream tarball in local branch.")
-        if components is None:
-            # Scan tags for components
-            try:
-                components = self._components_by_version()[version].keys()
-            except KeyError:
-                raise PackageVersionNotPresent(package, version, self)
-        return [
-            self.fetch_component_tarball(
-                package, version, component, target_dir)
-            for component in components]
-
     def iter_versions(self):
         """Iterate over all upstream versions.
 
-        :return: Iterator over (tag_name, version, revid) tuples
+        :return: Iterator over (version, revid) tuples
         """
         ret = self._components_by_version()
         return ret.items()
@@ -521,6 +510,19 @@ class BzrPristineTarSource(BasePristineTarSource):
                     "revision %s", revid)
             return True
 
+    def fetch_tarballs(self, package, version, target_dir, components=None):
+        note("Looking for upstream tarball in local branch.")
+        if components is None:
+            # Scan tags for components
+            try:
+                components = self._components_by_version()[version].keys()
+            except KeyError:
+                components = [None]
+        return [
+            self.fetch_component_tarball(
+                package, version, component, target_dir)
+            for component in components]
+
 
 def get_pristine_tar_source(packaging_tree, packaging_branch):
     git = getattr(packaging_branch.repository, '_git', None)
@@ -565,6 +567,8 @@ class PristineTarDelta(object):
 
 
 class GitPristineTarSource(BasePristineTarSource):
+
+    SUFFIXES = ['tar.gz', 'tar.lzma', 'tar.xz', 'tar.bz2']
 
     def __init__(self, branch, gbp_tag_format=None, pristine_tar=None):
         self.branch = branch
@@ -729,8 +733,7 @@ class GitPristineTarSource(BasePristineTarSource):
         return tag_name, revid
 
     def fetch_component_tarball(self, package, version, component, target_dir):
-        note("Using pristine-tar to reconstruct %s/%s.",
-             package, version)
+        note("Using pristine-tar to reconstruct %s/%s.", package, version)
         try:
             target_filename = self.reconstruct_pristine_tar(
                     package, version, component, target_dir)
@@ -765,7 +768,7 @@ class GitPristineTarSource(BasePristineTarSource):
         else:
             revtree = pristine_tar_branch.repository.revision_tree(
                 pristine_tar_branch.last_revision())
-            for suffix in ['tar.gz', 'tar.bz2', 'tar.xz']:
+            for suffix in self.SUFFIXES:
                 basename = '%s_%s.orig.%s' % (package, version, suffix)
                 try:
                     delta_bytes = revtree.get_file_text(basename + '.delta')
@@ -779,7 +782,8 @@ class GitPristineTarSource(BasePristineTarSource):
                 return (basename, delta_bytes, delta_id, delta_sig)
         raise PristineTarDeltaAbsent(version)
 
-    def reconstruct_pristine_tar(self, package, version, component, target_dir):
+    def reconstruct_pristine_tar(
+            self, package, version, component, target_dir):
         """Reconstruct a pristine-tar tarball from a git revision."""
         try:
             dest_filename, delta_bytes, delta_id, delta_sig = self.get_pristine_tar_delta(
@@ -801,3 +805,56 @@ class GitPristineTarSource(BasePristineTarSource):
             except subprocess.CalledProcessError as e:
                 raise PristineTarError(str(e))
             return dest_filename
+
+    def _components_by_pristine_tar(self, package=None):
+        ret = {}
+        try:
+            pristine_tar_branch = self.branch.controldir.open_branch(
+                'pristine-tar')
+        except NotBranchError:
+            pass
+        else:
+            revtree = pristine_tar_branch.repository.revision_tree(
+                pristine_tar_branch.last_revision())
+            for entry in revtree.list_files():
+                filename = entry[0]
+                # Format: package_version.orig-component.tar.gz.delta
+                if not filename.endswith('.delta'):
+                    continue
+                basename = filename[:-len('.delta')]
+                if package is None and not filename.startswith(package + '_'):
+                    continue
+                rest = basename.split('_', 1)[1]
+                for suffix in self.SUFFIXES:
+                    if rest.endswith(suffix):
+                        rest = rest[:-len(suffix)]
+                        break
+                else:
+                    continue
+                if rest.endswith('.orig'):
+                    component = None
+                    version = rest[:-len('.orig')]
+                else:
+                    m = re.match('(.*).orig-([^-]+)', rest)
+                    if not m:
+                        continue
+                    component = m.group(2)
+                    version = m.group(1)
+                ret.setdefault(version, {})[component] = basename
+        return ret
+
+    def fetch_tarballs(self, package, version, target_dir, components=None):
+        note("Looking for upstream tarball in local branch.")
+        if components is None:
+            # Scan tags for components
+            try:
+                components = self._components_by_version()[version].keys()
+            except KeyError:
+                try:
+                    components = self._components_by_pristine_tar(package)[version].keys()
+                except KeyError:
+                    components = [None]
+        return [
+            self.fetch_component_tarball(
+                package, version, component, target_dir)
+            for component in components]
