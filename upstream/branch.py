@@ -320,10 +320,9 @@ def get_export_upstream_revision(config=None, version=None):
     return rev
 
 
-def guess_upstream_revspec(package, version):
-    """Guess revspecs matching an upstream version string."""
-    if "+bzr" in version or "~bzr" in version:
-        yield "revno:%s" % re.match(".*[~+]bzr(\\d+).*", version).group(1)
+def git_snapshot_data_from_version(version):
+    git_id = None
+    date = None
     if "+git" in version or "~git" in version:
         m = re.match(
             ".*[~+]git([0-9]{4})([0-9]{2})([0-9]{2})\\.([0-9a-f]{7}).*",
@@ -333,13 +332,24 @@ def guess_upstream_revspec(package, version):
                 ".*[~+]git([0-9]{4})([0-9]{2})([0-9]{2})\\.[0-9+]\\.([0-9a-f]{7}).*",
                 version)
         if m:
-            yield "git:%s" % m.group(4)
-            yield "date:%s-%s-%s" % (m.group(1), m.group(2), m.group(3))
+            git_id = m.group(4)
+            date = "%s-%s-%s" % (m.group(1), m.group(2), m.group(3))
         else:
             m = re.match(".*[~+]git([0-9]{4})([0-9]{2})([0-9]{2}).*", version)
             if m:
-                yield "date:%s-%s-%s" % (m.group(1), m.group(2), m.group(3))
+                date = "%s-%s-%s" % (m.group(1), m.group(2), m.group(3))
+    return (git_id, date)
 
+
+def guess_upstream_revspec(package, version):
+    """Guess revspecs matching an upstream version string."""
+    if "+bzr" in version or "~bzr" in version:
+        yield "revno:%s" % re.match(".*[~+]bzr(\\d+).*", version).group(1)
+    (git_id, git_date) = git_snapshot_data_from_version(version)
+    if git_id:
+        yield "git:%s" % git_id
+    if git_date:
+        yield "date:%s" % git_date
     yield 'tag:%s' % version
     yield 'tag:%s-%s' % (package, version)
     yield 'tag:v%s' % version
@@ -414,11 +424,13 @@ class UpstreamBranchSource(UpstreamSource):
     """
 
     def __init__(self, upstream_branch, upstream_revision_map=None,
-                 config=None, actual_branch=None, create_dist=None):
+                 config=None, actual_branch=None, create_dist=None,
+                 other_repository=None):
         self.upstream_branch = upstream_branch
         self._actual_branch = actual_branch or upstream_branch
         self.create_dist = create_dist
         self.config = config
+        self.other_repository = other_repository
         if upstream_revision_map is None:
             self.upstream_revision_map = {}
         else:
@@ -528,7 +540,15 @@ class UpstreamBranchSource(UpstreamSource):
                     raise PackageVersionNotPresent(package, version, self)
             target_filename = self._tarball_path(
                 package, version, None, target_dir)
-            rev_tree = self.upstream_branch.repository.revision_tree(revid)
+            if self.other_repository is not None:
+                try:
+                    rev_tree = self.other_repository.revision_tree(revid)
+                except NoSuchRevision:
+                    rev_tree = None
+            else:
+                rev_tree = None
+            if rev_tree is None:
+                rev_tree = self.upstream_branch.repository.revision_tree(revid)
             if self.create_dist is None or not self.create_dist(
                     rev_tree, package, version, target_filename):
                 tarball_base = "%s-%s" % (package, version)
@@ -552,11 +572,12 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
     """
 
     def __init__(self, upstream_branch_url, upstream_revision_map=None,
-                 config=None, create_dist=None):
+                 config=None, create_dist=None, other_repository=None):
         self.upstream_branch_url = upstream_branch_url
         self._upstream_branch = None
         self.config = config
         self.create_dist = create_dist
+        self.other_repository = other_repository
         if upstream_revision_map is None:
             self.upstream_revision_map = {}
         else:

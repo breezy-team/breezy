@@ -166,7 +166,8 @@ def _get_changelog_info(tree, subpath, last_version=None, package=None,
 
 
 def _get_upstream_branch_source(
-        export_upstream, export_upstream_revision, config, version):
+        export_upstream, export_upstream_revision, config, version,
+        other_repository=None):
     if export_upstream is None and config.upstream_branch:
         export_upstream = config.upstream_branch
     if export_upstream is None:
@@ -179,7 +180,8 @@ def _get_upstream_branch_source(
         upstream_revision_map[version] = export_upstream_revision
     upstream_source = LazyUpstreamBranchSource(
         export_upstream, config=config,
-        upstream_revision_map=upstream_revision_map)
+        upstream_revision_map=upstream_revision_map,
+        other_repository=other_repository)
     return upstream_source
 
 
@@ -203,11 +205,13 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
     if build_type == BUILD_TYPE_MERGE:
         upstream_branch_source = _get_upstream_branch_source(
             export_upstream, export_upstream_revision, config,
-            upstream_version)
+            upstream_version, other_repository=local_tree.branch.repository)
         if upstream_branch_source:
             yield upstream_branch_source
     elif config.upstream_branch is not None:
-        yield LazyUpstreamBranchSource(config.upstream_branch)
+        yield LazyUpstreamBranchSource(
+            config.upstream_branch,
+            other_repository=local_tree.branch.repository)
     yield UScanSource(local_tree, subpath, top_level)
 
     if build_type == BUILD_TYPE_SPLIT:

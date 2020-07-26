@@ -62,6 +62,11 @@ from ....trace import (
     warning,
     )
 
+from .branch import (
+    git_snapshot_data_from_version,
+    InvalidRevisionSpec,
+    RevisionSpec,
+    )
 from .tags import (
     GbpTagFormatError,
     gbp_expand_tag_name,
@@ -306,6 +311,14 @@ class BasePristineTarSource(UpstreamSource):
                 else:
                     if self._has_revision(revid, md5=md5):
                         return revid
+            # Note that we don't check *all* possible revids here,
+            # since some of them are branch-local (such as revno:)
+            (git_id, git_date) = git_snapshot_data_from_version(version)
+            if git_id:
+                try:
+                    return RevisionSpec.from_string('git:%s' % git_id).as_revision_id(self.branch)
+                except (InvalidRevisionSpec, NoSuchTag):
+                    pass
             revid = search_for_upstream_version(
                 self.branch, package, version, component, md5)
             tag_name = self.tag_name(version, component=component)
