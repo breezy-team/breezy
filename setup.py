@@ -75,6 +75,7 @@ META_INFO = {
         'fastimport': [],
         'git': [],
         'launchpad': ['launchpadlib>=1.6.3'],
+        'workspace': ['pyinotify'],
         },
     'tests_require': [
         'testtools',
