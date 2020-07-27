@@ -21,6 +21,7 @@ from __future__ import absolute_import
 
 import os
 import shutil
+import sys
 import tempfile
 
 from ... import errors as bzr_errors
@@ -31,6 +32,7 @@ from ...export import (
 from .util import (
     extract_orig_tarballs,
     get_parent_dir,
+    recursive_copy,
     )
 
 
@@ -176,4 +178,8 @@ class MergeModeDistiller(SourceDistiller):
             # use_existing
             if os.path.exists(os.path.join(target, 'debian')):
                 shutil.rmtree(os.path.join(target, 'debian'))
-            shutil.copytree(tempdir, target, symlinks=True, dirs_exist_ok=True)
+            if sys.version_info >= (3, 8):
+                shutil.copytree(
+                    tempdir, target, symlinks=True, dirs_exist_ok=True)
+            else:
+                recursive_copy(tempdir, target)
