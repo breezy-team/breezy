@@ -20,6 +20,8 @@ If possible, uses inotify to track changes in the tree - providing
 high performance in large trees with a small number of changes.
 """
 
+from __future__ import absolute_import
+
 import errno
 import os
 import shutil

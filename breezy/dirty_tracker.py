@@ -18,6 +18,8 @@
 """Track whether a directory structure was touched since last revision.
 """
 
+from __future__ import absolute_import
+
 # TODO(jelmer): Add support for ignore files
 
 import os
