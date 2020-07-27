@@ -14,14 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import os
+
 from . import (
     TestCaseWithTransport,
+    multiply_scenarios,
     )
+from .scenarios import load_tests_apply_scenarios
 
 from ..workspace import (
-    PendingChanges,
+    WorkspaceDirty,
+    Workspace,
     check_clean_tree,
     )
+
+
+load_tests = load_tests_apply_scenarios
 
 
 class CheckCleanTreeTests(TestCaseWithTransport):
@@ -49,7 +57,7 @@ Arch: all
         self.build_tree_contents([('debian/changelog', 'blah')])
         with tree.lock_write():
             self.assertRaises(
-                PendingChanges, check_clean_tree, tree)
+                WorkspaceDirty, check_clean_tree, tree)
 
     def test_pending_changes_bzr_empty_dir(self):
         # See https://bugs.debian.org/914038
@@ -57,7 +65,7 @@ Arch: all
         self.build_tree_contents([('debian/upstream/', )])
         with tree.lock_write():
             self.assertRaises(
-                PendingChanges, check_clean_tree, tree)
+                WorkspaceDirty, check_clean_tree, tree)
 
     def test_pending_changes_git_empty_dir(self):
         # See https://bugs.debian.org/914038
@@ -84,5 +92,104 @@ Arch: all
         self.build_tree_contents([('debian/foo', 'blah')])
         with tree.lock_write():
             self.assertRaises(
-                PendingChanges, check_clean_tree,
+                WorkspaceDirty, check_clean_tree,
                 tree)
+
+
+def vary_by_inotify():
+    return [
+        ('with_inotify', dict(_use_inotify=True)),
+        ('without_inotify', dict(_use_inotify=False)),
+    ]
+
+
+def vary_by_format():
+    return [
+        ('bzr', dict(_format='bzr')),
+        ('git', dict(_format='git')),
+    ]
+
+
+class WorkspaceTests(TestCaseWithTransport):
+
+    scenarios = multiply_scenarios(
+        vary_by_inotify(),
+        vary_by_format(),
+    )
+
+    def test_root_add(self):
+        tree = self.make_branch_and_tree('.', format=self._format)
+        with Workspace(tree, use_inotify=self._use_inotify) as ws:
+            self.build_tree_contents([('afile', 'somecontents')])
+            changes = [c for c in ws.iter_changes() if c.path[1] != '']
+            self.assertEqual(1, len(changes), changes)
+            self.assertEqual((None, 'afile'), changes[0].path)
+            ws.commit(message='Commit message')
+            self.assertEqual(list(ws.iter_changes()), [])
+            self.build_tree_contents([('afile', 'newcontents')])
+            [change] = list(ws.iter_changes())
+            self.assertEqual(('afile', 'afile'), change.path)
+
+    def test_root_remove(self):
+        tree = self.make_branch_and_tree('.', format=self._format)
+        self.build_tree_contents([('afile', 'somecontents')])
+        tree.add(['afile'])
+        tree.commit('Afile')
+        with Workspace(tree, use_inotify=self._use_inotify) as ws:
+            os.remove('afile')
+            changes = list(ws.iter_changes())
+            self.assertEqual(1, len(changes), changes)
+            self.assertEqual(('afile', None), changes[0].path)
+            ws.commit(message='Commit message')
+            self.assertEqual(list(ws.iter_changes()), [])
+
+    def test_subpath_add(self):
+        tree = self.make_branch_and_tree('.', format=self._format)
+        self.build_tree(['subpath/'])
+        tree.add('subpath')
+        tree.commit('add subpath')
+        with Workspace(
+                tree, subpath='subpath', use_inotify=self._use_inotify) as ws:
+            self.build_tree_contents([('outside', 'somecontents')])
+            self.build_tree_contents([('subpath/afile', 'somecontents')])
+            changes = [c for c in ws.iter_changes() if c.path[1] != 'subpath']
+            self.assertEqual(1, len(changes), changes)
+            self.assertEqual((None, 'subpath/afile'), changes[0].path)
+            ws.commit(message='Commit message')
+            self.assertEqual(list(ws.iter_changes()), [])
+
+    def test_dirty(self):
+        tree = self.make_branch_and_tree('.', format=self._format)
+        self.build_tree(['subpath'])
+        self.assertRaises(
+            WorkspaceDirty, Workspace(tree, use_inotify=self._use_inotify).__enter__)
+
+    def test_reset(self):
+        tree = self.make_branch_and_tree('.', format=self._format)
+        with Workspace(tree, use_inotify=self._use_inotify) as ws:
+            self.build_tree(['blah'])
+            ws.reset()
+            self.assertPathDoesNotExist('blah')
+
+    def test_tree_path(self):
+        tree = self.make_branch_and_tree('.', format=self._format)
+        tree.mkdir('subdir')
+        tree.commit('Add subdir')
+        with Workspace(tree, use_inotify=self._use_inotify) as ws:
+            self.assertEqual('foo', ws.tree_path('foo'))
+            self.assertEqual('', ws.tree_path())
+        with Workspace(tree, subpath='subdir', use_inotify=self._use_inotify) as ws:
+            self.assertEqual('subdir/foo', ws.tree_path('foo'))
+            self.assertEqual('subdir/', ws.tree_path())
+
+    def test_abspath(self):
+        tree = self.make_branch_and_tree('.', format=self._format)
+        tree.mkdir('subdir')
+        tree.commit('Add subdir')
+        with Workspace(tree, use_inotify=self._use_inotify) as ws:
+            self.assertEqual(tree.abspath('foo'), ws.abspath('foo'))
+            self.assertEqual(tree.abspath(''), ws.abspath())
+        with Workspace(tree, subpath='subdir', use_inotify=self._use_inotify) as ws:
+            self.assertEqual(tree.abspath('subdir/foo'), ws.abspath('foo'))
+            self.assertEqual(tree.abspath('subdir') + '/', ws.abspath(''))
+            self.assertEqual(tree.abspath('subdir') + '/', ws.abspath())

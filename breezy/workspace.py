@@ -14,21 +14,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Convenience functions for efficiently making changes to a working tree.
+
+If possible, uses inotify to track changes in the tree - providing
+high performance in large trees with a small number of changes.
+"""
+
 import errno
 import os
 import shutil
 
 
 from .clean_tree import iter_deletables
+from .errors import BzrError, DependencyNotPresent
 from .trace import warning
 from .transform import revert
 
 
-class PendingChanges(Exception):
-    """The directory has pending changes."""
+class WorkspaceDirty(BzrError):
+    _fmt = "The directory %(path)s has pending changes."
 
     def __init__(self, tree):
-        super(PendingChanges, self).__init__(tree.basedir)
+        BzrError(self, path=tree.abspath('.'))
 
 
 # TODO(jelmer): Move to .clean_tree?
@@ -59,9 +66,9 @@ def check_clean_tree(local_tree):
     """
     # Just check there are no changes to begin with
     if local_tree.has_changes():
-        raise PendingChanges(local_tree)
+        raise WorkspaceDirty(local_tree)
     if list(local_tree.unknowns()):
-        raise PendingChanges(local_tree)
+        raise WorkspaceDirty(local_tree)
 
 
 def delete_items(deletables, dry_run: bool = False):
@@ -97,18 +104,25 @@ def get_dirty_tracker(local_tree, subpath='', use_inotify=None):
     else:
         try:
             from .dirty_tracker import DirtyTracker
-        except ImportError:
+        except DependencyNotPresent:
             return None
         else:
             return DirtyTracker(local_tree, subpath)
 
 
 class Workspace(object):
+    """Create a workspace.
+
+    :param tree: Tree to work in
+    :param subpath: path under which to consider and commit changes
+    :param use_inotify: whether to use inotify (default: yes, if available)
+    """
 
     def __init__(self, tree, subpath='', use_inotify=None):
         self.tree = tree
         self.subpath = subpath
         self.use_inotify = use_inotify
+        self._dirty_tracker = None
 
     def __enter__(self):
         check_clean_tree(self.tree)
@@ -116,40 +130,80 @@ class Workspace(object):
             self.tree, subpath=self.subpath, use_inotify=self.use_inotify)
         return self
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._dirty_tracker:
+            del self._dirty_tracker
+            self._dirty_tracker = None
+        return False
+
+    def tree_path(self, path=''):
+        """Return a path relative to the tree subpath used by this workspace.
+        """
+        return os.path.join(self.subpath, path)
+
+    def abspath(self, path=''):
+        """Return an absolute path for the tree."""
+        return self.tree.abspath(self.tree_path(path))
+
     def reset(self):
+        """Reset - revert local changes, revive deleted files, remove added.
+        """
         if self._dirty_tracker and not self._dirty_tracker.is_dirty():
             return
-        reset_tree(self.tree, self._dirty_tracker, self.subpath)
+        reset_tree(self.tree, self.subpath)
         if self._dirty_tracker is not None:
             self._dirty_tracker.mark_clean()
 
-    def commit(self, **kwargs):
-        if 'specific_files' in kwargs:
-            raise NotImplementedError(self.commit)
-
+    def _stage(self):
         if self._dirty_tracker:
-            relpaths = dirty_tracker.relpaths()
+            relpaths = self._dirty_tracker.relpaths()
             # Sort paths so that directories get added before the files they
             # contain (on VCSes where it matters)
-            local_tree.add(
+            self.tree.add(
                 [p for p in sorted(relpaths)
                  if self.tree.has_filename(p) and not
                     self.tree.is_ignored(p)])
-            specific_files = [
+            return [
                 p for p in relpaths
-                if local_tree.is_versioned(p)]
+                if self.tree.is_versioned(p)]
         else:
-            self.tree.smart_add([local_tree.abspath(subpath)])
-            specific_files = [self.subpath] if self.subpath else None
+            self.tree.smart_add([self.tree.abspath(self.subpath)])
+            return [self.subpath] if self.subpath else None
 
-        if self.tree.supports_setting_file_ids():
-            from .rename_map import RenameMap
+    def iter_changes(self):
+        with self.tree.lock_write():
+            specific_files = self._stage()
             basis_tree = self.tree.basis_tree()
-            RenameMap.guess_renames(
-                basis_tree, self.tree, dry_run=False)
+            # TODO(jelmer): After Python 3.3, use 'yield from'
+            for change in self.tree.iter_changes(
+                    basis_tree, specific_files=specific_files,
+                    want_unversioned=False, require_versioned=True):
+                if change.kind[1] is None and change.versioned[1]:
+                    if change.path[0] is None:
+                        continue
+                    # "missing" path
+                    change = change.discard_new()
+                yield change
 
-        kwargs['specific_files'] = specific_files
-        revid = self.tree.commit(**kwargs)
-        if self._dirty_tracker:
-            self._dirty_tracker.mark_clean()
-        return revid
+    def commit(self, **kwargs):
+        """Create a commit.
+
+        See WorkingTree.commit() for documentation.
+        """
+        if 'specific_files' in kwargs:
+            raise NotImplementedError(self.commit)
+
+        with self.tree.lock_write():
+            specific_files = self._stage()
+
+            if self.tree.supports_setting_file_ids():
+                from .rename_map import RenameMap
+                basis_tree = self.tree.basis_tree()
+                RenameMap.guess_renames(
+                    basis_tree, self.tree, dry_run=False)
+
+            kwargs['specific_files'] = specific_files
+            revid = self.tree.commit(**kwargs)
+            if self._dirty_tracker:
+                self._dirty_tracker.mark_clean()
+            return revid

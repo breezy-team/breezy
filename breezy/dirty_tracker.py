@@ -15,22 +15,29 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Track whether a particular directory structure is dirty."""
+"""Track whether a directory structure was touched since last revision.
+"""
+
+# TODO(jelmer): Add support for ignore files
 
 import os
-from pyinotify import (
-    WatchManager,
-    IN_CREATE,
-    IN_CLOSE_WRITE,
-    IN_Q_OVERFLOW,
-    IN_DELETE,
-    IN_MOVED_TO,
-    IN_MOVED_FROM,
-    IN_ATTRIB,
-    ProcessEvent,
-    Notifier,
-    Event,
-    )
+try:
+    from pyinotify import (
+        WatchManager,
+        IN_CREATE,
+        IN_CLOSE_WRITE,
+        IN_Q_OVERFLOW,
+        IN_DELETE,
+        IN_MOVED_TO,
+        IN_MOVED_FROM,
+        IN_ATTRIB,
+        ProcessEvent,
+        Notifier,
+        Event,
+        )
+except ImportError as e:
+    from .errors import DependencyNotPresent
+    raise DependencyNotPresent(library='pyinotify', error=e)
 
 
 MASK = (
@@ -55,6 +62,7 @@ class _Process(ProcessEvent):
 
 
 class DirtyTracker(object):
+    """Track the changes to (part of) a working tree."""
 
     def __init__(self, tree, subpath='.'):
         self._tree = tree
@@ -78,17 +86,21 @@ class DirtyTracker(object):
         self._notifier.stop()
 
     def mark_clean(self):
+        """Mark the subtree as not having any changes."""
         self._process_pending()
         self._process.paths.clear()
         self._process.created.clear()
 
     def is_dirty(self):
+        """Check whether there are any changes."""
         self._process_pending()
         return bool(self._process.paths)
 
     def paths(self):
+        """Return the paths that have changed."""
         self._process_pending()
         return self._process.paths
 
     def relpaths(self):
+        """Return the paths relative to the tree root that changed."""
         return set(self._tree.relpath(p) for p in self.paths())
