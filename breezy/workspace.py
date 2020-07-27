@@ -29,6 +29,7 @@ from .clean_tree import iter_deletables
 from .errors import BzrError, DependencyNotPresent
 from .trace import warning
 from .transform import revert
+from .workingtree import WorkingTree
 
 
 class WorkspaceDirty(BzrError):
@@ -123,6 +124,11 @@ class Workspace(object):
         self.subpath = subpath
         self.use_inotify = use_inotify
         self._dirty_tracker = None
+
+    @classmethod
+    def from_path(cls, path, use_inotify=None):
+        tree, subpath = WorkingTree.open_containing(path)
+        return cls(tree, subpath, use_inotify=use_inotify)
 
     def __enter__(self):
         check_clean_tree(self.tree)

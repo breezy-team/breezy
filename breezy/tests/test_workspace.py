@@ -193,3 +193,12 @@ class WorkspaceTests(TestCaseWithTransport):
             self.assertEqual(tree.abspath('subdir/foo'), ws.abspath('foo'))
             self.assertEqual(tree.abspath('subdir') + '/', ws.abspath(''))
             self.assertEqual(tree.abspath('subdir') + '/', ws.abspath())
+
+    def test_open_containing(self):
+        tree = self.make_branch_and_tree('.', format=self._format)
+        tree.mkdir('subdir')
+        tree.commit('Add subdir')
+        ws = Workspace.from_path('subdir')
+        self.assertEqual(ws.tree.abspath('.'), tree.abspath('.'))
+        self.assertEqual(ws.subpath, 'subdir')
+        self.assertEqual(None, ws.use_inotify)
