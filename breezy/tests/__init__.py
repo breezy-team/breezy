@@ -4057,6 +4057,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_debug',
         'breezy.tests.test_diff',
         'breezy.tests.test_directory_service',
+        'breezy.tests.test_dirty_tracker',
         'breezy.tests.test_email_message',
         'breezy.tests.test_eol_filters',
         'breezy.tests.test_errors',
@@ -4181,6 +4182,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_views',
         'breezy.tests.test_whitebox',
         'breezy.tests.test_win32utils',
+        'breezy.tests.test_workspace',
         'breezy.tests.test_workingtree',
         'breezy.tests.test_wsgi',
         ]

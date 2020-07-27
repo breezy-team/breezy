@@ -93,6 +93,10 @@ Internals
    is currently implemented for GitHub, GitLab and Launchpad.
    (Jelmer Vernooĳ)
 
+ * A new ``Workspace`` interface is now available for efficiently
+   making changes to large working trees from automation.
+   (Jelmer Vernooĳ)
+
 Testing
 *******
 
