@@ -51,6 +51,20 @@ class InvalidRevisionSpec(errors.BzrError):
             self.extra = ''
 
 
+class InvalidRevisionSpec(errors.BzrError):
+
+    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
+            " %(branch_url)s%(extra)s")
+
+    def __init__(self, spec, branch, extra=None):
+        errors.BzrError.__init__(self, branch=branch, spec=spec)
+        self.branch_url = getattr(branch, 'user_url', str(branch))
+        if extra:
+            self.extra = '\n' + str(extra)
+        else:
+            self.extra = ''
+
+
 class RevisionInfo(object):
     """The results of applying a revision specification to a branch."""
 
@@ -599,7 +613,7 @@ class RevisionSpec_before(RevisionSpec):
                 self.user_spec, context_branch, 'cannot find the matching revision')
         parents = parent_map[base_revision_id]
         if len(parents) < 1:
-            raise errors.InvalidRevisionSpec(
+            raise InvalidRevisionSpec(
                 self.user_spec, context_branch, 'No parents for revision.')
         return parents[0]
 

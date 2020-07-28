@@ -267,21 +267,20 @@ class cmd_my_merge_proposals(Command):
             closed='Closed merge proposals')]
 
     def run(self, status='open', verbose=False):
-        for name, hoster_cls in _mod_propose.hosters.items():
-            for instance in hoster_cls.iter_instances():
-                for mp in instance.iter_my_proposals(status=status):
-                    self.outf.write('%s\n' % mp.url)
-                    if verbose:
-                        self.outf.write(
-                            '(Merging %s into %s)\n' %
-                            (mp.get_source_branch_url(),
-                             mp.get_target_branch_url()))
-                        description = mp.get_description()
-                        if description:
-                            self.outf.writelines(
-                                ['\t%s\n' % l
-                                 for l in description.splitlines()])
-                        self.outf.write('\n')
+        for instance in _mod_propose.iter_hoster_instances():
+            for mp in instance.iter_my_proposals(status=status):
+                self.outf.write('%s\n' % mp.url)
+                if verbose:
+                    self.outf.write(
+                        '(Merging %s into %s)\n' %
+                        (mp.get_source_branch_url(),
+                         mp.get_target_branch_url()))
+                    description = mp.get_description()
+                    if description:
+                        self.outf.writelines(
+                            ['\t%s\n' % l
+                             for l in description.splitlines()])
+                    self.outf.write('\n')
 
 
 class cmd_land_merge_proposal(Command):
@@ -294,3 +293,17 @@ class cmd_land_merge_proposal(Command):
     def run(self, url, message=None):
         proposal = _mod_propose.get_proposal_by_url(url)
         proposal.merge(commit_message=message)
+
+
+class cmd_hosters(Command):
+    __doc__ = """List all known hosting sites and user details."""
+
+    hidden = True
+
+    def run(self):
+        for instance in _mod_propose.iter_hoster_instances():
+            current_user = instance.get_current_user()
+            self.outf.write(
+                gettext('%s (%s) - user: %s (%s)\n') % (
+                    instance.name, instance.base_url,
+                    current_user, instance.get_user_url(current_user)))

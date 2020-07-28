@@ -46,6 +46,14 @@ Improvements
  * ``BzrDir.sprout`` now correctly handles the ``revision_id``
    argument when ``source_branch`` is None. (Jelmer Vernooĳ)
 
+ * Warn when loading a plugin that is broken, but support
+   ``suppress_warnings=load_plugin_failure`` to suppress it.
+   (Jelmer Vernooĳ, #1882528)
+
+ * Add a basic ``svn:`` revision spec. Currently this doesn't work,
+   but it prevents the DWIM revision specifier from treating "svn:"
+   as a URL. (Jelmer Vernooĳ)
+
 Bug Fixes
 *********
 
@@ -83,6 +91,12 @@ Internals
 
  * A new ``MergeProposal.post_comment`` function has been added, and
    is currently implemented for GitHub, GitLab and Launchpad.
+   (Jelmer Vernooĳ)
+
+ * Add a ``MemoryBranch`` implementation.  (Jelmer Vernooĳ)
+
+ * A new ``Workspace`` interface is now available for efficiently
+   making changes to large working trees from automation.
    (Jelmer Vernooĳ)
 
 Testing

@@ -97,6 +97,14 @@ class GitlabLoginError(errors.BzrError):
         self.error = error
 
 
+class GitLabConflict(errors.BzrError):
+
+    _fmt = "Conflict during operation: %(reason)s"
+
+    def __init__(self, reason):
+        errors.BzrError(self, reason=reason)
+
+
 class ForkingDisabled(errors.BzrError):
 
     _fmt = ("Forking on project %(project)s is disabled.")
@@ -356,11 +364,17 @@ class GitLab(Hoster):
             return json.loads(response.data)
         raise errors.UnexpectedHttpStatus(path, response.status)
 
-    def _fork_project(self, project_name, timeout=50, interval=5):
+    def _fork_project(self, project_name, timeout=50, interval=5, owner=None):
         path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
-        response = self._api_request('POST', path)
+        fields = {}
+        if owner is not None:
+            fields['namespace'] = owner
+        response = self._api_request('POST', path, fields=fields)
         if response.status == 404:
             raise ForkingDisabled(project_name)
+        if response.status == 409:
+            resp = json.loads(response.data)
+            raise GitLabConflict(resp.get('message'))
         if response.status not in (200, 201):
             raise errors.UnexpectedHttpStatus(path, response.status)
         # The response should be valid JSON, but let's ignore it
@@ -376,8 +390,11 @@ class GitLab(Hoster):
             project = self._get_project(project['path_with_namespace'])
         return project
 
-    def _get_logged_in_username(self):
+    def get_current_user(self):
         return self._current_user['username']
+
+    def get_user_url(self, username):
+        return urlutils.join(self.base_url, username)
 
     def _list_paged(self, path, parameters=None, per_page=None):
         if parameters is None:
@@ -478,13 +495,13 @@ class GitLab(Hoster):
                         allow_lossy=True, tag_selector=None):
         (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
-            owner = self._get_logged_in_username()
+            owner = self.get_current_user()
         if project is None:
             project = self._get_project(base_project)['path']
         try:
             target_project = self._get_project('%s/%s' % (owner, project))
         except NoSuchProject:
-            target_project = self._fork_project(base_project)
+            target_project = self._fork_project(base_project, owner=owner)
         remote_repo_url = git_url_to_bzr_url(target_project['ssh_url_to_repo'])
         remote_dir = controldir.ControlDir.open(remote_repo_url)
         try:
@@ -504,7 +521,7 @@ class GitLab(Hoster):
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         (host, base_project, base_branch_name) = parse_gitlab_branch_url(base_branch)
         if owner is None:
-            owner = self._get_logged_in_username()
+            owner = self.get_current_user()
         if project is None:
             project = self._get_project(base_project)['path']
         try:
@@ -580,11 +597,11 @@ class GitLab(Hoster):
     def iter_my_proposals(self, status='open'):
         state = mp_status_to_status(status)
         for mp in self._list_merge_requests(
-                owner=self._get_logged_in_username(), state=state):
+                owner=self.get_current_user(), state=state):
             yield GitLabMergeProposal(self, mp)
 
     def iter_my_forks(self):
-        for project in self._list_projects(owner=self._get_logged_in_username()):
+        for project in self._list_projects(owner=self.get_current_user()):
             base_project = project.get('forked_from_project')
             if not base_project:
                 continue

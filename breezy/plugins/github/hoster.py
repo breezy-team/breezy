@@ -124,6 +124,8 @@ class GitHubMergeProposal(MergeProposal):
     def __repr__(self):
         return "<%s at %r>" % (type(self).__name__, self.url)
 
+    name = 'GitHub'
+
     @property
     def url(self):
         return self._pr['html_url']
@@ -557,6 +559,12 @@ class GitHub(Hoster):
         if response.status == 200:
             return json.loads(response.text)
         raise UnexpectedHttpStatus(path, response.status)
+
+    def get_current_user(self):
+        return self.current_user['login']
+
+    def get_user_url(self, username):
+        return urlutils.join(self.base_url, username)
 
 
 class GitHubMergeProposalBuilder(MergeProposalBuilder):
