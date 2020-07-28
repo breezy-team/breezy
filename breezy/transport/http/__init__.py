@@ -1834,7 +1834,6 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
                        404,  # Not found
                        405,  # Method not allowed
                        406,  # Not Acceptable
-                       407,
                        409,  # Conflict
                        416,  # Range not satisfiable
                        422,  # Unprocessible entity
