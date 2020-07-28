@@ -79,6 +79,8 @@ Internals
    is currently implemented for GitHub, GitLab and Launchpad.
    (Jelmer Vernooĳ)
 
+ * Add a ``MemoryBranch`` implementation.  (Jelmer Vernooĳ)
+
 Testing
 *******
 
