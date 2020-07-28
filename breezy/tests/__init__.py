@@ -4102,6 +4102,7 @@ def _test_suite_testmod_names():
         'breezy.tests.test_lsprof',
         'breezy.tests.test_mail_client',
         'breezy.tests.test_matchers',
+        'breezy.tests.test_memorybranch',
         'breezy.tests.test_memorytree',
         'breezy.tests.test_merge',
         'breezy.tests.test_merge3',
