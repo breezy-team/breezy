@@ -610,11 +610,16 @@ class RemoteGitDir(GitDir):
         push_result.branch_push_result = None
         repo = self.find_repository()
         refname = self._get_selected_ref(name)
-        ref_chain, old_sha = self.get_refs_container().follow(refname)
-        if ref_chain:
-            actual_refname = ref_chain[-1]
-        else:
+        try:
+            ref_chain, old_sha = self.get_refs_container().follow(refname)
+        except NotBranchError:
             actual_refname = refname
+            old_sha = None
+        else:
+            if ref_chain:
+                actual_refname = ref_chain[-1]
+            else:
+                actual_refname = refname
         if isinstance(source, GitBranch) and lossy:
             raise errors.LossyPushToSameVCS(source.controldir, self)
         source_store = get_object_store(source.repository)
@@ -634,6 +639,7 @@ class RemoteGitDir(GitDir):
                     raise errors.NoRoundtrippingSupport(
                         source, self.open_branch(name=name, nascent_ok=True))
             if not overwrite:
+                old_sha = remote_refs.get(actual_refname)
                 if remote_divergence(old_sha, new_sha, source_store):
                     raise DivergedBranches(
                         source, self.open_branch(name, nascent_ok=True))

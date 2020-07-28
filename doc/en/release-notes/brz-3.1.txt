@@ -66,6 +66,10 @@ Bug Fixes
  * Prevent exceptions during commit when quilt is not installed but
    the tree contains quilt patches. (Jelmer Vernooĳ)
 
+ * Support pushing to Git repositories that do not yet exist,
+   such as is the case on Launchpad repositories.
+   (Jelmer Vernooĳ)
+
 Documentation
 *************
 
