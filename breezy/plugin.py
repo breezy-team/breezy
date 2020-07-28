@@ -76,7 +76,7 @@ def disable_plugins(state=None):
     state.plugins = {}
 
 
-def load_plugins(path=None, state=None):
+def load_plugins(path=None, state=None, warn_load_problems=True):
     """Load breezy plugins.
 
     The environment variable BRZ_PLUGIN_PATH is considered a delimited
@@ -103,6 +103,10 @@ def load_plugins(path=None, state=None):
     if (None, 'entrypoints') in _env_plugin_path():
         _load_plugins_from_entrypoints(state)
     state.plugins = plugins()
+    if warn_load_problems:
+        for plugin, errors in state.plugin_warnings.items():
+            for error in errors:
+                trace.warning('%s', error)
 
 
 def _load_plugins_from_entrypoints(state):

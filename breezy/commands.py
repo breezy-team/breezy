@@ -1155,7 +1155,10 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     debug.set_debug_flags_from_config()
 
     if not opt_no_plugins:
-        load_plugins()
+        from breezy import config
+        c = config.GlobalConfig()
+        warn_load_problems = not c.suppress_warning('plugin_load_failure')
+        load_plugins(warn_load_problems=warn_load_problems)
     else:
         disable_plugins()
 

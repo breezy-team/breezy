@@ -318,9 +318,19 @@ class TestBzrDirFormat(TestCaseWithTransport):
         t = self.get_transport()
         t.mkdir('.bzr')
         t.put_bytes('.bzr/branch-format', b'Corrupt line endings\r\n')
-        self.assertRaises(errors.LineEndingError,
+        self.assertRaises(bzr.LineEndingError,
                           bzrdir.BzrDirFormat.find_format,
                           _mod_transport.get_transport_from_path('.'))
+
+    def test_find_format_html(self):
+        t = self.get_transport()
+        t.mkdir('.bzr')
+        t.put_bytes(
+            '.bzr/branch-format',
+            b'<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">')
+        e = self.assertRaises(
+            NotBranchError, bzrdir.BzrDirFormat.find_format,
+            _mod_transport.get_transport_from_path('.'))
 
     def test_register_unregister_format(self):
         format = SampleBzrDirFormat()

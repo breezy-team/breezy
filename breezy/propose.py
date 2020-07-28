@@ -238,6 +238,11 @@ class Hoster(object):
     # proposals?
     supports_merge_proposal_labels = None
 
+    @property
+    def name(self):
+        """Name of this instance."""
+        return "%s at %s" % (type(self).__name__, self.base_url)
+
     # Does this hoster support suggesting a commit message in the
     # merge proposal?
     supports_merge_proposal_commit_message = None
@@ -264,7 +269,7 @@ class Hoster(object):
         :raise HosterLoginRequired: Action requires a hoster login, but none is
             known.
         """
-        raise NotImplementedError(self.publish)
+        raise NotImplementedError(self.publish_derived)
 
     def get_derived_branch(self, base_branch, name, project=None, owner=None):
         """Get a derived branch ('a fork').
@@ -352,6 +357,17 @@ class Hoster(object):
         """
         raise NotImplementedError(cls.iter_instances)
 
+    def get_current_user(self):
+        """Retrieve the name of the currently logged in user.
+
+        :return: Username or None if not logged in
+        """
+        raise NotImplementedError(self.get_current_user)
+
+    def get_user_url(self, user):
+        """Rerieve the web URL for a user."""
+        raise NotImplementedError(self.get_user_url)
+
 
 def determine_title(description):
     """Determine the title for a merge proposal based on full description."""
@@ -382,6 +398,16 @@ def get_hoster(branch, possible_hosters=None):
     raise UnsupportedHoster(branch)
 
 
+def iter_hoster_instances():
+    """Iterate over all known hoster instances.
+
+    :return: Iterator over Hoster instances
+    """
+    for name, hoster_cls in hosters.items():
+        for instance in hoster_cls.iter_instances():
+            yield instance
+
+
 def get_proposal_by_url(url):
     """Get the proposal object associated with a URL.
 
@@ -389,12 +415,11 @@ def get_proposal_by_url(url):
     :raise UnsupportedHoster: if there is no hoster that supports the URL
     :return: A `MergeProposal` object
     """
-    for name, hoster_cls in hosters.items():
-        for instance in hoster_cls.iter_instances():
-            try:
-                return instance.get_proposal_by_url(url)
-            except UnsupportedHoster:
-                pass
+    for instance in iter_hoster_instances():
+        try:
+            return instance.get_proposal_by_url(url)
+        except UnsupportedHoster:
+            pass
     raise UnsupportedHoster(url)
 
 
