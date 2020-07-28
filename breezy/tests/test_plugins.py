@@ -79,9 +79,11 @@ class BaseTestPlugins(tests.TestCaseInTempDir):
         self.log("using %r", paths)
         return paths
 
-    def load_with_paths(self, paths):
+    def load_with_paths(self, paths, warn_load_problems=True):
         self.log("loading plugins!")
-        plugin.load_plugins(self.update_module_paths(paths), state=self)
+        plugin.load_plugins(
+            self.update_module_paths(paths), state=self,
+            warn_load_problems=warn_load_problems)
 
     def create_plugin(self, name, source=None, dir='.', file_name=None):
         if source is None:
@@ -263,7 +265,7 @@ class TestLoadingPlugins(BaseTestPlugins):
         finally:
             del self.activeattributes[tempattribute]
 
-    def load_and_capture(self, name):
+    def load_and_capture(self, name, warn_load_problems=True):
         """Load plugins from '.' capturing the output.
 
         :param name: The name of the plugin.
@@ -276,7 +278,8 @@ class TestLoadingPlugins(BaseTestPlugins):
             log = logging.getLogger('brz')
             log.addHandler(handler)
             try:
-                self.load_with_paths(['.'])
+                self.load_with_paths(
+                    ['.'], warn_load_problems=warn_load_problems)
             finally:
                 # Stop capturing output
                 handler.flush()
@@ -289,18 +292,16 @@ class TestLoadingPlugins(BaseTestPlugins):
     def test_plugin_with_bad_api_version_reports(self):
         """Try loading a plugin that requests an unsupported api.
 
-        Observe that it records the problem but doesn't complain on stderr.
-
-        See https://bugs.launchpad.net/bzr/+bug/704195
+        Observe that it records the problem but doesn't complain on stderr
+        when warn_load_problems=False
         """
         name = 'wants100.py'
         with open(name, 'w') as f:
             f.write("import breezy\n"
                     "from breezy.errors import IncompatibleVersion\n"
                     "raise IncompatibleVersion(breezy, [(1, 0, 0)], (0, 0, 5))\n")
-        log = self.load_and_capture(name)
-        self.assertNotContainsRe(log,
-                                 r"It supports breezy version")
+        log = self.load_and_capture(name, warn_load_problems=False)
+        self.assertNotContainsRe(log, r"It supports breezy version")
         self.assertEqual({'wants100'}, viewkeys(self.plugin_warnings))
         self.assertContainsRe(
             self.plugin_warnings['wants100'][0],
@@ -315,6 +316,23 @@ class TestLoadingPlugins(BaseTestPlugins):
                               r"Unable to load 'brz-bad plugin-name\.' in '\.' as a plugin "
                               "because the file path isn't a valid module name; try renaming "
                               "it to 'bad_plugin_name_'\\.")
+
+    def test_plugin_with_error_suppress(self):
+        # The file name here invalid for a python module.
+        name = 'some_error.py'
+        with open(name, 'w') as f:
+            f.write('raise Exception("bad")\n')
+        log = self.load_and_capture(name, warn_load_problems=False)
+        self.assertEqual('', log)
+
+    def test_plugin_with_error(self):
+        # The file name here invalid for a python module.
+        name = 'some_error.py'
+        with open(name, 'w') as f:
+            f.write('raise Exception("bad")\n')
+        log = self.load_and_capture(name, warn_load_problems=True)
+        self.assertEqual(
+            'Unable to load plugin \'some_error\' from \'.\': bad\n', log)
 
 
 class TestPlugins(BaseTestPlugins):

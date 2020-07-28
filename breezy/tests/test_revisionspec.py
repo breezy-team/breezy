@@ -23,6 +23,7 @@ from breezy import (
     )
 from breezy.tests import TestCaseWithTransport
 from breezy.revisionspec import (
+    InvalidRevisionSpec,
     RevisionInfo,
     RevisionSpec,
     RevisionSpec_dwim,
@@ -75,7 +76,7 @@ class TestRevisionSpec(TestCaseWithTransport):
                       invalid_as_revision_id=True):
         try:
             self.get_in_history(revision_spec)
-        except errors.InvalidRevisionSpec as e:
+        except InvalidRevisionSpec as e:
             self.assertEqual(revision_spec, e.spec)
             self.assertEqual(extra, e.extra)
         else:
@@ -85,7 +86,7 @@ class TestRevisionSpec(TestCaseWithTransport):
             try:
                 spec = RevisionSpec.from_string(revision_spec)
                 spec.as_revision_id(self.tree.branch)
-            except errors.InvalidRevisionSpec as e:
+            except InvalidRevisionSpec as e:
                 self.assertEqual(revision_spec, e.spec)
                 self.assertEqual(extra, e.extra)
             else:
@@ -141,7 +142,7 @@ class RevisionSpec_bork(RevisionSpec):
         if self.spec == "bork":
             return RevisionInfo.from_revision_id(branch, b"r1")
         else:
-            raise errors.InvalidRevisionSpec(self.spec, branch)
+            raise InvalidRevisionSpec(self.spec, branch)
 
 
 class TestRevisionSpec_dwim(TestRevisionSpec):
@@ -159,7 +160,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.tree.branch.tags.set_tag('footag', b'r1')
         self.assertAsRevisionId(b'r1', 'footag')
         self.tree.branch.tags.delete_tag('footag')
-        self.assertRaises(errors.InvalidRevisionSpec,
+        self.assertRaises(InvalidRevisionSpec,
                           self.get_in_history, 'footag')
 
     def test_dwim_spec_tag_that_looks_like_revno(self):
@@ -678,7 +679,7 @@ class TestRevisionSpec_mainline(TestRevisionSpec):
         self.assertAsRevisionId(b'r2', 'mainline:1.1.1')
         self.assertAsRevisionId(b'r2', 'mainline:revid:alt_r2')
         spec = RevisionSpec.from_string('mainline:revid:alt_r22')
-        e = self.assertRaises(errors.InvalidRevisionSpec,
+        e = self.assertRaises(InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
                               "Requested revision: 'mainline:revid:alt_r22' does not exist in"
@@ -708,7 +709,7 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
 
     def test_as_revision_id_uncommitted(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/file1:3')
-        e = self.assertRaises(errors.InvalidRevisionSpec,
+        e = self.assertRaises(InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
                               r"Requested revision: \'annotate:annotate-tree/file1:3\' does not"
@@ -716,7 +717,7 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
 
     def test_non_existent_line(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/file1:4')
-        e = self.assertRaises(errors.InvalidRevisionSpec,
+        e = self.assertRaises(InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
                               r"Requested revision: \'annotate:annotate-tree/file1:4\' does not"
@@ -724,7 +725,7 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
 
     def test_invalid_line(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/file1:q')
-        e = self.assertRaises(errors.InvalidRevisionSpec,
+        e = self.assertRaises(InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
                               r"Requested revision: \'annotate:annotate-tree/file1:q\' does not"
@@ -732,7 +733,7 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
 
     def test_no_such_file(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/file2:1')
-        e = self.assertRaises(errors.InvalidRevisionSpec,
+        e = self.assertRaises(InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
                               r"Requested revision: \'annotate:annotate-tree/file2:1\' does not"
@@ -740,7 +741,7 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
 
     def test_no_such_file_with_colon(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/fi:le2:1')
-        e = self.assertRaises(errors.InvalidRevisionSpec,
+        e = self.assertRaises(InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
         self.assertContainsRe(str(e),
                               r"Requested revision: \'annotate:annotate-tree/fi:le2:1\' does not"

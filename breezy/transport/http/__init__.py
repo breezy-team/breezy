@@ -2120,11 +2120,9 @@ class HttpTransport(ConnectedTransport):
                     abspath, range_header,
                     'Server return code %d' % response.status)
             else:
-                raise errors.InvalidHttpResponse(
-                    abspath, 'Unexpected status %d' % response.status)
+                raise errors.BadHttpRequest(abspath, response.reason)
         elif response.status not in (200, 206):
-            raise errors.InvalidHttpResponse(
-                abspath, 'Unexpected status %d' % response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status)
 
         data = handle_response(
             abspath, response.status, response.getheader, response)
@@ -2355,8 +2353,7 @@ class HttpTransport(ConnectedTransport):
             'POST', abspath, body=body_bytes,
             headers={'Content-Type': 'application/octet-stream'})
         if response.status not in (200, 403):
-            raise errors.InvalidHttpResponse(
-                abspath, 'Unexpected status %d' % response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status)
         code = response.status
         data = handle_response(
             abspath, code, response.getheader, response)
@@ -2370,8 +2367,7 @@ class HttpTransport(ConnectedTransport):
         abspath = self._remote_path(relpath)
         response = self.request('HEAD', abspath)
         if response.status not in (200, 404):
-            raise errors.InvalidHttpResponse(
-                abspath, 'Unexpected status %d' % response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status)
 
         return response
 
@@ -2637,9 +2633,8 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
             t = self._http_transport_ref()
             code, body_filelike = t._post(bytes)
             if code != 200:
-                raise errors.InvalidHttpResponse(
-                    t._remote_path('.bzr/smart'),
-                    'Expected 200 response code, got %r' % (code,))
+                raise errors.UnexpectedHttpStatus(
+                    t._remote_path('.bzr/smart'), code)
         except (errors.InvalidHttpResponse, errors.ConnectionReset) as e:
             raise errors.SmartProtocolError(str(e))
         return body_filelike

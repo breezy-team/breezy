@@ -186,9 +186,11 @@ class RemoteGitProber(Prober):
         resp = transport.request('GET', url, headers=headers)
         if resp.status in (404, 405):
             raise brz_errors.NotBranchError(transport.base)
+        elif resp.status == 400 and resp.reason == 'no such method: info':
+            # hgweb :(
+            raise brz_errors.NotBranchError(transport.base)
         elif resp.status != 200:
-            raise brz_errors.InvalidHttpResponse(
-                url, 'Unable to handle http code %d' % resp.status)
+            raise brz_errors.UnexpectedHttpStatus(url, resp.status)
 
         ct = resp.getheader("Content-Type")
         if ct and ct.startswith("application/x-git"):

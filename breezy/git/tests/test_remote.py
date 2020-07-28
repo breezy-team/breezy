@@ -145,6 +145,18 @@ Email support@github.com for help
 """)
         self.assertIsInstance(e, NotBranchError)
 
+    def test_invalid_git_error(self):
+        self.assertEqual(
+            PermissionDenied(
+                'url',
+                'GitLab: You are not allowed to push code to protected '
+                'branches on this project.'),
+            parse_git_error(
+                'url',
+                RemoteGitError(
+                    'GitLab: You are not allowed to push code to '
+                    'protected branches on this project.')))
+
 
 class ParseHangupTests(TestCase):
 

@@ -214,6 +214,10 @@ def parse_git_error(url, message):
     if re.match('(.+) is not a valid repository name',
                 message.splitlines()[0]):
         return NotBranchError(url, message)
+    if message == (
+            'GitLab: You are not allowed to push code to protected branches '
+            'on this project.'):
+        return PermissionDenied(url, message)
     m = re.match(r'Permission to ([^ ]+) denied to ([^ ]+)\.', message)
     if m:
         return PermissionDenied(m.group(1), 'denied to %s' % m.group(2))
