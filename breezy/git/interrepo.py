@@ -249,7 +249,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 # broken symref?
                 continue
             revid = None
-            if not v.startswith(SYMREF):
+            if v and not v.startswith(SYMREF):
                 try:
                     for (kind, type_data) in self.source_store.lookup_git_sha(
                             v):
@@ -315,8 +315,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                         try:
                             self.mapping.revision_id_bzr_to_foreign(old_revid)
                         except InvalidRevisionId:
-                            refname = self.mapping.revid_as_refname(old_revid)
-                            self.target_refs[refname] = git_sha
+                            pass
                     revidmap[old_revid] = (git_sha, new_revid)
                 self.target_store.add_objects(object_generator)
                 return revidmap
