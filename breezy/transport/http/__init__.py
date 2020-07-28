@@ -1830,10 +1830,10 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
                        204,
                        206,  # Partial content
                        400,
-                       401,
                        403,
                        404,  # Not found
                        405,  # Method not allowed
+                       406,  # Not Acceptable
                        407,
                        409,  # Conflict
                        416,  # Range not satisfiable

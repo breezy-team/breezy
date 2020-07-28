@@ -147,6 +147,9 @@ class SmartHgProber(controldir.Prober):
             'GET', url, headers={'Accept': 'application/mercurial-0.1'})
         if resp.status == 404:
             return False
+        if resp.status == 406:
+            # The server told us that it can't handle our Accept header.
+            return False
         ct = resp.getheader("Content-Type")
         if ct is None:
             return False
