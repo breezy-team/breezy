@@ -32,8 +32,7 @@ from ... import version_info  # noqa: F401
 class MercurialUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Mercurial branches are not yet supported. '
-            'To convert Mercurial branches to Bazaar branches or vice versa, '
-            'use the fastimport format. ')
+            'To interoperate wwth Mercurial, use the fastimport format. ')
 
 
 class LocalHgDirFormat(controldir.ControlDirFormat):

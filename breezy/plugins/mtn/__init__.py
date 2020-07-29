@@ -32,8 +32,8 @@ from ... import (
 class MonotoneUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Monotone branches are not yet supported. '
-            'To convert monotone branches to Bazaar branches or vice versa, '
-            'use bzr-fastimport. See http://bazaar-vcs.org/BzrMigration.')
+            'To interoperate with Monotone branches, '
+            'use fastimport.')
 
 
 class MonotoneDirFormat(controldir.ControlDirFormat):

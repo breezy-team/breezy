@@ -31,8 +31,7 @@ from breezy import (
 class DarcsUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Darcs branches are not yet supported. '
-            'To convert darcs branches to Bazaar branches or vice versa, '
-            'use bzr-fastimport. See http://bazaar-vcs.org/BzrMigration.')
+            'To interoperate with darcs branches, use fastimport.')
 
 
 class DarcsDirFormat(controldir.ControlDirFormat):
