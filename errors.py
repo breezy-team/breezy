@@ -30,14 +30,6 @@ class DebianError(BzrError):
         BzrError.__init__(self, cause=cause)
 
 
-class MissingUpstreamTarball(BzrError):
-    _fmt = ("Unable to find the needed upstream tarball for package "
-            "%(package)s, version %(version)s.")
-
-    def __init__(self, package, version):
-        BzrError.__init__(self, package=package, version=version)
-
-
 class UnparseableChangelog(BzrError):
     _fmt = "There was an error parsing the changelog: %(error)s"
 
@@ -117,14 +109,6 @@ class UnknownVersion(BzrError):
 
 class VersionNotSpecified(BzrError):
     _fmt = "You did not specify a package version."
-
-
-class PackageVersionNotPresent(BzrError):
-    _fmt = "%(package)s %(version)s was not found in %(upstream)s."
-
-    def __init__(self, package, version, upstream):
-        BzrError.__init__(self, package=package, version=version,
-                          upstream=upstream)
 
 
 class UnsupportedRepackFormat(BzrError):

@@ -50,10 +50,6 @@ from ....tests.features import (
 from ..config import (
     DebBuildConfig,
     )
-from ..errors import (
-    MissingUpstreamTarball,
-    PackageVersionNotPresent,
-    )
 
 from . import (
     LzmaFeature,
@@ -62,13 +58,13 @@ from . import (
     TestCaseWithTransport,
     )
 from ..upstream import (
+    MissingUpstreamTarball,
+    PackageVersionNotPresent,
     AptSource,
     StackedUpstreamSource,
     TarfileSource,
     UpstreamProvider,
     UpstreamSource,
-    UScanSource,
-    UScanError,
     extract_tarball_version,
     gather_orig_files,
     new_tarball_name,
@@ -94,6 +90,10 @@ from ..upstream.pristinetar import (
     upstream_tag_version,
     GitPristineTarSource,
     BzrPristineTarSource,
+    )
+from ..upstream.uscan import (
+    UScanSource,
+    UScanError,
     )
 
 

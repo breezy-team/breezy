@@ -52,10 +52,12 @@ except ImportError:  # Breezy < 3.2
 
 from ..errors import (
     MultipleUpstreamTarballsNotSupported,
-    PackageVersionNotPresent,
     )
 from .. import gettext
-from . import UpstreamSource
+from . import (
+    UpstreamSource,
+    PackageVersionNotPresent,
+    )
 from ....export import (
     export,
     )

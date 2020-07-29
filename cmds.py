@@ -192,6 +192,8 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
     from .upstream import (
         AptSource,
         SelfSplitSource,
+        )
+    from .upstream.uscan import (
         UScanSource,
         )
     from .upstream.pristinetar import (
@@ -564,8 +566,10 @@ class cmd_get_orig_source(Command):
     def run(self, directory='.', version=None):
         from .upstream import (
             AptSource,
-            UScanSource,
             UpstreamProvider,
+            )
+        from .upstream.uscan import (
+            UScanSource,
             )
         from .upstream.pristinetar import (
             get_pristine_tar_source,
@@ -719,7 +723,6 @@ class cmd_merge_upstream(Command):
             dist_command: Optional[str] = None):
         from debian.changelog import Version
 
-        from .errors import PackageVersionNotPresent
         from .hooks import run_hook
         from .merge_upstream import (
             do_merge,
@@ -727,12 +730,15 @@ class cmd_merge_upstream(Command):
             PreviousVersionTagMissing,
             )
         from .upstream import (
+            PackageVersionNotPresent,
             TarfileSource,
-            UScanSource,
             )
         from .upstream.branch import (
             UpstreamBranchSource,
             run_dist_command,
+            )
+        from .upstream.uscan import (
+            UScanSource,
             )
         from .util import (
             guess_build_type,
@@ -1216,8 +1222,10 @@ class cmd_builddeb_do(Command):
             )
         from .upstream import (
             AptSource,
-            UScanSource,
             UpstreamProvider,
+            )
+        from .upstream.uscan import (
+            UScanSource,
             )
         from .upstream.pristinetar import (
             get_pristine_tar_source,

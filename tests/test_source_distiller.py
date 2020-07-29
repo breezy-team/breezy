@@ -27,7 +27,7 @@ from ....errors import (
     FileExists,
     )
 
-from ..errors import MissingUpstreamTarball
+from ..upstream import MissingUpstreamTarball
 from ..source_distiller import (
     FullSourceDistiller,
     MergeModeDistiller,

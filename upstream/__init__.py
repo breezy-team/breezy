@@ -34,10 +34,6 @@ from ....trace import (
     warning,
     )
 
-from ..errors import (
-    MissingUpstreamTarball,
-    PackageVersionNotPresent,
-    )
 from ..repack_tarball import (
     get_filetype,
     repack_tarball,
@@ -46,6 +42,22 @@ from ..util import (
     component_from_orig_tarball,
     tarball_name,
     )
+
+
+class PackageVersionNotPresent(BzrError):
+    _fmt = "%(package)s %(version)s was not found in %(upstream)s."
+
+    def __init__(self, package, version, upstream):
+        BzrError.__init__(self, package=package, version=version,
+                          upstream=upstream)
+
+
+class MissingUpstreamTarball(BzrError):
+    _fmt = ("Unable to find the needed upstream tarball for package "
+            "%(package)s, version %(version)s.")
+
+    def __init__(self, package, version):
+        BzrError.__init__(self, package=package, version=version)
 
 
 def new_tarball_name(package, version, old_name):
@@ -171,130 +183,6 @@ class AptSource(UpstreamSource):
         if proc.returncode != 0:
             return False
         return True
-
-
-class UScanError(BzrError):
-
-    _fmt = "UScan failed to run: %(errors)s."
-
-    def __init__(self, errors):
-        self.errors = errors
-
-
-class UScanSource(UpstreamSource):
-    """Upstream source that uses uscan."""
-
-    def __init__(self, tree, subpath=None, top_level=False):
-        self.tree = tree
-        self.subpath = subpath
-        self.top_level = top_level
-
-    def _export_file(self, name, directory):
-        if self.top_level:
-            file = name
-        else:
-            file = 'debian/' + name
-        if self.subpath:
-            file = osutils.pathjoin(self.subpath, file)
-        if not self.tree.has_filename(file):
-            raise NoSuchFile(file, self.tree)
-        output_path = os.path.join(directory, 'debian', name)
-        output_dir = os.path.dirname(output_path)
-        if not os.path.isdir(output_dir):
-            os.makedirs(output_dir)
-        with open(output_path, 'wb') as f:
-            f.write(self.tree.get_file_text(file))
-        return output_path
-
-    @staticmethod
-    def _run_dehs_uscan(args, cwd):
-        p = subprocess.Popen(
-            ["uscan", "--dehs"] + args,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
-        (stdout, stderr) = p.communicate()
-        if b'</dehs>' not in stdout:
-            error = stderr.decode()
-            if error.startswith('uscan error '):
-                error = error[len('uscan error '):]
-            raise UScanError(error)
-        sys.stderr.write(stderr.decode())
-        return stdout, p.returncode
-
-    @staticmethod
-    def _xml_report_extract_warnings(text):
-        from xml.sax.saxutils import unescape
-        for m in re.finditer(b"<warnings>(.*)</warnings>", text):
-            warning(unescape(m.group(1).decode()))
-
-    @staticmethod
-    def _xml_report_extract_errors(text):
-        from xml.sax.saxutils import unescape
-        lines = [unescape(m.group(1).decode())
-                 for m in re.finditer(b"<errors>(.*)</errors>", text)]
-        for line in lines:
-            if not line.startswith('uscan warn: '):
-                raise UScanError(line)
-
-        for line in lines:
-            raise UScanError(line)
-
-    @staticmethod
-    def _xml_report_extract_upstream_version(text):
-        UScanSource._xml_report_extract_warnings(text)
-        UScanSource._xml_report_extract_errors(text)
-        from xml.sax.saxutils import unescape
-        # uscan --dehs's output isn't well-formed XML, so let's fall back to
-        # regexes instead..
-        m = re.search(b'<upstream-version>(.*)</upstream-version>', text)
-        if not m:
-            return None
-        return unescape(m.group(1).decode())
-
-    @staticmethod
-    def _xml_report_extract_target_paths(text):
-        UScanSource._xml_report_extract_warnings(text)
-        UScanSource._xml_report_extract_errors(text)
-        from xml.sax.saxutils import unescape
-        return [
-            unescape(m.group(1).decode())
-            for m in re.finditer(b'<target-path>(.*)</target-path>', text)]
-
-    def get_latest_version(self, package, current_version):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            try:
-                watch_tempfilename = self._export_file('watch', tmpdir)
-            except NoSuchFile:
-                note("No watch file to use to check latest upstream release.")
-                return None
-            args = ["--watchfile=%s" % watch_tempfilename,
-                    "--package=%s" % package, "--report",
-                    "--no-download", "--upstream-version=%s" % current_version]
-            text, retcode = self._run_dehs_uscan(args, cwd=tmpdir)
-        return self._xml_report_extract_upstream_version(text)
-
-    def get_recent_versions(self, package, since_version=None):
-        raise NotImplementedError(self.get_recent_versions)
-
-    def fetch_tarballs(self, package, version, target_dir, components=None):
-        note("Using uscan to look for the upstream tarball.")
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Just export all of debian/, since e.g. uupdate needs more of it.
-            export(self.tree, os.path.join(tmpdir, 'debian'), format='dir',
-                   subdir='debian')
-            args = ["--force-download", "--rename",
-                    "--check-dirname-level=0",
-                    "--download", "--destdir=%s" % target_dir,
-                    "--download-version=%s" % version]
-            text, r = self._run_dehs_uscan(args, cwd=tmpdir)
-            orig_files = self._xml_report_extract_target_paths(text)
-            if not orig_files:
-                note("uscan could not find the needed tarball.")
-                raise PackageVersionNotPresent(package, version, self)
-        if not orig_files:
-            note("the expected files generated by uscan could not be found in"
-                 "%s.", target_dir)
-            raise PackageVersionNotPresent(package, version, self)
-        return orig_files
 
 
 class SelfSplitSource(UpstreamSource):

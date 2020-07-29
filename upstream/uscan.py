@@ -1,0 +1,155 @@
+#    upstream.py -- Providers of upstream source
+#    Copyright (C) 2009 Canonical Ltd.
+#    Copyright (C) 2009-2020 Jelmer Vernooij <jelmer@debian.org>
+#
+#    This file is part of brz-debian.
+#
+#    brz-debian is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    brz-debian is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with brz-debian; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+from ....errors import BzrError, NoSuchFile
+from .... import osutils
+from ....export import export
+from ....trace import note, warning
+from . import UpstreamSource, PackageVersionNotPresent
+
+
+class UScanError(BzrError):
+
+    _fmt = "UScan failed to run: %(errors)s."
+
+    def __init__(self, errors):
+        self.errors = errors
+
+
+class UScanSource(UpstreamSource):
+    """Upstream source that uses uscan."""
+
+    def __init__(self, tree, subpath=None, top_level=False):
+        self.tree = tree
+        self.subpath = subpath
+        self.top_level = top_level
+
+    def _export_file(self, name, directory):
+        if self.top_level:
+            file = name
+        else:
+            file = 'debian/' + name
+        if self.subpath:
+            file = osutils.pathjoin(self.subpath, file)
+        if not self.tree.has_filename(file):
+            raise NoSuchFile(file, self.tree)
+        output_path = os.path.join(directory, 'debian', name)
+        output_dir = os.path.dirname(output_path)
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+        with open(output_path, 'wb') as f:
+            f.write(self.tree.get_file_text(file))
+        return output_path
+
+    @staticmethod
+    def _run_dehs_uscan(args, cwd):
+        p = subprocess.Popen(
+            ["uscan", "--dehs"] + args,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
+        (stdout, stderr) = p.communicate()
+        if b'</dehs>' not in stdout:
+            error = stderr.decode()
+            if error.startswith('uscan error '):
+                error = error[len('uscan error '):]
+            raise UScanError(error)
+        sys.stderr.write(stderr.decode())
+        return stdout, p.returncode
+
+    @staticmethod
+    def _xml_report_extract_warnings(text):
+        from xml.sax.saxutils import unescape
+        for m in re.finditer(b"<warnings>(.*)</warnings>", text):
+            warning(unescape(m.group(1).decode()))
+
+    @staticmethod
+    def _xml_report_extract_errors(text):
+        from xml.sax.saxutils import unescape
+        lines = [unescape(m.group(1).decode())
+                 for m in re.finditer(b"<errors>(.*)</errors>", text)]
+        for line in lines:
+            if not line.startswith('uscan warn: '):
+                raise UScanError(line)
+
+        for line in lines:
+            raise UScanError(line)
+
+    @staticmethod
+    def _xml_report_extract_upstream_version(text):
+        UScanSource._xml_report_extract_warnings(text)
+        UScanSource._xml_report_extract_errors(text)
+        from xml.sax.saxutils import unescape
+        # uscan --dehs's output isn't well-formed XML, so let's fall back to
+        # regexes instead..
+        m = re.search(b'<upstream-version>(.*)</upstream-version>', text)
+        if not m:
+            return None
+        return unescape(m.group(1).decode())
+
+    @staticmethod
+    def _xml_report_extract_target_paths(text):
+        UScanSource._xml_report_extract_warnings(text)
+        UScanSource._xml_report_extract_errors(text)
+        from xml.sax.saxutils import unescape
+        return [
+            unescape(m.group(1).decode())
+            for m in re.finditer(b'<target-path>(.*)</target-path>', text)]
+
+    def get_latest_version(self, package, current_version):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            try:
+                watch_tempfilename = self._export_file('watch', tmpdir)
+            except NoSuchFile:
+                note("No watch file to use to check latest upstream release.")
+                return None
+            args = ["--watchfile=%s" % watch_tempfilename,
+                    "--package=%s" % package, "--report",
+                    "--no-download", "--upstream-version=%s" % current_version]
+            text, retcode = self._run_dehs_uscan(args, cwd=tmpdir)
+        return self._xml_report_extract_upstream_version(text)
+
+    def get_recent_versions(self, package, since_version=None):
+        raise NotImplementedError(self.get_recent_versions)
+
+    def fetch_tarballs(self, package, version, target_dir, components=None):
+        note("Using uscan to look for the upstream tarball.")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Just export all of debian/, since e.g. uupdate needs more of it.
+            export(self.tree, os.path.join(tmpdir, 'debian'), format='dir',
+                   subdir='debian')
+            args = ["--force-download", "--rename",
+                    "--check-dirname-level=0",
+                    "--download", "--destdir=%s" % target_dir,
+                    "--download-version=%s" % version]
+            text, r = self._run_dehs_uscan(args, cwd=tmpdir)
+            orig_files = self._xml_report_extract_target_paths(text)
+            if not orig_files:
+                note("uscan could not find the needed tarball.")
+                raise PackageVersionNotPresent(package, version, self)
+        if not orig_files:
+            note("the expected files generated by uscan could not be found in"
+                 "%s.", target_dir)
+            raise PackageVersionNotPresent(package, version, self)
+        return orig_files

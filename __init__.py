@@ -219,7 +219,7 @@ def pre_merge_fix_ancestry(merger):
     other_config = debuild_config(merger.other_tree, '')
     if not (this_config.build_type == BUILD_TYPE_NATIVE or
             other_config.build_type == BUILD_TYPE_NATIVE):
-        from .errors import PackageVersionNotPresent
+        from .upstream import PackageVersionNotPresent
         try:
             fix_ancestry_as_needed(
                 merger.this_tree, merger.other_branch,

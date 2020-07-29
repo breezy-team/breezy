@@ -35,10 +35,10 @@ from tarfile import TarFile
 import tempfile
 
 from .... import debug
-from ..errors import (
+from . import (
     PackageVersionNotPresent,
+    UpstreamSource,
     )
-from ..upstream import UpstreamSource
 from ....export import export
 from ..util import (
     subprocess_setup,

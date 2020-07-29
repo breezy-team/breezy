@@ -62,7 +62,6 @@ from ...transport import (
 from .bzrtools_import import import_dir
 from .errors import (
     MultipleUpstreamTarballsNotSupported,
-    PackageVersionNotPresent,
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
     )
@@ -74,6 +73,9 @@ from .util import (
     open_file_via_transport,
     open_transport,
     safe_decode,
+    )
+from .upstream import (
+    PackageVersionNotPresent,
     )
 from .upstream.pristinetar import (
     get_pristine_tar_source,
