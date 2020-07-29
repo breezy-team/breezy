@@ -288,11 +288,13 @@ def suite_to_distribution(suite):
         return "debian"
     if suite in all_ubuntu:
         return "ubuntu"
+    if suite == 'kali' or suite.startswith('kali-'):
+        return "kali"
     return None
 
 
 def lookup_distribution(distribution_or_suite):
-    """Get the distribution name based on a distribtion or suite name.
+    """Get the distribution name based on a distribution or suite name.
 
     :param distribution_or_suite: a string that is either the name of
         a distribution or a suite.

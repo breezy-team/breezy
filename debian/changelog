@@ -1,6 +1,7 @@
 breezy-debian (2.8.41) UNRELEASED; urgency=medium
 
   * Fix pristine-tar checkouts for git repositories.
+  * Add support for kali linux.
 
  -- Jelmer Vernooĳ <jelmer@debian.org>  Sun, 26 Jul 2020 17:16:58 +0000
 

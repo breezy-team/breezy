@@ -317,6 +317,9 @@ class SuiteToDistributionTests(TestCase):
     def lookup_debian(self, target):
         self.assertEqual(self._do_lookup(target), 'debian')
 
+    def lookup_kali(self, target):
+        self.assertEqual(self._do_lookup(target), 'kali')
+
     def lookup_other(self, target):
         self.assertEqual(self._do_lookup(target), None)
 
@@ -332,6 +335,11 @@ class SuiteToDistributionTests(TestCase):
         self.lookup_debian('stable-security')
         self.lookup_debian('testing-proposed-updates')
         self.lookup_debian('etch-backports')
+
+    def test_lookup_kali(self):
+        self.lookup_kali('kali-dev')
+        self.lookup_kali('kali-rolling')
+        self.lookup_kali('kali')
 
     def test_lookup_other(self):
         self.lookup_other('not-a-target')
