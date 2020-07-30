@@ -130,6 +130,7 @@ def load_tests(loader, basic_tests, pattern):
             'test_revspec',
             'test_source_distiller',
             'test_upstream',
+            'test_upstream_uscan',
             'test_util',
             'test_tagging',
             ]
