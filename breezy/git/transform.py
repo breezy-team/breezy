@@ -39,6 +39,7 @@ from ..transform import (
     ReusingTransform,
     MalformedTransform,
     )
+from ..tree import TreeChange
 
 from ..bzr import inventory
 from ..bzr.transform import TransformPreview as GitTransformPreview

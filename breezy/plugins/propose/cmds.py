@@ -306,7 +306,12 @@ class cmd_hosters(Command):
     def run(self):
         for instance in _mod_propose.iter_hoster_instances():
             current_user = instance.get_current_user()
-            self.outf.write(
-                gettext('%s (%s) - user: %s (%s)\n') % (
-                    instance.name, instance.base_url,
-                    current_user, instance.get_user_url(current_user)))
+            if current_user is not None:
+                self.outf.write(
+                    gettext('%s (%s) - user: %s (%s)\n') % (
+                        instance.name, instance.base_url,
+                        current_user, instance.get_user_url(current_user)))
+            else:
+                self.outf.write(
+                    gettext('%s (%s) - not logged in\n') % (
+                        instance.name, instance.base_url))

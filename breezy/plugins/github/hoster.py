@@ -566,7 +566,9 @@ class GitHub(Hoster):
         raise UnexpectedHttpStatus(path, response.status)
 
     def get_current_user(self):
-        return self.current_user['login']
+        if self._token is not None:
+            return self.current_user['login']
+        return None
 
     def get_user_url(self, username):
         return urlutils.join(self.base_url, username)
