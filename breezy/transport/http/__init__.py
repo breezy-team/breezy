@@ -1865,9 +1865,9 @@ class HTTPDefaultErrorHandler(urllib_request.HTTPDefaultErrorHandler):
                 'Server refuses to fulfill the request (403 Forbidden)'
                 ' for %s' % req.get_full_url())
         else:
-            raise errors.InvalidHttpResponse(req.get_full_url(),
-                                             'Unable to handle http code %d: %s'
-                                             % (code, msg))
+            raise errors.UnexpectedHttpStatus(
+                req.get_full_url(), code,
+                'Unable to handle http code: %s' % msg)
 
 
 class Opener(object):

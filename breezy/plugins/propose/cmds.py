@@ -37,7 +37,7 @@ from ...option import (
     RegistryOption,
     )
 from ...sixish import text_type
-from ...trace import note
+from ...trace import note, warning
 from ... import (
     propose as _mod_propose,
     )
@@ -271,19 +271,22 @@ class cmd_my_merge_proposals(Command):
 
     def run(self, status='open', verbose=False):
         for instance in _mod_propose.iter_hoster_instances():
-            for mp in instance.iter_my_proposals(status=status):
-                self.outf.write('%s\n' % mp.url)
-                if verbose:
-                    self.outf.write(
-                        '(Merging %s into %s)\n' %
-                        (mp.get_source_branch_url(),
-                         mp.get_target_branch_url()))
-                    description = mp.get_description()
-                    if description:
-                        self.outf.writelines(
-                            ['\t%s\n' % l
-                             for l in description.splitlines()])
-                    self.outf.write('\n')
+            try:
+                for mp in instance.iter_my_proposals(status=status):
+                    self.outf.write('%s\n' % mp.url)
+                    if verbose:
+                        self.outf.write(
+                            '(Merging %s into %s)\n' %
+                            (mp.get_source_branch_url(),
+                             mp.get_target_branch_url()))
+                        description = mp.get_description()
+                        if description:
+                            self.outf.writelines(
+                                ['\t%s\n' % l
+                                 for l in description.splitlines()])
+                        self.outf.write('\n')
+            except _mod_propose.HosterLoginRequired as e:
+                warning('Skipping %r, login required.', instance)
 
 
 class cmd_land_merge_proposal(Command):

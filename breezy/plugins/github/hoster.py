@@ -280,9 +280,15 @@ class GitHub(Hoster):
             'Accept': 'application/vnd.github.v3+json'}
         if self._token:
             headers['Authorization'] = 'token %s' % self._token
-        response = self.transport.request(
-            method, urlutils.join(self.transport.base, path),
-            headers=headers, body=body, retries=3)
+        try:
+            response = self.transport.request(
+                method, urlutils.join(self.transport.base, path),
+                headers=headers, body=body, retries=3)
+        except UnexpectedHttpStatus as e:
+            if e.code == 401:
+                raise GitHubLoginRequired(self)
+            else:
+                raise
         if response.status == 401:
             raise GitHubLoginRequired(self)
         return response
