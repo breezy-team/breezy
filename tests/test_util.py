@@ -28,6 +28,7 @@ import shutil
 import tarfile
 
 from debian.changelog import Changelog, Version
+from debmutate.changelog import strip_changelog_message
 
 from ..config import (
     BUILD_TYPE_MERGE,
