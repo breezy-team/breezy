@@ -40,6 +40,14 @@ class UScanError(BzrError):
         self.errors = errors
 
 
+class NoWatchFile(BzrError):
+
+    _fmt = "Tree %(tree)r has no watch file %(path)s."
+
+    def __init__(self, tree, path):
+        BzrError.__init__(self, tree=tree, path=path)
+
+
 class UScanSource(UpstreamSource):
     """Upstream source that uses uscan."""
 
@@ -47,6 +55,18 @@ class UScanSource(UpstreamSource):
         self.tree = tree
         self.subpath = subpath
         self.top_level = top_level
+
+    @classmethod
+    def from_tree(cls, tree, subpath, top_level=False):
+        if top_level:
+            file = 'watch'
+        else:
+            file = 'debian/watch'
+        if subpath:
+            file = osutils.pathjoin(subpath, file)
+        if not tree.has_filename(file):
+            raise NoWatchFile(tree, file)
+        return cls(tree, subpath=subpath, top_level=top_level)
 
     def _export_file(self, name, directory):
         if self.top_level:

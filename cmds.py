@@ -195,6 +195,7 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
         )
     from .upstream.uscan import (
         UScanSource,
+        NoWatchFile,
         )
     from .upstream.pristinetar import (
         get_pristine_tar_source,
@@ -214,7 +215,10 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
         yield LazyUpstreamBranchSource(
             config.upstream_branch,
             other_repository=local_tree.branch.repository)
-    yield UScanSource(local_tree, subpath, top_level)
+    try:
+        yield UScanSource.from_tree(local_tree, subpath, top_level)
+    except NoWatchFile:
+        pass
 
     if build_type == BUILD_TYPE_SPLIT:
         yield SelfSplitSource(local_tree)
@@ -570,6 +574,7 @@ class cmd_get_orig_source(Command):
             )
         from .upstream.uscan import (
             UScanSource,
+            NoWatchFile,
             )
         from .upstream.pristinetar import (
             get_pristine_tar_source,
@@ -588,12 +593,20 @@ class cmd_get_orig_source(Command):
         if version is None:
             version = changelog.version.upstream_version
 
+        upstream_sources = [
+            get_pristine_tar_source(tree, tree.branch),
+            AptSource()]
+        try:
+            uscan_source = UScanSource.from_tree(tree, subpath, larstiq)
+        except NoWatchFile:
+            pass
+        else:
+            upstream_sources.append(uscan_source)
+
         upstream_provider = UpstreamProvider(
             changelog.package,
             str(version), orig_dir,
-            [get_pristine_tar_source(tree, tree.branch),
-             AptSource(),
-             UScanSource(tree, larstiq)])
+            upstream_sources)
 
         result = upstream_provider.provide(orig_dir)
         for tar, component in result:
@@ -832,8 +845,13 @@ class cmd_merge_upstream(Command):
                             "--snapshot requires an upstream branch source"))
                     primary_upstream_source = upstream_branch_source
                 else:
-                    primary_upstream_source = UScanSource(
-                        tree, subpath, top_level)
+                    try:
+                        primary_upstream_source = UScanSource(
+                            tree, subpath, top_level)
+                    except NoWatchFile:
+                        raise BzrCommandError(gettext(
+                            "no upstream source location known; "
+                            "add watch file?"))
 
             if revision is not None:
                 if upstream_branch is None:
@@ -1226,6 +1244,7 @@ class cmd_builddeb_do(Command):
             )
         from .upstream.uscan import (
             UScanSource,
+            NoWatchFile,
             )
         from .upstream.pristinetar import (
             get_pristine_tar_source,
@@ -1276,7 +1295,7 @@ class cmd_builddeb_do(Command):
             changelog.package, changelog.version.upstream_version, orig_dir,
             [get_pristine_tar_source(t, t.branch),
              AptSource(),
-             UScanSource(t, top_level)])
+             UScanSource(t, subpath, top_level)])
 
         distiller = MergeModeDistiller(
                 t, subpath, upstream_provider, top_level=top_level)
