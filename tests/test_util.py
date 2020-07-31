@@ -65,7 +65,6 @@ from ..util import (
     get_parent_dir,
     recursive_copy,
     safe_decode,
-    strip_changelog_message,
     suite_to_distribution,
     tarball_name,
     tree_contains_upstream_source,
@@ -241,44 +240,6 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         os.mkdir('debian')
         self.write_changelog('debian/changelog')
         self.assertRaises(AddChangelogError, find_changelog, tree, merge=False)
-
-
-class StripChangelogMessageTests(TestCase):
-
-    def test_None(self):
-        self.assertEqual(strip_changelog_message(None), None)
-
-    def test_no_changes(self):
-        self.assertEqual(strip_changelog_message([]), [])
-
-    def test_empty_changes(self):
-        self.assertEqual(strip_changelog_message(['']), [])
-
-    def test_removes_leading_whitespace(self):
-        self.assertEqual(strip_changelog_message(
-                    ['foo', '  bar', '\tbaz', '   bang']),
-                    ['foo', 'bar', 'baz', ' bang'])
-
-    def test_removes_star_if_one(self):
-        self.assertEqual(strip_changelog_message(['  * foo']), ['foo'])
-        self.assertEqual(strip_changelog_message(['\t* foo']), ['foo'])
-        self.assertEqual(strip_changelog_message(['  + foo']), ['foo'])
-        self.assertEqual(strip_changelog_message(['  - foo']), ['foo'])
-        self.assertEqual(strip_changelog_message(['  *  foo']), ['foo'])
-        self.assertEqual(
-            strip_changelog_message(['  *  foo', '     bar']), ['foo', 'bar'])
-
-    def test_leaves_start_if_multiple(self):
-        self.assertEqual(
-            strip_changelog_message(['  * foo', '  * bar']),
-            ['* foo', '* bar'])
-        self.assertEqual(
-            strip_changelog_message(['  * foo', '  + bar']),
-            ['* foo', '+ bar'])
-        self.assertEqual(
-            strip_changelog_message(
-                ['  * foo', '  bar', '  * baz']),
-            ['* foo', 'bar', '* baz'])
 
 
 class TarballNameTests(TestCase):

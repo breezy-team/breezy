@@ -33,6 +33,8 @@ from debian import deb822
 from debian.changelog import Changelog, ChangelogParseError
 from debian.copyright import Copyright, NotMachineReadableError
 
+from debmutate.changelog import strip_changelog_message
+
 from ... import (
     bugtracker,
     errors,
@@ -222,35 +224,6 @@ def find_changelog(t, subpath='', merge=False, max_blocks=1):
     except ChangelogParseError as e:
         raise UnparseableChangelog(str(e))
     return changelog, top_level
-
-
-def strip_changelog_message(changes):
-    """Strip a changelog message like debcommit does.
-
-    Takes a list of changes from a changelog entry and applies a transformation
-    so the message is well formatted for a commit message.
-
-    :param changes: a list of lines from the changelog entry
-    :return: another list of lines with blank lines stripped from the start
-        and the spaces the start of the lines split if there is only one
-        logical entry.
-    """
-    if not changes:
-        return changes
-    while changes and changes[-1] == '':
-        changes.pop()
-    while changes and changes[0] == '':
-        changes.pop(0)
-
-    whitespace_column_re = re.compile(r'  |\t')
-    changes = [whitespace_column_re.sub('', line, 1) for line in changes]
-
-    leader_re = re.compile(r'[ \t]*[*+-] ')
-    count = len([l for l in changes if leader_re.match(l)])
-    if count == 1:
-        return [leader_re.sub('', line, 1).lstrip() for line in changes]
-    else:
-        return changes
 
 
 def tarball_name(package, version, component=None, format=None):
