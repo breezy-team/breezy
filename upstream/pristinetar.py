@@ -148,6 +148,31 @@ def reconstruct_pristine_tar(dest, delta, dest_filename):
         raise PristineTarError("Generating tar from delta failed: %s" % stdout)
 
 
+def commit_pristine_tar(dest, tarball_path, upstream=None):
+    tarball_path = osutils.abspath(tarball_path)
+    command = ["pristine-tar", "commit", tarball_path]
+    if upstream:
+        command.append(upstream)
+    try:
+        proc = subprocess.Popen(
+                command, stdout=subprocess.PIPE,
+                cwd=dest, preexec_fn=subprocess_setup,
+                stderr=subprocess.PIPE)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            raise PristineTarError("pristine-tar is not installed")
+        else:
+            raise
+    (stdout, stderr) = proc.communicate()
+    if proc.returncode != 0:
+        if b'excessively large binary delta' in stderr:
+            raise PristineTarDeltaTooLarge(stderr)
+        else:
+            raise PristineTarError(
+                "Generating delta from tar failed: %s" % stderr)
+    return stdout
+
+
 def make_pristine_tar_delta(dest, tarball_path):
     """Create a pristine-tar delta for a tarball.
 
@@ -729,17 +754,17 @@ class GitPristineTarSource(BasePristineTarSource):
                      'since there is no pristine-tar branch.')
                 pristine_tar_branch = None
         if pristine_tar_branch:
-            git_delta = make_pristine_tar_delta_from_tree(
-                tree, tarball, subdir=subdir, exclude=exclude)
+            dest = self.branch.controldir.user_transport.local_abspath('.')
             try:
-                git_store_pristine_tar(
-                    pristine_tar_branch, os.path.basename(tarball),
-                    tree_id, git_delta)
+                commit_pristine_tar(dest, tarball, tree_id)
             except PristineTarDeltaExists:
                 if reuse_existing:
                     note('Reusing existing tarball, since delta exists.')
                     return tag_name, revid
                 raise
+            else:
+                note('Imported %s with pristine-tar.',
+                     os.path.basename(tarball))
         mutter(
             'imported %s version %s component %r as revid %s, tagged %s',
             package, version, component, revid, tag_name)
