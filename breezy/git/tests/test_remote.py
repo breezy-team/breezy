@@ -137,6 +137,14 @@ class ParseGitErrorTests(TestCase):
         self.assertEqual(e.path, 'porridge/gaduhistory.git')
         self.assertEqual(e.extra, ': denied to jelmer')
 
+    def test_pre_receive_hook_declined(self):
+        e = parse_git_error(
+            "url",
+            'pre-receive hook declined')
+        self.assertIsInstance(e, PermissionDenied)
+        self.assertEqual(e.path, "url")
+        self.assertEqual(e.extra, ': pre-receive hook declined')
+
     def test_invalid_repo_name(self):
         e = parse_git_error(
             "url",

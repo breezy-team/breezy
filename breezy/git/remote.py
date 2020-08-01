@@ -211,6 +211,8 @@ def parse_git_error(url, message):
         return PermissionDenied(url, message)
     if message.endswith(' does not appear to be a git repository'):
         return NotBranchError(url, message)
+    if message == 'pre-receive hook declined':
+        return PermissionDenied(url, message)
     if re.match('(.+) is not a valid repository name',
                 message.splitlines()[0]):
         return NotBranchError(url, message)
