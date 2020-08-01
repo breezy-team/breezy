@@ -112,7 +112,7 @@ class UScanSource(UpstreamSource):
                    subdir=('' if self.top_level else 'debian'))
             args = ["--force-download", "--rename",
                     "--check-dirname-level=0",
-                    "--download",
+                    "--download", '--destdir=%s' % container,
                     "--download-version=%s" % version]
             text, r = _run_dehs_uscan(args, cwd=container)
             orig_files = _xml_report_extract_target_paths(text)
