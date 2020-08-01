@@ -127,12 +127,11 @@ class UScanSource(UpstreamSource):
                     if entry.name != 'container']
             ret = []
             for src in orig_files:
-                if src.endswith('.asc'):
-                    continue
                 dst = os.path.join(target_dir, os.path.basename(src))
                 ret.append(dst)
                 shutil.copy(os.path.join(tmpdir, src), dst)
-            return ret
+
+            return [src for src in ret if not src.endswith('.asc')]
 
 
 def _xml_report_extract_upstream_version(text):
