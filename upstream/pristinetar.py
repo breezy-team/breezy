@@ -687,8 +687,6 @@ class GitPristineTarSource(BasePristineTarSource):
             message += ", component %s" % component
         if md5 is not None:
             message += ", md5 %s" % md5
-        git_delta = make_pristine_tar_delta_from_tree(
-            tree, tarball, subdir=subdir, exclude=exclude)
         if author is not None:
             revprops['authors'] = author
         timezone = None
@@ -731,6 +729,8 @@ class GitPristineTarSource(BasePristineTarSource):
                      'since there is no pristine-tar branch.')
                 pristine_tar_branch = None
         if pristine_tar_branch:
+            git_delta = make_pristine_tar_delta_from_tree(
+                tree, tarball, subdir=subdir, exclude=exclude)
             try:
                 git_store_pristine_tar(
                     pristine_tar_branch, os.path.basename(tarball),
