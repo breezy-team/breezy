@@ -24,12 +24,13 @@ import os
 import shutil
 import tarfile
 
-from ..repack_tarball import repack_tarball
+from ..repack_tarball import (
+    repack_tarball,
+    UnsupportedRepackFormat,
+    )
 
 from ....errors import FileExists
 from ....tests import TestCaseInTempDir
-
-from ..errors import UnsupportedRepackFormat
 
 
 def touch(filename):

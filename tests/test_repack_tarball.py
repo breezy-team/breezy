@@ -28,11 +28,11 @@ from ....errors import (
     NoSuchFile,
     FileExists,
     )
-from ..errors import UnsupportedRepackFormat
 from ..repack_tarball import (
     repack_tarball,
     get_filetype,
     get_repacker_class,
+    UnsupportedRepackFormat,
     )
 from . import TestCaseInTempDir
 

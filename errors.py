@@ -111,15 +111,6 @@ class VersionNotSpecified(BzrError):
     _fmt = "You did not specify a package version."
 
 
-class UnsupportedRepackFormat(BzrError):
-    _fmt = ('Either the file extension of "%(location)s" indicates that '
-            'it is a format unsupported for repacking or it is a '
-            'remote directory.')
-
-    def __init__(self, location):
-        BzrError.__init__(self, location=location)
-
-
 class SharedUpstreamConflictsWithTargetPackaging(BzrError):
 
     _fmt = ('The upstream branches for the merge source and target have '

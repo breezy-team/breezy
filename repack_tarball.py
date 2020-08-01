@@ -32,13 +32,22 @@ import time
 import zipfile
 
 from ...errors import (
+    BzrError,
     DependencyNotPresent,
     FileExists,
     )
 from ...transport import get_transport
 
-from .errors import UnsupportedRepackFormat
 from .util import open_file, open_file_via_transport
+
+
+class UnsupportedRepackFormat(BzrError):
+    _fmt = ('Either the file extension of "%(location)s" indicates that '
+            'it is a format unsupported for repacking or it is a '
+            'remote directory.')
+
+    def __init__(self, location):
+        BzrError.__init__(self, location=location)
 
 
 class TgzRepacker(object):
