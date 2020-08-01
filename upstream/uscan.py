@@ -127,6 +127,8 @@ class UScanSource(UpstreamSource):
                     if entry.name != 'container']
             ret = []
             for src in orig_files:
+                if src.endswith('.asc'):
+                    continue
                 dst = os.path.join(target_dir, os.path.basename(src))
                 ret.append(dst)
                 shutil.copy(os.path.join(tmpdir, src), dst)
