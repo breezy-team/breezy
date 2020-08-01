@@ -740,6 +740,7 @@ class GitPristineTarSource(BasePristineTarSource):
             tree.branch.tags.set_tag(tag_name, revid)
             tree.update_basis_by_delta(revid, builder.get_basis_delta())
         revtree = tree.branch.repository.revision_tree(revid)
+        self.branch.pull(tree.branch, stop_revision=revid)
         tree_id = revtree._lookup_path(u'')[2]
         try:
             pristine_tar_branch = self.branch.controldir.open_branch(
