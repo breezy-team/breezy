@@ -43,6 +43,7 @@ from ... import (
     )
 from ...trace import (
     mutter,
+    note,
     warning,
     )
 from ...transport import (
@@ -792,9 +793,16 @@ def extract_orig_tarball(tarball_filename, component, target,
     elif tarball_filename.endswith(".tar"):
         tar_args.append('xf')
         tf = TarFile.open(tarball_filename)
-    else:
+    elif (tarball_filename.endswith(".tar.gz") or
+            tarball_filename.endswith(".tgz")):
         tf = TarFile.gzopen(tarball_filename)
         tar_args.append('xzf')
+    else:
+        note('Unable to figure out type of %s, '
+             'assuming .tar.gz', tarball_filename)
+        tf = TarFile.gzopen(tarball_filename)
+        tar_args.append('xzf')
+
     try:
         if strip_components is None:
             if needs_strip_components(tf):
@@ -826,7 +834,8 @@ def extract_orig_tarballs(tarballs, target, strip_components=None):
     """
     for tarball_filename, component in tarballs:
         extract_orig_tarball(
-            tarball_filename, component, target, strip_components=strip_components)
+            tarball_filename, component, target,
+            strip_components=strip_components)
 
 
 def dput_changes(path):
