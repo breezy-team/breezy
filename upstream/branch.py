@@ -437,10 +437,9 @@ class UpstreamBranchSource(UpstreamSource):
         self.config = config
         self.snapshot = snapshot
         self.other_repository = other_repository
-        if upstream_revision_map is None:
-            self.upstream_revision_map = {}
-        else:
-            self.upstream_revision_map = upstream_revision_map
+        self.upstream_revision_map = {}
+        if upstream_revision_map is not None:
+            self.upstream_revision_map.update(upstream_revision_map.items())
 
     @classmethod
     def from_branch(cls, upstream_branch, upstream_revision_map=None,
@@ -513,8 +512,10 @@ class UpstreamBranchSource(UpstreamSource):
 
     def get_latest_version(self, package, current_version):
         if self.snapshot:
-            return self.get_version(
-                package, current_version, self.upstream_branch.last_revision())
+            revid = self.upstream_branch.last_revision()
+            version = self.get_version(package, current_version, revid)
+            self.upstream_revision_map[version] = 'revid:%s' % revid.decode('utf-8')
+            return version
         else:
             versions = list(self.get_recent_versions(package, current_version))
             if not versions:
