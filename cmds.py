@@ -752,6 +752,7 @@ class cmd_merge_upstream(Command):
             )
         from .upstream.uscan import (
             UScanSource,
+            NoWatchFile,
             )
         from .util import (
             guess_build_type,

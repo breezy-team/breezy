@@ -427,11 +427,12 @@ class UpstreamBranchSource(UpstreamSource):
 
     def __init__(self, upstream_branch, upstream_revision_map=None,
                  config=None, actual_branch=None, create_dist=None,
-                 other_repository=None):
+                 other_repository=None, snapshot=True):
         self.upstream_branch = upstream_branch
         self._actual_branch = actual_branch or upstream_branch
         self.create_dist = create_dist
         self.config = config
+        self.snapshot = snapshot
         self.other_repository = other_repository
         if upstream_revision_map is None:
             self.upstream_revision_map = {}
@@ -440,7 +441,8 @@ class UpstreamBranchSource(UpstreamSource):
 
     @classmethod
     def from_branch(cls, upstream_branch, upstream_revision_map=None,
-                    config=None, local_dir=None, create_dist=None):
+                    config=None, local_dir=None, create_dist=None,
+                    snapshot=True):
         """Create a new upstream branch source from a branch.
 
         This will optionally fetch into a local directory.
@@ -463,7 +465,8 @@ class UpstreamBranchSource(UpstreamSource):
         return cls(
             upstream_branch=upstream_branch,
             upstream_revision_map=upstream_revision_map, config=config,
-            actual_branch=actual_branch, create_dist=create_dist)
+            actual_branch=actual_branch, create_dist=create_dist,
+            snapshot=snapshot)
 
     def version_as_revision(self, package, version, tarballs=None):
         if version in self.upstream_revision_map:
@@ -506,8 +509,12 @@ class UpstreamBranchSource(UpstreamSource):
             return True
 
     def get_latest_version(self, package, current_version):
-        return self.get_version(
-            package, current_version, self.upstream_branch.last_revision())
+        if self.snapshot:
+            return self.get_version(
+                package, current_version, self.upstream_branch.last_revision())
+        else:
+            versions = list(self.get_recent_versions(package, current_version))
+            return versions[-1]
 
     def get_recent_versions(self, package, since_version=None):
         versions = []
@@ -574,8 +581,10 @@ class LazyUpstreamBranchSource(UpstreamBranchSource):
     """
 
     def __init__(self, upstream_branch_url, upstream_revision_map=None,
-                 config=None, create_dist=None, other_repository=None):
+                 config=None, create_dist=None, other_repository=None,
+                 snapshot=True):
         self.upstream_branch_url = upstream_branch_url
+        self.snapshot = snapshot
         self._upstream_branch = None
         self.config = config
         self.create_dist = create_dist
