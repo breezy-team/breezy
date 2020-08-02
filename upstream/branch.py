@@ -514,6 +514,8 @@ class UpstreamBranchSource(UpstreamSource):
                 package, current_version, self.upstream_branch.last_revision())
         else:
             versions = list(self.get_recent_versions(package, current_version))
+            if not versions:
+                return None
             return versions[-1]
 
     def get_recent_versions(self, package, since_version=None):
