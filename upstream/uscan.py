@@ -97,7 +97,12 @@ class UScanSource(UpstreamSource):
                     "--no-download",
                     "--upstream-version=%s" % current_version]
             text, retcode = _run_dehs_uscan(args, cwd=tmpdir)
-        return _xml_report_extract_upstream_version(text)
+        version = _xml_report_extract_upstream_version(text)
+        if version is None:
+            for w in _xml_report_extract_warnings(text):
+                raise UScanError(w)
+            return
+        return version
 
     def get_recent_versions(self, package, since_version=None):
         raise NotImplementedError(self.get_recent_versions)
@@ -141,7 +146,6 @@ class UScanSource(UpstreamSource):
 
 
 def _xml_report_extract_upstream_version(text):
-    _xml_report_print_warnings(text)
     _xml_report_extract_errors(text)
     from xml.sax.saxutils import unescape
     # uscan --dehs's output isn't well-formed XML, so let's fall back to
