@@ -125,6 +125,9 @@ class UScanSource(UpstreamSource):
                 orig_files = [
                     entry.path for entry in os.scandir(tmpdir)
                     if entry.name != 'container']
+                if not orig_files:
+                    note("uscan could not find the needed tarball in output.")
+                    raise PackageVersionNotPresent(package, version, self)
             ret = []
             for src in orig_files:
                 dst = os.path.join(target_dir, os.path.basename(src))
