@@ -467,6 +467,8 @@ class GitLab(Hoster):
         response = self._api_request('PUT', path, fields=mr)
         if response.status == 200:
             return json.loads(response.data)
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
         _unexpected_status(path, response)
 
     def _post_merge_request_note(self, project_id, iid, kwargs):
