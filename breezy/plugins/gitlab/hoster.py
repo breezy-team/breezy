@@ -476,6 +476,8 @@ class GitLab(Hoster):
         if response.status == 201:
             json.loads(response.data)
             return
+        if response.status == 403:
+            raise errors.PermissionDenied(response.text)
         _unexpected_status(path, response)
 
     def _create_mergerequest(
