@@ -77,6 +77,14 @@ class NotMergeRequestUrl(errors.BzrError):
         self.url = url
 
 
+class GitLabUnprocessable(errors.BzrError):
+
+    _fmt = "GitLab can not process request: %(error)s."
+
+    def __init__(self, error):
+        errors.BzrError.__init__(self, error=error)
+
+
 class DifferentGitLabInstances(errors.BzrError):
 
     _fmt = ("Can't create merge proposals across GitLab instances: "
@@ -490,6 +498,9 @@ class GitLab(Hoster):
             raise errors.PermissionDenied(response.text)
         if response.status == 409:
             raise MergeRequestExists()
+        if response.status == 422:
+            data = json.loads(response.data)
+            raise GitLabUnprocessable(data['error'])
         if response.status != 201:
             _unexpected_status(path, response)
         return json.loads(response.data)
@@ -708,6 +719,11 @@ class GitlabMergeProposalBuilder(MergeProposalBuilder):
             merge_request = self.gl._create_mergerequest(**kwargs)
         except MergeRequestExists:
             raise MergeProposalExists(self.source_branch.user_url)
+        except GitLabUnprocessable as e:
+            if e.error == [
+                    "Source project is not a fork of the target project"]:
+                raise SourceNotDerivedFromTarget(
+                    self.source_branch, self.target_branch)
         return GitLabMergeProposal(self.gl, merge_request)
 
 
