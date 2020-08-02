@@ -115,10 +115,13 @@ class UScanSource(UpstreamSource):
                     "--download", '--destdir=%s' % container,
                     "--download-version=%s" % version]
             text, r = _run_dehs_uscan(args, cwd=container)
+            _xml_report_extract_errors(text)
             orig_files = _xml_report_extract_target_paths(text)
             if not orig_files:
-                note("uscan could not find the needed tarball in output.")
+                for w in _xml_report_extract_warnings(text):
+                    raise UScanError(w)
                 raise PackageVersionNotPresent(package, version, self)
+            _xml_report_print_warnings(text)
             if all([os.path.exists(p) for p in orig_files]):
                 pass
             else:
@@ -126,7 +129,7 @@ class UScanSource(UpstreamSource):
                     entry.path for entry in os.scandir(tmpdir)
                     if entry.name != 'container']
                 if not orig_files:
-                    note("uscan could not find the needed tarball in output.")
+                    note("uscan could not find the needed tarballs.")
                     raise PackageVersionNotPresent(package, version, self)
             ret = []
             for src in orig_files:
@@ -138,7 +141,7 @@ class UScanSource(UpstreamSource):
 
 
 def _xml_report_extract_upstream_version(text):
-    _xml_report_extract_warnings(text)
+    _xml_report_print_warnings(text)
     _xml_report_extract_errors(text)
     from xml.sax.saxutils import unescape
     # uscan --dehs's output isn't well-formed XML, so let's fall back to
@@ -150,8 +153,6 @@ def _xml_report_extract_upstream_version(text):
 
 
 def _xml_report_extract_target_paths(text):
-    _xml_report_extract_warnings(text)
-    _xml_report_extract_errors(text)
     from xml.sax.saxutils import unescape
     return [
         unescape(m.group(1).decode())
@@ -174,17 +175,31 @@ def _run_dehs_uscan(args, cwd):
 
 def _xml_report_extract_warnings(text):
     from xml.sax.saxutils import unescape
-    for m in re.finditer(b"<warnings>(.*)</warnings>", text):
-        warning(unescape(m.group(1).decode()))
+    for m in re.finditer(
+            b"<warnings>(.*?)</warnings>", text,
+            flags=(re.M | re.S)):
+        yield unescape(m.group(1).decode())
+
+
+def _xml_report_print_warnings(text):
+    for w in _xml_report_extract_warnings(text):
+        warning(w)
 
 
 def _xml_report_extract_errors(text):
     from xml.sax.saxutils import unescape
     lines = [unescape(m.group(1).decode())
-             for m in re.finditer(b"<errors>(.*)</errors>", text)]
+             for m in re.finditer(
+                 b"<errors>(.*?)</errors>", text,
+                 flags=(re.M | re.S))]
+    ignored = []
     for line in lines:
         if not line.startswith('uscan warn: '):
             raise UScanError(line)
+        else:
+            ignored.append(line[len('uscan warn: '):])
 
     for line in lines:
         raise UScanError(line)
+
+    return ignored

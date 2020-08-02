@@ -34,6 +34,7 @@ from ..upstream.uscan import (
     UScanSource,
     UScanError,
     _xml_report_extract_upstream_version,
+    _xml_report_extract_warnings,
     )
 
 
@@ -61,6 +62,9 @@ class UScanSourceTests(TestCaseWithTransport):
         with tempfile.TemporaryDirectory() as tmpdir:
             self.assertIsNot(src._export_file('watch', tmpdir), None)
 
+
+class UScanOutputParsingTests(TestCase):
+
     def test__xml_report_extract_upstream_version(self):
         text = b"""
 <dehs>
@@ -73,6 +77,22 @@ class UScanSourceTests(TestCaseWithTransport):
 </dehs>"""
         self.assertEquals("1.2.9",
             _xml_report_extract_upstream_version(text))
+
+    def test__xml_report_extract_warnings(self):
+        text = b"""
+<dehs>
+<package>tdb</package>
+<debian-uversion>1.2.8</debian-uversion>
+<debian-mangled-uversion>1.2.8</debian-mangled-uversion>
+<upstream-version>1.2.9</upstream-version>
+<upstream-url>ftp://ftp.samba.org/pub/tdb/tdb-1.2.9.tar.gz</upstream-url>
+<status>Newer version available</status>
+<warnings>this is a warning
+with a newline</warnings>
+</dehs>"""
+        self.assertEquals(
+            ["this is a warning\nwith a newline"],
+            list(_xml_report_extract_warnings(text)))
 
     def test__xml_report_extract_upstream_version_warnings(self):
         text = b"""

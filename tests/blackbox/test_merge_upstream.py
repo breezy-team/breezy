@@ -238,6 +238,8 @@ class TestMergeUpstream(BuilddebTestCase):
         package = self.import_upstream(rel1, upstream)
         changed_upstream = self.file_moved_replaced_upstream(upstream)
         rel2 = self.release_upstream(changed_upstream)
+        with open(package.tree.abspath('debian/watch'), 'w') as f:
+            f.write('version=4\nhttp://example.com/ bar-\\d.tar.gz\n')
         (out, err) = self.run_bzr(['merge-upstream', '-r8'], working_dir=package.tree.basedir, retcode=3)
         self.assertEquals(out, "")
         self.assertEquals(err,

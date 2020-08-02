@@ -827,7 +827,7 @@ class cmd_merge_upstream(Command):
             if upstream_branch is not None:
                 upstream_branch_source = UpstreamBranchSource.from_branch(
                     upstream_branch, config=config, local_dir=tree.controldir,
-                    create_dist=create_dist)
+                    create_dist=create_dist, snapshot=snapshot)
             else:
                 upstream_branch_source = None
 
@@ -836,7 +836,7 @@ class cmd_merge_upstream(Command):
                     primary_upstream_source = UpstreamBranchSource.from_branch(
                         Branch.open(location), config=config,
                         local_dir=tree.controldir,
-                        create_dist=create_dist)
+                        create_dist=create_dist, snapshot=snapshot)
                 except NotBranchError:
                     primary_upstream_source = TarfileSource(location, version)
             else:
@@ -844,15 +844,15 @@ class cmd_merge_upstream(Command):
                     if upstream_branch_source is None:
                         raise BzrCommandError(gettext(
                             "--snapshot requires an upstream branch source"))
-                    primary_upstream_source = upstream_branch_source
-                else:
-                    try:
-                        primary_upstream_source = UScanSource(
-                            tree, subpath, top_level)
-                    except NoWatchFile:
+                try:
+                    primary_upstream_source = UScanSource.from_tree(
+                        tree, subpath, top_level)
+                except NoWatchFile:
+                    if upstream_branch_source is None:
                         raise BzrCommandError(gettext(
                             "no upstream source location known; "
-                            "add watch file?"))
+                            "add watch file or specify upstream repository?"))
+                    primary_upstream_source = upstream_branch_source
 
             if revision is not None:
                 if upstream_branch is None:
