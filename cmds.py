@@ -205,20 +205,15 @@ def _get_upstream_sources(local_tree, subpath, packaging_branch,
         )
     yield get_pristine_tar_source(local_tree, packaging_branch)
     yield AptSource()
-    if build_type == BUILD_TYPE_MERGE:
-        upstream_branch_source = _get_upstream_branch_source(
-            export_upstream, export_upstream_revision, config,
-            upstream_version, other_repository=local_tree.branch.repository)
-        if upstream_branch_source:
-            yield upstream_branch_source
-    elif config.upstream_branch is not None:
-        yield LazyUpstreamBranchSource(
-            config.upstream_branch,
-            other_repository=local_tree.branch.repository)
     try:
         yield UScanSource.from_tree(local_tree, subpath, top_level)
     except NoWatchFile:
         pass
+    upstream_branch_source = _get_upstream_branch_source(
+        export_upstream, export_upstream_revision, config,
+        upstream_version, other_repository=packaging_branch.repository)
+    if upstream_branch_source:
+        yield upstream_branch_source
 
     if build_type == BUILD_TYPE_SPLIT:
         yield SelfSplitSource(local_tree)
