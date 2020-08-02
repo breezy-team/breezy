@@ -45,6 +45,7 @@ from ..util import (
     )
 
 from .... import (
+    config as _mod_config,
     osutils,
     revision as _mod_revision,
     )
@@ -148,16 +149,24 @@ def reconstruct_pristine_tar(dest, delta, dest_filename):
         raise PristineTarError("Generating tar from delta failed: %s" % stdout)
 
 
-def commit_pristine_tar(dest, tarball_path, upstream=None):
+def commit_pristine_tar(dest, tarball_path, upstream=None, committer=None):
     tarball_path = osutils.abspath(tarball_path)
     command = ["pristine-tar", "commit", tarball_path]
     if upstream:
         command.append(upstream)
+    env = {}
+    if committer is not None:
+        name, email = _mod_config.parse_username(committer)
+        env['GIT_COMMITTER_NAME'] = name
+        env['GIT_COMMITTER_EMAIL'] = email
+        env['GIT_AUTHOR_NAME'] = name
+        env['GIT_AUTHOR_EMAIL'] = email
+
     try:
         proc = subprocess.Popen(
                 command, stdout=subprocess.PIPE,
                 cwd=dest, preexec_fn=subprocess_setup,
-                stderr=subprocess.PIPE)
+                stderr=subprocess.PIPE, env=env)
     except OSError as e:
         if e.errno == errno.ENOENT:
             raise PristineTarError("pristine-tar is not installed")
@@ -756,8 +765,12 @@ class GitPristineTarSource(BasePristineTarSource):
                 pristine_tar_branch = None
         if pristine_tar_branch:
             dest = self.branch.controldir.user_transport.local_abspath('.')
+            if committer is None:
+                cs = tree.branch.get_config_stack()
+                committer = cs.get('email')
             try:
-                commit_pristine_tar(dest, tarball, tree_id)
+                commit_pristine_tar(
+                    dest, tarball, tree_id, committer=committer)
             except PristineTarDeltaExists:
                 if reuse_existing:
                     note('Reusing existing tarball, since delta exists.')
