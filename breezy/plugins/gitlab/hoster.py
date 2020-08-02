@@ -196,6 +196,11 @@ def parse_gitlab_merge_request_url(url):
     return host, project_name, int(parts[-1])
 
 
+def _unexpected_status(path, response):
+    raise errors.UnexpectedHttpStatus(
+        path, response.status, response.data.decode('utf-8', 'replace'))
+
+
 class GitLabMergeProposal(MergeProposal):
 
     def __init__(self, gl, mr):
@@ -346,8 +351,7 @@ class GitLab(Hoster):
             raise KeyError('no such user %s' % username)
         if response.status == 200:
             return json.loads(response.data)
-        raise errors.UnexpectedHttpStatus(
-            path, response.status, response.data)
+        _unexpected_status(path, response)
 
     def _get_user_by_email(self, email):
         path = 'users?search=%s' % urlutils.quote(str(email), '')
@@ -359,8 +363,7 @@ class GitLab(Hoster):
             if len(ret) != 1:
                 raise ValueError('unexpected number of results; %r' % ret)
             return ret[0]
-        raise errors.UnexpectedHttpStatus(
-            path, response.status, response.data)
+        _unexpected_status(path, response)
 
     def _get_project(self, project_name):
         path = 'projects/%s' % urlutils.quote(str(project_name), '')
@@ -369,8 +372,7 @@ class GitLab(Hoster):
             raise NoSuchProject(project_name)
         if response.status == 200:
             return json.loads(response.data)
-        raise errors.UnexpectedHttpStatus(
-            path, response.status, response.data)
+        _unexpected_status(path, response)
 
     def _fork_project(self, project_name, timeout=50, interval=5, owner=None):
         path = 'projects/%s/fork' % urlutils.quote(str(project_name), '')
@@ -384,8 +386,7 @@ class GitLab(Hoster):
             resp = json.loads(response.data)
             raise GitLabConflict(resp.get('message'))
         if response.status not in (200, 201):
-            raise errors.UnexpectedHttpStatus(
-                path, response.status, response.data)
+            _unexpected_status(path, response)
         # The response should be valid JSON, but let's ignore it
         project = json.loads(response.data)
         # Spin and wait until import_status for new project
@@ -421,8 +422,7 @@ class GitLab(Hoster):
             if response.status == 403:
                 raise errors.PermissionDenied(response.text)
             if response.status != 200:
-                raise errors.UnexpectedHttpStatus(
-                    path, response.status, response.data)
+                _unexpected_status(path, response)
             page = response.getheader("X-Next-Page")
             for entry in json.loads(response.data):
                 yield entry
@@ -445,8 +445,7 @@ class GitLab(Hoster):
         if response.status == 403:
             raise errors.PermissionDenied(response.text)
         if response.status != 200:
-            raise errors.UnexpectedHttpStatus(
-                path, response.status, response.data)
+            _unexpected_status(path, response)
         return json.loads(response.data)
 
     def _list_projects(self, owner):
@@ -460,8 +459,7 @@ class GitLab(Hoster):
         response = self._api_request('PUT', path, fields=mr)
         if response.status == 200:
             return json.loads(response.data)
-        raise errors.UnexpectedHttpStatus(
-            path, response.status, response.data)
+        _unexpected_status(path, response)
 
     def _post_merge_request_note(self, project_id, iid, kwargs):
         path = 'projects/%s/merge_requests/%s/notes' % (
@@ -470,8 +468,7 @@ class GitLab(Hoster):
         if response.status == 201:
             json.loads(response.data)
             return
-        raise errors.UnexpectedHttpStatus(
-            path, response.status, response.data)
+        _unexpected_status(path, response)
 
     def _create_mergerequest(
             self, title, source_project_id, target_project_id,
@@ -494,8 +491,7 @@ class GitLab(Hoster):
         if response.status == 409:
             raise MergeRequestExists()
         if response.status != 201:
-            raise errors.UnexpectedHttpStatus(
-                path, response.status, response.data)
+            _unexpected_status(path, response)
         return json.loads(response.data)
 
     def get_push_url(self, branch):
@@ -643,8 +639,7 @@ class GitLab(Hoster):
         if response.status == 404:
             raise NoSuchProject(project)
         if response.status != 202:
-            raise errors.UnexpectedHttpStatus(
-                path, response.status, response.data)
+            _unexpected_status(path, response)
 
 
 class GitlabMergeProposalBuilder(MergeProposalBuilder):
