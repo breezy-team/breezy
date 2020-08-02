@@ -1302,15 +1302,15 @@ class InvalidHttpResponse(TransportError):
 
 class UnexpectedHttpStatus(InvalidHttpResponse):
 
-    _fmt = "Unexpected HTTP status %(code)d for %(path)s"
+    _fmt = "Unexpected HTTP status %(code)d for %(path)s: %(extra)s"
 
-    def __init__(self, path, code, msg=None):
+    def __init__(self, path, code, extra=None):
         self.path = path
         self.code = code
-        self.msg = msg
+        self.extra = extra or ''
         full_msg = 'status code %d unexpected' % code
-        if msg is not None:
-            full_msg += ': ' + msg
+        if extra is not None:
+            full_msg += ': ' + extra
         InvalidHttpResponse.__init__(
             self, path, full_msg)
 
