@@ -38,6 +38,7 @@ from ....errors import (
     RevisionNotPresent,
     UnsupportedOperation,
     )
+from ..repack_tarball import get_filetype, repack_tarball
 from ....revision import NULL_REVISION
 from ....revisionspec import RevisionSpec
 from ....trace import note, mutter
@@ -55,6 +56,7 @@ from .. import gettext
 from . import (
     UpstreamSource,
     PackageVersionNotPresent,
+    new_tarball_name,
     )
 from ....export import (
     export,
@@ -553,8 +555,6 @@ class UpstreamBranchSource(UpstreamSource):
                 revid = self.version_as_revision(package, version)
                 if revid is None:
                     raise PackageVersionNotPresent(package, version, self)
-            target_filename = self._tarball_path(
-                package, version, None, target_dir)
             if self.other_repository is not None:
                 try:
                     rev_tree = self.other_repository.revision_tree(revid)
@@ -564,17 +564,24 @@ class UpstreamBranchSource(UpstreamSource):
                 rev_tree = None
             if rev_tree is None:
                 rev_tree = self.upstream_branch.repository.revision_tree(revid)
-            if self.create_dist is None or not self.create_dist(
-                    rev_tree, package, version, target_filename):
-                tarball_base = "%s-%s" % (package, version)
-                try:
-                    export(rev_tree, target_filename, 'tgz', tarball_base)
-                except UnsupportedOperation as e:
-                    note('Not exporting revision from upstream branch: %s', e)
-                    raise PackageVersionNotPresent(package, version, self)
-                else:
-                    note("Exporting upstream branch revision %s to create "
-                         "the tarball", revid)
+            if self.create_dist is not None:
+                with tempfile.TemporaryDirectory() as td:
+                    fn = self.create_dist(rev_tree, package, version, td)
+                    if fn:
+                        nfn = new_tarball_name(package, version, fn)
+                        repack_tarball(os.path.join(td, fn), nfn, target_dir)
+                        return [os.path.join(target_dir, nfn)]
+            tarball_base = "%s-%s" % (package, version)
+            target_filename = self._tarball_path(
+                package, version, None, target_dir)
+            try:
+                export(rev_tree, target_filename, 'tgz', tarball_base)
+            except UnsupportedOperation as e:
+                note('Not exporting revision from upstream branch: %s', e)
+                raise PackageVersionNotPresent(package, version, self)
+            else:
+                note("Exporting upstream branch revision %s to create "
+                     "the tarball", revid)
         return [target_filename]
 
     def __repr__(self):
@@ -620,9 +627,8 @@ class DistCommandFailed(BzrError):
 
 
 def run_dist_command(
-        rev_tree: Tree, package: str, version: Version, target_filename: str,
+        rev_tree: Tree, package: str, version: Version, target_dir: str,
         dist_command: str) -> bool:
-    from ..repack_tarball import get_filetype
     with tempfile.TemporaryDirectory() as td:
         package_dir = os.path.join(td, package)
         export(rev_tree, package_dir, 'dir')
@@ -630,18 +636,14 @@ def run_dist_command(
         env = dict(os.environ.items())
         env['PACKAGE'] = package
         env['VERSION'] = version
-        env['OUTPUT'] = target_filename
         note('Running dist command: %s', dist_command)
         try:
             subprocess.check_call(
                 dist_command, env=env, cwd=package_dir, shell=True)
         except subprocess.CalledProcessError as e:
             if e.returncode == 2:
-                return False
+                return None
             raise DistCommandFailed(str(e))
-        if os.path.exists(target_filename):
-            note('dist command created tarball.')
-            return True
         new_files = os.listdir(package_dir)
         diff_files = set(new_files) - set(existing_files)
         diff = [n for n in diff_files if get_filetype(n) is not None]
@@ -649,14 +651,14 @@ def run_dist_command(
             note('Found tarball %s in package directory.', diff[0])
             os.rename(
                 os.path.join(package_dir, diff[0]),
-                target_filename)
-            return True
+                os.path.join(target_dir, diff[0]))
+            return diff[0]
         if 'dist' in diff_files:
             for entry in os.scandir(os.path.join(package_dir, 'dist')):
                 if get_filetype(entry.name) is not None:
                     note('Found tarball %s in dist directory.', entry.name)
-                    os.rename(entry.path, target_filename)
-                    return True
+                    os.rename(entry.path, os.path.join(target_dir, entry.name))
+                    return entry.name
             note('No tarballs found in dist directory.')
         diff = set(os.listdir(td)) - set([package])
         if len(diff) == 1:
@@ -664,6 +666,6 @@ def run_dist_command(
             note('Found tarball %s in parent directory.', fn)
             os.rename(
                 os.path.join(td, fn),
-                target_filename)
-            return True
+                os.path.join(target_dir, fn))
+            return fn
     raise DistCommandFailed('no tarball created')
