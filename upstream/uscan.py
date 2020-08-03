@@ -112,9 +112,15 @@ class UScanSource(UpstreamSource):
         with tempfile.TemporaryDirectory() as tmpdir:
             container = os.path.join(tmpdir, 'container')
             os.mkdir(container)
+            if self.top_level:
+                subdir = ''
+            else:
+                subdir = 'debian'
+            if self.subpath:
+                subdir = osutils.pathjoin(self.subpath, subdir)
             # Just export all of debian/, since e.g. uupdate needs more of it.
             export(self.tree, os.path.join(container, 'debian'), format='dir',
-                   subdir=('' if self.top_level else 'debian'))
+                   subdir=subdir)
             args = ["--force-download", "--rename",
                     "--check-dirname-level=0",
                     "--download", '--destdir=%s' % container,
