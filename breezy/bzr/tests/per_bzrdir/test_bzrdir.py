@@ -516,6 +516,23 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertRepositoryHasSameItems(
             tree.branch.repository, target.open_repository())
 
+    def test_sprout_branch_no_source_branch(self):
+        try:
+            repo = self.make_repository('source', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        if isinstance(self.bzrdir_format, RemoteBzrDirFormat):
+            self.skipTest('remote formats not supported')
+        branch = controldir.ControlDir.create_branch_convenience('source/trunk')
+        tree = branch.controldir.open_workingtree()
+        self.build_tree(['source/trunk/foo'])
+        tree.add('foo')
+        tree.commit('revision 1')
+        rev2 = tree.commit('revision 2', allow_pointless=True)
+        target = self.sproutOrSkip(
+            repo.controldir, self.get_url('target'), revision_id=rev2)
+        self.assertEqual([rev2], target.open_workingtree().get_parent_ids())
+
     def test_retire_bzrdir(self):
         bd = self.make_controldir('.')
         transport = bd.root_transport

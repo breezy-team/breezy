@@ -1330,7 +1330,8 @@ class AbstractAuthHandler(urllib_request.BaseHandler):
         if not server_headers:
             # The http error MUST have the associated
             # header. This must never happen in production code.
-            raise KeyError('%s not found' % self.auth_required_header)
+            trace.mutter('%s not found', self.auth_required_header)
+            return None
 
         auth = self.get_auth(request)
         auth['modified'] = False
@@ -1832,6 +1833,7 @@ class HTTPErrorProcessor(urllib_request.HTTPErrorProcessor):
                        403,
                        404,  # Not found
                        405,  # Method not allowed
+                       406,  # Not Acceptable
                        409,  # Conflict
                        416,  # Range not satisfiable
                        422,  # Unprocessible entity
@@ -1863,9 +1865,9 @@ class HTTPDefaultErrorHandler(urllib_request.HTTPDefaultErrorHandler):
                 'Server refuses to fulfill the request (403 Forbidden)'
                 ' for %s' % req.get_full_url())
         else:
-            raise errors.InvalidHttpResponse(req.get_full_url(),
-                                             'Unable to handle http code %d: %s'
-                                             % (code, msg))
+            raise errors.UnexpectedHttpStatus(
+                req.get_full_url(), code,
+                'Unable to handle http code: %s' % msg)
 
 
 class Opener(object):
@@ -2117,11 +2119,9 @@ class HttpTransport(ConnectedTransport):
                     abspath, range_header,
                     'Server return code %d' % response.status)
             else:
-                raise errors.InvalidHttpResponse(
-                    abspath, 'Unexpected status %d' % response.status)
+                raise errors.BadHttpRequest(abspath, response.reason)
         elif response.status not in (200, 206):
-            raise errors.InvalidHttpResponse(
-                abspath, 'Unexpected status %d' % response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status)
 
         data = handle_response(
             abspath, response.status, response.getheader, response)
@@ -2352,8 +2352,7 @@ class HttpTransport(ConnectedTransport):
             'POST', abspath, body=body_bytes,
             headers={'Content-Type': 'application/octet-stream'})
         if response.status not in (200, 403):
-            raise errors.InvalidHttpResponse(
-                abspath, 'Unexpected status %d' % response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status)
         code = response.status
         data = handle_response(
             abspath, code, response.getheader, response)
@@ -2367,8 +2366,7 @@ class HttpTransport(ConnectedTransport):
         abspath = self._remote_path(relpath)
         response = self.request('HEAD', abspath)
         if response.status not in (200, 404):
-            raise errors.InvalidHttpResponse(
-                abspath, 'Unexpected status %d' % response.status)
+            raise errors.UnexpectedHttpStatus(abspath, response.status)
 
         return response
 
@@ -2634,9 +2632,8 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
             t = self._http_transport_ref()
             code, body_filelike = t._post(bytes)
             if code != 200:
-                raise errors.InvalidHttpResponse(
-                    t._remote_path('.bzr/smart'),
-                    'Expected 200 response code, got %r' % (code,))
+                raise errors.UnexpectedHttpStatus(
+                    t._remote_path('.bzr/smart'), code)
         except (errors.InvalidHttpResponse, errors.ConnectionReset) as e:
             raise errors.SmartProtocolError(str(e))
         return body_filelike

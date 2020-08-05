@@ -37,7 +37,7 @@ from ...option import (
     RegistryOption,
     )
 from ...sixish import text_type
-from ...trace import note
+from ...trace import note, warning
 from ... import (
     propose as _mod_propose,
     )
@@ -270,8 +270,8 @@ class cmd_my_merge_proposals(Command):
             closed='Closed merge proposals')]
 
     def run(self, status='open', verbose=False):
-        for name, hoster_cls in _mod_propose.hosters.items():
-            for instance in hoster_cls.iter_instances():
+        for instance in _mod_propose.iter_hoster_instances():
+            try:
                 for mp in instance.iter_my_proposals(status=status):
                     self.outf.write('%s\n' % mp.url)
                     if verbose:
@@ -285,6 +285,8 @@ class cmd_my_merge_proposals(Command):
                                 ['\t%s\n' % l
                                  for l in description.splitlines()])
                         self.outf.write('\n')
+            except _mod_propose.HosterLoginRequired as e:
+                warning('Skipping %r, login required.', instance)
 
 
 class cmd_land_merge_proposal(Command):
@@ -297,3 +299,22 @@ class cmd_land_merge_proposal(Command):
     def run(self, url, message=None):
         proposal = _mod_propose.get_proposal_by_url(url)
         proposal.merge(commit_message=message)
+
+
+class cmd_hosters(Command):
+    __doc__ = """List all known hosting sites and user details."""
+
+    hidden = True
+
+    def run(self):
+        for instance in _mod_propose.iter_hoster_instances():
+            current_user = instance.get_current_user()
+            if current_user is not None:
+                self.outf.write(
+                    gettext('%s (%s) - user: %s (%s)\n') % (
+                        instance.name, instance.base_url,
+                        current_user, instance.get_user_url(current_user)))
+            else:
+                self.outf.write(
+                    gettext('%s (%s) - not logged in\n') % (
+                        instance.name, instance.base_url))

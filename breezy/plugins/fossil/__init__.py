@@ -32,8 +32,7 @@ from ... import (
 class FossilUnsupportedError(errors.UnsupportedFormatError):
 
     _fmt = ('Fossil branches are not yet supported. '
-            'To convert Fossil branches to Bazaar branches or vice versa, '
-            'use fastimport.')
+            'To interoperate with Fossil branches, use fastimport.')
 
 
 class FossilDirFormat(controldir.ControlDirFormat):
