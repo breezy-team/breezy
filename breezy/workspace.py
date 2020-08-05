@@ -74,7 +74,7 @@ def check_clean_tree(local_tree):
         raise WorkspaceDirty(local_tree)
 
 
-def delete_items(deletables, dry_run: bool = False):
+def delete_items(deletables, dry_run = False):
     """Delete files in the deletables iterable"""
     def onerror(function, path, excinfo):
         """Show warning for errors seen by rmtree.
