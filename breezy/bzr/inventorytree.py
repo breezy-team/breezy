@@ -72,6 +72,52 @@ from ..tree import (
     )
 
 
+class InventoryTreeChange(TreeChange):
+
+    __slots__ = TreeChange.__slots__ + ['file_id', 'parent_id']
+
+    def __init__(self, file_id, path, changed_content, versioned, parent_id,
+                 name, kind, executable, copied=False):
+        self.file_id = file_id
+        self.parent_id = parent_id
+        super(InventoryTreeChange, self).__init__(
+            path=path, changed_content=changed_content, versioned=versioned,
+            name=name, kind=kind, executable=executable, copied=copied)
+
+    def __repr__(self):
+        return "%s%r" % (self.__class__.__name__, self._as_tuple())
+
+    def _as_tuple(self):
+        return (self.file_id, self.path, self.changed_content, self.versioned,
+                self.parent_id, self.name, self.kind, self.executable, self.copied)
+
+    def __eq__(self, other):
+        if isinstance(other, TreeChange):
+            return self._as_tuple() == other._as_tuple()
+        if isinstance(other, tuple):
+            return self._as_tuple() == other
+        return False
+
+    def __lt__(self, other):
+        return self._as_tuple() < other._as_tuple()
+
+    def meta_modified(self):
+        if self.versioned == (True, True):
+            return (self.executable[0] != self.executable[1])
+        return False
+
+    def is_reparented(self):
+        return self.parent_id[0] != self.parent_id[1]
+
+    def discard_new(self):
+        return self.__class__(
+            self.file_id, (self.path[0], None), self.changed_content,
+            (self.versioned[0], None), (self.parent_id[0], None),
+            (self.name[0], None), (self.kind[0], None),
+            (self.executable[0], None),
+            copied=False)
+
+
 class InventoryTree(Tree):
     """A tree that relies on an inventory for its metadata.
 
@@ -1052,7 +1098,7 @@ class InterInventoryTree(InterTree):
             changes = True
         else:
             changes = False
-        return TreeChange(
+        return InventoryTreeChange(
             file_id, (source_path, target_path), changed_content,
             versioned, parent, name, kind, executable), changes
 
@@ -1146,7 +1192,7 @@ class InterInventoryTree(InterTree):
                 target_kind, target_executable, target_stat = \
                     self.target._comparison_data(
                         fake_entry, unversioned_path[1])
-                yield TreeChange(
+                yield InventoryTreeChange(
                     None, (None, unversioned_path[1]), True, (False, False),
                     (None, None),
                     (None, unversioned_path[0][-1]),
@@ -1183,7 +1229,7 @@ class InterInventoryTree(InterTree):
             unversioned_path = all_unversioned.popleft()
             to_kind, to_executable, to_stat = \
                 self.target._comparison_data(fake_entry, unversioned_path[1])
-            yield TreeChange(
+            yield InventoryTreeChange(
                 None, (None, unversioned_path[1]), True, (False, False),
                 (None, None),
                 (None, unversioned_path[0][-1]),
@@ -1209,7 +1255,7 @@ class InterInventoryTree(InterTree):
             changed_content = from_kind is not None
             # the parent's path is necessarily known at this point.
             changed_file_ids.append(file_id)
-            yield TreeChange(
+            yield InventoryTreeChange(
                 file_id, (path, to_path), changed_content, versioned, parent,
                 name, kind, executable)
         changed_file_ids = set(changed_file_ids)
@@ -1395,7 +1441,7 @@ class InterCHKRevisionTree(InterInventoryTree):
         # FIXME: nested tree support
         for result in self.target.root_inventory.iter_changes(
                 self.source.root_inventory):
-            result = TreeChange(*result)
+            result = InventoryTreeChange(*result)
             if specific_file_ids is not None:
                 if result.file_id not in specific_file_ids:
                     # A change from the whole tree that we don't want to show yet.
@@ -1422,7 +1468,7 @@ class InterCHKRevisionTree(InterInventoryTree):
                         entry.file_id not in specific_file_ids):
                     continue
                 if entry.file_id not in changed_file_ids:
-                    yield TreeChange(
+                    yield InventoryTreeChange(
                         entry.file_id,
                         (relpath, relpath),  # Not renamed
                         False,  # Not modified

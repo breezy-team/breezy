@@ -63,7 +63,6 @@ from .sixish import (
     )
 from .tree import (
     InterTree,
-    TreeChange,
     find_previous_path,
     )
 
