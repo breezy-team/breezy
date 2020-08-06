@@ -706,9 +706,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def walkdirs(self, prefix=u""):
         (store, mode, hexsha) = self._lookup_path(prefix)
         todo = deque(
-            [(store, encode_git_path(prefix), hexsha, self.path2id(prefix))])
+            [(store, encode_git_path(prefix), hexsha)])
         while todo:
-            store, path, tree_sha, parent_id = todo.popleft()
+            store, path, tree_sha = todo.popleft()
             path_decoded = decode_git_path(path)
             tree = store[tree_sha]
             children = []
@@ -716,14 +716,13 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 if self.mapping.is_special_file(name):
                     continue
                 child_path = posixpath.join(path, name)
-                file_id = self.path2id(decode_git_path(child_path))
                 if stat.S_ISDIR(mode):
-                    todo.append((store, child_path, hexsha, file_id))
+                    todo.append((store, child_path, hexsha))
                 children.append(
                     (decode_git_path(child_path), decode_git_path(name),
                         mode_kind(mode), None,
-                        file_id, mode_kind(mode)))
-            yield (path_decoded, parent_id), children
+                        mode_kind(mode)))
+            yield path_decoded, children
 
     def preview_transform(self, pb=None):
         from .transform import GitTransformPreview

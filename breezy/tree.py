@@ -638,12 +638,10 @@ class Tree(object):
         list to exclude some directories, they are then not descended into.
 
         The data yielded is of the form:
-        ((directory-relpath, directory-path-from-root, directory-fileid),
-        [(relpath, basename, kind, lstat, path_from_tree_root, file_id,
+        (directory-relpath,
+        [(relpath, basename, kind, lstat, path_from_tree_root,
           versioned_kind), ...]),
-         - directory-relpath is the containing dirs relpath from prefix
          - directory-path-from-root is the containing dirs path from /
-         - directory-fileid is the id of the directory if it is versioned.
          - relpath is the relative path within the subtree being walked.
          - basename is the basename
          - kind is the kind of the file now. If unknonwn then the file is not
@@ -651,7 +649,6 @@ class Tree(object):
            versioned_kind.
          - lstat is the stat data *if* the file was statted.
          - path_from_tree_root is the path from the root of the tree.
-         - file_id is the file_id if the entry is versioned.
          - versioned_kind is the kind of the file as last recorded in the
            versioning system. If 'unknown' the file is not versioned.
         One of 'kind' and 'versioned_kind' must not be 'unknown'.

@@ -931,11 +931,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             present_stat = os.lstat('present')
             unknown_stat = os.lstat('unknown')
             expected_results = [
-                (('', tree.path2id('')),
-                 [('missing', 'missing', 'unknown', None, b'missing-id', 'file'),
+                ('',
+                 [('missing', 'missing', 'unknown', None, 'file'),
                   ('present', 'present', 'file',
-                   present_stat, b'present-id', 'file'),
-                  ('unknown', 'unknown', 'file', unknown_stat, None, None),
+                   present_stat, 'file'),
+                  ('unknown', 'unknown', 'file', unknown_stat, None),
                   ]
                  )]
             self.assertEqual(expected_results, list(tree.walkdirs()))

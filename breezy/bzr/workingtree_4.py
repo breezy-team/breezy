@@ -2162,16 +2162,15 @@ class DirStateRevisionTree(InventoryTree):
                 relroot = ""
             # FIXME: stash the node in pending
             entry = inv.get_entry(file_id)
+            subdirs = []
             for name, child in entry.sorted_children():
                 toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None,
-                                 child.file_id, child.kind
-                                 ))
-            yield (relpath, entry.file_id), dirblock
+                dirblock.append((toppath, name, child.kind, None, child.kind))
+                if child.kind == _directory:
+                    subdirs.append((toppath, child.file_id))
+            yield relpath, dirblock
             # push the user specified dirs from dirblock
-            for dir in reversed(dirblock):
-                if dir[2] == _directory:
-                    pending.append((dir[0], dir[4]))
+            pending.extend(reversed(subdirs))
 
 
 class InterDirStateTree(InterInventoryTree):
