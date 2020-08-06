@@ -87,6 +87,9 @@ API Changes
  * The ``osutils.safe_file_id`` and ``osutils.safe_revision_id`` methods
    have been removed. (Jelmer Vernooĳ)
 
+ * File ids are no longer returned in ``Tree.walkdirs``.
+   (Jelmer Vernooĳ)
+
 Internals
 *********
 

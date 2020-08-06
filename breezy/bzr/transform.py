@@ -2121,10 +2121,10 @@ class InventoryPreviewTree(PreviewTree, inventorytree.InventoryTree):
                 if versioned_kind == 'directory':
                     subdirs.append(child_id)
                 children.append((path_from_root, basename, kind, None,
-                                 file_id, versioned_kind))
+                                 versioned_kind))
             children.sort()
             if parent_path.startswith(prefix):
-                yield (parent_path, parent_file_id), children
+                yield parent_path, children
             pending.extend(sorted(subdirs, key=self._final_paths.get_path,
                                   reverse=True))
 

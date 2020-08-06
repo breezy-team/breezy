@@ -971,9 +971,9 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
             for name, child in entry.sorted_children():
                 toppath = relroot + name
                 dirblock.append((toppath, name, child.kind, None,
-                                 child.file_id, child.kind
+                                 child.kind
                                  ))
-            yield (currentdir[0], entry.file_id), dirblock
+            yield currentdir[0], dirblock
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):
                 if dir[2] == _directory:

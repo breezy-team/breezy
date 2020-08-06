@@ -1528,12 +1528,10 @@ class GitPreviewTree(PreviewTree):
                         path_from_root)
                 if versioned_kind == 'directory':
                     subdirs.append(child_id)
-                file_id = self._transform.mapping.generate_file_id(path_from_root)
                 children.append((path_from_root, basename, kind, None,
-                                 file_id, versioned_kind))
+                                 versioned_kind))
             children.sort()
             if parent_path.startswith(prefix):
-                parent_file_id = self._transform.mapping.generate_file_id(parent_path)
-                yield (parent_path, parent_file_id), children
+                yield parent_path, children
             pending.extend(sorted(subdirs, key=self._final_paths.get_path,
                                   reverse=True))
