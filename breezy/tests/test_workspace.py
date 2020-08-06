@@ -19,6 +19,7 @@ import os
 from . import (
     TestCaseWithTransport,
     multiply_scenarios,
+    features,
     )
 from .scenarios import load_tests_apply_scenarios
 
@@ -116,6 +117,11 @@ class WorkspaceTests(TestCaseWithTransport):
         vary_by_inotify(),
         vary_by_format(),
     )
+
+    def setUp(self):
+        super(WorkspaceTests, self).setUp()
+        if self._use_inotify:
+            self.requireFeature(features.pyinotify)
 
     def test_root_add(self):
         tree = self.make_branch_and_tree('.', format=self._format)
