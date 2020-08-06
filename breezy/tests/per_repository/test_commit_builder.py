@@ -27,10 +27,10 @@ from breezy import (
     tests,
     )
 from breezy.sixish import PY3
-from breezy.tree import TreeChange
 from breezy.bzr import (
     inventorytree,
     )
+from breezy.bzr.inventorytree import InventoryTreeChange
 from breezy.tests import per_repository
 from breezy.tests import (
     features,
@@ -197,7 +197,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         with tree.lock_write():
             builder = tree.branch.get_commit_builder([rev_id])
             try:
-                delete_change = TreeChange(
+                delete_change = InventoryTreeChange(
                     foo_id, ('foo', None), True, (True, False),
                     (tree.path2id(''), None),
                     ('foo', None), ('file', None),

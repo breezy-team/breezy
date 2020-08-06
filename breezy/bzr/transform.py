@@ -53,7 +53,6 @@ from ..transform import (
     MalformedTransform,
     PreviewTree,
     )
-from ..tree import TreeChange
 from . import (
     inventory,
     inventorytree,
@@ -756,7 +755,7 @@ class TreeTransformBase(TreeTransform):
                     and from_executable == to_executable):
                 continue
             results.append(
-                TreeChange(
+                inventorytree.InventoryTreeChange(
                     file_id, (from_path, to_path), modified,
                     (from_versioned, to_versioned),
                     (from_parent, to_parent),

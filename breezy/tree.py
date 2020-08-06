@@ -131,12 +131,11 @@ class TreeChange(object):
     __slots__ = ['path', 'changed_content', 'versioned',
                  'name', 'kind', 'executable', 'copied']
 
-    def __init__(self, path, changed_content, versioned, parent_id,
+    def __init__(self, path, changed_content, versioned,
                  name, kind, executable, copied=False):
         self.path = path
         self.changed_content = changed_content
         self.versioned = versioned
-        self.parent_id = parent_id
         self.name = name
         self.kind = kind
         self.executable = executable

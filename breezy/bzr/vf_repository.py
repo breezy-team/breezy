@@ -87,7 +87,7 @@ from ..sixish import (
 from ..trace import (
     mutter
     )
-from ..tree import TreeChange
+from .inventorytree import InventoryTreeChange
 
 
 class VersionedFileRepositoryFormat(RepositoryFormat):
@@ -406,7 +406,7 @@ class VersionedFileCommitBuilder(CommitBuilder):
                 # by the user. So we discard this change.
                 pass
             else:
-                change = TreeChange(
+                change = InventoryTreeChange(
                     file_id,
                     (basis_inv.id2path(file_id), tree.id2path(file_id)),
                     False, (True, True),
