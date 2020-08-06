@@ -2164,14 +2164,12 @@ class DirStateRevisionTree(InventoryTree):
             entry = inv.get_entry(file_id)
             for name, child in entry.sorted_children():
                 toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None,
-                                 child.file_id, child.kind
-                                 ))
-            yield (relpath, entry.file_id), dirblock
+                dirblock.append((toppath, name, child.kind, None, child.kind))
+            yield relpath, dirblock
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):
                 if dir[2] == _directory:
-                    pending.append((dir[0], dir[4]))
+                    pending.append((dir[0], dir[3]))
 
 
 class InterDirStateTree(InterInventoryTree):
