@@ -82,6 +82,7 @@ from .transportgit import (
     TransportObjectStore,
     TransportRepo,
     )
+from ..bzr.inventorytree import InventoryTreeChange
 
 
 class GitTreeDirectory(_mod_tree.TreeDirectory):
@@ -820,7 +821,7 @@ def tree_delta_from_git_changes(changes, mappings,
             newpath = None
         if oldpath is None and newpath is None:
             continue
-        change = _mod_tree.TreeChange(
+        change = InventoryTreeChange(
             fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
             (oldversioned, newversioned),
             (oldparent, newparent), (oldname, newname),
@@ -866,7 +867,7 @@ def tree_delta_from_git_changes(changes, mappings,
         parent_id = new_mapping.generate_file_id(parent_path)
         file_id = new_mapping.generate_file_id(path_decoded)
         ret.added.append(
-            _mod_tree.TreeChange(
+            InventoryTreeChange(
                 file_id, (None, path_decoded), True,
                 (False, True),
                 (None, parent_id),
@@ -962,7 +963,7 @@ def changes_from_git_changes(changes, mapping, specific_files=None,
             fileid = mapping.generate_file_id(newpath_decoded)
         else:
             fileid = None
-        yield _mod_tree.TreeChange(
+        yield InventoryTreeChange(
             fileid, (oldpath_decoded, newpath_decoded), (oldsha != newsha),
             (oldversioned, newversioned),
             (oldparent, newparent), (oldname, newname),

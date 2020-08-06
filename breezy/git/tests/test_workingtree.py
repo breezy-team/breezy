@@ -37,7 +37,7 @@ from ... import (
     workingtree as _mod_workingtree,
     )
 from ...delta import TreeDelta
-from ...tree import TreeChange
+from ...bzr.inventorytree import InventoryTreeChange as TreeChange
 from ..mapping import (
     default_mapping,
     )

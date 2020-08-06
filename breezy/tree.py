@@ -128,16 +128,14 @@ class TreeReference(TreeEntry):
 class TreeChange(object):
     """Describes the changes between the same item in two different trees."""
 
-    __slots__ = ['file_id', 'path', 'changed_content', 'versioned', 'parent_id',
+    __slots__ = ['path', 'changed_content', 'versioned',
                  'name', 'kind', 'executable', 'copied']
 
-    def __init__(self, file_id, path, changed_content, versioned, parent_id,
+    def __init__(self, path, changed_content, versioned,
                  name, kind, executable, copied=False):
-        self.file_id = file_id
         self.path = path
         self.changed_content = changed_content
         self.versioned = versioned
-        self.parent_id = parent_id
         self.name = name
         self.kind = kind
         self.executable = executable
@@ -146,12 +144,9 @@ class TreeChange(object):
     def __repr__(self):
         return "%s%r" % (self.__class__.__name__, self._as_tuple())
 
-    def __len__(self):
-        return len(self.__slots__)
-
     def _as_tuple(self):
-        return (self.file_id, self.path, self.changed_content, self.versioned,
-                self.parent_id, self.name, self.kind, self.executable, self.copied)
+        return (self.path, self.changed_content, self.versioned,
+                self.name, self.kind, self.executable, self.copied)
 
     def __eq__(self, other):
         if isinstance(other, TreeChange):
@@ -169,12 +164,12 @@ class TreeChange(object):
         return False
 
     def is_reparented(self):
-        return self.parent_id[0] != self.parent_id[1]
+        return os.path.dirname(self.path[0]) != os.path.dirname(self.path[1])
 
     def discard_new(self):
         return self.__class__(
-            self.file_id, (self.path[0], None), self.changed_content,
-            (self.versioned[0], None), (self.parent_id[0], None),
+            (self.path[0], None), self.changed_content,
+            (self.versioned[0], None),
             (self.name[0], None), (self.kind[0], None),
             (self.executable[0], None),
             copied=False)

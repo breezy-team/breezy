@@ -40,7 +40,7 @@ from ..transform import (
     ReusingTransform,
     MalformedTransform,
     )
-from ..tree import TreeChange
+from ..bzr.inventorytree import InventoryTreeChange
 
 
 class TreeTransformBase(TreeTransform):
@@ -649,7 +649,7 @@ class TreeTransformBase(TreeTransform):
             else:
                 to_parent = self.mapping.generate_file_id(os.path.dirname(to_path))
             results.append(
-                TreeChange(
+                InventoryTreeChange(
                     file_id, (from_path, to_path), modified,
                     (from_versioned, to_versioned),
                     (from_parent, to_parent),
