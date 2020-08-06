@@ -297,7 +297,9 @@ class TestTransformPreview(TestCaseWithTree):
         preview.new_file('new', preview.trans_id_tree_path('unchanged'),
                          [b'contents'], b'new-id')
         preview_tree = preview.get_preview_tree()
-        self.assertEqual(b'new-id', preview_tree.path2id('unchanged/new'))
+        self.assertTrue(preview_tree.is_versioned('unchanged/new'))
+        if self.workingtree_format.supports_setting_file_ids:
+            self.assertEqual(b'new-id', preview_tree.path2id('unchanged/new'))
 
     def test_path2id_moved(self):
         tree = self.make_branch_and_tree('tree')

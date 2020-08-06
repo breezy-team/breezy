@@ -74,12 +74,10 @@ ROOT_PARENT = "root-parent"
 class NoFinalPath(BzrError):
 
     _fmt = ("No final name for trans_id %(trans_id)r\n"
-            "file-id: %(file_id)r\n"
             "root trans-id: %(root_trans_id)r\n")
 
     def __init__(self, trans_id, transform):
         self.trans_id = trans_id
-        self.file_id = transform.final_file_id(trans_id)
         self.root_trans_id = transform.root
 
 
@@ -244,7 +242,7 @@ class TreeTransform(object):
 
     def create_path(self, name, parent):
         """Assign a transaction id to a new path"""
-        trans_id = self._assign_id()
+        trans_id = self.assign_id()
         unique_add(self._new_name, trans_id, name)
         unique_add(self._new_parent, trans_id, parent)
         return trans_id
@@ -282,7 +280,7 @@ class TreeTransform(object):
         """
         raise NotImplementedError(self.fixup_new_roots)
 
-    def _assign_id(self):
+    def assign_id(self):
         """Produce a new tranform id"""
         new_id = "new-%s" % self._id_number
         self._id_number += 1
@@ -292,7 +290,7 @@ class TreeTransform(object):
         """Determine (and maybe set) the transaction ID for a tree path."""
         path = self.canonical_path(path)
         if path not in self._tree_path_ids:
-            self._tree_path_ids[path] = self._assign_id()
+            self._tree_path_ids[path] = self.assign_id()
             self._tree_id_paths[self._tree_path_ids[path]] = path
         return self._tree_path_ids[path]
 
@@ -624,7 +622,7 @@ class FinalPaths(object):
         self.transform = transform
 
     def _determine_path(self, trans_id):
-        if (trans_id == self.transform.root or trans_id == ROOT_PARENT):
+        if trans_id == self.transform.root or trans_id == ROOT_PARENT:
             return u""
         name = self.transform.final_name(trans_id)
         parent_id = self.transform.final_parent(trans_id)

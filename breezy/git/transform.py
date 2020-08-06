@@ -27,6 +27,7 @@ from ..i18n import gettext
 from ..mutabletree import MutableTree
 from ..sixish import viewitems, viewvalues
 from ..transform import (
+    PreviewTree,
     TreeTransform,
     _TransformResults,
     _FileMover,
@@ -83,7 +84,7 @@ class TreeTransformBase(TreeTransform):
 
     def create_path(self, name, parent):
         """Assign a transaction id to a new path"""
-        trans_id = self._assign_id()
+        trans_id = self.assign_id()
         unique_add(self._new_name, trans_id, name)
         unique_add(self._new_parent, trans_id, parent)
         return trans_id
@@ -179,7 +180,7 @@ class TreeTransformBase(TreeTransform):
             new_ids.update(id_set)
         return sorted(FinalPaths(self).get_paths(new_ids))
 
-    def tree_file_id(self, trans_id):
+    def _tree_file_id(self, trans_id):
         """Determine the file id associated with the trans_id in the tree"""
         path = self.tree_path(trans_id)
         if path is None:
@@ -638,9 +639,18 @@ class TreeTransformBase(TreeTransform):
                 and from_name == to_name
                     and from_executable == to_executable):
                 continue
+            file_id = self._final_file_id(to_trans_id)
+            if from_path is None:
+                from_parent = None
+            else:
+                from_parent = self.mapping.generate_file_id(os.path.dirname(from_path))
+            if to_path is None:
+                to_parent = None
+            else:
+                to_parent = self.mapping.generate_file_id(os.path.dirname(to_path))
             results.append(
                 TreeChange(
-                    None, (from_path, to_path), modified,
+                    file_id, (from_path, to_path), modified,
                     (from_versioned, to_versioned),
                     (from_parent, to_parent),
                     (from_name, to_name),
@@ -657,7 +667,7 @@ class TreeTransformBase(TreeTransform):
         The tree is a snapshot, and altering the TreeTransform will invalidate
         it.
         """
-        raise NotImplementedError(self.get_preview_tree)
+        return GitPreviewTree(self)
 
     def commit(self, branch, message, merge_parents=None, strict=False,
                timestamp=None, timezone=None, committer=None, authors=None,
@@ -1435,3 +1445,95 @@ class GitTreeTransform(DiskTreeTransform):
                 changes.append(
                     (None, path, kind, executability, reference_revision))
         return changes
+
+
+class GitTransformPreview(GitTreeTransform):
+    """A TreeTransform for generating preview trees.
+
+    Unlike TreeTransform, this version works when the input tree is a
+    RevisionTree, rather than a WorkingTree.  As a result, it tends to ignore
+    unversioned files in the input tree.
+    """
+
+    def __init__(self, tree, pb=None, case_sensitive=True):
+        tree.lock_read()
+        limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
+        DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
+
+    def canonical_path(self, path):
+        return path
+
+    def tree_kind(self, trans_id):
+        path = self._tree_id_paths.get(trans_id)
+        if path is None:
+            return None
+        kind = self._tree.path_content_summary(path)[0]
+        if kind == 'missing':
+            kind = None
+        return kind
+
+    def _set_mode(self, trans_id, mode_id, typefunc):
+        """Set the mode of new file contents.
+        The mode_id is the existing file to get the mode from (often the same
+        as trans_id).  The operation is only performed if there's a mode match
+        according to typefunc.
+        """
+        # is it ok to ignore this?  probably
+        pass
+
+    def iter_tree_children(self, parent_id):
+        """Iterate through the entry's tree children, if any"""
+        try:
+            path = self._tree_id_paths[parent_id]
+        except KeyError:
+            return
+        try:
+            entry = next(self._tree.iter_entries_by_dir(
+                specific_files=[path]))[1]
+        except StopIteration:
+            return
+        children = getattr(entry, 'children', {})
+        for child in children:
+            childpath = joinpath(path, child)
+            yield self.trans_id_tree_path(childpath)
+
+    def new_orphan(self, trans_id, parent_id):
+        raise NotImplementedError(self.new_orphan)
+
+
+class GitPreviewTree(PreviewTree):
+    """Partial implementation of Tree to support show_diff_trees"""
+
+    def __init__(self, transform):
+        PreviewTree.__init__(self, transform)
+        self._final_paths = FinalPaths(transform)
+
+    def walkdirs(self, prefix=''):
+        pending = [self._transform.root]
+        while len(pending) > 0:
+            parent_id = pending.pop()
+            children = []
+            subdirs = []
+            prefix = prefix.rstrip('/')
+            parent_path = self._final_paths.get_path(parent_id)
+            for child_id in self._all_children(parent_id):
+                path_from_root = self._final_paths.get_path(child_id)
+                basename = self._transform.final_name(child_id)
+                kind = self._transform.final_kind(child_id)
+                if kind is not None:
+                    versioned_kind = kind
+                else:
+                    kind = 'unknown'
+                    versioned_kind = self._transform._tree.stored_kind(
+                        path_from_root)
+                if versioned_kind == 'directory':
+                    subdirs.append(child_id)
+                file_id = self._transform.mapping.generate_file_id(path_from_root)
+                children.append((path_from_root, basename, kind, None,
+                                 file_id, versioned_kind))
+            children.sort()
+            if parent_path.startswith(prefix):
+                parent_file_id = self._transform.mapping.generate_file_id(parent_path)
+                yield (parent_path, parent_file_id), children
+            pending.extend(sorted(subdirs, key=self._final_paths.get_path,
+                                  reverse=True))
