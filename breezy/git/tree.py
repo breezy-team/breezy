@@ -706,7 +706,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def walkdirs(self, prefix=u""):
         (store, mode, hexsha) = self._lookup_path(prefix)
         todo = deque(
-            [(store, encode_git_path(prefix), hexsha, self.path2id(prefix))])
+            [(store, encode_git_path(prefix), hexsha)])
         while todo:
             store, path, tree_sha = todo.popleft()
             path_decoded = decode_git_path(path)

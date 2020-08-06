@@ -610,8 +610,7 @@ class TestTransformPreview(TestCaseWithTree):
         preview.fixup_new_roots()
         preview_tree = preview.get_preview_tree()
         preview.new_file('a', preview.root, [b'contents'], b'a-id')
-        expected = [(('',
-                     [('a', 'a', 'file', None, 'file')])]
+        expected = [('', [('a', 'a', 'file', None, 'file')])]
         self.assertEqual(expected, list(preview_tree.walkdirs()))
 
     def test_extras(self):

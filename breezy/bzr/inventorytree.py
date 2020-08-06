@@ -957,27 +957,26 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         if top_id is None:
             pending = []
         else:
-            pending = [(prefix, '', _directory, None, top_id, None)]
+            pending = [(prefix, top_id)]
         while pending:
             dirblock = []
-            currentdir = pending.pop()
-            # 0 - relpath, 1- basename, 2- kind, 3- stat, id, v-kind
-            if currentdir[0]:
-                relroot = currentdir[0] + '/'
+            root, file_id = pending.pop()
+            if root:
+                relroot = root + '/'
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv.get_entry(currentdir[4])
+            entry = inv.get_entry(file_id)
+            subdirs = []
             for name, child in entry.sorted_children():
                 toppath = relroot + name
                 dirblock.append((toppath, name, child.kind, None,
-                                 child.kind
-                                 ))
-            yield currentdir[0], dirblock
+                                 child.kind))
+                if child.kind == _directory:
+                    subdirs.append((toppath, child.file_id))
+            yield root, dirblock
             # push the user specified dirs from dirblock
-            for dir in reversed(dirblock):
-                if dir[2] == _directory:
-                    pending.append(dir)
+            pending.extend(reversed(subdirs))
 
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
