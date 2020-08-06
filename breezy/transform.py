@@ -253,7 +253,7 @@ class TreeTransform(object):
         """Change the path that is assigned to a transaction id."""
         if parent is None:
             raise ValueError("Parent trans-id may not be None")
-        if trans_id == self._new_root:
+        if trans_id == self.root:
             raise CantMoveRoot
         self._new_name[trans_id] = name
         self._new_parent[trans_id] = parent
@@ -1249,7 +1249,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
             new_parent_id = tt.new_directory(parent_name + '.new',
                                              parent_parent, parent_file_id)
             _reparent_transform_children(tt, parent_id, new_parent_id)
-            if parent_file_id is not None:
+            if tt.final_is_versioned(parent_id):
                 tt.unversion_file(parent_id)
             new_conflicts.add((c_type, 'Created directory', new_parent_id))
         elif c_type == 'versioning no contents':

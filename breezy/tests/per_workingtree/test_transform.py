@@ -81,8 +81,6 @@ class TestTreeTransform(TestCaseWithWorkingTree):
 
     def setUp(self):
         super(TestTreeTransform, self).setUp()
-        if not self.workingtree_format.supports_setting_file_ids:
-            self.skipTest('test not compatible with non-file-id trees yet')
         self.wt = self.make_branch_and_tree('wt')
 
     def transform(self):
@@ -318,7 +316,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         transform.new_directory('', ROOT_PARENT, None)
         transform.delete_contents(transform.root)
         transform.fixup_new_roots()
-        self.assertNotIn(transform.root, transform._new_id)
+        self.assertNotIn(transform.root, getattr(transform, '_new_id', []))
 
     def test_remove_root_fixup(self):
         transform, root = self.transform()
@@ -341,7 +339,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         transform.unversion_file(root)
         transform.fixup_new_roots()
         self.assertIs(None, transform.final_kind(root))
-        self.assertIs(None, transform.final_file_id(root))
+        if self.wt.supports_setting_file_ids():
+            self.assertIs(None, transform.final_file_id(root))
 
     def test_apply_retains_root_directory(self):
         # Do not attempt to delete the physical root directory, because that
@@ -415,7 +414,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         self.assertEqual(
             b'subtree-revision',
-            tree.root_inventory.get_entry(b'subtree-id').reference_revision)
+            tree.get_reference_revision('reference'))
 
     def test_conflicts(self):
         transform, root = self.transform()
@@ -793,7 +792,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                          [('non-file executability', wiz_id)])
         transform.set_executability(None, wiz_id)
         transform.apply()
-        self.assertEqual(self.wt.path2id(ozpath(link_name1)), b'wizard-id')
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(self.wt.path2id(ozpath(link_name1)), b'wizard-id')
         self.assertEqual('symlink',
                          file_kind(self.wt.abspath(ozpath(link_name1))))
         self.assertEqual(link_target2,
@@ -924,7 +924,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         tt.new_file('parent', root, [b'contents'], b'parent-id')
         tt.apply()
         tt, root = self.transform()
-        parent_id = tt.trans_id_file_id(b'parent-id')
+        parent_id = tt.trans_id_tree_path('parent')
         tt.new_file('child,', parent_id, [b'contents2'], b'file-id')
         return tt
 
@@ -950,7 +950,7 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         tt.new_file('child,', parent_id, [b'contents2'], b'file-id')
         tt.apply()
         tt, root = self.transform()
-        parent_id = tt.trans_id_file_id(b'parent-id')
+        parent_id = tt.trans_id_tree_path('parent')
         tt.delete_contents(parent_id)
         tt.create_file([b'contents'], parent_id)
         raw_conflicts = resolve_conflicts(tt)
@@ -958,7 +958,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
                            'new-3')}, raw_conflicts)
         tt.apply()
         self.assertFalse(self.wt.is_versioned('parent'))
-        self.assertEqual(b'parent-id', self.wt.path2id('parent.new'))
+        self.assertTrue(self.wt.is_versioned('parent.new'))
+        if self.wt.supports_setting_file_ids():
+            self.assertEqual(b'parent-id', self.wt.path2id('parent.new'))
 
     def test_resolve_conflicts_wrong_parent_kind_unversioned(self):
         tt, root = self.transform()
@@ -1172,11 +1174,15 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         try:
             old = transform.trans_id_tree_path('old')
             transform.version_file(old, file_id=b'id-1')
-            self.assertEqual([(b'id-1', (None, 'old'), False, (False, True),
-                               (root_id, root_id),
-                               ('old', 'old'), ('file', 'file'),
-                               (False, False), False)],
-                             list(transform.iter_changes()))
+            changes = list(transform.iter_changes())
+            self.assertEqual(1, len(changes))
+            self.assertEqual((None, 'old'), changes[0].path)
+            self.assertEqual(False, changes[0].changed_content)
+            self.assertEqual((False, True), changes[0].versioned)
+            self.assertEqual((False, False), changes[0].executable)
+            if self.wt.supports_setting_file_ids():
+                self.assertEqual((root_id, root_id), changes[0].parent_id)
+                self.assertEqual(b'id-1', changes[0].file_id)
         finally:
             transform.finalize()
 
@@ -1277,9 +1283,9 @@ class TestTreeTransform(TestCaseWithWorkingTree):
         transform.apply()
         transform, root = self.transform()
         try:
-            transform.delete_contents(transform.trans_id_file_id(b'id-1'))
+            transform.delete_contents(transform.trans_id_tree_path('file1'))
             transform.set_executability(True,
-                                        transform.trans_id_file_id(b'id-2'))
+                                        transform.trans_id_tree_path('file2'))
             self.assertEqual(
                 [(b'id-1', (u'file1', u'file1'), True, (True, True),
                  (root_id, root_id), ('file1', u'file1'),
@@ -1429,6 +1435,8 @@ class TestTreeTransform(TestCaseWithWorkingTree):
     def test_noname_contents_nested(self):
         """TreeTransform should permit deferring naming files."""
         transform, root = self.transform()
+        if not self.wt.supports_setting_file_ids():
+            self.skipTest('does not support file ids')
         parent = transform.trans_id_file_id(b'parent-id')
         try:
             transform.create_directory(parent)

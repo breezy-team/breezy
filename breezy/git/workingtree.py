@@ -1071,26 +1071,6 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
     def store_uncommitted(self):
         raise errors.StoringUncommittedNotSupported(self)
 
-    def _apply_transform_delta(self, changes):
-        for (old_path, new_path, ie) in changes:
-            if old_path is not None:
-                (index, old_subpath) = self._lookup_index(
-                    encode_git_path(old_path))
-                try:
-                    self._index_del_entry(index, old_subpath)
-                except KeyError:
-                    pass
-                else:
-                    self._versioned_dirs = None
-            if new_path is not None and ie.kind != 'directory':
-                if ie.kind == 'tree-reference':
-                    self._index_add_entry(
-                        new_path, ie.kind,
-                        reference_revision=ie.reference_revision)
-                else:
-                    self._index_add_entry(new_path, ie.kind)
-        self.flush()
-
     def annotate_iter(self, path,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter

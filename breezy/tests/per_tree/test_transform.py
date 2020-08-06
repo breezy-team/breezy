@@ -46,11 +46,6 @@ from ..features import (
 
 class TestTransformPreview(TestCaseWithTree):
 
-    def setUp(self):
-        super(TestTransformPreview, self).setUp()
-        if not self.workingtree_format.supports_setting_file_ids:
-            self.skipTest('test not compatible with non-file-id trees yet')
-
     def create_tree(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', b'content 1')])
@@ -165,7 +160,6 @@ class TestTransformPreview(TestCaseWithTree):
                    (root_id, root_id), ('a', 'a'), ('file', 'file'),
                    (False, False), False)
 
- 
         self.assertEqual([root_entry, a_entry], list(changes))
 
     def test_specific_files(self):
@@ -177,7 +171,6 @@ class TestTransformPreview(TestCaseWithTree):
                    (root_id, root_id), ('a', 'a'), ('file', 'file'),
                    (False, False), False)
 
- 
         self.assertEqual([a_entry], list(changes))
 
     def test_want_unversioned(self):

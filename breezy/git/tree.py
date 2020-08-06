@@ -1238,6 +1238,26 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         # TODO(jelmer): Keep track of dirty per index
         self._index_dirty = True
 
+    def _apply_transform_changes(self, changes):
+        for (old_path, new_path, kind, executability, reference_revision) in changes:
+            if old_path is not None:
+                (index, old_subpath) = self._lookup_index(
+                    encode_git_path(old_path))
+                try:
+                    self._index_del_entry(index, old_subpath)
+                except KeyError:
+                    pass
+                else:
+                    self._versioned_dirs = None
+            if new_path is not None and kind != 'directory':
+                if kind == 'tree-reference':
+                    self._index_add_entry(
+                        new_path, kind,
+                        reference_revision=reference_revision)
+                else:
+                    self._index_add_entry(new_path, kind)
+        self.flush()
+
     def _index_add_entry(self, path, kind, flags=0, reference_revision=None):
         if kind == "directory":
             # Git indexes don't contain directories

@@ -41,9 +41,6 @@ from ..transform import (
     )
 from ..tree import TreeChange
 
-from ..bzr import inventory
-from ..bzr.transform import TransformPreview as GitTransformPreview
-
 
 class TreeTransformBase(TreeTransform):
     """The base class for TreeTransform and its kin."""
@@ -60,19 +57,16 @@ class TreeTransformBase(TreeTransform):
         super(TreeTransformBase, self).__init__(tree, pb=pb)
         # mapping of trans_id => (sha1 of content, stat_value)
         self._observed_sha1s = {}
-        # Mapping of trans_id -> new file_id
-        self._new_id = {}
-        # Mapping of old file-id -> trans_id
-        self._non_present_ids = {}
-        # Mapping of new file_id -> trans_id
-        self._r_new_id = {}
+        # Set of versioned trans ids
+        self._versioned = set()
         # The trans_id that will be used as the tree root
-        if tree.is_versioned(''):
-            self._new_root = self.trans_id_tree_path('')
-        else:
-            self._new_root = None
+        self.root = self.trans_id_tree_path('')
         # Whether the target is case sensitive
         self._case_sensitive_target = case_sensitive
+
+    @property
+    def mapping(self):
+        return self._tree.mapping
 
     def finalize(self):
         """Release the working tree lock, if held.
@@ -87,11 +81,6 @@ class TreeTransformBase(TreeTransform):
         self._tree.unlock()
         self._tree = None
 
-    def __get_root(self):
-        return self._new_root
-
-    root = property(__get_root)
-
     def create_path(self, name, parent):
         """Assign a transaction id to a new path"""
         trans_id = self._assign_id()
@@ -101,35 +90,7 @@ class TreeTransformBase(TreeTransform):
 
     def adjust_root_path(self, name, parent):
         """Emulate moving the root by moving all children, instead.
-
-        We do this by undoing the association of root's transaction id with the
-        current tree.  This allows us to create a new directory with that
-        transaction id.  We unversion the root directory and version the
-        physically new directory, and hope someone versions the tree root
-        later.
         """
-        old_root = self._new_root
-        old_root_file_id = self.final_file_id(old_root)
-        # force moving all children of root
-        for child_id in self.iter_tree_children(old_root):
-            if child_id != parent:
-                self.adjust_path(self.final_name(child_id),
-                                 self.final_parent(child_id), child_id)
-            file_id = self.final_file_id(child_id)
-            if file_id is not None:
-                self.unversion_file(child_id)
-            self.version_file(child_id, file_id=file_id)
-
-        # the physical root needs a new transaction id
-        self._tree_path_ids.pop("")
-        self._tree_id_paths.pop(old_root)
-        self._new_root = self.trans_id_tree_path('')
-        if parent == old_root:
-            parent = self._new_root
-        self.adjust_path(name, parent, old_root)
-        self.create_directory(old_root)
-        self.version_file(old_root, file_id=old_root_file_id)
-        self.unversion_file(self._new_root)
 
     def fixup_new_roots(self):
         """Reinterpret requests to change the root directory
@@ -149,26 +110,12 @@ class TreeTransformBase(TreeTransform):
             return
         if len(new_roots) != 1:
             raise ValueError('A tree cannot have two roots!')
-        if self._new_root is None:
-            self._new_root = new_roots[0]
-            return
         old_new_root = new_roots[0]
         # unversion the new root's directory.
-        if self.final_kind(self._new_root) is None:
-            file_id = self.final_file_id(old_new_root)
-        else:
-            file_id = self.final_file_id(self._new_root)
-        if old_new_root in self._new_id:
+        if old_new_root in self._versioned:
             self.cancel_versioning(old_new_root)
         else:
             self.unversion_file(old_new_root)
-        # if, at this stage, root still has an old file_id, zap it so we can
-        # stick a new one in.
-        if (self.tree_file_id(self._new_root) is not None
-                and self._new_root not in self._removed_id):
-            self.unversion_file(self._new_root)
-        if file_id is not None:
-            self.version_file(self._new_root, file_id=file_id)
 
         # Now move children of new root into old root directory.
         # Ensure all children are registered with the transaction, but don't
@@ -176,7 +123,7 @@ class TreeTransformBase(TreeTransform):
         list(self.iter_tree_children(old_new_root))
         # Move all children of new root into old root directory.
         for child in self.by_parent().get(old_new_root, []):
-            self.adjust_path(self.final_name(child), self._new_root, child)
+            self.adjust_path(self.final_name(child), self.root, child)
 
         # Ensure old_new_root has no directory.
         if old_new_root in self._new_contents:
@@ -185,8 +132,8 @@ class TreeTransformBase(TreeTransform):
             self.delete_contents(old_new_root)
 
         # prevent deletion of root directory.
-        if self._new_root in self._removed_contents:
-            self.cancel_deletion(self._new_root)
+        if self.root in self._removed_contents:
+            self.cancel_deletion(self.root)
 
         # destroy path info for old_new_root.
         del self._new_parent[old_new_root]
@@ -200,24 +147,12 @@ class TreeTransformBase(TreeTransform):
         """
         if file_id is None:
             raise ValueError('None is not a valid file id')
-        if file_id in self._r_new_id and self._r_new_id[file_id] is not None:
-            return self._r_new_id[file_id]
-        else:
-            try:
-                path = self._tree.id2path(file_id)
-            except errors.NoSuchId:
-                if file_id in self._non_present_ids:
-                    return self._non_present_ids[file_id]
-                else:
-                    trans_id = self._assign_id()
-                    self._non_present_ids[file_id] = trans_id
-                    return trans_id
-            else:
-                return self.trans_id_tree_path(path)
+        path = self.mapping.parse_file_id(file_id)
+        return self.trans_id_tree_path(path)
 
     def version_file(self, trans_id, file_id=None):
         """Schedule a file to become versioned."""
-        raise NotImplementedError(self.version_file)
+        self._versioned.add(trans_id)
 
     def cancel_versioning(self, trans_id):
         """Undo a previous versioning of a file"""
@@ -234,12 +169,12 @@ class TreeTransformBase(TreeTransform):
             stale_ids = self._needs_rename.difference(self._new_name)
             stale_ids.difference_update(self._new_parent)
             stale_ids.difference_update(self._new_contents)
-            stale_ids.difference_update(self._new_id)
+            stale_ids.difference_update(self._versioned)
             needs_rename = self._needs_rename.difference(stale_ids)
             id_sets = (needs_rename, self._new_executability)
         else:
             id_sets = (self._new_name, self._new_parent, self._new_contents,
-                       self._new_id, self._new_executability)
+                       self._versioned, self._new_executability)
         for id_set in id_sets:
             new_ids.update(id_set)
         return sorted(FinalPaths(self).get_paths(new_ids))
@@ -250,37 +185,27 @@ class TreeTransformBase(TreeTransform):
         if path is None:
             return None
         # the file is old; the old id is still valid
-        if self._new_root == trans_id:
+        if self.root == trans_id:
             return self._tree.path2id('')
         return self._tree.path2id(path)
 
     def final_is_versioned(self, trans_id):
-        return self.final_file_id(trans_id) is not None
+        return self._final_file_id(trans_id) is not None
 
-    def final_file_id(self, trans_id):
+    def _final_file_id(self, trans_id):
         """Determine the file id after any changes are applied, or None.
 
         None indicates that the file will not be versioned after changes are
         applied.
         """
+        if trans_id in self._removed_id:
+            return None
+        final_paths = FinalPaths(self)
         try:
-            return self._new_id[trans_id]
+            path = final_paths.get_path(trans_id)
         except KeyError:
-            if trans_id in self._removed_id:
-                return None
-        return self.tree_file_id(trans_id)
-
-    def inactive_file_id(self, trans_id):
-        """Return the inactive file_id associated with a transaction id.
-        That is, the one in the tree or in non_present_ids.
-        The file_id may actually be active, too.
-        """
-        file_id = self.tree_file_id(trans_id)
-        if file_id is not None:
-            return file_id
-        for key, value in viewitems(self._non_present_ids):
-            if value == trans_id:
-                return key
+            return None
+        return self.mapping.generate_file_id(path)
 
     def find_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
@@ -407,7 +332,7 @@ class TreeTransformBase(TreeTransform):
         However, existing entries with no contents are okay.
         """
         conflicts = []
-        for trans_id in self._new_id:
+        for trans_id in self._versioned:
             kind = self.final_kind(trans_id)
             if kind == 'symlink' and not self._tree.supports_symlinks():
                 # Ignore symlinks as they are not supported on this platform
@@ -613,77 +538,13 @@ class TreeTransformBase(TreeTransform):
     def _affected_ids(self):
         """Return the set of transform ids affected by the transform"""
         trans_ids = set(self._removed_id)
-        trans_ids.update(self._new_id)
+        trans_ids.update(self._versioned)
         trans_ids.update(self._removed_contents)
         trans_ids.update(self._new_contents)
         trans_ids.update(self._new_executability)
         trans_ids.update(self._new_name)
         trans_ids.update(self._new_parent)
         return trans_ids
-
-    def _get_file_id_maps(self):
-        """Return mapping of file_ids to trans_ids in the to and from states"""
-        trans_ids = self._affected_ids()
-        from_trans_ids = {}
-        to_trans_ids = {}
-        # Build up two dicts: trans_ids associated with file ids in the
-        # FROM state, vs the TO state.
-        for trans_id in trans_ids:
-            from_file_id = self.tree_file_id(trans_id)
-            if from_file_id is not None:
-                from_trans_ids[from_file_id] = trans_id
-            to_file_id = self.final_file_id(trans_id)
-            if to_file_id is not None:
-                to_trans_ids[to_file_id] = trans_id
-        return from_trans_ids, to_trans_ids
-
-    def _from_file_data(self, from_trans_id, from_versioned, from_path):
-        """Get data about a file in the from (tree) state
-
-        Return a (name, parent, kind, executable) tuple
-        """
-        from_path = self._tree_id_paths.get(from_trans_id)
-        if from_versioned:
-            # get data from working tree if versioned
-            from_entry = next(self._tree.iter_entries_by_dir(
-                specific_files=[from_path]))[1]
-            from_name = from_entry.name
-            from_parent = from_entry.parent_id
-        else:
-            from_entry = None
-            if from_path is None:
-                # File does not exist in FROM state
-                from_name = None
-                from_parent = None
-            else:
-                # File exists, but is not versioned.  Have to use path-
-                # splitting stuff
-                from_name = os.path.basename(from_path)
-                tree_parent = self.get_tree_parent(from_trans_id)
-                from_parent = self.tree_file_id(tree_parent)
-        if from_path is not None:
-            from_kind, from_executable, from_stats = \
-                self._tree._comparison_data(from_entry, from_path)
-        else:
-            from_kind = None
-            from_executable = False
-        return from_name, from_parent, from_kind, from_executable
-
-    def _to_file_data(self, to_trans_id, from_trans_id, from_executable):
-        """Get data about a file in the to (target) state
-
-        Return a (name, parent, kind, executable) tuple
-        """
-        to_name = self.final_name(to_trans_id)
-        to_kind = self.final_kind(to_trans_id)
-        to_parent = self.final_file_id(self.final_parent(to_trans_id))
-        if to_trans_id in self._new_executability:
-            to_executable = self._new_executability[to_trans_id]
-        elif to_trans_id == from_trans_id:
-            to_executable = from_executable
-        else:
-            to_executable = False
-        return to_name, to_parent, to_kind, to_executable
 
     def iter_changes(self):
         """Produce output in the same format as Tree.iter_changes.
@@ -696,19 +557,30 @@ class TreeTransformBase(TreeTransform):
         states are not reflected.
         """
         final_paths = FinalPaths(self)
-        from_trans_ids, to_trans_ids = self._get_file_id_maps()
+        trans_ids = self._affected_ids()
+        from_trans_ids = {}
+        to_trans_ids = {}
+        # Build up two dicts: trans_ids associated with file ids in the
+        # FROM state, vs the TO state.
+        for trans_id in trans_ids:
+            from_path = self.tree_path(trans_id)
+            if from_path is not None:
+                from_trans_ids[from_path] = trans_id
+            to_path = final_paths.get_path(trans_id)
+            if to_path is not None:
+                to_trans_ids[to_path] = trans_id
         results = []
-        # Now iterate through all active file_ids
-        for file_id in set(from_trans_ids).union(to_trans_ids):
+        # Now iterate through all active paths
+        for path in set(from_trans_ids).union(to_trans_ids):
             modified = False
-            from_trans_id = from_trans_ids.get(file_id)
+            from_trans_id = from_trans_ids.get(path)
             # find file ids, and determine versioning state
             if from_trans_id is None:
                 from_versioned = False
-                from_trans_id = to_trans_ids[file_id]
+                from_trans_id = to_trans_ids[path]
             else:
                 from_versioned = True
-            to_trans_id = to_trans_ids.get(file_id)
+            to_trans_id = to_trans_ids.get(path)
             if to_trans_id is None:
                 to_versioned = False
                 to_trans_id = from_trans_id
@@ -724,11 +596,37 @@ class TreeTransformBase(TreeTransform):
             else:
                 to_path = final_paths.get_path(to_trans_id)
 
-            from_name, from_parent, from_kind, from_executable = \
-                self._from_file_data(from_trans_id, from_versioned, from_path)
+            from_path = self._tree_id_paths.get(from_trans_id)
+            if from_versioned:
+                # get data from working tree if versioned
+                from_entry = next(self._tree.iter_entries_by_dir(
+                    specific_files=[from_path]))[1]
+                from_name = from_entry.name
+            else:
+                from_entry = None
+                if from_path is None:
+                    # File does not exist in FROM state
+                    from_name = None
+                else:
+                    # File exists, but is not versioned.  Have to use path-
+                    # splitting stuff
+                    from_name = os.path.basename(from_path)
+                    tree_parent = self.get_tree_parent(from_trans_id)
+            if from_path is not None:
+                from_kind, from_executable, from_stats = \
+                    self._tree._comparison_data(from_entry, from_path)
+            else:
+                from_kind = None
+                from_executable = False
 
-            to_name, to_parent, to_kind, to_executable = \
-                self._to_file_data(to_trans_id, from_trans_id, from_executable)
+            to_name = self.final_name(to_trans_id)
+            to_kind = self.final_kind(to_trans_id)
+            if to_trans_id in self._new_executability:
+                to_executable = self._new_executability[to_trans_id]
+            elif to_trans_id == from_trans_id:
+                to_executable = from_executable
+            else:
+                to_executable = False
 
             if from_kind != to_kind:
                 modified = True
@@ -737,12 +635,12 @@ class TreeTransformBase(TreeTransform):
                     or to_trans_id in self._new_contents):
                 modified = True
             if (not modified and from_versioned == to_versioned
-                and from_parent == to_parent and from_name == to_name
+                and from_name == to_name
                     and from_executable == to_executable):
                 continue
             results.append(
                 TreeChange(
-                    file_id, (from_path, to_path), modified,
+                    None, (from_path, to_path), modified,
                     (from_versioned, to_versioned),
                     (from_parent, to_parent),
                     (from_name, to_name),
@@ -786,7 +684,7 @@ class TreeTransformBase(TreeTransform):
         """
         self._check_malformed()
         if strict:
-            unversioned = set(self._new_contents).difference(set(self._new_id))
+            unversioned = set(self._new_contents).difference(set(self._versioned))
             for trans_id in unversioned:
                 if not self.final_is_versioned(trans_id):
                     raise errors.StrictCommitFailed()
@@ -1352,18 +1250,9 @@ class GitTreeTransform(DiskTreeTransform):
         self._limbo_children_names[parent][filename] = trans_id
         return limbo_name
 
-    def version_file(self, trans_id, file_id=None):
-        """Schedule a file to become versioned."""
-        if file_id is None:
-            raise ValueError()
-        unique_add(self._new_id, trans_id, file_id)
-        unique_add(self._r_new_id, file_id, trans_id)
-
     def cancel_versioning(self, trans_id):
         """Undo a previous versioning of a file"""
-        file_id = self._new_id[trans_id]
-        del self._new_id[trans_id]
-        del self._r_new_id[file_id]
+        self._versioned.remove(trans_id)
 
     def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
         """Apply all changes to the inventory and filesystem.
@@ -1407,9 +1296,7 @@ class GitTreeTransform(DiskTreeTransform):
                 raise
             else:
                 mover.apply_deletions()
-        if self.final_file_id(self.root) is None:
-            changes = [e for e in changes if e[0] != '']
-        self._tree._apply_transform_delta(changes)
+        self._tree._apply_transform_changes(changes)
         self._done = True
         self.finalize()
         return _TransformResults(modified_paths, self.rename_count)
@@ -1507,10 +1394,7 @@ class GitTreeTransform(DiskTreeTransform):
             inventory change. Ordered by path.
         """
         changed_ids = set()
-        # Find entries whose file_ids are new (or changed).
-        new_file_id = set(t for t in self._new_id
-                          if self._new_id[t] != self.tree_file_id(t))
-        for id_set in [self._new_name, self._new_parent, new_file_id,
+        for id_set in [self._new_name, self._new_parent,
                        self._new_executability]:
             changed_ids.update(id_set)
         # removing implies a kind change
@@ -1524,11 +1408,6 @@ class GitTreeTransform(DiskTreeTransform):
                         if self.tree_kind(t) != self.final_kind(t))
         # all kind changes will alter the inventory
         changed_ids.update(changed_kind)
-        # To find entries with changed parent_ids, find parents which existed,
-        # but changed file_id.
-        # Now add all their children to the set.
-        for parent_trans_id in new_file_id:
-            changed_ids.update(self.iter_tree_children(parent_trans_id))
         return sorted(FinalPaths(self).get_paths(changed_ids))
 
     def _generate_transform_changes(self):
@@ -1541,48 +1420,18 @@ class GitTreeTransform(DiskTreeTransform):
                 if (num % 10) == 0:
                     child_pb.update(gettext('removing file'),
                                     num, total_entries)
-                if trans_id == self._new_root:
-                    file_id = self._tree.path2id('')
-                else:
-                    file_id = self.tree_file_id(trans_id)
-                # File-id isn't really being deleted, just moved
-                if file_id in self._r_new_id:
-                    continue
                 path = self._tree_id_paths[trans_id]
-                changes.append((path, None, None))
-            new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
-                                     new_paths)
+                changes.append((path, None, None, None, None))
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
                     child_pb.update(gettext('adding file'),
                                     num + len(self._removed_id), total_entries)
-                file_id = new_path_file_ids[trans_id]
-                if file_id is None:
-                    continue
+
                 kind = self.final_kind(trans_id)
                 if kind is None:
-                    kind = self._tree.stored_kind(self._tree.id2path(file_id))
-                parent_trans_id = self.final_parent(trans_id)
-                parent_file_id = new_path_file_ids.get(parent_trans_id)
-                if parent_file_id is None:
-                    parent_file_id = self.final_file_id(parent_trans_id)
-                if trans_id in self._new_reference_revision:
-                    new_entry = inventory.TreeReference(
-                        file_id,
-                        self._new_name[trans_id],
-                        self.final_file_id(self._new_parent[trans_id]),
-                        None, self._new_reference_revision[trans_id])
-                else:
-                    new_entry = inventory.make_entry(kind,
-                                                     self.final_name(trans_id),
-                                                     parent_file_id, file_id)
-                try:
-                    old_path = self._tree.id2path(new_entry.file_id)
-                except errors.NoSuchId:
-                    old_path = None
-                new_executability = self._new_executability.get(trans_id)
-                if new_executability is not None:
-                    new_entry.executable = new_executability
+                    kind = self._tree.stored_kind(self.tree_path(trans_id))
+                executability = self._new_executability.get(trans_id)
+                reference_revision = self._new_reference_revision.get(trans_id)
                 changes.append(
-                    (old_path, path, new_entry))
+                    (None, path, kind, executability, reference_revision))
         return changes
