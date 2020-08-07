@@ -706,7 +706,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def walkdirs(self, prefix=u""):
         (store, mode, hexsha) = self._lookup_path(prefix)
         todo = deque(
-            [(store, encode_git_path(prefix), hexsha, self.path2id(prefix))])
+            [(store, encode_git_path(prefix), hexsha)])
         while todo:
             store, path, tree_sha = todo.popleft()
             path_decoded = decode_git_path(path)
@@ -1661,6 +1661,50 @@ class MutableGitIndexTree(mutabletree.MutableTree):
     def preview_transform(self, pb=None):
         from .transform import GitTransformPreview
         return GitTransformPreview(self, pb=pb)
+
+    def has_changes(self, _from_tree=None):
+        """Quickly check that the tree contains at least one commitable change.
+
+        :param _from_tree: tree to compare against to find changes (default to
+            the basis tree and is intended to be used by tests).
+
+        :return: True if a change is found. False otherwise
+        """
+        with self.lock_read():
+            # Check pending merges
+            if len(self.get_parent_ids()) > 1:
+                return True
+            if _from_tree is None:
+                _from_tree = self.basis_tree()
+            changes = self.iter_changes(_from_tree)
+            if self.supports_symlinks():
+                # Fast path for has_changes.
+                try:
+                    change = next(changes)
+                    if change.path[1] == '':
+                        next(changes)
+                    return True
+                except StopIteration:
+                    # No changes
+                    return False
+            else:
+                # Slow path for has_changes.
+                # Handle platforms that do not support symlinks in the
+                # conditional below. This is slower than the try/except
+                # approach below that but we don't have a choice as we
+                # need to be sure that all symlinks are removed from the
+                # entire changeset. This is because in platforms that
+                # do not support symlinks, they show up as None in the
+                # working copy as compared to the repository.
+                # Also, exclude root as mention in the above fast path.
+                changes = filter(
+                    lambda c: c[6][0] != 'symlink' and c[4] != (None, None),
+                    changes)
+                try:
+                    next(iter(changes))
+                except StopIteration:
+                    return False
+                return True
 
 
 class InterToIndexGitTree(InterGitTrees):

@@ -1012,16 +1012,15 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
     try:
         deferred_files = []
         for id_num, change in enumerate(change_list):
-            file_id = change.file_id
             target_path, wt_path = change.path
             target_versioned, wt_versioned = change.versioned
-            target_parent, wt_parent = change.parent_id
+            target_parent = change.parent_id[0]
             target_name, wt_name = change.name
             target_kind, wt_kind = change.kind
             target_executable, wt_executable = change.executable
-            if skip_root and wt_parent is None:
+            if skip_root and wt_path == '':
                 continue
-            trans_id = tt.trans_id_file_id(file_id)
+            trans_id = tt.trans_id_file_id(change.file_id)
             mode_id = None
             if change.changed_content:
                 keep_content = False
@@ -1046,14 +1045,15 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     if not keep_content:
                         tt.delete_contents(trans_id)
                     elif target_kind is not None:
-                        parent_trans_id = tt.trans_id_file_id(wt_parent)
+                        parent_trans_id = tt.trans_id_tree_path(osutils.dirname(wt_path))
                         backup_name = tt._available_backup_name(
                             wt_name, parent_trans_id)
                         tt.adjust_path(backup_name, parent_trans_id, trans_id)
                         new_trans_id = tt.create_path(wt_name, parent_trans_id)
                         if wt_versioned and target_versioned:
                             tt.unversion_file(trans_id)
-                            tt.version_file(new_trans_id, file_id=file_id)
+                            tt.version_file(
+                                new_trans_id, file_id=getattr(change, 'file_id', None))
                         # New contents should have the same unix perms as old
                         # contents
                         mode_id = trans_id
@@ -1069,7 +1069,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         target_path), trans_id)
                 elif target_kind == 'file':
                     deferred_files.append(
-                        (target_path, (trans_id, mode_id, file_id)))
+                        (target_path, (trans_id, mode_id, target_path)))
                     if basis_tree is None:
                         basis_tree = working_tree.basis_tree()
                         basis_tree.lock_read()
@@ -1091,35 +1091,35 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 elif target_kind is not None:
                     raise AssertionError(target_kind)
             if not wt_versioned and target_versioned:
-                tt.version_file(trans_id, file_id=file_id)
+                tt.version_file(
+                    trans_id, file_id=getattr(change, 'file_id', None))
             if wt_versioned and not target_versioned:
                 tt.unversion_file(trans_id)
             if (target_name is not None
-                    and (wt_name != target_name or wt_parent != target_parent)):
-                if target_name == '' and target_parent is None:
+                    and (wt_name != target_name or change.is_reparented())):
+                if target_path == '':
                     parent_trans = ROOT_PARENT
                 else:
                     parent_trans = tt.trans_id_file_id(target_parent)
-                if wt_parent is None and wt_versioned:
+                if wt_path == '' and wt_versioned:
                     tt.adjust_root_path(target_name, parent_trans)
                 else:
                     tt.adjust_path(target_name, parent_trans, trans_id)
             if wt_executable != target_executable and target_kind == "file":
                 tt.set_executability(target_executable, trans_id)
         if working_tree.supports_content_filtering():
-            for (trans_id, mode_id, file_id), bytes in (
+            for (trans_id, mode_id, target_path), bytes in (
                     target_tree.iter_files_bytes(deferred_files)):
                 # We're reverting a tree to the target tree so using the
                 # target tree to find the file path seems the best choice
                 # here IMO - Ian C 27/Oct/2009
-                filter_tree_path = target_tree.id2path(file_id)
-                filters = working_tree._content_filter_stack(filter_tree_path)
+                filters = working_tree._content_filter_stack(target_path)
                 bytes = filtered_output_bytes(
                     bytes, filters,
-                    ContentFilterContext(filter_tree_path, working_tree))
+                    ContentFilterContext(target_path, working_tree))
                 tt.create_file(bytes, trans_id, mode_id)
         else:
-            for (trans_id, mode_id, file_id), bytes in target_tree.iter_files_bytes(
+            for (trans_id, mode_id, target_path), bytes in target_tree.iter_files_bytes(
                     deferred_files):
                 tt.create_file(bytes, trans_id, mode_id)
         tt.fixup_new_roots()

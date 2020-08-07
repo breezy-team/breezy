@@ -469,6 +469,51 @@ class MutableInventoryTree(MutableTree, InventoryTree):
             inv.apply_delta(changes)
             self._write_inventory(inv)
 
+    def has_changes(self, _from_tree=None):
+        """Quickly check that the tree contains at least one commitable change.
+
+        :param _from_tree: tree to compare against to find changes (default to
+            the basis tree and is intended to be used by tests).
+
+        :return: True if a change is found. False otherwise
+        """
+        with self.lock_read():
+            # Check pending merges
+            if len(self.get_parent_ids()) > 1:
+                return True
+            if _from_tree is None:
+                _from_tree = self.basis_tree()
+            changes = self.iter_changes(_from_tree)
+            if self.supports_symlinks():
+                # Fast path for has_changes.
+                try:
+                    change = next(changes)
+                    # Exclude root (talk about black magic... --vila 20090629)
+                    if change.parent_id == (None, None):
+                        change = next(changes)
+                    return True
+                except StopIteration:
+                    # No changes
+                    return False
+            else:
+                # Slow path for has_changes.
+                # Handle platforms that do not support symlinks in the
+                # conditional below. This is slower than the try/except
+                # approach below that but we don't have a choice as we
+                # need to be sure that all symlinks are removed from the
+                # entire changeset. This is because in platforms that
+                # do not support symlinks, they show up as None in the
+                # working copy as compared to the repository.
+                # Also, exclude root as mention in the above fast path.
+                changes = filter(
+                    lambda c: c[6][0] != 'symlink' and c[4] != (None, None),
+                    changes)
+                try:
+                    next(iter(changes))
+                except StopIteration:
+                    return False
+                return True
+
     def _fix_case_of_inventory_path(self, path):
         """If our tree isn't case sensitive, return the canonical path"""
         if not self.case_sensitive:
@@ -957,27 +1002,25 @@ class InventoryRevisionTree(RevisionTree, InventoryTree):
         if top_id is None:
             pending = []
         else:
-            pending = [(prefix, '', _directory, None, top_id, None)]
+            pending = [(prefix, top_id)]
         while pending:
             dirblock = []
-            currentdir = pending.pop()
-            # 0 - relpath, 1- basename, 2- kind, 3- stat, id, v-kind
-            if currentdir[0]:
-                relroot = currentdir[0] + '/'
+            root, file_id = pending.pop()
+            if root:
+                relroot = root + '/'
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv.get_entry(currentdir[4])
+            entry = inv.get_entry(file_id)
+            subdirs = []
             for name, child in entry.sorted_children():
                 toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None,
-                                 child.kind
-                                 ))
-            yield currentdir[0], dirblock
+                dirblock.append((toppath, name, child.kind, None, child.kind))
+                if child.kind == _directory:
+                    subdirs.append((toppath, child.file_id))
+            yield root, dirblock
             # push the user specified dirs from dirblock
-            for dir in reversed(dirblock):
-                if dir[2] == _directory:
-                    pending.append(dir)
+            pending.extend(reversed(subdirs))
 
     def iter_files_bytes(self, desired_files):
         """See Tree.iter_files_bytes.
