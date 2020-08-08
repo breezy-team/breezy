@@ -42,6 +42,7 @@ from ...propose import (
     MergeProposalExists,
     NoSuchProject,
     PrerequisiteBranchUnsupported,
+    SourceNotDerivedFromTarget,
     UnsupportedHoster,
     )
 

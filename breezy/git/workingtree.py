@@ -572,7 +572,7 @@ class GitWorkingTree(MutableGitIndexTree, workingtree.WorkingTree):
         """
         with self.lock_read():
             index_paths = set(
-                [decode_git_path(p) for p, i in self._recurse_index_entries()])
+                [decode_git_path(p) for p, sha, mode in self.iter_git_objects()])
             all_paths = set(self._iter_files_recursive(include_dirs=False))
             return iter(all_paths - index_paths)
 
