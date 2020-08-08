@@ -1859,21 +1859,21 @@ def snapshot_workingtree(target, want_unversioned=False):
                         target.store.add_object(blob)
                 blobs[path] = (live_entry.sha, cleanup_mode(live_entry.mode))
     if want_unversioned:
-        for e in target._iter_files_recursive(include_dirs=False):
+        for extra in target._iter_files_recursive(include_dirs=False):
             try:
-                e, accessible = osutils.normalized_filename(e)
+                extra, accessible = osutils.normalized_filename(extra)
             except UnicodeDecodeError:
                 raise errors.BadFilenameEncoding(
-                    e, osutils._fs_enc)
-            np = encode_git_path(e)
+                    extra, osutils._fs_enc)
+            np = encode_git_path(extra)
             if np in blobs:
                 continue
-            st = target._lstat(e)
+            st = target._lstat(extra)
             if stat.S_ISDIR(st.st_mode):
                 blob = Tree()
             elif stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode):
                 blob = blob_from_path_and_stat(
-                    target.abspath(e).encode(osutils._fs_enc), st)
+                    target.abspath(extra).encode(osutils._fs_enc), st)
             else:
                 continue
             target.store.add_object(blob)
