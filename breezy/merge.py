@@ -1306,8 +1306,10 @@ class Merge3Merger(object):
                 # This is a contents conflict, because none of the available
                 # functions could merge it.
                 file_group = self._dump_conflicts(
-                    name, (base_path, other_path, this_path), parent_id,
-                    file_id, set_version=True)
+                    name, (base_path, other_path, this_path), parent_id)
+                for tid in file_group:
+                    self.tt.version_file(tid, file_id=file_id)
+                    break
                 self._raw_conflicts.append(('contents conflict', file_group))
         elif hook_status == 'success':
             self.tt.create_file(lines, trans_id)
@@ -1319,7 +1321,7 @@ class Merge3Merger(object):
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             self._dump_conflicts(
-                name, (base_path, other_path, this_path), parent_id, file_id)
+                name, (base_path, other_path, this_path), parent_id)
         elif hook_status == 'delete':
             self.tt.unversion_file(trans_id)
             result = "deleted"
@@ -1425,10 +1427,9 @@ class Merge3Merger(object):
             self._raw_conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
-            file_id = self.tt.final_file_id(trans_id)
-            file_group = self._dump_conflicts(name, paths, parent_id, file_id,
-                                              this_lines, base_lines,
-                                              other_lines)
+            file_group = self._dump_conflicts(
+                name, paths, parent_id,
+                lines=(base_lines, other_lines, this_lines))
             file_group.append(trans_id)
 
     def _get_filter_tree_path(self, path):
@@ -1445,8 +1446,7 @@ class Merge3Merger(object):
         # Skip the lookup for older formats
         return None
 
-    def _dump_conflicts(self, name, paths, parent_id, file_id, this_lines=None,
-                        base_lines=None, other_lines=None, set_version=False,
+    def _dump_conflicts(self, name, paths, parent_id, lines=None,
                         no_base=False):
         """Emit conflict files.
         If this_lines, base_lines, or other_lines are omitted, they will be
@@ -1454,6 +1454,10 @@ class Merge3Merger(object):
         or .BASE (in that order) will be created as versioned files.
         """
         base_path, other_path, this_path = paths
+        if lines:
+            base_lines, other_lines, this_lines = lines
+        else:
+            base_lines = other_lines = this_lines = None
         data = [('OTHER', self.other_tree, other_path, other_lines),
                 ('THIS', self.this_tree, this_path, this_lines)]
         if not no_base:
@@ -1466,7 +1470,6 @@ class Merge3Merger(object):
             # Skip the id2path lookup for older formats
             filter_tree_path = None
 
-        versioned = False
         file_group = []
         for suffix, tree, path, lines in data:
             if path is not None:
@@ -1474,9 +1477,6 @@ class Merge3Merger(object):
                     name, parent_id, path, tree, suffix, lines,
                     filter_tree_path)
                 file_group.append(trans_id)
-                if set_version and not versioned:
-                    self.tt.version_file(trans_id, file_id=file_id)
-                    versioned = True
         return file_group
 
     def _conflict_file(self, name, parent_id, path, tree, suffix,
@@ -1646,10 +1646,9 @@ class WeaveMerger(Merge3Merger):
             self._raw_conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
-            file_id = self.tt.final_file_id(trans_id)
-            file_group = self._dump_conflicts(name, paths, parent_id, file_id,
-                                              no_base=False,
-                                              base_lines=base_lines)
+            file_group = self._dump_conflicts(name, paths, parent_id,
+                                              (base_lines, None, None),
+                                              no_base=False)
             file_group.append(trans_id)
 
 
@@ -1699,8 +1698,7 @@ class Diff3Merger(Merge3Merger):
             if status == 1:
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
-                file_id = self.tt.final_file_id(trans_id)
-                self._dump_conflicts(name, paths, parent_id, file_id)
+                self._dump_conflicts(name, paths, parent_id)
                 self._raw_conflicts.append(('text conflict', trans_id))
         finally:
             osutils.rmtree(temp_dir)
