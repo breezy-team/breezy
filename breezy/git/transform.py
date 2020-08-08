@@ -22,7 +22,7 @@ import os
 from stat import S_IEXEC, S_ISREG
 import time
 
-from .tree import MutableGitIndexTree
+from .tree import GitTree
 
 from .. import (
     annotate,
@@ -1508,14 +1508,13 @@ class GitTransformPreview(GitTreeTransform):
         raise NotImplementedError(self.new_orphan)
 
 
-class GitPreviewTree(PreviewTree, MutableGitIndexTree):
+class GitPreviewTree(PreviewTree, GitTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
     def __init__(self, transform):
         PreviewTree.__init__(self, transform)
-        MutableGitIndexTree.__init__(self)
-        self._final_paths = FinalPaths(transform)
         self.store = transform._tree.store
+        self._final_paths = FinalPaths(transform)
 
     def _supports_executable(self):
         return self._transform._limbo_supports_executable()
@@ -1718,3 +1717,6 @@ class GitPreviewTree(PreviewTree, MutableGitIndexTree):
     def _stat_limbo_file(self, trans_id):
         name = self._transform._limbo_name(trans_id)
         return os.lstat(name)
+
+    def git_snapshot(self, want_unversioned=False):
+        raise NotImplementedError(self.git_snapshot)

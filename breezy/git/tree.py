@@ -273,7 +273,7 @@ class GitTree(_mod_tree.Tree):
         """
         raise NotImplementedError(self.iter_git_objects)
 
-    def git_snapshot(self):
+    def git_snapshot(self, want_unversioned=False):
         """Snapshot a tree, and return tree object.
 
         :return: Tree sha and set of extras
