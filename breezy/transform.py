@@ -1242,9 +1242,13 @@ def conflict_pass(tt, conflicts, path_tree=None):
             parent_id = conflict[1]
             parent_parent = tt.final_parent(parent_id)
             parent_name = tt.final_name(parent_id)
-            parent_file_id = tt.final_file_id(parent_id)
-            new_parent_id = tt.new_directory(parent_name + '.new',
-                                             parent_parent, parent_file_id)
+            if tt._tree.supports_setting_file_ids():
+                parent_file_id = tt.final_file_id(parent_id)
+                new_parent_id = tt.new_directory(parent_name + '.new',
+                                                 parent_parent, parent_file_id)
+            else:
+                new_parent_id = tt.new_directory(parent_name + '.new', parent_parent)
+                tt.version_file(new_parent_id)
             _reparent_transform_children(tt, parent_id, new_parent_id)
             if tt.final_is_versioned(parent_id):
                 tt.unversion_file(parent_id)
@@ -1266,7 +1270,10 @@ def iter_cook_conflicts(raw_conflicts, tt):
         c_type = conflict[0]
         action = conflict[1]
         modified_path = fp.get_path(conflict[2])
-        modified_id = tt.final_file_id(conflict[2])
+        if tt._tree.supports_setting_file_ids():
+            modified_id = tt.final_file_id(conflict[2])
+        else:
+            modified_id = None
         if len(conflict) == 3:
             yield conflicts.Conflict.factory(
                 c_type, action=action, path=modified_path, file_id=modified_id)
@@ -1387,6 +1394,11 @@ class PreviewTree(object):
         pass
 
     def _path2trans_id(self, path):
+        """Look up the trans id associated with a path.
+
+        :param path: path to look up, None when the path does not exist
+        :return: trans_id
+        """
         # We must not use None here, because that is a valid value to store.
         trans_id = self._path2trans_id_cache.get(path, object)
         if trans_id is not object:

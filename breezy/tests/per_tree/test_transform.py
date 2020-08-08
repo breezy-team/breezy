@@ -537,8 +537,8 @@ class TestTransformPreview(TestCaseWithTree):
 
     def test_is_executable(self):
         preview = self.get_empty_preview()
-        preview.new_file('file', preview.root, [b'a\nb\nc\n'], b'file-id')
-        preview.set_executability(True, preview.trans_id_file_id(b'file-id'))
+        trans_id = preview.new_file('file', preview.root, [b'a\nb\nc\n'], b'file-id')
+        preview.set_executability(True, trans_id)
         preview_tree = preview.get_preview_tree()
         self.assertEqual(True, preview_tree.is_executable('file'))
 
@@ -563,6 +563,8 @@ class TestTransformPreview(TestCaseWithTree):
         preview.create_file([b'b\nc\nd\ne\n'], trans_id)
         self.build_tree_contents([('wtb/file', b'a\nc\nd\nf\n')])
         tree_a = preview.get_preview_tree()
+        if not getattr(tree_a, 'plan_file_merge', None):
+            self.skipTest('tree does not support file merge planning')
         tree_a.set_parent_ids([base_id])
         self.addCleanup(tree_b.lock_read().unlock)
         self.assertEqual([
@@ -587,6 +589,8 @@ class TestTransformPreview(TestCaseWithTree):
         preview.create_file([b'b\nc\nd\ne\n'], trans_id)
         self.build_tree_contents([('wtb/file', b'a\nc\nd\nf\n')])
         tree_a = preview.get_preview_tree()
+        if not getattr(tree_a, 'plan_file_merge', None):
+            self.skipTest('tree does not support file merge planning')
         tree_a.set_parent_ids([base_id])
         self.addCleanup(tree_b.lock_read().unlock)
         self.assertEqual([
@@ -619,6 +623,7 @@ class TestTransformPreview(TestCaseWithTree):
         preview.new_file('new-versioned-file', preview.root, [b'contents'],
                          b'new-versioned-id')
         tree = preview.get_preview_tree()
+        self.assertEquals({'existing-file'}, set(work_tree.extras()))
         preview.unversion_file(preview.trans_id_tree_path('removed-file'))
         self.assertEqual({'new-file', 'removed-file', 'existing-file'},
                          set(tree.extras()))

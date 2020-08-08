@@ -286,6 +286,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 raise errors.NoSuchRevision(repository, revision_id)
             self.tree = commit.tree
 
+
     def _submodule_info(self):
         if self._submodules is None:
             try:
@@ -427,18 +428,6 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return False
         else:
             return True
-
-    def _submodule_info(self):
-        if self._submodules is None:
-            try:
-                with self.get_file('.gitmodules') as f:
-                    config = GitConfigFile.from_file(f)
-                    self._submodules = {
-                        path: (url, section)
-                        for path, url, section in parse_submodules(config)}
-            except errors.NoSuchFile:
-                self._submodules = {}
-        return self._submodules
 
     def list_files(self, include_root=False, from_dir=None, recursive=True,
                    recurse_nested=False):
@@ -1239,7 +1228,8 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         self._index_dirty = True
 
     def _apply_transform_changes(self, changes):
-        for (old_path, new_path, kind, executability, reference_revision) in changes:
+        for (old_path, new_path, kind, executability, reference_revision,
+             symlink_target) in changes:
             if old_path is not None:
                 (index, old_subpath) = self._lookup_index(
                     encode_git_path(old_path))
@@ -1250,15 +1240,15 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 else:
                     self._versioned_dirs = None
             if new_path is not None and kind != 'directory':
-                if kind == 'tree-reference':
-                    self._index_add_entry(
-                        new_path, kind,
-                        reference_revision=reference_revision)
-                else:
-                    self._index_add_entry(new_path, kind)
+                self._index_add_entry(
+                    new_path, kind,
+                    reference_revision=reference_revision,
+                    symlink_target=symlink_target)
         self.flush()
 
-    def _index_add_entry(self, path, kind, flags=0, reference_revision=None):
+    def _index_add_entry(
+            self, path, kind, flags=0, reference_revision=None,
+            symlink_target=None):
         if kind == "directory":
             # Git indexes don't contain directories
             return
@@ -1287,7 +1277,9 @@ class MutableGitIndexTree(mutabletree.MutableTree):
                 # old index
                 stat_val = os.stat_result(
                     (stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-            blob.set_raw_string(encode_git_path(self.get_symlink_target(path)))
+            if symlink_target is None:
+                symlink_target = self.get_symlink_target(path)
+            blob.set_raw_string(encode_git_path(symlink_target))
             # Add object to the repository if it didn't exist yet
             if blob.id not in self.store:
                 self.store.add_object(blob)

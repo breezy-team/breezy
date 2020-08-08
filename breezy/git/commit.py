@@ -21,6 +21,7 @@ from __future__ import absolute_import
 
 from dulwich.index import (
     commit_tree,
+    read_submodule_head,
     )
 import stat
 
@@ -47,7 +48,6 @@ from dulwich.objects import (
     Blob,
     Commit,
     )
-from dulwich.index import read_submodule_head
 
 
 from .mapping import (
