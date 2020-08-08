@@ -119,10 +119,10 @@ class GitCommitBuilder(CommitBuilder):
                     blob.data = f.read()
                 finally:
                     f.close()
-                entry.text_size = len(blob.data)
-                entry.text_sha1 = osutils.sha_string(blob.data)
-                self.store.add_object(blob)
                 sha = blob.id
+                entry.text_size = st.st_size
+                entry.git_sha1 = sha
+                self.store.add_object(blob)
             elif change.kind[1] == "symlink":
                 symlink_target = workingtree.get_symlink_target(change.path[1])
                 blob = Blob()
@@ -144,7 +144,7 @@ class GitCommitBuilder(CommitBuilder):
                 self._deleted_paths.add(encode_git_path(change.path[0]))
             self._blobs[encode_git_path(change.path[1])] = (mode, sha)
             if st is not None:
-                yield change.path[1], (entry.text_sha1, st)
+                yield change.path[1], (entry.git_sha1, st)
         if not seen_root and len(self.parents) == 0:
             raise RootMissing()
         if getattr(workingtree, "basis_tree", False):
