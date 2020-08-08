@@ -87,14 +87,12 @@ from ..bzr.inventorytree import InventoryTreeChange
 
 class GitTreeDirectory(_mod_tree.TreeDirectory):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'children']
+    __slots__ = ['file_id', 'name', 'parent_id']
 
     def __init__(self, file_id, name, parent_id):
         self.file_id = file_id
         self.name = name
         self.parent_id = parent_id
-        # TODO(jelmer)
-        self.children = {}
 
     @property
     def kind(self):
@@ -122,16 +120,16 @@ class GitTreeDirectory(_mod_tree.TreeDirectory):
 
 class GitTreeFile(_mod_tree.TreeFile):
 
-    __slots__ = ['file_id', 'name', 'parent_id', 'text_size', 'text_sha1',
-                 'executable']
+    __slots__ = ['file_id', 'name', 'parent_id', 'text_size',
+                 'executable', 'git_sha1']
 
     def __init__(self, file_id, name, parent_id, text_size=None,
-                 text_sha1=None, executable=None):
+                 git_sha1=None, executable=None):
         self.file_id = file_id
         self.name = name
         self.parent_id = parent_id
         self.text_size = text_size
-        self.text_sha1 = text_sha1
+        self.git_sha1 = git_sha1
         self.executable = executable
 
     @property
@@ -143,20 +141,20 @@ class GitTreeFile(_mod_tree.TreeFile):
                 self.file_id == other.file_id and
                 self.name == other.name and
                 self.parent_id == other.parent_id and
-                self.text_sha1 == other.text_sha1 and
+                self.git_sha1 == other.git_sha1 and
                 self.text_size == other.text_size and
                 self.executable == other.executable)
 
     def __repr__(self):
         return ("%s(file_id=%r, name=%r, parent_id=%r, text_size=%r, "
-                "text_sha1=%r, executable=%r)") % (
+                "git_sha1=%r, executable=%r)") % (
             type(self).__name__, self.file_id, self.name, self.parent_id,
-            self.text_size, self.text_sha1, self.executable)
+            self.text_size, self.git_sha1, self.executable)
 
     def copy(self):
         ret = self.__class__(
             self.file_id, self.name, self.parent_id)
-        ret.text_sha1 = self.text_sha1
+        ret.git_sha1 = self.git_sha1
         ret.text_size = self.text_size
         ret.executable = self.executable
         return ret
@@ -523,9 +521,8 @@ class GitRevisionTree(revisiontree.RevisionTree, GitTree):
             ie.reference_revision = self.mapping.revision_id_foreign_to_bzr(
                 hexsha)
         else:
-            data = store[hexsha].data
-            ie.text_sha1 = osutils.sha_string(data)
-            ie.text_size = len(data)
+            ie.git_sha1 = hexsha
+            ie.text_size = None
             ie.executable = mode_is_executable(mode)
         return ie
 
@@ -1402,17 +1399,7 @@ class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
         elif kind == 'tree-reference':
             ie.reference_revision = self.get_reference_revision(path)
         else:
-            try:
-                data = self.get_file_text(path)
-            except errors.NoSuchFile:
-                data = None
-            except IOError as e:
-                if e.errno != errno.ENOENT:
-                    raise
-                data = None
-            if data is None:
-                data = self.branch.repository._git.object_store[sha].data
-            ie.text_sha1 = osutils.sha_string(data)
+            ie.git_sha1 = sha
             ie.text_size = size
             ie.executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
         return ie

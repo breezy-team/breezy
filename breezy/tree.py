@@ -19,11 +19,6 @@
 
 from __future__ import absolute_import
 
-from .lazy_import import lazy_import
-lazy_import(globals(), """
-from breezy.i18n import gettext
-""")
-
 from . import (
     errors,
     lock,
@@ -681,8 +676,7 @@ class Tree(object):
         prefs = next(self.iter_search_rules([path], filter_pref_names))
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
-            trace.note(
-                gettext("*** {0} content-filter: {1} => {2!r}").format(path, prefs, stk))
+            trace.note("*** {0} content-filter: {1} => {2!r}").format(path, prefs, stk)
         return stk
 
     def _content_filter_stack_provider(self):
