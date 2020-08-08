@@ -264,7 +264,24 @@ def ensure_normalized_path(path):
     return path
 
 
-class GitRevisionTree(revisiontree.RevisionTree):
+class GitTree(_mod_tree.Tree):
+
+    def iter_git_objects(self):
+        """Iterate over all the objects in the tree.
+
+        :return :Yields tuples with (path, sha, mode)
+        """
+        raise NotImplementedError(self.iter_git_objects)
+
+    def git_snapshot(self):
+        """Snapshot a tree, and return tree object.
+
+        :return: Tree sha and set of extras
+        """
+        raise NotImplementedError(self.snapshot)
+
+
+class GitRevisionTree(revisiontree.RevisionTree, GitTree):
     """Revision tree implementation based on Git objects."""
 
     def __init__(self, repository, revision_id):
@@ -285,6 +302,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
             except KeyError:
                 raise errors.NoSuchRevision(repository, revision_id)
             self.tree = commit.tree
+
+    def git_snapshot(self, want_unversioned=False):
+        return self.tree, set()
 
     def _submodule_info(self):
         if self._submodules is None:
@@ -1114,7 +1134,7 @@ class InterGitRevisionTrees(InterGitTrees):
 _mod_tree.InterTree.register_optimiser(InterGitRevisionTrees)
 
 
-class MutableGitIndexTree(mutabletree.MutableTree):
+class MutableGitIndexTree(mutabletree.MutableTree, GitTree):
 
     def __init__(self):
         self._lock_mode = None
@@ -1122,6 +1142,9 @@ class MutableGitIndexTree(mutabletree.MutableTree):
         self._versioned_dirs = None
         self._index_dirty = False
         self._submodules = None
+
+    def git_snapshot(self, want_unversioned=False):
+        return snapshot_workingtree(self, want_unversioned=want_unversioned)
 
     def is_versioned(self, path):
         with self.lock_read():
@@ -1757,7 +1780,10 @@ class InterFromIndexGitTree(InterGitTrees):
                 require_versioned=require_versioned)
         # TODO(jelmer): Restrict to specific_files, for performance reasons.
         with self.lock_read():
-            from_tree_sha, extras = snapshot_workingtree(self.source, want_unversioned=want_unversioned)
+            from_tree_sha, extras = self.source.git_snapshot(
+                want_unversioned=want_unversioned)
+            to_tree_sha, to_extras = self.target.git_snapshot(
+                want_unversioned=want_unversioned)
             return tree_changes(
                 self.store, from_tree_sha, self.target.tree,
                 include_trees=include_trees,
@@ -1797,10 +1823,10 @@ class InterIndexGitTree(InterGitTrees):
                 require_versioned=require_versioned)
         # TODO(jelmer): Restrict to specific_files, for performance reasons.
         with self.lock_read():
-            from_tree_sha, from_extras = snapshot_workingtree(
-                self.source, want_unversioned=want_unversioned)
-            to_tree_sha, to_extras = snapshot_workingtree(
-                self.target, want_unversioned=want_unversioned)
+            from_tree_sha, from_extras = self.source.git_snapshot(
+                want_unversioned=want_unversioned)
+            to_tree_sha, to_extras = self.target.git_snapshot(
+                want_unversioned=want_unversioned)
             changes = tree_changes(
                 self.store, from_tree_sha, to_tree_sha,
                 include_trees=include_trees,
@@ -1891,7 +1917,7 @@ def changes_between_git_tree_and_working_copy(source_store, from_tree_sha, targe
     """Determine the changes between a git tree and a working tree with index.
 
     """
-    to_tree_sha, extras = snapshot_workingtree(target, want_unversioned=want_unversioned)
+    to_tree_sha, extras = target.git_snapshot(want_unversioned=want_unversioned)
     store = OverlayObjectStore([source_store, target.store])
     return tree_changes(
         store, from_tree_sha, to_tree_sha, include_trees=include_trees,
