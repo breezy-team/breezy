@@ -61,6 +61,7 @@ from breezy import (
     rio as _mod_rio,
     )
 from breezy.bzr import (
+    conflicts as _mod_bzr_conflicts,
     inventory,
     serializer,
     xml5,
@@ -578,23 +579,24 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
         return xml7.serializer_v7.write_inventory_to_lines(inventory)
 
     def set_conflicts(self, conflicts):
+        conflict_list = _mod_bzr_conflicts.ConflictList(conflicts)
         with self.lock_tree_write():
-            self._put_rio('conflicts', conflicts.to_stanzas(),
+            self._put_rio('conflicts', conflict_list.to_stanzas(),
                           CONFLICT_HEADER_1)
 
     def add_conflicts(self, new_conflicts):
         with self.lock_tree_write():
             conflict_set = set(self.conflicts())
             conflict_set.update(set(list(new_conflicts)))
-            self.set_conflicts(_mod_conflicts.ConflictList(
-                sorted(conflict_set, key=_mod_conflicts.Conflict.sort_key)))
+            self.set_conflicts(
+                sorted(conflict_set, key=_mod_bzr_conflicts.Conflict.sort_key))
 
     def conflicts(self):
         with self.lock_read():
             try:
                 confile = self._transport.get('conflicts')
             except errors.NoSuchFile:
-                return _mod_conflicts.ConflictList()
+                return _mod_bzr_conflicts.ConflictList()
             try:
                 try:
                     if next(confile) != CONFLICT_HEADER_1 + b'\n':
@@ -602,7 +604,7 @@ class InventoryWorkingTree(WorkingTree, MutableInventoryTree):
                 except StopIteration:
                     raise errors.ConflictFormatError()
                 reader = _mod_rio.RioReader(confile)
-                return _mod_conflicts.ConflictList.from_stanzas(reader)
+                return _mod_bzr_conflicts.ConflictList.from_stanzas(reader)
             finally:
                 confile.close()
 

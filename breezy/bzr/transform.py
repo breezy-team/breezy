@@ -54,6 +54,8 @@ from ..transform import (
     MalformedTransform,
     PreviewTree,
     )
+from .conflicts import Conflict
+
 from . import (
     inventory,
     inventorytree,
@@ -1014,7 +1016,7 @@ class TreeTransformBase(TreeTransform):
     def cook_conflicts(self, raw_conflicts):
         """Generate a list of cooked conflicts, sorted by file path"""
         conflict_iter = iter_cook_conflicts(raw_conflicts, self)
-        return sorted(conflict_iter, key=conflicts.Conflict.sort_key)
+        return sorted(conflict_iter, key=Conflict.sort_key)
 
 
 def iter_cook_conflicts(raw_conflicts, tt):
@@ -1025,13 +1027,13 @@ def iter_cook_conflicts(raw_conflicts, tt):
         modified_path = fp.get_path(conflict[2])
         modified_id = tt.final_file_id(conflict[2])
         if len(conflict) == 3:
-            yield conflicts.Conflict.factory(
+            yield Conflict.factory(
                 c_type, action=action, path=modified_path, file_id=modified_id)
 
         else:
             conflicting_path = fp.get_path(conflict[3])
             conflicting_id = tt.final_file_id(conflict[3])
-            yield conflicts.Conflict.factory(
+            yield Conflict.factory(
                 c_type, action=action, path=modified_path,
                 file_id=modified_id,
                 conflict_path=conflicting_path,

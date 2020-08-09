@@ -36,7 +36,7 @@ from .. import (
 from ..bzr import (
     generate_ids,
     )
-from ..conflicts import (
+from ..bzr.conflicts import (
     DeletingParent,
     DuplicateEntry,
     DuplicateID,

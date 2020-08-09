@@ -265,7 +265,7 @@ class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
         else:
             self.assertEqual(0, nb_conflicts)
         try:
-            outer.set_conflicts(conflicts.ConflictList())
+            outer.set_conflicts([])
         except errors.UnsupportedOperation:
             # WT2 doesn't have a separate list of conflicts to clear. It
             # actually says there is a conflict, but happily forgets all about

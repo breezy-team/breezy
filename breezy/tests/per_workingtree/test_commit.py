@@ -113,7 +113,7 @@ class TestCommit(TestCaseWithWorkingTree):
         osutils.rmtree('B/a')
         try:
             # bzr resolve --all
-            tree_b.set_conflicts(conflicts.ConflictList())
+            tree_b.set_conflicts([])
         except errors.UnsupportedOperation:
             # On WT2, set_conflicts is unsupported, but the rmtree has the same
             # effect.

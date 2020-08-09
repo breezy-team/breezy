@@ -37,6 +37,7 @@ from breezy import (
     workingtree,
     )
 from breezy.bzr import (
+    conflicts as _mod_bzr_conflicts,
     generate_ids,
     versionedfile,
     )
@@ -1550,7 +1551,7 @@ class Merge3Merger(object):
                         parent_path = fp.get_path(
                             self.tt.trans_id_file_id(other_parent))
                     other_path = osutils.pathjoin(parent_path, other_name)
-                c = _mod_conflicts.Conflict.factory(
+                c = _mod_bzr_conflicts.Conflict.factory(
                     'path conflict', path=this_path,
                     conflict_path=other_path,
                     file_id=file_id)
@@ -1566,15 +1567,15 @@ class Merge3Merger(object):
                         # Here is the raw path
                         path = path[:-len(suffix)]
                         break
-                c = _mod_conflicts.Conflict.factory(conflict_type,
+                c = _mod_bzr_conflicts.Conflict.factory(conflict_type,
                                                     path=path, file_id=file_id)
                 content_conflict_file_ids.add(file_id)
             elif conflict_type == 'text conflict':
                 trans_id = conflict[1]
                 path = fp.get_path(trans_id)
                 file_id = self.tt.final_file_id(trans_id)
-                c = _mod_conflicts.Conflict.factory(conflict_type,
-                                                    path=path, file_id=file_id)
+                c = _mod_bzr_conflicts.Conflict.factory(
+                    conflict_type, path=path, file_id=file_id)
             else:
                 raise AssertionError('bad conflict type: %r' % (conflict,))
             cooked_conflicts.append(c)
@@ -1589,7 +1590,7 @@ class Merge3Merger(object):
                     and c.file_id in content_conflict_file_ids):
                 continue
             self.cooked_conflicts.append(c)
-        self.cooked_conflicts.sort(key=_mod_conflicts.Conflict.sort_key)
+        self.cooked_conflicts.sort(key=_mod_bzr_conflicts.Conflict.sort_key)
 
 
 class WeaveMerger(Merge3Merger):

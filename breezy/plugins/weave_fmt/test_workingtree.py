@@ -21,8 +21,10 @@ from __future__ import absolute_import
 
 import os
 
-from ... import (
+from .. import (
     conflicts,
+    )
+from ... import (
     errors,
     )
 
