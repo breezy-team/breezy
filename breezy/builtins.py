@@ -63,7 +63,6 @@ from breezy import (
     views,
     )
 from breezy.branch import Branch
-from breezy.conflicts import ConflictList
 from breezy.transport import memory
 from breezy.smtp_connection import SMTPConnection
 from breezy.workingtree import WorkingTree
